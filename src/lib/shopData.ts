@@ -43,8 +43,9 @@ export const EQUIP_SLOTS = [
 ] as const
 
 // 미리보기 고정 월드 박스 + navel 고정 좌표(= 액션이 바뀌어도 몸이 중앙에 고정).
+// x=77.5: body navel과 몸통 시각중심의 2.5px 오차 보정(측정값)으로 정중앙에 오게 함.
 export const MAIN_BOX = { w: 160, h: 190 }
-export const MAIN_ANCHOR = { x: 80, y: 128 }
+export const MAIN_ANCHOR = { x: 77.5, y: 128 }
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.
 export const THUMB_VIEW: ViewOpts = { action: 'stand1', expression: 'default', ear: 'humanEar', weaponMotion: 'basic' }

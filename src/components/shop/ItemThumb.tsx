@@ -17,7 +17,7 @@ import type { ListMode } from './ShopContext'
 
 // 몸통 박스보다 넉넉하게(큰 망토/날개·이펙트가 잘리지 않도록). navel 고정이라 몸은 안 흔들림.
 const THUMB_BOX = { w: 96, h: 104 }
-const THUMB_ANCHOR = { x: 48, y: 74 }
+const THUMB_ANCHOR = { x: 45.5, y: 74 } // x: 몸통 시각중심 2.5px 보정(정중앙)
 
 function Sprite({ item }: { item: ListItem }) {
   const sources: string[] = []
