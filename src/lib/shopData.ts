@@ -42,12 +42,13 @@ export const EQUIP_SLOTS = [
   'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape', 'weapon', 'shield',
 ] as const
 
-// 미리보기 월드 박스. body navel을 박스 중앙(centerX)에 고정. 캔버스는 1:1 자연 크기로 표시(크리스프).
-export const MAIN_BOX = { w: 170, h: 210 }
-export const MAIN_ANCHOR = { x: 85, y: 128 } // x는 centerX(body navel)로 재정렬됨. y=navel 세로 위치.
+// 미리보기 월드 박스 — 모델+헤어+이펙트를 다 담도록 넉넉하게(그래야 박스 경계에서 안 잘림).
+// body navel을 박스 중앙(centerX)에 고정. 렌더는 스케일 1로 작게 그리고 CSS로 확대(upscale=선명).
+export const MAIN_BOX = { w: 200, h: 250 }
+export const MAIN_ANCHOR = { x: 100, y: 150 } // x는 centerX(body navel)로 재정렬됨. y=navel 세로 위치.
 
-// 배율 = 정수 렌더 스케일(캔버스를 그 배로 그려 1:1 표시 → 선명 + 실제 확대). 기본 2.
-export const ZOOM_RENDER_SCALE: Record<number, number> = { 1: 2, 2: 3, 3: 4 }
+// 배율 = CSS 확대 배수(작게 그린 캔버스를 픽셀 유지한 채 키움). 기본 2. 픽셀아트는 확대는 선명.
+export const ZOOM_CSS: Record<number, number> = { 1: 0.8, 2: 1.0, 3: 1.4 }
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.
 export const THUMB_VIEW: ViewOpts = { action: 'stand1', expression: 'default', ear: 'humanEar', weaponMotion: 'basic' }

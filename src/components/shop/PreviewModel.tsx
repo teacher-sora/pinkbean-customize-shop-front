@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
 import { effectDraws, preload, renderCharacter } from '@/lib/core/render'
-import { MAIN_ANCHOR, MAIN_BOX, MOVE_POSTURE_ACTIONS, ZOOM_RENDER_SCALE, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt } from '@/lib/shopData'
+import { MAIN_ANCHOR, MAIN_BOX, MOVE_POSTURE_ACTIONS, ZOOM_CSS, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import styles from './PreviewModel.module.css'
 
@@ -132,7 +132,8 @@ export default function PreviewModel() {
       const fi = animated ? (MOVE_POSTURE_ACTIONS.has(pv.action) ? frameAtElapsedAlt : frameAtElapsed)(delays, elapsed) : 0
       const f = frames[Math.min(fi, frames.length - 1)]
       const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow }, elapsed)) : []
-      renderCharacter(canvas, f.placed, { scale: ZOOM_RENDER_SCALE[pv.zoom] ?? 3, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
+      // 스케일 1로 작게 그림(캔버스=박스 크기). 화면 확대는 CSS(wrap transform)로 → 픽셀 유지 확대.
+      renderCharacter(canvas, f.placed, { scale: 1, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
     }
     preload([...pngs]).then(() => {
       if (cancelled) return
@@ -142,10 +143,10 @@ export default function PreviewModel() {
       raf = requestAnimationFrame(loop)
     })
     return () => { cancelled = true; cancelAnimationFrame(raf) }
-  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.zoom])
+  }, [spec, effList, viewInfo.flip, V.action, pv.action])
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} style={{ transform: `scale(${ZOOM_CSS[pv.zoom] ?? 1})` }}>
       {spec ? <canvas ref={canvasRef} className={styles.canvas} /> : <div className={styles.skeleton} />}
     </div>
   )
