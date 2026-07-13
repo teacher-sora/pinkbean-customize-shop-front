@@ -3,6 +3,7 @@
 import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, isAnimatedAction, type Opt, type Pv } from '@/lib/catalog'
 import { css, pillStyle, PV_LABEL, ROW_BETWEEN, SEL_STYLE, switchKnob, switchTrack } from '@/lib/style'
 import { useShop } from './ShopContext'
+import PreviewModel from './PreviewModel'
 
 export default function PreviewPanel() {
   const s = useShop()
@@ -12,7 +13,6 @@ export default function PreviewPanel() {
   const pvAnimated = isAnimatedAction(pv.action)
   const pvCaption = `${curAction.l} · ${(PV_EXPRS.find((x) => x.v === pv.expr) || { l: '' }).l}`
 
-  const pvZoomStyle = `height:100%; display:flex; align-items:center; justify-content:center; transform:scale(${pv.zoom / 2}); transform-origin:center; transition:transform .22s cubic-bezier(.22,.61,.36,1);`
   const pvBarStyle = `flex:0 0 auto; width:100%; height:46px; padding:0 22px; border:none; border-top:1px solid #f0e9e1; background:${s.pvOpen ? '#faf7f3' : '#fff'}; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font-family:inherit; transition:background .16s ease;`
   const pvCaretStyle = `font-size:11px; color:#a89e93; transition:transform .2s ease; transform:rotate(${s.pvOpen ? '180deg' : '0deg'}); flex:0 0 auto;`
   const pvDotStyle = `width:8px; height:8px; border-radius:50%; background:#ec86ac; animation:pbBlink ${(12 / pv.fps).toFixed(2)}s ease-in-out infinite;`
@@ -31,19 +31,14 @@ export default function PreviewPanel() {
       <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #f0e9e1;')}>
         <span style={css('font-size:15px; font-weight:700;')}>코디 미리보기</span>
       </div>
-      <div style={css('flex:1 1 40%; min-height:96px; display:flex; align-items:center; justify-content:center; padding:16px; overflow:hidden; background:radial-gradient(circle at 50% 42%, #fdf3f7 0%, #f9f5f0 60%);')}>
-        <div style={css(pvZoomStyle)}>
-          <div style={css('width:170px; height:100%; max-height:260px; border-radius:16px; border:2px dashed #e4b9cd; background:repeating-linear-gradient(45deg, #fdf0f5, #fdf0f5 10px, #fbe6ee 10px, #fbe6ee 20px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; position:relative;')}>
-            <span style={css('font-size:11px; color:#c98fac; font-family:monospace;')}>character preview</span>
-            <span style={css('font-size:11px; color:#b98aa3; font-weight:600;')}>{pvCaption}</span>
-            {pvAnimated && (
-              <div style={css('position:absolute; top:10px; right:10px; display:flex; align-items:center; gap:5px; padding:3px 8px; border-radius:20px; background:#fff; border:1px solid #f4cfdf;')}>
-                <span style={css(pvDotStyle)} />
-                <span style={css('font-size:10px; font-weight:600; color:#d76d9a;')}>{pv.fps} fps</span>
-              </div>
-            )}
+      <div style={css('flex:1 1 40%; min-height:96px; display:flex; align-items:center; justify-content:center; padding:16px; overflow:hidden; position:relative; background:radial-gradient(circle at 50% 42%, #fdf3f7 0%, #f9f5f0 60%);')}>
+        <PreviewModel />
+        {pvAnimated && (
+          <div style={css('position:absolute; top:14px; right:14px; display:flex; align-items:center; gap:5px; padding:3px 8px; border-radius:20px; background:#fff; border:1px solid #f4cfdf;')}>
+            <span style={css(pvDotStyle)} />
+            <span style={css('font-size:10px; font-weight:600; color:#d76d9a;')}>{pv.fps} fps</span>
           </div>
-        </div>
+        )}
       </div>
 
       <button onClick={() => s.setPvOpen(!s.pvOpen)} style={css(pvBarStyle)}>

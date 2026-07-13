@@ -1,22 +1,20 @@
 'use client'
 
-import { CATS, ITEM_COUNT, ITEMS_PER_PAGE } from '@/lib/catalog'
+import { CATS, ITEMS_PER_PAGE } from '@/lib/catalog'
+import { spriteUrl, type ListItem } from '@/lib/core/data'
+import { CAT_TO_SLOT } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop } from './ShopContext'
+
+const thumbUrl = (it: ListItem) => spriteUrl(it.thumb || `sprites/${it.id}/thumb.png`)
 
 export default function CodiScreen() {
   const s = useShop()
   const activeMeta = CATS.find((c) => c.id === s.activeCat) || CATS[0]
+  const list = s.listForCat(s.activeCat)
+  const loading = s.dataLoading
 
-  const allItems = Array.from({ length: ITEM_COUNT }, (_, i) => {
-    const id = `${s.activeCat}-${i}`
-    return {
-      id, sel: !!s.equipped[id],
-      code: `${s.activeCat.slice(0, 2).toUpperCase()}${String(i + 1).padStart(3, '0')}`,
-      name: `${activeMeta.label} 아이템 ${i + 1}`,
-    }
-  })
-  const pages = Array.from({ length: s.pageCount }, (_, p) => allItems.slice(p * ITEMS_PER_PAGE, p * ITEMS_PER_PAGE + ITEMS_PER_PAGE))
+  const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * ITEMS_PER_PAGE, p * ITEMS_PER_PAGE + ITEMS_PER_PAGE))
   const trackStyle = `display:flex; height:100%; width:100%; will-change:transform; transform:translateX(calc(${-s.curIdx * 100}% + ${s.offset}px)); transition:${s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none'};`
 
   const partBtnStyle = (() => {
@@ -31,9 +29,38 @@ export default function CodiScreen() {
   })()
   const partMenuStyle = `position:absolute; top:calc(100% + 8px); left:0; z-index:20; width:360px; padding:10px; background:#fff; border:1px solid #e7ded4; border-radius:12px; box-shadow:0 12px 32px rgba(42,37,33,.12); transform-origin:top left; transition:opacity .2s ease, transform .2s cubic-bezier(.22,.61,.36,1); opacity:${s.partMenuOpen ? 1 : 0}; transform:translateY(${s.partMenuOpen ? '0' : '-6px'}) scale(${s.partMenuOpen ? 1 : 0.98}); pointer-events:${s.partMenuOpen ? 'auto' : 'none'};`
 
+  const thumbBox = 'flex:1 1 auto; width:100%; min-height:0; border-radius:8px; background:#f7f2ec; display:flex; align-items:center; justify-content:center; overflow:hidden;'
+
+  const cell = (item: ListItem) => {
+    const sel = s.isEquippedInCat(s.activeCat, item.id)
+    const dyeable = s.activeCat !== 'skin' && item.dyeMode !== 'none'
+    return (
+      <div key={item.id} onClick={() => s.equipFromCat(s.activeCat, item)} className="pb-cardwrap">
+        <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; ${sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
+          {dyeable && (
+            <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat]) }} className="pb-dye" title="이 부위 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
+          )}
+          <div style={css(thumbBox)}>
+            <img src={thumbUrl(item)} alt={item.name || item.id} loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
+              style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated', objectFit: 'contain' }} />
+          </div>
+          <div style={css('font-size:12px; font-weight:500; color:#3d372f; line-height:1.3; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;')}>{item.name || item.id}</div>
+        </div>
+      </div>
+    )
+  }
+
+  const skeletonCell = (i: number) => (
+    <div key={i} className="pb-cardwrap">
+      <div className="pb-card" style={css('display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; border-radius:12px; background:#fff; min-height:0; min-width:0;')}>
+        <div className="pb-skel" style={css('flex:1 1 auto; width:100%; min-height:0; border-radius:8px;')} />
+        <div className="pb-skel" style={css('width:70%; height:12px; border-radius:6px;')} />
+      </div>
+    </div>
+  )
+
   return (
     <section style={css('flex:0 0 65%; min-width:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;')}>
-      {/* 헤더 행 */}
       <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;')}>
         <div style={css('flex:1 1 0; min-width:0; display:flex; align-items:center; gap:10px;')}>
           <div ref={s.partWrapRef} style={css('position:relative; flex:0 0 auto;')}>
@@ -58,7 +85,7 @@ export default function CodiScreen() {
               </div>
             </div>
           </div>
-          <span style={css('font-size:12px; color:#a89e93; white-space:nowrap; flex:0 0 auto;')}>{ITEM_COUNT}종</span>
+          <span style={css('font-size:12px; color:#a89e93; white-space:nowrap; flex:0 0 auto;')}>{loading ? '불러오는 중…' : `${list.length}종`}</span>
         </div>
         <div style={css('flex:0 0 auto; display:flex; align-items:center; gap:7px; font-variant-numeric:tabular-nums;')}>
           <span style={css('font-size:11px; font-weight:500; color:#a89e93;')}>페이지</span>
@@ -74,27 +101,24 @@ export default function CodiScreen() {
         </div>
       </div>
 
-      {/* 캐러셀 */}
       <div ref={s.bindVp} style={css('flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:none; cursor:grab; user-select:none;')}>
-        <div style={css(trackStyle)}>
-          {pages.map((items, pi) => (
-            <div key={pi} style={css('flex:0 0 100%; width:100%; height:100%; padding:18px 22px;')}>
-              <div style={css('display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(3,1fr); gap:16px; height:100%;')}>
-                {items.map((item) => (
-                  <div key={item.id} onClick={() => s.selectItem(item.id)} className="pb-cardwrap">
-                    <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; ${item.sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${item.sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
-                      <button onClick={(e) => { e.stopPropagation(); s.openDye(item.id) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
-                      <div style={css('flex:1 1 auto; width:100%; min-height:0; border-radius:8px; background:repeating-linear-gradient(45deg,#f7f2ec,#f7f2ec 8px,#f1ebe2 8px,#f1ebe2 16px); display:flex; align-items:center; justify-content:center;')}>
-                        <span style={css('font-size:10px; color:#b7ada2; font-family:monospace;')}>{item.code}</span>
-                      </div>
-                      <div style={css('font-size:12px; font-weight:500; color:#3d372f; line-height:1.3; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;')}>{item.name}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {loading ? (
+          <div style={css('width:100%; height:100%; padding:18px 22px;')}>
+            <div style={css('display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(3,1fr); gap:16px; height:100%;')}>
+              {Array.from({ length: ITEMS_PER_PAGE }, (_, i) => skeletonCell(i))}
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div style={css(trackStyle)}>
+            {pages.map((items, pi) => (
+              <div key={pi} style={css('flex:0 0 100%; width:100%; height:100%; padding:18px 22px;')}>
+                <div style={css('display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(3,1fr); gap:16px; height:100%;')}>
+                  {items.map((item) => cell(item))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div style={css('flex:0 0 auto; height:38px; display:flex; align-items:center; justify-content:center; border-top:1px solid #f0e9e1;')}>
         <span style={css('font-size:12px; color:#a89e93;')}>스크롤 · 스와이프 · ← → 방향키로 페이지를 넘길 수 있어요</span>
