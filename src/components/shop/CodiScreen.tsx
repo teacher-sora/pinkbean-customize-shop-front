@@ -12,7 +12,7 @@ export default function CodiScreen() {
   const s = useShop()
   const activeMeta = CATS.find((c) => c.id === s.activeCat) || CATS[0]
   const list = s.listForCat(s.activeCat)
-  const loading = s.dataLoading
+  const loading = s.catLoading
 
   const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * ITEMS_PER_PAGE, p * ITEMS_PER_PAGE + ITEMS_PER_PAGE))
   const trackStyle = `display:flex; height:100%; width:100%; will-change:transform; transform:translateX(calc(${-s.curIdx * 100}% + ${s.offset}px)); transition:${s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none'};`
@@ -41,7 +41,7 @@ export default function CodiScreen() {
             <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat]) }} className="pb-dye" title="이 부위 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox)}>
-            <img src={thumbUrl(item)} alt={item.name || item.id} loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
+            <img src={thumbUrl(item)} alt={item.name || item.id} loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
               style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated', objectFit: 'contain' }} />
           </div>
           <div style={css('font-size:12px; font-weight:500; color:#3d372f; line-height:1.3; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;')}>{item.name || item.id}</div>
@@ -110,11 +110,14 @@ export default function CodiScreen() {
           </div>
         ) : (
           <div style={css(trackStyle)}>
+            {/* 이미지는 현재 페이지 ±1 만 마운트(보이는 부분만 CDN 로드 → 속도/안정성). */}
             {pages.map((items, pi) => (
               <div key={pi} style={css('flex:0 0 100%; width:100%; height:100%; padding:18px 22px;')}>
-                <div style={css('display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(3,1fr); gap:16px; height:100%;')}>
-                  {items.map((item) => cell(item))}
-                </div>
+                {Math.abs(pi - s.curIdx) <= 1 && (
+                  <div style={css('display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(3,1fr); gap:16px; height:100%;')}>
+                    {items.map((item) => cell(item))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

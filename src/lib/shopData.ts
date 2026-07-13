@@ -2,6 +2,30 @@
 // 미리보기 고정 박스. 코어(src/lib/core)의 assemble/render/data 위에서 동작한다.
 
 import type { ViewOpts } from '@/lib/core/assemble'
+import type { ListItem } from '@/lib/core/data'
+
+// 시각적 중복 폴딩(HANDOFF.md / 프로토타입 규칙):
+//  - 헤어/성형(colorGroup 있음): 그룹당 1개, 대표 = 그룹 내 최저 id(= 검정 color 0). 나머지 색은
+//    CDN에서 안 받고, 웹의 "염색" 기능이 유저 설정으로 색을 계산한다.
+//  - 장비(colorGroup 없음): 이름당 1개(남/여·재출시 동명·동일외형 중복 제거), 대표 = 최저 id.
+export function foldList(l: ListItem[]): ListItem[] {
+  if (!l.length) return l
+  const hasColor = l[0].colorGroup != null
+  const keyOf = (it: ListItem) => (hasColor ? `g${it.colorGroup}` : `n${it.name ?? it.id}`)
+  const rep = new Map<string, ListItem>()
+  for (const it of l) {
+    const k = keyOf(it); const cur = rep.get(k)
+    if (!cur) { rep.set(k, it); continue }
+    if (parseInt(it.id, 10) < parseInt(cur.id, 10)) rep.set(k, it)
+  }
+  const seen = new Set<string>(); const out: ListItem[] = []
+  for (const it of l) {
+    const k = keyOf(it); if (seen.has(k)) continue
+    if (it.id !== rep.get(k)!.id) continue // 대표 위치에서만 출력 → 최저 id 기준 정렬 유지
+    seen.add(k); out.push(rep.get(k)!)
+  }
+  return out
+}
 
 // 디자인 부위 id → 실제 WZ slot (prototype SLOT_ORDER). skin 은 특수(톤).
 export const CAT_TO_SLOT: Record<string, string> = {
@@ -21,6 +45,15 @@ export const EQUIP_SLOTS = [
 // 미리보기 고정 월드 박스 + navel 고정 좌표(= 액션이 바뀌어도 몸이 중앙에 고정).
 export const MAIN_BOX = { w: 160, h: 190 }
 export const MAIN_ANCHOR = { x: 80, y: 128 }
+
+// 초기 진입 시 기본 착용(빈 모델 방지). 슬롯 리스트를 미로드해도 되도록 최소 ListItem 으로 하드코딩.
+// 헤어/성형은 검정 대표(color 0) id. 실제 부위 리스트를 열면 folded 대표와 id가 일치해 선택 표시됨.
+export const DEFAULT_TONE = 12 // 엘프 피부
+export const DEFAULT_EQUIP: Record<string, ListItem> = {
+  hair: { id: '00071400', slot: 'hair', isCash: false, grade: 'none', islot: null, vslot: null, dyeMode: 'palette', colorGroup: 7140, color: 0, name: '녹셀 헤어 (여)', actions: [] },
+  face: { id: '00022060', slot: 'face', isCash: false, grade: 'none', islot: null, vslot: null, dyeMode: 'palette', colorGroup: 2260, name: '운명의 인도자 얼굴', actions: [] },
+  longcoat: { id: '01051917', slot: 'longcoat', isCash: true, grade: 'cash', islot: 'MaPn', vslot: null, dyeMode: 'none', name: '금단의 계약 (여)', actions: [] },
+}
 
 // 이동/자세 액션(핑퐁 재생 대상).
 export const MOVE_POSTURE_ACTIONS = new Set(['basic', 'stand', 'walk', 'alert', 'proneStab', 'sit', 'jump', 'fly', 'ladder', 'rope'])

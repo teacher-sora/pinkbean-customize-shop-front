@@ -13,7 +13,7 @@ import { ITEMS_PER_PAGE, type Mix, type Hsv, type Preset, type Pv } from '@/lib/
 import { defHsv, defMix } from '@/lib/color'
 import { loadIndex, loadSlot, type Index, type ListItem } from '@/lib/core/data'
 import { conflictSlots } from '@/lib/core/slots'
-import { CAT_TO_SLOT, EQUIP_SLOTS } from '@/lib/shopData'
+import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, EQUIP_SLOTS, foldList } from '@/lib/shopData'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 // 염색 대상은 실제 slot. hair/face(성형)만 믹스 염색, 그 외 HSV.
@@ -25,6 +25,7 @@ export interface ShopCtx {
   // 데이터
   index: Index | null
   dataLoading: boolean
+  catLoading: boolean
   listForCat: (cat: string) => ListItem[]
   // primary/screen
   primary: string; setPrimary: Dispatch<string>
@@ -145,27 +146,35 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const lastWheelStep = useRef(0)
   const drag = useRef({ on: false, captured: false, startX: 0, lastX: 0, lastT: 0, vel: 0 })
 
-  // ── 초기 로드: index + 부위별 리스트 ──
+  // ── 초기 로드: index 만(빠르게). 부위 리스트는 "보여질 때" 지연 로드 ──
   useEffect(() => {
     let alive = true
-    ;(async () => {
-      try {
-        const idx = await loadIndex()
-        const entries = await Promise.all(idx.slots.map(async (s) => [s.slot, await loadSlot(s.file)] as const))
-        if (!alive) return
-        const map: Record<string, ListItem[]> = {}
-        for (const [s, l] of entries) map[s] = l
-        setIndex(idx); setLists(map); setTone(idx.base.default)
-        // 초기 착용(모델이 비어보이지 않게 일부 기본 착용)
-        const eq: Record<string, ListItem | null> = {}
-        for (const s of EQUIP_SLOTS) eq[s] = null
-        for (const s of ['hair', 'face', 'longcoat', 'shoes', 'weapon']) eq[s] = map[s]?.[0] ?? null
-        setEquipped(eq)
-      } catch (e) { console.error('[shop] CDN 로드 실패', e) }
-      finally { if (alive) setDataLoading(false) }
-    })()
+    loadIndex().then((idx) => {
+      if (!alive) return
+      setIndex(idx); setTone(DEFAULT_TONE)
+      const eq: Record<string, ListItem | null> = {}
+      for (const s of EQUIP_SLOTS) eq[s] = null
+      Object.assign(eq, DEFAULT_EQUIP) // 기본 착용(녹셀 헤어 검정·운명의 인도자 얼굴·금단의 계약)
+      setEquipped(eq)
+    }).catch((e) => console.error('[shop] index 로드 실패', e))
+      .finally(() => { if (alive) setDataLoading(false) })
     return () => { alive = false }
   }, [])
+
+  // 부위 리스트 지연 로드(활성 부위만). loadSlot 은 data.ts 에서 파일별 캐시됨.
+  const loadingSlots = useRef<Set<string>>(new Set())
+  const ensureSlot = useCallback((slot: string) => {
+    if (!index || slot === 'skin') return
+    if (lists[slot] !== undefined || loadingSlots.current.has(slot)) return
+    const summary = index.slots.find((s) => s.slot === slot)
+    if (!summary) { setLists((m) => ({ ...m, [slot]: [] })); return }
+    loadingSlots.current.add(slot)
+    loadSlot(summary.file)
+      .then((l) => setLists((m) => ({ ...m, [slot]: foldList(l) }))) // fold: 헤어/성형=검정 대표 1개, 장비=이름당 1개
+      .catch(() => setLists((m) => ({ ...m, [slot]: [] })))
+      .finally(() => loadingSlots.current.delete(slot))
+  }, [index, lists])
+  useEffect(() => { if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat]) }, [activeCat, ensureSlot])
 
   // 피부(skin) = index.base.tones 를 합성 리스트로. 그 외는 lists[slot].
   const skinList = useMemo<ListItem[]>(() => {
@@ -179,6 +188,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (cat === 'skin') return skinList
     return lists[CAT_TO_SLOT[cat]] || []
   }, [lists, skinList])
+
+  // 활성 부위 리스트 로딩중?(index 미로드 또는 해당 slot 미로드)
+  const catLoading = dataLoading || (activeCat !== 'skin' && lists[CAT_TO_SLOT[activeCat]] === undefined)
 
   // ── 페이지네이션(활성 부위 리스트 길이 기준) ──
   const curList = listForCat(activeCat)
@@ -355,7 +367,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   void defMix; void defHsv
 
   const value: ShopCtx = {
-    index, dataLoading, listForCat,
+    index, dataLoading, catLoading, listForCat,
     primary, setPrimary,
     activeCat, setActiveCat, partMenuOpen, setPartMenuOpen, partWrapRef, bindVp,
     curIdx, pageCount, offset, snapping, setOffset, setSnapping, setIdx, step,
