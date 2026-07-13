@@ -6,7 +6,7 @@ import { useShop } from './ShopContext'
 
 export default function PresetScreen() {
   const s = useShop()
-  const liveCount = Object.keys(s.equipped).length
+  const liveCount = Object.values(s.equipped).filter(Boolean).length
 
   const presetCards = s.presets.map((p) => {
     const on = s.selectedPreset === p.id

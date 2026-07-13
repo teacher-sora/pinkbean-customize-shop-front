@@ -1,19 +1,31 @@
 'use client'
 
 /*
- * ShopContext — 핑크빈 커마샵의 모든 상태 · 핸들러의 단일 출처.
- * 화면 컴포넌트(Header/CodiScreen/InfoScreen/PresetScreen/PreviewPanel/DyeDialog/Toast)는
- * useShop() 으로 필요한 조각만 꺼내 쓴다. 파생값(slotList/presetCards/dialog 등)은 각 화면에서
- * 이 상태로부터 계산한다(정본 renderVals 와 동일).
+ * ShopContext — 상태·핸들러 단일 출처.
+ * 코디(부위별 아이템 목록·착용)와 미리보기 합성은 실제 CDN 데이터를 사용한다.
+ *   - index/slots/meta 는 src/lib/core/data.ts 로 CDN(https://cdn.pinkbean-customize.com)에서 로드.
+ *   - equipped 는 실제 slot → ListItem. 미리보기(PreviewModel)가 이 값을 합성.
+ * 프리셋/염색 UI 는 이 실제 모델 위에서 동작(염색 시각화·이펙트·형상변이 합성은 다음 단계).
  */
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { CATS, ITEMS_PER_PAGE, ITEM_COUNT, type Mix, type Hsv, type Preset, type Pv, type Snapshot } from '@/lib/catalog'
-import { clampDye, defHsv, defMix, isMixCat } from '@/lib/color'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { ITEMS_PER_PAGE, type Mix, type Hsv, type Preset, type Pv } from '@/lib/catalog'
+import { defHsv, defMix } from '@/lib/color'
+import { loadIndex, loadSlot, type Index, type ListItem } from '@/lib/core/data'
+import { conflictSlots } from '@/lib/core/slots'
+import { CAT_TO_SLOT, EQUIP_SLOTS } from '@/lib/shopData'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
+// 염색 대상은 실제 slot. hair/face(성형)만 믹스 염색, 그 외 HSV.
+const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
+// 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김.
+export type Snapshot = { equipped: Record<string, string>; tone: number; dyeMix: Record<string, Mix>; dyeHsv: Record<string, Hsv>; hidden: Record<string, boolean> }
 
 export interface ShopCtx {
+  // 데이터
+  index: Index | null
+  dataLoading: boolean
+  listForCat: (cat: string) => ListItem[]
   // primary/screen
   primary: string; setPrimary: Dispatch<string>
   // codi
@@ -29,17 +41,21 @@ export interface ShopCtx {
   onPageChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onPageKey: (e: React.KeyboardEvent<HTMLInputElement>) => void
   commitPage: () => void
-  // equip / dye
-  equipped: Record<string, boolean>; setEquipped: Dispatch<Record<string, boolean>>
+  // 착용(실제)
+  equipped: Record<string, ListItem | null>
+  tone: number
+  equipFromCat: (cat: string, item: ListItem) => void
+  isEquippedInCat: (cat: string, itemId: string) => boolean
   hidden: Record<string, boolean>; setHidden: Dispatch<Record<string, boolean>>
+  // 염색(slot 키)
   dyeTarget: string | null; setDyeTarget: Dispatch<string | null>
   dyeMix: Record<string, Mix>; setDyeMix: Dispatch<Record<string, Mix>>
   dyeHsv: Record<string, Hsv>; setDyeHsv: Dispatch<Record<string, Hsv>>
   dyeEdit: Record<string, string>; setDyeEdit: Dispatch<Record<string, string>>
-  selectItem: (id: string) => void
-  // dye dialog
-  dialogKey: string | null; dialogClosing: boolean
-  openDye: (key: string) => void; closeDye: () => void
+  isMixSlot: (slot: string) => boolean
+  // 염색 다이얼로그(slot 대상)
+  dialogSlot: string | null; dialogClosing: boolean
+  openDye: (slot: string) => void; closeDye: () => void
   // preview
   pv: Pv; setPv: (key: keyof Pv, val: Pv[keyof Pv]) => void
   pvOpen: boolean; setPvOpen: Dispatch<boolean>
@@ -56,7 +72,7 @@ export interface ShopCtx {
   shareCurrent: () => void
   // toast
   toast: boolean; toastText: string
-  // hover 상태들
+  // hover
   hoverCat: string | null; setHoverCat: Dispatch<string | null>
   hoverPrimary: string | null; setHoverPrimary: Dispatch<string | null>
   hoverPill: string | null; setHoverPill: Dispatch<string | null>
@@ -75,15 +91,22 @@ export const useShop = () => {
 }
 
 export function ShopProvider({ children }: { children: React.ReactNode }) {
+  // ── 데이터 ──
+  const [index, setIndex] = useState<Index | null>(null)
+  const [lists, setLists] = useState<Record<string, ListItem[]>>({})
+  const [dataLoading, setDataLoading] = useState(true)
+
+  // ── UI ──
   const [primary, setPrimary] = useState('codi')
   const [activeCat, setActiveCat] = useState('hair')
-  const [equipped, setEquipped] = useState<Record<string, boolean>>({})
+  const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
+  const [tone, setTone] = useState(0)
   const [hidden, setHidden] = useState<Record<string, boolean>>({})
   const [dyeTarget, setDyeTarget] = useState<string | null>(null)
   const [dyeMix, setDyeMix] = useState<Record<string, Mix>>({})
   const [dyeHsv, setDyeHsv] = useState<Record<string, Hsv>>({})
   const [dyeEdit, setDyeEdit] = useState<Record<string, string>>({})
-  const [dialogKey, setDialogKey] = useState<string | null>(null)
+  const [dialogSlot, setDialogSlot] = useState<string | null>(null)
   const [dialogClosing, setDialogClosing] = useState(false)
   const [pageByCat, setPageByCat] = useState<Record<string, number>>({})
   const [offset, setOffset] = useState(0)
@@ -93,12 +116,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [partMenuOpen, setPartMenuOpen] = useState(false)
   const [pv, setPvState] = useState<Pv>({
     action: 'basic', weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
-    gaze: 'right', wEffect: true, cEffect: true, fps: 12, zoom: 2,
+    gaze: 'left', wEffect: true, cEffect: true, fps: 12, zoom: 2,
   })
   const [pvOpen, setPvOpen] = useState(false)
-  const [presets, setPresets] = useState<Preset[]>(() =>
-    Array.from({ length: 20 }, (_, i) => ({ id: 'd' + i, name: `코디 ${i + 1}` })),
-  )
+  const [presets, setPresets] = useState<Preset[]>(() => Array.from({ length: 20 }, (_, i) => ({ id: 'd' + i, name: `코디 ${i + 1}` })))
   const [presetData, setPresetData] = useState<Record<string, Snapshot>>({})
   const [selectedPreset, setSelectedPreset] = useState<string | null>('d0')
   const [nickInput, setNickInput] = useState('')
@@ -124,11 +145,47 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const lastWheelStep = useRef(0)
   const drag = useRef({ on: false, captured: false, startX: 0, lastX: 0, lastT: 0, vel: 0 })
 
-  const pageCount = Math.max(1, Math.ceil(ITEM_COUNT / ITEMS_PER_PAGE))
+  // ── 초기 로드: index + 부위별 리스트 ──
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const idx = await loadIndex()
+        const entries = await Promise.all(idx.slots.map(async (s) => [s.slot, await loadSlot(s.file)] as const))
+        if (!alive) return
+        const map: Record<string, ListItem[]> = {}
+        for (const [s, l] of entries) map[s] = l
+        setIndex(idx); setLists(map); setTone(idx.base.default)
+        // 초기 착용(모델이 비어보이지 않게 일부 기본 착용)
+        const eq: Record<string, ListItem | null> = {}
+        for (const s of EQUIP_SLOTS) eq[s] = null
+        for (const s of ['hair', 'face', 'longcoat', 'shoes', 'weapon']) eq[s] = map[s]?.[0] ?? null
+        setEquipped(eq)
+      } catch (e) { console.error('[shop] CDN 로드 실패', e) }
+      finally { if (alive) setDataLoading(false) }
+    })()
+    return () => { alive = false }
+  }, [])
+
+  // 피부(skin) = index.base.tones 를 합성 리스트로. 그 외는 lists[slot].
+  const skinList = useMemo<ListItem[]>(() => {
+    if (!index) return []
+    return index.base.tones.map((t) => ({
+      id: t.body, slot: 'skin', isCash: false, grade: 'none', islot: null, vslot: null,
+      dyeMode: 'hsb', thumb: `sprites/${t.body}/thumb.png`, headId: t.head, name: t.name || `피부 ${t.tone}`, actions: [],
+    }))
+  }, [index])
+  const listForCat = useCallback((cat: string): ListItem[] => {
+    if (cat === 'skin') return skinList
+    return lists[CAT_TO_SLOT[cat]] || []
+  }, [lists, skinList])
+
+  // ── 페이지네이션(활성 부위 리스트 길이 기준) ──
+  const curList = listForCat(activeCat)
+  const pageCount = Math.max(1, Math.ceil(curList.length / ITEMS_PER_PAGE))
   const maxIndex = pageCount - 1
   const curIdx = Math.max(0, Math.min(maxIndex, pageByCat[activeCat] || 0))
 
-  // 비반응 이벤트 핸들러가 최신 값을 읽도록 mirror
   const live = useRef({ activeCat, maxIndex, curIdx, offset })
   live.current = { activeCat, maxIndex, curIdx, offset }
 
@@ -136,12 +193,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const cat = live.current.activeCat
     const v = Math.max(0, Math.min(live.current.maxIndex, i))
     setPageByCat((s) => ({ ...s, [cat]: v }))
-    setOffset(0)
-    setSnapping(snap)
+    setOffset(0); setSnapping(snap)
   }, [])
   const step = useCallback((dir: number) => setIdx(live.current.curIdx + dir), [setIdx])
 
-  /* ── 캐러셀 바인딩 (element = ref-callback 으로 재바인딩; window = mount-once) ── */
+  // ── 캐러셀 바인딩 ──
   const onWheel = useCallback((e: WheelEvent) => {
     e.preventDefault()
     const raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
@@ -152,22 +208,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     step(raw > 0 ? 1 : -1)
   }, [step])
   const onDown = useCallback((e: PointerEvent) => {
-    if (e.pointerType === 'mouse') return // PC는 휠/방향키만
+    if (e.pointerType === 'mouse') return
     drag.current = { on: true, captured: false, startX: e.clientX, lastX: e.clientX, lastT: performance.now(), vel: 0 }
     setSnapping(false)
   }, [])
-
   const bindVp = useCallback((el: HTMLDivElement | null) => {
     if (vpElRef.current === el) return
-    if (vpElRef.current) {
-      vpElRef.current.removeEventListener('wheel', onWheel)
-      vpElRef.current.removeEventListener('pointerdown', onDown)
-    }
+    if (vpElRef.current) { vpElRef.current.removeEventListener('wheel', onWheel); vpElRef.current.removeEventListener('pointerdown', onDown) }
     vpElRef.current = el
-    if (el) {
-      el.addEventListener('wheel', onWheel, { passive: false })
-      el.addEventListener('pointerdown', onDown)
-    }
+    if (el) { el.addEventListener('wheel', onWheel, { passive: false }); el.addEventListener('pointerdown', onDown) }
   }, [onWheel, onDown])
 
   useEffect(() => {
@@ -176,11 +225,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (!d.on) return
       if (e.buttons === 0) { d.on = false; d.captured = false; return }
       let dx = e.clientX - d.startX
-      if (!d.captured) {
-        if (Math.abs(dx) < 6) return
-        d.captured = true
-        try { vpElRef.current && vpElRef.current.setPointerCapture(e.pointerId) } catch {}
-      }
+      if (!d.captured) { if (Math.abs(dx) < 6) return; d.captured = true; try { vpElRef.current?.setPointerCapture(e.pointerId) } catch {} }
       const now = performance.now(), dt = now - d.lastT
       if (dt > 0) d.vel = (e.clientX - d.lastX) / dt
       d.lastX = e.clientX; d.lastT = now
@@ -201,69 +246,75 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       else if (Math.abs(d.vel) > 0.45) moved = Math.sign(d.vel)
       setIdx(live.current.curIdx - moved)
     }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') step(-1)
-      else if (e.key === 'ArrowRight') step(1)
-    }
-    const onDocDown = (e: PointerEvent) => {
-      if (partWrapRef.current && !partWrapRef.current.contains(e.target as Node)) setPartMenuOpen(false)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
-    window.addEventListener('keydown', onKey)
-    window.addEventListener('pointerdown', onDocDown, true)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1) }
+    const onDocDown = (e: PointerEvent) => { if (partWrapRef.current && !partWrapRef.current.contains(e.target as Node)) setPartMenuOpen(false) }
+    window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp)
+    window.addEventListener('keydown', onKey); window.addEventListener('pointerdown', onDocDown, true)
     return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('pointerdown', onDocDown, true)
+      window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('keydown', onKey); window.removeEventListener('pointerdown', onDocDown, true)
     }
   }, [setIdx, step])
 
-  // 선택 프리셋 복원
   useEffect(() => {
-    try {
-      const v = localStorage.getItem('pb_sel')
-      if (v !== null) setSelectedPreset(v || null)
-    } catch {}
+    try { const v = localStorage.getItem('pb_sel'); if (v !== null) setSelectedPreset(v || null) } catch {}
   }, [])
 
-  /* ── 핸들러 ─────────────────────────────────────────────────────────────── */
+  // ── 핸들러 ──
   const setPv = (key: keyof Pv, val: Pv[keyof Pv]) => setPvState((s) => ({ ...s, [key]: val }))
   const showToast = (msg: string) => {
     setToastText(msg); setToast(true)
     if (toastT.current) clearTimeout(toastT.current)
     toastT.current = setTimeout(() => setToast(false), 2200)
   }
-  const snapshot = (): Snapshot => ({ equipped: { ...equipped }, dyeMix: { ...dyeMix }, dyeHsv: { ...dyeHsv }, hidden: { ...hidden } })
   const persistSel = (id: string | null) => { try { localStorage.setItem('pb_sel', id || '') } catch {} }
 
-  const selectItem = (id: string) => {
-    setEquipped((s) => {
-      const eq = { ...s }
-      const already = eq[id]
-      Object.keys(eq).forEach((k) => { if (k.startsWith(activeCat + '-')) delete eq[k] })
-      if (!already) eq[id] = true
-      return eq
+  // 착용: skin=톤 변경, 그 외=slot 라디오(재클릭 해제) + islot 충돌 슬롯 자동 해제.
+  const equipFromCat = (cat: string, item: ListItem) => {
+    if (cat === 'skin') { setTone(index?.base.tones.find((t) => t.body === item.id)?.tone ?? 0); return }
+    const slot = CAT_TO_SLOT[cat]
+    setEquipped((prev) => {
+      const cur = prev[slot]
+      if (cur && cur.id === item.id) return { ...prev, [slot]: null } // 토글 해제
+      const next = { ...prev, [slot]: item }
+      for (const s of conflictSlots(prev, slot, item)) next[s] = null // islot 충돌 제거
+      return next
     })
+  }
+  const isEquippedInCat = (cat: string, itemId: string) => {
+    if (cat === 'skin') return index?.base.tones.find((t) => t.tone === tone)?.body === itemId
+    return equipped[CAT_TO_SLOT[cat]]?.id === itemId
+  }
+
+  const snapshot = (): Snapshot => {
+    const eq: Record<string, string> = {}
+    for (const [s, it] of Object.entries(equipped)) if (it) eq[s] = it.id
+    return { equipped: eq, tone, dyeMix: { ...dyeMix }, dyeHsv: { ...dyeHsv }, hidden: { ...hidden } }
+  }
+  const applySnap = (snap: Snapshot | undefined) => {
+    const eq: Record<string, ListItem | null> = {}
+    for (const s of EQUIP_SLOTS) {
+      const id = snap?.equipped[s]
+      eq[s] = id ? (lists[s]?.find((x) => x.id === id) ?? null) : null
+    }
+    setEquipped(eq)
+    setTone(snap?.tone ?? index?.base.default ?? 0)
+    setDyeMix({ ...(snap?.dyeMix || {}) }); setDyeHsv({ ...(snap?.dyeHsv || {}) }); setHidden({ ...(snap?.hidden || {}) })
+    setDyeTarget(null)
   }
   const selectPreset = (id: string) => {
     const data = { ...presetData }
     if (selectedPreset) data[selectedPreset] = snapshot()
     if (selectedPreset === id) { setPresetData(data); setSelectedPreset(null); persistSel(null); return }
-    const load = data[id] || { equipped: {}, dyeMix: {}, dyeHsv: {}, hidden: {} }
-    setPresetData(data); setSelectedPreset(id); persistSel(id)
-    setEquipped({ ...load.equipped }); setDyeMix({ ...load.dyeMix }); setDyeHsv({ ...load.dyeHsv })
-    setHidden({ ...load.hidden }); setDyeTarget(null)
+    setPresetData(data); setSelectedPreset(id); persistSel(id); applySnap(data[id])
   }
   const mockImport = (val: string): Snapshot => {
     let h = 0; for (let i = 0; i < val.length; i++) h = (h * 31 + val.charCodeAt(i)) >>> 0
-    const pick = ['hair', 'faceacc', 'overall', 'shoes', 'cape', 'weapon']
-    const eq: Record<string, boolean> = {}
-    pick.forEach((cid, i) => { if (CATS.find((c) => c.id === cid)) eq[`${cid}-${(h >> (i * 3)) % 40}`] = true })
-    return { equipped: eq, dyeMix: {}, dyeHsv: {}, hidden: {} }
+    const eq: Record<string, string> = {}
+    ;['hair', 'face', 'longcoat', 'shoes', 'cape', 'weapon'].forEach((slot, i) => {
+      const l = lists[slot]; if (l && l.length) eq[slot] = l[(h >> (i * 3)) % l.length].id
+    })
+    return { equipped: eq, tone: index?.base.default ?? 0, dyeMix: {}, dyeHsv: {}, hidden: {} }
   }
   const importFetch = () => {
     const val = nickInput.trim()
@@ -273,62 +324,45 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const snap = mockImport(val)
     setPresets((s) => s.map((p) => (p.id === selectedPreset ? { ...p, name: val } : p)))
     setPresetData((s) => ({ ...s, [selectedPreset]: snap }))
-    setEquipped({ ...snap.equipped }); setDyeMix({}); setDyeHsv({}); setHidden({}); setDyeTarget(null); setNickInput('')
+    applySnap(snap); setNickInput('')
     showToast(`'${val}' 코디를 프리셋에 덮어썼어요`)
   }
-  const shareCurrent = () => {
-    try { navigator.clipboard && navigator.clipboard.writeText('https://pinkbean.shop/c/me') } catch {}
-    showToast('현재 코디 공유 링크를 복사했어요')
-  }
-  const sharePreset = (p: Preset) => {
-    try { navigator.clipboard && navigator.clipboard.writeText(`https://pinkbean.shop/c/${p.id}`) } catch {}
-    showToast('공유 링크를 복사했어요')
-  }
+  const shareCurrent = () => { try { navigator.clipboard?.writeText('https://pinkbean.shop/c/me') } catch {} ; showToast('현재 코디 공유 링크를 복사했어요') }
+  const sharePreset = (p: Preset) => { try { navigator.clipboard?.writeText(`https://pinkbean.shop/c/${p.id}`) } catch {} ; showToast('공유 링크를 복사했어요') }
   const startRename = (id: string, name: string, e: React.MouseEvent) => { e.stopPropagation(); setEditingPreset(id); setEditName(name) }
   const commitRename = () => {
     const nm = editName.trim()
     setPresets((s) => s.map((p) => (p.id === editingPreset ? { ...p, name: nm || p.name } : p)))
     setEditingPreset(null); setEditName('')
   }
-  const openDye = (key: string) => { setDialogKey(key); setDialogClosing(false) }
+  const openDye = (slot: string) => { setDialogSlot(slot); setDialogClosing(false) }
   const closeDye = () => {
     if (dialogClosing) return
     setDialogClosing(true)
     if (dlgT.current) clearTimeout(dlgT.current)
-    dlgT.current = setTimeout(() => { setDialogKey(null); setDialogClosing(false) }, 200)
+    dlgT.current = setTimeout(() => { setDialogSlot(null); setDialogClosing(false) }, 200)
   }
-  const onPageFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    setPageEditing(true); setPageInput(String(curIdx + 1))
-    const el = e.target; requestAnimationFrame(() => el.select())
-  }
+  const onPageFocus = (e: React.FocusEvent<HTMLInputElement>) => { setPageEditing(true); setPageInput(String(curIdx + 1)); const el = e.target; requestAnimationFrame(() => el.select()) }
   const onPageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 6)
     setPageInput(val)
     if (pageT.current) clearTimeout(pageT.current)
     pageT.current = setTimeout(() => { const n = parseInt(val, 10); if (!isNaN(n)) setIdx(n - 1) }, 150)
   }
-  const commitPage = () => {
-    if (pageT.current) clearTimeout(pageT.current)
-    const n = parseInt(pageInput, 10); if (!isNaN(n)) setIdx(n - 1)
-    setPageEditing(false); setPageInput('')
-  }
-  const onPageKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
-    else if (e.key === 'Escape') e.currentTarget.blur()
-  }
+  const commitPage = () => { if (pageT.current) clearTimeout(pageT.current); const n = parseInt(pageInput, 10); if (!isNaN(n)) setIdx(n - 1); setPageEditing(false); setPageInput('') }
+  const onPageKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } else if (e.key === 'Escape') e.currentTarget.blur() }
 
-  // clampDye/defMix/defHsv/isMixCat 는 화면에서 직접 import 해 쓰지만, 컨텍스트 사용처의
-  // 편의를 위해 아무것도 재노출하지 않는다(중복 방지).
-  void clampDye; void defMix; void defHsv; void isMixCat
+  void defMix; void defHsv
 
   const value: ShopCtx = {
+    index, dataLoading, listForCat,
     primary, setPrimary,
     activeCat, setActiveCat, partMenuOpen, setPartMenuOpen, partWrapRef, bindVp,
     curIdx, pageCount, offset, snapping, setOffset, setSnapping, setIdx, step,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
-    equipped, setEquipped, hidden, setHidden, dyeTarget, setDyeTarget,
-    dyeMix, setDyeMix, dyeHsv, setDyeHsv, dyeEdit, setDyeEdit, selectItem,
-    dialogKey, dialogClosing, openDye, closeDye,
+    equipped, tone, equipFromCat, isEquippedInCat, hidden, setHidden,
+    dyeTarget, setDyeTarget, dyeMix, setDyeMix, dyeHsv, setDyeHsv, dyeEdit, setDyeEdit, isMixSlot,
+    dialogSlot, dialogClosing, openDye, closeDye,
     pv, setPv, pvOpen, setPvOpen,
     presets, presetData, selectedPreset, selectPreset, sharePreset,
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,
@@ -338,6 +372,5 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     hoverMode, setHoverMode, hoverToggle, setHoverToggle, hoverPartBtn, setHoverPartBtn,
     hoverDlgClose, setHoverDlgClose, hoverDlgApply, setHoverDlgApply,
   }
-
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

@@ -1,58 +1,60 @@
 'use client'
 
 import { CATS, MIX_PALETTE } from '@/lib/catalog'
-import { clampDye, defHsv, defMix, hsvColor, isMixCat, mixColor } from '@/lib/color'
+import { clampDye, defHsv, defMix, hsvColor, mixColor } from '@/lib/color'
+import { spriteUrl } from '@/lib/core/data'
+import { CAT_TO_SLOT } from '@/lib/shopData'
 import { css, swStyle } from '@/lib/style'
 import { useShop } from './ShopContext'
 
 export default function InfoScreen() {
   const s = useShop()
-  const equippedCount = Object.keys(s.equipped).length
+  const equippedCount = Object.values(s.equipped).filter(Boolean).length
+  const toneName = s.index?.base.tones.find((t) => t.tone === s.tone)?.name || `피부 ${s.tone}`
+  const toneBody = s.index?.base.tones.find((t) => t.tone === s.tone)?.body
 
   const slotList = CATS.map((c) => {
-    const key = Object.keys(s.equipped).find((k) => k.startsWith(c.id + '-'))
-    const on = !!key
-    const i = on ? parseInt(key!.split('-')[1], 10) : 0
-    const isHidden = on && !!s.hidden[key!]
-    const selected = on && s.dyeTarget === key
+    const slot = CAT_TO_SLOT[c.id]
+    const isSkin = c.id === 'skin'
+    const item = isSkin ? null : s.equipped[slot]
+    const on = isSkin ? true : !!item
+    const key = slot
+    const isHidden = !isSkin && !!s.hidden[key]
+    const selected = s.dyeTarget === key
     const dim = !on || isHidden
-    let dyed: string | null = null
-    if (on) {
-      if (isMixCat(c.id)) { const m = s.dyeMix[key!]; if (m) dyed = mixColor(m.a, m.b, m.ratio) }
-      else { const h = s.dyeHsv[key!]; if (h) dyed = hsvColor(h.h, h.s, h.v) }
-    }
     const border = selected ? '2px solid #ec86ac' : on ? (isHidden ? '1px solid #e4dcd2' : '1px solid #f4cfdf') : '1px dashed #e4dcd2'
     const pad = selected ? '8px 10px' : '9px 11px'
-    const thumbBg = dyed && !isHidden ? dyed : on && !isHidden ? 'repeating-linear-gradient(45deg,#f7f2ec,#f7f2ec 6px,#f1ebe2 6px,#f1ebe2 12px)' : '#f4efe8'
     const th = s.hoverToggle === key
     let bd = isHidden ? '#e0d8ce' : '#f4cfdf', bg = isHidden ? '#f2ece5' : '#fce9f1', col = isHidden ? '#a89e93' : '#d76d9a'
     if (th) { bd = isHidden ? '#c3b9ad' : '#ec86ac'; col = isHidden ? '#8a8075' : '#c85d8a' }
+    const thumb = isSkin ? (toneBody ? spriteUrl(`sprites/${toneBody}/thumb.png`) : '') : item ? spriteUrl(item.thumb || `sprites/${item.id}/thumb.png`) : ''
     return {
-      cat: c, key, on, i, isHidden,
-      slot: c.label,
-      name: on ? (isHidden ? '숨김' : `${c.label} 아이템 ${i + 1}`) : '미착용',
-      code: on ? `${c.id.slice(0, 2).toUpperCase()}${String(i + 1).padStart(3, '0')}` : '',
-      toggleLabel: isHidden ? '숨김' : '표시',
+      cat: c, slot, isSkin, on, isHidden,
+      label: c.label,
+      name: isSkin ? toneName : on ? (isHidden ? '숨김' : item!.name || item!.id) : '미착용',
+      thumb,
+      canHide: on && !isSkin,
       cardStyle: `display:flex; align-items:center; gap:10px; padding:${pad}; border-radius:11px; min-width:0; cursor:${on ? 'pointer' : 'default'}; border:${border}; background:${isHidden ? '#f6f2ec' : on ? '#fdf4f8' : '#fbf8f4'}; transition:background .14s ease, border-color .14s ease, opacity .14s ease; opacity:${isHidden ? 0.6 : 1};`,
-      thumbStyle: `flex:0 0 auto; width:42px; height:42px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:${thumbBg}; ${isHidden ? 'filter:grayscale(1);' : ''}`,
+      thumbStyle: `flex:0 0 auto; width:42px; height:42px; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:${on && !isHidden ? '#fff' : '#f4efe8'}; ${isHidden ? 'filter:grayscale(1);' : ''}`,
       nameStyle: `font-size:12px; font-weight:${on && !isHidden ? 600 : 500}; color:${dim ? '#c3b9ad' : '#2a2521'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;`,
+      toggleLabel: isHidden ? '숨김' : '표시',
       toggleStyle: `flex:0 0 auto; height:24px; padding:0 9px; border-radius:20px; border:1px solid ${bd}; background:${bg}; color:${col}; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; transition:background .2s ease, color .2s ease, border-color .2s ease;`,
     }
   })
 
-  // 하단 염색 패널 대상
-  let target = s.dyeTarget
-  if (target && !s.equipped[target]) target = null
+  // 하단 염색 패널 대상(slot)
+  const target = s.dyeTarget
   const dyeInfo = (() => {
     if (!target) return null
-    const cid = target.split('-')[0], di = parseInt(target.split('-')[1], 10)
-    const dcat = CATS.find((c) => c.id === cid)
-    const mixMode = isMixCat(cid)
+    const cat = CATS.find((c) => CAT_TO_SLOT[c.id] === target)
+    const mixMode = s.isMixSlot(target)
     const dirty = mixMode ? !!s.dyeMix[target] : !!s.dyeHsv[target]
-    const slot = dcat ? dcat.label : ''
+    const slotLabel = cat?.label || target
+    const eq = s.equipped[target]
+    const name = eq?.name || slotLabel
     const resetStyle = `height:28px; padding:0 12px; border-radius:8px; font-family:inherit; font-size:11px; font-weight:600; cursor:${dirty ? 'pointer' : 'default'}; border:1px solid ${dirty ? '#e7ded4' : '#efe8e0'}; background:${dirty ? '#faf7f3' : '#fbf8f4'}; color:${dirty ? '#5c534b' : '#c3b9ad'}; transition:border-color .14s ease, color .14s ease, background .14s ease;`
-    if (mixMode) return { mixMode: true as const, slot, name: `${slot} 아이템 ${di + 1}`, resetStyle, key: target, m: s.dyeMix[target] || defMix() }
-    return { mixMode: false as const, slot, name: `${slot} 아이템 ${di + 1}`, resetStyle, key: target, hv: s.dyeHsv[target] || defHsv() }
+    if (mixMode) return { mixMode: true as const, slotLabel, name, resetStyle, key: target, m: s.dyeMix[target] || defMix() }
+    return { mixMode: false as const, slotLabel, name, resetStyle, key: target, hv: s.dyeHsv[target] || defHsv() }
   })()
 
   const hsvDisp = (key: string, f: string, num: number) => (s.dyeEdit[key + ':' + f] !== undefined ? s.dyeEdit[key + ':' + f] : String(num))
@@ -76,7 +78,6 @@ export default function InfoScreen() {
       </div>
 
       <div style={css('flex:1 1 auto; min-height:0; display:flex; flex-direction:column;')}>
-        {/* 위: 코디 정보 */}
         <div style={css('flex:3 1 0; min-height:0; display:flex; flex-direction:column; padding:16px 22px 14px;')}>
           <div style={css('flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;')}>
             <span style={css('font-size:13px; font-weight:700; color:#2a2521;')}>코디 정보</span>
@@ -85,17 +86,17 @@ export default function InfoScreen() {
           <div className="pb-scroll" style={css('flex:1 1 auto; min-height:0; overflow:hidden auto;')}>
             <div style={css('display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px;')}>
               {slotList.map((sl) => (
-                <div key={sl.cat.id} onClick={() => { if (sl.on) s.setDyeTarget(sl.key!) }} style={css(sl.cardStyle)}>
+                <div key={sl.cat.id} onClick={() => { if (sl.on) s.setDyeTarget(sl.slot) }} style={css(sl.cardStyle)}>
                   <div style={css(sl.thumbStyle)}>
-                    <span style={css('font-size:9px; color:#b7ada2; font-family:monospace;')}>{sl.code}</span>
+                    {sl.thumb && <img src={sl.thumb} alt="" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated', objectFit: 'contain' }} />}
                   </div>
                   <div style={css('flex:1 1 0; min-width:0;')}>
-                    <div style={css('font-size:11px; font-weight:600; color:#a89e93;')}>{sl.slot}</div>
+                    <div style={css('font-size:11px; font-weight:600; color:#a89e93;')}>{sl.label}</div>
                     <div style={css(sl.nameStyle)}>{sl.name}</div>
                   </div>
-                  {sl.on && (
-                    <button onClick={(e) => { e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[sl.key!]) delete n[sl.key!]; else n[sl.key!] = true; return n }) }}
-                      onMouseEnter={() => s.setHoverToggle(sl.key!)} onMouseLeave={() => s.setHoverToggle(null)} title="미리보기 표시/숨김" style={css(sl.toggleStyle)}>{sl.toggleLabel}</button>
+                  {sl.canHide && (
+                    <button onClick={(e) => { e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[sl.slot]) delete n[sl.slot]; else n[sl.slot] = true; return n }) }}
+                      onMouseEnter={() => s.setHoverToggle(sl.slot)} onMouseLeave={() => s.setHoverToggle(null)} title="미리보기 표시/숨김" style={css(sl.toggleStyle)}>{sl.toggleLabel}</button>
                   )}
                 </div>
               ))}
@@ -105,7 +106,6 @@ export default function InfoScreen() {
 
         <div style={css('flex:0 0 auto; height:1px; margin:0 22px; background:#efe8e0;')} />
 
-        {/* 아래: 염색 */}
         <div style={css('flex:2 1 0; min-height:0; display:flex; flex-direction:column; padding:16px 22px 18px;')}>
           <div style={css('flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;')}>
             <span style={css('font-size:13px; font-weight:700; color:#2a2521;')}>염색</span>
@@ -122,7 +122,7 @@ export default function InfoScreen() {
               <div style={css('flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:8px; width:120px;')}>
                 <div style={css(`width:88px; height:88px; border-radius:12px; border:1px solid #eee6dc; background:${dyeInfo.mixMode ? mixColor(dyeInfo.m.a, dyeInfo.m.b, dyeInfo.m.ratio) : hsvColor(dyeInfo.hv.h, dyeInfo.hv.s, dyeInfo.hv.v)};`)} />
                 <div style={css('text-align:center;')}>
-                  <div style={css('font-size:11px; font-weight:600; color:#a89e93;')}>{dyeInfo.slot}</div>
+                  <div style={css('font-size:11px; font-weight:600; color:#a89e93;')}>{dyeInfo.slotLabel}</div>
                   <div style={css('font-size:12px; font-weight:600; color:#2a2521; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;')}>{dyeInfo.name}</div>
                 </div>
               </div>
@@ -185,7 +185,7 @@ export default function InfoScreen() {
           ) : (
             <div style={css('flex:1 1 auto; min-height:0; border:1px dashed #e4dcd2; border-radius:12px; background:#fbf8f4; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;')}>
               <span style={css('font-size:13px; font-weight:600; color:#8a8075;')}>염색할 아이템을 선택하세요</span>
-              <span style={css('font-size:12px; color:#b7ada2;')}>위 코디 정보에서 아이템 카드를 클릭하면 여기서 염색할 수 있어요.</span>
+              <span style={css('font-size:12px; color:#b7ada2;')}>위 코디 정보에서 착용된 부위를 클릭하면 여기서 염색할 수 있어요.</span>
             </div>
           )}
         </div>

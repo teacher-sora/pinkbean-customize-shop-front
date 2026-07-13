@@ -1,38 +1,38 @@
 'use client'
 
 import { CATS, MIX_PALETTE } from '@/lib/catalog'
-import { clampDye, defHsv, defMix, hsvColor, isMixCat, itemTone, mixColorTone } from '@/lib/color'
+import { clampDye, defHsv, defMix, hsvColor, mixColorTone } from '@/lib/color'
+import { CAT_TO_SLOT } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop } from './ShopContext'
 
+// 아이템별 톤 편차(스프라이트마다 같은 조합도 결과가 다른 성질) — id 해시 기반.
+function toneOf(id: string | undefined) {
+  if (!id) return 0
+  let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 13
+  return (h - 6) * 5
+}
+
 export default function DyeDialog() {
   const s = useShop()
-  const dk = s.dialogKey
-  if (!dk) return null
+  const slot = s.dialogSlot
+  if (!slot) return null
 
-  const dcid = dk.split('-')[0], didx = parseInt(dk.split('-')[1], 10)
-  const dcat = CATS.find((c) => c.id === dcid)
-  const title = `${dcat ? dcat.label : ''} 아이템 ${didx + 1}`
+  const cat = CATS.find((c) => CAT_TO_SLOT[c.id] === slot)
+  const eq = s.equipped[slot]
+  const title = eq?.name || cat?.label || slot
   const closing = s.dialogClosing
-  const equipHere = () =>
-    s.setEquipped((prev) => {
-      const eq = { ...prev }
-      Object.keys(eq).forEach((k) => { if (k.startsWith(dcid + '-')) delete eq[k] })
-      eq[dk] = true
-      return eq
-    })
-  const onApply = () => { equipHere(); s.closeDye() }
-  const mix = isMixCat(dcid)
+  const mix = s.isMixSlot(slot)
+  const tone = toneOf(eq?.id)
 
   const closeStyle = `height:38px; padding:0 18px; border:1px solid ${s.hoverDlgClose ? '#ec86ac' : '#ddd4ca'}; background:#fff; border-radius:8px; font-family:inherit; font-size:13px; font-weight:500; color:${s.hoverDlgClose ? '#ec86ac' : '#5c534b'}; cursor:pointer; transition:border-color .2s ease, color .2s ease;`
   const applyStyle = `height:38px; padding:0 20px; border:none; background:${s.hoverDlgApply ? '#e07ba0' : '#ec86ac'}; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:pointer; transition:background .2s ease;`
 
-  const m = s.dyeMix[dk] || defMix()
-  const tone = itemTone(didx)
-  const hv = s.dyeHsv[dk] || defHsv()
+  const m = s.dyeMix[slot] || defMix()
+  const hv = s.dyeHsv[slot] || defHsv()
   const setH = (f: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = clampDye(f, parseInt(e.target.value, 10))
-    s.setDyeHsv((prev) => ({ ...prev, [dk]: { ...(prev[dk] || defHsv()), [f]: v } }))
+    s.setDyeHsv((prev) => ({ ...prev, [slot]: { ...(prev[slot] || defHsv()), [f]: v } }))
   }
 
   return (
@@ -74,7 +74,7 @@ export default function DyeDialog() {
                     <div style={css('flex:1 1 0; display:grid; grid-template-columns:repeat(8,1fr); gap:6px;')}>
                       {MIX_PALETTE.map((cp) => {
                         const sel = m.a === rp.hex && m.b === cp.hex
-                        return <button key={cp.hex} onClick={() => s.setDyeMix((prev) => ({ ...prev, [dk]: { a: rp.hex, b: cp.hex, ratio: 50 } }))}
+                        return <button key={cp.hex} onClick={() => s.setDyeMix((prev) => ({ ...prev, [slot]: { a: rp.hex, b: cp.hex, ratio: 50 } }))}
                           style={css(`width:100%; aspect-ratio:1/1; border-radius:7px; cursor:pointer; padding:0; background:${mixColorTone(rp.hex, cp.hex, 50, tone)}; border:2px solid ${sel ? '#ec86ac' : 'rgba(0,0,0,0.06)'}; transition:transform .1s ease;`)} />
                       })}
                     </div>
@@ -86,7 +86,7 @@ export default function DyeDialog() {
             <div style={css('display:flex; gap:22px;')}>
               <div style={css('flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:10px; width:120px;')}>
                 <div style={css(`width:120px; height:120px; border-radius:14px; border:1px solid #eee6dc; background:${hsvColor(hv.h, hv.s, hv.v)};`)} />
-                <span style={css('font-size:12px; font-weight:600; color:#2a2521;')}>{dcat ? dcat.label : ''}</span>
+                <span style={css('font-size:12px; font-weight:600; color:#2a2521;')}>{cat?.label || slot}</span>
               </div>
               <div style={css('flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:16px;')}>
                 {([['색조 (Hue)', 'h', 0, 359, String(hv.h)], ['채도 (Saturation)', 's', -99, 99, (hv.s > 0 ? '+' : '') + hv.s], ['명도 (Value)', 'v', -99, 99, (hv.v > 0 ? '+' : '') + hv.v]] as const).map(([label, f, lo, hi, disp]) => (
@@ -105,7 +105,7 @@ export default function DyeDialog() {
 
         <div style={css('flex:0 0 auto; padding:14px 22px; border-top:1px solid #f0e9e1; display:flex; justify-content:flex-end; gap:8px;')}>
           <button onClick={s.closeDye} onMouseEnter={() => s.setHoverDlgClose(true)} onMouseLeave={() => s.setHoverDlgClose(false)} style={css(closeStyle)}>닫기</button>
-          <button onClick={onApply} onMouseEnter={() => s.setHoverDlgApply(true)} onMouseLeave={() => s.setHoverDlgApply(false)} style={css(applyStyle)}>착용 · 적용</button>
+          <button onClick={s.closeDye} onMouseEnter={() => s.setHoverDlgApply(true)} onMouseLeave={() => s.setHoverDlgApply(false)} style={css(applyStyle)}>적용</button>
         </div>
       </div>
     </div>

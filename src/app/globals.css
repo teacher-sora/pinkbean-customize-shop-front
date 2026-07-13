@@ -52,3 +52,7 @@ button { will-change: transform; }
 .pb-collapse { animation: pbCollapseIn .2s ease both; }
 .pb-acc { overflow: hidden; max-height: 0; transition: max-height .32s cubic-bezier(.22,.61,.36,1); }
 .pb-acc-open { max-height: 340px; }
+
+/* 로딩 스켈레톤(아이템 셀 등 공용 프리미티브) */
+.pb-skel { background: linear-gradient(100deg, #f4ede4 30%, #efe6da 48%, #f4ede4 66%); background-size: 220% 100%; animation: pbSkelShimmer 1.25s ease-in-out infinite; }
+@keyframes pbSkelShimmer { 0% { background-position: 220% 0; } 100% { background-position: -220% 0; } }
