@@ -1,7 +1,8 @@
 /* 미리보기 합성 모델 + 로딩 스켈레톤.
-   캔버스는 1:1 "자연 크기"로 표시(CSS 다운스케일 없음 → 도트 선명). 배율=정수 렌더 스케일로
-   캔버스 자체가 커진다. 자연 크기라 zone 높이(아코디언 확장/축소)와 무관 → 모델 크기 유지,
-   zone 중앙정렬이라 아코디언이 열리면 모델이 위로 이동. 넘치는 부분은 상위 zone의 overflow가 클립. */
+   캔버스는 스케일 1로 "작게" 그린 뒤(=월드 박스 크기), object-fit:contain 으로 zone을 채우도록
+   "확대"한다. 픽셀 아트는 확대(upscale)는 nearest-neighbor 로 선명하게 유지되므로 뭉개지지 않는다.
+   월드 박스가 모델+이펙트를 다 담을 만큼 넉넉해서 박스 경계 잘림이 없다.
+   배율은 wrap 의 transform:scale(기본 2=1.0). 넘치는 부분은 상위 zone overflow가 클립. */
 
 .wrap {
   width: 100%;
@@ -9,10 +10,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: visible;
+  transform-origin: center;
+  transition: transform .2s cubic-bezier(.22, .61, .36, 1);
 }
 
+/* 캔버스: 고정 높이(vh)로 표시 → zone 높이(아코디언)와 무관하게 모델 크기 유지.
+   스케일 1로 그린 작은 캔버스를 이 크기로 "확대" 표시 → 픽셀 유지(선명). 폭은 박스 비율로 자동. */
 .canvas {
+  height: clamp(240px, 50vh, 480px);
+  width: auto;
   display: block;
   image-rendering: pixelated;
 }
