@@ -18,7 +18,7 @@ const NO_CASH_BADGE = new Set(['hair', 'face', 'skin'])
 export default function CodiScreen() {
   const s = useShop()
   const activeMeta = CATS.find((c) => c.id === s.activeCat) || CATS[0]
-  const list = s.listForCat(s.activeCat)
+  const list = s.activeList // 검색 필터 + folded (정렬 순서 유지)
   const loading = s.catLoading
   const isSkinCat = s.activeCat === 'skin'
   const isHairCat = s.activeCat === 'hair'
@@ -129,7 +129,7 @@ export default function CodiScreen() {
                   if (hov && !on) { bg = '#f4e7ee'; col = '#ec86ac' }
                   return (
                     <button key={c.id}
-                      onClick={() => { if (s.activeCat === c.id) { s.setPartMenuOpen(false) } else { s.setActiveCat(c.id); s.setOffset(0); s.setSnapping(false); s.setPartMenuOpen(false) } }}
+                      onClick={() => { if (s.activeCat === c.id) { s.setPartMenuOpen(false) } else { s.setActiveCat(c.id); s.setOffset(0); s.setSnapping(false); s.setPartMenuOpen(false); s.setSearch('') } }}
                       onMouseEnter={() => s.setHoverCat(c.id)} onMouseLeave={() => s.setHoverCat(null)}
                       style={css(`width:100%; display:flex; align-items:center; justify-content:center; height:40px; padding:0 8px; border:none; border-radius:9px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:${on ? 600 : 500}; color:${col}; background:${bg}; transition:background .26s ease, color .26s ease;`)}>{c.label}</button>
                   )
@@ -162,7 +162,8 @@ export default function CodiScreen() {
 
         {/* 우: 아이템 검색(롤백). 좌 flex:1 + 우 flex:1 로 가운데 페이지가 중앙 정렬됨 */}
         <div style={css('flex:1 1 0; min-width:0; display:flex; justify-content:flex-end;')}>
-          <input placeholder="아이템 검색" style={css('height:34px; width:100%; max-width:180px; min-width:0; padding:0 12px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; outline:none;')} />
+          <input value={s.search} onChange={(e) => { s.setSearch(e.target.value); s.setIdx(0, false) }} placeholder="아이템 검색"
+            style={css('height:34px; width:100%; max-width:180px; min-width:0; padding:0 12px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; outline:none; transition:border-color .14s ease;')} />
         </div>
       </div>
 
@@ -172,6 +173,11 @@ export default function CodiScreen() {
             <div style={css('display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(3,1fr); gap:16px; height:100%;')}>
               {Array.from({ length: ITEMS_PER_PAGE }, (_, i) => skeletonCell(i))}
             </div>
+          </div>
+        ) : list.length === 0 ? (
+          <div style={css('width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;')}>
+            <span style={css('font-size:14px; font-weight:600; color:#8a8075;')}>검색 결과가 없어요</span>
+            <span style={css('font-size:12px; color:#b7ada2;')}>다른 이름으로 검색해 보세요.</span>
           </div>
         ) : (
           <div style={css(trackStyle)}>
