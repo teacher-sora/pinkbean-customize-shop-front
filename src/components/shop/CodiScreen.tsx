@@ -20,8 +20,10 @@ export default function CodiScreen() {
   const activeMeta = CATS.find((c) => c.id === s.activeCat) || CATS[0]
   const list = s.listForCat(s.activeCat)
   const loading = s.catLoading
-  const mode = s.listMode
   const isSkinCat = s.activeCat === 'skin'
+  const isHairCat = s.activeCat === 'hair'
+  // 헤어는 썸네일(스프라이트) 보기 불가 → 모델로 대체.
+  const mode: ListMode = isHairCat && s.listMode === 'sprite' ? 'model' : s.listMode
 
   // 모델/내모델 공통 배경(base 또는 내 착용) 조립 입력 + 키
   const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string }>({ items: [], key: '' })
@@ -84,12 +86,12 @@ export default function CodiScreen() {
           {dyeable && (
             <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat]) }} className="pb-dye" title="이 부위 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
-          {badgeKind && (
-            <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} title={badgeKind} onError={(e) => { e.currentTarget.style.display = 'none' }}
-              style={{ position: 'absolute', bottom: 7, left: 7, height: badgeKind === 'cash' ? 15 : 18, imageRendering: 'pixelated', zIndex: 2 }} />
-          )}
-          <div style={css(thumbBox)}>
+          <div style={css(thumbBox + ' position:relative;')}>
             <ItemThumb item={item} mode={mode} ctxItems={ctx.items} ctxKey={ctx.key} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
+            {badgeKind && (
+              <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} title={badgeKind} onError={(e) => { e.currentTarget.style.display = 'none' }}
+                style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
+            )}
           </div>
           <div style={css('font-size:12px; font-weight:500; color:#3d372f; line-height:1.3; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;')}>{item.name || item.id}</div>
         </div>
@@ -132,13 +134,14 @@ export default function CodiScreen() {
               </div>
             </div>
           </div>
-          {/* N종 표기 자리에 표시 모드 토글(썸네일/모델/내 모델) */}
+          {/* N종 표기 자리에 표시 모드 토글(썸네일/모델/내 모델). 헤어는 썸네일 비활성. */}
           <div title="아이템 표시 방식" style={css('flex:0 0 auto; display:flex; align-items:center; gap:3px; padding:3px; background:#f4ecf3; border-radius:9px;')}>
             {MODES.map((m) => {
-              const on = mode === m.v
+              const disabled = isHairCat && m.v === 'sprite'
+              const on = !disabled && mode === m.v
               return (
-                <button key={m.v} onClick={() => s.setListMode(m.v)}
-                  style={css(`height:28px; padding:0 11px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{m.l}</button>
+                <button key={m.v} disabled={disabled} title={disabled ? '헤어는 썸네일 보기를 지원하지 않아요' : undefined} onClick={() => { if (!disabled) s.setListMode(m.v) }}
+                  style={css(`height:28px; padding:0 11px; border:none; border-radius:7px; cursor:${disabled ? 'not-allowed' : 'pointer'}; opacity:${disabled ? 0.4 : 1}; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{m.l}</button>
               )
             })}
           </div>

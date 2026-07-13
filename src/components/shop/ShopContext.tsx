@@ -102,7 +102,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // ── UI ──
   const [primary, setPrimary] = useState('codi')
   const [activeCat, setActiveCat] = useState('hair')
-  const [listMode, setListMode] = useState<ListMode>('sprite') // 기본=스프라이트(가장 빠름)
+  const [listMode, setListMode] = useState<ListMode>('model') // 기본=모델(코디는 모델이 기본)
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
   const [tone, setTone] = useState(0)
   const [hidden, setHidden] = useState<Record<string, boolean>>({})
