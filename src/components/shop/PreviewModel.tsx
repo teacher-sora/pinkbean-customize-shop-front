@@ -1,22 +1,23 @@
 'use client'
 
 /*
- * PreviewModel — 실제 스프라이트 합성 미리보기(자체완결).
- *  - body/head(피부) + 착용 아이템 + 형상변이(anima) 합성 → renderCharacter
- *  - stabOffset(매 프레임 body navel을 stand1[0] 기준 고정) + centerX(bbox 수평 중앙정렬)로 "중앙 고정"
- *  - 애니메이션은 스프라이트 고유 프레임 딜레이(frameDelays) 그대로 재생(maple test와 동일 속도)
- *  - 뒷쪽(gaze=back)=rope 첫 프레임 정지. 아이템 이펙트(ItemEff) elapsed 애니메이션 합성.
- *  - 로딩 중엔 목업 크기 스켈레톤.
+ * PreviewModel — 실제 스프라이트 합성 미리보기(자체완결, 고성능).
+ *  - 프레임을 "미리 조립"(spec)해 두고, 이미지 프리로드 후 명령형 rAF 루프로 캔버스에 직접 그린다
+ *    → 애니메이션/이펙트 중 React 리렌더 없음(부드럽고 렉 없음).
+ *  - navel 고정 + stabOffset + centerX(body navel 중심)로 장비/프레임 무관하게 중앙 고정.
+ *  - 아이템 이펙트(ItemEff)와 형상변이(anima) 합성. 뒷쪽=rope 첫 프레임 정지.
  * ⚠️ 다음 단계: 염색 시각화(dye.buildOverrides).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
-import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
+import { effectDraws, preload, renderCharacter } from '@/lib/core/render'
 import { MAIN_ANCHOR, MAIN_BOX, MOVE_POSTURE_ACTIONS, ZOOM_SCALE, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import styles from './PreviewModel.module.css'
+
+const RENDER_SCALE = 2 // 캔버스 정수 스케일(크리스프). 화면 배율은 CSS transform.
 
 export default function PreviewModel() {
   const { index, equipped, hidden, tone, pv } = useShop()
@@ -24,7 +25,6 @@ export default function PreviewModel() {
   const [effectIndex, setEffectIndex] = useState<Set<string>>(new Set())
   const [effMetas, setEffMetas] = useState<Map<string, EffectMeta>>(new Map())
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
-  const [elapsed, setElapsed] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const toneEntry = index
@@ -67,93 +67,88 @@ export default function PreviewModel() {
   const headMeta = headId ? metas.get(headId) : undefined
   const ready = !!(bodyMeta && headMeta)
 
-  // 애니메이션 마스터 클록 = base body의 프레임별 고유 딜레이(maple test와 동일 속도).
-  const masterDelays = useMemo(() => (ready && bodyMeta ? frameDelays(bodyMeta, V) : [120]), [ready, bodyMeta, V])
-  const N = Math.max(1, masterDelays.length)
-  const animated = ready && !viewInfo.isStatic && N > 1
-  const hasEffects = useMemo(() => Object.values(equipped).some((it) => it && effMetas.has(it.id)), [equipped, effMetas])
-  const needClock = animated || hasEffects
-
-  useEffect(() => {
-    if (!needClock) { setElapsed(0); return }
-    let raf = 0, lastEmit = 0
-    const start = performance.now()
-    const loop = (now: number) => {
-      const e = now - start
-      if (e - lastEmit >= 33) { lastEmit = e; setElapsed(e) } // ~30fps 갱신
-      raf = requestAnimationFrame(loop)
-    }
-    raf = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(raf)
-  }, [needClock, pv.action, pv.weapon, pv.gaze])
-
-  // 이동/자세=핑퐁, 공격/사격=일반 루프. 프레임 딜레이는 스프라이트 고유값.
-  const frameIndex = animated
-    ? (MOVE_POSTURE_ACTIONS.has(pv.action) ? frameAtElapsedAlt : frameAtElapsed)(masterDelays, elapsed)
-    : 0
-
-  const model = useMemo(() => {
+  // 프레임 "미리 조립"(spec) — 구조 변화(장비/뷰/톤/메타/형상변이)에만 재계산. 프레임 루프에선 재계산 안 함.
+  const spec = useMemo(() => {
     if (!ready || !bodyMeta || !headMeta || !index || !bodyId || !headId) return null
-    const items: AssembleInput[] = [
-      { itemId: bodyId, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, V, frameIndex) },
-      { itemId: headId, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, V, frameIndex) },
-    ]
-    for (const [slot, it] of Object.entries(equipped)) {
-      if (!it || hidden[slot]) continue
-      const m = metas.get(it.id); if (!m) continue
-      let layers = getFrameLayers(m, V, frameIndex)
-      if (slot === 'weapon' && !pv.wEffect) layers = layers.filter((l) => l.name !== 'effect')
-      items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace })
-    }
-    // 형상변이(anima): 파츠가 각자 map 포인트(꼬리→navel, 귀/뿔→brow)를 가져 assemble이 게임처럼 배치.
-    const aspec = animaSpec(pv.form)
-    if (aspec) {
-      const race = animaRaces.find((r) => r.node === aspec.node)
-      if (race) {
-        const parts = race.parts.filter((p) => !aspec.parts || aspec.parts.includes(p.name))
-        if (parts.length) items.push({ itemId: 'anima', slot: 'anima', vslot: null, layers: parts.map((p) => ({ name: p.name, png: p.png, z: p.z, origin: p.origin, map: p.map })) })
-      }
-    }
-    const { placed: raw, anchors } = assemble(items, index.zmap, index.smap)
-    // stabOffset: 현재 프레임 body navel을 stand1[0] 기준으로 이동해 몸을 고정(수직 드리프트 상쇄).
+    const delays = frameDelays(bodyMeta, V)
+    const N = Math.max(1, delays.length)
     const refNav = bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel
-    const curBody = raw.find((p) => p.slot === 'body' && p.name === 'body')
-    const curNav = curBody?.map?.navel
-    const stab = refNav && curNav ? { x: curNav.x - refNav.x, y: curNav.y - refNav.y } : { x: 0, y: 0 }
-    const placed = stab.x || stab.y ? raw.map((p) => ({ ...p, x: p.x + stab.x, y: p.y + stab.y })) : raw
-    const bnav = curBody?.map?.navel
-    const foot = { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
-    const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
-    return { placed, foot, brow }
-  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, pv.form, V, frameIndex, pv.wEffect])
+    // 형상변이(정적 파츠) — 프레임 공통.
+    const animaLayers: AssembleInput[] = (() => {
+      const aspec = animaSpec(pv.form)
+      if (!aspec) return []
+      const race = animaRaces.find((r) => r.node === aspec.node)
+      if (!race) return []
+      const parts = race.parts.filter((p) => !aspec.parts || aspec.parts.includes(p.name))
+      return parts.length ? [{ itemId: 'anima', slot: 'anima', vslot: null, layers: parts.map((p) => ({ name: p.name, png: p.png, z: p.z, origin: p.origin, map: p.map })) }] : []
+    })()
+    const frames = Array.from({ length: N }, (_, fi) => {
+      const items: AssembleInput[] = [
+        { itemId: bodyId, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, V, fi) },
+        { itemId: headId, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, V, fi) },
+      ]
+      for (const [slot, it] of Object.entries(equipped)) {
+        if (!it || hidden[slot]) continue
+        const m = metas.get(it.id); if (!m) continue
+        let layers = getFrameLayers(m, V, fi)
+        if (slot === 'weapon' && !pv.wEffect) layers = layers.filter((l) => l.name !== 'effect')
+        items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace })
+      }
+      items.push(...animaLayers)
+      const { placed: raw, anchors } = assemble(items, index.zmap, index.smap)
+      const curBody = raw.find((p) => p.slot === 'body' && p.name === 'body')
+      const curNav = curBody?.map?.navel
+      const stab = refNav && curNav ? { x: curNav.x - refNav.x, y: curNav.y - refNav.y } : { x: 0, y: 0 }
+      const placed = stab.x || stab.y ? raw.map((p) => ({ ...p, x: p.x + stab.x, y: p.y + stab.y })) : raw
+      const bnav = curBody?.map?.navel
+      const foot = { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
+      const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
+      return { placed, foot, brow }
+    })
+    return { frames, delays, N, animated: !viewInfo.isStatic && N > 1 }
+  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, pv.form, pv.wEffect, V, viewInfo.isStatic])
 
-  const effects: EffectDraw[] = useMemo(() => {
-    if (!model) return []
-    const out: EffectDraw[] = []
+  const effList = useMemo(() => {
+    const out: EffectMeta[] = []
     for (const [slot, it] of Object.entries(equipped)) {
       if (!it || hidden[slot]) continue
       if (slot === 'cape' && !pv.cEffect) continue
       if (slot === 'weapon' && !pv.wEffect) continue
-      const em = effMetas.get(it.id)
-      if (em) out.push(...effectDraws(em, V.action, { foot: model.foot, brow: model.brow }, elapsed))
+      const em = effMetas.get(it.id); if (em) out.push(em)
     }
     return out
-  }, [model, equipped, hidden, effMetas, V.action, elapsed, pv.cEffect, pv.wEffect])
+  }, [equipped, hidden, effMetas, pv.cEffect, pv.wEffect])
 
+  // 명령형 rAF: 프리로드 후 캔버스에 직접 그림(React state 갱신 없음 → 부드럽고 렉 없음).
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !model || !model.placed.length) return
-    let cancelled = false
-    // 렌더 스케일은 크리스프용 고정(2). 화면 배율은 아래 CSS transform 으로.
-    renderCharacter(canvas, model.placed, {
-      scale: 2, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, centerX: true, shouldCancel: () => cancelled,
-    }).catch(() => {})
-    return () => { cancelled = true }
-  }, [model, effects, viewInfo.flip])
+    if (!canvas || !spec) return
+    let cancelled = false, raf = 0
+    const { frames, delays, animated } = spec
+    const hasEff = effList.length > 0
+    const pngs = new Set<string>()
+    frames.forEach((f) => f.placed.forEach((p) => pngs.add(p.png)))
+    effList.forEach((em) => Object.values(em.groups).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
+    const draw = (elapsed: number) => {
+      if (cancelled) return
+      const fi = animated ? (MOVE_POSTURE_ACTIONS.has(pv.action) ? frameAtElapsedAlt : frameAtElapsed)(delays, elapsed) : 0
+      const f = frames[Math.min(fi, frames.length - 1)]
+      const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow }, elapsed)) : []
+      renderCharacter(canvas, f.placed, { scale: RENDER_SCALE, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
+    }
+    preload([...pngs]).then(() => {
+      if (cancelled) return
+      if (!animated && !hasEff) { draw(0); return }
+      const start = performance.now()
+      const loop = (now: number) => { draw(now - start); raf = requestAnimationFrame(loop) }
+      raf = requestAnimationFrame(loop)
+    })
+    return () => { cancelled = true; cancelAnimationFrame(raf) }
+  }, [spec, effList, viewInfo.flip, V.action, pv.action])
 
   return (
     <div className={styles.wrap} style={{ transform: `scale(${ZOOM_SCALE[pv.zoom] ?? 1})` }}>
-      {ready ? <canvas ref={canvasRef} className={styles.canvas} /> : <div className={styles.skeleton} />}
+      {spec ? <canvas ref={canvasRef} className={styles.canvas} /> : <div className={styles.skeleton} />}
     </div>
   )
 }

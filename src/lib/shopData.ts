@@ -42,9 +42,9 @@ export const EQUIP_SLOTS = [
   'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape', 'weapon', 'shield',
 ] as const
 
-// 미리보기 월드 박스 — 헤어/망토/이펙트가 잘리지 않도록 넉넉하게. body 중심을 박스 중앙(centerX)에 고정.
-export const MAIN_BOX = { w: 190, h: 240 }
-export const MAIN_ANCHOR = { x: 95, y: 152 } // x는 centerX(body 중심)로 재정렬됨. y=navel 세로 위치.
+// 미리보기 월드 박스 — 헤어/망토/이펙트가 잘리지 않도록 넉넉하게. body navel을 박스 중앙(centerX)에 고정.
+export const MAIN_BOX = { w: 230, h: 300 }
+export const MAIN_ANCHOR = { x: 115, y: 178 } // x는 centerX(body navel)로 재정렬됨. y=navel 세로 위치.
 
 // 배율: 캔버스가 div를 채운 상태에서 CSS 스케일로 확대. 기본=2배. 1↔3의 중간이 2배.
 export const ZOOM_SCALE: Record<number, number> = { 1: 0.72, 2: 1.0, 3: 1.32 }

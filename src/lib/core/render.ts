@@ -110,18 +110,19 @@ export async function renderCharacter(
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-  // Horizontal centering on the MODEL (body sprite), NOT the full bbox. Equipment-independent:
-  // hair/cape/weapon/arms/effects extend from the centered body but never move it. This keeps
-  // the body fixed at canvas center across item swaps, ear changes, and animation frames
-  // (a full-bbox center would drift the body — even off-canvas when an arm/weapon swings out).
+  // Horizontal centering on the MODEL — pin the body's NAVEL (anatomical center) to the box
+  // center. Equipment-independent: hair/cape/weapon/arms/effects extend from it but never move
+  // the body (a full-bbox center drifts the body off-canvas when an arm/weapon swings out). The
+  // navel sits slightly left of the sprite bbox center, which reads as truly centered.
   let anchorX = opts.anchor.x
   if (opts.centerX && placed.length) {
     const body = placed.find((p) => p.name === 'body') || placed[0]
-    const src = opts.override?.get(body.png) ?? imgs.get(body.png)
-    if (src) {
-      const w = (src as HTMLImageElement).width
-      const bodyCenter = opts.anchor.x + body.x + w / 2
-      anchorX += opts.box.w / 2 - bodyCenter
+    const nav = body.map?.navel
+    if (nav) {
+      anchorX = opts.box.w / 2 - (body.x + body.origin.x + nav.x)
+    } else {
+      const src = opts.override?.get(body.png) ?? imgs.get(body.png)
+      if (src) anchorX += opts.box.w / 2 - (opts.anchor.x + body.x + (src as HTMLImageElement).width / 2)
     }
   }
 

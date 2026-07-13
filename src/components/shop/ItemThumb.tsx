@@ -28,7 +28,7 @@ function Sprite({ item }: { item: ListItem }) {
   if (idx >= sources.length) return null
   return (
     <img src={sources[idx]} alt={item.name || item.id} loading="lazy" decoding="async" draggable={false}
-      onError={() => setIdx((i) => i + 1)} style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated', objectFit: 'contain' }} />
+      onError={() => setIdx((i) => i + 1)} style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated', objectFit: 'contain', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }} />
   )
 }
 
@@ -81,12 +81,13 @@ function ModelThumb({ item, ctxItems, ctxKey, zmap, smap, skinHeadId }: ModelPro
     const canvas = canvasRef.current
     if (!canvas || !placed) return
     let cancelled = false
-    renderCharacter(canvas, placed, { scale: 1, box: THUMB_BOX, anchor: THUMB_ANCHOR, effects: effs, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
+    // 렌더 스케일 2(캔버스 픽셀 2배) → 도트가 더 선명.
+    renderCharacter(canvas, placed, { scale: 2, box: THUMB_BOX, anchor: THUMB_ANCHOR, effects: effs, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
     return () => { cancelled = true }
   }, [placed, effs])
 
   if (!placed) return <div className="pb-skel" style={{ width: '68%', height: '68%', borderRadius: 8 }} />
-  return <canvas ref={canvasRef} style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated' }} />
+  return <canvas ref={canvasRef} style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }} />
 }
 
 export default function ItemThumb(props: {
