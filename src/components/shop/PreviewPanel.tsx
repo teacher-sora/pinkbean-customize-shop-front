@@ -1,6 +1,6 @@
 'use client'
 
-import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, isAnimatedAction, type Opt, type Pv } from '@/lib/catalog'
+import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, type Opt, type Pv } from '@/lib/catalog'
 import { css, pillStyle, PV_LABEL, ROW_BETWEEN, SEL_STYLE, switchKnob, switchTrack } from '@/lib/style'
 import { useShop } from './ShopContext'
 import PreviewModel from './PreviewModel'
@@ -10,12 +10,10 @@ export default function PreviewPanel() {
   const { pv } = s
   const equippedCount = Object.keys(s.equipped).length
   const curAction = PV_ACTIONS_FLAT.find((a) => a.v === pv.action) || PV_ACTIONS_FLAT[0]
-  const pvAnimated = isAnimatedAction(pv.action)
   const pvCaption = `${curAction.l} · ${(PV_EXPRS.find((x) => x.v === pv.expr) || { l: '' }).l}`
 
   const pvBarStyle = `flex:0 0 auto; width:100%; height:46px; padding:0 22px; border:none; border-top:1px solid #f0e9e1; background:${s.pvOpen ? '#faf7f3' : '#fff'}; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font-family:inherit; transition:background .16s ease;`
   const pvCaretStyle = `font-size:11px; color:#a89e93; transition:transform .2s ease; transform:rotate(${s.pvOpen ? '180deg' : '0deg'}); flex:0 0 auto;`
-  const pvDotStyle = `width:8px; height:8px; border-radius:50%; background:#ec86ac; animation:pbBlink ${(12 / pv.fps).toFixed(2)}s ease-in-out infinite;`
 
   const pill = (list: Opt[], key: keyof Pv) =>
     list.map((o) => {
@@ -33,12 +31,6 @@ export default function PreviewPanel() {
       </div>
       <div style={css('flex:1 1 40%; min-height:96px; display:flex; align-items:center; justify-content:center; padding:16px; overflow:hidden; position:relative; background:radial-gradient(circle at 50% 42%, #fdf3f7 0%, #f9f5f0 60%);')}>
         <PreviewModel />
-        {pvAnimated && (
-          <div style={css('position:absolute; top:14px; right:14px; display:flex; align-items:center; gap:5px; padding:3px 8px; border-radius:20px; background:#fff; border:1px solid #f4cfdf;')}>
-            <span style={css(pvDotStyle)} />
-            <span style={css('font-size:10px; font-weight:600; color:#d76d9a;')}>{pv.fps} fps</span>
-          </div>
-        )}
       </div>
 
       <button onClick={() => s.setPvOpen(!s.pvOpen)} style={css(pvBarStyle)}>
@@ -71,15 +63,6 @@ export default function PreviewPanel() {
                 ))}
               </select>
             </div>
-            {pvAnimated && (
-              <div>
-                <div style={css('display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;')}>
-                  <span style={css(PV_LABEL)}>프레임 속도</span>
-                  <span style={css('font-size:12px; font-weight:600; color:#d76d9a; font-variant-numeric:tabular-nums;')}>{pv.fps} fps</span>
-                </div>
-                <input type="range" min={4} max={30} value={pv.fps} onChange={(e) => s.setPv('fps', parseInt(e.target.value, 10))} style={css('width:100%; accent-color:#ec86ac; cursor:pointer;')} />
-              </div>
-            )}
             <div style={css(ROW_BETWEEN)}>
               <span style={css(PV_LABEL)}>무기 모션</span>
               <select value={pv.weapon} onChange={(e) => s.setPv('weapon', e.target.value)} className="pb-select" style={css(SEL_STYLE)}>

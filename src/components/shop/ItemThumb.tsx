@@ -5,19 +5,18 @@
  *  - sprite  : 아이템 아이콘/스프라이트 이미지(가장 가벼움)
  *  - model   : 베이스 몸통+머리에 이 아이템을 올린 미니 합성
  *  - mymodel : 현재 내 착용(해당 슬롯 제외)에 이 아이템을 올린 미니 합성
- * model/mymodel 의 공통 배경(base 또는 내 착용)은 CodiScreen 이 ctxItems 로 넘긴다.
+ * 이 아이템에 이펙트가 있으면(effects/index.json) 함께 합성한다. centerX 로 sprite 처럼 정중앙 정렬.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
-import { loadMeta, spriteUrl, type ListItem } from '@/lib/core/data'
-import { renderCharacter } from '@/lib/core/render'
+import { loadEffect, loadEffectIndex, loadMeta, spriteUrl, type ListItem } from '@/lib/core/data'
+import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { THUMB_VIEW } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
 
-// 몸통 박스보다 넉넉하게(큰 망토/날개·이펙트가 잘리지 않도록). navel 고정이라 몸은 안 흔들림.
 const THUMB_BOX = { w: 96, h: 104 }
-const THUMB_ANCHOR = { x: 45.5, y: 74 } // x: 몸통 시각중심 2.5px 보정(정중앙)
+const THUMB_ANCHOR = { x: 48, y: 74 } // x는 centerX로 재정렬되므로 대략값
 
 function Sprite({ item }: { item: ListItem }) {
   const sources: string[] = []
@@ -39,27 +38,40 @@ interface ModelProps {
 }
 function ModelThumb({ item, ctxItems, ctxKey, zmap, smap, skinHeadId }: ModelProps) {
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
+  const [effs, setEffs] = useState<EffectDraw[]>([])
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     let alive = true
-    setPlaced(null)
+    setPlaced(null); setEffs([])
     ;(async () => {
-      // 피부 셀: 이 아이템 자체가 몸통 → 몸통+머리를 self 로.
+      let self: AssembleInput[]
       if (item.slot === 'skin' && skinHeadId) {
         const [body, head] = await Promise.all([loadMeta(item.id), loadMeta(skinHeadId)])
-        if (!alive) return
-        const inputs: AssembleInput[] = [
+        self = [
           { itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, THUMB_VIEW) },
           { itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, THUMB_VIEW) },
         ]
-        setPlaced(assemble([...ctxItems, ...inputs], zmap, smap).placed)
-        return
+      } else {
+        const m = await loadMeta(item.id)
+        self = [{ itemId: m.id, slot: m.slot, vslot: m.vslot ?? null, layers: getFrameLayers(m, THUMB_VIEW), invisibleFace: m.invisibleFace }]
       }
-      const m = await loadMeta(item.id)
       if (!alive) return
-      const self: AssembleInput = { itemId: m.id, slot: m.slot, vslot: m.vslot ?? null, layers: getFrameLayers(m, THUMB_VIEW), invisibleFace: m.invisibleFace }
-      setPlaced(assemble([...ctxItems, self], zmap, smap).placed)
+      const { placed: p, anchors } = assemble([...ctxItems, ...self], zmap, smap)
+      setPlaced(p)
+      // 이 아이템 자체의 이펙트(망토 등) — 정적 대표 프레임.
+      if (item.slot !== 'skin') {
+        const bare = String(parseInt(item.id, 10))
+        const eidx = await loadEffectIndex().catch(() => new Set<string>())
+        if (alive && eidx.has(bare)) {
+          const em = await loadEffect(item.id).catch(() => null)
+          if (em && alive) {
+            const bp = p.find((x) => x.name === 'body')
+            const foot = bp ? { x: bp.x + bp.origin.x, y: bp.y + bp.origin.y } : { x: 8, y: 21 }
+            setEffs(effectDraws(em, THUMB_VIEW.action, { foot, brow: anchors.brow ?? foot }, 0))
+          }
+        }
+      }
     })().catch(() => {})
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,9 +81,9 @@ function ModelThumb({ item, ctxItems, ctxKey, zmap, smap, skinHeadId }: ModelPro
     const canvas = canvasRef.current
     if (!canvas || !placed) return
     let cancelled = false
-    renderCharacter(canvas, placed, { scale: 1, box: THUMB_BOX, anchor: THUMB_ANCHOR, shouldCancel: () => cancelled }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: 1, box: THUMB_BOX, anchor: THUMB_ANCHOR, effects: effs, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed])
+  }, [placed, effs])
 
   if (!placed) return <div className="pb-skel" style={{ width: '68%', height: '68%', borderRadius: 8 }} />
   return <canvas ref={canvasRef} style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated' }} />

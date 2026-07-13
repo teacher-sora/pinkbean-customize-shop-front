@@ -80,10 +80,19 @@ export function buildView(pv: { action: string; weapon: string; expr: string; ea
   const effectiveAction = pv.gaze === 'back' ? 'rope' : resolveAction(pv.action, pv.weapon)
   return {
     view: { action: effectiveAction, expression: pv.expr, ear: pv.ear, weaponMotion: pv.weapon },
-    isStatic: pv.action === 'basic',
+    // 뒷쪽 = 밧줄(rope) "첫 프레임 정지"(뒷모습). 애니메이션 액션이어도 뒷쪽이면 정지.
+    isStatic: pv.action === 'basic' || pv.gaze === 'back',
     flip: pv.gaze === 'right', // 오른쪽 = 좌우 반전(스프라이트 기본은 왼쪽 향)
     baseAction: pv.action,
   }
+}
+
+// 형상변이(anima) 선택 → anima.json 노드/파츠 스펙. 'none'=변이 없음.
+// node3/4(렌)의 ':acc'(머리장식)은 HeadAcc 파츠만(귀 제거).
+export function animaSpec(form: string): { node: string; parts: string[] | null } | null {
+  if (!form || form === 'none') return null
+  const [node, sub] = form.split(':')
+  return { node, parts: sub === 'acc' ? ['HeadAcc'] : null }
 }
 
 // 프레임 타이밍(looping): elapsed(ms) → 프레임 인덱스.

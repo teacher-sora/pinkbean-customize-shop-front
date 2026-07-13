@@ -2,20 +2,19 @@
 
 /*
  * PreviewModel — 실제 스프라이트 합성 미리보기(자체완결).
- *  - 착용 아이템 + 피부(body/head) 메타 로드 → assemble → renderCharacter
- *  - navel 고정 + stabOffset(매 프레임 body navel을 stand1[0] 기준으로 고정)으로 액션 중 "중앙 고정"
- *    (navel만 고정하면 프레임마다 몇 px 흔들리는 드리프트를 상쇄)
- *  - 아이템 이펙트(ItemEff 오버레이: 망토 등)를 elapsed 로 애니메이션해 합성. 무기 공격/점프
- *    이펙트는 무기 프레임의 'effect' 레이어(무기 이펙트 토글).
+ *  - body/head(피부) + 착용 아이템 + 형상변이(anima) 합성 → renderCharacter
+ *  - stabOffset(매 프레임 body navel을 stand1[0] 기준 고정) + centerX(bbox 수평 중앙정렬)로 "중앙 고정"
+ *  - 애니메이션은 스프라이트 고유 프레임 딜레이(frameDelays) 그대로 재생(maple test와 동일 속도)
+ *  - 뒷쪽(gaze=back)=rope 첫 프레임 정지. 아이템 이펙트(ItemEff) elapsed 애니메이션 합성.
  *  - 로딩 중엔 목업 크기 스켈레톤.
- * ⚠️ 다음 단계: 염색 시각화(dye.buildOverrides) · 형상변이 합성.
+ * ⚠️ 다음 단계: 염색 시각화(dye.buildOverrides).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { assemble, frameCount, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
-import { loadEffect, loadEffectIndex, loadMeta, type EffectMeta, type ItemMeta } from '@/lib/core/data'
+import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
+import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
-import { MAIN_ANCHOR, MAIN_BOX, MOVE_POSTURE_ACTIONS, buildView, frameAtElapsed, frameAtElapsedAlt } from '@/lib/shopData'
+import { MAIN_ANCHOR, MAIN_BOX, MOVE_POSTURE_ACTIONS, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import styles from './PreviewModel.module.css'
 
@@ -24,6 +23,7 @@ export default function PreviewModel() {
   const [metas, setMetas] = useState<Map<string, ItemMeta>>(new Map())
   const [effectIndex, setEffectIndex] = useState<Set<string>>(new Set())
   const [effMetas, setEffMetas] = useState<Map<string, EffectMeta>>(new Map())
+  const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
   const [elapsed, setElapsed] = useState(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -33,8 +33,8 @@ export default function PreviewModel() {
   const bodyId = toneEntry?.body
   const headId = toneEntry?.head
 
-  // 이펙트 인덱스(1회) + 착용 메타 로드
   useEffect(() => { loadEffectIndex().then(setEffectIndex).catch(() => {}) }, [])
+  useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
   useEffect(() => {
     if (!index || !bodyId || !headId) return
     const need = new Set<string>([bodyId, headId])
@@ -48,7 +48,6 @@ export default function PreviewModel() {
     })
     return () => { alive = false }
   }, [index, bodyId, headId, equipped, metas])
-  // 착용 아이템 중 이펙트 보유분의 EffectMeta 로드
   useEffect(() => {
     if (!effectIndex.size) return
     const missing: string[] = []
@@ -68,30 +67,31 @@ export default function PreviewModel() {
   const headMeta = headId ? metas.get(headId) : undefined
   const ready = !!(bodyMeta && headMeta)
 
-  const N = ready && bodyMeta ? Math.max(1, frameCount(bodyMeta, V)) : 1
+  // 애니메이션 마스터 클록 = base body의 프레임별 고유 딜레이(maple test와 동일 속도).
+  const masterDelays = useMemo(() => (ready && bodyMeta ? frameDelays(bodyMeta, V) : [120]), [ready, bodyMeta, V])
+  const N = Math.max(1, masterDelays.length)
   const animated = ready && !viewInfo.isStatic && N > 1
   const hasEffects = useMemo(() => Object.values(equipped).some((it) => it && effMetas.has(it.id)), [equipped, effMetas])
   const needClock = animated || hasEffects
 
-  // elapsed 클록(애니메이션 body 또는 이펙트가 있을 때)
   useEffect(() => {
     if (!needClock) { setElapsed(0); return }
     let raf = 0, lastEmit = 0
     const start = performance.now()
     const loop = (now: number) => {
       const e = now - start
-      if (e - lastEmit >= 33) { lastEmit = e; setElapsed(e) } // ~30fps
+      if (e - lastEmit >= 33) { lastEmit = e; setElapsed(e) } // ~30fps 갱신
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [needClock, N, pv.fps, pv.action])
+  }, [needClock, pv.action, pv.weapon, pv.gaze])
 
+  // 이동/자세=핑퐁, 공격/사격=일반 루프. 프레임 딜레이는 스프라이트 고유값.
   const frameIndex = animated
-    ? (MOVE_POSTURE_ACTIONS.has(pv.action) ? frameAtElapsedAlt : frameAtElapsed)(Array(N).fill(1000 / Math.max(1, pv.fps)), elapsed)
+    ? (MOVE_POSTURE_ACTIONS.has(pv.action) ? frameAtElapsedAlt : frameAtElapsed)(masterDelays, elapsed)
     : 0
 
-  // 조립 + stabOffset(드리프트 상쇄) + 이펙트 앵커(foot/brow)
   const model = useMemo(() => {
     if (!ready || !bodyMeta || !headMeta || !index || !bodyId || !headId) return null
     const items: AssembleInput[] = [
@@ -105,8 +105,17 @@ export default function PreviewModel() {
       if (slot === 'weapon' && !pv.wEffect) layers = layers.filter((l) => l.name !== 'effect')
       items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace })
     }
+    // 형상변이(anima): 파츠가 각자 map 포인트(꼬리→navel, 귀/뿔→brow)를 가져 assemble이 게임처럼 배치.
+    const aspec = animaSpec(pv.form)
+    if (aspec) {
+      const race = animaRaces.find((r) => r.node === aspec.node)
+      if (race) {
+        const parts = race.parts.filter((p) => !aspec.parts || aspec.parts.includes(p.name))
+        if (parts.length) items.push({ itemId: 'anima', slot: 'anima', vslot: null, layers: parts.map((p) => ({ name: p.name, png: p.png, z: p.z, origin: p.origin, map: p.map })) })
+      }
+    }
     const { placed: raw, anchors } = assemble(items, index.zmap, index.smap)
-    // stabOffset: 현재 프레임 body navel을 stand1[0] 기준으로 이동시켜 몸을 고정.
+    // stabOffset: 현재 프레임 body navel을 stand1[0] 기준으로 이동해 몸을 고정(수직 드리프트 상쇄).
     const refNav = bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel
     const curBody = raw.find((p) => p.slot === 'body' && p.name === 'body')
     const curNav = curBody?.map?.navel
@@ -116,9 +125,8 @@ export default function PreviewModel() {
     const foot = { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
     const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
     return { placed, foot, brow }
-  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, V, frameIndex, pv.wEffect])
+  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, pv.form, V, frameIndex, pv.wEffect])
 
-  // 아이템 이펙트(ItemEff 오버레이). 망토=cEffect, 무기=wEffect 토글. elapsed 로 프레임 선택.
   const effects: EffectDraw[] = useMemo(() => {
     if (!model) return []
     const out: EffectDraw[] = []
@@ -132,13 +140,12 @@ export default function PreviewModel() {
     return out
   }, [model, equipped, hidden, effMetas, V.action, elapsed, pv.cEffect, pv.wEffect])
 
-  // 렌더: navel(+stab) 고정 → 중앙 고정. 오래된 async 렌더는 취소 가드.
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !model || !model.placed.length) return
     let cancelled = false
     renderCharacter(canvas, model.placed, {
-      scale: pv.zoom, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, shouldCancel: () => cancelled,
+      scale: pv.zoom, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, centerX: true, shouldCancel: () => cancelled,
     }).catch(() => {})
     return () => { cancelled = true }
   }, [model, effects, pv.zoom, viewInfo.flip])

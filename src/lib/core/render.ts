@@ -80,6 +80,7 @@ export interface RenderOpts {
   backImage?: string                 // sprite drawn BEHIND the body (ultimate fallback: no body & no effect)
   effects?: EffectDraw[]             // item effects (망토 등) composited around the body (each carries ox/oy)
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
+  centerX?: boolean                  // center the drawn character bbox horizontally in the box (matches sprite centering)
 }
 
 // Draw the placed character with the navel pinned to a fixed canvas coordinate.
@@ -108,13 +109,30 @@ export async function renderCharacter(
   const ctx = canvas.getContext('2d')!
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  // Horizontal centering: shift the whole character so its drawn bbox is centered in the box
+  // (matches how the sprite thumbnail is centered by its own bbox). Vertical stays navel-anchored.
+  let anchorX = opts.anchor.x
+  if (opts.centerX && placed.length) {
+    let minL = Infinity, maxR = -Infinity
+    for (const p of placed) {
+      const src = opts.override?.get(p.png) ?? imgs.get(p.png)
+      if (!src) continue
+      const w = (src as HTMLImageElement).width
+      const L = opts.anchor.x + p.x
+      if (L < minL) minL = L
+      if (L + w > maxR) maxR = L + w
+    }
+    if (minL < maxR) anchorX += opts.box.w / 2 - (minL + maxR) / 2
+  }
+
   ctx.save()
   if (opts.flip) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1) } // mirror about center
 
   // Effect origin aligns to its chosen character reference point (ox,oy): topLeft = anchor + (ox,oy) - origin.
   const drawEffect = ({ e, img }: { e: EffectDraw; img: HTMLImageElement | null }) => {
     if (!img) return
-    const dx = Math.round((opts.anchor.x + e.ox - e.origin.x) * scale)
+    const dx = Math.round((anchorX + e.ox - e.origin.x) * scale)
     const dy = Math.round((opts.anchor.y + e.oy - e.origin.y) * scale)
     ctx.drawImage(img, dx, dy, img.width * scale, img.height * scale)
   }
@@ -124,7 +142,7 @@ export async function renderCharacter(
 
   if (back) {
     // centered horizontally on the navel, sitting around the upper body / back.
-    const dx = Math.round((opts.anchor.x - back.width / 2) * scale)
+    const dx = Math.round((anchorX - back.width / 2) * scale)
     const dy = Math.round((opts.anchor.y - back.height + 6) * scale)
     ctx.drawImage(back, dx, dy, back.width * scale, back.height * scale)
   }
@@ -133,7 +151,7 @@ export async function renderCharacter(
     const src = opts.override?.get(p.png) ?? imgs.get(p.png)
     if (!src) continue
     const w = (src as HTMLImageElement).width, h = (src as HTMLImageElement).height
-    const dx = Math.round((opts.anchor.x + p.x) * scale)
+    const dx = Math.round((anchorX + p.x) * scale)
     const dy = Math.round((opts.anchor.y + p.y) * scale)
     ctx.drawImage(src, dx, dy, w * scale, h * scale)
   }
