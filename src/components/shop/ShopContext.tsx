@@ -16,6 +16,7 @@ import { conflictSlots } from '@/lib/core/slots'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, EQUIP_SLOTS, foldList } from '@/lib/shopData'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
+export type ListMode = 'sprite' | 'model' | 'mymodel' // 아이템 리스트 표시: 스프라이트 / 베이스 모델 / 내 모델
 // 염색 대상은 실제 slot. hair/face(성형)만 믹스 염색, 그 외 HSV.
 const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김.
@@ -31,6 +32,7 @@ export interface ShopCtx {
   primary: string; setPrimary: Dispatch<string>
   // codi
   activeCat: string; setActiveCat: Dispatch<string>
+  listMode: ListMode; setListMode: Dispatch<ListMode>
   partMenuOpen: boolean; setPartMenuOpen: Dispatch<boolean>
   partWrapRef: React.MutableRefObject<HTMLDivElement | null>
   bindVp: (el: HTMLDivElement | null) => void
@@ -100,6 +102,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // ── UI ──
   const [primary, setPrimary] = useState('codi')
   const [activeCat, setActiveCat] = useState('hair')
+  const [listMode, setListMode] = useState<ListMode>('sprite') // 기본=스프라이트(가장 빠름)
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
   const [tone, setTone] = useState(0)
   const [hidden, setHidden] = useState<Record<string, boolean>>({})
@@ -369,7 +372,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const value: ShopCtx = {
     index, dataLoading, catLoading, listForCat,
     primary, setPrimary,
-    activeCat, setActiveCat, partMenuOpen, setPartMenuOpen, partWrapRef, bindVp,
+    activeCat, setActiveCat, listMode, setListMode, partMenuOpen, setPartMenuOpen, partWrapRef, bindVp,
     curIdx, pageCount, offset, snapping, setOffset, setSnapping, setIdx, step,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, isEquippedInCat, hidden, setHidden,
