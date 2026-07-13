@@ -28,6 +28,8 @@ export interface ShopCtx {
   dataLoading: boolean
   catLoading: boolean
   listForCat: (cat: string) => ListItem[]
+  activeList: ListItem[] // 활성 부위의 folded 리스트에 검색 필터 적용(정렬 순서 유지)
+  search: string; setSearch: Dispatch<string>
   // primary/screen
   primary: string; setPrimary: Dispatch<string>
   // codi
@@ -103,6 +105,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [primary, setPrimary] = useState('codi')
   const [activeCat, setActiveCat] = useState('hair')
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=모델(코디는 모델이 기본)
+  const [search, setSearch] = useState('')
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
   const [tone, setTone] = useState(0)
   const [hidden, setHidden] = useState<Record<string, boolean>>({})
@@ -198,9 +201,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 활성 부위 리스트 로딩중?(index 미로드 또는 해당 slot 미로드)
   const catLoading = dataLoading || (activeCat !== 'skin' && lists[CAT_TO_SLOT[activeCat]] === undefined)
 
-  // ── 페이지네이션(활성 부위 리스트 길이 기준) ──
-  const curList = listForCat(activeCat)
-  const pageCount = Math.max(1, Math.ceil(curList.length / ITEMS_PER_PAGE))
+  // 활성 부위 리스트 + 검색 필터(이름 substring, 정렬 순서는 그대로 유지 — 필터만).
+  const activeListFull = listForCat(activeCat)
+  const activeList = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return activeListFull
+    return activeListFull.filter((it) => (it.name || it.id).toLowerCase().includes(q))
+  }, [activeListFull, search])
+
+  // ── 페이지네이션(필터된 활성 리스트 길이 기준) ──
+  const pageCount = Math.max(1, Math.ceil(activeList.length / ITEMS_PER_PAGE))
   const maxIndex = pageCount - 1
   const curIdx = Math.max(0, Math.min(maxIndex, pageByCat[activeCat] || 0))
 
@@ -373,7 +383,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   void defMix; void defHsv
 
   const value: ShopCtx = {
-    index, dataLoading, catLoading, listForCat,
+    index, dataLoading, catLoading, listForCat, activeList, search, setSearch,
     primary, setPrimary,
     activeCat, setActiveCat, listMode, setListMode, partMenuOpen, setPartMenuOpen, partWrapRef, bindVp,
     curIdx, pageCount, offset, snapping, setOffset, setSnapping, setIdx, step,
