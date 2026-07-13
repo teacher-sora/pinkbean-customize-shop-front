@@ -42,12 +42,12 @@ export const EQUIP_SLOTS = [
   'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape', 'weapon', 'shield',
 ] as const
 
-// 미리보기 월드 박스 — 헤어/망토/이펙트가 잘리지 않도록 넉넉하게. body navel을 박스 중앙(centerX)에 고정.
-export const MAIN_BOX = { w: 230, h: 300 }
-export const MAIN_ANCHOR = { x: 115, y: 178 } // x는 centerX(body navel)로 재정렬됨. y=navel 세로 위치.
+// 미리보기 월드 박스. body navel을 박스 중앙(centerX)에 고정. 캔버스는 1:1 자연 크기로 표시(크리스프).
+export const MAIN_BOX = { w: 170, h: 210 }
+export const MAIN_ANCHOR = { x: 85, y: 128 } // x는 centerX(body navel)로 재정렬됨. y=navel 세로 위치.
 
-// 배율: 캔버스가 div를 채운 상태에서 CSS 스케일로 확대. 기본=2배. 1↔3의 중간이 2배.
-export const ZOOM_SCALE: Record<number, number> = { 1: 0.72, 2: 1.0, 3: 1.32 }
+// 배율 = 정수 렌더 스케일(캔버스를 그 배로 그려 1:1 표시 → 선명 + 실제 확대). 기본 2.
+export const ZOOM_RENDER_SCALE: Record<number, number> = { 1: 2, 2: 3, 3: 4 }
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.
 export const THUMB_VIEW: ViewOpts = { action: 'stand1', expression: 'default', ear: 'humanEar', weaponMotion: 'basic' }

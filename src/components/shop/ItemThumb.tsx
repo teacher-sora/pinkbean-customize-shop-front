@@ -27,8 +27,9 @@ function Sprite({ item }: { item: ListItem }) {
   useEffect(() => { setIdx(0) }, [item.id])
   if (idx >= sources.length) return null
   return (
+    // 스프라이트 썸네일만 살짝 크게(scale). 픽셀 아트라 pixelated 로 크리스프 유지.
     <img src={sources[idx]} alt={item.name || item.id} loading="lazy" decoding="async" draggable={false}
-      onError={() => setIdx((i) => i + 1)} style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated', objectFit: 'contain', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }} />
+      onError={() => setIdx((i) => i + 1)} style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated', objectFit: 'contain', transform: 'scale(1.32) translateZ(0)', backfaceVisibility: 'hidden' }} />
   )
 }
 
@@ -81,8 +82,8 @@ function ModelThumb({ item, ctxItems, ctxKey, zmap, smap, skinHeadId }: ModelPro
     const canvas = canvasRef.current
     if (!canvas || !placed) return
     let cancelled = false
-    // 렌더 스케일 2(캔버스 픽셀 2배) → 도트가 더 선명.
-    renderCharacter(canvas, placed, { scale: 2, box: THUMB_BOX, anchor: THUMB_ANCHOR, effects: effs, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
+    // 작은 셀은 1:1(scale 1)이 가장 깔끔(2배로 그린 뒤 축소하면 오히려 뭉개짐).
+    renderCharacter(canvas, placed, { scale: 1, box: THUMB_BOX, anchor: THUMB_ANCHOR, effects: effs, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
     return () => { cancelled = true }
   }, [placed, effs])
 

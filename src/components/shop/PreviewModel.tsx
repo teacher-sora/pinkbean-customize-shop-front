@@ -13,11 +13,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
 import { effectDraws, preload, renderCharacter } from '@/lib/core/render'
-import { MAIN_ANCHOR, MAIN_BOX, MOVE_POSTURE_ACTIONS, ZOOM_SCALE, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt } from '@/lib/shopData'
+import { MAIN_ANCHOR, MAIN_BOX, MOVE_POSTURE_ACTIONS, ZOOM_RENDER_SCALE, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import styles from './PreviewModel.module.css'
-
-const RENDER_SCALE = 2 // 캔버스 정수 스케일(크리스프). 화면 배율은 CSS transform.
 
 export default function PreviewModel() {
   const { index, equipped, hidden, tone, pv } = useShop()
@@ -134,7 +132,7 @@ export default function PreviewModel() {
       const fi = animated ? (MOVE_POSTURE_ACTIONS.has(pv.action) ? frameAtElapsedAlt : frameAtElapsed)(delays, elapsed) : 0
       const f = frames[Math.min(fi, frames.length - 1)]
       const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow }, elapsed)) : []
-      renderCharacter(canvas, f.placed, { scale: RENDER_SCALE, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: ZOOM_RENDER_SCALE[pv.zoom] ?? 3, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, centerX: true, shouldCancel: () => cancelled }).catch(() => {})
     }
     preload([...pngs]).then(() => {
       if (cancelled) return
@@ -144,10 +142,10 @@ export default function PreviewModel() {
       raf = requestAnimationFrame(loop)
     })
     return () => { cancelled = true; cancelAnimationFrame(raf) }
-  }, [spec, effList, viewInfo.flip, V.action, pv.action])
+  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.zoom])
 
   return (
-    <div className={styles.wrap} style={{ transform: `scale(${ZOOM_SCALE[pv.zoom] ?? 1})` }}>
+    <div className={styles.wrap}>
       {spec ? <canvas ref={canvasRef} className={styles.canvas} /> : <div className={styles.skeleton} />}
     </div>
   )
