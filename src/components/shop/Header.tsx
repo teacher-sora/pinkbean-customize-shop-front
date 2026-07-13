@@ -8,7 +8,8 @@ export default function Header() {
   const { primary, setPrimary, hoverPrimary, setHoverPrimary, shareCurrent } = useShop()
   return (
     <header style={css('flex:0 0 auto; height:56px; display:flex; align-items:center; justify-content:space-between;')}>
-      <div style={css('display:flex; align-items:center; gap:12px;')}>
+      <div style={css('display:flex; align-items:center; gap:10px;')}>
+        <img src="/pinkbean.png" alt="핑크빈 커마샵 로고" width={30} height={30} style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flex: '0 0 auto' }} />
         <div style={css('font-size:19px; font-weight:700; letter-spacing:-0.02em; background:linear-gradient(100deg, #ec86ac, #f0a9c4 55%, #c98fe0); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;')}>핑크빈 커마샵</div>
         <span style={css('font-size:11px; font-weight:500; color:#9a8f84; background:#e9e2da; padding:3px 8px; border-radius:20px;')}>BETA</span>
       </div>
