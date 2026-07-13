@@ -24,7 +24,7 @@ a:hover { color: #d76d9a; }
 .pb-scroll-thin::-webkit-scrollbar { width: 8px; }
 .pb-scroll-thin::-webkit-scrollbar-thumb { border-width: 2px; }
 
-.pb-card { border: 1px solid #eee6dc; position: relative; transition: transform .16s ease, border-color .12s ease, background .12s ease; }
+.pb-card { border: 1px solid #eee6dc; position: relative; transition: transform .16s ease, border-color .12s ease, background .12s ease; will-change: transform; backface-visibility: hidden; }
 .pb-cardwrap { display: grid; min-width: 0; min-height: 0; cursor: pointer; }
 .pb-cardwrap:hover > .pb-card { transform: translateY(-4px); border-color: #ec86ac; }
 .pb-dye { opacity: 0; pointer-events: none; transition: opacity .14s ease; }

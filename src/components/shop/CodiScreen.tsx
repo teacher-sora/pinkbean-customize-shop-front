@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CATS, ITEMS_PER_PAGE } from '@/lib/catalog'
 import { assemble, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ListItem } from '@/lib/core/data'
@@ -27,9 +27,10 @@ export default function CodiScreen() {
 
   // 모델/내모델 공통 배경(base 또는 내 착용) 조립 입력 + 키
   const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string }>({ items: [], key: '' })
+  const ctxKeyRef = useRef('')
   useEffect(() => {
     const idx = s.index
-    if (mode === 'sprite' || !idx) { setCtx({ items: [], key: '' }); return }
+    if (mode === 'sprite' || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ items: [], key: '' }) } return }
     let alive = true
     const toneEntry = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
     const bodyId = toneEntry.body, headId = toneEntry.head
@@ -39,6 +40,8 @@ export default function CodiScreen() {
       : []
     const eqSig = eqEntries.map(([sl, it]) => sl + it.id).sort().join(',')
     const key = `${mode}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}`
+    if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
+    ctxKeyRef.current = key
     const ids = [...(isSkinCat ? [] : [bodyId, headId]), ...eqEntries.map(([, it]) => it.id)]
     Promise.all(ids.map((id) => loadMeta(id).then((m) => [id, m] as const).catch(() => null))).then((res) => {
       if (!alive) return
@@ -82,7 +85,7 @@ export default function CodiScreen() {
       item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
     return (
       <div key={item.id} onClick={() => s.equipFromCat(s.activeCat, item)} className="pb-cardwrap">
-        <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; ${sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
+        <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:5px; padding:8px 5px 7px; ${sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
           {dyeable && (
             <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat]) }} className="pb-dye" title="이 부위 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}

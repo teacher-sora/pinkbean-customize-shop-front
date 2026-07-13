@@ -1,5 +1,7 @@
-/* 미리보기 합성 모델 + 로딩 스켈레톤. 캔버스는 div 영역 전체를 사용(object-fit:contain → 잘림 없음).
-   배율은 wrap 의 transform:scale 로(1↔3 중간이 2, 기본 2). 정적 스타일은 여기(module.css). */
+/* 미리보기 합성 모델 + 로딩 스켈레톤.
+   캔버스는 "고정 크기"(뷰포트 vh 기준) → 연출 설정 아코디언 확장/축소로 zone 높이가 변해도
+   모델 크기는 그대로 유지되고, zone 중앙정렬이라 아코디언이 열리면 모델이 위로 이동한다.
+   배율은 wrap 의 transform:scale(1↔3 중간이 2, 기본 2). 정적 스타일은 여기(module.css). */
 
 .wrap {
   width: 100%;
@@ -11,18 +13,19 @@
   transition: transform .2s cubic-bezier(.22, .61, .36, 1);
 }
 
-/* 합성 캔버스: div 전체를 채우되(contain) 픽셀 아트 스무딩 없이. */
+/* 합성 캔버스: 고정 높이(zone 높이와 무관) + 비율로 폭 자동. 픽셀 아트 스무딩 없이 크리스프. */
 .canvas {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  height: clamp(180px, 38vh, 380px);
+  width: auto;
+  max-width: 100%;
+  display: block;
   image-rendering: pixelated;
 }
 
 /* 로딩 스켈레톤 */
 .skeleton {
-  width: 60%;
-  height: 78%;
+  width: 46%;
+  height: clamp(180px, 38vh, 380px);
   border-radius: 16px;
   background: linear-gradient(100deg, #f6edf2 30%, #fbe3ec 48%, #f6edf2 66%);
   background-size: 220% 100%;
