@@ -10,7 +10,7 @@ import { useShop, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
 
 const MODES: { v: ListMode; l: string }[] = [
-  { v: 'sprite', l: '스프라이트' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' },
+  { v: 'sprite', l: '썸네일' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' },
 ]
 
 export default function CodiScreen() {
@@ -124,18 +124,16 @@ export default function CodiScreen() {
               </div>
             </div>
           </div>
-          <span style={css('font-size:12px; color:#a89e93; white-space:nowrap; flex:0 0 auto;')}>{loading ? '불러오는 중…' : `${list.length}종`}</span>
-        </div>
-
-        {/* 표시 모드 토글: 스프라이트 / 모델 / 내 모델 */}
-        <div title="아이템 표시 방식" style={css('flex:0 0 auto; display:flex; align-items:center; gap:3px; padding:3px; background:#f4ecf3; border-radius:9px;')}>
-          {MODES.map((m) => {
-            const on = mode === m.v
-            return (
-              <button key={m.v} onClick={() => s.setListMode(m.v)}
-                style={css(`height:28px; padding:0 11px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{m.l}</button>
-            )
-          })}
+          {/* N종 표기 자리에 표시 모드 토글(썸네일/모델/내 모델) */}
+          <div title="아이템 표시 방식" style={css('flex:0 0 auto; display:flex; align-items:center; gap:3px; padding:3px; background:#f4ecf3; border-radius:9px;')}>
+            {MODES.map((m) => {
+              const on = mode === m.v
+              return (
+                <button key={m.v} onClick={() => s.setListMode(m.v)}
+                  style={css(`height:28px; padding:0 11px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{m.l}</button>
+              )
+            })}
+          </div>
         </div>
 
         <div style={css('flex:0 0 auto; display:flex; align-items:center; gap:7px; font-variant-numeric:tabular-nums;')}>
@@ -146,6 +144,11 @@ export default function CodiScreen() {
             <span style={css('font-size:13px; font-weight:500; color:#c3b9ad;')}>/</span>
             <span style={css('font-size:14px; font-weight:600; color:#8a8075;')}>{s.pageCount}</span>
           </div>
+        </div>
+
+        {/* 우: 아이템 검색(롤백). 좌 flex:1 + 우 flex:1 로 가운데 페이지가 중앙 정렬됨 */}
+        <div style={css('flex:1 1 0; min-width:0; display:flex; justify-content:flex-end;')}>
+          <input placeholder="아이템 검색" style={css('height:34px; width:100%; max-width:180px; min-width:0; padding:0 12px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; outline:none;')} />
         </div>
       </div>
 
