@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
-import { MAIN_ANCHOR, MAIN_BOX, MOVE_POSTURE_ACTIONS, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt } from '@/lib/shopData'
+import { MAIN_ANCHOR, MAIN_BOX, MOVE_POSTURE_ACTIONS, ZOOM_SCALE, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import styles from './PreviewModel.module.css'
 
@@ -144,14 +144,15 @@ export default function PreviewModel() {
     const canvas = canvasRef.current
     if (!canvas || !model || !model.placed.length) return
     let cancelled = false
+    // 렌더 스케일은 크리스프용 고정(2). 화면 배율은 아래 CSS transform 으로.
     renderCharacter(canvas, model.placed, {
-      scale: pv.zoom, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, centerX: true, shouldCancel: () => cancelled,
+      scale: 2, box: MAIN_BOX, anchor: MAIN_ANCHOR, flip: viewInfo.flip, effects, centerX: true, shouldCancel: () => cancelled,
     }).catch(() => {})
     return () => { cancelled = true }
-  }, [model, effects, pv.zoom, viewInfo.flip])
+  }, [model, effects, viewInfo.flip])
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} style={{ transform: `scale(${ZOOM_SCALE[pv.zoom] ?? 1})` }}>
       {ready ? <canvas ref={canvasRef} className={styles.canvas} /> : <div className={styles.skeleton} />}
     </div>
   )

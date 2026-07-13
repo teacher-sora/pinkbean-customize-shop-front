@@ -1,9 +1,10 @@
 'use client'
 
 import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, type Opt, type Pv } from '@/lib/catalog'
-import { css, pillStyle, PV_LABEL, ROW_BETWEEN, SEL_STYLE, switchKnob, switchTrack } from '@/lib/style'
+import { css, pillStyle, PV_LABEL, ROW_BETWEEN, switchKnob, switchTrack } from '@/lib/style'
 import { useShop } from './ShopContext'
 import PreviewModel from './PreviewModel'
+import Dropdown from './Dropdown'
 
 export default function PreviewPanel() {
   const s = useShop()
@@ -55,31 +56,19 @@ export default function PreviewPanel() {
             </div>
             <div style={css(ROW_BETWEEN)}>
               <span style={css(PV_LABEL)}>액션</span>
-              <select value={pv.action} onChange={(e) => s.setPv('action', e.target.value)} className="pb-select" style={css(SEL_STYLE)}>
-                {PV_ACTION_GROUPS.map((g) => (
-                  <optgroup key={g.group} label={g.group}>
-                    {g.items.map((a) => <option key={a.v} value={a.v}>{a.l}</option>)}
-                  </optgroup>
-                ))}
-              </select>
+              <Dropdown value={pv.action} onChange={(v) => s.setPv('action', v)} groups={PV_ACTION_GROUPS} />
             </div>
             <div style={css(ROW_BETWEEN)}>
               <span style={css(PV_LABEL)}>무기 모션</span>
-              <select value={pv.weapon} onChange={(e) => s.setPv('weapon', e.target.value)} className="pb-select" style={css(SEL_STYLE)}>
-                {PV_WEAPONS.map((w) => <option key={w.v} value={w.v}>{w.l}</option>)}
-              </select>
+              <Dropdown value={pv.weapon} onChange={(v) => s.setPv('weapon', v)} options={PV_WEAPONS} />
             </div>
             <div style={css(ROW_BETWEEN)}>
               <span style={css(PV_LABEL)}>표정</span>
-              <select value={pv.expr} onChange={(e) => s.setPv('expr', e.target.value)} className="pb-select" style={css(SEL_STYLE)}>
-                {PV_EXPRS.map((x) => <option key={x.v} value={x.v}>{x.l}</option>)}
-              </select>
+              <Dropdown value={pv.expr} onChange={(v) => s.setPv('expr', v)} options={PV_EXPRS} />
             </div>
             <div style={css(ROW_BETWEEN)}>
               <span style={css(PV_LABEL)}>형상 변이</span>
-              <select value={pv.form} onChange={(e) => s.setPv('form', e.target.value)} className="pb-select" style={css(SEL_STYLE)}>
-                {PV_FORMS.map((f) => <option key={f.v} value={f.v}>{f.l}</option>)}
-              </select>
+              <Dropdown value={pv.form} onChange={(v) => s.setPv('form', v)} options={PV_FORMS} />
             </div>
             <div style={css(ROW_BETWEEN)}>
               <span style={css('font-size:12px; font-weight:600; color:#8a8075; flex:0 0 auto;')}>귀</span>

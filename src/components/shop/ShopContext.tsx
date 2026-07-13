@@ -11,7 +11,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { ITEMS_PER_PAGE, type Mix, type Hsv, type Preset, type Pv } from '@/lib/catalog'
 import { defHsv, defMix } from '@/lib/color'
-import { loadIndex, loadSlot, type Index, type ListItem } from '@/lib/core/data'
+import { loadAnima, loadEffectIndex, loadIndex, loadSlot, type Index, type ListItem } from '@/lib/core/data'
 import { conflictSlots } from '@/lib/core/slots'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, EQUIP_SLOTS, foldList } from '@/lib/shopData'
 
@@ -152,6 +152,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // ── 초기 로드: index 만(빠르게). 부위 리스트는 "보여질 때" 지연 로드 ──
   useEffect(() => {
     let alive = true
+    // 연출 옵션 데이터(형상변이/이펙트 인덱스)를 미리 캐시 → 선택 시 즉시 적용.
+    loadAnima().catch(() => {})
+    loadEffectIndex().catch(() => {})
     loadIndex().then((idx) => {
       if (!alive) return
       setIndex(idx); setTone(DEFAULT_TONE)
