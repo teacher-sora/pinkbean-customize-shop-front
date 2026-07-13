@@ -1,18 +1,58 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { CATS, ITEMS_PER_PAGE } from '@/lib/catalog'
-import { spriteUrl, type ListItem } from '@/lib/core/data'
-import { CAT_TO_SLOT } from '@/lib/shopData'
+import { assemble, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
+import { loadMeta, type ListItem } from '@/lib/core/data'
+import { CAT_TO_SLOT, THUMB_VIEW } from '@/lib/shopData'
 import { css } from '@/lib/style'
-import { useShop } from './ShopContext'
+import { useShop, type ListMode } from './ShopContext'
+import ItemThumb from './ItemThumb'
 
-const thumbUrl = (it: ListItem) => spriteUrl(it.thumb || `sprites/${it.id}/thumb.png`)
+const MODES: { v: ListMode; l: string }[] = [
+  { v: 'sprite', l: '스프라이트' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' },
+]
 
 export default function CodiScreen() {
   const s = useShop()
   const activeMeta = CATS.find((c) => c.id === s.activeCat) || CATS[0]
   const list = s.listForCat(s.activeCat)
   const loading = s.catLoading
+  const mode = s.listMode
+  const isSkinCat = s.activeCat === 'skin'
+
+  // 모델/내모델 공통 배경(base 또는 내 착용) 조립 입력 + 키
+  const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string }>({ items: [], key: '' })
+  useEffect(() => {
+    const idx = s.index
+    if (mode === 'sprite' || !idx) { setCtx({ items: [], key: '' }); return }
+    let alive = true
+    const toneEntry = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
+    const bodyId = toneEntry.body, headId = toneEntry.head
+    const activeSlot = CAT_TO_SLOT[s.activeCat]
+    const eqEntries = mode === 'mymodel'
+      ? Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && !s.hidden[sl]) as [string, ListItem][]
+      : []
+    const eqSig = eqEntries.map(([sl, it]) => sl + it.id).sort().join(',')
+    const key = `${mode}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}`
+    const ids = [...(isSkinCat ? [] : [bodyId, headId]), ...eqEntries.map(([, it]) => it.id)]
+    Promise.all(ids.map((id) => loadMeta(id).then((m) => [id, m] as const).catch(() => null))).then((res) => {
+      if (!alive) return
+      const map = new Map(res.filter(Boolean).map((r) => r!))
+      const items: AssembleInput[] = []
+      if (!isSkinCat) {
+        const body = map.get(bodyId), head = map.get(headId)
+        if (body) items.push({ itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, THUMB_VIEW) })
+        if (head) items.push({ itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, THUMB_VIEW) })
+      }
+      for (const [sl, it] of eqEntries) {
+        const m = map.get(it.id); if (!m) continue
+        items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, THUMB_VIEW), invisibleFace: m.invisibleFace })
+      }
+      setCtx({ items, key })
+    })
+    return () => { alive = false }
+  }, [mode, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat])
 
   const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * ITEMS_PER_PAGE, p * ITEMS_PER_PAGE + ITEMS_PER_PAGE))
   const trackStyle = `display:flex; height:100%; width:100%; will-change:transform; transform:translateX(calc(${-s.curIdx * 100}% + ${s.offset}px)); transition:${s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none'};`
@@ -33,7 +73,7 @@ export default function CodiScreen() {
 
   const cell = (item: ListItem) => {
     const sel = s.isEquippedInCat(s.activeCat, item.id)
-    const dyeable = s.activeCat !== 'skin' && item.dyeMode !== 'none'
+    const dyeable = !isSkinCat && item.dyeMode !== 'none'
     return (
       <div key={item.id} onClick={() => s.equipFromCat(s.activeCat, item)} className="pb-cardwrap">
         <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; ${sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
@@ -41,8 +81,7 @@ export default function CodiScreen() {
             <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat]) }} className="pb-dye" title="이 부위 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox)}>
-            <img src={thumbUrl(item)} alt={item.name || item.id} loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
-              style={{ maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated', objectFit: 'contain' }} />
+            <ItemThumb item={item} mode={mode} ctxItems={ctx.items} ctxKey={ctx.key} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
           </div>
           <div style={css('font-size:12px; font-weight:500; color:#3d372f; line-height:1.3; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;')}>{item.name || item.id}</div>
         </div>
@@ -61,7 +100,7 @@ export default function CodiScreen() {
 
   return (
     <section style={css('flex:0 0 65%; min-width:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;')}>
-      <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;')}>
+      <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #f0e9e1;')}>
         <div style={css('flex:1 1 0; min-width:0; display:flex; align-items:center; gap:10px;')}>
           <div ref={s.partWrapRef} style={css('position:relative; flex:0 0 auto;')}>
             <button onClick={() => s.setPartMenuOpen(!s.partMenuOpen)} onMouseEnter={() => s.setHoverPartBtn(true)} onMouseLeave={() => s.setHoverPartBtn(false)} title="클릭해서 부위 선택" style={css(partBtnStyle)}>
@@ -87,6 +126,18 @@ export default function CodiScreen() {
           </div>
           <span style={css('font-size:12px; color:#a89e93; white-space:nowrap; flex:0 0 auto;')}>{loading ? '불러오는 중…' : `${list.length}종`}</span>
         </div>
+
+        {/* 표시 모드 토글: 스프라이트 / 모델 / 내 모델 */}
+        <div title="아이템 표시 방식" style={css('flex:0 0 auto; display:flex; align-items:center; gap:3px; padding:3px; background:#f4ecf3; border-radius:9px;')}>
+          {MODES.map((m) => {
+            const on = mode === m.v
+            return (
+              <button key={m.v} onClick={() => s.setListMode(m.v)}
+                style={css(`height:28px; padding:0 11px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{m.l}</button>
+            )
+          })}
+        </div>
+
         <div style={css('flex:0 0 auto; display:flex; align-items:center; gap:7px; font-variant-numeric:tabular-nums;')}>
           <span style={css('font-size:11px; font-weight:500; color:#a89e93;')}>페이지</span>
           <div title="페이지 번호를 입력해 이동" style={css('display:flex; align-items:center; gap:5px;')}>
@@ -95,9 +146,6 @@ export default function CodiScreen() {
             <span style={css('font-size:13px; font-weight:500; color:#c3b9ad;')}>/</span>
             <span style={css('font-size:14px; font-weight:600; color:#8a8075;')}>{s.pageCount}</span>
           </div>
-        </div>
-        <div style={css('flex:1 1 0; min-width:0; display:flex; justify-content:flex-end;')}>
-          <input placeholder="아이템 검색" style={css('height:34px; width:100%; max-width:180px; min-width:0; padding:0 12px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; outline:none;')} />
         </div>
       </div>
 
@@ -110,7 +158,7 @@ export default function CodiScreen() {
           </div>
         ) : (
           <div style={css(trackStyle)}>
-            {/* 이미지는 현재 페이지 ±1 만 마운트(보이는 부분만 CDN 로드 → 속도/안정성). */}
+            {/* 셀은 현재 페이지 ±1 만 마운트(보이는 부분만 CDN 로드 → 속도/안정성). */}
             {pages.map((items, pi) => (
               <div key={pi} style={css('flex:0 0 100%; width:100%; height:100%; padding:18px 22px;')}>
                 {Math.abs(pi - s.curIdx) <= 1 && (
