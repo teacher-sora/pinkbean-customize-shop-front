@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { CATS, ITEMS_PER_PAGE } from '@/lib/catalog'
 import { assemble, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
-import { loadMeta, type ListItem } from '@/lib/core/data'
+import { badgeUrl, loadMeta, type ListItem } from '@/lib/core/data'
 import { CAT_TO_SLOT, THUMB_VIEW } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop, type ListMode } from './ShopContext'
@@ -12,6 +12,8 @@ import ItemThumb from './ItemThumb'
 const MODES: { v: ListMode; l: string }[] = [
   { v: 'sprite', l: '썸네일' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' },
 ]
+// 헤어/성형/피부는 전부 캐시라 캐시 배지가 정보 가치 없음 → 숨김(라벨은 예외 유지).
+const NO_CASH_BADGE = new Set(['hair', 'face', 'skin'])
 
 export default function CodiScreen() {
   const s = useShop()
@@ -74,11 +76,17 @@ export default function CodiScreen() {
   const cell = (item: ListItem) => {
     const sel = s.isEquippedInCat(s.activeCat, item.id)
     const dyeable = !isSkinCat && item.dyeMode !== 'none'
+    const badgeKind: 'master' | 'special' | 'cash' | null =
+      item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
     return (
       <div key={item.id} onClick={() => s.equipFromCat(s.activeCat, item)} className="pb-cardwrap">
         <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; ${sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
           {dyeable && (
             <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat]) }} className="pb-dye" title="이 부위 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
+          )}
+          {badgeKind && (
+            <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} title={badgeKind} onError={(e) => { e.currentTarget.style.display = 'none' }}
+              style={{ position: 'absolute', bottom: 7, left: 7, height: badgeKind === 'cash' ? 15 : 18, imageRendering: 'pixelated', zIndex: 2 }} />
           )}
           <div style={css(thumbBox)}>
             <ItemThumb item={item} mode={mode} ctxItems={ctx.items} ctxKey={ctx.key} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
