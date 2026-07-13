@@ -1,6 +1,6 @@
 'use client'
 
-import { PV_ACTIONS, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, type Opt, type Pv } from '@/lib/catalog'
+import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, isAnimatedAction, type Opt, type Pv } from '@/lib/catalog'
 import { css, pillStyle, PV_LABEL, ROW_BETWEEN, SEL_STYLE, switchKnob, switchTrack } from '@/lib/style'
 import { useShop } from './ShopContext'
 
@@ -8,8 +8,8 @@ export default function PreviewPanel() {
   const s = useShop()
   const { pv } = s
   const equippedCount = Object.keys(s.equipped).length
-  const curAction = PV_ACTIONS.find((a) => a.v === pv.action) || PV_ACTIONS[0]
-  const pvAnimated = curAction.anim
+  const curAction = PV_ACTIONS_FLAT.find((a) => a.v === pv.action) || PV_ACTIONS_FLAT[0]
+  const pvAnimated = isAnimatedAction(pv.action)
   const pvCaption = `${curAction.l} · ${(PV_EXPRS.find((x) => x.v === pv.expr) || { l: '' }).l}`
 
   const pvZoomStyle = `height:100%; display:flex; align-items:center; justify-content:center; transform:scale(${pv.zoom / 2}); transform-origin:center; transition:transform .22s cubic-bezier(.22,.61,.36,1);`
@@ -69,7 +69,11 @@ export default function PreviewPanel() {
             <div style={css(ROW_BETWEEN)}>
               <span style={css(PV_LABEL)}>액션</span>
               <select value={pv.action} onChange={(e) => s.setPv('action', e.target.value)} className="pb-select" style={css(SEL_STYLE)}>
-                {PV_ACTIONS.map((a) => <option key={a.v} value={a.v}>{a.anim ? `${a.l} (애니메이션)` : a.l}</option>)}
+                {PV_ACTION_GROUPS.map((g) => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.items.map((a) => <option key={a.v} value={a.v}>{a.l}</option>)}
+                  </optgroup>
+                ))}
               </select>
             </div>
             {pvAnimated && (
