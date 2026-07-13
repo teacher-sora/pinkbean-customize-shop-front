@@ -1,9 +1,9 @@
-// 정적 카탈로그 데이터 + 공유 타입. (정본 design_handoff 와 동일한 값)
-// 데이터 변경/추가는 이 파일만 건드리면 된다. CDN 단계에서 mock 개수/목록이 실제 데이터로 대체됨.
+// 정적 카탈로그 데이터 + 공유 타입.
+// 부위/팔레트/상수는 디자인 정본 값. 연출 옵션(액션·무기모션·표정·귀·형상변이)은
+// maple test 프로토타입의 "실제 데이터"에 맞춘 값이다(아래 각 항목 주석의 소스 표기 참고).
 
 export type Cat = { id: string; label: string }
 export type Opt = { v: string; l: string }
-export type ActionOpt = { v: string; l: string; anim: boolean }
 
 export type Mix = { a: string; b: string; ratio: number }
 export type Hsv = { h: number; s: number; v: number }
@@ -56,66 +56,92 @@ export const MIX_PALETTE = [
   { name: '갈색', hex: '#96704c' },
 ]
 
-export const PV_ACTIONS: ActionOpt[] = [
-  { v: 'stand', l: '서 있기', anim: false },
-  { v: 'walk', l: '걷기', anim: true },
-  { v: 'sit', l: '앉기', anim: false },
-  { v: 'jump', l: '점프', anim: true },
-  { v: 'prone', l: '엎드리기', anim: false },
-  { v: 'ladder', l: '사다리 오르기', anim: true },
-  { v: 'fly', l: '날기', anim: true },
-  { v: 'alert', l: '경계', anim: true },
-  { v: 'heal', l: '회복', anim: true },
-  { v: 'dead', l: '쓰러지기', anim: false },
-]
+/* ── 연출 설정 옵션 (실제 데이터 기준) ─────────────────────────────────────────
+ * 소스 구분:
+ *  - 액션/무기모션/표정/귀 = Character.wz 고유 열거형(프로토타입 web/app/page.tsx). 정적 상수 재활용.
+ *  - 형상변이 = CDN anima.json(node 1~4)에서 유도된 결과. 지금은 정적, CDN 단계에서 loadAnima()로 대체.
+ */
+
+// 무기 모션 = 캐시가 제공하는 4종. 근접 자세(stand1↔stand2)와 스윙/찌르기의 O(한손)/T(두손) 변형을 결정.
 export const PV_WEAPONS: Opt[] = [
-  { v: 'none', l: '동작 없음' },
-  { v: 'swingO1', l: '스윙 O1' },
-  { v: 'swingO2', l: '스윙 O2' },
-  { v: 'swingO3', l: '스윙 O3' },
-  { v: 'swingP1', l: '스윙 P1' },
-  { v: 'swingP2', l: '스윙 P2' },
-  { v: 'swingT1', l: '스윙 T1' },
-  { v: 'stabO1', l: '찌르기 O1' },
-  { v: 'stabO2', l: '찌르기 O2' },
-  { v: 'stabT1', l: '찌르기 T1' },
-  { v: 'shoot1', l: '슛 1' },
-  { v: 'shoot2', l: '슛 2' },
-  { v: 'magic1', l: '매직 1' },
-  { v: 'magic2', l: '매직 2' },
+  { v: 'basic', l: '기본' },
+  { v: 'one', l: '한손' },
+  { v: 'two', l: '두손' },
+  { v: 'gun', l: '건' },
 ]
+
+// 액션 = WZ 프레임 키 그대로, 3그룹 분류(이동/자세 · 근접 공격 · 사격).
+export const PV_ACTION_GROUPS: { group: string; items: Opt[] }[] = [
+  {
+    group: '이동/자세',
+    items: [
+      { v: 'basic', l: '기본' }, { v: 'stand', l: '서기' }, { v: 'walk', l: '걷기' },
+      { v: 'alert', l: '전투 대기' }, { v: 'proneStab', l: '엎드리기' }, { v: 'sit', l: '앉기' },
+      { v: 'jump', l: '점프' }, { v: 'fly', l: '날기' }, { v: 'ladder', l: '사다리' }, { v: 'rope', l: '밧줄' },
+    ],
+  },
+  {
+    group: '근접 공격',
+    items: [
+      { v: 'swingO1', l: '한손 스윙1' }, { v: 'swingO2', l: '한손 스윙2' }, { v: 'swingO3', l: '한손 스윙3' }, { v: 'swingOF', l: '한손 스윙(마무리)' },
+      { v: 'swingT1', l: '두손 스윙1' }, { v: 'swingT2', l: '두손 스윙2' }, { v: 'swingT3', l: '두손 스윙3' }, { v: 'swingTF', l: '두손 스윙(마무리)' },
+      { v: 'swingP1', l: '폴암 스윙1' }, { v: 'swingP2', l: '폴암 스윙2' }, { v: 'swingPF', l: '폴암 스윙(마무리)' },
+      { v: 'stabO1', l: '한손 찌르기1' }, { v: 'stabO2', l: '한손 찌르기2' }, { v: 'stabOF', l: '한손 찌르기(마무리)' },
+      { v: 'stabT1', l: '두손 찌르기1' }, { v: 'stabT2', l: '두손 찌르기2' }, { v: 'stabTF', l: '두손 찌르기(마무리)' },
+    ],
+  },
+  {
+    group: '사격',
+    items: [
+      { v: 'shoot1', l: '활 사격' }, { v: 'shoot2', l: '석궁 사격' }, { v: 'shoot6', l: '총 사격' }, { v: 'shootF', l: '사격(마무리)' },
+    ],
+  },
+]
+export const PV_ACTIONS_FLAT: Opt[] = PV_ACTION_GROUPS.flatMap((g) => g.items)
+// 'basic'(기본)만 정지 프레임 — 나머지는 애니메이션(fps 슬라이더 노출 대상).
+export const isAnimatedAction = (v: string) => v !== 'basic'
+
+// 표정 = Face.wz 표정 키 전수(30종).
 export const PV_EXPRS: Opt[] = [
-  { v: 'default', l: '기본' },
-  { v: 'smile', l: '미소' },
-  { v: 'wink', l: '윙크' },
-  { v: 'glare', l: '째려봄' },
-  { v: 'cry', l: '슬픔' },
-  { v: 'angry', l: '분노' },
-  { v: 'surprise', l: '놀람' },
-  { v: 'love', l: '하트' },
-  { v: 'close', l: '눈 감기' },
-  { v: 'vomit', l: '오징어' },
-  { v: 'cheer', l: '씩씩' },
-  { v: 'despair', l: '근심' },
+  { v: 'default', l: '기본' }, { v: 'blink', l: '눈깜빡' }, { v: 'hit', l: '피격' }, { v: 'wink', l: '윙크' },
+  { v: 'glitter', l: '초롱초롱' }, { v: 'smile', l: '미소' }, { v: 'troubled', l: '난처' }, { v: 'cry', l: '울음' },
+  { v: 'angry', l: '화남' }, { v: 'bewildered', l: '당황' }, { v: 'stunned', l: '멍함' }, { v: 'vomit', l: '구역질' },
+  { v: 'oops', l: '앗차' }, { v: 'cheers', l: '건배' }, { v: 'cheer', l: '환호' }, { v: 'chu', l: '뽀뽀' },
+  { v: 'pain', l: '고통' }, { v: 'despair', l: '절망' }, { v: 'love', l: '하트' }, { v: 'shine', l: '반짝' },
+  { v: 'blaze', l: '이글이글' }, { v: 'hum', l: '흥얼' }, { v: 'bowing', l: '인사' }, { v: 'hot', l: '더위' },
+  { v: 'dam', l: '피해' }, { v: 'qBlue', l: '우울' }, { v: 'pers', l: '집중' }, { v: 'wound', l: '상처' },
+  { v: 'hate', l: '싫음' }, { v: 'rage', l: '분노' }, { v: 'sad', l: '슬픔' },
 ]
+
+// 귀 = Character.wz 4종. 키: humanEar/ear/lefEar/highlefEar.
 export const PV_EARS: Opt[] = [
-  { v: 'default', l: '기본' },
-  { v: 'elf', l: '요정 귀' },
-  { v: 'sharp', l: '뾰족 귀' },
-  { v: 'fold', l: '접힌 귀' },
+  { v: 'humanEar', l: '기본' },
+  { v: 'ear', l: '엘프' },
+  { v: 'lefEar', l: '우든 레프' },
+  { v: 'highlefEar', l: '하이 레프' },
 ]
+
+// 형상변이 = CDN anima.json(node 1~4) 유도 결과. 'none'=변이 없음(기본).
+// node3/4(렌)만 귀 · 머리장식(HeadAcc만) 2종으로 분기. key 는 anima node 스킴을 그대로 유지해 CDN 연동을 쉽게.
+// ⚠️ CDN 단계에서 loadAnima() 결과로 대체 예정.
 export const PV_FORMS: Opt[] = [
-  { v: 'human', l: '기본' },
-  { v: 'wolf', l: '늑대' },
-  { v: 'cat', l: '고양이' },
-  { v: 'ghost', l: '유령' },
-  { v: 'mini', l: '미니' },
-  { v: 'statue', l: '조각상' },
+  { v: 'none', l: '기본' },
+  { v: '1', l: '호영' },
+  { v: '2', l: '라라' },
+  { v: '3', l: '렌 (여, 귀)' },
+  { v: '3:acc', l: '렌 (여, 머리장식)' },
+  { v: '4', l: '렌 (남, 귀)' },
+  { v: '4:acc', l: '렌 (남, 머리장식)' },
 ]
+
+// 시선(캐릭터 향) = 왼쪽 · 오른쪽 · 뒷쪽 3종. 메이플 아바타는 측면 프로필이라 '정면'은 없다.
+//  - 왼쪽/오른쪽 = 좌우 방향(플립).
+//  - 뒷쪽 = 줄타기(rope) 액션의 "첫 프레임"으로 고정(정지)해서 보여주는 뒷모습.
+//    ⚠️ CDN/캔버스 합성 단계 구현 규칙: gaze==='back' 이면 action=rope · frame=0 · 애니메이션 정지로 렌더.
 export const PV_GAZES: Opt[] = [
-  { v: 'center', l: '정면' },
   { v: 'left', l: '왼쪽' },
   { v: 'right', l: '오른쪽' },
+  { v: 'back', l: '뒷쪽' },
 ]
 
 export const ITEMS_PER_PAGE = 18

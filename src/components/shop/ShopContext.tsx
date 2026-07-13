@@ -92,8 +92,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [pageInput, setPageInput] = useState('')
   const [partMenuOpen, setPartMenuOpen] = useState(false)
   const [pv, setPvState] = useState<Pv>({
-    action: 'stand', weapon: 'none', expr: 'default', ear: 'default', form: 'human',
-    gaze: 'center', wEffect: true, cEffect: true, fps: 12, zoom: 2,
+    action: 'basic', weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
+    gaze: 'right', wEffect: true, cEffect: true, fps: 12, zoom: 2,
   })
   const [pvOpen, setPvOpen] = useState(false)
   const [presets, setPresets] = useState<Preset[]>(() =>
