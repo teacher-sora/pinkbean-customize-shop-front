@@ -15,10 +15,14 @@ body {
 a { color: #ec86ac; text-decoration: none; }
 a:hover { color: #d76d9a; }
 
-.pb-scroll::-webkit-scrollbar { width: 8px; }
-.pb-scroll::-webkit-scrollbar-thumb { background: #d8cfc6; border-radius: 4px; }
+.pb-scroll { scrollbar-width: thin; scrollbar-color: #e7c3d4 transparent; }
+.pb-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.pb-scroll::-webkit-scrollbar-thumb { background: #e7c3d4; border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; transition: background .2s ease; }
+.pb-scroll::-webkit-scrollbar-thumb:hover { background: #d98db2; background-clip: padding-box; }
 .pb-scroll::-webkit-scrollbar-track { background: transparent; }
-.pb-scroll-thin::-webkit-scrollbar { width: 5px; }
+.pb-scroll-thin { scrollbar-width: thin; scrollbar-color: #eecfdd transparent; }
+.pb-scroll-thin::-webkit-scrollbar { width: 8px; }
+.pb-scroll-thin::-webkit-scrollbar-thumb { border-width: 2px; }
 
 .pb-card { border: 1px solid #eee6dc; position: relative; transition: transform .16s ease, border-color .12s ease, background .12s ease; }
 .pb-cardwrap { display: grid; min-width: 0; min-height: 0; cursor: pointer; }

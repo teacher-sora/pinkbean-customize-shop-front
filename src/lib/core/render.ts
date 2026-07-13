@@ -110,20 +110,19 @@ export async function renderCharacter(
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-  // Horizontal centering: shift the whole character so its drawn bbox is centered in the box
-  // (matches how the sprite thumbnail is centered by its own bbox). Vertical stays navel-anchored.
+  // Horizontal centering on the MODEL (body sprite), NOT the full bbox. Equipment-independent:
+  // hair/cape/weapon/arms/effects extend from the centered body but never move it. This keeps
+  // the body fixed at canvas center across item swaps, ear changes, and animation frames
+  // (a full-bbox center would drift the body — even off-canvas when an arm/weapon swings out).
   let anchorX = opts.anchor.x
   if (opts.centerX && placed.length) {
-    let minL = Infinity, maxR = -Infinity
-    for (const p of placed) {
-      const src = opts.override?.get(p.png) ?? imgs.get(p.png)
-      if (!src) continue
+    const body = placed.find((p) => p.name === 'body') || placed[0]
+    const src = opts.override?.get(body.png) ?? imgs.get(body.png)
+    if (src) {
       const w = (src as HTMLImageElement).width
-      const L = opts.anchor.x + p.x
-      if (L < minL) minL = L
-      if (L + w > maxR) maxR = L + w
+      const bodyCenter = opts.anchor.x + body.x + w / 2
+      anchorX += opts.box.w / 2 - bodyCenter
     }
-    if (minL < maxR) anchorX += opts.box.w / 2 - (minL + maxR) / 2
   }
 
   ctx.save()
