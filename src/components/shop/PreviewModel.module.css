@@ -4,27 +4,31 @@
    월드 박스가 모델+이펙트를 다 담을 만큼 넉넉해서 박스 경계 잘림이 없다.
    배율은 wrap 의 transform:scale(기본 2=1.0). 넘치는 부분은 상위 zone overflow가 클립. */
 
+/* wrap = 표시 영역(div). 캔버스는 이보다 크게 잡아 절대배치 중앙정렬하고, 넘치는 부분은 여기서 클립. */
 .wrap {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform-origin: center;
-  transition: transform .2s cubic-bezier(.22, .61, .36, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-/* 캔버스: 고정 높이(vh)로 표시 → zone 높이(아코디언)와 무관하게 모델 크기 유지.
-   스케일 1로 그린 작은 캔버스를 이 크기로 "확대" 표시 → 픽셀 유지(선명). 폭은 박스 비율로 자동. */
+/* 캔버스: 크기는 JS(computeModelPlacement)가 인라인으로 지정(디바이스 해상도, div×margin). CSS 재확대 없이
+   1:1 표시라 nearest 로 선명. wrap 중앙에 절대배치. */
 .canvas {
-  height: clamp(240px, 50vh, 480px);
-  width: auto;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: block;
   image-rendering: pixelated;
 }
 
-/* 로딩 스켈레톤 */
+/* 로딩 스켈레톤 (wrap 중앙 절대배치) */
 .skeleton {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   width: 46%;
   height: clamp(180px, 38vh, 380px);
   border-radius: 16px;

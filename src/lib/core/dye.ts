@@ -190,6 +190,59 @@ export interface DyeState {
 
 const swapId = (png: string, oldId: string, newId: string) => png.replace(`sprites/${oldId}/`, `sprites/${newId}/`)
 
+// Draw an item's OWN sprite (no body/model) recolored to a (base×mix) color combo, centered in a
+// square canvas — for the dye dialog swatch grid (발색 확인용). Layers are its head-attached sprites
+// (hair: hairOverHead/hair/hairBelowBody, face: face), all anchored to 'brow'; we place them in
+// brow-space, z-sort, then fit-contain into `size`. base===mix (or ratio 0) = pure color.
+export async function renderDyedSprite(
+  canvas: HTMLCanvasElement,
+  meta: ItemMeta,
+  base: number,
+  mix: number,
+  ratio: number,
+  view: ViewOpts,
+  zmap: string[],
+  size = 60,
+): Promise<void> {
+  if (meta.colorGroup == null) return
+  const layers = getFrameLayers(meta, view)
+  if (!layers.length) return
+  const cg = meta.colorGroup, slot = meta.slot
+  const useMix = mix !== base && ratio > 0
+  const baseId = variantId(cg, base, slot), mixId = variantId(cg, mix, slot)
+  type P = { src: CanvasImageSource; x: number; y: number; w: number; h: number; z: string }
+  const placed: P[] = []
+  for (const l of layers) {
+    try {
+      // 단색(블렌드 X)은 getImageData 불필요 → 비-CORS 로 로드해 리스트가 이미 받아둔 캐시를 재사용.
+      // 블렌드할 때만 픽셀리드가 필요하므로 CORS(?cors=1)로 받는다.
+      const baseImg = await loadImage(swapId(l.png, meta.id, baseId), useMix)
+      const src: CanvasImageSource = useMix
+        ? blendPalette(baseImg, await loadImage(swapId(l.png, meta.id, mixId), true), ratio, `${l.png}:${baseId}:${mixId}`)
+        : baseImg
+      const w = (src as HTMLImageElement).width, h = (src as HTMLImageElement).height
+      const bx = l.map.brow?.x ?? 0, by = l.map.brow?.y ?? 0
+      placed.push({ src, x: -(l.origin.x + bx), y: -(l.origin.y + by), w, h, z: l.z })
+    } catch (_) {}
+  }
+  if (!placed.length) return
+  const zi = (z: string) => { const i = zmap.indexOf(z); return i < 0 ? 9999 : i }
+  placed.sort((a, b) => zi(b.z) - zi(a.z)) // 먼 레이어(zmap 큰 값) 먼저 그림
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const p of placed) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x + p.w); maxY = Math.max(maxY, p.y + p.h) }
+  const bw = maxX - minX, bh = maxY - minY
+  // fit-contain(작은 성형은 최대 2배까지 확대) 후 정수로 스냅 → nearest 확대가 완벽히 선명(하드 도트).
+  // size 는 셀의 디바이스 픽셀 해상도로 넘어오므로 1:1 표시와 합쳐져 CSS 재확대가 없다.
+  const scale = Math.max(1, Math.round(Math.min(2, (size - 6) / bw, (size - 6) / bh)))
+  canvas.width = size; canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  ctx.imageSmoothingEnabled = false
+  ctx.clearRect(0, 0, size, size)
+  const offX = (size - bw * scale) / 2 - minX * scale
+  const offY = (size - bh * scale) / 2 - minY * scale
+  for (const p of placed) ctx.drawImage(p.src, Math.round(p.x * scale + offX), Math.round(p.y * scale + offY), Math.round(p.w * scale), Math.round(p.h * scale))
+}
+
 // Build per-layer dyed source overrides (png path -> canvas) for equipped items.
 export async function buildOverrides(
   metas: ItemMeta[],
@@ -209,9 +262,10 @@ export async function buildOverrides(
       if (sameAsEquipped) continue
       for (const l of layers) {
         try {
-          const baseImg = await loadImage(swapId(l.png, meta.id, baseId))
+          // 단색은 비-CORS(캐시 재사용), 블렌드는 CORS(픽셀리드 필요).
+          const baseImg = await loadImage(swapId(l.png, meta.id, baseId), useMix)
           if (useMix) {
-            const mixImg = await loadImage(swapId(l.png, meta.id, mixId!))
+            const mixImg = await loadImage(swapId(l.png, meta.id, mixId!), true)
             out.set(l.png, blendPalette(baseImg, mixImg, p.ratio, `${l.png}:${baseId}:${mixId}`))
           } else {
             out.set(l.png, toCanvas(baseImg, baseImg.width, baseImg.height))
@@ -222,7 +276,7 @@ export async function buildOverrides(
       const h = dye.hsb[meta.slot]
       if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
       for (const l of layers) {
-        try { const img = await loadImage(l.png); out.set(l.png, applyHsb(img, h, l.png)) } catch (_) {}
+        try { const img = await loadImage(l.png, true); out.set(l.png, applyHsb(img, h, l.png)) } catch (_) {}
       }
     }
   }

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CATS, ITEMS_PER_PAGE } from '@/lib/catalog'
 import { assemble, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ListItem } from '@/lib/core/data'
-import { CAT_TO_SLOT, THUMB_VIEW } from '@/lib/shopData'
+import { CAT_TO_SLOT, isColorLineSkin, thumbView } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
@@ -22,8 +22,11 @@ export default function CodiScreen() {
   const loading = s.catLoading
   const isSkinCat = s.activeCat === 'skin'
   const isHairCat = s.activeCat === 'hair'
-  // 헤어는 썸네일(스프라이트) 보기 불가 → 모델로 대체.
-  const mode: ListMode = isHairCat && s.listMode === 'sprite' ? 'model' : s.listMode
+  // 헤어/피부는 썸네일(스프라이트)=모델이라 스프라이트 보기 무의미 → 썸네일 잠그고 모델로 대체.
+  const noSprite = isHairCat || isSkinCat
+  const mode: ListMode = noSprite && s.listMode === 'sprite' ? 'model' : s.listMode
+  const gaze = s.pv.gaze // 시선(왼/오/뒷)을 썸네일에도 반영
+  const tv = thumbView(gaze)
 
   // 모델/내모델 공통 배경(base 또는 내 착용) 조립 입력 + 키
   const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string }>({ items: [], key: '' })
@@ -39,9 +42,11 @@ export default function CodiScreen() {
       ? Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && !s.hidden[sl]) as [string, ListItem][]
       : []
     const eqSig = eqEntries.map(([sl, it]) => sl + it.id).sort().join(',')
-    const key = `${mode}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}`
+    const key = `${mode}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}`
     if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
-    ctxKeyRef.current = key
+    // ⚠️ ctxKeyRef 는 async 가 "실제로 setCtx 로 커밋된 뒤"에만 찍는다. StrictMode(dev)는 mount 시
+    // setup→cleanup→setup 을 돌리는데, 커밋 전에 ref 를 찍어두면 두 번째 setup 이 key===ref 로 early-return
+    // 하고 첫 setup 의 async 는 cleanup(alive=false)으로 버려져 → ctx 가 영영 비어버린다(탭 왕복 후 아이콘 사라짐).
     const ids = [...(isSkinCat ? [] : [bodyId, headId]), ...eqEntries.map(([, it]) => it.id)]
     Promise.all(ids.map((id) => loadMeta(id).then((m) => [id, m] as const).catch(() => null))).then((res) => {
       if (!alive) return
@@ -49,17 +54,18 @@ export default function CodiScreen() {
       const items: AssembleInput[] = []
       if (!isSkinCat) {
         const body = map.get(bodyId), head = map.get(headId)
-        if (body) items.push({ itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, THUMB_VIEW) })
-        if (head) items.push({ itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, THUMB_VIEW) })
+        if (body) items.push({ itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, tv.view) })
+        if (head) items.push({ itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, tv.view) })
       }
       for (const [sl, it] of eqEntries) {
         const m = map.get(it.id); if (!m) continue
-        items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, THUMB_VIEW), invisibleFace: m.invisibleFace })
+        items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, tv.view), invisibleFace: m.invisibleFace })
       }
+      ctxKeyRef.current = key // 커밋 성공 시에만 기록(위 주석 참고)
       setCtx({ items, key })
     })
     return () => { alive = false }
-  }, [mode, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat])
+  }, [mode, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat])
 
   const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * ITEMS_PER_PAGE, p * ITEMS_PER_PAGE + ITEMS_PER_PAGE))
   const trackStyle = `display:flex; height:100%; width:100%; will-change:transform; transform:translateX(calc(${-s.curIdx * 100}% + ${s.offset}px)); transition:${s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none'};`
@@ -80,17 +86,18 @@ export default function CodiScreen() {
 
   const cell = (item: ListItem) => {
     const sel = s.isEquippedInCat(s.activeCat, item.id)
-    const dyeable = !isSkinCat && item.dyeMode !== 'none'
+    // 피부는 원칙적으로 염색 불가지만, "컬러라인" 커스텀 피부는 라인만 HSB 로 염색 가능.
+    const dyeable = isSkinCat ? isColorLineSkin(item.name) : item.dyeMode !== 'none'
     const badgeKind: 'master' | 'special' | 'cash' | null =
       item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
     return (
       <div key={item.id} onClick={() => s.equipFromCat(s.activeCat, item)} className="pb-cardwrap">
         <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; ${sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
           {dyeable && (
-            <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat]) }} className="pb-dye" title="이 부위 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
+            <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat], item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox + ' position:relative;')}>
-            <ItemThumb item={item} mode={mode} ctxItems={ctx.items} ctxKey={ctx.key} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
+            <ItemThumb item={item} mode={mode} gaze={gaze} ctxItems={ctx.items} ctxKey={ctx.key} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} title={badgeKind} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
@@ -137,13 +144,13 @@ export default function CodiScreen() {
               </div>
             </div>
           </div>
-          {/* N종 표기 자리에 표시 모드 토글(썸네일/모델/내 모델). 헤어는 썸네일 비활성. */}
+          {/* N종 표기 자리에 표시 모드 토글(썸네일/모델/내 모델). 헤어/피부는 썸네일 비활성. */}
           <div title="아이템 표시 방식" style={css('flex:0 0 auto; display:flex; align-items:center; gap:3px; padding:3px; background:#f4ecf3; border-radius:9px;')}>
             {MODES.map((m) => {
-              const disabled = isHairCat && m.v === 'sprite'
+              const disabled = noSprite && m.v === 'sprite'
               const on = !disabled && mode === m.v
               return (
-                <button key={m.v} disabled={disabled} title={disabled ? '헤어는 썸네일 보기를 지원하지 않아요' : undefined} onClick={() => { if (!disabled) s.setListMode(m.v) }}
+                <button key={m.v} disabled={disabled} title={disabled ? (isSkinCat ? '피부는 썸네일 보기를 지원하지 않아요' : '헤어는 썸네일 보기를 지원하지 않아요') : undefined} onClick={() => { if (!disabled) s.setListMode(m.v) }}
                   style={css(`height:28px; padding:0 11px; border:none; border-radius:7px; cursor:${disabled ? 'not-allowed' : 'pointer'}; opacity:${disabled ? 0.4 : 1}; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{m.l}</button>
               )
             })}
@@ -183,7 +190,8 @@ export default function CodiScreen() {
           <div style={css(trackStyle)}>
             {/* 셀은 현재 페이지 ±1 만 마운트(보이는 부분만 CDN 로드 → 속도/안정성). */}
             {pages.map((items, pi) => (
-              <div key={pi} style={css('flex:0 0 100%; width:100%; height:100%; padding:18px 22px;')}>
+              // contain:paint → 각 페이지의 그리기를 자기 박스로 클립(전환 시 canvas/카드 레이어의 stale-tile 잔상이 옆 페이지로 새지 않음).
+              <div key={pi} style={css('flex:0 0 100%; width:100%; height:100%; padding:18px 22px; contain:paint;')}>
                 {Math.abs(pi - s.curIdx) <= 1 && (
                   <div style={css('display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(3,1fr); gap:16px; height:100%;')}>
                     {items.map((item) => cell(item))}

@@ -24,7 +24,9 @@ a:hover { color: #d76d9a; }
 .pb-scroll-thin::-webkit-scrollbar { width: 8px; }
 .pb-scroll-thin::-webkit-scrollbar-thumb { border-width: 2px; }
 
-.pb-card { border: 1px solid #eee6dc; position: relative; transition: transform .16s ease, border-color .12s ease, background .12s ease; will-change: transform; backface-visibility: hidden; }
+/* will-change/backface 영구 승격은 카드 수만큼 GPU 레이어를 만들어 페이지 전환 시 stale-tile 잔상을 유발 →
+   제거(트랜지션 중에는 브라우저가 자동 승격하므로 리프트 애니메이션은 그대로 부드럽다). */
+.pb-card { border: 1px solid #eee6dc; position: relative; transition: transform .16s ease, border-color .12s ease, background .12s ease; }
 .pb-cardwrap { display: grid; min-width: 0; min-height: 0; cursor: pointer; }
 .pb-cardwrap:hover > .pb-card { transform: translateY(-4px); border-color: #ec86ac; }
 .pb-dye { opacity: 0; pointer-events: none; transition: opacity .14s ease; }
@@ -54,6 +56,8 @@ button { will-change: transform; }
 
 @keyframes pbCollapseIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 .pb-collapse { animation: pbCollapseIn .2s ease both; }
+@keyframes pbCollapseOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
+.pb-collapse-out { animation: pbCollapseOut .18s ease both; }
 .pb-acc { overflow: hidden; max-height: 0; transition: max-height .32s cubic-bezier(.22,.61,.36,1); }
 .pb-acc-open { max-height: 340px; }
 

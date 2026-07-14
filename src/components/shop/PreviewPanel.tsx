@@ -30,7 +30,7 @@ export default function PreviewPanel() {
       <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #f0e9e1;')}>
         <span style={css('font-size:15px; font-weight:700;')}>코디 미리보기</span>
       </div>
-      <div style={css('flex:1 1 40%; min-height:96px; display:flex; align-items:center; justify-content:center; padding:16px; overflow:hidden; position:relative; background:radial-gradient(circle at 50% 42%, #fdf3f7 0%, #f9f5f0 60%);')}>
+      <div style={css('flex:1 1 40%; min-height:96px; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; background:radial-gradient(circle at 50% 42%, #fdf3f7 0%, #f9f5f0 60%);')}>
         <PreviewModel />
       </div>
 
@@ -50,17 +50,17 @@ export default function PreviewPanel() {
               <div style={css('display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;')}>
                 {[1, 2, 3].map((z) => {
                   const sel = pv.zoom === z, hov = s.hoverPill === 'zoom:' + z && !sel
-                  return <button key={z} onClick={() => s.setPv('zoom', z)} onMouseEnter={() => s.setHoverPill('zoom:' + z)} onMouseLeave={() => s.setHoverPill(null)} style={css(pillStyle(sel, hov))}>{z}배</button>
+                  return <button key={z} onClick={() => s.setPv('zoom', z)} onMouseEnter={() => s.setHoverPill('zoom:' + z)} onMouseLeave={() => s.setHoverPill(null)} style={css(pillStyle(sel, hov))}>{z}x</button>
                 })}
               </div>
             </div>
             <div style={css(ROW_BETWEEN)}>
-              <span style={css(PV_LABEL)}>액션</span>
-              <Dropdown value={pv.action} onChange={(v) => s.setPv('action', v)} groups={PV_ACTION_GROUPS} />
-            </div>
-            <div style={css(ROW_BETWEEN)}>
               <span style={css(PV_LABEL)}>무기 모션</span>
               <Dropdown value={pv.weapon} onChange={(v) => s.setPv('weapon', v)} options={PV_WEAPONS} />
+            </div>
+            <div style={css(ROW_BETWEEN)}>
+              <span style={css(PV_LABEL)}>액션</span>
+              <Dropdown value={pv.action} onChange={(v) => s.setPv('action', v)} groups={PV_ACTION_GROUPS} />
             </div>
             <div style={css(ROW_BETWEEN)}>
               <span style={css(PV_LABEL)}>표정</span>
