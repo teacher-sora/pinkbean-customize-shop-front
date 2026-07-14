@@ -48,6 +48,9 @@ function pickWeaponStance(stances: string[], wm?: string): string {
 const TINTABLE_SLOTS = new Set(['hair', 'longcoat'])
 // Climbing actions face away from the camera — show the back of the head, hide the face.
 const BACK_ACTIONS = new Set(['ladder', 'rope'])
+// Prone body actions: head-attached items (일부 헤어) carry a dedicated 'prone' frame with
+// 엎드림 전용 스프라이트. Use it for these so the hair lies down instead of staying upright.
+const PRONE_ACTIONS = new Set(['prone', 'proneStab'])
 // The base body's shoot6(총 사격) is an action-ref to shootF; cosmetics usually only carry
 // shootF. So when an item lacks the exact action, try this alternate BEFORE falling to stand
 // (otherwise the clothing stands while the body shoots → 스프라이트가 어긋남).
@@ -85,13 +88,18 @@ export function getFrameSeq(meta: ItemMeta, opts: ViewOpts): Frame[] {
   } else if (f['base']) {
     // head-attached non-face (hair/cap/accessories). 등반 시엔 뒷프레임만 — 없으면 숨김.
     if (back) return f['back'] ? normFrames(f['back']) : []
-    key = 'base'
+    // 엎드리기: prone 전용 프레임이 있으면 그걸 사용(엎드림 헤어). 없으면 서기(base)로 폴백.
+    key = (PRONE_ACTIONS.has(opts.action) && f['prone']) ? 'prone' : 'base'
   } else { // body-attached: exact action → fallback(shoot6→shootF) → stand
     const fb = ACTION_FALLBACK[opts.action]
     key = f[opts.action] ? opts.action : (fb && f[fb]) ? fb : f['stand1'] ? 'stand1' : keys[0]
   }
 
   let seq = key != null ? normFrames(f[key]) : []
+  // 안전망(파서 버그 보정): 재추출로 고친 헤어는 base 에 prone 레이어가 없어 no-op. 아직 안 고친
+  // 오염 메타(원본 WZ가 엎드림 스프라이트를 서기 노드에 형제로 담아 'base'에 섞여 들어간 경우)는
+  // 여기서 prone 레이어를 걸러 서기+엎드림 겹침을 방지한다. (prone 프레임 선택 시에는 걸러지지 않음.)
+  if (key === 'base') seq = seq.map((fr) => ({ delay: fr.delay, layers: fr.layers.filter((l) => !/prone/i.test(l.name)) }))
   if (meta.slot === 'head') seq = seq.map((fr) => ({ delay: fr.delay, layers: fr.layers.filter((l) => l.name === 'head' || l.name === opts.ear) }))
   return seq
 }

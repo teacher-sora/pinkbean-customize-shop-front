@@ -12,6 +12,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { ITEMS_PER_PAGE, type Mix, type Hsv, type Preset, type Pv } from '@/lib/catalog'
 import { defHsv, defMix } from '@/lib/color'
 import { loadAnima, loadEffectIndex, loadIndex, loadSlot, type Index, type ListItem } from '@/lib/core/data'
+import type { HsbParams, PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, EQUIP_SLOTS, foldList } from '@/lib/shopData'
 
@@ -54,13 +55,15 @@ export interface ShopCtx {
   hidden: Record<string, boolean>; setHidden: Dispatch<Record<string, boolean>>
   // 염색(slot 키)
   dyeTarget: string | null; setDyeTarget: Dispatch<string | null>
+  dyePalette: Record<string, PaletteParams>; setDyePalette: Dispatch<Record<string, PaletteParams>> // hair/face 발색(색인덱스)
+  dyeHsb: Record<string, HsbParams>; setDyeHsb: Dispatch<Record<string, HsbParams>> // 그 외 캐시 아이템(Prism HSB)
   dyeMix: Record<string, Mix>; setDyeMix: Dispatch<Record<string, Mix>>
   dyeHsv: Record<string, Hsv>; setDyeHsv: Dispatch<Record<string, Hsv>>
   dyeEdit: Record<string, string>; setDyeEdit: Dispatch<Record<string, string>>
   isMixSlot: (slot: string) => boolean
   // 염색 다이얼로그(slot 대상)
-  dialogSlot: string | null; dialogClosing: boolean
-  openDye: (slot: string) => void; closeDye: () => void
+  dialogSlot: string | null; dialogItem: ListItem | null; dialogClosing: boolean
+  openDye: (slot: string, item?: ListItem | null) => void; closeDye: () => void
   // preview
   pv: Pv; setPv: (key: keyof Pv, val: Pv[keyof Pv]) => void
   pvOpen: boolean; setPvOpen: Dispatch<boolean>
@@ -110,10 +113,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [tone, setTone] = useState(0)
   const [hidden, setHidden] = useState<Record<string, boolean>>({})
   const [dyeTarget, setDyeTarget] = useState<string | null>(null)
+  const [dyePalette, setDyePalette] = useState<Record<string, PaletteParams>>({})
+  const [dyeHsb, setDyeHsb] = useState<Record<string, HsbParams>>({})
   const [dyeMix, setDyeMix] = useState<Record<string, Mix>>({})
   const [dyeHsv, setDyeHsv] = useState<Record<string, Hsv>>({})
   const [dyeEdit, setDyeEdit] = useState<Record<string, string>>({})
   const [dialogSlot, setDialogSlot] = useState<string | null>(null)
+  const [dialogItem, setDialogItem] = useState<ListItem | null>(null) // 염색 버튼을 누른 카드의 아이템
   const [dialogClosing, setDialogClosing] = useState(false)
   const [pageByCat, setPageByCat] = useState<Record<string, number>>({})
   const [offset, setOffset] = useState(0)
@@ -149,7 +155,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const toastT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dlgT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pageT = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastWheelStep = useRef(0)
+  const wheel = useRef({ acc: 0, dir: 0, t: 0 }) // 휠 delta 누적 / 제스처 방향 / 마지막 이벤트 시각
   const drag = useRef({ on: false, captured: false, startX: 0, lastX: 0, lastT: 0, vel: 0 })
 
   // ── 초기 로드: index 만(빠르게). 부위 리스트는 "보여질 때" 지연 로드 ──
@@ -226,15 +232,25 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const step = useCallback((dir: number) => setIdx(live.current.curIdx + dir), [setIdx])
 
   // ── 캐러셀 바인딩 ──
+  // 스크롤: 이벤트마다 방향 즉시 반영 + 크게 굴리면 여러 페이지. delta 를 누적해 THRESHOLD 마다 1스텝.
+  // ⚠️ live.current.curIdx 는 리렌더 때만 갱신 → 다중 스텝은 반드시 setIdx(curIdx+n) 단일 호출(step 루프 금지).
   const onWheel = useCallback((e: WheelEvent) => {
     e.preventDefault()
-    const raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+    let raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+    if (e.deltaMode === 1) raw *= 16                                   // line 단위(Firefox) → px 근사
+    else if (e.deltaMode === 2) raw *= (vpElRef.current?.clientWidth || 400) // page 단위
     if (Math.abs(raw) < 2) return
-    const now = performance.now()
-    if (now - lastWheelStep.current < 90) return
-    lastWheelStep.current = now
-    step(raw > 0 ? 1 : -1)
-  }, [step])
+    const THRESHOLD = 100, CAP = 12
+    const now = performance.now(), dir = Math.sign(raw), w = wheel.current
+    // 방향 전환/유휴(200ms) 시 리셋. 첫 이벤트가 곧바로 1스텝 넘도록 acc 를 시드(한 노치 ≈ 1페이지).
+    if (dir !== w.dir || now - w.t > 200) { w.acc = dir * (THRESHOLD - 1); w.dir = dir }
+    w.t = now
+    w.acc += raw
+    let n = Math.trunc(w.acc / THRESHOLD)
+    w.acc -= n * THRESHOLD
+    n = Math.max(-CAP, Math.min(CAP, n))
+    if (n) setIdx(live.current.curIdx + n)
+  }, [setIdx])
   const onDown = useCallback((e: PointerEvent) => {
     if (e.pointerType === 'mouse') return
     drag.current = { on: true, captured: false, startX: e.clientX, lastX: e.clientX, lastT: performance.now(), vel: 0 }
@@ -363,7 +379,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPresets((s) => s.map((p) => (p.id === editingPreset ? { ...p, name: nm || p.name } : p)))
     setEditingPreset(null); setEditName('')
   }
-  const openDye = (slot: string) => { setDialogSlot(slot); setDialogClosing(false) }
+  const openDye = (slot: string, item: ListItem | null = null) => { setDialogSlot(slot); setDialogItem(item); setDialogClosing(false) }
   const closeDye = () => {
     if (dialogClosing) return
     setDialogClosing(true)
@@ -389,8 +405,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     curIdx, pageCount, offset, snapping, setOffset, setSnapping, setIdx, step,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, isEquippedInCat, hidden, setHidden,
-    dyeTarget, setDyeTarget, dyeMix, setDyeMix, dyeHsv, setDyeHsv, dyeEdit, setDyeEdit, isMixSlot,
-    dialogSlot, dialogClosing, openDye, closeDye,
+    dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeMix, setDyeMix, dyeHsv, setDyeHsv, dyeEdit, setDyeEdit, isMixSlot,
+    dialogSlot, dialogItem, dialogClosing, openDye, closeDye,
     pv, setPv, pvOpen, setPvOpen,
     presets, presetData, selectedPreset, selectPreset, sharePreset,
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,

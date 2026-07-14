@@ -42,16 +42,26 @@ export const EQUIP_SLOTS = [
   'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape', 'weapon', 'shield',
 ] as const
 
-// 미리보기 월드 박스 — 모델+헤어+이펙트를 다 담도록 넉넉하게(그래야 박스 경계에서 안 잘림).
-// body navel을 박스 중앙(centerX)에 고정. 렌더는 스케일 1로 작게 그리고 CSS로 확대(upscale=선명).
-export const MAIN_BOX = { w: 200, h: 250 }
-export const MAIN_ANCHOR = { x: 100, y: 150 } // x는 centerX(body navel)로 재정렬됨. y=navel 세로 위치.
-
-// 배율 = CSS 확대 배수(작게 그린 캔버스를 픽셀 유지한 채 키움). 기본 2. 픽셀아트는 확대는 선명.
-export const ZOOM_CSS: Record<number, number> = { 1: 0.8, 2: 1.0, 3: 1.4 }
+// 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아
+// 스프라이트는 div overflow 로만 잘린다. 모델(마네킹) 높이 = fraction × divH 로 장비·카드크기 무관 일정.
+// 우측 미리보기 배율(연출 설정 1x/2x/3x)은 fraction 에 곱하는 "월드 배율"(예전 CSS transform 방식 대체).
+export const ZOOM_WORLD: Record<number, number> = { 1: 0.7, 2: 1.0, 3: 1.4 }
+export const PREVIEW_FRACTION = 0.25 // 우측 미리보기 기준 마네킹 높이 비율(× ZOOM_WORLD; 기본 2x=×1.0 → 실효 0.25)
+export const PREVIEW_MARGIN = 1.5    // 우측 미리보기 캔버스 여백 배수
+export const CARD_FRACTION = 0.45     // 리스트 카드 마네킹 높이 비율(넉넉한 전체샷; 정수 스냅으로 항상 선명)
+export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.
 export const THUMB_VIEW: ViewOpts = { action: 'stand1', expression: 'default', ear: 'humanEar', weaponMotion: 'basic' }
+
+// 썸네일에도 현재 시선(gaze)을 반영: 뒷쪽=rope(뒷모습), 오른쪽=좌우반전(flip). 그 외 포즈는 THUMB_VIEW 고정.
+export function thumbView(gaze: string): { view: ViewOpts; flip: boolean } {
+  return { view: { ...THUMB_VIEW, action: gaze === 'back' ? 'rope' : 'stand1' }, flip: gaze === 'right' }
+}
+
+// "컬러라인" 커스텀 피부(커스텀 뽀송/홍조 라벤더 컬러라인)만 염색 가능. 피부 부분은 무채색이고 라인만 채도색
+// 이라, 표준 HSB 를 통째로 적용해도 시각적으로 라인만 변한다(실제 메이플 방식과 동일 — 마스크 불필요). 이름 식별.
+export const isColorLineSkin = (name?: string): boolean => !!name && name.includes('컬러라인')
 
 // 초기 진입 시 기본 착용(빈 모델 방지). 슬롯 리스트를 미로드해도 되도록 최소 ListItem 으로 하드코딩.
 // 헤어/성형은 검정 대표(color 0) id. 실제 부위 리스트를 열면 folded 대표와 id가 일치해 선택 표시됨.
