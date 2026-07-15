@@ -2,20 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
-import { loadMeta, type ItemMeta } from '@/lib/core/data'
+import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
-import { loadImage, renderCharacter } from '@/lib/core/render'
+import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { CARD_FRACTION, CARD_MARGIN, THUMB_VIEW, isColorLineSkin } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop, type Snapshot } from './ShopContext'
 
 // 프리셋 카드 썸네일: 스냅샷(착용+톤+염색)을 실제 모델로 합성해 카드에 중앙 배치(코디/미리보기와 동일한
-// computeModelPlacement 규칙). 정지 프레임(stand1) + 염색 반영. 이펙트는 카드에선 생략(가볍게).
+// computeModelPlacement 규칙). 정지 프레임(stand1) + 염색 + 이펙트(망토 등) 반영 → 이펙트만 있는 망토도 구분된다.
 function PresetThumb({ snap }: { snap: Snapshot }) {
   const { index } = useShop()
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [ov, setOv] = useState<Map<string, HTMLCanvasElement>>(new Map())
+  const [effects, setEffects] = useState<EffectDraw[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -41,7 +42,7 @@ function PresetThumb({ snap }: { snap: Snapshot }) {
         { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, THUMB_VIEW) },
         ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: getFrameLayers(meta, THUMB_VIEW), invisibleFace: meta.invisibleFace })),
       ]
-      const { placed: p } = assemble(items, index.zmap, index.smap)
+      const { placed: p, anchors } = assemble(items, index.zmap, index.smap)
       // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인.
       const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snap.dyePalette, hsb: snap.dyeHsb }, THUMB_VIEW)
       const skinHsb = snap.dyeHsb['skin']
@@ -50,7 +51,19 @@ function PresetThumb({ snap }: { snap: Snapshot }) {
           try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinHsb, l.png)) } catch (_) {}
         }
       }
-      if (alive) { setPlaced(p); setOv(overrides) }
+      // 이펙트(망토 등 ItemEff): 착용 아이템의 이펙트를 정지 프레임0으로 합성 → 이펙트만 있는 망토도 카드에서 구분된다.
+      const curBody = p.find((pl) => pl.slot === 'body' && pl.name === 'body')
+      const bnav = curBody?.map?.navel
+      const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
+      const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
+      const effIdx = await loadEffectIndex().catch(() => new Set<string>())
+      const effDraws: EffectDraw[] = []
+      for (const { meta } of equipMetas) {
+        if (!effIdx.has(String(parseInt(meta.id, 10)))) continue
+        const em = await loadEffect(meta.id).catch(() => null)
+        if (em) effDraws.push(...effectDraws(em, THUMB_VIEW.action, { foot, brow }, 0))
+      }
+      if (alive) { setPlaced(p); setOv(overrides); setEffects(effDraws) }
     })().catch(() => {})
     return () => { alive = false }
   }, [key, index])
@@ -75,9 +88,9 @@ function PresetThumb({ snap }: { snap: Snapshot }) {
     const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: CARD_FRACTION, snap: true })
     canvas.style.width = p.canvasCssW + 'px'
     canvas.style.height = p.canvasCssH + 'px'
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, override: ov, shouldCancel: () => cancelled }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, override: ov, effects, shouldCancel: () => cancelled }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, ov, dims])
+  }, [placed, ov, effects, dims])
 
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
