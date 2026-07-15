@@ -17,16 +17,18 @@ import { effectDraws, loadImage, preload, renderCharacter } from '@/lib/core/ren
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
 import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_MARGIN, ZOOM_WORLD, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin } from '@/lib/shopData'
 import { useShop } from './ShopContext'
+import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
 
 export default function PreviewModel() {
-  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb } = useShop()
+  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dyeInteracting } = useShop()
   const [metas, setMetas] = useState<Map<string, ItemMeta>>(new Map())
   const [dyeOverrides, setDyeOverrides] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effectIndex, setEffectIndex] = useState<Set<string>>(new Set())
   const [effMetas, setEffMetas] = useState<Map<string, EffectMeta>>(new Map())
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
+  const [dyeSettling, setDyeSettling] = useState(false) // 이펙트/피부 전 프레임 염색 중(애니메이션 잠깐 정지 → 점멸 방지)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -142,44 +144,69 @@ export default function PreviewModel() {
 
   // 염색 발색 오버라이드: 착용한 헤어/성형(palette)을 선택 색상으로 리컬러한 레이어 캔버스 맵.
   // renderCharacter 가 png 키로 조회해 원본 대신 그린다. 색/뷰/착용/메타 변화 시에만 재계산(비동기).
-  useEffect(() => {
+  // 발색 슬라이더를 빠르게 드래그해도 렉 없이 바로바로 반영: single-flight(폭주 방지) + 최신값 수렴.
+  // 장착 직후 지연 제거: "정지/첫 프레임에 보이는 것"(아이템 레이어 + 이펙트 프레임0 + 피부 프레임0)을 먼저
+  // 칠해 즉시 반영하고(장착 시 애니메이션은 프레임0부터 재시작하므로 이게 곧 보이는 프레임), 나머지 전 프레임은
+  // 백그라운드로 이어 칠한다(망토 같은 큰 이펙트도 지연 없이 염색돼 보임).
+  useLiveRedraw(async () => {
     const dyeable: ItemMeta[] = []
     for (const it of Object.values(equipped)) { if (!it) continue; const m = metas.get(it.id); if (m) dyeable.push(m) }
-    let alive = true
-    ;(async () => {
-      const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, V)
-      // 이펙트도 아이템과 같은 HSB 로 리컬러(무기/망토 등). 이펙트의 모든 프레임 png 를 override 에 추가.
+    const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, V)
+    // 이펙트/피부 프레임 염색을 override(ov)에 추가. allFrames=false 면 프레임0만, true 면 전 프레임.
+    // ⚠️ 프레임 png 는 반드시 "병렬 로드"(Promise.all)로 받는다 — 순차 fetch(프레임마다 await)면 큰 이펙트(망토)
+    //    처럼 프레임이 많을 때 fetch 가 줄줄이 늘어져 매우 느리고 점멸한다. 병렬로 한 번에 받아 즉시 리컬러.
+    const dyeExtras = async (allFrames: boolean) => {
       for (const [slot, it] of Object.entries(equipped)) {
         if (!it) continue
         const h = dyeHsb[slot]
         if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
         const em = effMetas.get(it.id); if (!em) continue
+        const pngs: string[] = []
         for (const g of Object.values(em.groups)) {
-          for (const fr of g.frames) {
-            try { ov.set(fr.png, applyHsb(await loadImage(fr.png, true), h, fr.png)) } catch (_) {}
-          }
+          const frames = allFrames ? g.frames : g.frames.slice(0, 1)
+          for (const fr of frames) pngs.push(fr.png)
+        }
+        const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
+        let n = 0
+        for (const e of loaded) {
+          if (e) { try { ov.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} }
+          if (++n % 6 === 0) await new Promise((r) => setTimeout(r, 0)) // applyHsb 동기 루프를 끊어 UI 멈춤 방지
         }
       }
-      // 피부(컬러라인 커스텀) 라인 염색: body+head 의 모든 프레임 png 를 HSB 로 리컬러(피부는 무채색이라 라인만
-      // 변한다). 애니메이션 중 라인이 깜빡이지 않도록 현재 뷰의 전 프레임을 dye. 컬러라인 피부일 때만 적용.
+      // 피부(컬러라인 커스텀) 라인 염색: body+head 프레임 png 를 HSB 로 리컬러(피부는 무채색이라 라인만 변한다).
       const skinHsb = dyeHsb['skin']
       if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && isColorLineSkin(toneEntry?.name) && bodyMeta && headMeta) {
+        const pngs: string[] = []
+        const seen = new Set<string>()
         for (const meta of [bodyMeta, headMeta]) {
-          const nf = Math.max(1, frameDelays(meta, V).length)
-          const seen = new Set<string>()
+          const nf = allFrames ? Math.max(1, frameDelays(meta, V).length) : 1
           for (let fi = 0; fi < nf; fi++) {
-            for (const l of getFrameLayers(meta, V, fi)) {
-              if (seen.has(l.png)) continue
-              seen.add(l.png)
-              try { ov.set(l.png, applyHsb(await loadImage(l.png, true), skinHsb, l.png)) } catch (_) {}
-            }
+            for (const l of getFrameLayers(meta, V, fi)) { if (!seen.has(l.png)) { seen.add(l.png); pngs.push(l.png) } }
           }
         }
+        const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
+        let n = 0
+        for (const e of loaded) {
+          if (e) { try { ov.set(e[0], applyHsb(e[1], skinHsb, e[0])) } catch (_) {} }
+          if (++n % 6 === 0) await new Promise((r) => setTimeout(r, 0))
+        }
       }
-      if (alive) setDyeOverrides(ov)
-    })().catch(() => {})
-    return () => { alive = false }
-  }, [equipped, metas, effMetas, dyePalette, dyeHsb, V, bodyMeta, headMeta, toneEntry])
+    }
+    // 1) 보이는 프레임(0)만 먼저 → 즉시 반영(장착/드래그 모두 지연 없음).
+    await dyeExtras(false)
+    setDyeOverrides(new Map(ov))
+    // 2) 드래그 중이 아니면 나머지 전 프레임까지 이어서 → 애니메이션에서도 색 유지. 이 동안(전 프레임 염색 중)
+    //    이펙트/피부가 있으면 애니메이션을 잠깐 정지해 덜 칠해진 프레임 점멸을 막는다(끝나면 재개).
+    if (!dyeInteracting) {
+      const willDyeFrames =
+        Object.entries(equipped).some(([slot, it]) => { const h = dyeHsb[slot]; return !!it && !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0) && effMetas.has(it.id) }) ||
+        (() => { const sh = dyeHsb['skin']; return !!sh && (sh.h !== 0 || sh.s !== 0 || sh.b !== 0) && isColorLineSkin(toneEntry?.name) })()
+      if (willDyeFrames) setDyeSettling(true)
+      await dyeExtras(true)
+      setDyeOverrides(new Map(ov))
+      if (willDyeFrames) setDyeSettling(false)
+    }
+  }, [equipped, metas, effMetas, dyePalette, dyeHsb, V, bodyMeta, headMeta, toneEntry, dyeInteracting])
 
   // 명령형 rAF: 프리로드 후 캔버스에 직접 그림(React state 갱신 없음 → 부드럽고 렉 없음).
   useEffect(() => {
@@ -203,18 +230,29 @@ export default function PreviewModel() {
       const f = frames[Math.min(fi, frames.length - 1)]
       const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow }, elapsed)) : []
       // 분수 scale = 디바이스 해상도(1:1 표시로 선명). 마네킹 중심을 캔버스 중앙에(anchor 보정) → flip 대칭.
-      // stabOffset 이 몸통 프레임간 흔들림을 잡으므로 centerX 재중심은 쓰지 않는다.
+      // renderCharacter 는 CORS(기본)로 로드 → 코디 카드/미리보기/염색이 한 캐시 공유(장착·염색 재fetch 없음).
       renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: viewInfo.flip, override: dyeOverrides, effects, shouldCancel: () => cancelled }).catch(() => {})
     }
-    preload([...pngs]).then(() => {
+    // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "첫 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
+    const f0 = frames[0]
+    const essential = new Set<string>()
+    f0?.placed.forEach((p) => essential.add(p.png))
+    if (hasEff && f0) effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow }, 0)).forEach((d) => essential.add(d.png))
+    preload([...essential]).then(() => {
       if (cancelled) return
-      if (!animated && !hasEff) { draw(0); return }
-      const start = performance.now()
-      const loop = (now: number) => { draw(now - start); raf = requestAnimationFrame(loop) }
-      raf = requestAnimationFrame(loop)
+      draw(0) // 첫 프레임 즉시 합성(장착 지연 제거)
+      // 발색 조절 중/전 프레임 염색 중/정지 뷰면 애니메이션 없이 여기서 끝(정지 프레임 유지).
+      if (dyeInteracting || dyeSettling || (!animated && !hasEff)) return
+      // 나머지 프레임은 백그라운드로 프리로드한 뒤 애니메이션 시작.
+      preload([...pngs]).then(() => {
+        if (cancelled) return
+        const start = performance.now()
+        const loop = (now: number) => { draw(now - start); raf = requestAnimationFrame(loop) }
+        raf = requestAnimationFrame(loop)
+      })
     })
     return () => { cancelled = true; cancelAnimationFrame(raf) }
-  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom])
+  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, dyeInteracting, dyeSettling])
 
   return (
     <div ref={wrapRef} className={styles.wrap}>

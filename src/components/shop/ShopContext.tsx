@@ -9,8 +9,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { ITEMS_PER_PAGE, type Mix, type Hsv, type Preset, type Pv } from '@/lib/catalog'
-import { defHsv, defMix } from '@/lib/color'
+import { ITEMS_PER_PAGE, type Preset, type Pv } from '@/lib/catalog'
 import { loadAnima, loadEffectIndex, loadIndex, loadSlot, type Index, type ListItem } from '@/lib/core/data'
 import type { HsbParams, PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
@@ -21,7 +20,7 @@ export type ListMode = 'sprite' | 'model' | 'mymodel' // 아이템 리스트 표
 // 염색 대상은 실제 slot. hair/face(성형)만 믹스 염색, 그 외 HSV.
 const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김.
-export type Snapshot = { equipped: Record<string, string>; tone: number; dyeMix: Record<string, Mix>; dyeHsv: Record<string, Hsv>; hidden: Record<string, boolean> }
+export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean> }
 
 export interface ShopCtx {
   // 데이터
@@ -57,9 +56,8 @@ export interface ShopCtx {
   dyeTarget: string | null; setDyeTarget: Dispatch<string | null>
   dyePalette: Record<string, PaletteParams>; setDyePalette: Dispatch<Record<string, PaletteParams>> // hair/face 발색(색인덱스)
   dyeHsb: Record<string, HsbParams>; setDyeHsb: Dispatch<Record<string, HsbParams>> // 그 외 캐시 아이템(Prism HSB)
-  dyeMix: Record<string, Mix>; setDyeMix: Dispatch<Record<string, Mix>>
-  dyeHsv: Record<string, Hsv>; setDyeHsv: Dispatch<Record<string, Hsv>>
   dyeEdit: Record<string, string>; setDyeEdit: Dispatch<Record<string, string>>
+  dyeInteracting: boolean; setDyeInteracting: Dispatch<boolean> // 발색 슬라이더 드래그 중(미리보기 애니메이션 일시정지용)
   isMixSlot: (slot: string) => boolean
   // 염색 다이얼로그(slot 대상)
   dialogSlot: string | null; dialogItem: ListItem | null; dialogClosing: boolean
@@ -115,9 +113,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [dyeTarget, setDyeTarget] = useState<string | null>(null)
   const [dyePalette, setDyePalette] = useState<Record<string, PaletteParams>>({})
   const [dyeHsb, setDyeHsb] = useState<Record<string, HsbParams>>({})
-  const [dyeMix, setDyeMix] = useState<Record<string, Mix>>({})
-  const [dyeHsv, setDyeHsv] = useState<Record<string, Hsv>>({})
   const [dyeEdit, setDyeEdit] = useState<Record<string, string>>({})
+  const [dyeInteracting, setDyeInteracting] = useState(false)
   const [dialogSlot, setDialogSlot] = useState<string | null>(null)
   const [dialogItem, setDialogItem] = useState<ListItem | null>(null) // 염색 버튼을 누른 카드의 아이템
   const [dialogClosing, setDialogClosing] = useState(false)
@@ -333,7 +330,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const snapshot = (): Snapshot => {
     const eq: Record<string, string> = {}
     for (const [s, it] of Object.entries(equipped)) if (it) eq[s] = it.id
-    return { equipped: eq, tone, dyeMix: { ...dyeMix }, dyeHsv: { ...dyeHsv }, hidden: { ...hidden } }
+    return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden } }
   }
   const applySnap = (snap: Snapshot | undefined) => {
     const eq: Record<string, ListItem | null> = {}
@@ -343,7 +340,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
     setEquipped(eq)
     setTone(snap?.tone ?? index?.base.default ?? 0)
-    setDyeMix({ ...(snap?.dyeMix || {}) }); setDyeHsv({ ...(snap?.dyeHsv || {}) }); setHidden({ ...(snap?.hidden || {}) })
+    setDyePalette({ ...(snap?.dyePalette || {}) }); setDyeHsb({ ...(snap?.dyeHsb || {}) }); setHidden({ ...(snap?.hidden || {}) })
     setDyeTarget(null)
   }
   const selectPreset = (id: string) => {
@@ -358,7 +355,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     ;['hair', 'face', 'longcoat', 'shoes', 'cape', 'weapon'].forEach((slot, i) => {
       const l = lists[slot]; if (l && l.length) eq[slot] = l[(h >> (i * 3)) % l.length].id
     })
-    return { equipped: eq, tone: index?.base.default ?? 0, dyeMix: {}, dyeHsv: {}, hidden: {} }
+    return { equipped: eq, tone: index?.base.default ?? 0, dyePalette: {}, dyeHsb: {}, hidden: {} }
   }
   const importFetch = () => {
     const val = nickInput.trim()
@@ -396,8 +393,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const commitPage = () => { if (pageT.current) clearTimeout(pageT.current); const n = parseInt(pageInput, 10); if (!isNaN(n)) setIdx(n - 1); setPageEditing(false); setPageInput('') }
   const onPageKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } else if (e.key === 'Escape') e.currentTarget.blur() }
 
-  void defMix; void defHsv
-
   const value: ShopCtx = {
     index, dataLoading, catLoading, listForCat, activeList, search, setSearch,
     primary, setPrimary,
@@ -405,7 +400,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     curIdx, pageCount, offset, snapping, setOffset, setSnapping, setIdx, step,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, isEquippedInCat, hidden, setHidden,
-    dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeMix, setDyeMix, dyeHsv, setDyeHsv, dyeEdit, setDyeEdit, isMixSlot,
+    dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeEdit, setDyeEdit, dyeInteracting, setDyeInteracting, isMixSlot,
     dialogSlot, dialogItem, dialogClosing, openDye, closeDye,
     pv, setPv, pvOpen, setPvOpen,
     presets, presetData, selectedPreset, selectPreset, sharePreset,

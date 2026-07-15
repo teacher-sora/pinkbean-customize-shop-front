@@ -203,6 +203,7 @@ export async function renderDyedSprite(
   view: ViewOpts,
   zmap: string[],
   size = 60,
+  frac?: number, // 채움 비율(지정 시 분수-맞춤: 원본이 커도 넘치지 않게 축소). 미지정=기존(발색표) 동작.
 ): Promise<void> {
   if (meta.colorGroup == null) return
   const layers = getFrameLayers(meta, view)
@@ -233,10 +234,19 @@ export async function renderDyedSprite(
   const bw = maxX - minX, bh = maxY - minY
   // fit-contain(작은 성형은 최대 2배까지 확대) 후 정수로 스냅 → nearest 확대가 완벽히 선명(하드 도트).
   // size 는 셀의 디바이스 픽셀 해상도로 넘어오므로 1:1 표시와 합쳐져 CSS 재확대가 없다.
-  const scale = Math.max(1, Math.round(Math.min(2, (size - 6) / bw, (size - 6) / bh)))
+  //  - frac 미지정(발색표): 기존 로직. round 특성상 작은 캔버스에선 오버플로 가능(발색표 셀은 커서 무해).
+  //  - frac 지정(코디정보): avail=size*frac 에 맞추되, 원본이 크면 분수 배율로 축소(넘침 없음, 안정적).
+  let scale: number
+  if (frac == null) {
+    scale = Math.max(1, Math.round(Math.min(2, (size - 6) / bw, (size - 6) / bh)))
+  } else {
+    const avail = size * frac
+    const fit = Math.min(2, avail / bw, avail / bh)
+    scale = fit >= 1 ? Math.floor(fit) : fit // ≥1: 정수(선명), <1: 분수(맞춤)
+  }
   canvas.width = size; canvas.height = size
   const ctx = canvas.getContext('2d')!
-  ctx.imageSmoothingEnabled = false
+  ctx.imageSmoothingEnabled = scale < 1 // 축소(분수)만 부드럽게, 정수 확대는 nearest(선명)
   ctx.clearRect(0, 0, size, size)
   const offX = (size - bw * scale) / 2 - minX * scale
   const offY = (size - bh * scale) / 2 - minY * scale
@@ -275,9 +285,9 @@ export async function buildOverrides(
     } else if (meta.dyeMode === 'hsb') {
       const h = dye.hsb[meta.slot]
       if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
-      for (const l of layers) {
-        try { const img = await loadImage(l.png, true); out.set(l.png, applyHsb(img, h, l.png)) } catch (_) {}
-      }
+      // 레이어 png 를 병렬 로드(CORS) 후 리컬러 → 순차 fetch 지연 제거.
+      const loaded = await Promise.all(layers.map((l) => loadImage(l.png, true).then((img) => [l.png, img] as const).catch(() => null)))
+      for (const e of loaded) { if (e) { try { out.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} } }
     }
   }
   return out

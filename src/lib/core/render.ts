@@ -33,8 +33,8 @@ export function loadImage(pngRel: string, cors = false): Promise<HTMLImageElemen
   return p
 }
 
-export async function preload(pngRels: string[]): Promise<void> {
-  await Promise.all(pngRels.map((r) => loadImage(r).catch(() => null)))
+export async function preload(pngRels: string[], cors = true): Promise<void> {
+  await Promise.all(pngRels.map((r) => loadImage(r, cors).catch(() => null)))
 }
 
 export interface Tints {
@@ -91,6 +91,9 @@ export interface RenderOpts {
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
   centerX?: boolean                  // pin the body NAVEL to a fixed box point (center X, anchor.y) in BOTH axes →
                                      //   body never moves regardless of sprite/equipment/effect size (body-based, not bbox)
+  cors?: boolean                     // load sprites with CORS(?cors=1). DEFAULT true so ALL canvas renders(코디 카드·
+                                     //   미리보기·다이얼로그)와 염색(픽셀리드)이 한 캐시를 공유 → 장착 시 재fetch 없음,
+                                     //   염색도 재fetch 없음. (Cloudflare 는 ?cors=1 에 CORS 헤더를 주므로 모두 성공.)
 }
 
 // Draw the placed character with the navel pinned to a fixed canvas coordinate.
@@ -99,14 +102,15 @@ export async function renderCharacter(
   placed: PlacedLayer[],
   opts: RenderOpts,
 ): Promise<void> {
+  const cors = opts.cors ?? true // 기본 CORS → 코디 카드/미리보기/염색이 한 캐시 공유(장착·염색 재fetch 없음)
   const imgs = new Map<string, HTMLImageElement>()
-  await Promise.all(placed.map(async (p) => imgs.set(p.png, await loadImage(p.png))))
+  await Promise.all(placed.map(async (p) => imgs.set(p.png, await loadImage(p.png, cors))))
   // Ultimate fallback only: item has neither a body sprite nor an extracted effect.
-  const back = opts.backImage ? await loadImage(opts.backImage).catch(() => null) : null
+  const back = opts.backImage ? await loadImage(opts.backImage, cors).catch(() => null) : null
   // Item effects (망토 등): real Effect/ItemEff sprites composited around the body.
   // A dyed item's effect must recolor too → prefer the dye override canvas for the frame png.
   const effs = opts.effects?.length
-    ? (await Promise.all(opts.effects.map(async (e) => ({ e, img: (opts.override?.get(e.png) ?? await loadImage(e.png).catch(() => null)) as CanvasImageSource | null })))).filter((x) => x.img)
+    ? (await Promise.all(opts.effects.map(async (e) => ({ e, img: (opts.override?.get(e.png) ?? await loadImage(e.png, cors).catch(() => null)) as CanvasImageSource | null })))).filter((x) => x.img)
     : []
 
   // Image loads above are async; if a newer render started while we awaited (fast item
