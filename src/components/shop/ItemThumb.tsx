@@ -70,8 +70,9 @@ function Sprite({ item }: { item: ListItem }) {
 interface ModelProps {
   item: ListItem; gaze: string; ctxItems: AssembleInput[]; ctxKey: string
   zmap: string[]; smap: Record<string, string>; skinHeadId?: string
+  override?: Map<string, HTMLCanvasElement> // 내 모델: 배경(내 착용) 염색 오버라이드
 }
-function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId }: ModelProps) {
+function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override }: ModelProps) {
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [effs, setEffs] = useState<EffectDraw[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
@@ -139,9 +140,9 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId }: Mo
     canvas.style.width = p.canvasCssW + 'px'
     canvas.style.height = p.canvasCssH + 'px'
     // 마네킹 중심을 셀 중앙에 고정(anchor 보정). flip=오른쪽 시선. 분수 scale=디바이스 해상도.
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, effects: effs, shouldCancel: () => cancelled }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, override, effects: effs, shouldCancel: () => cancelled }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, effs, flip, dims, gaze])
+  }, [placed, effs, flip, dims, gaze, override])
 
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
@@ -155,7 +156,8 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId }: Mo
 export default function ItemThumb(props: {
   item: ListItem; mode: ListMode; gaze: string; ctxItems: AssembleInput[]; ctxKey: string
   zmap: string[]; smap: Record<string, string>; skinHeadId?: string
+  override?: Map<string, HTMLCanvasElement>
 }) {
   if (props.mode === 'sprite') return <Sprite item={props.item} />
-  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} />
+  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} />
 }
