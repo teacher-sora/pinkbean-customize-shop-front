@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CATS, MIX_PALETTE } from '@/lib/catalog'
+import { CATS, paletteFor } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta } from '@/lib/core/data'
@@ -161,6 +161,7 @@ export default function InfoScreen() {
   const target = s.dyeTarget
   const targetCat = target ? CATS.find((c) => CAT_TO_SLOT[c.id] === target) : null
   const mixMode = target ? s.isMixSlot(target) : false
+  const PAL = paletteFor(target) // 성형=FACE_PALETTE 표기(에메랄드·자수정 등), 헤어=PAL. 발색 로직은 동일.
   const isSkinTarget = target === 'skin'
   const eqItem = target && !isSkinTarget ? s.equipped[target] : null
   const pal = (target && s.dyePalette[target]) || defPal()
@@ -313,7 +314,7 @@ export default function InfoScreen() {
                     <div>
                       <div style={css('font-size:11px; font-weight:600; color:#a89e93; margin-bottom:8px;')}>색상 A</div>
                       <div style={css('display:flex; flex-wrap:wrap; gap:8px;')}>
-                        {MIX_PALETTE.map((sw, i) => (
+                        {PAL.map((sw, i) => (
                           <button key={sw.hex} title={sw.name} onClick={() => setBase(i)} style={css(swStyle(sw.hex, pal.baseColor === i))} />
                         ))}
                       </div>
@@ -321,7 +322,7 @@ export default function InfoScreen() {
                     <div>
                       <div style={css('font-size:11px; font-weight:600; color:#a89e93; margin-bottom:8px;')}>색상 B</div>
                       <div style={css('display:flex; flex-wrap:wrap; gap:8px;')}>
-                        {MIX_PALETTE.map((sw, i) => (
+                        {PAL.map((sw, i) => (
                           <button key={sw.hex} title={sw.name} onClick={() => setMixC(i)} style={css(swStyle(sw.hex, (pal.mixColor ?? pal.baseColor) === i))} />
                         ))}
                       </div>
@@ -339,8 +340,8 @@ export default function InfoScreen() {
                       </div>
                       <input type="range" min={0} max={100} value={pal.ratio} onPointerDown={beginDrag} onChange={(e) => setRatio(parseInt(e.target.value, 10) || 0)} style={css('width:100%; accent-color:#ec86ac; cursor:pointer;')} />
                       <div style={css('display:flex; align-items:center; justify-content:space-between; margin-top:4px;')}>
-                        <div style={css('display:flex; align-items:center; gap:6px;')}><span style={css(`width:12px; height:12px; border-radius:50%; background:${MIX_PALETTE[pal.baseColor]?.hex};`)} /><span style={css('font-size:10px; color:#a89e93;')}>A {100 - pal.ratio}%</span></div>
-                        <div style={css('display:flex; align-items:center; gap:6px;')}><span style={css('font-size:10px; color:#a89e93;')}>B {pal.ratio}%</span><span style={css(`width:12px; height:12px; border-radius:50%; background:${MIX_PALETTE[pal.mixColor ?? pal.baseColor]?.hex};`)} /></div>
+                        <div style={css('display:flex; align-items:center; gap:6px;')}><span style={css(`width:12px; height:12px; border-radius:50%; background:${PAL[pal.baseColor]?.hex};`)} /><span style={css('font-size:10px; color:#a89e93;')}>A {100 - pal.ratio}%</span></div>
+                        <div style={css('display:flex; align-items:center; gap:6px;')}><span style={css('font-size:10px; color:#a89e93;')}>B {pal.ratio}%</span><span style={css(`width:12px; height:12px; border-radius:50%; background:${PAL[pal.mixColor ?? pal.baseColor]?.hex};`)} /></div>
                       </div>
                     </div>
                   </>

@@ -49,6 +49,22 @@ export const MIX_PALETTE = [
   { name: '갈색', hex: '#96704c' },
 ]
 
+// 성형(눈) 전용 표기 — 발색 로직/색변형 인덱스는 동일하고 "표시되는 색 이름/색상"만 인게임 눈 색 순서로.
+// 순서: 검정·파랑·빨강·초록·갈색·에메랄드·보라·자수정 (MIX_PALETTE 와 길이 동일 = 8).
+export const FACE_PALETTE = [
+  { name: '검정', hex: '#2f2b27' },
+  { name: '파랑', hex: '#4f86dd' },
+  { name: '빨강', hex: '#e0503f' },
+  { name: '초록', hex: '#5fb867' },
+  { name: '갈색', hex: '#96704c' },
+  { name: '에메랄드', hex: '#1fb39a' },
+  { name: '보라', hex: '#9463c9' },
+  { name: '자수정', hex: '#b985d8' },
+]
+
+// 슬롯별 발색 표기 팔레트: 성형=FACE_PALETTE, 그 외(헤어)=MIX_PALETTE.
+export const paletteFor = (slot?: string | null) => (slot === 'face' ? FACE_PALETTE : MIX_PALETTE)
+
 /* ── 연출 설정 옵션 (실제 데이터 기준) ─────────────────────────────────────────
  * 소스 구분:
  *  - 액션/무기모션/표정/귀 = Character.wz 고유 열거형(프로토타입 web/app/page.tsx). 정적 상수 재활용.

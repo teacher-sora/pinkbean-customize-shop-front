@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CATS, MIX_PALETTE } from '@/lib/catalog'
+import { CATS, MIX_PALETTE, paletteFor } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
@@ -36,8 +36,8 @@ const MIX_PAGES: { base: number; mix: number }[][] = (() => {
 })()
 
 // 발색 확인용 셀(헤어/성형): 아이템 자체 스프라이트를 (기본색 × 믹스색) 조합으로 리컬러해 정사각형에 그린다.
-function DyeCell({ meta, base, mixC, zmap, selected, onClick }: {
-  meta: ItemMeta; base: number; mixC: number; zmap: string[]; selected: boolean; onClick: () => void
+function DyeCell({ meta, base, mixC, zmap, selected, onClick, pal }: {
+  meta: ItemMeta; base: number; mixC: number; zmap: string[]; selected: boolean; onClick: () => void; pal: { name: string; hex: string }[]
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
@@ -47,13 +47,13 @@ function DyeCell({ meta, base, mixC, zmap, selected, onClick }: {
     renderDyedSprite(el, meta, base, mixC, base === mixC ? 0 : 50, THUMB_VIEW, zmap, size).catch(() => {})
   }, [meta, base, mixC, zmap])
   return (
-    <button onClick={onClick} title={base === mixC ? MIX_PALETTE[base].name : `${MIX_PALETTE[base].name} × ${MIX_PALETTE[mixC].name}`}
+    <button onClick={onClick} title={base === mixC ? pal[base].name : `${pal[base].name} × ${pal[mixC].name}`}
       style={css(`position:relative; width:100%; aspect-ratio:1/1; padding:0; border-radius:7px; cursor:pointer; background:#f7f2ec; border:2px solid ${selected ? '#ec86ac' : 'rgba(0,0,0,0.06)'}; overflow:hidden; transition:border-color .12s ease;`)}>
       <canvas ref={ref} style={{ width: '100%', height: '100%', imageRendering: 'pixelated' }} />
       {/* 축 라벨 대신, 이 칸이 어떤 두 색 조합인지 셀 중하단에 직접 표기(단색=한 점) */}
       <span style={css('position:absolute; left:50%; bottom:5px; transform:translateX(-50%); display:flex; align-items:center; gap:3px; padding:2px 4px; border-radius:999px; background:rgba(255,255,255,0.82); box-shadow:0 1px 2px rgba(0,0,0,0.18);')}>
-        <span style={css(`width:9px; height:9px; border-radius:50%; background:${MIX_PALETTE[base].hex}; border:1px solid rgba(0,0,0,0.14);`)} />
-        {base !== mixC && <span style={css(`width:9px; height:9px; border-radius:50%; background:${MIX_PALETTE[mixC].hex}; border:1px solid rgba(0,0,0,0.14);`)} />}
+        <span style={css(`width:9px; height:9px; border-radius:50%; background:${pal[base].hex}; border:1px solid rgba(0,0,0,0.14);`)} />
+        {base !== mixC && <span style={css(`width:9px; height:9px; border-radius:50%; background:${pal[mixC].hex}; border:1px solid rgba(0,0,0,0.14);`)} />}
       </span>
     </button>
   )
@@ -142,6 +142,7 @@ export default function DyeDialog() {
   const slot = s.dialogSlot
   const item = s.dialogItem // 염색 버튼을 누른 카드의 아이템(착용과 무관하게 이 아이템으로 표시)
   const mix = slot ? s.isMixSlot(slot) : false
+  const PAL = paletteFor(slot) // 성형=FACE_PALETTE(에메랄드·자수정 등), 헤어=MIX_PALETTE. 표기만 다름(로직 동일).
   const mobile = s.bp === 'mobile' // 모바일: 발색표를 가로 flicking 으로
   const [meta, setMeta] = useState<ItemMeta | null>(null) // 믹스 그리드용
   const [sel, setSel] = useState<{ base: number; mix: number }>({ base: 0, mix: 0 })
@@ -259,7 +260,7 @@ export default function DyeDialog() {
                         {MIX_PAGES.map((pg, pi) => (
                           <div key={pi} style={css('flex:0 0 100%; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:9px; align-content:start; padding:2px;')}>
                             {pg.map(({ base, mix }) => (
-                              <DyeCell key={`${base}-${mix}`} meta={meta} base={base} mixC={mix} zmap={zmap} selected={sel.base === base && sel.mix === mix} onClick={() => setSel({ base, mix })} />
+                              <DyeCell key={`${base}-${mix}`} meta={meta} base={base} mixC={mix} zmap={zmap} pal={PAL} selected={sel.base === base && sel.mix === mix} onClick={() => setSel({ base, mix })} />
                             ))}
                           </div>
                         ))}
@@ -278,7 +279,7 @@ export default function DyeDialog() {
                   <div style={css('display:grid; grid-template-columns:repeat(8, minmax(0,1fr)); gap:6px;')}>
                     {MIX_PALETTE.map((_, r) =>
                       MIX_PALETTE.map((__, c) => (
-                        <DyeCell key={`${r}-${c}`} meta={meta} base={r} mixC={c} zmap={zmap} selected={sel.base === r && sel.mix === c} onClick={() => setSel({ base: r, mix: c })} />
+                        <DyeCell key={`${r}-${c}`} meta={meta} base={r} mixC={c} zmap={zmap} pal={PAL} selected={sel.base === r && sel.mix === c} onClick={() => setSel({ base: r, mix: c })} />
                       ))
                     )}
                   </div>
