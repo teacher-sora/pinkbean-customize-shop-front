@@ -59,7 +59,7 @@ export const FACE_PALETTE = [
   { name: '갈색', hex: '#96704c' },
   { name: '에메랄드', hex: '#1fb39a' },
   { name: '보라', hex: '#9463c9' },
-  { name: '자수정', hex: '#b985d8' },
+  { name: '자수정', hex: '#d488ce' },
 ]
 
 // 슬롯별 발색 표기 팔레트: 성형=FACE_PALETTE, 그 외(헤어)=MIX_PALETTE.
