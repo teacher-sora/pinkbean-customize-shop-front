@@ -50,10 +50,13 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
   },
   formatDetection: { telephone: false, email: false, address: false },
-  // Google Search Console 소유확인 코드가 있으면 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION 로 주입(선택).
-  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
-    : undefined,
+  // 검색엔진 소유확인(선택) — Vercel 환경변수로 주입. Google Search Console / 네이버 서치어드바이저.
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION
+      ? { 'naver-site-verification': process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION }
+      : {},
+  },
 }
 
 export const viewport: Viewport = {
