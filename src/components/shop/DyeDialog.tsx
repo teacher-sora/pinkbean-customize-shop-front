@@ -11,6 +11,7 @@ import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/
 import { CAT_TO_SLOT, THUMB_VIEW } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop } from './ShopContext'
+import { useLiveRedraw } from './useLiveRedraw'
 
 const FAMILIES = ['전체 색상 계열', '빨간 색상 계열', '노란 색상 계열', '초록 색상 계열', '청록 색상 계열', '파란 색상 계열', '자주 색상 계열']
 
@@ -89,31 +90,27 @@ function DyeModelPreview({ item, hsb, zoom }: { item: ListItem; hsb: HsbParams; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.index, s.tone, item.id])
 
-  useEffect(() => {
+  // 슬라이더 드래그 중에도 렉 없이 바로바로 발색(single-flight + 최신값 수렴).
+  useLiveRedraw(async () => {
     const canvas = ref.current; if (!canvas || !placed) return
     const dyed = hsb.h !== 0 || hsb.s !== 0 || hsb.b !== 0
-    let cancelled = false
-    ;(async () => {
-      let ov: Map<string, HTMLCanvasElement>
-      if (item.slot === 'skin') {
-        // 피부: 그려진 모든 레이어(body/arm/head/ear…)를 HSB 로 리컬러 → 라인만 시각적으로 변한다.
-        ov = new Map()
-        if (dyed) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), hsb, p.png)) } catch (_) {} }
-      } else {
-        if (!itemMeta) return
-        ov = await buildOverrides([itemMeta], { palette: {}, hsb: { [itemMeta.slot]: hsb } }, THUMB_VIEW)
-        // 이펙트도 같은 HSB 로 염색해서 보여준다.
-        if (dyed) for (const ed of effs) { try { ov.set(ed.png, applyHsb(await loadImage(ed.png, true), hsb, ed.png)) } catch (_) {} }
-      }
-      if (cancelled) return
-      // 우측 미리보기/카드와 동일 공식: 마네킹 중앙 고정 + 정수 스냅(선명). 배율은 fraction 에 곱.
-      const dpr = window.devicePixelRatio || 1
-      const pl = computeModelPlacement({ divW: DIALOG_CANVAS.w, divH: DIALOG_CANVAS.h, dpr, margin: 1, fraction: DIALOG_FRACTION, zoomMult: DIALOG_ZOOM[zoom] ?? 1, snap: true })
-      canvas.style.width = pl.canvasCssW + 'px'
-      canvas.style.height = pl.canvasCssH + 'px'
-      renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov, effects: effs, shouldCancel: () => cancelled }).catch(() => {})
-    })()
-    return () => { cancelled = true }
+    let ov: Map<string, HTMLCanvasElement>
+    if (item.slot === 'skin') {
+      // 피부: 그려진 모든 레이어(body/arm/head/ear…)를 HSB 로 리컬러 → 라인만 시각적으로 변한다.
+      ov = new Map()
+      if (dyed) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), hsb, p.png)) } catch (_) {} }
+    } else {
+      if (!itemMeta) return
+      ov = await buildOverrides([itemMeta], { palette: {}, hsb: { [itemMeta.slot]: hsb } }, THUMB_VIEW)
+      // 이펙트도 같은 HSB 로 염색해서 보여준다.
+      if (dyed) for (const ed of effs) { try { ov.set(ed.png, applyHsb(await loadImage(ed.png, true), hsb, ed.png)) } catch (_) {} }
+    }
+    // 우측 미리보기/카드와 동일 공식: 마네킹 중앙 고정 + 정수 스냅(선명). 배율은 fraction 에 곱.
+    const dpr = window.devicePixelRatio || 1
+    const pl = computeModelPlacement({ divW: DIALOG_CANVAS.w, divH: DIALOG_CANVAS.h, dpr, margin: 1, fraction: DIALOG_FRACTION, zoomMult: DIALOG_ZOOM[zoom] ?? 1, snap: true })
+    canvas.style.width = pl.canvasCssW + 'px'
+    canvas.style.height = pl.canvasCssH + 'px'
+    await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov, effects: effs })
   }, [placed, itemMeta, hsb, effs, zoom, item.slot])
 
   if (!placed) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 12 }} />
@@ -130,7 +127,7 @@ export default function DyeDialog() {
   const [sel, setSel] = useState<{ base: number; mix: number }>({ base: 0, mix: 0 })
   const [hsb, setHsb] = useState<HsbParams>({ h: 0, s: 0, b: 0, t: 0 }) // 대기 HSB(적용 전)
   const [raw, setRaw] = useState<{ h: string; s: string; b: string }>({ h: '0', s: '0', b: '0' }) // 입력 문자열(빈값 허용)
-  const [dyeZoom, setDyeZoom] = useState(1) // 미리보기 배율(1x/2x/3x), 기본 1x
+  const [dyeZoom, setDyeZoom] = useState(2) // 미리보기 배율(1x/2x/3x), 기본 2x
   const maskDownRef = useRef(false) // 마스크에서 press down 했는지(슬라이더 드래그 후 마스크 release 로 닫히는 것 방지)
 
   // 헤어/성형: 그 카드 아이템 메타 로드 + 현재 발색으로 선택 초기화.
@@ -150,7 +147,7 @@ export default function DyeDialog() {
     const cur = s.dyeHsb[slot] ?? { h: 0, s: 0, b: 0, t: 0 }
     setHsb(cur)
     setRaw({ h: String(cur.h), s: String(cur.s), b: String(cur.b) })
-    setDyeZoom(1)
+    setDyeZoom(2)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot, item?.id, mix])
 

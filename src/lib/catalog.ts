@@ -5,15 +5,7 @@
 export type Cat = { id: string; label: string }
 export type Opt = { v: string; l: string }
 
-export type Mix = { a: string; b: string; ratio: number }
-export type Hsv = { h: number; s: number; v: number }
 export type Preset = { id: string; name: string }
-export type Snapshot = {
-  equipped: Record<string, boolean>
-  dyeMix: Record<string, Mix>
-  dyeHsv: Record<string, Hsv>
-  hidden: Record<string, boolean>
-}
 export type Pv = {
   action: string; weapon: string; expr: string; ear: string; form: string; gaze: string
   wEffect: boolean; cEffect: boolean; fps: number; zoom: number
