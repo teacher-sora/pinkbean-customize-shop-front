@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
 import { isStacked } from '@/lib/useBreakpoint'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
-import { badgeUrl, loadMeta, type ListItem } from '@/lib/core/data'
+import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { buildOverrides } from '@/lib/core/dye'
 import { CAT_TO_SLOT, isColorLineSkin, thumbView } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop, type ListMode } from './ShopContext'
@@ -30,11 +31,11 @@ export default function CodiScreen() {
   const tv = thumbView(gaze)
 
   // 모델/내모델 공통 배경(base 또는 내 착용) 조립 입력 + 키
-  const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string }>({ items: [], key: '' })
+  const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string; override: Map<string, HTMLCanvasElement> }>({ items: [], key: '', override: new Map() })
   const ctxKeyRef = useRef('')
   useEffect(() => {
     const idx = s.index
-    if (mode === 'sprite' || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ items: [], key: '' }) } return }
+    if (mode === 'sprite' || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ items: [], key: '', override: new Map() }) } return }
     let alive = true
     const toneEntry = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
     const bodyId = toneEntry.body, headId = toneEntry.head
@@ -43,13 +44,15 @@ export default function CodiScreen() {
       ? Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && !s.hidden[sl]) as [string, ListItem][]
       : []
     const eqSig = eqEntries.map(([sl, it]) => sl + it.id).sort().join(',')
-    const key = `${mode}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}`
+    // 내 모델: 우측 미리보기에 적용된 염색(발색/HSB)을 썸네일 배경(내 착용)에도 동일 반영 → 키에 염색 시그니처 포함.
+    const dyeSig = mode === 'mymodel' ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
+    const key = `${mode}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}`
     if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
     // ⚠️ ctxKeyRef 는 async 가 "실제로 setCtx 로 커밋된 뒤"에만 찍는다. StrictMode(dev)는 mount 시
     // setup→cleanup→setup 을 돌리는데, 커밋 전에 ref 를 찍어두면 두 번째 setup 이 key===ref 로 early-return
     // 하고 첫 setup 의 async 는 cleanup(alive=false)으로 버려져 → ctx 가 영영 비어버린다(탭 왕복 후 아이콘 사라짐).
     const ids = [...(isSkinCat ? [] : [bodyId, headId]), ...eqEntries.map(([, it]) => it.id)]
-    Promise.all(ids.map((id) => loadMeta(id).then((m) => [id, m] as const).catch(() => null))).then((res) => {
+    Promise.all(ids.map((id) => loadMeta(id).then((m) => [id, m] as const).catch(() => null))).then(async (res) => {
       if (!alive) return
       const map = new Map(res.filter(Boolean).map((r) => r!))
       const items: AssembleInput[] = []
@@ -62,11 +65,18 @@ export default function CodiScreen() {
         const m = map.get(it.id); if (!m) continue
         items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, tv.view), invisibleFace: m.invisibleFace, name: m.name })
       }
+      // 내 모델: 착용 아이템(활성 슬롯 제외)의 현재 염색을 override 로 구워 배경에 반영. 후보 아이템 자체는 기본색(미장착).
+      let override = new Map<string, HTMLCanvasElement>()
+      if (mode === 'mymodel') {
+        const dyeMetas = eqEntries.map(([, it]) => map.get(it.id)).filter(Boolean) as ItemMeta[]
+        override = await buildOverrides(dyeMetas, { palette: s.dyePalette, hsb: s.dyeHsb }, tv.view).catch(() => new Map())
+      }
+      if (!alive) return
       ctxKeyRef.current = key // 커밋 성공 시에만 기록(위 주석 참고)
-      setCtx({ items, key })
+      setCtx({ items, key, override })
     })
     return () => { alive = false }
-  }, [mode, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat])
+  }, [mode, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, s.dyePalette, s.dyeHsb])
 
   const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * s.itemsPerPage, p * s.itemsPerPage + s.itemsPerPage))
   const gridStyle = `display:grid; grid-template-columns:repeat(${s.cols},minmax(0,1fr)); grid-template-rows:repeat(${s.rows},1fr); gap:${s.bp === 'mobile' ? 10 : 16}px; height:100%;`
@@ -102,7 +112,7 @@ export default function CodiScreen() {
             <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat], item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox + ' position:relative;')}>
-            <ItemThumb item={item} mode={mode} gaze={gaze} ctxItems={ctx.items} ctxKey={ctx.key} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
+            <ItemThumb item={item} mode={mode} gaze={gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} title={badgeKind} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
