@@ -9,7 +9,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { ITEMS_PER_PAGE, type Preset, type Pv } from '@/lib/catalog'
+import { ITEMS_PER_PAGE, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadSlot, type Index, type ListItem } from '@/lib/core/data'
 import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
@@ -280,6 +280,39 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setOffset(0); setSnapping(snap)
   }, [])
   const step = useCallback((dir: number) => setIdx(live.current.curIdx + dir), [setIdx])
+
+  // 팔레트 염색(헤어/성형)이 걸린 리스트를 볼 때, 현재+다음 페이지 아이템의 발색 변이를 백그라운드 프리로드
+  // → 리스트에서 아무 아이템이나 클릭해도 발색이 이미 캐시돼 즉시 반영(HSB 아이템 수준의 체감 속도).
+  useEffect(() => {
+    if (activeCat === 'skin') return
+    const slot = CAT_TO_SLOT[activeCat]
+    const pal = dyePalette[slot]
+    if (!isMixSlot(slot) || !pal) return
+    const start = Math.max(0, curIdx) * ITEMS_PER_PAGE
+    const items = activeList.slice(start, start + ITEMS_PER_PAGE * 2) // 현재+다음 페이지
+    if (!items.length) return
+    let cancelled = false
+    ;(async () => {
+      for (const it of items) {
+        if (cancelled) return
+        try { const m = await loadMeta(it.id); if (!cancelled) preloadPaletteVariant(m, pal, THUMB_VIEW) } catch {}
+      }
+    })()
+    return () => { cancelled = true }
+  }, [activeCat, curIdx, dyePalette, activeList])
+
+  // 염색 다이얼로그를 열면(헤어/성형) 그 아이템의 팔레트 전 색상 변이를 미리 로드 → 색 선택·믹스가 즉시 반영.
+  useEffect(() => {
+    if (!dyeTarget || !isMixSlot(dyeTarget)) return
+    const it = equipped[dyeTarget]
+    if (!it) return
+    let cancelled = false
+    loadMeta(it.id).then((m) => {
+      if (cancelled || m.colorGroup == null) return
+      for (let c = 0; c < MIX_PALETTE.length; c++) preloadPaletteVariant(m, { baseColor: c, mixColor: null, ratio: 0 }, THUMB_VIEW)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [dyeTarget, equipped])
 
   // ── 캐러셀 바인딩 ──
   // 스크롤: 이벤트마다 방향 즉시 반영 + 크게 굴리면 여러 페이지. delta 를 누적해 THRESHOLD 마다 1스텝.
