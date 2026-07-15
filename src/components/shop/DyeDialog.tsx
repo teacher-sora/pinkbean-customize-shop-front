@@ -91,7 +91,7 @@ function DyeModelPreview({ item, hsb, zoom }: { item: ListItem; hsb: HsbParams; 
       const items: AssembleInput[] = [
         { itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, THUMB_VIEW) },
         { itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, THUMB_VIEW) },
-        { itemId: im.id, slot: im.slot, vslot: im.vslot ?? null, layers: getFrameLayers(im, THUMB_VIEW), invisibleFace: im.invisibleFace },
+        { itemId: im.id, slot: im.slot, vslot: im.vslot ?? null, layers: getFrameLayers(im, THUMB_VIEW), invisibleFace: im.invisibleFace, name: im.name },
       ]
       const { placed: p, anchors } = assemble(items, idx.zmap, idx.smap)
       setPlaced(p)

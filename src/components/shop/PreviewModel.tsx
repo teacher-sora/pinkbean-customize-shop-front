@@ -112,7 +112,7 @@ export default function PreviewModel() {
         const m = metas.get(it.id); if (!m) continue
         let layers = getFrameLayers(m, V, fi)
         if (slot === 'weapon' && !pv.wEffect) layers = layers.filter((l) => l.name !== 'effect')
-        items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace })
+        items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace, name: m.name })
       }
       items.push(...animaLayers)
       // navel-only 앵커링은 프레임마다 navel 의 스프라이트 내부 위치가 달라 몸통이 몇 px 흔들린다. 매 프레임

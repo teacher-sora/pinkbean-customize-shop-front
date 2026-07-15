@@ -83,7 +83,7 @@ export default function SearchScreen() {
           for (const [sl, it] of myEq) {
             if (sl === slot) continue
             const m = map.get(it.id); if (!m) continue
-            items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, tv.view), invisibleFace: m.invisibleFace })
+            items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, tv.view), invisibleFace: m.invisibleFace, name: m.name })
           }
           bySlot[slot] = { items, key: `${key}:${slot}` }
         }

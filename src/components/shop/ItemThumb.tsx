@@ -92,7 +92,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId }: Mo
         ]
       } else {
         const m = await loadMeta(item.id)
-        self = [{ itemId: m.id, slot: m.slot, vslot: m.vslot ?? null, layers: getFrameLayers(m, view), invisibleFace: m.invisibleFace }]
+        self = [{ itemId: m.id, slot: m.slot, vslot: m.vslot ?? null, layers: getFrameLayers(m, view), invisibleFace: m.invisibleFace, name: m.name }]
       }
       if (!alive) return
       const { placed: p, anchors } = assemble([...ctxItems, ...self], zmap, smap)

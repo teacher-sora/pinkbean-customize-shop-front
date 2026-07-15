@@ -60,7 +60,7 @@ export default function CodiScreen() {
       }
       for (const [sl, it] of eqEntries) {
         const m = map.get(it.id); if (!m) continue
-        items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, tv.view), invisibleFace: m.invisibleFace })
+        items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, tv.view), invisibleFace: m.invisibleFace, name: m.name })
       }
       ctxKeyRef.current = key // 커밋 성공 시에만 기록(위 주석 참고)
       setCtx({ items, key })

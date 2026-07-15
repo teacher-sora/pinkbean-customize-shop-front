@@ -24,7 +24,12 @@ export interface AssembleInput {
   vslot: string | null
   layers: Layer[]
   invisibleFace?: number   // an equipped invisibleFace accessory hides the 성형(face)
+  name?: string | null     // 투명(투명 시리즈) 판별용 — 투명 아이템은 아무것도 안 그리므로 가림에서 제외
 }
+
+// 투명 시리즈(투명 모자/얼굴장식/장갑…)는 스프라이트가 비어 아무것도 안 그리는데, vslot(가림)만 남으면
+// 밑의 헤어/얼굴이 사라지는 구멍이 생긴다 → 이런 아이템은 occlusion/face-hide 에서 제외한다.
+const isTransparent = (name?: string | null) => !!name && name.includes('투명')
 
 export interface ViewOpts {
   action: string            // effective action key (resolved: stand1/swingT1/shoot6/…)
@@ -126,10 +131,11 @@ export function assemble(
   zmap: Index['zmap'],
   smap: Index['smap'],
 ): { placed: PlacedLayer[]; anchors: Record<string, Vec> } {
-  const equipped: Equipped[] = items.map((i) => ({ id: i.itemId, slot: i.slot, vslot: i.vslot }))
+  // 투명 아이템은 vslot 을 null 로 취급 → 헤어/얼굴을 가리지 않는다(안 그리는데 가리면 구멍 생김).
+  const equipped: Equipped[] = items.map((i) => ({ id: i.itemId, slot: i.slot, vslot: isTransparent(i.name) ? null : i.vslot }))
   const isVisible = buildVisibility(equipped, smap)
-  // an equipped invisibleFace accessory (e.g. 신비주의) hides the 성형(face) slot.
-  const hideFace = items.some((i) => i.invisibleFace)
+  // an equipped invisibleFace accessory (e.g. 신비주의) hides the 성형(face) slot. 단, 투명 아이템은 제외.
+  const hideFace = items.some((i) => i.invisibleFace && !isTransparent(i.name))
 
   const anchors: Record<string, Vec> = { navel: { x: 0, y: 0 } }
   type Pending = Layer & { itemId: string; slot: string }
