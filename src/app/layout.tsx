@@ -4,7 +4,7 @@ import './globals.css'
 // 배포 도메인(Vercel 연결 예정). 다른 도메인/프리뷰면 NEXT_PUBLIC_SITE_URL 로 덮어씀.
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pinkbean-customize.com'
 const SITE_NAME = '핑크빈 커마샵'
-const TITLE = '핑크빈 커마샵 — 메이플스토리 코디 미리보기'
+const TITLE = '핑크빈 커마샵'
 const DESC =
   '메이플스토리 캐릭터의 외형(코디)을 웹에서 미리 꾸며보세요. 헤어·성형·모자·한벌옷·무기 등 부위별 아이템 착용, 염색(발색), 프리셋 저장·공유, AI 코디 검색까지 설치 없이 바로.'
 // og:image — 넓은 임베드 이미지(Vercel Blob CDN). 카톡/디스코드/트위터/구글 미리보기에 사용.
