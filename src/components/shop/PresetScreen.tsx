@@ -7,6 +7,7 @@ import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { CARD_FRACTION, CARD_MARGIN, THUMB_VIEW, isColorLineSkin } from '@/lib/shopData'
+import { isStacked } from '@/lib/useBreakpoint'
 import { css } from '@/lib/style'
 import { useShop, type Snapshot } from './ShopContext'
 
@@ -104,7 +105,7 @@ export default function PresetScreen() {
   const s = useShop()
 
   return (
-    <section style={css('flex:0 0 65%; min-width:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;')}>
+    <section style={css(`${isStacked(s.bp) ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
       <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;')}>
         <span style={css('font-size:15px; font-weight:700;')}>프리셋</span>
         <span style={css('font-size:12px; color:#a89e93;')}>변경 시 선택한 프리셋에 자동 저장 · 새로고침해도 유지</span>
@@ -130,7 +131,7 @@ export default function PresetScreen() {
             <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') s.importFetch() }} disabled={s.importing}
               placeholder={s.importMode === 'code' ? '코디 공유 코드 붙여넣기 (PB1…)' : '캐릭터 닉네임 입력'}
               style={css(`flex:1 1 0; min-width:0; height:38px; padding:0 14px; border:1px solid #e7ded4; border-radius:9px; background:#faf7f3; font-family:inherit; font-size:13px; outline:none; transition:border-color .14s ease; opacity:${s.importing ? 0.6 : 1};`)} />
-            <button onClick={s.importFetch} disabled={s.importing} style={css(`flex:0 0 auto; height:38px; min-width:96px; padding:0 18px; display:flex; align-items:center; justify-content:center; gap:8px; border:none; background:linear-gradient(100deg,#ec86ac,#b57bdb); border-radius:9px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:${s.importing ? 'default' : 'pointer'}; opacity:${s.importing ? 0.85 : 1}; transition:filter .15s ease, transform .15s ease;`)}>
+            <button onClick={s.importFetch} disabled={s.importing} className="pb-h-solid" style={css(`flex:0 0 auto; height:38px; min-width:96px; padding:0 18px; display:flex; align-items:center; justify-content:center; gap:8px; border:none; background:linear-gradient(100deg,#ec86ac,#b57bdb); border-radius:9px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:${s.importing ? 'default' : 'pointer'}; opacity:${s.importing ? 0.85 : 1}; transition:filter .15s ease, transform .15s ease;`)}>
               {s.importing ? (<><span className="pb-spin" />불러오는 중…</>) : '불러오기'}
             </button>
           </div>
@@ -139,7 +140,7 @@ export default function PresetScreen() {
 
         {/* 프리셋 그리드 */}
         <div className="pb-scroll pb-scroll-thin" style={css('flex:1 1 auto; min-height:0; overflow:hidden auto; padding:18px 22px;')}>
-          <div style={css('display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px;')}>
+          <div style={css(`display:grid; grid-template-columns:repeat(${s.bp === 'pc' ? 5 : s.bp === 'half' ? 4 : s.bp === 'tablet' ? 3 : 2},minmax(0,1fr)); gap:12px;`)}>
             {s.presets.map((p) => {
               const on = s.selectedPreset === p.id
               const snap = s.presetData[p.id]

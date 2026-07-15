@@ -21,6 +21,20 @@ const DIALOG_CANVAS = { w: 348, h: 390 }
 const DIALOG_FRACTION = 0.33
 const DIALOG_ZOOM: Record<number, number> = { 1: 0.6, 2: 1.0, 3: 1.6 }
 
+// 발색표 셀 = 기본색 × 믹스색 (8×8=64). 각 셀이 하단 배지로 조합을 자기설명하므로
+// 모바일에선 축/행열 없이 평면 페이지로 나눠 코디 리스트처럼 가로 스와이프한다.
+const MIX_CELLS_ALL: { base: number; mix: number }[] = (() => {
+  const out: { base: number; mix: number }[] = []
+  for (let b = 0; b < MIX_PALETTE.length; b++) for (let m = 0; m < MIX_PALETTE.length; m++) out.push({ base: b, mix: m })
+  return out
+})()
+const MIX_PAGE_SIZE = 12 // 3열 × 4행 / 페이지
+const MIX_PAGES: { base: number; mix: number }[][] = (() => {
+  const pages: { base: number; mix: number }[][] = []
+  for (let i = 0; i < MIX_CELLS_ALL.length; i += MIX_PAGE_SIZE) pages.push(MIX_CELLS_ALL.slice(i, i + MIX_PAGE_SIZE))
+  return pages
+})()
+
 // 발색 확인용 셀(헤어/성형): 아이템 자체 스프라이트를 (기본색 × 믹스색) 조합으로 리컬러해 정사각형에 그린다.
 function DyeCell({ meta, base, mixC, zmap, selected, onClick }: {
   meta: ItemMeta; base: number; mixC: number; zmap: string[]; selected: boolean; onClick: () => void
@@ -33,9 +47,14 @@ function DyeCell({ meta, base, mixC, zmap, selected, onClick }: {
     renderDyedSprite(el, meta, base, mixC, base === mixC ? 0 : 50, THUMB_VIEW, zmap, size).catch(() => {})
   }, [meta, base, mixC, zmap])
   return (
-    <button onClick={onClick} title={`${MIX_PALETTE[base].name} × ${MIX_PALETTE[mixC].name}`}
+    <button onClick={onClick} title={base === mixC ? MIX_PALETTE[base].name : `${MIX_PALETTE[base].name} × ${MIX_PALETTE[mixC].name}`}
       style={css(`position:relative; width:100%; aspect-ratio:1/1; padding:0; border-radius:7px; cursor:pointer; background:#f7f2ec; border:2px solid ${selected ? '#ec86ac' : 'rgba(0,0,0,0.06)'}; overflow:hidden; transition:border-color .12s ease;`)}>
       <canvas ref={ref} style={{ width: '100%', height: '100%', imageRendering: 'pixelated' }} />
+      {/* 축 라벨 대신, 이 칸이 어떤 두 색 조합인지 셀 중하단에 직접 표기(단색=한 점) */}
+      <span style={css('position:absolute; left:50%; bottom:5px; transform:translateX(-50%); display:flex; align-items:center; gap:3px; padding:2px 4px; border-radius:999px; background:rgba(255,255,255,0.82); box-shadow:0 1px 2px rgba(0,0,0,0.18);')}>
+        <span style={css(`width:9px; height:9px; border-radius:50%; background:${MIX_PALETTE[base].hex}; border:1px solid rgba(0,0,0,0.14);`)} />
+        {base !== mixC && <span style={css(`width:9px; height:9px; border-radius:50%; background:${MIX_PALETTE[mixC].hex}; border:1px solid rgba(0,0,0,0.14);`)} />}
+      </span>
     </button>
   )
 }
@@ -123,11 +142,14 @@ export default function DyeDialog() {
   const slot = s.dialogSlot
   const item = s.dialogItem // 염색 버튼을 누른 카드의 아이템(착용과 무관하게 이 아이템으로 표시)
   const mix = slot ? s.isMixSlot(slot) : false
+  const mobile = s.bp === 'mobile' // 모바일: 발색표를 가로 flicking 으로
   const [meta, setMeta] = useState<ItemMeta | null>(null) // 믹스 그리드용
   const [sel, setSel] = useState<{ base: number; mix: number }>({ base: 0, mix: 0 })
   const [hsb, setHsb] = useState<HsbParams>({ h: 0, s: 0, b: 0, t: 0 }) // 대기 HSB(적용 전)
   const [raw, setRaw] = useState<{ h: string; s: string; b: string }>({ h: '0', s: '0', b: '0' }) // 입력 문자열(빈값 허용)
   const [dyeZoom, setDyeZoom] = useState(2) // 미리보기 배율(1x/2x/3x), 기본 2x
+  const [dyePage, setDyePage] = useState(0) // 모바일 발색표 캐러셀 페이지
+  const touchX = useRef(0) // 스와이프 시작 X
   const maskDownRef = useRef(false) // 마스크에서 press down 했는지(슬라이더 드래그 후 마스크 release 로 닫히는 것 방지)
 
   // 헤어/성형: 그 카드 아이템 메타 로드 + 현재 발색으로 선택 초기화.
@@ -137,6 +159,7 @@ export default function DyeDialog() {
     loadMeta(item.id).then((m) => { if (alive) setMeta(m) }).catch(() => {})
     const cur = s.dyePalette[slot]
     setSel(cur ? { base: cur.baseColor, mix: cur.mixColor ?? cur.baseColor } : { base: 0, mix: 0 })
+    setDyePage(0)
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot, item?.id, mix])
@@ -196,12 +219,15 @@ export default function DyeDialog() {
   const numInput = 'width:60px; height:32px; padding:0 8px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; text-align:right; color:#3d372f; outline:none;'
   // 미리보기 배율 알약(1x/2x/3x).
   const zoomPill = (on: boolean) => `min-width:34px; height:26px; padding:0 8px; border:1px solid ${on ? '#ec86ac' : '#e7ded4'}; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 700 : 500}; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : '#fff'}; transition:background .14s ease, color .14s ease, border-color .14s ease;`
+  // 발색표 캐러셀 좌우 화살표(스와이프 가능 힌트 + 탭 이동). 연하게.
+  const dyeArrow = (side: 'left' | 'right') => `position:absolute; top:50%; transform:translateY(-50%); ${side}:-4px; width:30px; height:52px; display:flex; align-items:center; justify-content:center; border:none; background:transparent; color:rgba(110,100,92,0.42); font-size:30px; font-weight:400; line-height:1; cursor:pointer; z-index:3; font-family:inherit; padding:0;`
+  const lastDyePage = MIX_PAGES.length - 1
 
   return (
     <div
       onMouseDown={(e) => { maskDownRef.current = e.target === e.currentTarget }}
       onClick={(e) => { if (maskDownRef.current && e.target === e.currentTarget) s.closeDye() }}
-      className={closing ? 'pb-overlay-out' : 'pb-overlay'} style={css('position:fixed; inset:0; z-index:60; background:rgba(42,37,33,0.42); display:flex; align-items:center; justify-content:center; padding:32px;')}>
+      className={closing ? 'pb-overlay-out' : 'pb-overlay'} style={css(`position:fixed; inset:0; z-index:60; background:rgba(42,37,33,0.42); display:flex; align-items:center; justify-content:center; padding:${mobile ? 14 : 32}px;`)}>
       <div onClick={(e) => e.stopPropagation()} className={closing ? 'pb-panel-out' : 'pb-panel'} style={css(`width:100%; max-width:${mix ? 680 : 760}px; max-height:88vh; background:#fff; border-radius:18px; display:flex; flex-direction:column; overflow:hidden;`)}>
         <div style={css('flex:0 0 auto; height:60px; padding:0 22px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #f0e9e1;')}>
           <div style={css('display:flex; align-items:baseline; gap:10px;')}>
@@ -217,29 +243,46 @@ export default function DyeDialog() {
               <div style={css('height:220px; display:flex; align-items:center; justify-content:center; color:#b7ada2; font-size:13px;')}>스프라이트 불러오는 중…</div>
             ) : (
               <div>
-                <p style={css('margin:0 0 12px; font-size:12px; color:#a89e93; line-height:1.5; text-align:center;')}>세로 = 기본 색, 가로 = 믹스 색 · 각 칸은 실제 발색(대각선 = 단색, 그 외 50:50 믹스). 고른 뒤 <b style={css('color:#d76d9a;')}>적용</b>.</p>
-                <div style={css('display:flex; flex-direction:column; align-items:center; gap:6px;')}>
-                  <div style={css('display:grid; grid-template-columns:58px repeat(8, 62px); gap:6px; align-items:end;')}>
-                    <div />
-                    {MIX_PALETTE.map((col) => (
-                      <div key={col.hex} style={css('display:flex; flex-direction:column; align-items:center; gap:2px;')}>
-                        <span style={css(`width:13px; height:13px; border-radius:50%; background:${col.hex}; border:1px solid rgba(0,0,0,0.1);`)} />
-                        <span style={css('font-size:9px; color:#a89e93; white-space:nowrap;')}>{col.name}</span>
+                <p style={css('margin:0 0 14px; font-size:12px; color:#a89e93; line-height:1.5; text-align:center;')}>각 칸은 실제 발색 미리보기 · 칸 아래 <b style={css('color:#8a8075;')}>두 색</b>이 그 조합(단색 = 한 색). 골라서 <b style={css('color:#d76d9a;')}>적용</b>{mobile ? ' · 좌우로 넘겨 나머지 색 보기' : ''}.</p>
+
+                {mobile ? (
+                  // 모바일: 코디 리스트처럼 페이지 단위 가로 스와이프(세로 스크롤 없음). 각 칸 배지로 조합 확인.
+                  <div style={css('position:relative;')}>
+                    <div style={css('overflow:hidden; border-radius:10px;')}
+                      onTouchStart={(e) => { touchX.current = e.touches[0].clientX }}
+                      onTouchEnd={(e) => {
+                        const dx = e.changedTouches[0].clientX - touchX.current
+                        if (dx < -40) setDyePage((p) => Math.min(lastDyePage, p + 1))
+                        else if (dx > 40) setDyePage((p) => Math.max(0, p - 1))
+                      }}>
+                      <div style={css(`display:flex; transform:translateX(-${dyePage * 100}%); transition:transform .28s cubic-bezier(.22,.61,.36,1);`)}>
+                        {MIX_PAGES.map((pg, pi) => (
+                          <div key={pi} style={css('flex:0 0 100%; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:9px; align-content:start; padding:2px;')}>
+                            {pg.map(({ base, mix }) => (
+                              <DyeCell key={`${base}-${mix}`} meta={meta} base={base} mixC={mix} zmap={zmap} selected={sel.base === base && sel.mix === mix} onClick={() => setSel({ base, mix })} />
+                            ))}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  {MIX_PALETTE.map((rp, r) => (
-                    <div key={rp.hex} style={css('display:grid; grid-template-columns:58px repeat(8, 62px); gap:6px; align-items:center;')}>
-                      <div style={css('display:flex; align-items:center; justify-content:flex-end; gap:4px;')}>
-                        <span style={css(`width:12px; height:12px; border-radius:50%; background:${rp.hex}; border:1px solid rgba(0,0,0,0.1);`)} />
-                        <span style={css('font-size:10px; font-weight:600; color:#8a8075; white-space:nowrap;')}>{rp.name}</span>
-                      </div>
-                      {MIX_PALETTE.map((cp, c) => (
-                        <DyeCell key={cp.hex} meta={meta} base={r} mixC={c} zmap={zmap} selected={sel.base === r && sel.mix === c} onClick={() => setSel({ base: r, mix: c })} />
+                    </div>
+                    {dyePage > 0 && <button aria-label="이전 색" onClick={() => setDyePage((p) => Math.max(0, p - 1))} style={css(dyeArrow('left'))}>‹</button>}
+                    {dyePage < lastDyePage && <button aria-label="다음 색" onClick={() => setDyePage((p) => Math.min(lastDyePage, p + 1))} style={css(dyeArrow('right'))}>›</button>}
+                    <div style={css('display:flex; justify-content:center; gap:6px; margin-top:12px;')}>
+                      {MIX_PAGES.map((_, pi) => (
+                        <span key={pi} style={css(`width:${pi === dyePage ? 16 : 6}px; height:6px; border-radius:999px; background:${pi === dyePage ? '#ec86ac' : '#e7d7de'}; transition:width .2s ease, background .2s ease;`)} />
                       ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  // 데스크탑: 8×8 (행 = 기본색, 열 = 믹스색). 축 라벨 없이 각 칸 배지로 조합 확인.
+                  <div style={css('display:grid; grid-template-columns:repeat(8, minmax(0,1fr)); gap:6px;')}>
+                    {MIX_PALETTE.map((_, r) =>
+                      MIX_PALETTE.map((__, c) => (
+                        <DyeCell key={`${r}-${c}`} meta={meta} base={r} mixC={c} zmap={zmap} selected={sel.base === r && sel.mix === c} onClick={() => setSel({ base: r, mix: c })} />
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             )
           ) : (

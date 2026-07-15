@@ -9,6 +9,7 @@ import { applyHsb, renderDyedSprite, type HsbParams, type PaletteParams } from '
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { CAT_TO_SLOT, THUMB_VIEW, isColorLineSkin } from '@/lib/shopData'
+import { isStacked } from '@/lib/useBreakpoint'
 import { css, swStyle } from '@/lib/style'
 import { useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
@@ -112,6 +113,7 @@ function SkinModel({ bodyId, headId, hsb, dyeable, zmap, smap, box, fraction }: 
 
 export default function InfoScreen() {
   const s = useShop()
+  const dyeMobile = s.bp === 'mobile' // 모바일: 염색 미리보기 축소 등
   const zmap = s.index?.zmap || []
   const smap = s.index?.smap || {}
   const equippedCount = Object.values(s.equipped).filter(Boolean).length
@@ -217,44 +219,41 @@ export default function InfoScreen() {
   const ratioDisp = target && s.dyeEdit[target + ':ratio'] !== undefined ? s.dyeEdit[target + ':ratio'] : String(pal.ratio)
 
   return (
-    <section style={css('flex:0 0 65%; min-width:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;')}>
+    <section style={css(`${isStacked(s.bp) ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
       <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;')}>
         <span style={css('font-size:15px; font-weight:700;')}>코디 정보 · 염색</span>
       </div>
 
       <div style={css('flex:1 1 auto; min-height:0; display:flex; flex-direction:column;')}>
-        <div style={css('flex:3 1 0; min-height:0; display:flex; flex-direction:column; padding:16px 22px 14px;')}>
+        <div style={css(`flex:${dyeMobile ? 2 : 3} 1 0; min-height:0; display:flex; flex-direction:column; padding:${dyeMobile ? '12px 14px 8px' : '16px 22px 14px'};`)}>
           <div style={css('flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;')}>
             <span style={css('font-size:13px; font-weight:700; color:#2a2521;')}>코디 정보</span>
             <span style={css('font-size:12px; color:#a89e93;')}>착용 {equippedCount} / {slotList.length}</span>
           </div>
           <div className="pb-scroll" style={css('flex:1 1 auto; min-height:0; overflow:hidden auto;')}>
-            <div style={css('display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px;')}>
+            <div style={css(`display:grid; grid-template-columns:repeat(${s.bp === 'mobile' ? 2 : s.bp === 'tablet' ? 3 : 4},minmax(0,1fr)); gap:10px;`)}>
               {slotList.map((sl) => (
                 <div key={sl.cat.id} onClick={() => { if (sl.on) s.setDyeTarget(sl.slot) }} style={css(sl.cardStyle)}>
-                  <div style={css(sl.thumbStyle)}>
-                    {/* 아이콘은 아이템 생김새(스프라이트)만. 헤어/성형은 모든 부위 합성(발색표와 동일). */}
-                    {sl.isSkin ? (
-                      sl.spriteId && toneEntry?.head ? (
-                        <SkinModel bodyId={sl.spriteId} headId={toneEntry.head} hsb={s.dyeHsb['skin'] || defHsbP()} dyeable={isColorLineSkin(toneName)} zmap={zmap} smap={smap} box={42} fraction={SKIN_ICON_FRACTION} />
-                      ) : null
-                    ) : sl.isMix && sl.item ? (
-                      <DyeSprite id={sl.item.id} mix palette={s.dyePalette[sl.slot]} zmap={zmap} grayscale={sl.isHidden} frac={sl.slot === 'hair' ? INFO_FRAC_HAIR : INFO_FRAC} />
-                    ) : sl.spriteId ? (
-                      <DyeSprite id={sl.spriteId} thumb={sl.iconRel} mix={false} zmap={zmap} grayscale={sl.isHidden} frac={INFO_FRAC} />
-                    ) : null}
+                  <div style={css('position:relative; flex:0 0 auto;')}>
+                    <div style={css(sl.thumbStyle)}>
+                      {/* 아이콘은 아이템 생김새(스프라이트)만. 헤어/성형은 모든 부위 합성(발색표와 동일). */}
+                      {sl.isSkin ? (
+                        sl.spriteId && toneEntry?.head ? (
+                          <SkinModel bodyId={sl.spriteId} headId={toneEntry.head} hsb={s.dyeHsb['skin'] || defHsbP()} dyeable={isColorLineSkin(toneName)} zmap={zmap} smap={smap} box={42} fraction={SKIN_ICON_FRACTION} />
+                        ) : null
+                      ) : sl.isMix && sl.item ? (
+                        <DyeSprite id={sl.item.id} mix palette={s.dyePalette[sl.slot]} zmap={zmap} grayscale={sl.isHidden} frac={sl.slot === 'hair' ? INFO_FRAC_HAIR : INFO_FRAC} />
+                      ) : sl.spriteId ? (
+                        <DyeSprite id={sl.spriteId} thumb={sl.iconRel} mix={false} zmap={zmap} grayscale={sl.isHidden} frac={INFO_FRAC} />
+                      ) : null}
+                    </div>
+                    {/* 염색됨 표시 = 썸네일 코너의 은은한 무지개 도트. 믹스(헤어·성형)는 기본이 색 선택이라 표시 생략. */}
+                    {sl.dyed && !sl.isMix && (
+                      <span title="염색됨" aria-label="염색됨" style={css('position:absolute; right:-3px; bottom:-3px; width:14px; height:14px; border-radius:50%; border:2px solid #fff; background:conic-gradient(from 90deg, #ff8fb0, #ffd36b, #7fd88a, #6bb8ff, #c79bff, #ff8fb0); box-shadow:0 1px 3px rgba(0,0,0,.18);')} />
+                    )}
                   </div>
                   <div style={css('flex:1 1 0; min-width:0;')}>
-                    <div style={css('display:flex; align-items:center; gap:5px;')}>
-                      <span style={css('font-size:11px; font-weight:600; color:#a89e93;')}>{sl.label}</span>
-                      {sl.dyed && (
-                        // 염색됨 표시 = 팔레트 아이콘(Material 'palette').
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="#d76d9a" aria-label="염색됨" style={{ flex: '0 0 auto', display: 'block' }}>
-                          <title>염색됨</title>
-                          <path d="M12 22C6.49 22 2 17.51 2 12S6.49 2 12 2s10 4.04 10 9c0 3.31-2.69 6-6 6h-1.77c-.28 0-.5.22-.5.5 0 .12.05.23.13.33.41.47.64 1.06.64 1.67 0 1.38-1.12 2.5-2.5 2.5zm-5.5-10c-.83 0-1.5.67-1.5 1.5S5.67 15 6.5 15 8 14.33 8 13.5 7.33 12 6.5 12zm3-4C8.67 8 8 8.67 8 9.5S8.67 11 9.5 11 11 10.33 11 9.5 10.33 8 9.5 8zm5 0c-.83 0-1.5.67-1.5 1.5S13.67 11 14.5 11 16 10.33 16 9.5 15.33 8 14.5 8zm3 4c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z" />
-                        </svg>
-                      )}
-                    </div>
+                    <span style={css('font-size:11px; font-weight:600; color:#a89e93;')}>{sl.label}</span>
                     <div style={css(sl.nameStyle)}>{sl.name}</div>
                   </div>
                   {sl.canHide && (
@@ -269,9 +268,10 @@ export default function InfoScreen() {
 
         <div style={css('flex:0 0 auto; height:1px; margin:0 22px; background:#efe8e0;')} />
 
-        <div style={css('flex:2 1 0; min-height:0; display:flex; flex-direction:column; padding:16px 22px 18px;')}>
-          <div style={css('flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;')}>
-            <span style={css('font-size:13px; font-weight:700; color:#2a2521;')}>염색{target ? (mixMode ? ' · 발색' : ' · HSB') : ''}</span>
+        <div style={css(`flex:${dyeMobile ? 3 : 2} 1 0; min-height:0; display:flex; flex-direction:column; padding:${dyeMobile ? '10px 14px 12px' : '16px 22px 18px'};`)}>
+          <div style={css(`flex:0 0 auto; display:flex; align-items:center; gap:8px; justify-content:space-between; margin-bottom:${dyeMobile ? 8 : 12}px;`)}>
+            <span style={css('font-size:13px; font-weight:700; color:#2a2521; flex:0 0 auto;')}>염색{target ? (mixMode ? ' · 발색' : ' · HSB') : ''}</span>
+            {dyeMobile && target && <span style={css('font-size:12px; font-weight:600; color:#8a8075; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right;')}>{slotLabel} · {dyeName}</span>}
           </div>
 
           {!target ? (
@@ -280,13 +280,13 @@ export default function InfoScreen() {
               <span style={css('font-size:12px; color:#b7ada2;')}>위 코디 정보에서 착용된 부위를 클릭하면 여기서 염색할 수 있어요.</span>
             </div>
           ) : (
-            <div style={css('flex:1 1 auto; min-height:0; display:flex; gap:16px;')}>
-              {/* 미리보기(발색 반영 스프라이트) + 이름 */}
-              <div style={css('flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:8px; width:120px;')}>
-                <div style={css('width:96px; height:96px; border-radius:12px; border:1px solid #eee6dc; background:#f7f2ec; display:flex; align-items:center; justify-content:center; overflow:hidden;')}>
+            <div style={css(`flex:1 1 auto; min-height:0; display:flex; gap:${dyeMobile ? 0 : 16}px;`)}>
+              {/* 미리보기(발색 반영). 모바일은 상단 미리보기 패널이 발색을 실시간 반영하므로 숨겨 컨트롤에 전체폭 양보 */}
+              <div style={css(`${dyeMobile ? 'display:none;' : 'display:flex;'} flex:0 0 auto; flex-direction:column; align-items:center; gap:8px; width:120px;`)}>
+                <div style={css(`width:${dyeMobile ? 74 : 96}px; height:${dyeMobile ? 74 : 96}px; border-radius:12px; border:1px solid #eee6dc; background:#f7f2ec; display:flex; align-items:center; justify-content:center; overflow:hidden;`)}>
                   {isSkinTarget ? (
                     previewId && toneEntry?.head ? (
-                      <SkinModel key={target} bodyId={previewId} headId={toneEntry.head} hsb={hsbP} dyeable={skinDyeable} zmap={zmap} smap={smap} box={96} fraction={SKIN_PREVIEW_FRACTION} />
+                      <SkinModel key={target} bodyId={previewId} headId={toneEntry.head} hsb={hsbP} dyeable={skinDyeable} zmap={zmap} smap={smap} box={dyeMobile ? 74 : 96} fraction={SKIN_PREVIEW_FRACTION} />
                     ) : (
                       <span style={css('font-size:11px; color:#c3b9ad; text-align:center; padding:0 6px;')}>미리보기 없음</span>
                     )
@@ -303,7 +303,7 @@ export default function InfoScreen() {
                 </div>
               </div>
 
-              <div className="pb-scroll" style={css('flex:1 1 0; min-width:0; overflow:hidden auto; padding-right:2px; display:flex; flex-direction:column; gap:10px;')}>
+              <div className="pb-scroll" style={css(`flex:1 1 0; min-width:0; overflow:hidden auto; padding-right:2px; display:flex; flex-direction:column; gap:${dyeMobile ? 12 : 10}px;`)}>
                 {isSkinTarget && !skinDyeable ? (
                   <div style={css('flex:1 1 auto; display:flex; align-items:center; justify-content:center; text-align:center; color:#b7ada2; font-size:12px; line-height:1.6; padding:12px;')}>
                     이 피부는 염색할 수 없어요.<br />&quot;컬러라인&quot; 커스텀 피부만 라인 염색이 가능합니다.

@@ -32,6 +32,7 @@ export const CATS: Cat[] = [
 
 export const PRIMARIES = [
   { id: 'codi', label: '코디' },
+  { id: 'search', label: 'AI 코디 검색' },
   { id: 'info', label: '코디 정보 · 염색' },
   { id: 'preset', label: '프리셋' },
 ]

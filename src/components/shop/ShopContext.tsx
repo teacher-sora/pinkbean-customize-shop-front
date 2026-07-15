@@ -9,7 +9,8 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { ITEMS_PER_PAGE, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
+import { MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
+import { GRID, useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadSlot, type Index, type ListItem } from '@/lib/core/data'
 import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
@@ -20,6 +21,9 @@ type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 아이템 리스트 표시: 스프라이트 / 베이스 모델 / 내 모델
 // 염색 대상은 실제 slot. hair/face(성형)만 믹스 염색, 그 외 HSV.
 const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
+
+// AI 코디 검색 백엔드(Fly.io). 로컬/배포에서 NEXT_PUBLIC_SEARCH_API 로 덮어쓸 수 있음.
+const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김. (공유 코드/영속에 이 형태 그대로 저장)
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean> }
 
@@ -64,6 +68,7 @@ export interface ShopCtx {
   search: string; setSearch: Dispatch<string>
   // primary/screen
   primary: string; setPrimary: Dispatch<string>
+  searchQuery: string | null; runSearch: (q: string, slot?: string | null) => void; searchResults: ListItem[]; searchLoading: boolean
   // codi
   activeCat: string; setActiveCat: Dispatch<string>
   listMode: ListMode; setListMode: Dispatch<ListMode>
@@ -71,6 +76,7 @@ export interface ShopCtx {
   partWrapRef: React.MutableRefObject<HTMLDivElement | null>
   bindVp: (el: HTMLDivElement | null) => void
   curIdx: number; pageCount: number
+  bp: Breakpoint; cols: number; rows: number; itemsPerPage: number
   offset: number; snapping: boolean; setOffset: Dispatch<number>; setSnapping: Dispatch<boolean>
   setIdx: (i: number, snap?: boolean) => void; step: (dir: number) => void
   pageEditing: boolean; pageInput: string
@@ -99,6 +105,7 @@ export interface ShopCtx {
   pvOpen: boolean; setPvOpen: Dispatch<boolean>
   // presets
   presets: Preset[]; presetData: Record<string, Snapshot>; selectedPreset: string | null
+  undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   editingPreset: string | null; editName: string; setEditName: Dispatch<string>
   setEditingPreset: Dispatch<string | null>
@@ -109,6 +116,9 @@ export interface ShopCtx {
   importFetch: () => void
   importing: boolean
   shareCurrent: () => void
+  rateCodi: () => void
+  rateResult: { bubbles: string[]; nonce: number } | null
+  rating: boolean
   // toast
   toast: boolean; toastText: string
   // hover
@@ -137,6 +147,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // ── UI ──
   const [primary, setPrimary] = useState('codi')
+  const [searchQuery, setSearchQuery] = useState<string | null>(null) // AI 코디 검색어(null=미검색)
   const [activeCat, setActiveCat] = useState('hair')
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=모델(코디는 모델이 기본)
   const [search, setSearch] = useState('')
@@ -186,6 +197,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const indexRef = useRef<Index | null>(null)      // 최신 index(리스트 로드/아이템 해석용, 상태 세팅 전에도 사용)
   const applyingRef = useRef(false)                 // 프리셋 적용 중(그 변경은 자동저장 스킵)
   const initedRef = useRef(false)                   // 초기 로드+적용 완료(그 전엔 저장/영속 안 함)
+  // 실행취소/다시실행: 코디 상태(equipped/tone/dye/hidden) 스냅샷 히스토리 + 현재 위치.
+  const histRef = useRef<{ stack: Snapshot[]; idx: number }>({ stack: [], idx: -1 })
+  const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 스냅샷(그 변경은 기록 안 함)
+  const histLast = useRef<string | null>(null)      // 마지막으로 기록한 스냅샷 JSON(중복 방지)
+  const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
   const saveT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toastT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dlgT = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -265,16 +281,57 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return activeListFull.filter((it) => (it.name || it.id).toLowerCase().includes(q))
   }, [activeListFull, search])
 
-  // ── 페이지네이션(필터된 활성 리스트 길이 기준) ──
-  const pageCount = Math.max(1, Math.ceil(activeList.length / ITEMS_PER_PAGE))
-  const maxIndex = pageCount - 1
-  const curIdx = Math.max(0, Math.min(maxIndex, pageByCat[activeCat] || 0))
+  // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
+  // 원본 해석이라 스프라이트/라벨/염색이 정확하고, 코디탭과 동일하게 ItemThumb(썸네일/모델/내모델)로 렌더된다.
+  const [searchResults, setSearchResults] = useState<ListItem[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [rateResult, setRateResult] = useState<{ bubbles: string[]; nonce: number } | null>(null) // 코디 평가 말풍선
+  const [rating, setRating] = useState(false)
+  const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
+  const loadSlotRaw = useCallback(async (slot: string): Promise<ListItem[]> => {
+    if (searchRaw.current[slot]) return searchRaw.current[slot]
+    const summary = indexRef.current?.slots.find((x) => x.slot === slot)
+    if (!summary) return []
+    try { const r = await loadSlot(summary.file); searchRaw.current[slot] = r; return r } catch { return [] }
+  }, [])
+  const runSearch = useCallback(async (query: string, slot?: string | null) => {
+    const t = query.trim(); if (!t) return
+    setSearchQuery(t); setSearchLoading(true); setSearchResults([])
+    setPageByCat((s) => ({ ...s, __search__: 0 }))
+    try {
+      const res = await fetch(`${SEARCH_API}/search`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: t, slot: slot ?? null, topK: 60 }),
+      })
+      const data = await res.json()
+      const hits: { id: string; slot: string }[] = data.results || []
+      const slots = Array.from(new Set(hits.map((h) => h.slot)))
+      const maps = new Map(await Promise.all(slots.map(async (sl) =>
+        [sl, new Map((await loadSlotRaw(sl)).map((it) => [it.id, it]))] as const)))
+      const list = hits.map((h) => maps.get(h.slot)?.get(h.id)).filter((x): x is ListItem => !!x)
+      setSearchResults(list)
+    } catch { setSearchResults([]) } finally { setSearchLoading(false) }
+  }, [loadSlotRaw])
 
-  const live = useRef({ activeCat, maxIndex, curIdx, offset })
-  live.current = { activeCat, maxIndex, curIdx, offset }
+  // ── 반응형 그리드(브레이크포인트별 컬럼·행 → itemsPerPage) ──
+  const bp = useBreakpoint()
+  const { cols, rows } = GRID[bp]
+  const itemsPerPage = cols * rows
+
+  // ── 페이징 대상: AI 검색 탭이면 검색결과, 아니면 활성 부위 리스트 (동일 캐러셀·페이지네이션 공유) ──
+  const pagedList = primary === 'search' ? searchResults : activeList
+  const pageKey = primary === 'search' ? '__search__' : activeCat
+
+  // ── 페이지네이션 ──
+  const pageCount = Math.max(1, Math.ceil(pagedList.length / itemsPerPage))
+  const maxIndex = pageCount - 1
+  const curIdx = Math.max(0, Math.min(maxIndex, pageByCat[pageKey] || 0))
+
+  const live = useRef({ pageKey, maxIndex, curIdx, offset })
+  live.current = { pageKey, maxIndex, curIdx, offset }
 
   const setIdx = useCallback((i: number, snap = true) => {
-    const cat = live.current.activeCat
+    const cat = live.current.pageKey
     const v = Math.max(0, Math.min(live.current.maxIndex, i))
     setPageByCat((s) => ({ ...s, [cat]: v }))
     setOffset(0); setSnapping(snap)
@@ -288,8 +345,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const slot = CAT_TO_SLOT[activeCat]
     const pal = dyePalette[slot]
     if (!isMixSlot(slot) || !pal) return
-    const start = Math.max(0, curIdx) * ITEMS_PER_PAGE
-    const items = activeList.slice(start, start + ITEMS_PER_PAGE * 2) // 현재+다음 페이지
+    const start = Math.max(0, curIdx) * itemsPerPage
+    const items = activeList.slice(start, start + itemsPerPage * 2) // 현재+다음 페이지
     if (!items.length) return
     let cancelled = false
     ;(async () => {
@@ -299,7 +356,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }
     })()
     return () => { cancelled = true }
-  }, [activeCat, curIdx, dyePalette, activeList])
+  }, [activeCat, curIdx, dyePalette, activeList, itemsPerPage])
 
   // 염색 다이얼로그를 열면(헤어/성형) 그 아이템의 팔레트 전 색상 변이를 미리 로드 → 색 선택·믹스가 즉시 반영.
   useEffect(() => {
@@ -411,6 +468,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return equipped[CAT_TO_SLOT[cat]]?.id === itemId
   }
 
+
   // 현재 라이브 모델 → 스냅샷.
   const snapshot = (): Snapshot => {
     const eq: Record<string, string> = {}
@@ -434,19 +492,25 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     for (const sl of EQUIP_SLOTS) eq[sl] = null
     const entries = Object.entries(snap.equipped).filter(([sl, id]) => id && (EQUIP_SLOTS as readonly string[]).includes(sl))
     await Promise.all(entries.map(async ([sl, id]) => {
-      const folded = await loadSlotFolded(sl)
-      eq[sl] = folded.find((x) => x.id === id) ?? null
+      // 원본(비폴딩) 리스트에서 정확한 id 로 해석 → 폴딩 대표가 아닌 id(검색/색변형)도 반드시 찾아 유지.
+      // (되돌리기·프리셋 적용 시 착용 아이템이 사라지던 문제 해결)
+      const raw = await loadSlotRaw(sl)
+      eq[sl] = raw.find((x) => x.id === id) ?? null
     }))
     return eq
   }
   // 스냅샷을 라이브 모델에 적용. applyingRef 로 이 변경의 자동저장을 스킵(원본 프리셋과 동일하므로).
-  const applySnapshot = async (snap: Snapshot): Promise<void> => {
-    applyingRef.current = true
+  // skipAutosave: 프리셋 "적용"은 같은 데이터라 자동저장 스킵. 되돌리기/다시실행은 false →
+  // 되돌린 코디가 현재 프리셋에 저장되어 프리셋 카드도 함께 갱신된다.
+  const applySnapshot = async (snap: Snapshot, skipAutosave = true, keepTarget = false): Promise<void> => {
+    if (skipAutosave) applyingRef.current = true
     const eq = await resolveEquipped(snap)
     setEquipped(eq)
     setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
     setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
-    setDyeTarget(null)
+    // 되돌리기/다시실행은 편집 중이던 아이템 선택(dyeTarget)을 유지(여전히 착용/스킨일 때) → 염색만 되돌아가고 선택은 유지.
+    if (keepTarget) setDyeTarget((t) => (t && (t === 'skin' || eq[t]) ? t : null))
+    else setDyeTarget(null)
   }
   // 프리셋 선택: 현재 모델을 지금 선택된 프리셋에 즉시 저장(플러시) 후, 새 프리셋을 라이브에 적용. 항상 하나 선택.
   // 리스트 해석 후 equipped+selectedPreset 을 한 배치로 갱신 → 적용 직후 자동저장 1회만(applyingRef)로 스킵.
@@ -547,6 +611,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     showToast('공유 코드를 복사했어요')
   }
   const shareCurrent = () => { try { navigator.clipboard?.writeText(encodeShareCode(snapshot())) } catch {} ; showToast('현재 코디 공유 코드를 복사했어요') }
+  // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말풍선을 받는다.
+  const rateNonce = useRef(0)
+  const rateCodi = async () => {
+    if (rating) return
+    showToast('핑크빈이 코디를 살펴보는 중...')
+    setRating(true)
+    try {
+      const items = Object.entries(equipped).filter(([, it]) => it).map(([slot, it]) => ({ slot, name: it!.name || it!.id }))
+      const res = await fetch(`${SEARCH_API}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone }) })
+      const data = await res.json()
+      const bubbles: string[] = (data.bubbles || []).filter(Boolean)
+      setRateResult({ bubbles: bubbles.length ? bubbles : ['뀨…? 지금은 좀 부끄러운걸!'], nonce: ++rateNonce.current })
+    } catch {
+      setRateResult({ bubbles: ['뀨…? 지금은 딴청 부리는 중이야!'], nonce: ++rateNonce.current })
+    } finally { setRating(false) }
+  }
   // 프리셋을 코디 기본값 + 기본 이름으로 초기화(선택된 프리셋이면 라이브 모델도 즉시 적용).
   const resetPreset = (id: string) => {
     const snap = defaultSnapshot()
@@ -569,10 +649,51 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (applyingRef.current) { applyingRef.current = false; return }
     if (!initedRef.current || !selectedPreset) return
     if (saveT.current) clearTimeout(saveT.current)
-    saveT.current = setTimeout(() => { setPresetData((d) => ({ ...d, [selectedPreset]: snapshot() })) }, 400)
+    saveT.current = setTimeout(() => {
+      const snap = snapshot()
+      // presetData 갱신 + localStorage 영속을 한 번(100ms)에 "동시" 처리.
+      setPresetData((d) => {
+        const next = { ...d, [selectedPreset]: snap }
+        try {
+          const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
+          localStorage.setItem(PRESET_KEY, JSON.stringify({ data: next, names, sel: selectedPreset } as PresetStore))
+        } catch {}
+        return next
+      })
+    }, 100)
     return () => { if (saveT.current) clearTimeout(saveT.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equipped, tone, dyePalette, dyeHsb, hidden, selectedPreset])
+  }, [equipped, tone, dyePalette, dyeHsb, hidden, selectedPreset, presets])
+
+  // 실행취소 히스토리: 코디 상태가 바뀔 때마다 "즉시" 스냅샷 기록(부위 빠르게 눌러도 전부 남음).
+  // 예외: 발색 슬라이더 드래그 중(dyeInteracting)은 보류 → 릴리즈 시 최종 상태 1개만 기록(스택 폭주 방지).
+  // undo/redo 로 적용된 변경(histExpect 일치)은 기록하지 않아 스택이 오염되지 않는다. 최근 50개 유지.
+  useEffect(() => {
+    if (!initedRef.current || dyeInteracting) return // 초기 로드 완료 전엔 기록 안 함 → 첫 기록 = 초기 프리셋(baseline)
+    const j = JSON.stringify(snapshot())
+    if (j === histExpect.current) { histExpect.current = null; histLast.current = j; return }
+    if (j === histLast.current) return
+    histLast.current = j
+    const h = histRef.current
+    h.stack = h.stack.slice(0, h.idx + 1)
+    h.stack.push(JSON.parse(j) as Snapshot)
+    if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
+    h.idx = h.stack.length - 1
+    setHistVer((v) => v + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipped, tone, dyePalette, dyeHsb, hidden, dyeInteracting])
+
+  const applyHistory = (snap: Snapshot) => {
+    const j = JSON.stringify(snap)
+    histExpect.current = j; histLast.current = j
+    applySnapshot(snap, false, true).catch(() => {}) // 자동저장 허용(프리셋 갱신) + 아이템 선택(dyeTarget) 유지
+    setHistVer((v) => v + 1)
+  }
+  const undo = () => { const h = histRef.current; if (h.idx <= 0) return; h.idx -= 1; applyHistory(h.stack[h.idx]) }
+  const redo = () => { const h = histRef.current; if (h.idx >= h.stack.length - 1) return; h.idx += 1; applyHistory(h.stack[h.idx]) }
+  void histVer // 재렌더 트리거(canUndo/canRedo 재계산)
+  const canUndo = histRef.current.idx > 0
+  const canRedo = histRef.current.idx < histRef.current.stack.length - 1
 
   // 영속: 프리셋 데이터/이름/선택을 localStorage 에 저장(디바운스). 서버 없이 새로고침/재실행에도 유지.
   useEffect(() => {
@@ -582,7 +703,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
         localStorage.setItem(PRESET_KEY, JSON.stringify({ data: presetData, names, sel: selectedPreset } as PresetStore))
       } catch {}
-    }, 300)
+    }, 100)
     return () => clearTimeout(t)
   }, [presetData, presets, selectedPreset])
   const openDye = (slot: string, item: ListItem | null = null) => { setDialogSlot(slot); setDialogItem(item); setDialogClosing(false) }
@@ -605,8 +726,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const value: ShopCtx = {
     index, dataLoading, catLoading, listForCat, activeList, search, setSearch,
     primary, setPrimary,
+    searchQuery, runSearch, searchResults, searchLoading,
+    undo, redo, canUndo, canRedo,
     activeCat, setActiveCat, listMode, setListMode, partMenuOpen, setPartMenuOpen, partWrapRef, bindVp,
     curIdx, pageCount, offset, snapping, setOffset, setSnapping, setIdx, step,
+    bp, cols, rows, itemsPerPage,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, isEquippedInCat, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeEdit, setDyeEdit, dyeInteracting, setDyeInteracting, isMixSlot,
@@ -614,7 +738,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pv, setPv, pvOpen, setPvOpen,
     presets, presetData, selectedPreset, selectPreset, sharePreset, resetPreset,
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,
-    nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrent,
+    nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrent, rateCodi, rateResult, rating,
     toast, toastText,
     hoverCat, setHoverCat, hoverPrimary, setHoverPrimary, hoverPill, setHoverPill,
     hoverMode, setHoverMode, hoverToggle, setHoverToggle, hoverPartBtn, setHoverPartBtn,

@@ -11,7 +11,9 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
+  word-break: keep-all;   /* 한글 단어 중간 줄바꿈 방지(공백에서만 개행) */
 }
+* { word-break: keep-all; }
 a { color: #ec86ac; text-decoration: none; }
 a:hover { color: #d76d9a; }
 
@@ -37,6 +39,15 @@ a:hover { color: #d76d9a; }
 .pb-preset-acts { opacity: 0; transition: opacity .16s ease; }
 .pb-presetwrap:hover .pb-preset-acts { opacity: 1; }
 .pb-preset-acts > button { transition: filter .14s ease; }
+
+/* 터치(hover 불가) 기기: hover 로만 보이던 요소를 항상 표시 */
+@media (hover: none) {
+  .pb-dye { opacity: 1; pointer-events: auto; }
+  .pb-preset-acts { opacity: 1; }
+}
+/* 모바일 폭(반응형 데스크탑 포함): hover 요소를 항상 표시 */
+.pb-mobile .pb-dye { opacity: 1; pointer-events: auto; }
+.pb-mobile .pb-preset-acts { opacity: 1; }
 /* 이름(클릭해서 변경) 호버 힌트. */
 .pb-preset-name:hover { border-color: #eeb2ce; background: #fff; }
 .pb-preset-acts > button:hover { filter: brightness(0.96); }
@@ -47,7 +58,7 @@ a:hover { color: #d76d9a; }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
-button, input, .pb-card { transition: background-color .26s ease, border-color .24s ease, color .24s ease, transform .22s ease, box-shadow .24s ease, opacity .24s ease; }
+button, input, .pb-card { transition: background-color .26s ease, border-color .24s ease, color .24s ease, transform .22s ease, box-shadow .24s ease, opacity .24s ease, filter .2s ease; }
 button { will-change: transform; }
 
 @keyframes pbOverlayIn { from { opacity: 0; } to { opacity: 1; } }
@@ -61,6 +72,22 @@ button { will-change: transform; }
 .pb-panel-out { animation: pbPanelOut .2s cubic-bezier(.4,0,.7,.4) both; }
 @keyframes pbBlink { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
 
+/* 상호작용 버튼 통일 hover — 위치/크기 변화(translate·scale) 및 그림자 없이,
+   배경색이 부드럽게 채워지거나 빠지는 절제된 효과만. 인라인 스타일을 이기려 !important. */
+.pb-h-solid, .pb-h-ghost, .pb-h-soft { transition: background-color .22s ease, border-color .2s ease, color .2s ease, filter .2s ease !important; }
+/* 채워진 버튼(공유·AI검색·토글 ON 등): 한 톤 더 진하게 채워짐. */
+.pb-h-solid:hover:not(:disabled) { background-color: #de6fa0 !important; filter: brightness(.97); }
+/* 테두리형(되돌리기·다시실행): 안이 연핑크로 부드럽게 채워지고 테두리에 핑크가 살아남. */
+.pb-h-ghost:hover:not(:disabled) { background: #fbe0ec !important; border-color: #ec86ac !important; color: #d76d9a !important; }
+/* 투명배경 토글 OFF pill: 연핑크로 부드럽게 채워짐. */
+.pb-h-soft:hover:not(:disabled) { background: #f6dbe8 !important; color: #c85d8a !important; }
+/* 코디 평가: 체크무늬는 테두리(프레임)에만. 내부 fill div 가 hover 시 위→아래로 내려오며 채워짐. */
+.pb-rate-inner { position: relative; overflow: hidden; }
+.pb-rate-fill { position: absolute; inset: 0; background: #ffffff; transform: translateY(-100%); transition: transform .34s cubic-bezier(.33,0,.2,1); }
+.pb-rate:hover .pb-rate-fill { transform: translateY(0); }
+.pb-rate-text { transition: color .22s ease; }
+.pb-rate:hover .pb-rate-text { color: #a8478a; }
+
 .pb-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a89e93' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat: no-repeat; background-position: right 10px center; }
 .pb-select:hover { border-color: #eeb2ce !important; }
 
@@ -70,6 +97,16 @@ button { will-change: transform; }
 .pb-collapse-out { animation: pbCollapseOut .18s ease both; }
 .pb-acc { overflow: hidden; max-height: 0; transition: max-height .32s cubic-bezier(.22,.61,.36,1); }
 .pb-acc-open { max-height: 340px; }
+
+/* 핑크빈 코디 평가 말풍선 — 캐릭터 주변에서 페이드업(아래→제자리) 하며 나타났다가 페이드다운 하며 사라짐. */
+@keyframes pbBubbleFloat {
+  0% { opacity: 0; transform: translateY(16px) scale(.9); }
+  13% { opacity: 1; transform: translateY(0) scale(1); }
+  82% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(16px) scale(.95); }
+}
+.pb-bubble { position: absolute; max-width: 60%; padding: 7px 11px; border-radius: 14px; background: #fff; border: 1.5px solid #f4b8d0; color: #c05a94; font-size: 12px; font-weight: 700; line-height: 1.35; box-shadow: 0 5px 16px rgba(200,90,150,.22); word-break: keep-all; pointer-events: none; z-index: 8; }
+.pb-bubble::after { content: ''; position: absolute; left: 18px; bottom: -7px; width: 12px; height: 12px; background: #fff; border-right: 1.5px solid #f4b8d0; border-bottom: 1.5px solid #f4b8d0; transform: rotate(45deg); }
 
 /* 로딩 스켈레톤(아이템 셀 등 공용 프리미티브) */
 .pb-skel { background: linear-gradient(100deg, #f4ede4 30%, #efe6da 48%, #f4ede4 66%); background-size: 220% 100%; animation: pbSkelShimmer 1.25s ease-in-out infinite; }

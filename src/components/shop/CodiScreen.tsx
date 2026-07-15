@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CATS, ITEMS_PER_PAGE } from '@/lib/catalog'
-import { assemble, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
+import { CATS } from '@/lib/catalog'
+import { isStacked } from '@/lib/useBreakpoint'
+import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ListItem } from '@/lib/core/data'
 import { CAT_TO_SLOT, isColorLineSkin, thumbView } from '@/lib/shopData'
 import { css } from '@/lib/style'
@@ -67,7 +68,11 @@ export default function CodiScreen() {
     return () => { alive = false }
   }, [mode, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat])
 
-  const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * ITEMS_PER_PAGE, p * ITEMS_PER_PAGE + ITEMS_PER_PAGE))
+  const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * s.itemsPerPage, p * s.itemsPerPage + s.itemsPerPage))
+  const gridStyle = `display:grid; grid-template-columns:repeat(${s.cols},minmax(0,1fr)); grid-template-rows:repeat(${s.rows},1fr); gap:${s.bp === 'mobile' ? 10 : 16}px; height:100%;`
+  const stacked = isStacked(s.bp)
+  const narrow = s.bp !== 'pc' // 좁으면 헤더(부위·모드·페이지·검색)를 wrap 시켜 겹침 방지
+  const mobile = s.bp === 'mobile' // 모바일: 행1=부위·모드(space-between), 행2=페이지·검색
   const trackStyle = `display:flex; height:100%; width:100%; will-change:transform; transform:translateX(calc(${-s.curIdx * 100}% + ${s.offset}px)); transition:${s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none'};`
 
   const partBtnStyle = (() => {
@@ -119,9 +124,9 @@ export default function CodiScreen() {
   )
 
   return (
-    <section style={css('flex:0 0 65%; min-width:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;')}>
-      <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #f0e9e1;')}>
-        <div style={css('flex:1 1 0; min-width:0; display:flex; align-items:center; gap:10px;')}>
+    <section style={css(`${stacked ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
+      <div style={css(`flex:0 0 auto; ${narrow ? 'flex-wrap:wrap; min-height:58px; padding:9px 16px;' : 'height:58px; padding:0 22px;'} display:flex; align-items:center; gap:${narrow ? 8 : 12}px; border-bottom:1px solid #f0e9e1;`)}>
+        <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${mobile ? 6 : 10}px;`)}>
           <div ref={s.partWrapRef} style={css('position:relative; flex:0 0 auto;')}>
             <button onClick={() => s.setPartMenuOpen(!s.partMenuOpen)} onMouseEnter={() => s.setHoverPartBtn(true)} onMouseLeave={() => s.setHoverPartBtn(false)} title="클릭해서 부위 선택" style={css(partBtnStyle)}>
               <span style={css('font-size:15px; font-weight:700; white-space:nowrap;')}>{activeMeta.label}</span>
@@ -150,8 +155,8 @@ export default function CodiScreen() {
               const disabled = noSprite && m.v === 'sprite'
               const on = !disabled && mode === m.v
               return (
-                <button key={m.v} disabled={disabled} title={disabled ? (isSkinCat ? '피부는 썸네일 보기를 지원하지 않아요' : '헤어는 썸네일 보기를 지원하지 않아요') : undefined} onClick={() => { if (!disabled) s.setListMode(m.v) }}
-                  style={css(`height:28px; padding:0 11px; border:none; border-radius:7px; cursor:${disabled ? 'not-allowed' : 'pointer'}; opacity:${disabled ? 0.4 : 1}; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{m.l}</button>
+                <button key={m.v} disabled={disabled} className={on ? 'pb-h-solid' : 'pb-h-soft'} title={disabled ? (isSkinCat ? '피부는 썸네일 보기를 지원하지 않아요' : '헤어는 썸네일 보기를 지원하지 않아요') : undefined} onClick={() => { if (!disabled) s.setListMode(m.v) }}
+                  style={css(`height:28px; padding:0 ${mobile ? 8 : 11}px; border:none; border-radius:7px; cursor:${disabled ? 'not-allowed' : 'pointer'}; opacity:${disabled ? 0.4 : 1}; font-family:inherit; font-size:${mobile ? 11 : 12}px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease, filter .18s ease;`)}>{m.l}</button>
               )
             })}
           </div>
@@ -167,18 +172,18 @@ export default function CodiScreen() {
           </div>
         </div>
 
-        {/* 우: 아이템 검색(롤백). 좌 flex:1 + 우 flex:1 로 가운데 페이지가 중앙 정렬됨 */}
-        <div style={css('flex:1 1 0; min-width:0; display:flex; justify-content:flex-end;')}>
+        {/* 우: 아이템 검색. 좁으면 100%로 다음 행 wrap(겹침 방지), 넓으면 우측 정렬로 페이지 중앙 유지 */}
+        <div style={css(`${mobile ? 'flex:1 1 auto; justify-content:flex-end;' : narrow ? 'flex:1 1 100%; justify-content:flex-start;' : 'flex:1 1 0; justify-content:flex-end;'} min-width:0; display:flex;`)}>
           <input value={s.search} onChange={(e) => { s.setSearch(e.target.value); s.setIdx(0, false) }} placeholder="아이템 검색"
-            style={css('height:34px; width:100%; max-width:180px; min-width:0; padding:0 12px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; outline:none; transition:border-color .14s ease;')} />
+            style={css(`height:34px; width:100%; ${narrow ? '' : 'max-width:180px;'} min-width:0; padding:0 12px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; outline:none; transition:border-color .14s ease;`)} />
         </div>
       </div>
 
       <div ref={s.bindVp} style={css('flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:none; cursor:grab; user-select:none;')}>
         {loading ? (
           <div style={css('width:100%; height:100%; padding:18px 22px;')}>
-            <div style={css('display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(3,1fr); gap:16px; height:100%;')}>
-              {Array.from({ length: ITEMS_PER_PAGE }, (_, i) => skeletonCell(i))}
+            <div style={css(gridStyle)}>
+              {Array.from({ length: s.itemsPerPage }, (_, i) => skeletonCell(i))}
             </div>
           </div>
         ) : list.length === 0 ? (
@@ -193,7 +198,7 @@ export default function CodiScreen() {
               // contain:paint → 각 페이지의 그리기를 자기 박스로 클립(전환 시 canvas/카드 레이어의 stale-tile 잔상이 옆 페이지로 새지 않음).
               <div key={pi} style={css('flex:0 0 100%; width:100%; height:100%; padding:18px 22px; contain:paint;')}>
                 {Math.abs(pi - s.curIdx) <= 1 && (
-                  <div style={css('display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(3,1fr); gap:16px; height:100%;')}>
+                  <div style={css(gridStyle)}>
                     {items.map((item) => cell(item))}
                   </div>
                 )}
