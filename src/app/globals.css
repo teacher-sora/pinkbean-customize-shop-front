@@ -20,6 +20,12 @@ a:hover { color: #d76d9a; }
 /* 화면엔 안 보이지만 크롤러·스크린리더는 읽는 콘텐츠(접근성/SEO). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
+/* 상단 탭: 활성 시 굵어져(500→600) 글자 폭이 변하며 움찔거리는 현상 방지.
+   보이지 않는 굵은 라벨(::after)로 폭을 항상 확보하고, 실제 라벨을 같은 칸에 겹쳐 폭 변화를 없앤다. */
+.pb-tab { display: grid; place-items: center; }
+.pb-tab > span { grid-area: 1 / 1; }
+.pb-tab::after { content: attr(data-label); grid-area: 1 / 1; font-weight: 600; height: 0; visibility: hidden; pointer-events: none; }
+
 .pb-scroll { scrollbar-width: thin; scrollbar-color: #e7c3d4 transparent; }
 .pb-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
 .pb-scroll::-webkit-scrollbar-thumb { background: #e7c3d4; border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; transition: background .2s ease; }

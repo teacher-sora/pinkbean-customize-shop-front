@@ -19,7 +19,8 @@ export default function Header() {
         if (hov) { if (on) bg = '#e879a4'; else { bg = '#eadff0'; col = '#a15b93' } }
         return (
           <button key={p.id} onClick={() => setPrimary(p.id)} onMouseEnter={() => setHoverPrimary(p.id)} onMouseLeave={() => setHoverPrimary(null)}
-            style={css(`flex:0 0 auto; height:34px; padding:0 ${bp === 'mobile' ? 12 : 18}px; border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${col}; background:${bg}; transition:background .28s ease, color .28s ease;`)}>{p.label}</button>
+            className="pb-tab" data-label={p.label}
+            style={css(`flex:0 0 auto; height:34px; padding:0 ${bp === 'mobile' ? 12 : 18}px; border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px; white-space:nowrap; color:${col}; background:${bg}; transition:background .28s ease, color .28s ease;`)}><span style={{ fontWeight: on ? 600 : 500 }}>{p.label}</span></button>
         )
       })}
     </div>
