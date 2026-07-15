@@ -13,14 +13,46 @@ import { ITEMS_PER_PAGE, type Preset, type Pv } from '@/lib/catalog'
 import { loadAnima, loadEffectIndex, loadIndex, loadSlot, type Index, type ListItem } from '@/lib/core/data'
 import type { HsbParams, PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
+import { decodeShareCode, encodeShareCode } from '@/lib/shareCode'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, EQUIP_SLOTS, foldList } from '@/lib/shopData'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 아이템 리스트 표시: 스프라이트 / 베이스 모델 / 내 모델
 // 염색 대상은 실제 slot. hair/face(성형)만 믹스 염색, 그 외 HSV.
 const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
-// 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김.
+// 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김. (공유 코드/영속에 이 형태 그대로 저장)
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean> }
+
+// ── 프리셋: 20개, 초깃값은 코디 기본(녹셀 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
+const PRESET_COUNT = 20
+const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
+const defaultPresetName = (i: number) => `코디 ${i + 1}`
+const defaultSnapshot = (): Snapshot => ({
+  equipped: Object.fromEntries(Object.entries(DEFAULT_EQUIP).map(([slot, it]) => [slot, it.id])),
+  tone: DEFAULT_TONE, dyePalette: {}, dyeHsb: {}, hidden: {},
+})
+const PRESET_KEY = 'pb_presets_v1'
+type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null }
+const loadPresetStore = (): PresetStore | null => {
+  try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
+}
+// 넥슨 캐시아이템 part → 내부 slot. (part 로 매핑: '한벌옷'=longcoat, '상의'=coat 구분)
+const NEXON_PART_SLOT: Record<string, string> = {
+  '모자': 'cap', '얼굴장식': 'faceAcc', '눈장식': 'eyeAcc', '귀고리': 'earring',
+  '망토': 'cape', '장갑': 'glove', '신발': 'shoes', '무기': 'weapon', '방패': 'shield',
+  '한벌옷': 'longcoat', '상의': 'coat', '하의': 'pants', '헤어': 'hair', '성형': 'face',
+}
+// 이름 정규화(성별 접미사·공백 제거)로 넥슨 이름 ↔ 내부 리스트 이름 매칭.
+const nrmName = (n: string) => (n || '').replace(/\s*\((여|남)\)\s*$/, '').replace(/\s+/g, ' ').trim()
+type NexonItem = { part: string; slot: string; name: string; gender: string | null }
+type NexonBeauty = { name: string; baseColor: string | null; mixColor: string | null; mixRate: string }
+// 넥슨 색상명 → 내부 믹스 팔레트 인덱스(MIX_PALETTE: 검정0 빨강1 주황2 노랑3 초록4 파랑5 보라6 갈색7).
+const COLOR_IDX: Record<string, number> = {
+  '검은색': 0, '검정': 0, '빨간색': 1, '빨강': 1, '주황색': 2, '주황': 2, '노란색': 3, '노랑': 3,
+  '초록색': 4, '초록': 4, '녹색': 4, '파란색': 5, '파랑': 5, '보라색': 6, '보라': 6, '갈색': 7, '밤색': 7,
+}
+// 헤어 이름의 색 접두어("빨간색 리르하 헤어" → "리르하 헤어") 제거.
+const stripColorPrefix = (name: string, color: string | null) => (color && name.startsWith(color) ? name.slice(color.length).trim() : name)
 
 export interface ShopCtx {
   // 데이터
@@ -67,7 +99,7 @@ export interface ShopCtx {
   pvOpen: boolean; setPvOpen: Dispatch<boolean>
   // presets
   presets: Preset[]; presetData: Record<string, Snapshot>; selectedPreset: string | null
-  selectPreset: (id: string) => void; sharePreset: (p: Preset) => void
+  selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   editingPreset: string | null; editName: string; setEditName: Dispatch<string>
   setEditingPreset: Dispatch<string | null>
   startRename: (id: string, name: string, e: React.MouseEvent) => void
@@ -75,6 +107,7 @@ export interface ShopCtx {
   nickInput: string; setNickInput: Dispatch<string>
   importMode: 'nick' | 'code'; setImportMode: Dispatch<'nick' | 'code'>
   importFetch: () => void
+  importing: boolean
   shareCurrent: () => void
   // toast
   toast: boolean; toastText: string
@@ -129,11 +162,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     gaze: 'left', wEffect: true, cEffect: true, fps: 12, zoom: 2,
   })
   const [pvOpen, setPvOpen] = useState(false)
-  const [presets, setPresets] = useState<Preset[]>(() => Array.from({ length: 20 }, (_, i) => ({ id: 'd' + i, name: `코디 ${i + 1}` })))
-  const [presetData, setPresetData] = useState<Record<string, Snapshot>>({})
+  const [presets, setPresets] = useState<Preset[]>(() => PRESET_IDS.map((id, i) => ({ id, name: defaultPresetName(i) })))
+  const [presetData, setPresetData] = useState<Record<string, Snapshot>>(() => Object.fromEntries(PRESET_IDS.map((id) => [id, defaultSnapshot()])))
   const [selectedPreset, setSelectedPreset] = useState<string | null>('d0')
   const [nickInput, setNickInput] = useState('')
   const [importMode, setImportMode] = useState<'nick' | 'code'>('nick')
+  const [importing, setImporting] = useState(false) // 불러오기 진행 중(로딩 애니메이션)
   const [editingPreset, setEditingPreset] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [toast, setToast] = useState(false)
@@ -149,28 +183,47 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   const partWrapRef = useRef<HTMLDivElement | null>(null)
   const vpElRef = useRef<HTMLDivElement | null>(null)
+  const indexRef = useRef<Index | null>(null)      // 최신 index(리스트 로드/아이템 해석용, 상태 세팅 전에도 사용)
+  const applyingRef = useRef(false)                 // 프리셋 적용 중(그 변경은 자동저장 스킵)
+  const initedRef = useRef(false)                   // 초기 로드+적용 완료(그 전엔 저장/영속 안 함)
+  const saveT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toastT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dlgT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pageT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const wheel = useRef({ acc: 0, dir: 0, t: 0 }) // 휠 delta 누적 / 제스처 방향 / 마지막 이벤트 시각
   const drag = useRef({ on: false, captured: false, startX: 0, lastX: 0, lastT: 0, vel: 0 })
 
-  // ── 초기 로드: index 만(빠르게). 부위 리스트는 "보여질 때" 지연 로드 ──
+  // ── 초기 로드: index → 저장된 프리셋(또는 기본 20개) 복원 → 선택된 프리셋을 라이브 모델에 적용 ──
   useEffect(() => {
     let alive = true
     // 연출 옵션 데이터(형상변이/이펙트 인덱스)를 미리 캐시 → 선택 시 즉시 적용.
     loadAnima().catch(() => {})
     loadEffectIndex().catch(() => {})
-    loadIndex().then((idx) => {
+    loadIndex().then(async (idx) => {
       if (!alive) return
-      setIndex(idx); setTone(DEFAULT_TONE)
-      const eq: Record<string, ListItem | null> = {}
-      for (const s of EQUIP_SLOTS) eq[s] = null
-      Object.assign(eq, DEFAULT_EQUIP) // 기본 착용(녹셀 헤어 검정·운명의 인도자 얼굴·금단의 계약)
-      setEquipped(eq)
+      indexRef.current = idx // resolveEquipped/loadSlotFolded 는 상태가 아닌 이 ref 를 쓰므로 setIndex 전에 사용 가능
+      // localStorage 에서 프리셋 복원(없으면 20개 모두 코디 기본값). 첫 접속 시 d0 자동 선택.
+      const store = loadPresetStore()
+      const data: Record<string, Snapshot> = {}
+      PRESET_IDS.forEach((id) => { data[id] = store?.data[id] || defaultSnapshot() })
+      const sel = (store?.sel && PRESET_IDS.includes(store.sel)) ? store.sel : 'd0'
+      // 선택된 프리셋을 라이브 모델로 해석(필요한 슬롯 리스트 로드). 그 뒤 index/프리셋/모델을 한 배치로 세팅
+      // → 적용으로 인한 변경은 자동저장 1회만 발생하고 applyingRef 로 스킵된다.
+      const snap = data[sel] || defaultSnapshot()
+      applyingRef.current = true
+      const eq = await resolveEquipped(snap)
+      if (!alive) return
+      setIndex(idx)
+      setPresetData(data)
+      setPresets(PRESET_IDS.map((id, i) => ({ id, name: store?.names[id] || defaultPresetName(i) })))
+      setEquipped(eq); setTone(snap.tone ?? DEFAULT_TONE)
+      setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
+      setSelectedPreset(sel)
+      initedRef.current = true
     }).catch((e) => console.error('[shop] index 로드 실패', e))
       .finally(() => { if (alive) setDataLoading(false) })
     return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 부위 리스트 지연 로드(활성 부위만). loadSlot 은 data.ts 에서 파일별 캐시됨.
@@ -297,10 +350,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setIdx, step])
 
-  useEffect(() => {
-    try { const v = localStorage.getItem('pb_sel'); if (v !== null) setSelectedPreset(v || null) } catch {}
-  }, [])
-
   // ── 핸들러 ──
   const setPv = (key: keyof Pv, val: Pv[keyof Pv]) => setPvState((s) => ({ ...s, [key]: val }))
   const showToast = (msg: string) => {
@@ -308,7 +357,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (toastT.current) clearTimeout(toastT.current)
     toastT.current = setTimeout(() => setToast(false), 2200)
   }
-  const persistSel = (id: string | null) => { try { localStorage.setItem('pb_sel', id || '') } catch {} }
 
   // 착용: skin=톤 변경, 그 외=slot 라디오(재클릭 해제) + islot 충돌 슬롯 자동 해제.
   const equipFromCat = (cat: string, item: ListItem) => {
@@ -327,55 +375,180 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return equipped[CAT_TO_SLOT[cat]]?.id === itemId
   }
 
+  // 현재 라이브 모델 → 스냅샷.
   const snapshot = (): Snapshot => {
     const eq: Record<string, string> = {}
     for (const [s, it] of Object.entries(equipped)) if (it) eq[s] = it.id
     return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden } }
   }
-  const applySnap = (snap: Snapshot | undefined) => {
+  // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
+  const loadSlotFolded = async (slot: string): Promise<ListItem[]> => {
+    const idx = indexRef.current
+    const summary = idx?.slots.find((s) => s.slot === slot)
+    if (!summary) return []
+    try {
+      const folded = foldList(await loadSlot(summary.file))
+      setLists((m) => (m[slot] ? m : { ...m, [slot]: folded }))
+      return folded
+    } catch { return [] }
+  }
+  // 스냅샷의 equipped(id) → 실제 ListItem 맵(필요한 슬롯 리스트를 로드 후 해석).
+  const resolveEquipped = async (snap: Snapshot): Promise<Record<string, ListItem | null>> => {
     const eq: Record<string, ListItem | null> = {}
-    for (const s of EQUIP_SLOTS) {
-      const id = snap?.equipped[s]
-      eq[s] = id ? (lists[s]?.find((x) => x.id === id) ?? null) : null
-    }
+    for (const sl of EQUIP_SLOTS) eq[sl] = null
+    const entries = Object.entries(snap.equipped).filter(([sl, id]) => id && (EQUIP_SLOTS as readonly string[]).includes(sl))
+    await Promise.all(entries.map(async ([sl, id]) => {
+      const folded = await loadSlotFolded(sl)
+      eq[sl] = folded.find((x) => x.id === id) ?? null
+    }))
+    return eq
+  }
+  // 스냅샷을 라이브 모델에 적용. applyingRef 로 이 변경의 자동저장을 스킵(원본 프리셋과 동일하므로).
+  const applySnapshot = async (snap: Snapshot): Promise<void> => {
+    applyingRef.current = true
+    const eq = await resolveEquipped(snap)
     setEquipped(eq)
-    setTone(snap?.tone ?? index?.base.default ?? 0)
-    setDyePalette({ ...(snap?.dyePalette || {}) }); setDyeHsb({ ...(snap?.dyeHsb || {}) }); setHidden({ ...(snap?.hidden || {}) })
+    setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
+    setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
     setDyeTarget(null)
   }
+  // 프리셋 선택: 현재 모델을 지금 선택된 프리셋에 즉시 저장(플러시) 후, 새 프리셋을 라이브에 적용. 항상 하나 선택.
+  // 리스트 해석 후 equipped+selectedPreset 을 한 배치로 갱신 → 적용 직후 자동저장 1회만(applyingRef)로 스킵.
   const selectPreset = (id: string) => {
-    const data = { ...presetData }
-    if (selectedPreset) data[selectedPreset] = snapshot()
-    if (selectedPreset === id) { setPresetData(data); setSelectedPreset(null); persistSel(null); return }
-    setPresetData(data); setSelectedPreset(id); persistSel(id); applySnap(data[id])
+    if (selectedPreset && selectedPreset !== id) setPresetData((d) => ({ ...d, [selectedPreset]: snapshot() }))
+    if (selectedPreset === id) return
+    const snap = presetData[id] ?? defaultSnapshot()
+    applyingRef.current = true
+    resolveEquipped(snap).then((eq) => {
+      setEquipped(eq)
+      setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
+      setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
+      setDyeTarget(null); setSelectedPreset(id)
+    }).catch(() => {})
   }
-  const mockImport = (val: string): Snapshot => {
-    let h = 0; for (let i = 0; i < val.length; i++) h = (h * 31 + val.charCodeAt(i)) >>> 0
-    const eq: Record<string, string> = {}
-    ;['hair', 'face', 'longcoat', 'shoes', 'cape', 'weapon'].forEach((slot, i) => {
-      const l = lists[slot]; if (l && l.length) eq[slot] = l[(h >> (i * 3)) % l.length].id
-    })
-    return { equipped: eq, tone: index?.base.default ?? 0, dyePalette: {}, dyeHsb: {}, hidden: {} }
+  // 넥슨 이름 → 내부 리스트에서 매칭(성별 접미사 있는 경우 캐릭터 성별 우선).
+  const matchByName = (list: ListItem[], name: string, gender: string | null): ListItem | null => {
+    const target = nrmName(name)
+    const ms = list.filter((it) => nrmName(it.name || '') === target)
+    if (ms.length <= 1) return ms[0] || null
+    const suffix = gender === '남' ? '(남)' : gender === '여' ? '(여)' : null
+    if (suffix) { const g = ms.find((it) => (it.name || '').includes(suffix)); if (g) return g }
+    return ms[0]
   }
-  const importFetch = () => {
+  // 넥슨 헤어/성형 색상 → 내부 믹스 팔레트(baseColor/mixColor 인덱스 + 비율).
+  const colorPalette = (b: NexonBeauty): PaletteParams => {
+    const base = COLOR_IDX[b.baseColor ?? ''] ?? 0
+    const mix = b.mixColor ? (COLOR_IDX[b.mixColor] ?? null) : null
+    return { baseColor: base, mixColor: mix, ratio: mix != null ? (parseInt(b.mixRate, 10) || 50) : 0 }
+  }
+  // 닉네임 → 스냅샷: 내부 프록시(/api/nick)로 넥슨 착용(캐시아이템 + 헤어/성형/피부)을 받아 내부 아이템에 매칭.
+  const importByNick = async (nick: string): Promise<Snapshot | null> => {
+    try {
+      const r = await fetch(`/api/nick?name=${encodeURIComponent(nick)}`)
+      const j = await r.json().catch(() => null)
+      if (!r.ok) { showToast(j?.error || '불러오기에 실패했어요'); return null }
+      const items: NexonItem[] = Array.isArray(j?.items) ? j.items : []
+      const gender: string | null = j?.gender ?? null
+      const equipped: Record<string, string> = {}
+      const dyePalette: Record<string, PaletteParams> = {}
+      let tone = DEFAULT_TONE
+      let matched = 0
+      // 헤어(색 접두어 제거 + 염색색상)
+      if (j?.hair?.name) {
+        const found = matchByName(await loadSlotFolded('hair'), stripColorPrefix(j.hair.name, j.hair.baseColor), gender)
+        if (found) { equipped.hair = found.id; dyePalette.hair = colorPalette(j.hair); matched++ }
+      }
+      if (!equipped.hair && DEFAULT_EQUIP.hair) equipped.hair = DEFAULT_EQUIP.hair.id
+      // 성형(염색색상)
+      if (j?.face?.name) {
+        const found = matchByName(await loadSlotFolded('face'), stripColorPrefix(j.face.name, j.face.baseColor), gender)
+        if (found) { equipped.face = found.id; dyePalette.face = colorPalette(j.face); matched++ }
+      }
+      if (!equipped.face && DEFAULT_EQUIP.face) equipped.face = DEFAULT_EQUIP.face.id
+      // 피부(톤 이름 매칭)
+      if (j?.skin?.name) {
+        const te = indexRef.current?.base.tones.find((t) => nrmName(t.name || '') === nrmName(j.skin.name))
+        if (te) { tone = te.tone; matched++ }
+      }
+      // 캐시 아이템(옷·모자·무기 등)
+      for (const it of items) {
+        const slot = NEXON_PART_SLOT[it.part]
+        if (!slot) continue
+        const found = matchByName(await loadSlotFolded(slot), it.name, it.gender ?? gender)
+        if (found) { equipped[slot] = found.id; matched++ }
+      }
+      if (!matched) { showToast('보유한 데이터에서 일치하는 코디를 찾지 못했어요'); return null }
+      return { equipped, tone, dyePalette, dyeHsb: {}, hidden: {} }
+    } catch { showToast('불러오기에 실패했어요'); return null }
+  }
+  // 코드/닉네임으로 선택된 프리셋에 덮어쓰기.
+  const importFetch = async () => {
+    if (importing) return
     const val = nickInput.trim()
-    const label = importMode === 'code' ? '코드' : '닉네임'
-    if (!val) { showToast(`${label}를 입력해 주세요`); return }
-    if (!selectedPreset) { showToast('덮어쓸 프리셋을 먼저 선택해 주세요'); return }
-    const snap = mockImport(val)
-    setPresets((s) => s.map((p) => (p.id === selectedPreset ? { ...p, name: val } : p)))
-    setPresetData((s) => ({ ...s, [selectedPreset]: snap }))
-    applySnap(snap); setNickInput('')
-    showToast(`'${val}' 코디를 프리셋에 덮어썼어요`)
+    if (!val) { showToast(importMode === 'code' ? '코드를 입력해 주세요' : '닉네임을 입력해 주세요'); return }
+    if (!selectedPreset) return
+    setImporting(true)
+    try {
+      let snap: Snapshot | null = null
+      if (importMode === 'code') {
+        snap = decodeShareCode(val)
+        if (!snap) { showToast('올바른 공유 코드가 아니에요'); return }
+      } else {
+        snap = await importByNick(val)
+        if (!snap) return
+      }
+      setPresetData((d) => ({ ...d, [selectedPreset]: snap! }))
+      if (importMode === 'nick') setPresets((ps) => ps.map((p) => (p.id === selectedPreset ? { ...p, name: val } : p)))
+      await applySnapshot(snap)
+      setNickInput('')
+      showToast(importMode === 'code' ? '공유 코드를 프리셋에 적용했어요' : `'${val}' 코디를 불러왔어요`)
+    } finally { setImporting(false) }
   }
-  const shareCurrent = () => { try { navigator.clipboard?.writeText('https://pinkbean.shop/c/me') } catch {} ; showToast('현재 코디 공유 링크를 복사했어요') }
-  const sharePreset = (p: Preset) => { try { navigator.clipboard?.writeText(`https://pinkbean.shop/c/${p.id}`) } catch {} ; showToast('공유 링크를 복사했어요') }
+  // 자체 완결형 공유 코드 복사(서버 없음).
+  const sharePreset = (p: Preset) => {
+    const snap = p.id === selectedPreset ? snapshot() : (presetData[p.id] ?? defaultSnapshot())
+    try { navigator.clipboard?.writeText(encodeShareCode(snap)) } catch {}
+    showToast('공유 코드를 복사했어요')
+  }
+  const shareCurrent = () => { try { navigator.clipboard?.writeText(encodeShareCode(snapshot())) } catch {} ; showToast('현재 코디 공유 코드를 복사했어요') }
+  // 프리셋을 코디 기본값 + 기본 이름으로 초기화(선택된 프리셋이면 라이브 모델도 즉시 적용).
+  const resetPreset = (id: string) => {
+    const snap = defaultSnapshot()
+    setPresetData((d) => ({ ...d, [id]: snap }))
+    const i = PRESET_IDS.indexOf(id)
+    if (i >= 0) setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name: defaultPresetName(i) } : p)))
+    if (id === selectedPreset) applySnapshot(snap).catch(() => {})
+    showToast('프리셋을 기본값으로 초기화했어요')
+  }
   const startRename = (id: string, name: string, e: React.MouseEvent) => { e.stopPropagation(); setEditingPreset(id); setEditName(name) }
   const commitRename = () => {
     const nm = editName.trim()
     setPresets((s) => s.map((p) => (p.id === editingPreset ? { ...p, name: nm || p.name } : p)))
     setEditingPreset(null); setEditName('')
   }
+
+  // 자동 저장: 라이브 모델이 바뀔 때마다 선택된 프리셋에 저장(후순위 = 400ms 디바운스). 프리셋 적용으로 인한
+  // 변경은 스킵(applyingRef). 프리셋을 "보기만" 할 땐 변화가 없어 저장이 일어나지 않는다.
+  useEffect(() => {
+    if (applyingRef.current) { applyingRef.current = false; return }
+    if (!initedRef.current || !selectedPreset) return
+    if (saveT.current) clearTimeout(saveT.current)
+    saveT.current = setTimeout(() => { setPresetData((d) => ({ ...d, [selectedPreset]: snapshot() })) }, 400)
+    return () => { if (saveT.current) clearTimeout(saveT.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipped, tone, dyePalette, dyeHsb, hidden, selectedPreset])
+
+  // 영속: 프리셋 데이터/이름/선택을 localStorage 에 저장(디바운스). 서버 없이 새로고침/재실행에도 유지.
+  useEffect(() => {
+    if (!initedRef.current) return
+    const t = setTimeout(() => {
+      try {
+        const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
+        localStorage.setItem(PRESET_KEY, JSON.stringify({ data: presetData, names, sel: selectedPreset } as PresetStore))
+      } catch {}
+    }, 300)
+    return () => clearTimeout(t)
+  }, [presetData, presets, selectedPreset])
   const openDye = (slot: string, item: ListItem | null = null) => { setDialogSlot(slot); setDialogItem(item); setDialogClosing(false) }
   const closeDye = () => {
     if (dialogClosing) return
@@ -403,9 +576,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeEdit, setDyeEdit, dyeInteracting, setDyeInteracting, isMixSlot,
     dialogSlot, dialogItem, dialogClosing, openDye, closeDye,
     pv, setPv, pvOpen, setPvOpen,
-    presets, presetData, selectedPreset, selectPreset, sharePreset,
+    presets, presetData, selectedPreset, selectPreset, sharePreset, resetPreset,
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,
-    nickInput, setNickInput, importMode, setImportMode, importFetch, shareCurrent,
+    nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrent,
     toast, toastText,
     hoverCat, setHoverCat, hoverPrimary, setHoverPrimary, hoverPill, setHoverPill,
     hoverMode, setHoverMode, hoverToggle, setHoverToggle, hoverPartBtn, setHoverPartBtn,

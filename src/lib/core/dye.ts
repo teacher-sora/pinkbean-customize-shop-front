@@ -212,20 +212,25 @@ export async function renderDyedSprite(
   const useMix = mix !== base && ratio > 0
   const baseId = variantId(cg, base, slot), mixId = variantId(cg, mix, slot)
   type P = { src: CanvasImageSource; x: number; y: number; w: number; h: number; z: string }
-  const placed: P[] = []
-  for (const l of layers) {
+  // 모든 레이어(및 믹스의 base/mix)를 병렬 로드 → 순차 fetch 지연 제거(발색이 즉시 보임).
+  //  - 단색: 비-CORS(리스트가 받아둔 캐시 재사용). 블렌드: CORS(픽셀리드).
+  const placed: P[] = (await Promise.all(layers.map(async (l): Promise<P | null> => {
     try {
-      // 단색(블렌드 X)은 getImageData 불필요 → 비-CORS 로 로드해 리스트가 이미 받아둔 캐시를 재사용.
-      // 블렌드할 때만 픽셀리드가 필요하므로 CORS(?cors=1)로 받는다.
-      const baseImg = await loadImage(swapId(l.png, meta.id, baseId), useMix)
-      const src: CanvasImageSource = useMix
-        ? blendPalette(baseImg, await loadImage(swapId(l.png, meta.id, mixId), true), ratio, `${l.png}:${baseId}:${mixId}`)
-        : baseImg
+      let src: CanvasImageSource
+      if (useMix) {
+        const [baseImg, mixImg] = await Promise.all([
+          loadImage(swapId(l.png, meta.id, baseId), true),
+          loadImage(swapId(l.png, meta.id, mixId), true),
+        ])
+        src = blendPalette(baseImg, mixImg, ratio, `${l.png}:${baseId}:${mixId}`)
+      } else {
+        src = await loadImage(swapId(l.png, meta.id, baseId), false)
+      }
       const w = (src as HTMLImageElement).width, h = (src as HTMLImageElement).height
       const bx = l.map.brow?.x ?? 0, by = l.map.brow?.y ?? 0
-      placed.push({ src, x: -(l.origin.x + bx), y: -(l.origin.y + by), w, h, z: l.z })
-    } catch (_) {}
-  }
+      return { src, x: -(l.origin.x + bx), y: -(l.origin.y + by), w, h, z: l.z }
+    } catch (_) { return null }
+  }))).filter((x): x is P => x !== null)
   if (!placed.length) return
   const zi = (z: string) => { const i = zmap.indexOf(z); return i < 0 ? 9999 : i }
   placed.sort((a, b) => zi(b.z) - zi(a.z)) // 먼 레이어(zmap 큰 값) 먼저 그림
@@ -270,18 +275,22 @@ export async function buildOverrides(
       const useMix = mixId != null && p.ratio > 0
       const sameAsEquipped = baseId === meta.id && !useMix
       if (sameAsEquipped) continue
-      for (const l of layers) {
+      // 레이어(및 믹스의 base/mix 두 스프라이트)를 모두 병렬 로드 → 순차 fetch 지연 제거(헤어/성형도 즉시 발색).
+      // 단색은 비-CORS(캐시 재사용), 블렌드는 CORS(픽셀리드 필요).
+      await Promise.all(layers.map(async (l) => {
         try {
-          // 단색은 비-CORS(캐시 재사용), 블렌드는 CORS(픽셀리드 필요).
-          const baseImg = await loadImage(swapId(l.png, meta.id, baseId), useMix)
           if (useMix) {
-            const mixImg = await loadImage(swapId(l.png, meta.id, mixId!), true)
+            const [baseImg, mixImg] = await Promise.all([
+              loadImage(swapId(l.png, meta.id, baseId), true),
+              loadImage(swapId(l.png, meta.id, mixId!), true),
+            ])
             out.set(l.png, blendPalette(baseImg, mixImg, p.ratio, `${l.png}:${baseId}:${mixId}`))
           } else {
+            const baseImg = await loadImage(swapId(l.png, meta.id, baseId), false)
             out.set(l.png, toCanvas(baseImg, baseImg.width, baseImg.height))
           }
         } catch (_) {}
-      }
+      }))
     } else if (meta.dyeMode === 'hsb') {
       const h = dye.hsb[meta.slot]
       if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue

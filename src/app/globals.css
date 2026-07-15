@@ -33,6 +33,16 @@ a:hover { color: #d76d9a; }
 .pb-cardwrap:hover .pb-dye { opacity: 1; pointer-events: auto; }
 .pb-preset { border: 1.5px solid #eee6dc; border-radius: 12px; overflow: hidden; background: #fff; display: flex; flex-direction: column; cursor: pointer; transition: transform .18s ease, border-color .3s ease, background-color .3s ease; }
 .pb-presetwrap:hover > .pb-preset { transform: translateY(-4px); border-color: #eeb2ce; }
+/* 프리셋 카드 액션(공유·초기화): 평소 숨김, 카드 호버 시 표시. */
+.pb-preset-acts { opacity: 0; transition: opacity .16s ease; }
+.pb-presetwrap:hover .pb-preset-acts { opacity: 1; }
+.pb-preset-acts > button { transition: filter .14s ease; }
+/* 이름(클릭해서 변경) 호버 힌트. */
+.pb-preset-name:hover { border-color: #eeb2ce; background: #fff; }
+.pb-preset-acts > button:hover { filter: brightness(0.96); }
+/* 불러오기 스피너. */
+@keyframes pbSpin { to { transform: rotate(360deg); } }
+.pb-spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; border-radius: 50%; animation: pbSpin .7s linear infinite; }
 
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; appearance: textfield; }
