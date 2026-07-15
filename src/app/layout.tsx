@@ -7,6 +7,9 @@ const SITE_NAME = '핑크빈 커마샵'
 const TITLE = '핑크빈 커마샵 — 메이플스토리 코디 미리보기'
 const DESC =
   '메이플스토리 캐릭터의 외형(코디)을 웹에서 미리 꾸며보세요. 헤어·성형·모자·한벌옷·무기 등 부위별 아이템 착용, 염색(발색), 프리셋 저장·공유, AI 코디 검색까지 설치 없이 바로.'
+// og:image — 넓은 임베드 이미지(Vercel Blob CDN). 카톡/디스코드/트위터/구글 미리보기에 사용.
+const OG_IMAGE = 'https://qg2tk4czk48x6wl4.public.blob.vercel-storage.com/pinkbean_embed.png'
+const OG_W = 1536, OG_H = 1024
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -15,14 +18,17 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   keywords: [
     '메이플스토리', '메이플 커마', '커마샵', '커마', '코디', '외형', '코디 미리보기',
-    '메이플 코디', '염색', '발색', '헤어', '성형', '프리셋', '코디 공유', 'AI 코디 검색',
-    '핑크빈', 'MapleStory', 'cosmetic', 'avatar', 'character customization',
+    '메이플 코디', '메이플 코디 미리보기', '메이플 외형', '염색', '발색', '헤어', '성형',
+    '프리셋', '코디 공유', 'AI 코디 검색', '핑크빈', '핑크빈 커마샵',
+    'MapleStory', 'MapleStory cosmetic', 'avatar', 'character customization',
   ],
-  authors: [{ name: SITE_NAME }],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
   publisher: SITE_NAME,
   category: 'game',
-  alternates: { canonical: '/' },
+  alternates: { canonical: '/', languages: { 'ko-KR': '/' } },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: 'default' },
   openGraph: {
     type: 'website',
     url: SITE_URL,
@@ -30,12 +36,13 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESC,
     locale: 'ko_KR',
-    // 이미지는 app/opengraph-image.(png|jpg) 파일 규칙으로 자동 연결됨(파일만 추가하면 됨).
+    images: [{ url: OG_IMAGE, width: OG_W, height: OG_H, alt: `${SITE_NAME} 미리보기`, type: 'image/png' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: TITLE,
     description: DESC,
+    images: [OG_IMAGE],
   },
   robots: {
     index: true,
@@ -43,6 +50,10 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
   },
   formatDetection: { telephone: false, email: false, address: false },
+  // Google Search Console 소유확인 코드가 있으면 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION 로 주입(선택).
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+    : undefined,
 }
 
 export const viewport: Viewport = {
@@ -52,18 +63,46 @@ export const viewport: Viewport = {
   themeColor: '#ec86ac',
 }
 
-// 검색엔진 리치 결과용 구조화 데이터(schema.org). 무료 웹 게임 도구로 표기.
+// 검색엔진 리치 결과용 구조화 데이터(schema.org) — WebSite/Organization/WebApplication 그래프.
 const JSON_LD = {
   '@context': 'https://schema.org',
-  '@type': 'WebApplication',
-  name: SITE_NAME,
-  alternateName: 'Pinkbean Customize',
-  url: SITE_URL,
-  description: DESC,
-  applicationCategory: 'GameApplication',
-  operatingSystem: 'Web',
-  inLanguage: 'ko-KR',
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW' },
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      description: DESC,
+      inLanguage: 'ko-KR',
+      publisher: { '@id': `${SITE_URL}/#org` },
+    },
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#org`,
+      name: SITE_NAME,
+      alternateName: 'Pinkbean Customize',
+      url: SITE_URL,
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png`, width: 90, height: 90 },
+      image: OG_IMAGE,
+    },
+    {
+      '@type': 'WebApplication',
+      '@id': `${SITE_URL}/#app`,
+      name: SITE_NAME,
+      alternateName: 'Pinkbean Customize',
+      url: SITE_URL,
+      description: DESC,
+      applicationCategory: 'GameApplication',
+      operatingSystem: 'Web',
+      browserRequirements: 'Requires JavaScript',
+      inLanguage: 'ko-KR',
+      isAccessibleForFree: true,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW' },
+      featureList: ['아이템 착용 미리보기', '염색(발색)', '프리셋 저장·공유', 'AI 코디 검색', '핑크빈 코디 평가'],
+      screenshot: OG_IMAGE,
+      publisher: { '@id': `${SITE_URL}/#org` },
+    },
+  ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
