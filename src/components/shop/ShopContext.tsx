@@ -10,11 +10,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { ITEMS_PER_PAGE, type Preset, type Pv } from '@/lib/catalog'
-import { loadAnima, loadEffectIndex, loadIndex, loadSlot, type Index, type ListItem } from '@/lib/core/data'
-import type { HsbParams, PaletteParams } from '@/lib/core/dye'
+import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadSlot, type Index, type ListItem } from '@/lib/core/data'
+import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { decodeShareCode, encodeShareCode } from '@/lib/shareCode'
-import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, EQUIP_SLOTS, foldList } from '@/lib/shopData'
+import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, EQUIP_SLOTS, THUMB_VIEW, foldList } from '@/lib/shopData'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 아이템 리스트 표시: 스프라이트 / 베이스 모델 / 내 모델
@@ -369,6 +369,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       for (const s of conflictSlots(prev, slot, item)) next[s] = null // islot 충돌 제거
       return next
     })
+    // 헤어/성형에 염색이 걸려있으면 새 아이템의 발색 변이 스프라이트를 클릭 즉시 프리로드 → 발색이 더 빨리 반영.
+    const pal = dyePalette[slot]
+    if (isMixSlot(slot) && pal) loadMeta(item.id).then((m) => preloadPaletteVariant(m, pal, THUMB_VIEW)).catch(() => {})
   }
   const isEquippedInCat = (cat: string, itemId: string) => {
     if (cat === 'skin') return index?.base.tones.find((t) => t.tone === tone)?.body === itemId

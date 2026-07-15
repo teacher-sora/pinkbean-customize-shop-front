@@ -265,16 +265,17 @@ export async function buildOverrides(
   view: ViewOpts,
 ): Promise<Map<string, HTMLCanvasElement>> {
   const out = new Map<string, HTMLCanvasElement>()
-  for (const meta of metas) {
+  // 아이템(meta) 간에도 병렬 처리 → 여러 팔레트/HSB 아이템이 서로를 기다리지 않는다.
+  await Promise.all(metas.map(async (meta) => {
     const layers = getFrameLayers(meta, view)
     if (meta.dyeMode === 'palette') {
       const p = dye.palette[meta.slot]
-      if (!p || meta.colorGroup == null) continue
+      if (!p || meta.colorGroup == null) return
       const baseId = variantId(meta.colorGroup, p.baseColor, meta.slot)
       const mixId = p.mixColor != null ? variantId(meta.colorGroup, p.mixColor, meta.slot) : null
       const useMix = mixId != null && p.ratio > 0
       const sameAsEquipped = baseId === meta.id && !useMix
-      if (sameAsEquipped) continue
+      if (sameAsEquipped) return
       // 레이어(및 믹스의 base/mix 두 스프라이트)를 모두 병렬 로드 → 순차 fetch 지연 제거(헤어/성형도 즉시 발색).
       // 단색은 비-CORS(캐시 재사용), 블렌드는 CORS(픽셀리드 필요).
       await Promise.all(layers.map(async (l) => {
@@ -293,11 +294,24 @@ export async function buildOverrides(
       }))
     } else if (meta.dyeMode === 'hsb') {
       const h = dye.hsb[meta.slot]
-      if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
+      if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) return
       // 레이어 png 를 병렬 로드(CORS) 후 리컬러 → 순차 fetch 지연 제거.
       const loaded = await Promise.all(layers.map((l) => loadImage(l.png, true).then((img) => [l.png, img] as const).catch(() => null)))
       for (const e of loaded) { if (e) { try { out.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} } }
     }
-  }
+  }))
   return out
+}
+
+// 헤어/성형에 염색이 걸린 상태로 다른 아이템으로 바꿀 때, 새 아이템의 "발색 변이 스프라이트"를 클릭 즉시 프리로드해
+// 두면 dyeOverrides 리컬러가 그 캐시를 곧바로 써서 발색이 더 빨리 반영된다(변이 fetch 를 렌더보다 앞당김).
+export function preloadPaletteVariant(meta: ItemMeta, p: PaletteParams, view: ViewOpts): void {
+  if (meta.colorGroup == null) return
+  const baseId = variantId(meta.colorGroup, p.baseColor, meta.slot)
+  const useMix = p.mixColor != null && p.ratio > 0
+  const mixId = p.mixColor != null ? variantId(meta.colorGroup, p.mixColor, meta.slot) : null
+  for (const l of getFrameLayers(meta, view)) {
+    loadImage(swapId(l.png, meta.id, baseId), useMix).catch(() => {})
+    if (useMix && mixId) loadImage(swapId(l.png, meta.id, mixId), true).catch(() => {})
+  }
 }
