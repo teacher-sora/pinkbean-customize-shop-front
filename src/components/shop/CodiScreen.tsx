@@ -6,6 +6,7 @@ import { isStacked } from '@/lib/useBreakpoint'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
+import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
 import { CAT_TO_SLOT, isColorLineSkin, thumbView } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop, type ListMode } from './ShopContext'
@@ -31,11 +32,11 @@ export default function CodiScreen() {
   const tv = thumbView(gaze)
 
   // 모델/내모델 공통 배경(base 또는 내 착용) 조립 입력 + 키
-  const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string; override: Map<string, HTMLCanvasElement> }>({ items: [], key: '', override: new Map() })
+  const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string; override: Map<string, HTMLCanvasElement>; effs: WornEff[] }>({ items: [], key: '', override: new Map(), effs: [] })
   const ctxKeyRef = useRef('')
   useEffect(() => {
     const idx = s.index
-    if (mode === 'sprite' || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ items: [], key: '', override: new Map() }) } return }
+    if (mode === 'sprite' || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ items: [], key: '', override: new Map(), effs: [] }) } return }
     let alive = true
     const toneEntry = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
     const bodyId = toneEntry.body, headId = toneEntry.head
@@ -46,7 +47,7 @@ export default function CodiScreen() {
     const eqSig = eqEntries.map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 모델: 우측 미리보기에 적용된 염색(발색/HSB)을 썸네일 배경(내 착용)에도 동일 반영 → 키에 염색 시그니처 포함.
     const dyeSig = mode === 'mymodel' ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
-    const key = `${mode}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}`
+    const key = `${mode}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}`
     if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
     // ⚠️ ctxKeyRef 는 async 가 "실제로 setCtx 로 커밋된 뒤"에만 찍는다. StrictMode(dev)는 mount 시
     // setup→cleanup→setup 을 돌리는데, 커밋 전에 ref 를 찍어두면 두 번째 setup 이 key===ref 로 early-return
@@ -67,16 +68,20 @@ export default function CodiScreen() {
       }
       // 내 모델: 착용 아이템(활성 슬롯 제외)의 현재 염색을 override 로 구워 배경에 반영. 후보 아이템 자체는 기본색(미장착).
       let override = new Map<string, HTMLCanvasElement>()
+      let effs: WornEff[] = []
       if (mode === 'mymodel') {
         const dyeMetas = eqEntries.map(([, it]) => map.get(it.id)).filter(Boolean) as ItemMeta[]
         override = await buildOverrides(dyeMetas, { palette: s.dyePalette, hsb: s.dyeHsb }, tv.view).catch(() => new Map())
+        // 착용 아이템의 이펙트(망토 오라 등)도 카드에 그린다 + 그 이펙트 염색을 override 에 굽는다.
+        // 연출 토글이 꺼진 슬롯은 아예 제외 → 카드에서도 안 보인다.
+        effs = await collectWornEffects(eqEntries.map(([sl, it]) => ({ slot: sl, id: it.id })), s.pv, s.dyeHsb, override).catch(() => [])
       }
       if (!alive) return
       ctxKeyRef.current = key // 커밋 성공 시에만 기록(위 주석 참고)
-      setCtx({ items, key, override })
+      setCtx({ items, key, override, effs })
     })
     return () => { alive = false }
-  }, [mode, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, s.dyePalette, s.dyeHsb])
+  }, [mode, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
 
   const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * s.itemsPerPage, p * s.itemsPerPage + s.itemsPerPage))
   const gridStyle = `display:grid; grid-template-columns:repeat(${s.cols},minmax(0,1fr)); grid-template-rows:repeat(${s.rows},1fr); gap:${s.bp === 'mobile' ? 10 : 16}px; height:100%;`
@@ -112,7 +117,7 @@ export default function CodiScreen() {
             <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat], item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox + ' position:relative;')}>
-            <ItemThumb item={item} mode={mode} gaze={gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
+            <ItemThumb item={item} mode={mode} gaze={gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} title={badgeKind} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />

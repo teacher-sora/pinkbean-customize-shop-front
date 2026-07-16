@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
-import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta } from '@/lib/core/data'
+import { loadMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
+import { collectWornEffects } from '@/lib/core/thumbEffects'
 import { CARD_FRACTION, CARD_MARGIN, THUMB_VIEW, isColorLineSkin } from '@/lib/shopData'
 import { isStacked } from '@/lib/useBreakpoint'
 import { css } from '@/lib/style'
@@ -14,14 +15,15 @@ import { useShop, type Snapshot } from './ShopContext'
 // 프리셋 카드 썸네일: 스냅샷(착용+톤+염색)을 실제 모델로 합성해 카드에 중앙 배치(코디/미리보기와 동일한
 // computeModelPlacement 규칙). 정지 프레임(stand1) + 염색 + 이펙트(망토 등) 반영 → 이펙트만 있는 망토도 구분된다.
 function PresetThumb({ snap }: { snap: Snapshot }) {
-  const { index } = useShop()
+  const { index, pv } = useShop()
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [ov, setOv] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effects, setEffects] = useState<EffectDraw[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const key = useMemo(() => JSON.stringify(snap), [snap]) // 스냅샷 변하면 재합성
+  // 스냅샷 또는 이펙트 토글이 변하면 재합성(토글 끄면 카드에서도 이펙트가 사라져야 한다)
+  const key = useMemo(() => JSON.stringify(snap) + `|${pv.wEffect}${pv.cEffect}`, [snap, pv.wEffect, pv.cEffect])
 
   useEffect(() => {
     if (!index) return
@@ -58,26 +60,13 @@ function PresetThumb({ snap }: { snap: Snapshot }) {
       const bnav = curBody?.map?.navel
       const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
       const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
-      const effIdx = await loadEffectIndex().catch(() => new Set<string>())
-      const effDraws: EffectDraw[] = []
-      for (const { slot, meta } of equipMetas) {
-        if (!effIdx.has(String(parseInt(meta.id, 10)))) continue
-        const em = await loadEffect(meta.id).catch(() => null)
-        if (!em) continue
-        effDraws.push(...effectDraws(em, THUMB_VIEW.action, { foot, brow }, 0))
-        // ⚠️ buildOverrides 는 "아이템 레이어"만 염색한다. 이펙트(망토 오라 등)는 별도 png 라서
-        // 여기서 직접 리컬러해 override 에 넣어야 한다(안 하면 옷만 염색되고 이펙트는 원래 색으로 남는다).
-        // 카드는 정지 프레임0만 그리므로 각 그룹의 프레임0만 칠하면 충분하다.
-        const h = (snap.dyeHsb || {})[slot]
-        if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
-        const pngs = Object.values(em.groups).flatMap((g) => g.frames.slice(0, 1).map((fr) => fr.png))
-        const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
-        for (const e of loaded) { if (e) { try { overrides.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} } }
-      }
+      // 착용 이펙트 수집 + 이펙트 염색을 overrides 에 굽는다(연출 토글이 꺼진 슬롯은 제외 → 카드에도 안 보임).
+      const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id })), pv, snap.dyeHsb || {}, overrides).catch(() => [])
+      const effDraws: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, THUMB_VIEW.action, { foot, brow }, 0))
       if (alive) { setPlaced(p); setOv(overrides); setEffects(effDraws) }
     })().catch(() => {})
     return () => { alive = false }
-  }, [key, index])
+  }, [key, index, pv])
 
   useEffect(() => {
     const el = wrapRef.current
