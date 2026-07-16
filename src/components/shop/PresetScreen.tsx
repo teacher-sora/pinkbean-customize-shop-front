@@ -60,10 +60,19 @@ function PresetThumb({ snap }: { snap: Snapshot }) {
       const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
       const effIdx = await loadEffectIndex().catch(() => new Set<string>())
       const effDraws: EffectDraw[] = []
-      for (const { meta } of equipMetas) {
+      for (const { slot, meta } of equipMetas) {
         if (!effIdx.has(String(parseInt(meta.id, 10)))) continue
         const em = await loadEffect(meta.id).catch(() => null)
-        if (em) effDraws.push(...effectDraws(em, THUMB_VIEW.action, { foot, brow }, 0))
+        if (!em) continue
+        effDraws.push(...effectDraws(em, THUMB_VIEW.action, { foot, brow }, 0))
+        // ⚠️ buildOverrides 는 "아이템 레이어"만 염색한다. 이펙트(망토 오라 등)는 별도 png 라서
+        // 여기서 직접 리컬러해 override 에 넣어야 한다(안 하면 옷만 염색되고 이펙트는 원래 색으로 남는다).
+        // 카드는 정지 프레임0만 그리므로 각 그룹의 프레임0만 칠하면 충분하다.
+        const h = (snap.dyeHsb || {})[slot]
+        if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
+        const pngs = Object.values(em.groups).flatMap((g) => g.frames.slice(0, 1).map((fr) => fr.png))
+        const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
+        for (const e of loaded) { if (e) { try { overrides.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} } }
       }
       if (alive) { setPlaced(p); setOv(overrides); setEffects(effDraws) }
     })().catch(() => {})
