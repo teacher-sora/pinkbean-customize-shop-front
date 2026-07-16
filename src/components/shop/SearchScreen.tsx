@@ -11,6 +11,7 @@ import { CAT_TO_SLOT, SLOT_TO_CAT, thumbView } from '@/lib/shopData'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
+import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
 import { useShop, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
 
@@ -18,7 +19,7 @@ const SEARCH_CATS = [{ id: 'all', label: '전체' }, ...CATS.filter((c) => c.id 
 const MODES: { v: ListMode; l: string }[] = [{ v: 'sprite', l: '썸네일' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' }]
 const NO_CASH_BADGE = new Set(['hair', 'face', 'skin'])
 // override = 내 모델 배경(내 착용)의 현재 염색. 코디 탭과 100% 동일하게 보이도록 함께 넘긴다.
-type Ctx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement> }
+type Ctx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement>; effs?: WornEff[] }
 const EMPTY_CTX: Ctx = { items: [], key: '' }
 
 export default function SearchScreen() {
@@ -69,7 +70,7 @@ export default function SearchScreen() {
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 모델: 우측 미리보기의 염색(발색/HSB)까지 동일 반영 → 키에 염색 시그니처 포함(코디 탭과 동일).
     const dyeSig = mode === 'mymodel' ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
-    const key = `${mode}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}`
+    const key = `${mode}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}`
     if (key === ctxKeyRef.current) return
     const eqIds = mode === 'mymodel' ? myEq.map(([, it]) => it.id) : []
     const ids = Array.from(new Set([bodyId, headId, ...eqIds]))
@@ -93,7 +94,11 @@ export default function SearchScreen() {
           }
           // 배경(내 착용)의 현재 염색을 구워 넣는다. 후보 아이템 자체는 기본색(미장착).
           const override = await buildOverrides(dyeMetas, { palette: s.dyePalette, hsb: s.dyeHsb }, tv.view).catch(() => new Map())
-          bySlot[slot] = { items, key: `${key}:${slot}`, override }
+          // 착용 이펙트(망토 오라 등)도 카드에 그린다 + 이펙트 염색을 override 에 굽는다(토글 꺼진 슬롯 제외).
+          const effs = await collectWornEffects(
+            myEq.filter(([sl]) => sl !== slot).map(([sl, it]) => ({ slot: sl, id: it.id })), s.pv, s.dyeHsb, override,
+          ).catch(() => [])
+          bySlot[slot] = { items, key: `${key}:${slot}`, override, effs }
         }
       }
       if (!alive) return
@@ -102,7 +107,7 @@ export default function SearchScreen() {
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.index, s.tone, gaze, mode, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb])
+  }, [s.index, s.tone, gaze, mode, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
 
   const ctxFor = (item: ListItem): Ctx => {
     const em = effMode(item.slot)
@@ -130,7 +135,7 @@ export default function SearchScreen() {
             <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox + ' position:relative;')}>
-            <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} override={c.override} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} />
+            <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} override={c.override} ctxEffs={c.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />

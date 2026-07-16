@@ -13,6 +13,7 @@ import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '
 import { loadEffect, loadEffectIndex, loadMeta, spriteUrl, type ListItem } from '@/lib/core/data'
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
+import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
 import { CARD_FRACTION, CARD_MARGIN, thumbView } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
 
@@ -70,9 +71,11 @@ function Sprite({ item }: { item: ListItem }) {
 interface ModelProps {
   item: ListItem; gaze: string; ctxItems: AssembleInput[]; ctxKey: string
   zmap: string[]; smap: Record<string, string>; skinHeadId?: string
-  override?: Map<string, HTMLCanvasElement> // 내 모델: 배경(내 착용) 염색 오버라이드
+  override?: Map<string, HTMLCanvasElement> // 내 모델: 배경(내 착용) 염색 오버라이드(이펙트 염색 포함)
+  ctxEffs?: WornEff[]                       // 내 모델: 배경(내 착용)의 이펙트 — 망토 오라 등
+  pvEff?: { wEffect: boolean; cEffect: boolean } // 연출 토글(꺼진 이펙트는 카드에서도 안 보인다)
 }
-function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override }: ModelProps) {
+function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff }: ModelProps) {
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [effs, setEffs] = useState<EffectDraw[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
@@ -98,23 +101,26 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       if (!alive) return
       const { placed: p, anchors } = assemble([...ctxItems, ...self], zmap, smap)
       setPlaced(p)
-      // 이 아이템 자체의 이펙트(망토 등) — 정적 대표 프레임.
-      if (item.slot !== 'skin') {
+      // 이펙트(망토 오라 등) = 배경(내 착용)의 것 + 이 아이템 자신의 것. 둘 다 같은 앵커로 배치한다.
+      const bp = p.find((x) => x.name === 'body')
+      const foot = bp ? { x: bp.x + bp.origin.x, y: bp.y + bp.origin.y } : { x: 8, y: 21 }
+      const anch = { foot, brow: anchors.brow ?? foot }
+      const draws: EffectDraw[] = []
+      for (const { em } of ctxEffs || []) draws.push(...effectDraws(em, view.action, anch, 0))
+      // 이 아이템 자체의 이펙트 — 정적 대표 프레임. 연출 토글이 꺼진 슬롯이면 그리지 않는다.
+      if (item.slot !== 'skin' && (!pvEff || effectEnabled(item.slot, pvEff))) {
         const bare = String(parseInt(item.id, 10))
         const eidx = await loadEffectIndex().catch(() => new Set<string>())
         if (alive && eidx.has(bare)) {
           const em = await loadEffect(item.id).catch(() => null)
-          if (em && alive) {
-            const bp = p.find((x) => x.name === 'body')
-            const foot = bp ? { x: bp.x + bp.origin.x, y: bp.y + bp.origin.y } : { x: 8, y: 21 }
-            setEffs(effectDraws(em, view.action, { foot, brow: anchors.brow ?? foot }, 0))
-          }
+          if (em) draws.push(...effectDraws(em, view.action, anch, 0))
         }
       }
+      if (alive) setEffs(draws)
     })().catch(() => {})
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id, ctxKey, skinHeadId, gaze])
+  }, [item.id, ctxKey, skinHeadId, gaze, ctxEffs, pvEff])
 
   // 셀(div) 표시크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.
   useEffect(() => {
@@ -157,7 +163,9 @@ export default function ItemThumb(props: {
   item: ListItem; mode: ListMode; gaze: string; ctxItems: AssembleInput[]; ctxKey: string
   zmap: string[]; smap: Record<string, string>; skinHeadId?: string
   override?: Map<string, HTMLCanvasElement>
+  ctxEffs?: WornEff[]
+  pvEff?: { wEffect: boolean; cEffect: boolean }
 }) {
   if (props.mode === 'sprite') return <Sprite item={props.item} />
-  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} />
+  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} />
 }
