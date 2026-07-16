@@ -45,6 +45,14 @@ function labelsFor(charClass: string | null): [string, string] {
   return ['일반', '다른 모드']
 }
 
+// ⚠️ 제로는 character_gender 가 '기타'로 온다(실측). 그런데 헤어·성형은 이름이 같아도 (남)/(여) 변형이
+//    따로 있어서, 성별을 모르면 엉뚱한 변형이 잡힌다 — 제로는 알파/베타가 **헤어·성형만** 다르므로 치명적이다.
+//    알파=남, 베타=여. (근거: 베타가 쓰는 '매직 엘라 헤어'가 카탈로그에 (여) 로만 존재한다.)
+function genderForLook(charClass: string | null, kkey: 'normal' | 'additional', charGender: string | null) {
+  if (charClass === '제로') return kkey === 'normal' ? '남' : '여'
+  return charGender
+}
+
 export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get('name')?.trim()
   if (!name) return NextResponse.json({ error: '닉네임을 입력해 주세요' }, { status: 400 })
@@ -65,6 +73,7 @@ export async function GET(req: NextRequest) {
     const data: Cash = await cr.json()
     const beauty: Record<string, NexonBeautyPart & { skin_name?: string }> | null = br.ok ? await br.json().catch(() => null) : null
     const charClass = (data.character_class as string) ?? null
+    const charGender = (data.character_gender as string) ?? null
     const [labelA, labelB] = labelsFor(charClass)
 
     const buildLook = (kkey: 'normal' | 'additional', label: string) => {
@@ -73,6 +82,7 @@ export async function GET(req: NextRequest) {
       const skinName = beauty?.[`${b}character_skin`]?.skin_name
       return {
         key: kkey, label,
+        gender: genderForLook(charClass, kkey, charGender), // 코디별 성별(제로는 알파/베타가 다르다)
         items: mergeItems(data, p),
         hair: col(beauty?.[`${b}character_hair`], 'hair_name'),
         face: col(beauty?.[`${b}character_face`], 'face_name'),

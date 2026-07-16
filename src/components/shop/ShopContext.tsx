@@ -51,7 +51,9 @@ const nrmName = (n: string) => (n || '').replace(/\s*\((여|남)\)\s*$/, '').rep
 type NexonItem = { part: string; slot: string; name: string; gender: string | null }
 type NexonBeauty = { name: string; baseColor: string | null; mixColor: string | null; mixRate: string }
 // 넥슨이 주는 코디 1벌. 제로/엔젤릭버스터는 2벌이 온다(제로=알파/베타, 엔버=일반/드레스업) — /api/nick 참고.
-type NexonLook = { key: string; label: string; items: NexonItem[]; hair: NexonBeauty | null; face: NexonBeauty | null; skin: { name: string } | null }
+// gender 는 코디별로 다를 수 있다 — 제로는 캐릭터 성별이 '기타'로 오고 알파=남/베타=여 이므로
+// 이걸 쓰지 않으면 헤어·성형의 (남)/(여) 변형이 엉뚱하게 잡힌다.
+type NexonLook = { key: string; label: string; gender: string | null; items: NexonItem[]; hair: NexonBeauty | null; face: NexonBeauty | null; skin: { name: string } | null }
 // 불러오기 후보 1벌(다이얼로그에서 좌/우로 보여준다).
 export type LookOption = { key: string; label: string; snap: Snapshot }
 // 넥슨 색상명 → 내부 믹스 팔레트 인덱스(MIX_PALETTE: 검정0 빨강1 주황2 노랑3 초록4 파랑5 보라6 갈색7).
@@ -602,7 +604,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const looks: NexonLook[] = Array.isArray(j?.looks) ? j.looks : []
       const out: LookOption[] = []
       for (const lk of looks) {
-        const snap = await lookToSnapshot(lk, gender)
+        // 코디별 성별 우선(제로 알파=남/베타=여). 없으면 캐릭터 성별로 폴백.
+        const snap = await lookToSnapshot(lk, lk.gender ?? gender)
         if (snap) out.push({ key: lk.key, label: lk.label, snap })
       }
       if (!out.length) { showToast('보유한 데이터에서 일치하는 코디를 찾지 못했어요'); return null }
