@@ -613,15 +613,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const shareCurrent = () => { try { navigator.clipboard?.writeText(encodeShareCode(snapshot())) } catch {} ; showToast('현재 코디 공유 코드를 복사했어요') }
   // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말풍선을 받는다.
   const rateNonce = useRef(0)
+  const rateHistory = useRef<string[]>([]) // 핑크빈이 최근에 한 말(반복 방지용으로 백엔드에 전달)
   const rateCodi = async () => {
     if (rating) return
     showToast('핑크빈이 코디를 살펴보는 중...')
     setRating(true)
     try {
-      const items = Object.entries(equipped).filter(([, it]) => it).map(([slot, it]) => ({ slot, name: it!.name || it!.id }))
-      const res = await fetch(`${SEARCH_API}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone }) })
+      // id 도 함께 → 백엔드가 그 아이템의 캡션(생김새)을 붙여 "이름"이 아니라 "모습"을 보고 말하게 한다.
+      // history(최근 발언) → 같은 코디를 여러 번 눌러도 매번 다른 얘기가 나오게 한다.
+      const items = Object.entries(equipped).filter(([, it]) => it).map(([slot, it]) => ({ slot, id: it!.id, name: it!.name || it!.id }))
+      const res = await fetch(`${SEARCH_API}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone, history: rateHistory.current }) })
       const data = await res.json()
       const bubbles: string[] = (data.bubbles || []).filter(Boolean)
+      if (bubbles.length) rateHistory.current = [...bubbles, ...rateHistory.current].slice(0, 6) // 최근 6개만 기억
       setRateResult({ bubbles: bubbles.length ? bubbles : ['뀨…? 지금은 좀 부끄러운걸!'], nonce: ++rateNonce.current })
     } catch {
       setRateResult({ bubbles: ['뀨…? 지금은 딴청 부리는 중이야!'], nonce: ++rateNonce.current })
