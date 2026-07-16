@@ -138,13 +138,16 @@ export function assemble(
   const hideFace = items.some((i) => i.invisibleFace && !isTransparent(i.name))
 
   const anchors: Record<string, Vec> = { navel: { x: 0, y: 0 } }
-  type Pending = Layer & { itemId: string; slot: string }
+  type Pending = Layer & { itemId: string; slot: string; hidden: boolean }
   const remaining: Pending[] = []
+  // ⚠️ 가림(occlusion)은 "그리지 않는 것"이지 "골격에서 빼는 것"이 아니다.
+  // 숨긴 레이어도 자기 map 앵커(brow/neck/hand…)는 그대로 제공해야 한다.
+  // 예: 탈(vslot 에 Hd)은 머리를 숨기는데, 탈 자신이 붙을 brow 앵커를 주는 게 바로 그 머리다.
+  // 머리를 아예 빼버리면 brow 가 없어 탈이 앵커를 못 찾고 → 아래 폴백이 몸통 원점(허리)에 그려버린다.
   for (const it of items) {
-    if (hideFace && it.slot === 'face') continue
+    const faceHidden = hideFace && it.slot === 'face'
     for (const l of it.layers) {
-      if (!isVisible(it.slot, l.z)) continue // occlusion
-      remaining.push({ ...l, itemId: it.itemId, slot: it.slot })
+      remaining.push({ ...l, itemId: it.itemId, slot: it.slot, hidden: faceHidden || !isVisible(it.slot, l.z) })
     }
   }
 
@@ -163,7 +166,7 @@ export function assemble(
       const aw = anchors[aname]
       const x = aw.x - (L.origin.x + L.map[aname].x)
       const y = aw.y - (L.origin.y + L.map[aname].y)
-      placed.push({ ...L, x, y, tintable: TINTABLE_SLOTS.has(L.slot) })
+      if (!L.hidden) placed.push({ ...L, x, y, tintable: TINTABLE_SLOTS.has(L.slot) }) // 숨긴 건 안 그린다(앵커는 아래에서 제공)
       for (const n of names) {
         if (!anchors[n]) anchors[n] = { x: x + L.origin.x + L.map[n].x, y: y + L.origin.y + L.map[n].y }
       }
@@ -183,6 +186,7 @@ export function assemble(
     const rox = bodyLayer.x + bodyLayer.origin.x
     const roy = bodyLayer.y + bodyLayer.origin.y
     for (const L of remaining) {
+      if (L.hidden) continue // 가려진 레이어는 폴백으로도 그리지 않는다
       if (!Object.keys(L.map || {}).some((n) => L.map[n])) continue // no valid anchor at all → drop
       placed.push({ ...L, x: rox - L.origin.x, y: roy - L.origin.y, tintable: TINTABLE_SLOTS.has(L.slot) })
     }
