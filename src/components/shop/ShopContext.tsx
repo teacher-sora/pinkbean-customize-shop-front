@@ -50,6 +50,10 @@ const NEXON_PART_SLOT: Record<string, string> = {
 const nrmName = (n: string) => (n || '').replace(/\s*\((여|남)\)\s*$/, '').replace(/\s+/g, ' ').trim()
 type NexonItem = { part: string; slot: string; name: string; gender: string | null }
 type NexonBeauty = { name: string; baseColor: string | null; mixColor: string | null; mixRate: string }
+// 넥슨이 주는 코디 1벌. 제로/엔젤릭버스터는 2벌이 온다(제로=알파/베타, 엔버=일반/드레스업) — /api/nick 참고.
+type NexonLook = { key: string; label: string; items: NexonItem[]; hair: NexonBeauty | null; face: NexonBeauty | null; skin: { name: string } | null }
+// 불러오기 후보 1벌(다이얼로그에서 좌/우로 보여준다).
+export type LookOption = { key: string; label: string; snap: Snapshot }
 // 넥슨 색상명 → 내부 믹스 팔레트 인덱스(MIX_PALETTE: 검정0 빨강1 주황2 노랑3 초록4 파랑5 보라6 갈색7).
 const COLOR_IDX: Record<string, number> = {
   '검은색': 0, '검정': 0, '빨간색': 1, '빨강': 1, '주황색': 2, '주황': 2, '노란색': 3, '노랑': 3,
@@ -115,6 +119,9 @@ export interface ShopCtx {
   importMode: 'nick' | 'code'; setImportMode: Dispatch<'nick' | 'code'>
   importFetch: () => void
   importing: boolean
+  // 코디 2벌 선택(제로/엔젤릭버스터)
+  lookPick: { nick: string; options: LookOption[] } | null
+  chooseLook: (key: string) => void; closeLookPick: () => void
   shareCurrent: () => void
   rateCodi: () => void
   rateResult: { bubbles: string[]; nonce: number } | null
@@ -179,6 +186,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [nickInput, setNickInput] = useState('')
   const [importMode, setImportMode] = useState<'nick' | 'code'>('nick')
   const [importing, setImporting] = useState(false) // 불러오기 진행 중(로딩 애니메이션)
+  // 코디가 2벌인 캐릭터(제로=알파/베타, 엔젤릭버스터=일반/드레스업) → 어느 걸 가져올지 고르는 다이얼로그.
+  const [lookPick, setLookPick] = useState<{ nick: string; options: LookOption[] } | null>(null)
   const [editingPreset, setEditingPreset] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [toast, setToast] = useState(false)
@@ -549,45 +558,65 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const mix = b.mixColor ? (COLOR_IDX[b.mixColor] ?? null) : null
     return { baseColor: base, mixColor: mix, ratio: mix != null ? (parseInt(b.mixRate, 10) || 50) : 0 }
   }
-  // 닉네임 → 스냅샷: 내부 프록시(/api/nick)로 넥슨 착용(캐시아이템 + 헤어/성형/피부)을 받아 내부 아이템에 매칭.
-  const importByNick = async (nick: string): Promise<Snapshot | null> => {
+  // 넥슨 코디 1벌 → 내부 스냅샷(착용 + 톤 + 염색). 매칭이 0건이면 null(=보여줄 게 없는 코디).
+  const lookToSnapshot = async (look: NexonLook, gender: string | null): Promise<Snapshot | null> => {
+    const equipped: Record<string, string> = {}
+    const dyePalette: Record<string, PaletteParams> = {}
+    let tone = DEFAULT_TONE
+    let matched = 0
+    // 헤어(색 접두어 제거 + 염색색상)
+    if (look.hair?.name) {
+      const found = matchByName(await loadSlotFolded('hair'), stripColorPrefix(look.hair.name, look.hair.baseColor), gender)
+      if (found) { equipped.hair = found.id; dyePalette.hair = colorPalette(look.hair); matched++ }
+    }
+    if (!equipped.hair && DEFAULT_EQUIP.hair) equipped.hair = DEFAULT_EQUIP.hair.id
+    // 성형(염색색상)
+    if (look.face?.name) {
+      const found = matchByName(await loadSlotFolded('face'), stripColorPrefix(look.face.name, look.face.baseColor), gender)
+      if (found) { equipped.face = found.id; dyePalette.face = colorPalette(look.face); matched++ }
+    }
+    if (!equipped.face && DEFAULT_EQUIP.face) equipped.face = DEFAULT_EQUIP.face.id
+    // 피부(톤 이름 매칭)
+    if (look.skin?.name) {
+      const te = indexRef.current?.base.tones.find((t) => nrmName(t.name || '') === nrmName(look.skin!.name))
+      if (te) { tone = te.tone; matched++ }
+    }
+    // 캐시 아이템(옷·모자·무기 등)
+    for (const it of look.items) {
+      const slot = NEXON_PART_SLOT[it.part]
+      if (!slot) continue
+      const found = matchByName(await loadSlotFolded(slot), it.name, it.gender ?? gender)
+      if (found) { equipped[slot] = found.id; matched++ }
+    }
+    if (!matched) return null
+    return { equipped, tone, dyePalette, dyeHsb: {}, hidden: {} }
+  }
+  // 닉네임 → 코디 후보 목록: 내부 프록시(/api/nick)로 넥슨 착용(캐시아이템 + 헤어/성형/피부)을 받아 내부 아이템에 매칭.
+  // 일반 직업은 1벌, 제로/엔젤릭버스터는 2벌이 나온다 → 2벌이면 호출부가 선택 다이얼로그를 띄운다.
+  const importByNick = async (nick: string): Promise<LookOption[] | null> => {
     try {
       const r = await fetch(`/api/nick?name=${encodeURIComponent(nick)}`)
       const j = await r.json().catch(() => null)
       if (!r.ok) { showToast(j?.error || '불러오기에 실패했어요'); return null }
-      const items: NexonItem[] = Array.isArray(j?.items) ? j.items : []
       const gender: string | null = j?.gender ?? null
-      const equipped: Record<string, string> = {}
-      const dyePalette: Record<string, PaletteParams> = {}
-      let tone = DEFAULT_TONE
-      let matched = 0
-      // 헤어(색 접두어 제거 + 염색색상)
-      if (j?.hair?.name) {
-        const found = matchByName(await loadSlotFolded('hair'), stripColorPrefix(j.hair.name, j.hair.baseColor), gender)
-        if (found) { equipped.hair = found.id; dyePalette.hair = colorPalette(j.hair); matched++ }
+      const looks: NexonLook[] = Array.isArray(j?.looks) ? j.looks : []
+      const out: LookOption[] = []
+      for (const lk of looks) {
+        const snap = await lookToSnapshot(lk, gender)
+        if (snap) out.push({ key: lk.key, label: lk.label, snap })
       }
-      if (!equipped.hair && DEFAULT_EQUIP.hair) equipped.hair = DEFAULT_EQUIP.hair.id
-      // 성형(염색색상)
-      if (j?.face?.name) {
-        const found = matchByName(await loadSlotFolded('face'), stripColorPrefix(j.face.name, j.face.baseColor), gender)
-        if (found) { equipped.face = found.id; dyePalette.face = colorPalette(j.face); matched++ }
-      }
-      if (!equipped.face && DEFAULT_EQUIP.face) equipped.face = DEFAULT_EQUIP.face.id
-      // 피부(톤 이름 매칭)
-      if (j?.skin?.name) {
-        const te = indexRef.current?.base.tones.find((t) => nrmName(t.name || '') === nrmName(j.skin.name))
-        if (te) { tone = te.tone; matched++ }
-      }
-      // 캐시 아이템(옷·모자·무기 등)
-      for (const it of items) {
-        const slot = NEXON_PART_SLOT[it.part]
-        if (!slot) continue
-        const found = matchByName(await loadSlotFolded(slot), it.name, it.gender ?? gender)
-        if (found) { equipped[slot] = found.id; matched++ }
-      }
-      if (!matched) { showToast('보유한 데이터에서 일치하는 코디를 찾지 못했어요'); return null }
-      return { equipped, tone, dyePalette, dyeHsb: {}, hidden: {} }
+      if (!out.length) { showToast('보유한 데이터에서 일치하는 코디를 찾지 못했어요'); return null }
+      return out
     } catch { showToast('불러오기에 실패했어요'); return null }
+  }
+  // 불러온 스냅샷을 선택된 프리셋에 덮어쓰고 라이브에 적용.
+  const applyImported = async (snap: Snapshot, label: string, isNick: boolean) => {
+    if (!selectedPreset) return
+    setPresetData((d) => ({ ...d, [selectedPreset]: snap }))
+    if (isNick) setPresets((ps) => ps.map((p) => (p.id === selectedPreset ? { ...p, name: label } : p)))
+    await applySnapshot(snap)
+    setNickInput('')
+    showToast(isNick ? `'${label}' 코디를 불러왔어요` : '공유 코드를 프리셋에 적용했어요')
   }
   // 코드/닉네임으로 선택된 프리셋에 덮어쓰기.
   const importFetch = async () => {
@@ -597,20 +626,26 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!selectedPreset) return
     setImporting(true)
     try {
-      let snap: Snapshot | null = null
       if (importMode === 'code') {
-        snap = decodeShareCode(val)
+        const snap = decodeShareCode(val)
         if (!snap) { showToast('올바른 공유 코드가 아니에요'); return }
-      } else {
-        snap = await importByNick(val)
-        if (!snap) return
+        await applyImported(snap, val, false)
+        return
       }
-      setPresetData((d) => ({ ...d, [selectedPreset]: snap! }))
-      if (importMode === 'nick') setPresets((ps) => ps.map((p) => (p.id === selectedPreset ? { ...p, name: val } : p)))
-      await applySnapshot(snap)
-      setNickInput('')
-      showToast(importMode === 'code' ? '공유 코드를 프리셋에 적용했어요' : `'${val}' 코디를 불러왔어요`)
+      const opts = await importByNick(val)
+      if (!opts) return
+      // 제로·엔젤릭버스터는 코디가 2벌이다 → 바로 적용하지 않고 어느 쪽을 가져올지 고르게 한다.
+      if (opts.length > 1) { setLookPick({ nick: val, options: opts }); return }
+      await applyImported(opts[0].snap, val, true)
     } finally { setImporting(false) }
+  }
+  // 코디 선택 다이얼로그에서 한 벌 고름 → 그 코디를 적용.
+  const chooseLook = async (key: string) => {
+    const lp = lookPick
+    if (!lp) return
+    const opt = lp.options.find((o) => o.key === key)
+    setLookPick(null)
+    if (opt) await applyImported(opt.snap, lp.nick, true)
   }
   // 자체 완결형 공유 코드 복사(서버 없음).
   const sharePreset = (p: Preset) => {
@@ -751,6 +786,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     presets, presetData, selectedPreset, selectPreset, sharePreset, resetPreset,
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,
     nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrent, rateCodi, rateResult, rating,
+    lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText,
     hoverCat, setHoverCat, hoverPrimary, setHoverPrimary, hoverPill, setHoverPill,
     hoverMode, setHoverMode, hoverToggle, setHoverToggle, hoverPartBtn, setHoverPartBtn,
