@@ -9,7 +9,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
+import { CATS, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
 import { GRID, useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadSlot, type Index, type ListItem } from '@/lib/core/data'
 import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
@@ -148,7 +148,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // ── UI ──
   const [primary, setPrimary] = useState('codi')
   const [searchQuery, setSearchQuery] = useState<string | null>(null) // AI 코디 검색어(null=미검색)
-  const [activeCat, setActiveCat] = useState('hair')
+  const [activeCat, setActiveCat] = useState('all') // 기본 = 전체(모든 부위 한 리스트)
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=모델(코디는 모델이 기본)
   const [search, setSearch] = useState('')
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
@@ -255,7 +255,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       .catch(() => setLists((m) => ({ ...m, [slot]: [] })))
       .finally(() => loadingSlots.current.delete(slot))
   }, [index, lists])
-  useEffect(() => { if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat]) }, [activeCat, ensureSlot])
+  useEffect(() => {
+    // '전체'는 모든 부위를 한 리스트로 보여주므로 전 슬롯을 로드한다(각 슬롯은 캐시돼 1회만 받음).
+    if (activeCat === 'all') { for (const c of CATS) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]) ; return }
+    if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat])
+  }, [activeCat, ensureSlot])
 
   // 피부(skin) = index.base.tones 를 합성 리스트로. 그 외는 lists[slot].
   const skinList = useMemo<ListItem[]>(() => {
@@ -267,11 +271,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [index])
   const listForCat = useCallback((cat: string): ListItem[] => {
     if (cat === 'skin') return skinList
+    // '전체' = 모든 부위를 CATS 순서(헤어→방패)로 이어붙인 하나의 리스트. 슬롯 내부 정렬은 그대로 유지.
+    if (cat === 'all') return CATS.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || []))
     return lists[CAT_TO_SLOT[cat]] || []
   }, [lists, skinList])
 
   // 활성 부위 리스트 로딩중?(index 미로드 또는 해당 slot 미로드)
-  const catLoading = dataLoading || (activeCat !== 'skin' && lists[CAT_TO_SLOT[activeCat]] === undefined)
+  const catLoading = dataLoading || (activeCat === 'all'
+    ? CATS.some((c) => c.id !== 'skin' && lists[CAT_TO_SLOT[c.id]] === undefined)
+    : activeCat !== 'skin' && lists[CAT_TO_SLOT[activeCat]] === undefined)
 
   // 활성 부위 리스트 + 검색 필터(이름 substring, 정렬 순서는 그대로 유지 — 필터만).
   const activeListFull = listForCat(activeCat)
