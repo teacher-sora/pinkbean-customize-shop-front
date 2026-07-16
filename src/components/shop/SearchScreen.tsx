@@ -203,7 +203,7 @@ export default function SearchScreen() {
         </div>
         {/* 추가 입력 행(상단 58px 바 아래) — 검색 입력 + AI 검색 버튼(높이 38) */}
         <div style={css(`flex:0 0 auto; padding:${narrow ? '0 16px 10px' : '2px 22px 12px'}; display:flex; gap:8px; flex-wrap:wrap; align-items:center;`)}>
-          <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') run() }} placeholder="원하는 코디를 문장으로 검색"
+          <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') run() }} placeholder={mobile ? '생김새로 검색 (예: 고양이 귀 모자)' : '아이템 생김새를 적어보세요 (예: 여자 단발 헤어, 스타킹 달린 한벌옷)'}
             style={css(`flex:1 1 ${mobile ? '100%' : '200px'}; min-width:0; height:38px; padding:0 14px; border:1.5px solid #eeb2ce; border-radius:11px; background:#faf7f3; font-family:inherit; font-size:14px; color:#3d372f; outline:none; transition:border-color .14s ease;`)} />
           <button onClick={() => run()} disabled={s.searchLoading} className="pb-h-solid" style={css(`${mobile ? 'flex:1 1 100%' : 'flex:0 0 auto'}; height:38px; padding:0 20px; border:none; border-radius:11px; background:${s.searchLoading ? '#f0aecb' : '#ec86ac'}; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:${s.searchLoading ? 'default' : 'pointer'}; white-space:nowrap; transition:background .18s ease, filter .18s ease;`)}>{s.searchLoading ? '검색 중…' : 'AI 검색'}</button>
         </div>
