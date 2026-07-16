@@ -7,11 +7,13 @@ import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
 import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
-import { CAT_TO_SLOT, isColorLineSkin, thumbView } from '@/lib/shopData'
+import { CAT_TO_SLOT, SLOT_TO_CAT, isColorLineSkin, thumbView } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
 
+// 부위 메뉴 = 전체 + 15부위(3열 × 6행, 마지막 줄은 방패 하나). '전체'는 모든 부위를 한 리스트로.
+const PART_CATS = [{ id: 'all', label: '전체' }, ...CATS]
 const MODES: { v: ListMode; l: string }[] = [
   { v: 'sprite', l: '썸네일' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' },
 ]
@@ -20,14 +22,18 @@ const NO_CASH_BADGE = new Set(['hair', 'face', 'skin'])
 
 export default function CodiScreen() {
   const s = useShop()
-  const activeMeta = CATS.find((c) => c.id === s.activeCat) || CATS[0]
+  const activeMeta = PART_CATS.find((c) => c.id === s.activeCat) || PART_CATS[0]
   const list = s.activeList // 검색 필터 + folded (정렬 순서 유지)
   const loading = s.catLoading
+  const isAll = s.activeCat === 'all'
   const isSkinCat = s.activeCat === 'skin'
   const isHairCat = s.activeCat === 'hair'
   // 헤어/피부는 썸네일(스프라이트)=모델이라 스프라이트 보기 무의미 → 썸네일 잠그고 모델로 대체.
+  // '전체'는 부위가 섞이므로 토글은 잠그지 않고, 아이템별로 헤어/피부만 모델로 승격한다(검색 탭과 동일).
   const noSprite = isHairCat || isSkinCat
   const mode: ListMode = noSprite && s.listMode === 'sprite' ? 'model' : s.listMode
+  const effMode = (slot: string): ListMode =>
+    (mode === 'sprite' && (slot === 'hair' || slot === 'skin')) ? 'model' : mode
   const gaze = s.pv.gaze // 시선(왼/오/뒷)을 썸네일에도 반영
   const tv = thumbView(gaze)
 
@@ -40,7 +46,7 @@ export default function CodiScreen() {
     let alive = true
     const toneEntry = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
     const bodyId = toneEntry.body, headId = toneEntry.head
-    const activeSlot = CAT_TO_SLOT[s.activeCat]
+    const activeSlot = isAll ? null : CAT_TO_SLOT[s.activeCat] // '전체'는 제외할 활성 슬롯이 없다
     const eqEntries = mode === 'mymodel'
       ? Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && !s.hidden[sl]) as [string, ListItem][]
       : []
@@ -81,7 +87,7 @@ export default function CodiScreen() {
       setCtx({ items, key, override, effs })
     })
     return () => { alive = false }
-  }, [mode, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
+  }, [mode, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
 
   const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * s.itemsPerPage, p * s.itemsPerPage + s.itemsPerPage))
   const gridStyle = `display:grid; grid-template-columns:repeat(${s.cols},minmax(0,1fr)); grid-template-rows:repeat(${s.rows},1fr); gap:${s.bp === 'mobile' ? 10 : 16}px; height:100%;`
@@ -105,19 +111,23 @@ export default function CodiScreen() {
   const thumbBox = 'flex:1 1 auto; width:100%; min-height:0; border-radius:8px; background:#f7f2ec; display:flex; align-items:center; justify-content:center; overflow:hidden;'
 
   const cell = (item: ListItem) => {
-    const sel = s.isEquippedInCat(s.activeCat, item.id)
+    // '전체'는 부위가 섞이므로 활성 부위가 아니라 **아이템 자신의 슬롯**을 기준으로 판단한다.
+    const cat = isAll ? SLOT_TO_CAT[item.slot] : s.activeCat
+    const em = effMode(item.slot)
+    const sel = s.isEquippedInCat(cat, item.id)
+    const isSkinItem = item.slot === 'skin'
     // 피부는 원칙적으로 염색 불가지만, "컬러라인" 커스텀 피부는 라인만 HSB 로 염색 가능.
-    const dyeable = isSkinCat ? isColorLineSkin(item.name) : item.dyeMode !== 'none'
+    const dyeable = isSkinItem ? isColorLineSkin(item.name) : item.dyeMode !== 'none'
     const badgeKind: 'master' | 'special' | 'cash' | null =
       item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
     return (
-      <div key={item.id} onClick={() => s.equipFromCat(s.activeCat, item)} className="pb-cardwrap">
+      <div key={item.id} onClick={() => s.equipFromCat(cat, item)} className="pb-cardwrap">
         <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; ${sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
           {dyeable && (
-            <button onClick={(e) => { e.stopPropagation(); s.openDye(CAT_TO_SLOT[s.activeCat], item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
+            <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox + ' position:relative;')}>
-            <ItemThumb item={item} mode={mode} gaze={gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinCat ? item.headId : undefined} />
+            <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} title={badgeKind} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
@@ -149,7 +159,7 @@ export default function CodiScreen() {
             </button>
             <div style={css(partMenuStyle)}>
               <div style={css('display:grid; grid-template-columns:repeat(3,1fr); gap:4px;')}>
-                {CATS.map((c) => {
+                {PART_CATS.map((c) => {
                   const on = c.id === s.activeCat
                   const hov = s.hoverCat === c.id
                   let bg = on ? '#ec86ac' : 'transparent', col = on ? '#fff' : '#7a7066'
