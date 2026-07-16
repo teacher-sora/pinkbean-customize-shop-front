@@ -100,12 +100,17 @@ export function buildView(pv: { action: string; weapon: string; expr: string; ea
   }
 }
 
+// 렌(node 3/4)은 노드 하나에 Ear·HeadAcc 파츠가 **둘 다** 들어있지만, 게임에서는 '귀'와 '머리장식'이
+// **양자택일 폼**이다 → 동시에 그리면 안 된다. (귀를 골랐는데 머리장식까지 같이 나오던 버그)
+// 호영(1: 꼬리+귀)·라라(2: 뿔+뿔뒤)는 파츠가 한 벌로 함께 렌더되므로 필터하지 않는다.
+const REN_NODES = new Set(['3', '4'])
+
 // 형상변이(anima) 선택 → anima.json 노드/파츠 스펙. 'none'=변이 없음.
-// node3/4(렌)의 ':acc'(머리장식)은 HeadAcc 파츠만(귀 제거).
 export function animaSpec(form: string): { node: string; parts: string[] | null } | null {
   if (!form || form === 'none') return null
   const [node, sub] = form.split(':')
-  return { node, parts: sub === 'acc' ? ['HeadAcc'] : null }
+  if (REN_NODES.has(node)) return { node, parts: sub === 'acc' ? ['HeadAcc'] : ['Ear'] }
+  return { node, parts: null }
 }
 
 // 프레임 타이밍(looping): elapsed(ms) → 프레임 인덱스.
