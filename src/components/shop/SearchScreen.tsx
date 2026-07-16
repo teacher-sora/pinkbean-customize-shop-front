@@ -9,14 +9,16 @@ import { css } from '@/lib/style'
 import { isStacked } from '@/lib/useBreakpoint'
 import { CAT_TO_SLOT, SLOT_TO_CAT, thumbView } from '@/lib/shopData'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
-import { badgeUrl, loadMeta, type ListItem } from '@/lib/core/data'
+import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { buildOverrides } from '@/lib/core/dye'
 import { useShop, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
 
 const SEARCH_CATS = [{ id: 'all', label: '전체' }, ...CATS.filter((c) => c.id !== 'skin')]
 const MODES: { v: ListMode; l: string }[] = [{ v: 'sprite', l: '썸네일' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' }]
 const NO_CASH_BADGE = new Set(['hair', 'face', 'skin'])
-type Ctx = { items: AssembleInput[]; key: string }
+// override = 내 모델 배경(내 착용)의 현재 염색. 코디 탭과 100% 동일하게 보이도록 함께 넘긴다.
+type Ctx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement> }
 const EMPTY_CTX: Ctx = { items: [], key: '' }
 
 export default function SearchScreen() {
@@ -65,11 +67,13 @@ export default function SearchScreen() {
     const slotsInList = Array.from(new Set(list.map((it) => it.slot)))
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl]) as [string, ListItem][]
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
-    const key = `${mode}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}`
+    // 내 모델: 우측 미리보기의 염색(발색/HSB)까지 동일 반영 → 키에 염색 시그니처 포함(코디 탭과 동일).
+    const dyeSig = mode === 'mymodel' ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
+    const key = `${mode}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}`
     if (key === ctxKeyRef.current) return
     const eqIds = mode === 'mymodel' ? myEq.map(([, it]) => it.id) : []
     const ids = Array.from(new Set([bodyId, headId, ...eqIds]))
-    Promise.all(ids.map((id) => loadMeta(id).then((m) => [id, m] as const).catch(() => null))).then((res) => {
+    Promise.all(ids.map((id) => loadMeta(id).then((m) => [id, m] as const).catch(() => null))).then(async (res) => {
       if (!alive) return
       const map = new Map(res.filter(Boolean).map((r) => r!))
       const body = map.get(bodyId), head = map.get(headId)
@@ -80,20 +84,25 @@ export default function SearchScreen() {
       if (mode === 'mymodel') {
         for (const slot of slotsInList) {
           const items = [...baseItems]
+          const dyeMetas: ItemMeta[] = []
           for (const [sl, it] of myEq) {
-            if (sl === slot) continue
+            if (sl === slot) continue // 후보 아이템이 들어갈 슬롯은 내 착용에서 제외
             const m = map.get(it.id); if (!m) continue
             items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, tv.view), invisibleFace: m.invisibleFace, name: m.name })
+            dyeMetas.push(m)
           }
-          bySlot[slot] = { items, key: `${key}:${slot}` }
+          // 배경(내 착용)의 현재 염색을 구워 넣는다. 후보 아이템 자체는 기본색(미장착).
+          const override = await buildOverrides(dyeMetas, { palette: s.dyePalette, hsb: s.dyeHsb }, tv.view).catch(() => new Map())
+          bySlot[slot] = { items, key: `${key}:${slot}`, override }
         }
       }
+      if (!alive) return
       ctxKeyRef.current = key
       setCtx({ base: { items: baseItems, key }, bySlot })
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.index, s.tone, gaze, mode, s.equipped, s.hidden, list])
+  }, [s.index, s.tone, gaze, mode, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb])
 
   const ctxFor = (item: ListItem): Ctx => {
     const em = effMode(item.slot)
@@ -121,7 +130,7 @@ export default function SearchScreen() {
             <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox + ' position:relative;')}>
-            <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} />
+            <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} override={c.override} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
