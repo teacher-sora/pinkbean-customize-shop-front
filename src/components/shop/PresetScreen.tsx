@@ -41,12 +41,13 @@ function PresetThumb({ snap }: { snap: Snapshot }) {
       const items: AssembleInput[] = [
         { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, THUMB_VIEW) },
         { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, THUMB_VIEW) },
-        ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: getFrameLayers(meta, THUMB_VIEW), invisibleFace: meta.invisibleFace })),
+        // name 은 투명 아이템 판별에 쓰인다 — 없으면 투명 모자/장식이 헤어·얼굴을 가려 구멍이 생긴다.
+        ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: getFrameLayers(meta, THUMB_VIEW), invisibleFace: meta.invisibleFace, name: meta.name })),
       ]
       const { placed: p, anchors } = assemble(items, index.zmap, index.smap)
-      // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인.
-      const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snap.dyePalette, hsb: snap.dyeHsb }, THUMB_VIEW)
-      const skinHsb = snap.dyeHsb['skin']
+      // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (옛 프리셋엔 dye 키가 없을 수 있어 방어)
+      const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snap.dyePalette || {}, hsb: snap.dyeHsb || {} }, THUMB_VIEW)
+      const skinHsb = (snap.dyeHsb || {})['skin']
       if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && isColorLineSkin(te.name)) {
         for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, THUMB_VIEW)) {
           try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinHsb, l.png)) } catch (_) {}
@@ -103,6 +104,12 @@ function PresetThumb({ snap }: { snap: Snapshot }) {
 
 export default function PresetScreen() {
   const s = useShop()
+  // 라이브 모델 → Snapshot(선택된 카드가 이걸로 그려진다). 자동저장(100ms)을 기다리지 않고 즉시 반영.
+  const liveSnap: Snapshot = useMemo(() => {
+    const eq: Record<string, string> = {}
+    for (const [slot, it] of Object.entries(s.equipped)) if (it) eq[slot] = it.id
+    return { equipped: eq, tone: s.tone, dyePalette: s.dyePalette, dyeHsb: s.dyeHsb, hidden: s.hidden }
+  }, [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden])
 
   return (
     <section style={css(`${isStacked(s.bp) ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
@@ -143,7 +150,9 @@ export default function PresetScreen() {
           <div style={css(`display:grid; grid-template-columns:repeat(${s.bp === 'pc' ? 5 : s.bp === 'half' ? 4 : s.bp === 'tablet' ? 3 : 2},minmax(0,1fr)); gap:12px;`)}>
             {s.presets.map((p) => {
               const on = s.selectedPreset === p.id
-              const snap = s.presetData[p.id]
+              // 선택된 프리셋 카드는 저장본(자동저장 100ms 뒤 반영) 대신 **라이브 모델을 그대로** 그린다.
+              // → 염색·착용을 바꾸는 즉시 카드에 반영되고, 우측 미리보기와 100% 같은 모습이 된다.
+              const snap = on ? liveSnap : s.presetData[p.id]
               const editing = s.editingPreset === p.id
               return (
                 <div key={p.id} className="pb-presetwrap">
