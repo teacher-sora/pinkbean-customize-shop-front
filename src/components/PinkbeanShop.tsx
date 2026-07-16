@@ -16,6 +16,7 @@ import InfoScreen from './shop/InfoScreen'
 import PresetScreen from './shop/PresetScreen'
 import PreviewPanel from './shop/PreviewPanel'
 import DyeDialog from './shop/DyeDialog'
+import LookDialog from './shop/LookDialog'
 import Toast from './shop/Toast'
 
 function Shell() {
@@ -35,6 +36,7 @@ function Shell() {
         </main>
       </div>
       <DyeDialog />
+      <LookDialog />
       <Toast />
     </div>
   )

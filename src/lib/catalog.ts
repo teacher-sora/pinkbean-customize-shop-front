@@ -131,7 +131,8 @@ export const PV_EARS: Opt[] = [
 ]
 
 // 형상변이 = CDN anima.json(node 1~4) 유도 결과. 'none'=변이 없음(기본).
-// node3/4(렌)만 귀 · 머리장식(HeadAcc만) 2종으로 분기. key 는 anima node 스킴을 그대로 유지해 CDN 연동을 쉽게.
+// node3/4(렌)만 귀 · 머리장식 2종으로 분기 — 게임에서 둘은 **양자택일**이라 각각 Ear/HeadAcc 만 그린다(animaSpec).
+// key 는 anima node 스킴을 그대로 유지해 CDN 연동을 쉽게.
 // ⚠️ CDN 단계에서 loadAnima() 결과로 대체 예정.
 export const PV_FORMS: Opt[] = [
   { v: 'none', l: '기본' },
