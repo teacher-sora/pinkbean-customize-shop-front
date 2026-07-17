@@ -154,5 +154,9 @@ export const PV_GAZES: Opt[] = [
   { v: 'back', l: '뒷쪽' },
 ]
 
+// 염색 색상 계열(Prism type 0~6). 인덱스 = HsbParams.t.
+// 넥슨 API 의 cash_item_coloring_prism.color_range 가 이 문자열과 동일하게 온다 → 그대로 indexOf 로 매핑한다.
+export const DYE_FAMILIES = ['전체 색상 계열', '빨간 색상 계열', '노란 색상 계열', '초록 색상 계열', '청록 색상 계열', '파란 색상 계열', '자주 색상 계열']
+
 export const ITEMS_PER_PAGE = 18
 export const ITEM_COUNT = 60 // 플레이스홀더. CDN 단계에서 부위별 실제 개수로 교체.

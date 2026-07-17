@@ -16,6 +16,18 @@ body {
 * { word-break: keep-all; }
 a { color: #ec86ac; text-decoration: none; } /* a:hover 는 아래 (hover:hover) 블록에 */
 
+/* 폼 요소는 body 의 font/color 를 상속하지 않는다 → OS·브라우저 기본값(기기마다 다른 색/폰트)으로 렌더될 수 있다.
+   특히 iOS 는 자체 기본 색을 넣고, 일부 안드로이드 런처 브라우저는 다크모드에서 색을 강제로 뒤집는다.
+   인라인 스타일이 색을 지정한 요소는 그쪽이 이기므로(우선순위) 여기 값은 "명시하지 않은 곳의 기본"으로만 쓰인다. */
+input, textarea, select, button {
+  font-family: inherit;
+  color: #2a2521;
+  -webkit-text-fill-color: currentColor; /* iOS 가 색을 덮어쓰는 것 방지 */
+}
+input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
+/* 다크모드 자동 반전 방지(viewport 의 colorScheme:light 와 짝). */
+:root { color-scheme: light; }
+
 /* 세로 스택 구간(<940px = useBreakpoint 의 isStacked = tablet + mobile): 문서 스크롤을 푼다.
    ① 헤더(~84px)를 스크롤로 치워 그만큼을 리스트/미리보기가 되찾는다.
    ② iOS Safari·삼성인터넷 툴바는 "문서가 스크롤될 때만" 접힌다 — 스크롤이 없으면 영영 안 접힌다.

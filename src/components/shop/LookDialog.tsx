@@ -33,7 +33,7 @@ export default function LookDialog() {
 
         <div style={css('flex:0 0 auto; padding:18px 22px 0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;')}>
           <div style={css('display:flex; flex-direction:column; gap:4px;')}>
-            <span style={css('font-size:15px; font-weight:700;')}>가져올 코디 선택</span>
+            <span style={css('font-size:15px; font-weight:700; color:#2a2521;')}>가져올 코디 선택</span>
             <span style={css('font-size:12px; color:#a89e93;')}>{`'${lp.nick}' 은(는) 코디가 두 벌이에요`}</span>
           </div>
           <button onClick={s.closeLookPick} title="닫기 (Esc)"
