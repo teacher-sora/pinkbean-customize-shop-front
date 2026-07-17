@@ -59,6 +59,7 @@ export default function PreviewPanel() {
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
   const sheetScrollRef = useRef<HTMLDivElement>(null)
+  const sheetElRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef({ id: -1, y0: 0, armed: false, moved: false, t0: 0 })
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -86,10 +87,17 @@ export default function PreviewPanel() {
     setDragging(false); setSheetIn(false)
     closeTimer.current = setTimeout(() => { closeTimer.current = null; s.setPvOpen(false) }, 260)
   }
+  const disarm = () => { dragRef.current.id = -1; dragRef.current.armed = false }
   const onSheetDown = (e: React.PointerEvent) => {
-    if (closeTimer.current) return
+    if (closeTimer.current) return disarm()
+    const t = e.target as Node
+    // ⚠️ 액션/표정 드롭다운 메뉴는 createPortal(document.body) 로 띄운다 → DOM 상으론 시트 바깥이지만
+    // React 이벤트는 DOM 이 아니라 "React 트리"를 따라 버블링되므로 여기까지 올라온다. 그래서 메뉴 안에서
+    // 목록을 스크롤해도 시트 드래그가 무장돼 크게 휘저으면 시트가 움찔했다.
+    // → DOM 기준(contains)으로 걸러 "시트 밖에서 시작한 터치"는 아예 시트를 건드리지 못하게 한다.
+    if (!sheetElRef.current || !sheetElRef.current.contains(t)) return disarm()
+    // 시트 안이라도, 본문 스크롤이 맨 위일 때만 "아래로 끌어 닫기"를 무장 → 목록 스크롤과 충돌하지 않는다.
     const sc = sheetScrollRef.current
-    // 스크롤 영역이 맨 위에 있을 때만 "아래로 끌어 닫기"를 무장 → 목록 스크롤과 충돌하지 않는다.
     dragRef.current = { id: e.pointerId, y0: e.clientY, armed: !sc || sc.scrollTop <= 0, moved: false, t0: performance.now() }
   }
   // 6px 은 너무 예민해서, 위로 스크롤할 때 손가락이 처음 몇 px 아래로 흔들리는 것만으로 드래그가 붙잡혀
@@ -217,7 +225,7 @@ export default function PreviewPanel() {
     {mob && s.pvOpen && (
       <>
         <div onClick={closeSheet} style={css(`position:fixed; inset:0; z-index:55; background:rgba(42,37,33,.34); opacity:${sheetIn ? Math.max(0, 1 - dragY / 260) : 0}; transition:${dragging ? 'none' : 'opacity .26s ease'};`)} />
-        <div role="dialog" aria-label="연출 설정"
+        <div role="dialog" aria-label="연출 설정" ref={sheetElRef}
           onPointerDown={onSheetDown} onPointerMove={onSheetMove} onPointerUp={onSheetUp} onPointerCancel={onSheetCancel}
           style={css(`position:fixed; left:0; right:0; bottom:0; z-index:56; display:flex; flex-direction:column; max-height:74svh; background:#fff; border-top:1px solid #e7ded4; border-radius:18px 18px 0 0; box-shadow:0 -12px 34px rgba(42,37,33,.18); padding-bottom:env(safe-area-inset-bottom); touch-action:pan-y; transform:translateY(${sheetIn ? dragY + 'px' : '100%'}); transition:${dragging ? 'none' : 'transform .26s cubic-bezier(.22,.61,.36,1)'};`)}>
           <div style={css('flex:0 0 auto; display:flex; justify-content:center; padding:9px 0 3px;')}>
