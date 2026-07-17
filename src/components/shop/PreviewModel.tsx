@@ -154,7 +154,9 @@ export default function PreviewModel() {
   useLiveRedraw(async () => {
     const dyeable: ItemMeta[] = []
     for (const it of Object.values(equipped)) { if (!it) continue; const m = metas.get(it.id); if (m) dyeable.push(m) }
-    const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, V)
+    // ⚠️ 1단계는 반드시 allFrames=false — 보이는 프레임만 칠해 즉시 반영한다(기존과 동일한 비용/체감속도).
+    //    전 프레임은 아래 2단계에서 백그라운드로 이어 칠한다. 여기서 전 프레임을 칠하면 장착/드래그가 눈에 띄게 느려진다.
+    const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, V, false)
     // 이펙트/피부 프레임 염색을 override(ov)에 추가. allFrames=false 면 프레임0만, true 면 전 프레임.
     // ⚠️ 프레임 png 는 반드시 "병렬 로드"(Promise.all)로 받는다 — 순차 fetch(프레임마다 await)면 큰 이펙트(망토)
     //    처럼 프레임이 많을 때 fetch 가 줄줄이 늘어져 매우 느리고 점멸한다. 병렬로 한 번에 받아 즉시 리컬러.
@@ -201,10 +203,16 @@ export default function PreviewModel() {
     // 2) 드래그 중이 아니면 나머지 전 프레임까지 이어서 → 애니메이션에서도 색 유지. 이 동안(전 프레임 염색 중)
     //    이펙트/피부가 있으면 애니메이션을 잠깐 정지해 덜 칠해진 프레임 점멸을 막는다(끝나면 재개).
     if (!dyeInteracting) {
+      // 전 프레임을 칠하는 동안 애니메이션이 돌면 덜 칠해진 프레임이 점멸한다 → 그런 대상이 하나라도 있으면 잠깐 정지.
+      // 이펙트뿐 아니라 "염색된 착용 아이템" 자체도 이제 2단계로 칠해지므로(위 buildOverrides allFrames) 함께 본다.
       const willDyeFrames =
-        Object.entries(equipped).some(([slot, it]) => { const h = dyeHsb[slot]; return !!it && !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0) && effMetas.has(it.id) }) ||
+        Object.entries(equipped).some(([slot, it]) => { const h = dyeHsb[slot]; return !!it && !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0) }) ||
         (() => { const sh = dyeHsb['skin']; return !!sh && (sh.h !== 0 || sh.s !== 0 || sh.b !== 0) && isColorLineSkin(toneEntry?.name) })()
       if (willDyeFrames) setDyeSettling(true)
+      // 아이템(착용 장비)의 나머지 프레임을 여기서 이어 칠한다 — 이게 없으면 액션 애니메이션 2번째 프레임부터
+      // override 가 없어 염색이 풀린 원본색으로 보였다(이펙트/피부는 dyeExtras 가 이미 전 프레임을 칠하고 있었다).
+      const full = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, V, true)
+      for (const [k, v] of full) ov.set(k, v)
       await dyeExtras(true)
       setDyeOverrides(new Map(ov))
       if (willDyeFrames) setDyeSettling(false)
