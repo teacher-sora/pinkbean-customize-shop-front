@@ -217,7 +217,35 @@ export default function DyeDialog() {
   // (0,0,0) 즉시 초기화(색상 계열도 전체로).
   const resetHsb = () => { setHsb({ h: 0, s: 0, b: 0, t: 0 }); setRaw({ h: '0', s: '0', b: '0' }) }
 
+  // ── +/− 스테퍼 ──────────────────────────────────────────────────────────
+  // 슬라이더만으론 모바일에서 1 단위 미세조정이 사실상 불가능하다(손가락 폭 > 1px).
+  // 슬라이더는 큰 이동, 스테퍼는 미세조정 — 역할을 나눈다.
+  // 누르고 있으면 400ms 뒤부터 70ms 간격 반복(길게 끌 땐 슬라이더를 쓰면 되므로 가속은 넣지 않는다).
+  const holdRef = useRef<{ t: ReturnType<typeof setTimeout> | null; i: ReturnType<typeof setInterval> | null }>({ t: null, i: null })
+  const stopHold = () => {
+    if (holdRef.current.t) { clearTimeout(holdRef.current.t); holdRef.current.t = null }
+    if (holdRef.current.i) { clearInterval(holdRef.current.i); holdRef.current.i = null }
+  }
+  useEffect(() => stopHold, [])
+  const bump = (f: 'h' | 's' | 'b', d: number) => {
+    setHsb((h) => {
+      const n = clampDye(f, (h[f] ?? 0) + d)
+      setRaw((r) => ({ ...r, [f]: String(n) })) // 입력창 표시도 같이 맞춘다(빈값 상태에서 눌러도 어긋나지 않게)
+      return { ...h, [f]: n }
+    })
+  }
+  const startHold = (f: 'h' | 's' | 'b', d: number) => (e: React.PointerEvent) => {
+    if (e.button != null && e.button !== 0) return
+    e.preventDefault() // 모바일에서 길게 누를 때 텍스트 선택/확대 방지
+    stopHold(); bump(f, d)
+    holdRef.current.t = setTimeout(() => { holdRef.current.i = setInterval(() => bump(f, d), 70) }, 400)
+  }
+
   const numInput = 'width:60px; height:32px; padding:0 8px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; text-align:right; color:#3d372f; outline:none;'
+  // 스테퍼 = [−][값][+] 한 덩어리(세그먼트 pill). 라벨과 같은 줄에 있어 "누구의 +/−"인지 바로 보인다.
+  const stepBtn = (disabled: boolean) => `flex:0 0 auto; width:${mobile ? 36 : 30}px; height:${mobile ? 36 : 32}px; display:flex; align-items:center; justify-content:center; border:none; background:transparent; color:${disabled ? '#d8cfc5' : '#a2786f'}; font-family:inherit; font-size:${mobile ? 17 : 15}px; font-weight:700; line-height:1; cursor:${disabled ? 'default' : 'pointer'}; user-select:none; touch-action:manipulation; transition:background .12s ease, color .12s ease;`
+  const stepWrap = `flex:0 0 auto; display:flex; align-items:center; border:1px solid #e7ded4; border-radius:9px; background:#faf7f3; overflow:hidden;`
+  const stepNum = `width:${mobile ? 48 : 44}px; height:${mobile ? 36 : 32}px; padding:0 2px; border:none; border-left:1px solid #ece4da; border-right:1px solid #ece4da; background:#fff; font-family:inherit; font-size:13px; font-weight:600; text-align:center; color:#3d372f; outline:none; font-variant-numeric:tabular-nums;`
   // 미리보기 배율 알약(1x/2x/3x).
   const zoomPill = (on: boolean) => `min-width:34px; height:26px; padding:0 8px; border:1px solid ${on ? '#ec86ac' : '#e7ded4'}; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 700 : 500}; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : '#fff'}; transition:background .14s ease, color .14s ease, border-color .14s ease;`
   // 발색표 캐러셀 좌우 화살표(스와이프 가능 힌트 + 탭 이동). 연하게.
@@ -307,8 +335,18 @@ export default function DyeDialog() {
                 {([['색조 (Hue)', 'h', 0, 359], ['채도 (Saturation)', 's', -99, 99], ['명도 (Value)', 'b', -99, 99]] as const).map(([label, f, lo, hi]) => (
                   <div key={f}>
                     <div style={css('display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:10px;')}>
-                      <span style={css('font-size:12px; font-weight:600; color:#a89e93;')}>{label}</span>
-                      <input inputMode="numeric" value={raw[f]} placeholder="0" onChange={(e) => setField(f)(e.target.value)} style={css(numInput)} />
+                      <span style={css('font-size:12px; font-weight:600; color:#a89e93; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{label}</span>
+                      {/* [−][값][+] — 슬라이더=큰 이동, 스테퍼=1 단위 미세조정. 길게 누르면 반복. */}
+                      <div style={css(stepWrap)}>
+                        <button className="pb-step" aria-label={`${label} 1 감소`} title="1 감소 (길게 누르면 계속)" disabled={hsb[f] <= lo}
+                          onPointerDown={startHold(f, -1)} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
+                          style={css(stepBtn(hsb[f] <= lo))}>−</button>
+                        <input inputMode="numeric" aria-label={label} value={raw[f]} placeholder="0"
+                          onChange={(e) => setField(f)(e.target.value)} style={css(stepNum)} />
+                        <button className="pb-step" aria-label={`${label} 1 증가`} title="1 증가 (길게 누르면 계속)" disabled={hsb[f] >= hi}
+                          onPointerDown={startHold(f, +1)} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
+                          style={css(stepBtn(hsb[f] >= hi))}>+</button>
+                      </div>
                     </div>
                     <input type="range" min={lo} max={hi} value={hsb[f]} onChange={(e) => setField(f)(e.target.value)} style={css('width:100%; accent-color:#ec86ac; cursor:pointer;')} />
                   </div>
