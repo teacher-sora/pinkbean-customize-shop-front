@@ -27,12 +27,15 @@ interface NexonBeautyPart { hair_name?: string; face_name?: string; base_color?:
 
 type Cash = Record<string, unknown>
 
-// base 착용 + 활성 프리셋(preset_no)을 슬롯별로 병합(프리셋이 base 를 덮어씀).
-function mergeItems(data: Cash, prefix: string) {
+// 메이플 치장 프리셋 구조(실측):
+//   base       = 베이스 코디 전체(예: 11개)
+//   preset_1~3 = "덮어쓸 부위만" 담긴 부분 집합(0~4개) — 나머지 부위는 base 로 채워진다
+//   preset_no  = 지금 적용 중인 프리셋 번호. None 이면 "해제" = base 를 그대로 입고 있는 상태다.
+// 그래서 프리셋 한 벌 = base + preset_n 덮어쓰기. n=0 이면 base 그대로(기본).
+function mergeItems(data: Cash, prefix: string, presetNo: number) {
   const bySlot: Record<string, NexonCashItem> = {}
   for (const it of ((data[`${prefix}base`] as NexonCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
-  const pno = data.preset_no
-  if (pno) for (const it of ((data[`${prefix}preset_${pno}`] as NexonCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
+  if (presetNo) for (const it of ((data[`${prefix}preset_${presetNo}`] as NexonCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
   return Object.values(bySlot).map((it) => {
     const p = it.cash_item_coloring_prism
     return {
@@ -87,14 +90,22 @@ export async function GET(req: NextRequest) {
     const charGender = (data.character_gender as string) ?? null
     const [labelA, labelB] = labelsFor(charClass)
 
+    const activeNo = Number(data.preset_no) || 0 // None/0 = 해제(= base 착용 중)
     const buildLook = (kkey: 'normal' | 'additional', label: string) => {
       const p = kkey === 'normal' ? 'cash_item_equipment_' : 'additional_cash_item_equipment_'
       const b = kkey === 'normal' ? '' : 'additional_'
       const skinName = beauty?.[`${b}character_skin`]?.skin_name
+      // 기본은 항상 준다 — preset_no 가 None 인 캐릭터는 이게 곧 "지금 입고 있는 모습"이다.
+      const presets = [{ key: 'base', label: '기본', items: mergeItems(data, p, 0), active: activeNo === 0 }]
+      for (const n of [1, 2, 3]) {
+        // 빈 프리셋(0개)은 base 와 완전히 같아진다 → 카드로 내보내지 않는다(똑같은 걸 고르게 할 이유가 없다).
+        if (!((data[`${p}preset_${n}`] as NexonCashItem[]) || []).length) continue
+        presets.push({ key: String(n), label: `프리셋 ${n}`, items: mergeItems(data, p, n), active: activeNo === n })
+      }
       return {
         key: kkey, label,
         gender: genderForLook(charClass, kkey, charGender), // 코디별 성별(제로는 알파/베타가 다르다)
-        items: mergeItems(data, p),
+        presets,
         hair: col(beauty?.[`${b}character_hair`], 'hair_name'),
         face: col(beauty?.[`${b}character_face`], 'face_name'),
         skin: skinName ? { name: skinName } : null,
@@ -103,7 +114,7 @@ export async function GET(req: NextRequest) {
     const looks = [buildLook('normal', labelA)]
     const extra = buildLook('additional', labelB)
     // 내용이 있을 때만 2번째 코디를 노출(일반 직업은 additional 자체가 없다).
-    if (extra.items.length || extra.hair || extra.face || extra.skin) looks.push(extra)
+    if (extra.presets.some((x) => x.items.length) || extra.hair || extra.face || extra.skin) looks.push(extra)
 
     return NextResponse.json({
       gender: (data.character_gender as string) ?? null,
