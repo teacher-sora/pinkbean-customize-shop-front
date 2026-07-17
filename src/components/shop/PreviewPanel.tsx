@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, type Opt, type Pv } from '@/lib/catalog'
 import { css, pillStyle, PV_LABEL, ROW_BETWEEN, switchKnob, switchTrack } from '@/lib/style'
 import { useShop } from './ShopContext'
-import { isStacked } from '@/lib/useBreakpoint'
+import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
 import PreviewModel from './PreviewModel'
 import Dropdown from './Dropdown'
 
@@ -12,10 +12,12 @@ export default function PreviewPanel() {
   const s = useShop()
   const { pv } = s
   const contentHeavy = s.primary === 'info' || s.primary === 'preset' // 정보/프리셋 탭은 내용이 많아 모바일에서 미리보기를 작게
+  // 세로 스택(태블릿 포함) = 고정 높이 패널 → 아코디언이 잘린다. 바텀시트/여백 절약 규칙을 여기 전부 건다.
+  const mob = isStacked(s.bp)
   const curAction = PV_ACTIONS_FLAT.find((a) => a.v === pv.action) || PV_ACTIONS_FLAT[0]
   const pvCaption = `${curAction.l} · ${(PV_EXPRS.find((x) => x.v === pv.expr) || { l: '' }).l}`
 
-  const pvBarStyle = `flex:0 0 auto; width:100%; height:46px; padding:0 22px; border:none; border-top:1px solid #f0e9e1; background:${s.pvOpen ? '#faf7f3' : '#fff'}; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font-family:inherit; transition:background .16s ease;`
+  const pvBarStyle = `flex:0 0 auto; width:100%; height:${s.bp === 'mobile' ? 40 : 46}px; padding:0 ${s.bp === 'mobile' ? 14 : 22}px; border:none; border-top:1px solid #f0e9e1; background:${s.pvOpen ? '#faf7f3' : '#fff'}; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font-family:inherit; transition:background .16s ease;`
   const pvCaretStyle = `font-size:11px; color:#a89e93; transition:transform .2s ease; transform:rotate(${s.pvOpen ? '180deg' : '0deg'}); flex:0 0 auto;`
 
   const hMobile = s.bp === 'mobile' // 모바일=아이콘만
@@ -52,10 +54,121 @@ export default function PreviewPanel() {
       )
     })
 
+  // ── 모바일 바텀시트: 열기/닫기 양방향 트랜지션 + 아무 데나 잡고 아래로 스와이프해 닫기 ──
+  const [sheetIn, setSheetIn] = useState(false)   // false = translateY(100%) (아래), true = 0 (올라옴)
+  const [dragY, setDragY] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const sheetScrollRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef({ id: -1, y0: 0, armed: false, moved: false, t0: 0 })
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 마운트 직후 한 프레임 뒤 in → 아래에서 위로 올라오는 트랜지션. 언마운트 시 초기화.
+  useEffect(() => {
+    if (!(mob && s.pvOpen)) return
+    setDragY(0)
+    const r = requestAnimationFrame(() => setSheetIn(true))
+    return () => { cancelAnimationFrame(r); setSheetIn(false) }
+  }, [mob, s.pvOpen])
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current) }, [])
+
+  // 시트가 떠 있는 동안 문서 스크롤 잠금 — 모바일은 body 스크롤이 열려 있어(globals.css) 잠그지 않으면
+  // 시트를 아래로 끌 때 뒤 페이지가 같이 밀린다. 스크롤 위치는 그대로 두고 overflow 만 막는다.
+  useEffect(() => {
+    if (!(mob && s.pvOpen)) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [mob, s.pvOpen])
+
+  // 닫기 = 여는 것의 역방향(아래로 내려가며 사라짐) → 끝나면 언마운트. 마스크 클릭·스와이프 공용.
+  const closeSheet = () => {
+    if (closeTimer.current) return
+    setDragging(false); setSheetIn(false)
+    closeTimer.current = setTimeout(() => { closeTimer.current = null; s.setPvOpen(false) }, 260)
+  }
+  const onSheetDown = (e: React.PointerEvent) => {
+    if (closeTimer.current) return
+    const sc = sheetScrollRef.current
+    // 스크롤 영역이 맨 위에 있을 때만 "아래로 끌어 닫기"를 무장 → 목록 스크롤과 충돌하지 않는다.
+    dragRef.current = { id: e.pointerId, y0: e.clientY, armed: !sc || sc.scrollTop <= 0, moved: false, t0: performance.now() }
+  }
+  const onSheetMove = (e: React.PointerEvent) => {
+    const d = dragRef.current
+    if (d.id !== e.pointerId || !d.armed) return
+    const dy = e.clientY - d.y0
+    if (!d.moved) {
+      if (dy < 6) { if (dy < -2) d.armed = false; return } // 위로 미는 제스처는 스크롤에 양보
+      d.moved = true; setDragging(true)
+      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch {}
+    }
+    setDragY(Math.max(0, dy))
+  }
+  const onSheetUp = (e: React.PointerEvent) => {
+    const d = dragRef.current
+    if (d.id !== e.pointerId) return
+    d.id = -1
+    if (!d.moved) return
+    const dy = Math.max(0, e.clientY - d.y0)
+    const v = dy / Math.max(1, performance.now() - d.t0) // px/ms — 짧고 빠르게 튕겨도 닫히게
+    setDragging(false)
+    if (dy > 90 || v > 0.5) closeSheet(); else setDragY(0)
+  }
+  const onSheetCancel = () => { dragRef.current.id = -1; setDragging(false); setDragY(0) }
+
+  // 연출 설정 본문 — PC/태블릿은 아코디언 안에, 모바일은 바텀시트 안에 그대로 재사용한다.
+  const pvBody = (
+    // 시트 루트는 touch-action:none(어디를 잡아도 끌어 닫기) — 스크롤이 필요한 본문만 pan-y 로 열어준다.
+    <div ref={mob ? sheetScrollRef : undefined} className="pb-scroll" style={css(`max-height:${mob ? 'none' : '300px'}; ${mob ? 'flex:1 1 auto; overscroll-behavior:contain; touch-action:pan-y;' : ''} overflow:hidden auto; padding:14px 22px ${mob ? '18px' : '14px'}; ${mob ? '' : 'border-top:1px solid #f0e9e1;'} display:flex; flex-direction:column; gap:11px;`)}>
+      <div style={css(ROW_BETWEEN)}>
+        <span style={css('font-size:12px; font-weight:600; color:#8a8075; flex:0 0 auto;')}>배율</span>
+        <div style={css('display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;')}>
+          {[1, 2, 3].map((z) => {
+            const sel = pv.zoom === z, hov = s.hoverPill === 'zoom:' + z && !sel
+            return <button key={z} onClick={() => s.setPv('zoom', z)} onMouseEnter={() => s.setHoverPill('zoom:' + z)} onMouseLeave={() => s.setHoverPill(null)} style={css(pillStyle(sel, hov))}>{z}x</button>
+          })}
+        </div>
+      </div>
+      <div style={css(ROW_BETWEEN)}>
+        <span style={css(PV_LABEL)}>무기 모션</span>
+        <Dropdown value={pv.weapon} onChange={(v) => s.setPv('weapon', v)} options={PV_WEAPONS} />
+      </div>
+      <div style={css(ROW_BETWEEN)}>
+        <span style={css(PV_LABEL)}>액션</span>
+        <Dropdown value={pv.action} onChange={(v) => s.setPv('action', v)} groups={PV_ACTION_GROUPS} />
+      </div>
+      <div style={css(ROW_BETWEEN)}>
+        <span style={css(PV_LABEL)}>표정</span>
+        <Dropdown value={pv.expr} onChange={(v) => s.setPv('expr', v)} options={PV_EXPRS} />
+      </div>
+      <div style={css(ROW_BETWEEN)}>
+        <span style={css(PV_LABEL)}>형상 변이</span>
+        <Dropdown value={pv.form} onChange={(v) => s.setPv('form', v)} options={PV_FORMS} />
+      </div>
+      <div style={css(ROW_BETWEEN)}>
+        <span style={css('font-size:12px; font-weight:600; color:#8a8075; flex:0 0 auto;')}>귀</span>
+        <div style={css('display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;')}>{pill(PV_EARS, 'ear')}</div>
+      </div>
+      <div style={css(ROW_BETWEEN)}>
+        <span style={css('font-size:12px; font-weight:600; color:#8a8075; flex:0 0 auto;')}>시선</span>
+        <div style={css('display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;')}>{pill(PV_GAZES, 'gaze')}</div>
+      </div>
+      <div style={css('height:1px; background:#f0e9e1; margin:2px 0;')} />
+      <div style={css('display:flex; align-items:center; justify-content:space-between; gap:12px;')}>
+        <span style={css(PV_LABEL)}>무기 이펙트</span>
+        <button onClick={() => s.setPv('wEffect', !pv.wEffect)} style={css(switchTrack(pv.wEffect))}><span style={css(switchKnob(pv.wEffect))} /></button>
+      </div>
+      <div style={css('display:flex; align-items:center; justify-content:space-between; gap:12px;')}>
+        <span style={css(PV_LABEL)}>망토 이펙트</span>
+        <button onClick={() => s.setPv('cEffect', !pv.cEffect)} style={css(switchTrack(pv.cEffect))}><span style={css(switchKnob(pv.cEffect))} /></button>
+      </div>
+    </div>
+  )
+
   return (
-    <section style={css(`${isStacked(s.bp) ? 'flex:0 0 ' + (s.bp === 'mobile' ? (contentHeavy ? '34%' : '40%') : (contentHeavy ? '38%' : '44%')) + '; width:100%; min-height:0' : 'flex:0 0 calc(35% - 20px)'}; min-width:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
-      <div style={css('flex:0 0 auto; height:58px; padding:0 16px 0 22px; display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid #f0e9e1;')}>
-        <span style={css('font-size:15px; font-weight:700; flex:0 0 auto;')}>코디 미리보기</span>
+    <>
+    <section style={css(`${mob ? `flex:0 0 auto; width:100%; height:${MOBILE_H.preview}` : 'flex:0 0 calc(35% - 20px)'}; min-width:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
+      <div style={css(`flex:0 0 auto; height:${mob ? 40 : 58}px; padding:0 ${mob ? '9px 0 14px' : '16px 0 22px'}; display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid #f0e9e1;`)}>
+        <span style={css(`font-size:${mob ? 14 : 15}px; font-weight:700; flex:0 0 auto;`)}>코디 미리보기</span>
         {/* 실행취소/다시실행: 최근 코디 변경(아이템·염색·프리셋 적용 등)을 되돌리거나 다시 적용 */}
         <div style={css('display:flex; align-items:center; gap:6px; flex:0 0 auto;')}>
           <button onClick={s.undo} disabled={!s.canUndo} title="되돌리기 (최근 코디 변경 취소)" aria-label="되돌리기" className="pb-h-ghost" style={css(histBtn(s.canUndo))}>
@@ -83,55 +196,33 @@ export default function PreviewPanel() {
         </span>
       </button>
 
-      <div className={s.pvOpen ? 'pb-acc pb-acc-open' : 'pb-acc'} style={css('flex:0 0 auto;')}>
-        <div>
-          <div className="pb-scroll" style={css('max-height:300px; overflow:hidden auto; padding:14px 22px; border-top:1px solid #f0e9e1; display:flex; flex-direction:column; gap:11px;')}>
-            <div style={css(ROW_BETWEEN)}>
-              <span style={css('font-size:12px; font-weight:600; color:#8a8075; flex:0 0 auto;')}>배율</span>
-              <div style={css('display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;')}>
-                {[1, 2, 3].map((z) => {
-                  const sel = pv.zoom === z, hov = s.hoverPill === 'zoom:' + z && !sel
-                  return <button key={z} onClick={() => s.setPv('zoom', z)} onMouseEnter={() => s.setHoverPill('zoom:' + z)} onMouseLeave={() => s.setHoverPill(null)} style={css(pillStyle(sel, hov))}>{z}x</button>
-                })}
-              </div>
-            </div>
-            <div style={css(ROW_BETWEEN)}>
-              <span style={css(PV_LABEL)}>무기 모션</span>
-              <Dropdown value={pv.weapon} onChange={(v) => s.setPv('weapon', v)} options={PV_WEAPONS} />
-            </div>
-            <div style={css(ROW_BETWEEN)}>
-              <span style={css(PV_LABEL)}>액션</span>
-              <Dropdown value={pv.action} onChange={(v) => s.setPv('action', v)} groups={PV_ACTION_GROUPS} />
-            </div>
-            <div style={css(ROW_BETWEEN)}>
-              <span style={css(PV_LABEL)}>표정</span>
-              <Dropdown value={pv.expr} onChange={(v) => s.setPv('expr', v)} options={PV_EXPRS} />
-            </div>
-            <div style={css(ROW_BETWEEN)}>
-              <span style={css(PV_LABEL)}>형상 변이</span>
-              <Dropdown value={pv.form} onChange={(v) => s.setPv('form', v)} options={PV_FORMS} />
-            </div>
-            <div style={css(ROW_BETWEEN)}>
-              <span style={css('font-size:12px; font-weight:600; color:#8a8075; flex:0 0 auto;')}>귀</span>
-              <div style={css('display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;')}>{pill(PV_EARS, 'ear')}</div>
-            </div>
-            <div style={css(ROW_BETWEEN)}>
-              <span style={css('font-size:12px; font-weight:600; color:#8a8075; flex:0 0 auto;')}>시선</span>
-              <div style={css('display:flex; gap:6px; justify-content:flex-end;')}>{pill(PV_GAZES, 'gaze')}</div>
-            </div>
-            <div style={css('height:1px; background:#f0e9e1; margin:2px 0;')} />
-            <div style={css('display:flex; align-items:center; justify-content:space-between;')}>
-              <span style={css(PV_LABEL)}>무기 이펙트</span>
-              <button onClick={() => s.setPv('wEffect', !pv.wEffect)} style={css(switchTrack(pv.wEffect))}><span style={css(switchKnob(pv.wEffect))} /></button>
-            </div>
-            <div style={css('display:flex; align-items:center; justify-content:space-between;')}>
-              <span style={css(PV_LABEL)}>망토 이펙트</span>
-              <button onClick={() => s.setPv('cEffect', !pv.cEffect)} style={css(switchTrack(pv.cEffect))}><span style={css(switchKnob(pv.cEffect))} /></button>
-            </div>
-          </div>
+      {/* PC/태블릿: 인라인 아코디언. 모바일은 아래 바텀시트로 뺀다(고정 높이 패널 안에서 아코디언이 잘리던 문제). */}
+      {!mob && (
+        <div className={s.pvOpen ? 'pb-acc pb-acc-open' : 'pb-acc'} style={css('flex:0 0 auto;')}>
+          <div>{pvBody}</div>
         </div>
-      </div>
-
+      )}
     </section>
+
+    {/* 모바일 연출 설정 = 바텀시트. 미리보기/리스트 높이를 전혀 뺏지 않고 최대 74dvh 까지 펼쳐진다.
+        닫기 버튼 없음 — 마스크 탭 또는 아무 데나 잡고 아래로 스와이프(둘 다 같은 역방향 트랜지션). */}
+    {mob && s.pvOpen && (
+      <>
+        <div onClick={closeSheet} style={css(`position:fixed; inset:0; z-index:55; background:rgba(42,37,33,.34); opacity:${sheetIn ? Math.max(0, 1 - dragY / 260) : 0}; transition:${dragging ? 'none' : 'opacity .26s ease'};`)} />
+        <div role="dialog" aria-label="연출 설정"
+          onPointerDown={onSheetDown} onPointerMove={onSheetMove} onPointerUp={onSheetUp} onPointerCancel={onSheetCancel}
+          style={css(`position:fixed; left:0; right:0; bottom:0; z-index:56; display:flex; flex-direction:column; max-height:74dvh; background:#fff; border-top:1px solid #e7ded4; border-radius:18px 18px 0 0; box-shadow:0 -12px 34px rgba(42,37,33,.18); padding-bottom:env(safe-area-inset-bottom); touch-action:none; transform:translateY(${sheetIn ? dragY + 'px' : '100%'}); transition:${dragging ? 'none' : 'transform .26s cubic-bezier(.22,.61,.36,1)'};`)}>
+          <div style={css('flex:0 0 auto; display:flex; justify-content:center; padding:9px 0 3px;')}>
+            <span style={css('width:38px; height:4px; border-radius:4px; background:#e2d8cd;')} />
+          </div>
+          <div style={css('flex:0 0 auto; height:42px; padding:0 22px; display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1px solid #f0e9e1;')}>
+            <span style={css('font-size:14px; font-weight:700; color:#3d372f; flex:0 0 auto;')}>연출 설정</span>
+            <span style={css('flex:1 1 auto; min-width:0; text-align:right; font-size:11px; color:#a89e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>{pvCaption}</span>
+          </div>
+          {pvBody}
+        </div>
+      </>
+    )}
+    </>
   )
 }

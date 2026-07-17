@@ -47,6 +47,9 @@ export const EQUIP_SLOTS = [
 // 우측 미리보기 배율(연출 설정 1x/2x/3x)은 fraction 에 곱하는 "월드 배율"(예전 CSS transform 방식 대체).
 export const ZOOM_WORLD: Record<number, number> = { 1: 0.7, 2: 1.0, 3: 1.4 }
 export const PREVIEW_FRACTION = 0.25 // 우측 미리보기 기준 마네킹 높이 비율(× ZOOM_WORLD; 기본 2x=×1.0 → 실효 0.25)
+// 모바일은 미리보기 영역이 "낮고 넓다"(세로 스택). PC와 같은 0.25 를 쓰면 200px 높이의 25% = 50px 로
+// 모델이 콩알만 해진다 — 세로가 부족한 만큼 비율을 올려 남는 가로 여백을 모델에 쓴다.
+export const PREVIEW_FRACTION_MOBILE = 0.5
 export const PREVIEW_MARGIN = 1.5    // 우측 미리보기 캔버스 여백 배수
 export const CARD_FRACTION = 0.45     // 리스트 카드 마네킹 높이 비율(넉넉한 전체샷; 정수 스냅으로 항상 선명)
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수

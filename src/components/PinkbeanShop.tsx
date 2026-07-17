@@ -24,10 +24,13 @@ function Shell() {
   const stacked = isStacked(bp)
   const mobile = bp === 'mobile'
   return (
-    <div className={mobile ? 'pb-mobile' : undefined} style={css('width:100%; height:100vh; display:flex; justify-content:center; background:linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%);')}>
-      <div style={css(`width:100%; max-width:1440px; height:100%; padding:${mobile ? '12px 12px 0' : '20px 32px 0'}; display:flex; flex-direction:column;`)}>
+    // ⚠️ 100vh 금지: iOS Safari 의 100vh 는 "툴바가 없을 때" 기준 큰 뷰포트라, 하단 주소창/탭바가 떠 있으면
+    // 그만큼 콘텐츠가 툴바 뒤로 밀려 가려진다. 100dvh = 지금 실제로 보이는 높이.
+    // 세로 스택(태블릿+모바일)은 height 대신 min-height + 문서 스크롤(globals.css) → 헤더를 스크롤로 치우고 툴바도 접히게.
+    <div className={stacked ? 'pb-mobile' : undefined} style={css(`width:100%; ${stacked ? 'min-height:100dvh' : 'height:100dvh'}; display:flex; justify-content:center; background:linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%);`)}>
+      <div style={css(`width:100%; max-width:1440px; ${stacked ? '' : 'height:100%;'} padding:${mobile ? '12px 12px 0' : stacked ? '14px 16px 0' : '20px 32px 0'}; display:flex; flex-direction:column;`)}>
         <Header />
-        <main style={css(`flex:1 1 auto; min-height:0; display:flex; ${stacked ? 'flex-direction:column; overflow:hidden;' : ''} gap:${mobile ? 10 : 20}px; padding:${mobile ? '10px 0 12px' : '12px 0 20px'};`)}>
+        <main style={css(`${stacked ? 'flex:0 0 auto; flex-direction:column;' : 'flex:1 1 auto; min-height:0;'} display:flex; gap:${stacked ? 10 : 20}px; padding:${stacked ? '10px 0 12px' : '12px 0 20px'};`)}>
           {primary === 'codi' && <CodiScreen />}
           {primary === 'search' && <SearchScreen />}
           {primary === 'info' && <InfoScreen />}

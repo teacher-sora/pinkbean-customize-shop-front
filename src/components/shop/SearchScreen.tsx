@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
 import { css } from '@/lib/style'
-import { isStacked } from '@/lib/useBreakpoint'
+import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
 import { CAT_TO_SLOT, SLOT_TO_CAT, thumbView } from '@/lib/shopData'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
@@ -33,7 +33,9 @@ export default function SearchScreen() {
   const list = s.searchResults
   const stacked = isStacked(s.bp)
   const narrow = s.bp !== 'pc'
-  const mobile = s.bp === 'mobile'
+  // 분리 기준은 CodiScreen 주석 참고 — mobile(=stacked)=레이아웃 전부, phone=글자 크기/문구뿐.
+  const phone = s.bp === 'mobile'
+  const mobile = stacked
   const searched = s.searchQuery !== null
   const gaze = s.pv.gaze
   const tv = thumbView(gaze)
@@ -130,7 +132,7 @@ export default function SearchScreen() {
       item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
     return (
       <div key={item.id} onClick={() => s.equipFromCat(SLOT_TO_CAT[item.slot], item)} className="pb-cardwrap">
-        <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; ${sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
+        <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:${mobile ? 5 : 8}px; padding:${mobile ? '7px 5px 6px' : '12px 8px 10px'}; ${sel ? `border:1px solid #ec86ac; transform:translateY(-${mobile ? 3 : 5}px); ` : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
           {dyeable && (
             <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
@@ -141,7 +143,7 @@ export default function SearchScreen() {
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
             )}
           </div>
-          <div style={css('font-size:12px; font-weight:500; color:#3d372f; line-height:1.3; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;')}>{item.name || item.id}</div>
+          <div title={item.name || item.id} style={css(`flex:0 0 auto; font-size:${phone ? 11 : 12}px; font-weight:500; color:#3d372f; line-height:1.3; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;`)}>{item.name || item.id}</div>
         </div>
       </div>
     )
@@ -157,13 +159,15 @@ export default function SearchScreen() {
   const partMenu = `position:absolute; top:calc(100% + 8px); left:0; z-index:20; width:min(360px, 84vw); padding:10px; background:#fff; border:1px solid #e7ded4; border-radius:12px; box-shadow:0 12px 32px rgba(42,37,33,.12); transform-origin:top left; transition:opacity .2s ease, transform .2s cubic-bezier(.22,.61,.36,1); opacity:${menuOpen ? 1 : 0}; transform:translateY(${menuOpen ? '0' : '-6px'}) scale(${menuOpen ? 1 : 0.98}); pointer-events:${menuOpen ? 'auto' : 'none'};`
 
   return (
-    <section style={css(`${stacked ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
+    <section style={css(`${mobile ? `flex:0 0 auto; width:100%; height:${MOBILE_H.search}` : stacked ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
       {/* 헤더: 코디탭과 동일 구조(부위 드롭다운 + 표시모드 토글 + 베타 배지 + 페이지) + 검색 입력 행 */}
       <div style={css('flex:0 0 auto; border-bottom:1px solid #f0e9e1; display:flex; flex-direction:column;')}>
         {/* 상단 바 — 코디 헤더와 동일 크기(58px) → 탭 전환 시 시프트 없음, 아래 입력행만 추가됨 */}
-        <div style={css(`flex:0 0 auto; ${narrow ? 'flex-wrap:wrap; min-height:58px; padding:9px 16px;' : 'height:58px; padding:0 22px;'} display:flex; align-items:center; gap:${narrow ? 8 : 12}px;`)}>
-          {/* 부위 선택 + 표시모드 토글 (모바일=한 줄 space-between) */}
-          <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${mobile ? 6 : 10}px;`)}>
+        <div style={css(`flex:0 0 auto; ${mobile ? `flex-wrap:wrap; min-height:50px; padding:7px ${phone ? 12 : 16}px;` : narrow ? 'flex-wrap:wrap; min-height:58px; padding:9px 16px;' : 'height:58px; padding:0 22px;'} display:flex; align-items:center; gap:${narrow ? 8 : 12}px;`)}>
+          {/* 부위 선택 + 표시모드 토글 (모바일=한 줄 space-between)
+              flex:1 1 0(basis 0) + 안쪽 0-0-auto 버튼 조합이 half 폭에서 페이지 입력을 뚫고 겹치던 원인.
+              좁은 화면은 자연 폭 + wrap 으로 전환. */}
+          <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
             <div ref={wrapRef} style={css('position:relative; flex:0 0 auto;')}>
               <button onClick={() => setMenuOpen(!menuOpen)} onMouseEnter={() => setHoverBtn(true)} onMouseLeave={() => setHoverBtn(false)} title="검색할 부위 선택" style={css(partBtn)}>
                 <span style={css('font-size:15px; font-weight:700; white-space:nowrap;')}>{catLabel}</span>
@@ -188,7 +192,7 @@ export default function SearchScreen() {
                 const on = mode === m.v
                 return (
                   <button key={m.v} onClick={() => s.setListMode(m.v)} className={on ? 'pb-h-solid' : 'pb-h-soft'}
-                    style={css(`height:28px; padding:0 ${mobile ? 8 : 11}px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:${mobile ? 11 : 12}px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease, filter .18s ease;`)}>{m.l}</button>
+                    style={css(`height:28px; padding:0 ${phone ? 8 : 11}px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:${phone ? 11 : 12}px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease, filter .18s ease;`)}>{m.l}</button>
                 )
               })}
             </div>
@@ -207,15 +211,17 @@ export default function SearchScreen() {
           </div>
         </div>
         {/* 추가 입력 행(상단 58px 바 아래) — 검색 입력 + AI 검색 버튼(높이 38) */}
-        <div style={css(`flex:0 0 auto; padding:${narrow ? '0 16px 10px' : '2px 22px 12px'}; display:flex; gap:8px; flex-wrap:wrap; align-items:center;`)}>
-          <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') run() }} placeholder={mobile ? '생김새로 검색 (예: 동물 귀)' : '아이템 생김새를 적어보세요 (예: 여자 단발 헤어, 동물 귀)'}
-            style={css(`flex:1 1 ${mobile ? '100%' : '200px'}; min-width:0; height:38px; padding:0 14px; border:1.5px solid #eeb2ce; border-radius:11px; background:#faf7f3; font-family:inherit; font-size:14px; color:#3d372f; outline:none; transition:border-color .14s ease;`)} />
-          <button onClick={() => run()} disabled={s.searchLoading} className="pb-h-solid" style={css(`${mobile ? 'flex:1 1 100%' : 'flex:0 0 auto'}; height:38px; padding:0 20px; border:none; border-radius:11px; background:${s.searchLoading ? '#f0aecb' : '#ec86ac'}; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:${s.searchLoading ? 'default' : 'pointer'}; white-space:nowrap; transition:background .18s ease, filter .18s ease;`)}>{s.searchLoading ? '검색 중…' : 'AI 검색'}</button>
+        <div style={css(`flex:0 0 auto; padding:${mobile ? `0 ${phone ? 12 : 16}px 9px` : narrow ? '0 16px 10px' : '2px 22px 12px'}; display:flex; gap:8px; flex-wrap:wrap; align-items:center;`)}>
+          {/* 모바일에서 입력·버튼이 각각 100% 를 먹어 2행(84px)을 잡아먹었다 → 한 행으로 합쳐 그리드에 돌려준다. */}
+          <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') run() }} placeholder={phone ? '생김새로 검색 (예: 동물 귀)' : '아이템 생김새를 적어보세요 (예: 여자 단발 헤어, 동물 귀)'}
+            style={css(`flex:1 1 ${phone ? '0' : '200px'}; min-width:0; height:34px; padding:0 12px; border:1.5px solid #eeb2ce; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; color:#3d372f; outline:none; transition:border-color .14s ease;`)} />
+          <button onClick={() => run()} disabled={s.searchLoading} className="pb-h-solid" style={css(`flex:0 0 auto; height:34px; padding:0 ${phone ? 14 : 18}px; border:none; border-radius:8px; background:${s.searchLoading ? '#f0aecb' : '#ec86ac'}; color:#fff; font-family:inherit; font-size:13px; font-weight:600; cursor:${s.searchLoading ? 'default' : 'pointer'}; white-space:nowrap; transition:background .18s ease, filter .18s ease;`)}>{s.searchLoading ? '검색 중…' : 'AI 검색'}</button>
         </div>
       </div>
 
       {/* 결과 캐러셀 — 코디탭과 동일 */}
-      <div ref={s.bindVp} style={css('flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:none; cursor:grab; user-select:none;')}>
+      {/* 모바일은 pan-y — 세로는 문서 스크롤(브라우저), 가로는 페이지 넘김(우리). CodiScreen 주석 참고. */}
+      <div ref={s.bindVp} style={css(`flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:${mobile ? 'pan-y' : 'none'}; cursor:grab; user-select:none;`)}>
         {s.searchLoading ? (
           <div style={css('width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;')}>
             <div className="pb-spin" style={{ width: 26, height: 26, borderColor: 'rgba(236,134,172,.35)', borderTopColor: '#ec86ac' }} />
@@ -236,7 +242,7 @@ export default function SearchScreen() {
         ) : (
           <div style={css(trackStyle)}>
             {pages.map((items, pi) => (
-              <div key={pi} style={css('flex:0 0 100%; width:100%; height:100%; padding:18px 22px; contain:paint;')}>
+              <div key={pi} style={css(`flex:0 0 100%; width:100%; height:100%; padding:${mobile ? '10px 12px' : '18px 22px'}; contain:paint;`)}>
                 {Math.abs(pi - s.curIdx) <= 1 && (
                   <div style={css(gridStyle)}>{items.map((it) => cell(it))}</div>
                 )}
@@ -246,8 +252,8 @@ export default function SearchScreen() {
         )}
       </div>
 
-      <div style={css('flex:0 0 auto; height:38px; display:flex; align-items:center; justify-content:center; border-top:1px solid #f0e9e1;')}>
-        <span style={css('font-size:12px; color:#a89e93;')}>스크롤 · 스와이프 · ← → 방향키로 페이지를 넘길 수 있어요</span>
+      <div style={css(`flex:0 0 auto; height:${mobile ? 26 : 38}px; display:flex; align-items:center; justify-content:center; padding:0 12px; border-top:1px solid #f0e9e1;`)}>
+        <span style={css(`font-size:${mobile ? 10.5 : 12}px; color:#a89e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`)}>{mobile ? '스와이프로 페이지를 넘길 수 있어요' : '스크롤 · 스와이프 · ← → 방향키로 페이지를 넘길 수 있어요'}</span>
       </div>
     </section>
   )

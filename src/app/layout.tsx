@@ -64,6 +64,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   colorScheme: 'light',
   themeColor: '#ec86ac',
+  // 가상 키보드가 뜰 때 100dvh 를 줄여 레이아웃을 다시 맞춘다(입력창 포커스 시 하단이 가려지지 않게).
+  interactiveWidget: 'resizes-content',
 }
 
 // 검색엔진 리치 결과용 구조화 데이터(schema.org) — WebSite/Organization/WebApplication 그래프.

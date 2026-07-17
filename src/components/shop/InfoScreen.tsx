@@ -9,7 +9,7 @@ import { applyHsb, renderDyedSprite, type HsbParams, type PaletteParams } from '
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { CAT_TO_SLOT, THUMB_VIEW, isColorLineSkin } from '@/lib/shopData'
-import { isStacked } from '@/lib/useBreakpoint'
+import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
 import { css, swStyle } from '@/lib/style'
 import { useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
@@ -148,6 +148,9 @@ export default function InfoScreen() {
       cat: c, slot, isSkin, isMix, item, on, isHidden, spriteId, iconRel, dyed,
       label: c.label,
       name: isSkin ? toneName : on ? (isHidden ? '숨김' : item!.name || item!.id) : '미착용',
+      // 카드에 보이는 이름은 폭이 좁아 ellipsis 로 잘린다 → 툴팁으로 전체 이름을 보여준다.
+      // 숨김 상태여도 실제 아이템 이름을 띄운다(카드엔 '숨김'만 보이므로 오히려 툴팁이 필요하다).
+      fullName: isSkin ? toneName : on ? (item!.name || item!.id) : null,
       canHide: on && !isSkin,
       cardStyle: `display:flex; align-items:center; gap:10px; padding:${pad}; border-radius:11px; min-width:0; cursor:${on ? 'pointer' : 'default'}; border:${border}; background:${isHidden ? '#f6f2ec' : on ? '#fdf4f8' : '#fbf8f4'}; transition:background .14s ease, border-color .14s ease, opacity .14s ease; opacity:${isHidden ? 0.6 : 1};`,
       thumbStyle: `flex:0 0 auto; width:42px; height:42px; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:${on && !isHidden ? '#fff' : '#f4efe8'};`,
@@ -220,9 +223,9 @@ export default function InfoScreen() {
   const ratioDisp = target && s.dyeEdit[target + ':ratio'] !== undefined ? s.dyeEdit[target + ':ratio'] : String(pal.ratio)
 
   return (
-    <section style={css(`${isStacked(s.bp) ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
-      <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;')}>
-        <span style={css('font-size:15px; font-weight:700;')}>코디 정보 · 염색</span>
+    <section style={css(`${isStacked(s.bp) ? `flex:0 0 auto; width:100%; height:${MOBILE_H.content}` : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
+      <div style={css(`flex:0 0 auto; height:${isStacked(s.bp) ? 46 : 58}px; padding:0 ${isStacked(s.bp) ? 14 : 22}px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;`)}>
+        <span style={css(`font-size:${isStacked(s.bp) ? 14 : 15}px; font-weight:700;`)}>코디 정보 · 염색</span>
       </div>
 
       <div style={css('flex:1 1 auto; min-height:0; display:flex; flex-direction:column;')}>
@@ -234,7 +237,7 @@ export default function InfoScreen() {
           <div className="pb-scroll" style={css('flex:1 1 auto; min-height:0; overflow:hidden auto;')}>
             <div style={css(`display:grid; grid-template-columns:repeat(${s.bp === 'mobile' ? 2 : s.bp === 'tablet' ? 3 : 4},minmax(0,1fr)); gap:10px;`)}>
               {slotList.map((sl) => (
-                <div key={sl.cat.id} onClick={() => { if (sl.on) s.setDyeTarget(sl.slot) }} style={css(sl.cardStyle)}>
+                <div key={sl.cat.id} title={sl.fullName ?? undefined} onClick={() => { if (sl.on) s.setDyeTarget(sl.slot) }} style={css(sl.cardStyle)}>
                   <div style={css('position:relative; flex:0 0 auto;')}>
                     <div style={css(sl.thumbStyle)}>
                       {/* 아이콘은 아이템 생김새(스프라이트)만. 헤어/성형은 모든 부위 합성(발색표와 동일). */}
