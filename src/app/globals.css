@@ -105,6 +105,11 @@ button { will-change: transform; }
 @keyframes pbPanelOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(.975); } }
 .pb-overlay-out { animation: pbOverlayOut .2s ease both; }
 .pb-panel-out { animation: pbPanelOut .2s cubic-bezier(.4,0,.7,.4) both; }
+/* 염색 +/− 스테퍼: 눌림 피드백은 터치에서도 보여야 하므로 :active 로(=hover 게이팅 대상 아님). */
+.pb-step:active:not(:disabled) { background: #f4dfe9 !important; color: #d76d9a !important; }
+@media (hover: hover) and (pointer: fine) {
+  .pb-step:hover:not(:disabled) { background: #f7ecf1; color: #d76d9a; }
+}
 @keyframes pbBlink { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
 
 /* 상호작용 버튼 통일 hover — 위치/크기 변화(translate·scale) 및 그림자 없이,

@@ -182,6 +182,39 @@ export default function InfoScreen() {
   const resetStyle = `height:28px; padding:0 12px; border-radius:8px; font-family:inherit; font-size:11px; font-weight:600; cursor:${dirty ? 'pointer' : 'default'}; border:1px solid ${dirty ? '#e7ded4' : '#efe8e0'}; background:${dirty ? '#faf7f3' : '#fbf8f4'}; color:${dirty ? '#5c534b' : '#c3b9ad'}; transition:border-color .14s ease, color .14s ease, background .14s ease;`
   const numInput = 'width:52px; height:26px; padding:0 6px; border:1px solid #e7ded4; border-radius:6px; background:#faf7f3; font-family:inherit; font-size:12px; font-weight:600; text-align:right; outline:none;'
 
+  // ── +/− 스테퍼(다이얼로그와 동일 규칙) ──────────────────────────────────
+  // 슬라이더는 큰 이동, 스테퍼는 1 단위 미세조정. 모바일은 손가락 폭 때문에 슬라이더로 1 을 맞출 수 없다.
+  // 누르고 있으면 400ms 뒤부터 70ms 간격 반복.
+  const holdRef = useRef<{ t: ReturnType<typeof setTimeout> | null; i: ReturnType<typeof setInterval> | null }>({ t: null, i: null })
+  const stopHold = () => {
+    if (holdRef.current.t) { clearTimeout(holdRef.current.t); holdRef.current.t = null }
+    if (holdRef.current.i) { clearInterval(holdRef.current.i); holdRef.current.i = null }
+  }
+  useEffect(() => stopHold, [])
+  const bumpHsb = (f: string, d: number) => {
+    if (!target) return
+    s.setDyeEdit((prev) => { const e = { ...prev }; delete e[target + ':' + f]; return e }) // 입력 버퍼 해제(표시=실값)
+    s.setDyeHsb((prev) => {
+      const cur = prev[target] || defHsbP()
+      const v = clampDye(f, ((cur as unknown as Record<string, number>)[f] ?? 0) + d)
+      return { ...prev, [target]: { ...cur, [f]: v } }
+    })
+  }
+  const bumpRatio = (d: number) => {
+    if (!target) return
+    s.setDyeEdit((prev) => { const e = { ...prev }; delete e[target + ':ratio']; return e })
+    s.setDyePalette((p) => { const cur = p[target] || defPal(); return { ...p, [target]: { ...cur, ratio: Math.max(0, Math.min(100, cur.ratio + d)) } } })
+  }
+  const startHold = (fn: () => void) => (e: React.PointerEvent) => {
+    if (e.button != null && e.button !== 0) return
+    e.preventDefault() // 길게 누를 때 텍스트 선택/확대 방지
+    stopHold(); fn()
+    holdRef.current.t = setTimeout(() => { holdRef.current.i = setInterval(fn, 70) }, 400)
+  }
+  const stepBtn = (disabled: boolean) => `flex:0 0 auto; width:${dyeMobile ? 32 : 26}px; height:${dyeMobile ? 32 : 26}px; display:flex; align-items:center; justify-content:center; border:none; background:transparent; color:${disabled ? '#d8cfc5' : '#a2786f'}; font-family:inherit; font-size:${dyeMobile ? 15 : 13}px; font-weight:700; line-height:1; cursor:${disabled ? 'default' : 'pointer'}; user-select:none; touch-action:manipulation; transition:background .12s ease, color .12s ease;`
+  const stepWrap = 'flex:0 0 auto; display:flex; align-items:center; border:1px solid #e7ded4; border-radius:7px; background:#faf7f3; overflow:hidden;'
+  const stepNum = (col: string) => `width:${dyeMobile ? 44 : 40}px; height:${dyeMobile ? 32 : 26}px; padding:0 2px; border:none; border-left:1px solid #ece4da; border-right:1px solid #ece4da; background:#fff; font-family:inherit; font-size:12px; font-weight:600; text-align:center; color:${col}; outline:none; font-variant-numeric:tabular-nums;`
+
   const resetDye = () => {
     if (!target) return
     if (mixMode) {
@@ -333,11 +366,19 @@ export default function InfoScreen() {
                     <div>
                       <div style={css('display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;')}>
                         <span style={css('font-size:11px; font-weight:600; color:#a89e93;')}>혼합 비율 (A ↔ B)</span>
-                        <div style={css('display:flex; align-items:center; gap:4px;')}>
-                          <input inputMode="numeric" value={ratioDisp}
-                            onChange={(e) => { const raw = e.target.value; s.setDyeEdit((prev) => ({ ...prev, [target + ':ratio']: raw })); const pv = parseInt(raw, 10); if (raw !== '' && !isNaN(pv)) setRatio(pv) }}
-                            onBlur={() => s.setDyeEdit((prev) => { const e = { ...prev }; delete e[target + ':ratio']; return e })}
-                            style={css(numInput + 'color:#d76d9a;')} />
+                        <div style={css('display:flex; align-items:center; gap:5px;')}>
+                          <div style={css(stepWrap)}>
+                            <button className="pb-step" aria-label="혼합 비율 1 감소" title="1 감소 (길게 누르면 계속)" disabled={pal.ratio <= 0}
+                              onPointerDown={startHold(() => bumpRatio(-1))} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
+                              style={css(stepBtn(pal.ratio <= 0))}>−</button>
+                            <input inputMode="numeric" aria-label="혼합 비율" value={ratioDisp}
+                              onChange={(e) => { const raw = e.target.value; s.setDyeEdit((prev) => ({ ...prev, [target + ':ratio']: raw })); const pv = parseInt(raw, 10); if (raw !== '' && !isNaN(pv)) setRatio(pv) }}
+                              onBlur={() => s.setDyeEdit((prev) => { const e = { ...prev }; delete e[target + ':ratio']; return e })}
+                              style={css(stepNum('#d76d9a'))} />
+                            <button className="pb-step" aria-label="혼합 비율 1 증가" title="1 증가 (길게 누르면 계속)" disabled={pal.ratio >= 100}
+                              onPointerDown={startHold(() => bumpRatio(+1))} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
+                              style={css(stepBtn(pal.ratio >= 100))}>+</button>
+                          </div>
                           <span style={css('font-size:11px; color:#a89e93;')}>%</span>
                         </div>
                       </div>
@@ -359,10 +400,20 @@ export default function InfoScreen() {
                       </select>
                     </div>
                     {([['색조', 'h', 0, 359], ['채도', 's', -99, 99], ['명도', 'b', -99, 99]] as const).map(([label, f, lo, hi]) => (
-                      <div key={f} style={css('display:flex; align-items:center; gap:10px;')}>
-                        <span style={css('flex:0 0 46px; font-size:11px; font-weight:600; color:#a89e93;')}>{label}</span>
+                      <div key={f} style={css('display:flex; align-items:center; gap:8px;')}>
+                        <span style={css('flex:0 0 40px; font-size:11px; font-weight:600; color:#a89e93;')}>{label}</span>
                         <input type="range" min={lo} max={hi} value={(hsbP as unknown as Record<string, number>)[f]} onPointerDown={beginDrag} onChange={hsbSetRange(f)} style={css('flex:1 1 0; min-width:0; cursor:pointer; accent-color:#ec86ac;')} />
-                        <input inputMode="numeric" value={hsbDisp(f, (hsbP as unknown as Record<string, number>)[f])} placeholder="0" onChange={hsbSetNum(f)} onBlur={hsbBlur(f)} style={css(numInput + 'flex:0 0 auto; color:#5c534b;')} />
+                        {/* [−][값][+] — 슬라이더 옆에 붙여 "이 줄의 값"임이 분명하게. */}
+                        <div style={css(stepWrap)}>
+                          <button className="pb-step" aria-label={`${label} 1 감소`} title="1 감소 (길게 누르면 계속)" disabled={(hsbP as unknown as Record<string, number>)[f] <= lo}
+                            onPointerDown={startHold(() => bumpHsb(f, -1))} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
+                            style={css(stepBtn((hsbP as unknown as Record<string, number>)[f] <= lo))}>−</button>
+                          <input inputMode="numeric" aria-label={label} value={hsbDisp(f, (hsbP as unknown as Record<string, number>)[f])} placeholder="0"
+                            onChange={hsbSetNum(f)} onBlur={hsbBlur(f)} style={css(stepNum('#5c534b'))} />
+                          <button className="pb-step" aria-label={`${label} 1 증가`} title="1 증가 (길게 누르면 계속)" disabled={(hsbP as unknown as Record<string, number>)[f] >= hi}
+                            onPointerDown={startHold(() => bumpHsb(f, +1))} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
+                            style={css(stepBtn((hsbP as unknown as Record<string, number>)[f] >= hi))}>+</button>
+                        </div>
                       </div>
                     ))}
                   </>
