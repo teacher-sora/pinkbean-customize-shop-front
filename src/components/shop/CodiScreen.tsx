@@ -109,12 +109,11 @@ export default function CodiScreen() {
   const mobile = stacked
   const trackStyle = `display:flex; height:100%; width:100%; will-change:transform; transform:translateX(calc(${-s.curIdx * 100}% + ${s.offset}px)); transition:${s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none'};`
 
-  // 모바일에선 (여)/(남) 칩이 붙으면 버튼이 넓어져 뷰어 모드를 창 밖으로 밀어냈다.
-  // → 버튼이 줄어들 수 있게 하고(min-width:0), 폰에선 힌트 배지를 캐럿(▾)만 남긴다.
+  // (여)/(남) 칩이 붙어도 배지가 짧아 모든 환경에서 들어간다 → 버튼을 줄이지 않는다(이름이 잘리면 안 된다).
   const partBtnStyle = (() => {
     const bg = s.partMenuOpen ? '#fce9f1' : s.hoverPartBtn ? '#f7f2ec' : 'transparent'
     const bd = s.partMenuOpen ? '#eeb2ce' : s.hoverPartBtn ? '#e0d8ce' : '#eee6dc'
-    return `display:flex; align-items:center; ${phone ? 'min-width:0; max-width:100%;' : ''} gap:${phone ? 6 : 9}px; height:40px; padding:0 ${phone ? 9 : 12}px; margin-left:-4px; border:1px solid ${bd}; border-radius:10px; cursor:pointer; background:${bg}; transition:background .14s ease, border-color .14s ease;`
+    return `display:flex; align-items:center; gap:${phone ? 6 : 9}px; height:40px; padding:0 ${phone ? 9 : 12}px; margin-left:-4px; border:1px solid ${bd}; border-radius:10px; cursor:pointer; background:${bg}; transition:background .14s ease, border-color .14s ease;`
   })()
   const partBadgeStyle = (() => {
     const bg = s.partMenuOpen ? '#ec86ac' : s.hoverPartBtn ? '#eddbe4' : '#f2ece5'
@@ -169,11 +168,11 @@ export default function CodiScreen() {
         {/* flex:1 1 0 은 basis 0 이라 안쪽 0-0-auto 버튼들이 컨테이너를 뚫고 나가 페이지 입력과 겹친다.
             좁은 화면에선 자연 폭(0 1 auto) + wrap 으로 바꿔 구조적으로 겹침이 불가능하게 한다. */}
         <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
-          {/* ⚠️ 줄어들기(ellipsis)는 폰에서만. PC 는 공간이 충분한데도 "전체"가 "전.." 로 잘렸다(회귀). */}
-          <div ref={s.partWrapRef} style={css(`position:relative; ${phone ? 'flex:0 1 auto; min-width:0;' : 'flex:0 0 auto;'}`)}>
+          {/* 부위 이름은 어느 환경에서도 자르지 않는다. 배지를 "부위 선택"->"부위" 로 줄인 것만으로
+              모바일까지 전부 들어가는 걸 확인했다(사용자 실기기 확인). */}
+          <div ref={s.partWrapRef} style={css('position:relative; flex:0 0 auto;')}>
             <button onClick={() => s.setPartMenuOpen(!s.partMenuOpen)} onMouseEnter={() => s.setHoverPartBtn(true)} onMouseLeave={() => s.setHoverPartBtn(false)} title="클릭해서 부위·성별 선택" style={css(partBtnStyle)}>
-              {/* 폰에서만 마지막 수단으로 부위 이름이 줄어든다(칩·캐럿은 정보량이 더 커서 이름을 양보) */}
-              <span style={css(`${phone ? 'flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;' : 'flex:0 0 auto;'} font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;`)}>{activeMeta.label}</span>
+              <span style={css('flex:0 0 auto; font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;')}>{activeMeta.label}</span>
               {/* 성별이 걸려 있으면 라벨 옆에 칩으로 드러낸다 — 필터가 켜진 걸 모르고 "왜 안 나오지?" 하는 걸 막는다.
                   전체(기본)일 땐 아무것도 안 늘어난다. */}
               {gf !== 'all' && (
