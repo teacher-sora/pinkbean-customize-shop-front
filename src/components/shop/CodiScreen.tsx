@@ -161,7 +161,7 @@ export default function CodiScreen() {
         <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
           <div ref={s.partWrapRef} style={css('position:relative; flex:0 0 auto;')}>
             <button onClick={() => s.setPartMenuOpen(!s.partMenuOpen)} onMouseEnter={() => s.setHoverPartBtn(true)} onMouseLeave={() => s.setHoverPartBtn(false)} title="클릭해서 부위 선택" style={css(partBtnStyle)}>
-              <span style={css('font-size:15px; font-weight:700; white-space:nowrap;')}>{activeMeta.label}</span>
+              <span style={css('font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;')}>{activeMeta.label}</span>
               <span style={css(partBadgeStyle)}>부위 선택 ▾</span>
             </button>
             <div style={css(partMenuStyle)}>

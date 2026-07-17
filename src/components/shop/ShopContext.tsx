@@ -9,7 +9,8 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { CATS, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
+import { CATS, DYE_FAMILIES, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
+import { clampDye } from '@/lib/color'
 import { GRID, useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadSlot, type Index, type ListItem } from '@/lib/core/data'
 import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
@@ -48,7 +49,9 @@ const NEXON_PART_SLOT: Record<string, string> = {
 }
 // 이름 정규화(성별 접미사·공백 제거)로 넥슨 이름 ↔ 내부 리스트 이름 매칭.
 const nrmName = (n: string) => (n || '').replace(/\s*\((여|남)\)\s*$/, '').replace(/\s+/g, ' ').trim()
-type NexonItem = { part: string; slot: string; name: string; gender: string | null }
+// prism = 캐시 아이템 염색(컬러 프리즘). 넥슨의 color_range/hue/saturation/value 를 그대로 받는다.
+type NexonPrism = { colorRange: string | null; hue: number; saturation: number; value: number }
+type NexonItem = { part: string; slot: string; name: string; gender: string | null; prism?: NexonPrism | null }
 type NexonBeauty = { name: string; baseColor: string | null; mixColor: string | null; mixRate: string }
 // 넥슨이 주는 코디 1벌. 제로/엔젤릭버스터는 2벌이 온다(제로=알파/베타, 엔버=일반/드레스업) — /api/nick 참고.
 // gender 는 코디별로 다를 수 있다 — 제로는 캐릭터 성별이 '기타'로 오고 알파=남/베타=여 이므로
@@ -560,10 +563,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const mix = b.mixColor ? (COLOR_IDX[b.mixColor] ?? null) : null
     return { baseColor: base, mixColor: mix, ratio: mix != null ? (parseInt(b.mixRate, 10) || 50) : 0 }
   }
+  // 넥슨 컬러 프리즘 → 내부 HSB. color_range 는 Prism 색상계열(t), 나머지는 그대로 대응된다.
+  // clampDye 와 같은 범위로 자른다(h 0~359, s/b -99~99) — 넥슨 값이 범위를 벗어나도 렌더가 깨지지 않게.
+  const prismToHsb = (p: NexonPrism): HsbParams => ({
+    h: clampDye('h', p.hue), s: clampDye('s', p.saturation), b: clampDye('b', p.value),
+    t: Math.max(0, DYE_FAMILIES.indexOf(p.colorRange ?? DYE_FAMILIES[0])), // 모르는 계열이면 0(전체)
+  })
   // 넥슨 코디 1벌 → 내부 스냅샷(착용 + 톤 + 염색). 매칭이 0건이면 null(=보여줄 게 없는 코디).
   const lookToSnapshot = async (look: NexonLook, gender: string | null): Promise<Snapshot | null> => {
     const equipped: Record<string, string> = {}
     const dyePalette: Record<string, PaletteParams> = {}
+    const dyeHsb: Record<string, HsbParams> = {}
     let tone = DEFAULT_TONE
     let matched = 0
     // 헤어(색 접두어 제거 + 염색색상)
@@ -583,15 +593,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const te = indexRef.current?.base.tones.find((t) => nrmName(t.name || '') === nrmName(look.skin!.name))
       if (te) { tone = te.tone; matched++ }
     }
-    // 캐시 아이템(옷·모자·무기 등)
+    // 캐시 아이템(옷·모자·무기 등) + 그 아이템에 걸린 컬러 프리즘 염색
     for (const it of look.items) {
       const slot = NEXON_PART_SLOT[it.part]
       if (!slot) continue
       const found = matchByName(await loadSlotFolded(slot), it.name, it.gender ?? gender)
-      if (found) { equipped[slot] = found.id; matched++ }
+      if (found) {
+        equipped[slot] = found.id; matched++
+        if (it.prism) dyeHsb[slot] = prismToHsb(it.prism)
+      }
     }
     if (!matched) return null
-    return { equipped, tone, dyePalette, dyeHsb: {}, hidden: {} }
+    return { equipped, tone, dyePalette, dyeHsb, hidden: {} }
   }
   // 닉네임 → 코디 후보 목록: 내부 프록시(/api/nick)로 넥슨 착용(캐시아이템 + 헤어/성형/피부)을 받아 내부 아이템에 매칭.
   // 일반 직업은 1벌, 제로/엔젤릭버스터는 2벌이 나온다 → 2벌이면 호출부가 선택 다이얼로그를 띄운다.

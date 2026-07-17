@@ -92,23 +92,28 @@ export default function PreviewPanel() {
     // 스크롤 영역이 맨 위에 있을 때만 "아래로 끌어 닫기"를 무장 → 목록 스크롤과 충돌하지 않는다.
     dragRef.current = { id: e.pointerId, y0: e.clientY, armed: !sc || sc.scrollTop <= 0, moved: false, t0: performance.now() }
   }
+  // 6px 은 너무 예민해서, 위로 스크롤할 때 손가락이 처음 몇 px 아래로 흔들리는 것만으로 드래그가 붙잡혀
+  // 시트가 움찔하고(그 뒤 dy 가 음수로 가며 0 으로 복귀) 스크롤도 뺏겼다 → 문턱을 키우고 방향을 잠근다.
+  const DRAG_START = 14
   const onSheetMove = (e: React.PointerEvent) => {
     const d = dragRef.current
     if (d.id !== e.pointerId || !d.armed) return
     const dy = e.clientY - d.y0
     if (!d.moved) {
-      if (dy < 6) { if (dy < -2) d.armed = false; return } // 위로 미는 제스처는 스크롤에 양보
+      // 문턱을 넘기 전에 위로 조금이라도 움직였으면 = 스크롤 의도 → 이 제스처는 영구히 포기한다.
+      if (dy < -2) { d.armed = false; return }
+      if (dy < DRAG_START) return
       d.moved = true; setDragging(true)
       try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch {}
     }
-    setDragY(Math.max(0, dy))
+    setDragY(Math.max(0, dy - DRAG_START)) // 문턱만큼 빼서 잡히는 순간 툭 튀지 않게
   }
   const onSheetUp = (e: React.PointerEvent) => {
     const d = dragRef.current
     if (d.id !== e.pointerId) return
     d.id = -1
     if (!d.moved) return
-    const dy = Math.max(0, e.clientY - d.y0)
+    const dy = Math.max(0, e.clientY - d.y0 - DRAG_START)
     const v = dy / Math.max(1, performance.now() - d.t0) // px/ms — 짧고 빠르게 튕겨도 닫히게
     setDragging(false)
     if (dy > 90 || v > 0.5) closeSheet(); else setDragY(0)
@@ -117,7 +122,9 @@ export default function PreviewPanel() {
 
   // 연출 설정 본문 — PC/태블릿은 아코디언 안에, 모바일은 바텀시트 안에 그대로 재사용한다.
   const pvBody = (
-    // 시트 루트는 touch-action:none(어디를 잡아도 끌어 닫기) — 스크롤이 필요한 본문만 pan-y 로 열어준다.
+    // ⚠️ touch-action 은 조상까지 함께 적용된다 — 시트 루트에 none 을 걸면 여기 pan-y 를 줘도 안쪽 스크롤이
+    // 통째로 막힌다(표정/액션 목록이 안 움직이던 원인). 루트도 pan-y 로 두고, 드래그 여부는 JS 가 판정한다.
+    // 맨 위(scrollTop 0)에서 아래로 미는 건 브라우저가 스크롤할 게 없어(overscroll-behavior:contain) 우리에게 온다.
     <div ref={mob ? sheetScrollRef : undefined} className="pb-scroll" style={css(`max-height:${mob ? 'none' : '300px'}; ${mob ? 'flex:1 1 auto; overscroll-behavior:contain; touch-action:pan-y;' : ''} overflow:hidden auto; padding:14px 22px ${mob ? '18px' : '14px'}; ${mob ? '' : 'border-top:1px solid #f0e9e1;'} display:flex; flex-direction:column; gap:11px;`)}>
       <div style={css(ROW_BETWEEN)}>
         <span style={css('font-size:12px; font-weight:600; color:#8a8075; flex:0 0 auto;')}>배율</span>
@@ -168,7 +175,7 @@ export default function PreviewPanel() {
     <>
     <section style={css(`${mob ? `flex:0 0 auto; width:100%; height:${MOBILE_H.preview}` : 'flex:0 0 calc(35% - 20px)'}; min-width:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
       <div style={css(`flex:0 0 auto; height:${mob ? 40 : 58}px; padding:0 ${mob ? '9px 0 14px' : '16px 0 22px'}; display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid #f0e9e1;`)}>
-        <span style={css(`font-size:${mob ? 14 : 15}px; font-weight:700; flex:0 0 auto;`)}>코디 미리보기</span>
+        <span style={css(`font-size:${mob ? 14 : 15}px; font-weight:700; flex:0 0 auto; color:#2a2521;`)}>코디 미리보기</span>
         {/* 실행취소/다시실행: 최근 코디 변경(아이템·염색·프리셋 적용 등)을 되돌리거나 다시 적용 */}
         <div style={css('display:flex; align-items:center; gap:6px; flex:0 0 auto;')}>
           <button onClick={s.undo} disabled={!s.canUndo} title="되돌리기 (최근 코디 변경 취소)" aria-label="되돌리기" className="pb-h-ghost" style={css(histBtn(s.canUndo))}>
@@ -204,14 +211,15 @@ export default function PreviewPanel() {
       )}
     </section>
 
-    {/* 모바일 연출 설정 = 바텀시트. 미리보기/리스트 높이를 전혀 뺏지 않고 최대 74dvh 까지 펼쳐진다.
+    {/* 모바일 연출 설정 = 바텀시트. 미리보기/리스트 높이를 전혀 뺏지 않고 최대 74svh 까지 펼쳐진다.
+        (dvh 가 아니라 svh — 툴바가 접히고 펴질 때 시트 높이가 따라 변하면 안 된다.)
         닫기 버튼 없음 — 마스크 탭 또는 아무 데나 잡고 아래로 스와이프(둘 다 같은 역방향 트랜지션). */}
     {mob && s.pvOpen && (
       <>
         <div onClick={closeSheet} style={css(`position:fixed; inset:0; z-index:55; background:rgba(42,37,33,.34); opacity:${sheetIn ? Math.max(0, 1 - dragY / 260) : 0}; transition:${dragging ? 'none' : 'opacity .26s ease'};`)} />
         <div role="dialog" aria-label="연출 설정"
           onPointerDown={onSheetDown} onPointerMove={onSheetMove} onPointerUp={onSheetUp} onPointerCancel={onSheetCancel}
-          style={css(`position:fixed; left:0; right:0; bottom:0; z-index:56; display:flex; flex-direction:column; max-height:74dvh; background:#fff; border-top:1px solid #e7ded4; border-radius:18px 18px 0 0; box-shadow:0 -12px 34px rgba(42,37,33,.18); padding-bottom:env(safe-area-inset-bottom); touch-action:none; transform:translateY(${sheetIn ? dragY + 'px' : '100%'}); transition:${dragging ? 'none' : 'transform .26s cubic-bezier(.22,.61,.36,1)'};`)}>
+          style={css(`position:fixed; left:0; right:0; bottom:0; z-index:56; display:flex; flex-direction:column; max-height:74svh; background:#fff; border-top:1px solid #e7ded4; border-radius:18px 18px 0 0; box-shadow:0 -12px 34px rgba(42,37,33,.18); padding-bottom:env(safe-area-inset-bottom); touch-action:pan-y; transform:translateY(${sheetIn ? dragY + 'px' : '100%'}); transition:${dragging ? 'none' : 'transform .26s cubic-bezier(.22,.61,.36,1)'};`)}>
           <div style={css('flex:0 0 auto; display:flex; justify-content:center; padding:9px 0 3px;')}>
             <span style={css('width:38px; height:4px; border-radius:4px; background:#e2d8cd;')} />
           </div>

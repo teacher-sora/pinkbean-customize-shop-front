@@ -170,7 +170,7 @@ export default function SearchScreen() {
           <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
             <div ref={wrapRef} style={css('position:relative; flex:0 0 auto;')}>
               <button onClick={() => setMenuOpen(!menuOpen)} onMouseEnter={() => setHoverBtn(true)} onMouseLeave={() => setHoverBtn(false)} title="검색할 부위 선택" style={css(partBtn)}>
-                <span style={css('font-size:15px; font-weight:700; white-space:nowrap;')}>{catLabel}</span>
+                <span style={css('font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;')}>{catLabel}</span>
                 <span style={css(partBadge)}>부위 ▾</span>
               </button>
               <div style={css(partMenu)}>

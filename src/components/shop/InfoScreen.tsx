@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CATS, paletteFor } from '@/lib/catalog'
+import { CATS, DYE_FAMILIES, paletteFor } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta } from '@/lib/core/data'
@@ -14,8 +14,8 @@ import { css, swStyle } from '@/lib/style'
 import { useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 
-// 다이얼로그 염색과 동일한 색상 계열 목록(Prism type 0~6).
-const FAMILIES = ['전체 색상 계열', '빨간 색상 계열', '노란 색상 계열', '초록 색상 계열', '청록 색상 계열', '파란 색상 계열', '자주 색상 계열']
+// 다이얼로그 염색과 동일한 색상 계열 목록(Prism type 0~6). 닉네임 불러오기(prism 매핑)와 공유하므로 catalog 에 둔다.
+const FAMILIES = DYE_FAMILIES
 const defPal = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 }) // 믹스 기본 비율 50%
 const defHsbP = (): HsbParams => ({ h: 0, s: 0, b: 0, t: 0 })
 const hsbActive = (h?: HsbParams) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0)
@@ -225,7 +225,7 @@ export default function InfoScreen() {
   return (
     <section style={css(`${isStacked(s.bp) ? `flex:0 0 auto; width:100%; height:${MOBILE_H.content}` : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
       <div style={css(`flex:0 0 auto; height:${isStacked(s.bp) ? 46 : 58}px; padding:0 ${isStacked(s.bp) ? 14 : 22}px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;`)}>
-        <span style={css(`font-size:${isStacked(s.bp) ? 14 : 15}px; font-weight:700;`)}>코디 정보 · 염색</span>
+        <span style={css(`font-size:${isStacked(s.bp) ? 14 : 15}px; font-weight:700; color:#2a2521;`)}>코디 정보 · 염색</span>
       </div>
 
       <div style={css('flex:1 1 auto; min-height:0; display:flex; flex-direction:column;')}>

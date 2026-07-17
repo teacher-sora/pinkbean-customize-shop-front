@@ -13,11 +13,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 //    **직업명으로 분기하지 않는다** — additional 에 실제 내용이 있을 때만 2번째를 넣는다(더 견고).
 const BASE = 'https://open.api.nexon.com/maplestory/v1'
 
+// 캐시 아이템 염색(컬러 프리즘). 넥슨이 색상계열/색조/채도/명도를 그대로 준다 → 내부 HsbParams 와 1:1 대응.
+// (염색 안 한 아이템은 null 이다 — 필드 자체가 없는 게 아니다.)
+interface NexonPrism { color_range?: string | null; hue?: number | null; saturation?: number | null; value?: number | null }
 interface NexonCashItem {
   cash_item_equipment_part: string
   cash_item_equipment_slot: string
   cash_item_name: string
   item_gender: string | null
+  cash_item_coloring_prism?: NexonPrism | null
 }
 interface NexonBeautyPart { hair_name?: string; face_name?: string; base_color?: string | null; mix_color?: string | null; mix_rate?: string | null }
 
@@ -29,10 +33,17 @@ function mergeItems(data: Cash, prefix: string) {
   for (const it of ((data[`${prefix}base`] as NexonCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
   const pno = data.preset_no
   if (pno) for (const it of ((data[`${prefix}preset_${pno}`] as NexonCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
-  return Object.values(bySlot).map((it) => ({
-    part: it.cash_item_equipment_part, slot: it.cash_item_equipment_slot,
-    name: it.cash_item_name, gender: it.item_gender,
-  }))
+  return Object.values(bySlot).map((it) => {
+    const p = it.cash_item_coloring_prism
+    return {
+      part: it.cash_item_equipment_part, slot: it.cash_item_equipment_slot,
+      name: it.cash_item_name, gender: it.item_gender,
+      // 염색 안 했으면 prism=null → 그대로 null 로 넘겨 프론트가 무시하게 한다.
+      prism: p && (p.hue != null || p.saturation != null || p.value != null)
+        ? { colorRange: p.color_range ?? null, hue: p.hue ?? 0, saturation: p.saturation ?? 0, value: p.value ?? 0 }
+        : null,
+    }
+  })
 }
 
 const col = (o: NexonBeautyPart | null | undefined, nameKey: 'hair_name' | 'face_name') =>

@@ -20,7 +20,7 @@ export default function PresetScreen() {
   return (
     <section style={css(`${mob ? `flex:0 0 auto; width:100%; height:${MOBILE_H.content}` : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
       <div style={css(`flex:0 0 auto; height:${mob ? 46 : 58}px; padding:0 ${mob ? 14 : 22}px; display:flex; align-items:center; gap:${mob ? 8 : 14}px; border-bottom:1px solid #f0e9e1;`)}>
-        <span style={css(`font-size:${mob ? 14 : 15}px; font-weight:700; flex:0 0 auto;`)}>프리셋</span>
+        <span style={css(`font-size:${mob ? 14 : 15}px; font-weight:700; flex:0 0 auto; color:#2a2521;`)}>프리셋</span>
         <span style={css('flex:1 1 0; min-width:0; font-size:12px; color:#a89e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>{mob ? '변경 시 자동 저장' : '변경 시 선택한 프리셋에 자동 저장 · 새로고침해도 유지'}</span>
       </div>
 
