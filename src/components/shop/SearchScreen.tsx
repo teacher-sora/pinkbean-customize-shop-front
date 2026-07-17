@@ -159,10 +159,11 @@ export default function SearchScreen() {
   // ── 헤더 스타일(코디탭 부위 드롭다운과 동일) ──
   const partBtnBg = menuOpen ? '#fce9f1' : hoverBtn ? '#f7f2ec' : 'transparent'
   const partBtnBd = menuOpen ? '#eeb2ce' : hoverBtn ? '#e0d8ce' : '#eee6dc'
-  const partBtn = `display:flex; align-items:center; gap:9px; height:40px; padding:0 12px; margin-left:-4px; border:1px solid ${partBtnBd}; border-radius:10px; cursor:pointer; background:${partBtnBg}; transition:background .14s ease, border-color .14s ease;`
+  // 모바일: (여)/(남) 칩이 붙으면 버튼이 넓어져 뷰어 모드를 창 밖으로 밀어낸다 → 줄어들 수 있게(min-width:0) + 폰은 캐럿만.
+  const partBtn = `display:flex; align-items:center; min-width:0; max-width:100%; gap:${phone ? 6 : 9}px; height:40px; padding:0 ${phone ? 9 : 12}px; margin-left:-4px; border:1px solid ${partBtnBd}; border-radius:10px; cursor:pointer; background:${partBtnBg}; transition:background .14s ease, border-color .14s ease;`
   const partBadgeBg = menuOpen ? '#ec86ac' : hoverBtn ? '#eddbe4' : '#f2ece5'
   const partBadgeCol = menuOpen ? '#fff' : hoverBtn ? '#d76d9a' : '#a89e93'
-  const partBadge = `display:inline-flex; align-items:center; gap:4px; height:22px; padding:0 9px; border-radius:20px; font-size:11px; font-weight:600; background:${partBadgeBg}; color:${partBadgeCol}; transition:background .14s ease, color .14s ease;`
+  const partBadge = `flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; gap:4px; height:22px; padding:0 ${phone ? 6 : 9}px; border-radius:20px; font-size:11px; font-weight:600; background:${partBadgeBg}; color:${partBadgeCol}; transition:background .14s ease, color .14s ease;`
   const partMenu = `position:absolute; top:calc(100% + 8px); left:0; z-index:20; width:min(360px, 84vw); padding:10px; background:#fff; border:1px solid #e7ded4; border-radius:12px; box-shadow:0 12px 32px rgba(42,37,33,.12); transform-origin:top left; transition:opacity .2s ease, transform .2s cubic-bezier(.22,.61,.36,1); opacity:${menuOpen ? 1 : 0}; transform:translateY(${menuOpen ? '0' : '-6px'}) scale(${menuOpen ? 1 : 0.98}); pointer-events:${menuOpen ? 'auto' : 'none'};`
 
   return (
@@ -175,13 +176,13 @@ export default function SearchScreen() {
               flex:1 1 0(basis 0) + 안쪽 0-0-auto 버튼 조합이 half 폭에서 페이지 입력을 뚫고 겹치던 원인.
               좁은 화면은 자연 폭 + wrap 으로 전환. */}
           <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
-            <div ref={wrapRef} style={css('position:relative; flex:0 0 auto;')}>
+            <div ref={wrapRef} style={css('position:relative; flex:0 1 auto; min-width:0;')}>
               <button onClick={() => setMenuOpen(!menuOpen)} onMouseEnter={() => setHoverBtn(true)} onMouseLeave={() => setHoverBtn(false)} title="검색할 부위·성별 선택" style={css(partBtn)}>
-                <span style={css('font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;')}>{catLabel}</span>
+                <span style={css('flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;')}>{catLabel}</span>
                 {gf !== 'all' && (
-                  <span style={css(`display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; background:${gf === 'f' ? '#fce9f1' : '#e7f0fb'}; color:${gf === 'f' ? '#d76d9a' : '#5a86c4'};`)}>{gf === 'f' ? '여' : '남'}</span>
+                  <span style={css(`flex:0 0 auto; display:inline-flex; align-items:center; height:22px; padding:0 ${phone ? 6 : 8}px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; background:${gf === 'f' ? '#fce9f1' : '#e7f0fb'}; color:${gf === 'f' ? '#d76d9a' : '#5a86c4'};`)}>{gf === 'f' ? '여' : '남'}</span>
                 )}
-                <span style={css(partBadge)}>부위 ▾</span>
+                <span style={css(partBadge)}>{phone ? '▾' : '부위 ▾'}</span>
               </button>
               <div style={css(partMenu)}>
                 {/* 성별 필터 — 코디 탭과 같은 자리·같은 규칙(공용 포함). 탭을 옮겨도 기준이 안 바뀐다. */}

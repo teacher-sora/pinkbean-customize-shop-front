@@ -109,15 +109,17 @@ export default function CodiScreen() {
   const mobile = stacked
   const trackStyle = `display:flex; height:100%; width:100%; will-change:transform; transform:translateX(calc(${-s.curIdx * 100}% + ${s.offset}px)); transition:${s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none'};`
 
+  // 모바일에선 (여)/(남) 칩이 붙으면 버튼이 넓어져 뷰어 모드를 창 밖으로 밀어냈다.
+  // → 버튼이 줄어들 수 있게 하고(min-width:0), 폰에선 힌트 배지를 캐럿(▾)만 남긴다.
   const partBtnStyle = (() => {
     const bg = s.partMenuOpen ? '#fce9f1' : s.hoverPartBtn ? '#f7f2ec' : 'transparent'
     const bd = s.partMenuOpen ? '#eeb2ce' : s.hoverPartBtn ? '#e0d8ce' : '#eee6dc'
-    return `display:flex; align-items:center; gap:9px; height:40px; padding:0 12px; margin-left:-4px; border:1px solid ${bd}; border-radius:10px; cursor:pointer; background:${bg}; transition:background .14s ease, border-color .14s ease;`
+    return `display:flex; align-items:center; min-width:0; max-width:100%; gap:${phone ? 6 : 9}px; height:40px; padding:0 ${phone ? 9 : 12}px; margin-left:-4px; border:1px solid ${bd}; border-radius:10px; cursor:pointer; background:${bg}; transition:background .14s ease, border-color .14s ease;`
   })()
   const partBadgeStyle = (() => {
     const bg = s.partMenuOpen ? '#ec86ac' : s.hoverPartBtn ? '#eddbe4' : '#f2ece5'
     const col = s.partMenuOpen ? '#fff' : s.hoverPartBtn ? '#d76d9a' : '#a89e93'
-    return `display:inline-flex; align-items:center; gap:4px; height:22px; padding:0 9px; border-radius:20px; font-size:11px; font-weight:600; letter-spacing:-0.01em; background:${bg}; color:${col}; transition:background .14s ease, color .14s ease;`
+    return `flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; gap:4px; height:22px; padding:0 ${phone ? 6 : 9}px; border-radius:20px; font-size:11px; font-weight:600; letter-spacing:-0.01em; background:${bg}; color:${col}; transition:background .14s ease, color .14s ease;`
   })()
   const partMenuStyle = `position:absolute; top:calc(100% + 8px); left:0; z-index:20; width:min(360px, calc(100vw - 40px)); padding:10px; background:#fff; border:1px solid #e7ded4; border-radius:12px; box-shadow:0 12px 32px rgba(42,37,33,.12); transform-origin:top left; transition:opacity .2s ease, transform .2s cubic-bezier(.22,.61,.36,1); opacity:${s.partMenuOpen ? 1 : 0}; transform:translateY(${s.partMenuOpen ? '0' : '-6px'}) scale(${s.partMenuOpen ? 1 : 0.98}); pointer-events:${s.partMenuOpen ? 'auto' : 'none'};`
 
@@ -167,15 +169,16 @@ export default function CodiScreen() {
         {/* flex:1 1 0 은 basis 0 이라 안쪽 0-0-auto 버튼들이 컨테이너를 뚫고 나가 페이지 입력과 겹친다.
             좁은 화면에선 자연 폭(0 1 auto) + wrap 으로 바꿔 구조적으로 겹침이 불가능하게 한다. */}
         <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
-          <div ref={s.partWrapRef} style={css('position:relative; flex:0 0 auto;')}>
+          <div ref={s.partWrapRef} style={css('position:relative; flex:0 1 auto; min-width:0;')}>
             <button onClick={() => s.setPartMenuOpen(!s.partMenuOpen)} onMouseEnter={() => s.setHoverPartBtn(true)} onMouseLeave={() => s.setHoverPartBtn(false)} title="클릭해서 부위·성별 선택" style={css(partBtnStyle)}>
-              <span style={css('font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;')}>{activeMeta.label}</span>
+              {/* 마지막 수단으로 부위 이름이 줄어든다(칩·캐럿은 정보량이 더 커서 지키고 이름을 양보) */}
+              <span style={css(`flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;`)}>{activeMeta.label}</span>
               {/* 성별이 걸려 있으면 라벨 옆에 칩으로 드러낸다 — 필터가 켜진 걸 모르고 "왜 안 나오지?" 하는 걸 막는다.
                   전체(기본)일 땐 아무것도 안 늘어난다. */}
               {gf !== 'all' && (
-                <span style={css(`display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:-0.01em; white-space:nowrap; background:${gf === 'f' ? '#fce9f1' : '#e7f0fb'}; color:${gf === 'f' ? '#d76d9a' : '#5a86c4'};`)}>{gf === 'f' ? '여' : '남'}</span>
+                <span style={css(`flex:0 0 auto; display:inline-flex; align-items:center; height:22px; padding:0 ${phone ? 6 : 8}px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:-0.01em; white-space:nowrap; background:${gf === 'f' ? '#fce9f1' : '#e7f0fb'}; color:${gf === 'f' ? '#d76d9a' : '#5a86c4'};`)}>{gf === 'f' ? '여' : '남'}</span>
               )}
-              <span style={css(partBadgeStyle)}>부위 선택 ▾</span>
+              <span style={css(partBadgeStyle)}>{phone ? '▾' : '부위 선택 ▾'}</span>
             </button>
             <div style={css(partMenuStyle)}>
               {/* 성별 필터 — 헤더는 이미 부위·뷰어모드·페이지·검색으로 꽉 찼다. 버튼을 더 얹으면 무너진다.
