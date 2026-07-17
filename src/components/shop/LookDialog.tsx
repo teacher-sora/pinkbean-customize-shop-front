@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { css } from '@/lib/style'
 import { isStacked } from '@/lib/useBreakpoint'
 import SnapThumb from './SnapThumb'
@@ -16,8 +16,23 @@ export default function LookDialog() {
   const s = useShop()
   const [hover, setHover] = useState<string | null>(null)
   const [lookKey, setLookKey] = useState<string | null>(null)
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lp = s.lookPick
   const stacked = isStacked(s.bp)
+
+  // 닫힘도 여는 것의 역방향으로(DyeDialog 와 동일한 pb-*-out 패턴) — 애니메이션이 끝난 뒤 언마운트한다.
+  // 배경 클릭·✕·Esc·카드 선택 전부 이 경로를 쓴다.
+  const close = (after?: () => void) => {
+    if (closeTimer.current) return
+    setClosing(true)
+    closeTimer.current = setTimeout(() => {
+      closeTimer.current = null
+      setClosing(false)
+      if (after) after(); else s.closeLookPick()
+    }, 200) // globals.css 의 pb-panel-out(.2s)와 맞춘다
+  }
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current) }, [])
 
   // 코디 탭 기본 선택: additional(제로=베타 / 엔버=드레스업)이 있으면 그쪽, 없으면 첫 번째.
   useEffect(() => {
@@ -29,10 +44,11 @@ export default function LookDialog() {
   // Esc 로 닫기(다른 다이얼로그와 동일한 조작감).
   useEffect(() => {
     if (!lp) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') s.closeLookPick() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [lp, s])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lp])
 
   if (!lp) return null
   const look = lp.options.find((o) => o.key === lookKey) ?? lp.options[0]
@@ -41,9 +57,9 @@ export default function LookDialog() {
   const cols = Math.min(look.presets.length, stacked ? 2 : 3)
 
   return (
-    <div onClick={(e) => { if (e.target === e.currentTarget) s.closeLookPick() }} className="pb-overlay"
+    <div onClick={(e) => { if (e.target === e.currentTarget) close() }} className={closing ? 'pb-overlay-out' : 'pb-overlay'}
       style={css(`position:fixed; inset:0; z-index:60; background:rgba(42,37,33,0.42); display:flex; align-items:center; justify-content:center; padding:${stacked ? 14 : 32}px;`)}>
-      <div onClick={(e) => e.stopPropagation()} className="pb-panel"
+      <div onClick={(e) => e.stopPropagation()} className={closing ? 'pb-panel-out' : 'pb-panel'}
         style={css('width:100%; max-width:560px; max-height:88svh; background:#fff; border-radius:18px; display:flex; flex-direction:column; overflow:hidden;')}>
 
         <div style={css('flex:0 0 auto; padding:18px 22px 0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;')}>
@@ -53,7 +69,7 @@ export default function LookDialog() {
               {multiLook ? `'${lp.nick}' 은(는) 코디가 두 벌이에요 · 프리셋을 골라 주세요` : `'${lp.nick}' 의 치장 프리셋을 골라 주세요`}
             </span>
           </div>
-          <button onClick={s.closeLookPick} title="닫기 (Esc)"
+          <button onClick={() => close()} title="닫기 (Esc)"
             style={css('flex:0 0 auto; width:34px; height:34px; border:1px solid #e7ded4; background:#faf7f3; border-radius:8px; cursor:pointer; font-family:inherit; font-size:15px; color:#8a8075; transition:border-color .14s ease, color .14s ease;')}>✕</button>
         </div>
 
@@ -77,7 +93,7 @@ export default function LookDialog() {
             const hk = `${look.key}:${p.key}`
             const on = hover === hk
             return (
-              <button key={hk} onClick={() => s.chooseLook(look.key, p.key)}
+              <button key={hk} onClick={() => close(() => s.chooseLook(look.key, p.key))}
                 onMouseEnter={() => setHover(hk)} onMouseLeave={() => setHover(null)}
                 style={css(`display:flex; flex-direction:column; align-items:stretch; gap:0; padding:0; border-radius:12px; cursor:pointer; overflow:hidden; font-family:inherit; background:#faf7f3; border:2px solid ${on ? '#ec86ac' : '#e7ded4'}; transition:border-color .14s ease, transform .14s ease; transform:translateY(${on ? -2 : 0}px);`)}>
                 {/* 실제 모델 합성(염색·이펙트 포함) — 프리셋 카드와 동일한 그림 */}
