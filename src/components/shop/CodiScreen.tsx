@@ -114,7 +114,7 @@ export default function CodiScreen() {
   const partBtnStyle = (() => {
     const bg = s.partMenuOpen ? '#fce9f1' : s.hoverPartBtn ? '#f7f2ec' : 'transparent'
     const bd = s.partMenuOpen ? '#eeb2ce' : s.hoverPartBtn ? '#e0d8ce' : '#eee6dc'
-    return `display:flex; align-items:center; min-width:0; max-width:100%; gap:${phone ? 6 : 9}px; height:40px; padding:0 ${phone ? 9 : 12}px; margin-left:-4px; border:1px solid ${bd}; border-radius:10px; cursor:pointer; background:${bg}; transition:background .14s ease, border-color .14s ease;`
+    return `display:flex; align-items:center; ${phone ? 'min-width:0; max-width:100%;' : ''} gap:${phone ? 6 : 9}px; height:40px; padding:0 ${phone ? 9 : 12}px; margin-left:-4px; border:1px solid ${bd}; border-radius:10px; cursor:pointer; background:${bg}; transition:background .14s ease, border-color .14s ease;`
   })()
   const partBadgeStyle = (() => {
     const bg = s.partMenuOpen ? '#ec86ac' : s.hoverPartBtn ? '#eddbe4' : '#f2ece5'
@@ -169,16 +169,17 @@ export default function CodiScreen() {
         {/* flex:1 1 0 은 basis 0 이라 안쪽 0-0-auto 버튼들이 컨테이너를 뚫고 나가 페이지 입력과 겹친다.
             좁은 화면에선 자연 폭(0 1 auto) + wrap 으로 바꿔 구조적으로 겹침이 불가능하게 한다. */}
         <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
-          <div ref={s.partWrapRef} style={css('position:relative; flex:0 1 auto; min-width:0;')}>
+          {/* ⚠️ 줄어들기(ellipsis)는 폰에서만. PC 는 공간이 충분한데도 "전체"가 "전.." 로 잘렸다(회귀). */}
+          <div ref={s.partWrapRef} style={css(`position:relative; ${phone ? 'flex:0 1 auto; min-width:0;' : 'flex:0 0 auto;'}`)}>
             <button onClick={() => s.setPartMenuOpen(!s.partMenuOpen)} onMouseEnter={() => s.setHoverPartBtn(true)} onMouseLeave={() => s.setHoverPartBtn(false)} title="클릭해서 부위·성별 선택" style={css(partBtnStyle)}>
-              {/* 마지막 수단으로 부위 이름이 줄어든다(칩·캐럿은 정보량이 더 커서 지키고 이름을 양보) */}
-              <span style={css(`flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;`)}>{activeMeta.label}</span>
+              {/* 폰에서만 마지막 수단으로 부위 이름이 줄어든다(칩·캐럿은 정보량이 더 커서 이름을 양보) */}
+              <span style={css(`${phone ? 'flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;' : 'flex:0 0 auto;'} font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;`)}>{activeMeta.label}</span>
               {/* 성별이 걸려 있으면 라벨 옆에 칩으로 드러낸다 — 필터가 켜진 걸 모르고 "왜 안 나오지?" 하는 걸 막는다.
                   전체(기본)일 땐 아무것도 안 늘어난다. */}
               {gf !== 'all' && (
                 <span style={css(`flex:0 0 auto; display:inline-flex; align-items:center; height:22px; padding:0 ${phone ? 6 : 8}px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:-0.01em; white-space:nowrap; background:${gf === 'f' ? '#fce9f1' : '#e7f0fb'}; color:${gf === 'f' ? '#d76d9a' : '#5a86c4'};`)}>{gf === 'f' ? '여' : '남'}</span>
               )}
-              <span style={css(partBadgeStyle)}>{phone ? '▾' : '부위 선택 ▾'}</span>
+              <span style={css(partBadgeStyle)}>{phone ? '▾' : '부위 ▾'}</span>
             </button>
             <div style={css(partMenuStyle)}>
               {/* 성별 필터 — 헤더는 이미 부위·뷰어모드·페이지·검색으로 꽉 찼다. 버튼을 더 얹으면 무너진다.
