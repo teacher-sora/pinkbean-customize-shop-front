@@ -87,10 +87,10 @@ export function fixedExpr(items: readonly (ListItem | null | undefined)[], fallb
 }
 
 // 표정 고정 아이템은 **베이스 모델('model')에 올려도 아무것도 안 보인다** — 아이템 그림이 투명이고,
-// 베이스 마네킹에는 바뀔 성형(얼굴)이 없기 때문이다. 그래서 '모델' 모드는 '썸네일'(icon)로 승격한다.
-// '내 모델'은 사용자의 성형이 있으니 표정 변화가 그대로 보인다 → 그대로 둔다.
+// 베이스 마네킹에는 바뀔 성형(얼굴)이 없기 때문이다. 그래서 '모델' 모드는 **'내 모델'로 승격**한다
+// (사용자의 성형이 있어야 표정 변화가 보인다). '내 모델'/'썸네일'은 그대로 둔다.
 // (호출부: CodiScreen / SearchScreen 의 effMode. ListMode 는 컴포넌트 쪽 타입이라 여기서 import 하지 않는다.)
-export const forceSpriteMode = (mode: string, it: ListItem): boolean => mode === 'model' && hasFixedExpr(it)
+export const forceMyModel = (mode: string, it: ListItem): boolean => mode === 'model' && hasFixedExpr(it)
 
 // "컬러라인" 커스텀 피부(커스텀 뽀송/홍조 라벤더 컬러라인)만 염색 가능. 피부 부분은 무채색이고 라인만 채도색
 // 이라, 표준 HSB 를 통째로 적용해도 시각적으로 라인만 변한다(실제 메이플 방식과 동일 — 마스크 불필요). 이름 식별.

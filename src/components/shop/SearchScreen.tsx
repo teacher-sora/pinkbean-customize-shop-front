@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
 import { css } from '@/lib/style'
 import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
-import { CAT_TO_SLOT, SLOT_TO_CAT, THUMB_VIEW, fixedExpr, forceSpriteMode, thumbView } from '@/lib/shopData'
+import { CAT_TO_SLOT, SLOT_TO_CAT, THUMB_VIEW, fixedExpr, forceMyModel, thumbView } from '@/lib/shopData'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
@@ -51,9 +51,11 @@ export default function SearchScreen() {
   const mode = s.listMode
   const gf = s.genderFilter
   const catLabel = SEARCH_CATS.find((c) => c.id === cat)?.label || '전체'
-  // 표정 얼굴장식은 맨 마네킹에 올려도 아무것도 안 보인다(그림이 투명) → 아이템별로 '썸네일'로 승격.
+  // '모델' 모드인데 표정 얼굴장식이 결과에 있으면 그 카드는 '내 모델'로 승격된다 → 내 착용 배경이 필요.
+  const needMy = mode === 'model' && list.some((it) => !!it.fixedEmotion)
+  // 표정 얼굴장식은 맨 마네킹에 올려도 아무것도 안 보인다(성형이 없어 바뀔 얼굴이 없다) → '내 모델'로 승격.
   const effMode = (it: ListItem): ListMode =>
-    forceSpriteMode(mode, it) ? 'sprite' : (it.slot === 'hair' && mode === 'sprite') ? 'model' : mode
+    forceMyModel(mode, it) ? 'mymodel' : (it.slot === 'hair' && mode === 'sprite') ? 'model' : mode
 
   // 부위 메뉴 바깥 클릭 시 닫기
   useEffect(() => {
@@ -83,10 +85,10 @@ export default function SearchScreen() {
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl]) as [string, ListItem][]
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 모델: 우측 미리보기의 염색(발색/HSB)까지 동일 반영 → 키에 염색 시그니처 포함(코디 탭과 동일).
-    const dyeSig = mode === 'mymodel' ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
-    const key = `${mode}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}`
+    const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
+    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}`
     if (key === ctxKeyRef.current) return
-    const eqIds = mode === 'mymodel' ? myEq.map(([, it]) => it.id) : []
+    const eqIds = (mode === 'mymodel' || needMy) ? myEq.map(([, it]) => it.id) : []
     const ids = Array.from(new Set([bodyId, headId, ...eqIds]))
     Promise.all(ids.map((id) => loadMeta(id).then((m) => [id, m] as const).catch(() => null))).then(async (res) => {
       if (!alive) return
@@ -96,7 +98,8 @@ export default function SearchScreen() {
       if (body) baseItems.push({ itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, tv.view) })
       if (head) baseItems.push({ itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, tv.view) })
       const bySlot: Record<string, Ctx> = {}
-      if (mode === 'mymodel') {
+      // mode==='model' 이어도 표정 얼굴장식 카드는 '내 모델'로 승격되므로 그 슬롯의 배경이 필요하다.
+      if (mode === 'mymodel' || needMy) {
         for (const slot of slotsInList) {
           // 표정 얼굴장식을 착용 중이면 이 슬롯 컨텍스트의 표정이 'default' 가 아니다. 단 후보가 들어갈
           // 슬롯의 착용품은 빠지므로(faceAcc 결과를 보는 중이면 내 얼굴장식은 제외) 슬롯마다 다르다.
@@ -127,7 +130,7 @@ export default function SearchScreen() {
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.index, s.tone, gaze, mode, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
+  }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
 
   const ctxFor = (item: ListItem): Ctx => {
     const em = effMode(item)
