@@ -12,12 +12,18 @@ import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
 import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
-import { useShop, type ListMode } from './ShopContext'
+import { useShop, type GenderFilter, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
 
 const SEARCH_CATS = [{ id: 'all', label: '전체' }, ...CATS.filter((c) => c.id !== 'skin')]
 const MODES: { v: ListMode; l: string }[] = [{ v: 'sprite', l: '썸네일' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' }]
 const NO_CASH_BADGE = new Set(['hair', 'face', 'skin'])
+// 성별 필터 — 코디 탭과 동일 정의(공용 포함). 두 탭이 다르면 기준이 갈린다.
+const GENDERS: { v: GenderFilter; l: string; hint: string }[] = [
+  { v: 'all', l: '전체', hint: '모든 아이템' },
+  { v: 'f', l: '여자', hint: '여자 캐릭터가 입을 수 있는 것 (여자 전용 + 공용)' },
+  { v: 'm', l: '남자', hint: '남자 캐릭터가 입을 수 있는 것 (남자 전용 + 공용)' },
+]
 // override = 내 모델 배경(내 착용)의 현재 염색. 코디 탭과 100% 동일하게 보이도록 함께 넘긴다.
 type Ctx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement>; effs?: WornEff[] }
 const EMPTY_CTX: Ctx = { items: [], key: '' }
@@ -40,6 +46,7 @@ export default function SearchScreen() {
   const gaze = s.pv.gaze
   const tv = thumbView(gaze)
   const mode = s.listMode
+  const gf = s.genderFilter
   const catLabel = SEARCH_CATS.find((c) => c.id === cat)?.label || '전체'
   const effMode = (slot: string): ListMode => (slot === 'hair' && mode === 'sprite') ? 'model' : mode
 
@@ -169,11 +176,29 @@ export default function SearchScreen() {
               좁은 화면은 자연 폭 + wrap 으로 전환. */}
           <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
             <div ref={wrapRef} style={css('position:relative; flex:0 0 auto;')}>
-              <button onClick={() => setMenuOpen(!menuOpen)} onMouseEnter={() => setHoverBtn(true)} onMouseLeave={() => setHoverBtn(false)} title="검색할 부위 선택" style={css(partBtn)}>
+              <button onClick={() => setMenuOpen(!menuOpen)} onMouseEnter={() => setHoverBtn(true)} onMouseLeave={() => setHoverBtn(false)} title="검색할 부위·성별 선택" style={css(partBtn)}>
                 <span style={css('font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;')}>{catLabel}</span>
+                {gf !== 'all' && (
+                  <span style={css(`display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; background:${gf === 'f' ? '#fce9f1' : '#e7f0fb'}; color:${gf === 'f' ? '#d76d9a' : '#5a86c4'};`)}>{gf === 'f' ? '여' : '남'}</span>
+                )}
                 <span style={css(partBadge)}>부위 ▾</span>
               </button>
               <div style={css(partMenu)}>
+                {/* 성별 필터 — 코디 탭과 같은 자리·같은 규칙(공용 포함). 탭을 옮겨도 기준이 안 바뀐다. */}
+                <div style={css('display:flex; align-items:center; gap:8px; padding:2px 2px 8px;')}>
+                  <span style={css('flex:0 0 auto; font-size:11px; font-weight:600; color:#a89e93;')}>성별</span>
+                  <div style={css('flex:1 1 auto; display:flex; gap:3px; padding:3px; background:#f4ecf3; border-radius:9px;')}>
+                    {GENDERS.map((g) => {
+                      const on = gf === g.v
+                      return (
+                        <button key={g.v} onClick={() => { s.setGenderFilter(g.v); s.setOffset(0); s.setSnapping(false) }}
+                          className={on ? 'pb-h-solid' : 'pb-h-soft'} title={g.hint}
+                          style={css(`flex:1 1 0; height:28px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{g.l}</button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div style={css('height:1px; background:#f0e9e1; margin:0 2px 8px;')} />
                 <div style={css('display:grid; grid-template-columns:repeat(3,1fr); gap:4px;')}>
                   {SEARCH_CATS.map((c) => {
                     const on = c.id === cat, hov = hoverCat === c.id

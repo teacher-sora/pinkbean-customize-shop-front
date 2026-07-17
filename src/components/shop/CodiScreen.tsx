@@ -9,7 +9,7 @@ import { buildOverrides } from '@/lib/core/dye'
 import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
 import { CAT_TO_SLOT, SLOT_TO_CAT, isColorLineSkin, thumbView } from '@/lib/shopData'
 import { css } from '@/lib/style'
-import { useShop, type ListMode } from './ShopContext'
+import { useShop, type GenderFilter, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
 
 // 부위 메뉴 = 전체 + 15부위(3열 × 6행, 마지막 줄은 방패 하나). '전체'는 모든 부위를 한 리스트로.
@@ -19,6 +19,13 @@ const MODES: { v: ListMode; l: string }[] = [
 ]
 // 헤어/성형/피부는 전부 캐시라 캐시 배지가 정보 가치 없음 → 숨김(라벨은 예외 유지).
 const NO_CASH_BADGE = new Set(['hair', 'face', 'skin'])
+// 성별 필터. "여자"=여 전용만이 아니라 **여캐가 입을 수 있는 것**(여+공용)이다 — 사람들이 원하는 건
+// "여자 전용템 목록"이 아니라 "내 캐릭터가 입을 수 있는 것만 보기"다.
+const GENDERS: { v: GenderFilter; l: string; hint: string }[] = [
+  { v: 'all', l: '전체', hint: '모든 아이템' },
+  { v: 'f', l: '여자', hint: '여자 캐릭터가 입을 수 있는 것 (여자 전용 + 공용)' },
+  { v: 'm', l: '남자', hint: '남자 캐릭터가 입을 수 있는 것 (남자 전용 + 공용)' },
+]
 
 export default function CodiScreen() {
   const s = useShop()
@@ -34,6 +41,7 @@ export default function CodiScreen() {
   const mode: ListMode = noSprite && s.listMode === 'sprite' ? 'model' : s.listMode
   const effMode = (slot: string): ListMode =>
     (mode === 'sprite' && (slot === 'hair' || slot === 'skin')) ? 'model' : mode
+  const gf = s.genderFilter
   const gaze = s.pv.gaze // 시선(왼/오/뒷)을 썸네일에도 반영
   const tv = thumbView(gaze)
 
@@ -160,11 +168,32 @@ export default function CodiScreen() {
             좁은 화면에선 자연 폭(0 1 auto) + wrap 으로 바꿔 구조적으로 겹침이 불가능하게 한다. */}
         <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
           <div ref={s.partWrapRef} style={css('position:relative; flex:0 0 auto;')}>
-            <button onClick={() => s.setPartMenuOpen(!s.partMenuOpen)} onMouseEnter={() => s.setHoverPartBtn(true)} onMouseLeave={() => s.setHoverPartBtn(false)} title="클릭해서 부위 선택" style={css(partBtnStyle)}>
+            <button onClick={() => s.setPartMenuOpen(!s.partMenuOpen)} onMouseEnter={() => s.setHoverPartBtn(true)} onMouseLeave={() => s.setHoverPartBtn(false)} title="클릭해서 부위·성별 선택" style={css(partBtnStyle)}>
               <span style={css('font-size:15px; font-weight:700; white-space:nowrap; color:#2a2521;')}>{activeMeta.label}</span>
+              {/* 성별이 걸려 있으면 라벨 옆에 칩으로 드러낸다 — 필터가 켜진 걸 모르고 "왜 안 나오지?" 하는 걸 막는다.
+                  전체(기본)일 땐 아무것도 안 늘어난다. */}
+              {gf !== 'all' && (
+                <span style={css(`display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:-0.01em; white-space:nowrap; background:${gf === 'f' ? '#fce9f1' : '#e7f0fb'}; color:${gf === 'f' ? '#d76d9a' : '#5a86c4'};`)}>{gf === 'f' ? '여' : '남'}</span>
+              )}
               <span style={css(partBadgeStyle)}>부위 선택 ▾</span>
             </button>
             <div style={css(partMenuStyle)}>
+              {/* 성별 필터 — 헤더는 이미 부위·뷰어모드·페이지·검색으로 꽉 찼다. 버튼을 더 얹으면 무너진다.
+                  이 패널은 부위를 고르려면 어차피 모두가 여는 곳이라, 여기 두면 헤더 비용 0 + 발견성 확보. */}
+              <div style={css('display:flex; align-items:center; gap:8px; padding:2px 2px 8px;')}>
+                <span style={css('flex:0 0 auto; font-size:11px; font-weight:600; color:#a89e93;')}>성별</span>
+                <div style={css('flex:1 1 auto; display:flex; gap:3px; padding:3px; background:#f4ecf3; border-radius:9px;')}>
+                  {GENDERS.map((g) => {
+                    const on = gf === g.v
+                    return (
+                      <button key={g.v} onClick={() => { s.setGenderFilter(g.v); s.setOffset(0); s.setSnapping(false) }}
+                        className={on ? 'pb-h-solid' : 'pb-h-soft'} title={g.hint}
+                        style={css(`flex:1 1 0; height:28px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{g.l}</button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div style={css('height:1px; background:#f0e9e1; margin:0 2px 8px;')} />
               <div style={css('display:grid; grid-template-columns:repeat(3,1fr); gap:4px;')}>
                 {PART_CATS.map((c) => {
                   const on = c.id === s.activeCat
