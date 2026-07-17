@@ -20,6 +20,8 @@ import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, EQUIP_SLOTS, THUMB_VIEW, fold
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 아이템 리스트 표시: 스프라이트 / 베이스 모델 / 내 모델
+// 성별 필터: 전체 / 여캐가 입을 수 있는 것 / 남캐가 입을 수 있는 것 (공용은 항상 포함)
+export type GenderFilter = 'all' | 'f' | 'm'
 // 염색 대상은 실제 slot. hair/face(성형)만 믹스 염색, 그 외 HSV.
 const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
 
@@ -76,8 +78,9 @@ export interface ShopCtx {
   dataLoading: boolean
   catLoading: boolean
   listForCat: (cat: string) => ListItem[]
-  activeList: ListItem[] // 활성 부위의 folded 리스트에 검색 필터 적용(정렬 순서 유지)
+  activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
   search: string; setSearch: Dispatch<string>
+  genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter>
   // primary/screen
   primary: string; setPrimary: Dispatch<string>
   searchQuery: string | null; runSearch: (q: string, slot?: string | null) => void; searchResults: ListItem[]; searchLoading: boolean
@@ -299,12 +302,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     : activeCat !== 'skin' && lists[CAT_TO_SLOT[activeCat]] === undefined)
 
   // 활성 부위 리스트 + 검색 필터(이름 substring, 정렬 순서는 그대로 유지 — 필터만).
+  // 성별 필터. 카탈로그의 gender(0=남 1=여 2=공용)를 쓴다 — 이미 있는데 안 쓰고 있었다.
+  // ⚠️ "여자"는 여 전용만이 아니라 **여캐가 입을 수 있는 것**(여 + 공용)이다. 남자도 마찬가지.
+  //    사람들이 원하는 건 "여자 전용템 목록"이 아니라 "내 캐릭터가 입을 수 있는 것만 보기"다.
+  //    (실측 hair: 여 5752 / 남 5521 / 공용 376 → '여' 필터는 남 5521 을 걷어낸다)
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all')
+  // gender: 0=남 1=여 2=공용. 공용과 미상(null)은 항상 남긴다 — 걸러서 얻는 게 없고 오히려 빠뜨린다.
+  const byGender = useCallback((list: ListItem[]) => {
+    if (genderFilter === 'all') return list
+    const want = genderFilter === 'f' ? 1 : 0
+    return list.filter((it) => it.gender === want || it.gender === 2 || it.gender == null)
+  }, [genderFilter])
   const activeListFull = listForCat(activeCat)
   const activeList = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return activeListFull
-    return activeListFull.filter((it) => (it.name || it.id).toLowerCase().includes(q))
-  }, [activeListFull, search])
+    const list = byGender(activeListFull)
+    if (!q) return list
+    return list.filter((it) => (it.name || it.id).toLowerCase().includes(q))
+  }, [activeListFull, search, byGender])
 
   // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
   // 원본 해석이라 스프라이트/라벨/염색이 정확하고, 코디탭과 동일하게 ItemThumb(썸네일/모델/내모델)로 렌더된다.
@@ -344,7 +359,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const itemsPerPage = cols * rows
 
   // ── 페이징 대상: AI 검색 탭이면 검색결과, 아니면 활성 부위 리스트 (동일 캐러셀·페이지네이션 공유) ──
-  const pagedList = primary === 'search' ? searchResults : activeList
+  // AI 검색 결과에도 같은 성별 필터를 건다 — 한쪽에만 있으면 탭을 옮길 때마다 기준이 달라져 혼란스럽다.
+  const searchResultsView = useMemo(() => byGender(searchResults), [searchResults, byGender])
+  const pagedList = primary === 'search' ? searchResultsView : activeList
   const pageKey = primary === 'search' ? '__search__' : activeCat
 
   // ── 페이지네이션 ──
@@ -797,8 +814,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   const value: ShopCtx = {
     index, dataLoading, catLoading, listForCat, activeList, search, setSearch,
+    genderFilter, setGenderFilter,
     primary, setPrimary,
-    searchQuery, runSearch, searchResults, searchLoading,
+    searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
     activeCat, setActiveCat, listMode, setListMode, partMenuOpen, setPartMenuOpen, partWrapRef, bindVp,
     curIdx, pageCount, offset, snapping, setOffset, setSnapping, setIdx, step,
