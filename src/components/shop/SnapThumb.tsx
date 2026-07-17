@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
+import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer, type ViewOpts } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
@@ -43,18 +43,22 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
         if (m) equipMetas.push({ slot, meta: m })
       }
       if (!alive) return
+      // 표정 얼굴장식(fixedEmotion)이 프리셋에 들어있으면 그 표정으로 굳는다. 없으면 종전대로 THUMB_VIEW.
+      // 프리셋 스냅샷은 id 만 담으므로 표정은 meta 에서 읽는다.
+      const snapExpr = equipMetas.find(({ meta }) => meta.fixedEmotion)?.meta.fixedEmotion
+      const TV: ViewOpts = snapExpr ? { ...THUMB_VIEW, expression: snapExpr } : THUMB_VIEW
       const items: AssembleInput[] = [
-        { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, THUMB_VIEW) },
-        { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, THUMB_VIEW) },
+        { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, TV) },
+        { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, TV) },
         // name 은 투명 아이템 판별에 쓰인다 — 없으면 투명 모자/장식이 헤어·얼굴을 가려 구멍이 생긴다.
-        ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: getFrameLayers(meta, THUMB_VIEW), invisibleFace: meta.invisibleFace, name: meta.name })),
+        ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: getFrameLayers(meta, TV), invisibleFace: meta.invisibleFace, name: meta.name })),
       ]
       const { placed: p, anchors } = assemble(items, index.zmap, index.smap)
       // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (옛 프리셋엔 dye 키가 없을 수 있어 방어)
-      const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snap.dyePalette || {}, hsb: snap.dyeHsb || {} }, THUMB_VIEW)
+      const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snap.dyePalette || {}, hsb: snap.dyeHsb || {} }, TV)
       const skinHsb = (snap.dyeHsb || {})['skin']
       if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && isColorLineSkin(te.name)) {
-        for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, THUMB_VIEW)) {
+        for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, TV)) {
           try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinHsb, l.png)) } catch (_) {}
         }
       }
@@ -64,7 +68,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
       const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
       const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
       const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id })), pv, snap.dyeHsb || {}, overrides).catch(() => [])
-      const effDraws: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, THUMB_VIEW.action, { foot, brow }, 0))
+      const effDraws: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, TV.action, { foot, brow }, 0))
       if (alive) { setPlaced(p); setOv(overrides); setEffects(effDraws) }
     })().catch(() => {})
     return () => { alive = false }

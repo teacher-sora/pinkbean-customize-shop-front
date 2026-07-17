@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
 import { css } from '@/lib/style'
 import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
-import { CAT_TO_SLOT, SLOT_TO_CAT, thumbView } from '@/lib/shopData'
+import { CAT_TO_SLOT, SLOT_TO_CAT, THUMB_VIEW, fixedExpr, forceMyModel, thumbView } from '@/lib/shopData'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
@@ -25,7 +25,10 @@ const GENDERS: { v: GenderFilter; l: string; hint: string }[] = [
   { v: 'm', l: '남자', hint: '남자 캐릭터가 입을 수 있는 것 (남자 전용 + 공용)' },
 ]
 // override = 내 모델 배경(내 착용)의 현재 염색. 코디 탭과 100% 동일하게 보이도록 함께 넘긴다.
-type Ctx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement>; effs?: WornEff[] }
+type Ctx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement>; effs?: WornEff[]
+  expr?: string             // 이 컨텍스트에 구워진 표정(표정 얼굴장식 착용 시 'default' 가 아니다)
+  faceMeta?: ItemMeta | null // 표정 얼굴장식 카드가 얼굴을 자기 표정으로 다시 그릴 때 필요
+}
 const EMPTY_CTX: Ctx = { items: [], key: '' }
 
 export default function SearchScreen() {
@@ -48,7 +51,11 @@ export default function SearchScreen() {
   const mode = s.listMode
   const gf = s.genderFilter
   const catLabel = SEARCH_CATS.find((c) => c.id === cat)?.label || '전체'
-  const effMode = (slot: string): ListMode => (slot === 'hair' && mode === 'sprite') ? 'model' : mode
+  // '모델' 모드인데 표정 얼굴장식이 결과에 있으면 그 카드는 '내 모델'로 승격된다 → 내 착용 배경이 필요.
+  const needMy = mode === 'model' && list.some((it) => !!it.fixedEmotion)
+  // 표정 얼굴장식은 맨 마네킹에 올려도 아무것도 안 보인다(성형이 없어 바뀔 얼굴이 없다) → '내 모델'로 승격.
+  const effMode = (it: ListItem): ListMode =>
+    forceMyModel(mode, it) ? 'mymodel' : (it.slot === 'hair' && mode === 'sprite') ? 'model' : mode
 
   // 부위 메뉴 바깥 클릭 시 닫기
   useEffect(() => {
@@ -78,10 +85,10 @@ export default function SearchScreen() {
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl]) as [string, ListItem][]
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 모델: 우측 미리보기의 염색(발색/HSB)까지 동일 반영 → 키에 염색 시그니처 포함(코디 탭과 동일).
-    const dyeSig = mode === 'mymodel' ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
-    const key = `${mode}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}`
+    const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
+    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}`
     if (key === ctxKeyRef.current) return
-    const eqIds = mode === 'mymodel' ? myEq.map(([, it]) => it.id) : []
+    const eqIds = (mode === 'mymodel' || needMy) ? myEq.map(([, it]) => it.id) : []
     const ids = Array.from(new Set([bodyId, headId, ...eqIds]))
     Promise.all(ids.map((id) => loadMeta(id).then((m) => [id, m] as const).catch(() => null))).then(async (res) => {
       if (!alive) return
@@ -91,23 +98,30 @@ export default function SearchScreen() {
       if (body) baseItems.push({ itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, tv.view) })
       if (head) baseItems.push({ itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, tv.view) })
       const bySlot: Record<string, Ctx> = {}
-      if (mode === 'mymodel') {
+      // mode==='model' 이어도 표정 얼굴장식 카드는 '내 모델'로 승격되므로 그 슬롯의 배경이 필요하다.
+      if (mode === 'mymodel' || needMy) {
         for (const slot of slotsInList) {
+          // 표정 얼굴장식을 착용 중이면 이 슬롯 컨텍스트의 표정이 'default' 가 아니다. 단 후보가 들어갈
+          // 슬롯의 착용품은 빠지므로(faceAcc 결과를 보는 중이면 내 얼굴장식은 제외) 슬롯마다 다르다.
+          const cexpr = fixedExpr(myEq.filter(([sl]) => sl !== slot).map(([, it]) => it), THUMB_VIEW.expression)
+          const cview = thumbView(gaze, cexpr).view
           const items = [...baseItems]
           const dyeMetas: ItemMeta[] = []
+          let faceMeta: ItemMeta | null = null
           for (const [sl, it] of myEq) {
             if (sl === slot) continue // 후보 아이템이 들어갈 슬롯은 내 착용에서 제외
             const m = map.get(it.id); if (!m) continue
-            items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, tv.view), invisibleFace: m.invisibleFace, name: m.name })
+            items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, cview), invisibleFace: m.invisibleFace, name: m.name })
             dyeMetas.push(m)
+            if (sl === 'face') faceMeta = m
           }
           // 배경(내 착용)의 현재 염색을 구워 넣는다. 후보 아이템 자체는 기본색(미장착).
-          const override = await buildOverrides(dyeMetas, { palette: s.dyePalette, hsb: s.dyeHsb }, tv.view).catch(() => new Map())
+          const override = await buildOverrides(dyeMetas, { palette: s.dyePalette, hsb: s.dyeHsb }, cview).catch(() => new Map())
           // 착용 이펙트(망토 오라 등)도 카드에 그린다 + 이펙트 염색을 override 에 굽는다(토글 꺼진 슬롯 제외).
           const effs = await collectWornEffects(
             myEq.filter(([sl]) => sl !== slot).map(([sl, it]) => ({ slot: sl, id: it.id })), s.pv, s.dyeHsb, override,
           ).catch(() => [])
-          bySlot[slot] = { items, key: `${key}:${slot}`, override, effs }
+          bySlot[slot] = { items, key: `${key}:${slot}:${cexpr}`, override, effs, expr: cexpr, faceMeta }
         }
       }
       if (!alive) return
@@ -116,10 +130,10 @@ export default function SearchScreen() {
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.index, s.tone, gaze, mode, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
+  }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
 
   const ctxFor = (item: ListItem): Ctx => {
-    const em = effMode(item.slot)
+    const em = effMode(item)
     if (em === 'sprite') return EMPTY_CTX
     if (em === 'mymodel') return ctx.bySlot[item.slot] || ctx.base
     return ctx.base
@@ -131,7 +145,7 @@ export default function SearchScreen() {
   const trackStyle = `display:flex; height:100%; width:100%; will-change:transform; transform:translateX(calc(${-s.curIdx * 100}% + ${s.offset}px)); transition:${s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none'};`
 
   const cell = (item: ListItem) => {
-    const em = effMode(item.slot)
+    const em = effMode(item)
     const c = ctxFor(item)
     const sel = s.equipped[item.slot]?.id === item.id
     const dyeable = item.dyeMode !== 'none'
@@ -144,7 +158,8 @@ export default function SearchScreen() {
             <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox + ' position:relative;')}>
-            <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} override={c.override} ctxEffs={c.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} />
+            <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} override={c.override} ctxEffs={c.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}}
+              ctxExpr={c.expr} faceMeta={c.faceMeta} dye={em === 'mymodel' ? { palette: s.dyePalette, hsb: s.dyeHsb } : undefined} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />

@@ -49,6 +49,7 @@ export interface ItemMeta {
   gender?: number             // 0=남 1=여 2=공용 (id-rule, v8)
   label?: 'master' | 'special' // external grade badge (마라벨/스라벨); none = undefined
   invisibleFace?: number      // info.invisibleFace: 착용 시 성형(face)을 가림
+  fixedEmotion?: string       // info.fixedEmotion: 착용 시 표정을 이 값으로 고정(표정 얼굴장식 25종)
   stances?: string[]          // weapon only: available weapon-type stance codes (30s한손/40s두손/49건)
   // frameKey → animation frames. (Legacy data may still be Layer[]; assemble.ts normalizes.)
   frames: Record<string, Frame[]>
@@ -74,6 +75,7 @@ export interface ListItem {
   gender?: number
   label?: 'master' | 'special'
   invisibleFace?: number
+  fixedEmotion?: string       // 표정 얼굴장식: 'smile' 같은 표정 키 또는 'blink/1' 처럼 키+프레임 인덱스
   headId?: string             // skin-only: paired head id for live compositing
   actions: string[]
 }

@@ -10,7 +10,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
-import { loadEffect, loadEffectIndex, loadMeta, spriteUrl, type ListItem } from '@/lib/core/data'
+import { loadEffect, loadEffectIndex, loadMeta, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
@@ -74,18 +75,24 @@ interface ModelProps {
   override?: Map<string, HTMLCanvasElement> // 내 모델: 배경(내 착용) 염색 오버라이드(이펙트 염색 포함)
   ctxEffs?: WornEff[]                       // 내 모델: 배경(내 착용)의 이펙트 — 망토 오라 등
   pvEff?: { wEffect: boolean; cEffect: boolean } // 연출 토글(꺼진 이펙트는 카드에서도 안 보인다)
+  ctxExpr?: string                          // 배경(ctxItems)에 이미 구워진 표정
+  faceMeta?: ItemMeta | null                // 배경의 성형 메타 — 표정 얼굴장식 카드가 얼굴을 다시 그릴 때 필요
+  dye?: DyeState                            // 내 모델: 얼굴을 다시 그리면 그 표정으로 염색도 다시 구워야 한다
 }
-function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff }: ModelProps) {
+function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye }: ModelProps) {
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [effs, setEffs] = useState<EffectDraw[]>([])
+  const [ovr, setOvr] = useState<Map<string, HTMLCanvasElement> | undefined>(override)
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { view, flip } = thumbView(gaze) // 시선(왼/오/뒷) 반영
+  // 표정 얼굴장식이면 이 카드만 그 표정으로 본다(연출 설정·다른 카드에는 영향 없음).
+  const cardExpr = item.fixedEmotion || ctxExpr
+  const { view, flip } = thumbView(gaze, cardExpr) // 시선(왼/오/뒷) + 표정 반영
 
   useEffect(() => {
     let alive = true
-    setPlaced(null); setEffs([])
+    setPlaced(null); setEffs([]); setOvr(override)
     ;(async () => {
       let self: AssembleInput[]
       if (item.slot === 'skin' && skinHeadId) {
@@ -99,7 +106,20 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
         self = [{ itemId: m.id, slot: m.slot, vslot: m.vslot ?? null, layers: getFrameLayers(m, view), invisibleFace: m.invisibleFace, name: m.name }]
       }
       if (!alive) return
-      const { placed: p, anchors } = assemble([...ctxItems, ...self], zmap, smap)
+      // 표정 얼굴장식 카드: 배경에 구워진 얼굴은 ctxExpr(내 현재 표정) 기준이라, 이 카드가 보여줄
+      // 표정으로 **얼굴만 다시 그린다**. 이때 염색 override 는 png 경로가 키라서 표정이 바뀌면
+      // 통째로 빗나간다 → 그 표정 기준으로 얼굴 염색을 다시 굽고 배경 override 위에 덮어쓴다.
+      // (안 하면 표정 얼굴장식 카드에서만 얼굴 염색이 풀려 보인다.)
+      let bg = ctxItems
+      if (cardExpr !== ctxExpr && faceMeta) {
+        bg = ctxItems.map((ci) => (ci.slot === 'face' ? { ...ci, layers: getFrameLayers(faceMeta, view) } : ci))
+        if (dye) {
+          const faceOvr = await buildOverrides([faceMeta], dye, view).catch(() => new Map<string, HTMLCanvasElement>())
+          if (!alive) return
+          if (faceOvr.size) setOvr(new Map([...(override ?? new Map()), ...faceOvr]))
+        }
+      }
+      const { placed: p, anchors } = assemble([...bg, ...self], zmap, smap)
       setPlaced(p)
       // 이펙트(망토 오라 등) = 배경(내 착용)의 것 + 이 아이템 자신의 것. 둘 다 같은 앵커로 배치한다.
       const bp = p.find((x) => x.name === 'body')
@@ -120,7 +140,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     })().catch(() => {})
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id, ctxKey, skinHeadId, gaze, ctxEffs, pvEff])
+  }, [item.id, ctxKey, skinHeadId, gaze, ctxEffs, pvEff, cardExpr, faceMeta, override])
 
   // 셀(div) 표시크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.
   useEffect(() => {
@@ -146,9 +166,9 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     canvas.style.width = p.canvasCssW + 'px'
     canvas.style.height = p.canvasCssH + 'px'
     // 마네킹 중심을 셀 중앙에 고정(anchor 보정). flip=오른쪽 시선. 분수 scale=디바이스 해상도.
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, override, effects: effs, shouldCancel: () => cancelled }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, override: ovr, effects: effs, shouldCancel: () => cancelled }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, effs, flip, dims, gaze, override])
+  }, [placed, effs, flip, dims, gaze, ovr])
 
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
@@ -165,7 +185,10 @@ export default function ItemThumb(props: {
   override?: Map<string, HTMLCanvasElement>
   ctxEffs?: WornEff[]
   pvEff?: { wEffect: boolean; cEffect: boolean }
+  ctxExpr?: string
+  faceMeta?: ItemMeta | null
+  dye?: DyeState
 }) {
   if (props.mode === 'sprite') return <Sprite item={props.item} />
-  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} />
+  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} />
 }
