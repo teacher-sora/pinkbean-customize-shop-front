@@ -11,6 +11,10 @@ export default function Header() {
   const mobile = bp === 'mobile'
 
   const tabs = (
+    // 세로 스택: 탭이 자기 행을 통째로 쓴다. space-between 은 gap 이 제각각으로 벌어져 어색하므로 쓰지 않고,
+    // gap 은 PC 와 동일(5px)로 고정한 뒤 각 탭을 flex:1 1 auto 로 둔다 → 자기 글자 폭(auto basis)은 유지한 채
+    // 남는 폭만 나눠 가져 auto-fit 된다. "코디 정보·염색"은 길고 "염색"은 짧은 비율이 그대로 보존된다.
+    // overflow-x 는 남겨 둔다 — 폰트/언어 차이로 넘칠 때 잘리지 않고 스크롤되게 하는 안전망.
     <div style={css(`display:flex; align-items:center; gap:5px; padding:3px; background:#f4ecf3; border-radius:10px; ${stacked ? 'overflow-x:auto; overflow-y:hidden; min-width:0; -webkit-overflow-scrolling:touch;' : ''}`)} className={stacked ? 'pb-scroll-thin' : undefined}>
       {PRIMARIES.map((p) => {
         const on = p.id === primary
@@ -20,14 +24,14 @@ export default function Header() {
         return (
           <button key={p.id} onClick={() => setPrimary(p.id)} onMouseEnter={() => setHoverPrimary(p.id)} onMouseLeave={() => setHoverPrimary(null)}
             className="pb-tab" data-label={p.label}
-            style={css(`flex:0 0 auto; height:34px; padding:0 ${bp === 'mobile' ? 12 : 18}px; border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px; white-space:nowrap; color:${col}; background:${bg}; transition:background .28s ease, color .28s ease;`)}><span style={{ fontWeight: on ? 600 : 500 }}>{p.label}</span></button>
+            style={css(`${stacked ? 'flex:1 1 auto;' : 'flex:0 0 auto;'} height:34px; padding:0 ${mobile ? 9 : 18}px; border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:${mobile ? 12.5 : 13}px; white-space:nowrap; color:${col}; background:${bg}; transition:background .28s ease, color .28s ease;`)}><span style={{ fontWeight: on ? 600 : 500 }}>{p.label}</span></button>
         )
       })}
     </div>
   )
 
   const share = (
-    <button onClick={shareCurrent} className="pb-h-solid" style={css('flex:0 0 auto; height:36px; padding:0 18px; border:none; background:#ec86ac; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:pointer; white-space:nowrap; transition:background .18s ease, transform .18s ease, filter .18s ease;')}>코디 공유</button>
+    <button onClick={shareCurrent} className="pb-h-solid" style={css(`flex:0 0 auto; height:36px; padding:0 ${mobile ? 13 : 18}px; border:none; background:#ec86ac; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:pointer; white-space:nowrap; transition:background .18s ease, transform .18s ease, filter .18s ease;`)}>코디 공유</button>
   )
 
   // 핑크빈 코디 평가 — 핑크빈 컬러(보라+핑크) 체크무늬는 "테두리 프레임"에만, 내부는 연핑크(hover 시 맑게 채움).
@@ -42,10 +46,12 @@ export default function Header() {
     </button>
   )
 
+  // flex:0 0 auto 라 로고가 절대 안 줄어들어 좁은 폭에서 코디 평가/공유 버튼을 화면 밖으로 밀어냈다.
+  // → 0 1 auto + 제목 ellipsis 로 로고가 먼저 양보한다.
   const logo = (
-    <div style={css('display:flex; align-items:center; gap:10px; flex:0 0 auto; min-width:0;')}>
-      <img src="/logo.png" alt="핑크빈 커마샵 로고" width={30} height={30} loading="eager" decoding="async" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flex: '0 0 auto' }} />
-      <div style={css('font-size:19px; font-weight:700; letter-spacing:-0.02em; white-space:nowrap; background:linear-gradient(100deg, #ec86ac, #f0a9c4 55%, #c98fe0); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;')}>핑크빈 커마샵</div>
+    <div style={css(`display:flex; align-items:center; gap:${mobile ? 7 : 10}px; flex:0 1 auto; min-width:0;`)}>
+      <img src="/logo.png" alt="핑크빈 커마샵 로고" width={30} height={30} loading="eager" decoding="async" style={{ width: mobile ? 26 : 30, height: mobile ? 26 : 30, borderRadius: '50%', objectFit: 'cover', flex: '0 0 auto' }} />
+      <div style={css(`min-width:0; font-size:${mobile ? 17 : 19}px; font-weight:700; letter-spacing:-0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:linear-gradient(100deg, #ec86ac, #f0a9c4 55%, #c98fe0); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;`)}>핑크빈 커마샵</div>
       {!stacked && <span style={css('font-size:11px; font-weight:700; color:#c76fa0; background:#fbe6f1; padding:3px 9px; border-radius:20px; flex:0 0 auto; letter-spacing:0.02em;')}>V1</span>}
     </div>
   )

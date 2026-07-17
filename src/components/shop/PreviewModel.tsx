@@ -15,13 +15,16 @@ import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type 
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { effectDraws, loadImage, preload, renderCharacter } from '@/lib/core/render'
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_MARGIN, ZOOM_WORLD, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin } from '@/lib/shopData'
+import { isStacked } from '@/lib/useBreakpoint'
+import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
 
 export default function PreviewModel() {
-  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dyeInteracting } = useShop()
+  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dyeInteracting, bp } = useShop()
+  // 세로 스택(태블릿+모바일)은 미리보기 영역이 낮고 넓다 → PC 비율(0.25)이면 모델이 콩알만 해진다.
+  const fraction = isStacked(bp) ? PREVIEW_FRACTION_MOBILE : PREVIEW_FRACTION
   const [metas, setMetas] = useState<Map<string, ItemMeta>>(new Map())
   const [dyeOverrides, setDyeOverrides] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effectIndex, setEffectIndex] = useState<Set<string>>(new Set())
@@ -218,7 +221,7 @@ export default function PreviewModel() {
     // div 크기·dpr·연출배율로 배치 계산: 캔버스는 div×margin(디바이스 해상도), 마네킹은 fraction×divH 고정.
     // 미리보기는 stabOffset 적용 → 뒷쪽은 카드용 back* 대신 stab 보정된 previewBack* 사용(중앙 고정).
     const back = pv.gaze === 'back'
-    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction: PREVIEW_FRACTION, zoomMult: ZOOM_WORLD[pv.zoom] ?? 1, centerDx: back ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.previewBackDy : MODEL_REF.centerDy })
+    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, zoomMult: ZOOM_WORLD[pv.zoom] ?? 1, centerDx: back ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.previewBackDy : MODEL_REF.centerDy })
     canvas.style.width = pl.canvasCssW + 'px'
     canvas.style.height = pl.canvasCssH + 'px'
     const pngs = new Set<string>()
@@ -252,7 +255,7 @@ export default function PreviewModel() {
       })
     })
     return () => { cancelled = true; cancelAnimationFrame(raf) }
-  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, dyeInteracting, dyeSettling])
+  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, dyeInteracting, dyeSettling])
 
   return (
     <div ref={wrapRef} className={styles.wrap}>

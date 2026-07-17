@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { isStacked } from '@/lib/useBreakpoint'
+import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
 import { css } from '@/lib/style'
 import SnapThumb from './SnapThumb'
 import { useShop, type Snapshot } from './ShopContext'
@@ -9,6 +9,7 @@ import { useShop, type Snapshot } from './ShopContext'
 
 export default function PresetScreen() {
   const s = useShop()
+  const mob = isStacked(s.bp) // 세로 스택이면 태블릿도 같은 여백 절약 규칙(CodiScreen 주석 참고)
   // 라이브 모델 → Snapshot(선택된 카드가 이걸로 그려진다). 자동저장(100ms)을 기다리지 않고 즉시 반영.
   const liveSnap: Snapshot = useMemo(() => {
     const eq: Record<string, string> = {}
@@ -17,16 +18,18 @@ export default function PresetScreen() {
   }, [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden])
 
   return (
-    <section style={css(`${isStacked(s.bp) ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
-      <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;')}>
-        <span style={css('font-size:15px; font-weight:700;')}>프리셋</span>
-        <span style={css('font-size:12px; color:#a89e93;')}>변경 시 선택한 프리셋에 자동 저장 · 새로고침해도 유지</span>
+    <section style={css(`${mob ? `flex:0 0 auto; width:100%; height:${MOBILE_H.content}` : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
+      <div style={css(`flex:0 0 auto; height:${mob ? 46 : 58}px; padding:0 ${mob ? 14 : 22}px; display:flex; align-items:center; gap:${mob ? 8 : 14}px; border-bottom:1px solid #f0e9e1;`)}>
+        <span style={css(`font-size:${mob ? 14 : 15}px; font-weight:700; flex:0 0 auto;`)}>프리셋</span>
+        <span style={css('flex:1 1 0; min-width:0; font-size:12px; color:#a89e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>{mob ? '변경 시 자동 저장' : '변경 시 선택한 프리셋에 자동 저장 · 새로고침해도 유지'}</span>
       </div>
 
       <div style={css('flex:1 1 auto; min-height:0; display:flex; flex-direction:column;')}>
         {/* 불러오기 바(코드/닉네임) */}
-        <div style={css('flex:0 0 auto; padding:16px 22px; display:flex; flex-direction:column; gap:10px;')}>
-          <div style={css('display:flex; align-items:center; gap:6px;')}>
+        <div style={css(`flex:0 0 auto; padding:${mob ? '10px 14px' : '16px 22px'}; display:flex; flex-direction:column; gap:${mob ? 8 : 10}px;`)}>
+          {/* 옆 설명 span 이 자리를 먹으면 버튼이 눌려 "공유 코드"가 두 줄로 쪼개진다.
+              → 버튼은 0 0 auto + nowrap 로 절대 안 줄고, 설명이 먼저 줄어들거나(모바일) 다음 줄로 내려간다. */}
+          <div style={css('display:flex; align-items:center; gap:6px; flex-wrap:wrap;')}>
             {(['nick', 'code'] as const).map((mode) => {
               const isSel = s.importMode === mode
               const th = s.hoverMode === mode && !isSel
@@ -34,24 +37,24 @@ export default function PresetScreen() {
               const col = isSel || th ? '#d76d9a' : '#8a8075'
               return (
                 <button key={mode} onClick={() => s.setImportMode(mode)} onMouseEnter={() => s.setHoverMode(mode)} onMouseLeave={() => s.setHoverMode(null)}
-                  style={css(`height:34px; padding:0 12px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${isSel ? 600 : 500}; border:1px solid ${bd}; background:${isSel ? '#fce9f1' : '#fff'}; color:${col}; transition:background .26s ease, border-color .26s ease, color .26s ease;`)}>{mode === 'code' ? '공유 코드' : '닉네임'}</button>
+                  style={css(`flex:0 0 auto; white-space:nowrap; height:34px; padding:0 12px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${isSel ? 600 : 500}; border:1px solid ${bd}; background:${isSel ? '#fce9f1' : '#fff'}; color:${col}; transition:background .26s ease, border-color .26s ease, color .26s ease;`)}>{mode === 'code' ? '공유 코드' : '닉네임'}</button>
               )
             })}
-            <span style={css('font-size:11px; color:#b7ada2; margin-left:2px;')}>{s.importMode === 'code' ? '불러온 코디는 선택한 프리셋에 덮어써져요' : '메이플 닉네임의 캐시 코디를 선택한 프리셋에 불러와요'}</span>
+            <span style={css(`flex:1 1 ${mob ? '100%' : '160px'}; min-width:0; font-size:11px; color:#b7ada2; ${mob ? '' : 'margin-left:2px;'}`)}>{s.importMode === 'code' ? '불러온 코디는 선택한 프리셋에 덮어써져요' : '메이플 닉네임의 캐시 코디를 선택한 프리셋에 불러와요'}</span>
           </div>
           <div style={css('display:flex; align-items:center; gap:10px;')}>
             <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') s.importFetch() }} disabled={s.importing}
               placeholder={s.importMode === 'code' ? '코디 공유 코드 붙여넣기 (PB1…)' : '캐릭터 닉네임 입력'}
               style={css(`flex:1 1 0; min-width:0; height:38px; padding:0 14px; border:1px solid #e7ded4; border-radius:9px; background:#faf7f3; font-family:inherit; font-size:13px; outline:none; transition:border-color .14s ease; opacity:${s.importing ? 0.6 : 1};`)} />
-            <button onClick={s.importFetch} disabled={s.importing} className="pb-h-solid" style={css(`flex:0 0 auto; height:38px; min-width:96px; padding:0 18px; display:flex; align-items:center; justify-content:center; gap:8px; border:none; background:linear-gradient(100deg,#ec86ac,#b57bdb); border-radius:9px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:${s.importing ? 'default' : 'pointer'}; opacity:${s.importing ? 0.85 : 1}; transition:filter .15s ease, transform .15s ease;`)}>
+            <button onClick={s.importFetch} disabled={s.importing} className="pb-h-solid" style={css(`flex:0 0 auto; white-space:nowrap; height:38px; min-width:${mob ? 78 : 96}px; padding:0 ${mob ? 13 : 18}px; display:flex; align-items:center; justify-content:center; gap:8px; border:none; background:linear-gradient(100deg,#ec86ac,#b57bdb); border-radius:9px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:${s.importing ? 'default' : 'pointer'}; opacity:${s.importing ? 0.85 : 1}; transition:filter .15s ease, transform .15s ease;`)}>
               {s.importing ? (<><span className="pb-spin" />불러오는 중…</>) : '불러오기'}
             </button>
           </div>
         </div>
-        <div style={css('flex:0 0 auto; height:1px; margin:0 22px; background:#f0e9e1;')} />
+        <div style={css(`flex:0 0 auto; height:1px; margin:0 ${mob ? 14 : 22}px; background:#f0e9e1;`)} />
 
         {/* 프리셋 그리드 */}
-        <div className="pb-scroll pb-scroll-thin" style={css('flex:1 1 auto; min-height:0; overflow:hidden auto; padding:18px 22px;')}>
+        <div className="pb-scroll pb-scroll-thin" style={css(`flex:1 1 auto; min-height:0; overflow:hidden auto; overscroll-behavior:contain; padding:${mob ? '12px 14px' : '18px 22px'};`)}>
           <div style={css(`display:grid; grid-template-columns:repeat(${s.bp === 'pc' ? 5 : s.bp === 'half' ? 4 : s.bp === 'tablet' ? 3 : 2},minmax(0,1fr)); gap:12px;`)}>
             {s.presets.map((p) => {
               const on = s.selectedPreset === p.id

@@ -9,7 +9,7 @@ import { applyHsb, renderDyedSprite, type HsbParams, type PaletteParams } from '
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { CAT_TO_SLOT, THUMB_VIEW, isColorLineSkin } from '@/lib/shopData'
-import { isStacked } from '@/lib/useBreakpoint'
+import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
 import { css, swStyle } from '@/lib/style'
 import { useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
@@ -223,9 +223,9 @@ export default function InfoScreen() {
   const ratioDisp = target && s.dyeEdit[target + ':ratio'] !== undefined ? s.dyeEdit[target + ':ratio'] : String(pal.ratio)
 
   return (
-    <section style={css(`${isStacked(s.bp) ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
-      <div style={css('flex:0 0 auto; height:58px; padding:0 22px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;')}>
-        <span style={css('font-size:15px; font-weight:700;')}>코디 정보 · 염색</span>
+    <section style={css(`${isStacked(s.bp) ? `flex:0 0 auto; width:100%; height:${MOBILE_H.content}` : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
+      <div style={css(`flex:0 0 auto; height:${isStacked(s.bp) ? 46 : 58}px; padding:0 ${isStacked(s.bp) ? 14 : 22}px; display:flex; align-items:center; gap:14px; border-bottom:1px solid #f0e9e1;`)}>
+        <span style={css(`font-size:${isStacked(s.bp) ? 14 : 15}px; font-weight:700;`)}>코디 정보 · 염색</span>
       </div>
 
       <div style={css('flex:1 1 auto; min-height:0; display:flex; flex-direction:column;')}>

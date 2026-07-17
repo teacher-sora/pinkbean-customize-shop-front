@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
-import { isStacked } from '@/lib/useBreakpoint'
+import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
@@ -93,7 +93,12 @@ export default function CodiScreen() {
   const gridStyle = `display:grid; grid-template-columns:repeat(${s.cols},minmax(0,1fr)); grid-template-rows:repeat(${s.rows},1fr); gap:${s.bp === 'mobile' ? 10 : 16}px; height:100%;`
   const stacked = isStacked(s.bp)
   const narrow = s.bp !== 'pc' // 좁으면 헤더(부위·모드·페이지·검색)를 wrap 시켜 겹침 방지
-  const mobile = s.bp === 'mobile' // 모바일: 행1=부위·모드(space-between), 행2=페이지·검색
+  // ⚠️ 분리 기준: phone 은 "글자 크기"뿐이다.
+  //   mobile(=stacked, 태블릿 포함) → 레이아웃 전부(행 배치·정렬·space-between·여백·높이). 태블릿도 세로 스택이라
+  //     같은 구조여야 한다. 행 배치까지 phone 전용으로 두면 태블릿만 페이지가 뷰어모드 옆에 붙어 어긋난다.
+  //   phone(=모바일만) → 폰트/문구 길이. 태블릿은 가로가 넓어 줄일 이유가 없다.
+  const phone = s.bp === 'mobile'
+  const mobile = stacked
   const trackStyle = `display:flex; height:100%; width:100%; will-change:transform; transform:translateX(calc(${-s.curIdx * 100}% + ${s.offset}px)); transition:${s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none'};`
 
   const partBtnStyle = (() => {
@@ -106,7 +111,7 @@ export default function CodiScreen() {
     const col = s.partMenuOpen ? '#fff' : s.hoverPartBtn ? '#d76d9a' : '#a89e93'
     return `display:inline-flex; align-items:center; gap:4px; height:22px; padding:0 9px; border-radius:20px; font-size:11px; font-weight:600; letter-spacing:-0.01em; background:${bg}; color:${col}; transition:background .14s ease, color .14s ease;`
   })()
-  const partMenuStyle = `position:absolute; top:calc(100% + 8px); left:0; z-index:20; width:360px; padding:10px; background:#fff; border:1px solid #e7ded4; border-radius:12px; box-shadow:0 12px 32px rgba(42,37,33,.12); transform-origin:top left; transition:opacity .2s ease, transform .2s cubic-bezier(.22,.61,.36,1); opacity:${s.partMenuOpen ? 1 : 0}; transform:translateY(${s.partMenuOpen ? '0' : '-6px'}) scale(${s.partMenuOpen ? 1 : 0.98}); pointer-events:${s.partMenuOpen ? 'auto' : 'none'};`
+  const partMenuStyle = `position:absolute; top:calc(100% + 8px); left:0; z-index:20; width:min(360px, calc(100vw - 40px)); padding:10px; background:#fff; border:1px solid #e7ded4; border-radius:12px; box-shadow:0 12px 32px rgba(42,37,33,.12); transform-origin:top left; transition:opacity .2s ease, transform .2s cubic-bezier(.22,.61,.36,1); opacity:${s.partMenuOpen ? 1 : 0}; transform:translateY(${s.partMenuOpen ? '0' : '-6px'}) scale(${s.partMenuOpen ? 1 : 0.98}); pointer-events:${s.partMenuOpen ? 'auto' : 'none'};`
 
   const thumbBox = 'flex:1 1 auto; width:100%; min-height:0; border-radius:8px; background:#f7f2ec; display:flex; align-items:center; justify-content:center; overflow:hidden;'
 
@@ -122,7 +127,7 @@ export default function CodiScreen() {
       item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
     return (
       <div key={item.id} onClick={() => s.equipFromCat(cat, item)} className="pb-cardwrap">
-        <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; ${sel ? 'border:1px solid #ec86ac; transform:translateY(-5px); ' : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
+        <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:${mobile ? 5 : 8}px; padding:${mobile ? '7px 5px 6px' : '12px 8px 10px'}; ${sel ? `border:1px solid #ec86ac; transform:translateY(-${mobile ? 3 : 5}px); ` : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
           {dyeable && (
             <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
@@ -133,7 +138,7 @@ export default function CodiScreen() {
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
             )}
           </div>
-          <div style={css('font-size:12px; font-weight:500; color:#3d372f; line-height:1.3; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;')}>{item.name || item.id}</div>
+          <div title={item.name || item.id} style={css(`flex:0 0 auto; font-size:${phone ? 11 : 12}px; font-weight:500; color:#3d372f; line-height:1.3; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;`)}>{item.name || item.id}</div>
         </div>
       </div>
     )
@@ -141,17 +146,19 @@ export default function CodiScreen() {
 
   const skeletonCell = (i: number) => (
     <div key={i} className="pb-cardwrap">
-      <div className="pb-card" style={css('display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px 10px; border-radius:12px; background:#fff; min-height:0; min-width:0;')}>
+      <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:${mobile ? 5 : 8}px; padding:${mobile ? '7px 5px 6px' : '12px 8px 10px'}; border-radius:12px; background:#fff; min-height:0; min-width:0;`)}>
         <div className="pb-skel" style={css('flex:1 1 auto; width:100%; min-height:0; border-radius:8px;')} />
-        <div className="pb-skel" style={css('width:70%; height:12px; border-radius:6px;')} />
+        <div className="pb-skel" style={css(`flex:0 0 auto; width:70%; height:${mobile ? 10 : 12}px; border-radius:6px;`)} />
       </div>
     </div>
   )
 
   return (
-    <section style={css(`${stacked ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
-      <div style={css(`flex:0 0 auto; ${narrow ? 'flex-wrap:wrap; min-height:58px; padding:9px 16px;' : 'height:58px; padding:0 22px;'} display:flex; align-items:center; gap:${narrow ? 8 : 12}px; border-bottom:1px solid #f0e9e1;`)}>
-        <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${mobile ? 6 : 10}px;`)}>
+    <section style={css(`${mobile ? `flex:0 0 auto; width:100%; height:${MOBILE_H.list}` : stacked ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
+      <div style={css(`flex:0 0 auto; ${mobile ? `flex-wrap:wrap; min-height:50px; padding:7px ${phone ? 12 : 16}px;` : narrow ? 'flex-wrap:wrap; min-height:58px; padding:9px 16px;' : 'height:58px; padding:0 22px;'} display:flex; align-items:center; gap:${narrow ? 8 : 12}px; border-bottom:1px solid #f0e9e1;`)}>
+        {/* flex:1 1 0 은 basis 0 이라 안쪽 0-0-auto 버튼들이 컨테이너를 뚫고 나가 페이지 입력과 겹친다.
+            좁은 화면에선 자연 폭(0 1 auto) + wrap 으로 바꿔 구조적으로 겹침이 불가능하게 한다. */}
+        <div style={css(`${mobile ? 'flex:1 1 100%; justify-content:space-between;' : narrow ? 'flex:0 1 auto; flex-wrap:wrap;' : 'flex:1 1 0;'} min-width:0; display:flex; align-items:center; gap:${phone ? 6 : 10}px;`)}>
           <div ref={s.partWrapRef} style={css('position:relative; flex:0 0 auto;')}>
             <button onClick={() => s.setPartMenuOpen(!s.partMenuOpen)} onMouseEnter={() => s.setHoverPartBtn(true)} onMouseLeave={() => s.setHoverPartBtn(false)} title="클릭해서 부위 선택" style={css(partBtnStyle)}>
               <span style={css('font-size:15px; font-weight:700; white-space:nowrap;')}>{activeMeta.label}</span>
@@ -181,7 +188,7 @@ export default function CodiScreen() {
               const on = !disabled && mode === m.v
               return (
                 <button key={m.v} disabled={disabled} className={on ? 'pb-h-solid' : 'pb-h-soft'} title={disabled ? (isSkinCat ? '피부는 썸네일 보기를 지원하지 않아요' : '헤어는 썸네일 보기를 지원하지 않아요') : undefined} onClick={() => { if (!disabled) s.setListMode(m.v) }}
-                  style={css(`height:28px; padding:0 ${mobile ? 8 : 11}px; border:none; border-radius:7px; cursor:${disabled ? 'not-allowed' : 'pointer'}; opacity:${disabled ? 0.4 : 1}; font-family:inherit; font-size:${mobile ? 11 : 12}px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease, filter .18s ease;`)}>{m.l}</button>
+                  style={css(`height:28px; padding:0 ${phone ? 8 : 11}px; border:none; border-radius:7px; cursor:${disabled ? 'not-allowed' : 'pointer'}; opacity:${disabled ? 0.4 : 1}; font-family:inherit; font-size:${phone ? 11 : 12}px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease, filter .18s ease;`)}>{m.l}</button>
               )
             })}
           </div>
@@ -204,9 +211,12 @@ export default function CodiScreen() {
         </div>
       </div>
 
-      <div ref={s.bindVp} style={css('flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:none; cursor:grab; user-select:none;')}>
+      {/* touch-action:none 은 브라우저 패닝을 전부 막아 모바일 문서 스크롤까지 죽인다 →
+          모바일은 pan-y(세로=페이지 스크롤은 브라우저에, 가로=페이지 넘김은 우리에게).
+          세로로 끌면 브라우저가 pointercancel 을 쏘고 ShopContext 가 이를 onUp 으로 받아 스와이프를 취소한다. */}
+      <div ref={s.bindVp} style={css(`flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:${mobile ? 'pan-y' : 'none'}; cursor:grab; user-select:none;`)}>
         {loading ? (
-          <div style={css('width:100%; height:100%; padding:18px 22px;')}>
+          <div style={css(`width:100%; height:100%; padding:${mobile ? '10px 12px' : '18px 22px'};`)}>
             <div style={css(gridStyle)}>
               {Array.from({ length: s.itemsPerPage }, (_, i) => skeletonCell(i))}
             </div>
@@ -221,7 +231,7 @@ export default function CodiScreen() {
             {/* 셀은 현재 페이지 ±1 만 마운트(보이는 부분만 CDN 로드 → 속도/안정성). */}
             {pages.map((items, pi) => (
               // contain:paint → 각 페이지의 그리기를 자기 박스로 클립(전환 시 canvas/카드 레이어의 stale-tile 잔상이 옆 페이지로 새지 않음).
-              <div key={pi} style={css('flex:0 0 100%; width:100%; height:100%; padding:18px 22px; contain:paint;')}>
+              <div key={pi} style={css(`flex:0 0 100%; width:100%; height:100%; padding:${mobile ? '10px 12px' : '18px 22px'}; contain:paint;`)}>
                 {Math.abs(pi - s.curIdx) <= 1 && (
                   <div style={css(gridStyle)}>
                     {items.map((item) => cell(item))}
@@ -232,8 +242,9 @@ export default function CodiScreen() {
           </div>
         )}
       </div>
-      <div style={css('flex:0 0 auto; height:38px; display:flex; align-items:center; justify-content:center; border-top:1px solid #f0e9e1;')}>
-        <span style={css('font-size:12px; color:#a89e93;')}>스크롤 · 스와이프 · ← → 방향키로 페이지를 넘길 수 있어요</span>
+      {/* 모바일은 힌트를 짧게(마우스/키보드가 없다) + 26px 로 줄여 그 높이를 그리드에 돌려준다 */}
+      <div style={css(`flex:0 0 auto; height:${mobile ? 26 : 38}px; display:flex; align-items:center; justify-content:center; padding:0 12px; border-top:1px solid #f0e9e1;`)}>
+        <span style={css(`font-size:${mobile ? 10.5 : 12}px; color:#a89e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`)}>{mobile ? '스와이프로 페이지를 넘길 수 있어요' : '스크롤 · 스와이프 · ← → 방향키로 페이지를 넘길 수 있어요'}</span>
       </div>
     </section>
   )
