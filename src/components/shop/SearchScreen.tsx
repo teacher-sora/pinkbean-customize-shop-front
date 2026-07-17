@@ -182,7 +182,7 @@ export default function SearchScreen() {
                 {gf !== 'all' && (
                   <span style={css(`flex:0 0 auto; display:inline-flex; align-items:center; height:22px; padding:0 ${phone ? 6 : 8}px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; background:${gf === 'f' ? '#fce9f1' : '#e7f0fb'}; color:${gf === 'f' ? '#d76d9a' : '#5a86c4'};`)}>{gf === 'f' ? '여' : '남'}</span>
                 )}
-                <span style={css(partBadge)}>{phone ? '▾' : '부위 ▾'}</span>
+                <span style={css(partBadge)}>부위 ▾</span>
               </button>
               <div style={css(partMenu)}>
                 {/* 성별 필터 — 코디 탭과 같은 자리·같은 규칙(공용 포함). 탭을 옮겨도 기준이 안 바뀐다. */}

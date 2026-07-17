@@ -178,7 +178,7 @@ export default function CodiScreen() {
               {gf !== 'all' && (
                 <span style={css(`flex:0 0 auto; display:inline-flex; align-items:center; height:22px; padding:0 ${phone ? 6 : 8}px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:-0.01em; white-space:nowrap; background:${gf === 'f' ? '#fce9f1' : '#e7f0fb'}; color:${gf === 'f' ? '#d76d9a' : '#5a86c4'};`)}>{gf === 'f' ? '여' : '남'}</span>
               )}
-              <span style={css(partBadgeStyle)}>{phone ? '▾' : '부위 ▾'}</span>
+              <span style={css(partBadgeStyle)}>부위 ▾</span>
             </button>
             <div style={css(partMenuStyle)}>
               {/* 성별 필터 — 헤더는 이미 부위·뷰어모드·페이지·검색으로 꽉 찼다. 버튼을 더 얹으면 무너진다.
