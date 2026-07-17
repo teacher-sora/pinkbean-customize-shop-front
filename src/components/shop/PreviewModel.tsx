@@ -16,7 +16,7 @@ import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { effectDraws, loadImage, preload, renderCharacter } from '@/lib/core/render'
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
 import { isStacked } from '@/lib/useBreakpoint'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaSpec, buildView, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin } from '@/lib/shopData'
+import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaSpec, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
@@ -83,7 +83,10 @@ export default function PreviewModel() {
     return () => { alive = false }
   }, [equipped, effectIndex, effMetas])
 
-  const viewInfo = useMemo(() => buildView(pv), [pv.action, pv.weapon, pv.expr, pv.ear, pv.gaze])
+  // 표정 얼굴장식(fixedEmotion)을 착용 중이면 표정을 그 값으로 고정한다. 숨김(hidden) 처리된 슬롯은 제외 —
+  // 안 보이는 아이템이 표정을 붙잡고 있으면 안 되니까. 연출 설정(pv.expr)은 건드리지 않고 여기서만 덮어쓴다.
+  const fixedE = fixedExpr(Object.entries(equipped).filter(([sl]) => !hidden[sl]).map(([, it]) => it), pv.expr)
+  const viewInfo = useMemo(() => buildView({ ...pv, expr: fixedE }), [pv.action, pv.weapon, fixedE, pv.ear, pv.gaze])
   const V = viewInfo.view
   const bodyMeta = bodyId ? metas.get(bodyId) : undefined
   const headMeta = headId ? metas.get(headId) : undefined

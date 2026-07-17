@@ -7,7 +7,7 @@ import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
 import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
-import { CAT_TO_SLOT, SLOT_TO_CAT, isColorLineSkin, thumbView } from '@/lib/shopData'
+import { CAT_TO_SLOT, SLOT_TO_CAT, THUMB_VIEW, fixedExpr, forceSpriteMode, isColorLineSkin, thumbView } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop, type GenderFilter, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
@@ -39,18 +39,30 @@ export default function CodiScreen() {
   // '전체'는 부위가 섞이므로 토글은 잠그지 않고, 아이템별로 헤어/피부만 모델로 승격한다(검색 탭과 동일).
   const noSprite = isHairCat || isSkinCat
   const mode: ListMode = noSprite && s.listMode === 'sprite' ? 'model' : s.listMode
-  const effMode = (slot: string): ListMode =>
-    (mode === 'sprite' && (slot === 'hair' || slot === 'skin')) ? 'model' : mode
+  // 표정 얼굴장식은 '모델'(맨 마네킹)에 올려도 아무것도 안 보인다 → 아이템별로 '썸네일'(아이콘)로 승격.
+  const effMode = (it: ListItem): ListMode =>
+    forceSpriteMode(mode, it) ? 'sprite'
+      : (mode === 'sprite' && (it.slot === 'hair' || it.slot === 'skin')) ? 'model' : mode
   const gf = s.genderFilter
   const gaze = s.pv.gaze // 시선(왼/오/뒷)을 썸네일에도 반영
-  const tv = thumbView(gaze)
+  const activeSlotForExpr = isAll ? null : CAT_TO_SLOT[s.activeCat]
+  // 배경(내 착용)에 구워질 표정. 활성 슬롯의 아이템은 배경에서 빠지므로(후보로 대체됨) 여기서도 제외한다.
+  // ⚠️ 폴백은 THUMB_VIEW 의 'default' — 카드는 원래 연출 설정 표정을 따라가지 않는다. 표정 얼굴장식이
+  //    강제하는 표정만 카드에 반영한다(연출 설정 드롭다운으로 리스트 전체가 바뀌면 그건 다른 기능이다).
+  const ctxExpr = fixedExpr(
+    mode === 'mymodel'
+      ? Object.entries(s.equipped).filter(([sl]) => sl !== activeSlotForExpr && !s.hidden[sl]).map(([, it]) => it)
+      : [],
+    THUMB_VIEW.expression,
+  )
+  const tv = thumbView(gaze, ctxExpr)
 
   // 모델/내모델 공통 배경(base 또는 내 착용) 조립 입력 + 키
-  const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string; override: Map<string, HTMLCanvasElement>; effs: WornEff[] }>({ items: [], key: '', override: new Map(), effs: [] })
+  const [ctx, setCtx] = useState<{ items: AssembleInput[]; key: string; override: Map<string, HTMLCanvasElement>; effs: WornEff[]; faceMeta: ItemMeta | null }>({ items: [], key: '', override: new Map(), effs: [], faceMeta: null })
   const ctxKeyRef = useRef('')
   useEffect(() => {
     const idx = s.index
-    if (mode === 'sprite' || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ items: [], key: '', override: new Map(), effs: [] }) } return }
+    if (mode === 'sprite' || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ items: [], key: '', override: new Map(), effs: [], faceMeta: null }) } return }
     let alive = true
     const toneEntry = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
     const bodyId = toneEntry.body, headId = toneEntry.head
@@ -61,7 +73,7 @@ export default function CodiScreen() {
     const eqSig = eqEntries.map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 모델: 우측 미리보기에 적용된 염색(발색/HSB)을 썸네일 배경(내 착용)에도 동일 반영 → 키에 염색 시그니처 포함.
     const dyeSig = mode === 'mymodel' ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
-    const key = `${mode}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}`
+    const key = `${mode}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}:${ctxExpr}`
     if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
     // ⚠️ ctxKeyRef 는 async 가 "실제로 setCtx 로 커밋된 뒤"에만 찍는다. StrictMode(dev)는 mount 시
     // setup→cleanup→setup 을 돌리는데, 커밋 전에 ref 를 찍어두면 두 번째 setup 이 key===ref 로 early-return
@@ -92,7 +104,9 @@ export default function CodiScreen() {
       }
       if (!alive) return
       ctxKeyRef.current = key // 커밋 성공 시에만 기록(위 주석 참고)
-      setCtx({ items, key, override, effs })
+      // 표정 얼굴장식 카드는 배경의 얼굴을 **자기 표정으로 다시 그려야** 한다(ItemThumb) → 메타를 넘긴다.
+      const faceEntry = eqEntries.find(([sl]) => sl === 'face')
+      setCtx({ items, key, override, effs, faceMeta: faceEntry ? (map.get(faceEntry[1].id) ?? null) : null })
     })
     return () => { alive = false }
   }, [mode, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
@@ -127,7 +141,7 @@ export default function CodiScreen() {
   const cell = (item: ListItem) => {
     // '전체'는 부위가 섞이므로 활성 부위가 아니라 **아이템 자신의 슬롯**을 기준으로 판단한다.
     const cat = isAll ? SLOT_TO_CAT[item.slot] : s.activeCat
-    const em = effMode(item.slot)
+    const em = effMode(item)
     const sel = s.isEquippedInCat(cat, item.id)
     const isSkinItem = item.slot === 'skin'
     // 피부는 원칙적으로 염색 불가지만, "컬러라인" 커스텀 피부는 라인만 HSB 로 염색 가능.
@@ -141,7 +155,8 @@ export default function CodiScreen() {
             <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           <div style={css(thumbBox + ' position:relative;')}>
-            <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined} />
+            <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
+              ctxExpr={ctxExpr} faceMeta={ctx.faceMeta} dye={mode === 'mymodel' ? { palette: s.dyePalette, hsb: s.dyeHsb } : undefined} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} title={badgeKind} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
