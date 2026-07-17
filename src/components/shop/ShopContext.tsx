@@ -56,9 +56,12 @@ type NexonBeauty = { name: string; baseColor: string | null; mixColor: string | 
 // 넥슨이 주는 코디 1벌. 제로/엔젤릭버스터는 2벌이 온다(제로=알파/베타, 엔버=일반/드레스업) — /api/nick 참고.
 // gender 는 코디별로 다를 수 있다 — 제로는 캐릭터 성별이 '기타'로 오고 알파=남/베타=여 이므로
 // 이걸 쓰지 않으면 헤어·성형의 (남)/(여) 변형이 엉뚱하게 잡힌다.
-type NexonLook = { key: string; label: string; gender: string | null; items: NexonItem[]; hair: NexonBeauty | null; face: NexonBeauty | null; skin: { name: string } | null }
-// 불러오기 후보 1벌(다이얼로그에서 좌/우로 보여준다).
-export type LookOption = { key: string; label: string; snap: Snapshot }
+// 치장 프리셋 한 벌 = base + preset_n 덮어쓰기(items 는 서버에서 이미 병합된 결과). active = 지금 게임에서 입고 있는 것.
+type NexonPreset = { key: string; label: string; items: NexonItem[]; active: boolean }
+type NexonLook = { key: string; label: string; gender: string | null; presets: NexonPreset[]; hair: NexonBeauty | null; face: NexonBeauty | null; skin: { name: string } | null }
+// 불러오기 후보. 다이얼로그 구조 = [코디 탭(제로/엔버만 2개)] + [그 코디의 프리셋 카드들].
+export type PresetOption = { key: string; label: string; active: boolean; snap: Snapshot }
+export type LookOption = { key: string; label: string; presets: PresetOption[] }
 // 넥슨 색상명 → 내부 믹스 팔레트 인덱스(MIX_PALETTE: 검정0 빨강1 주황2 노랑3 초록4 파랑5 보라6 갈색7).
 const COLOR_IDX: Record<string, number> = {
   '검은색': 0, '검정': 0, '빨간색': 1, '빨강': 1, '주황색': 2, '주황': 2, '노란색': 3, '노랑': 3,
@@ -126,7 +129,7 @@ export interface ShopCtx {
   importing: boolean
   // 코디 2벌 선택(제로/엔젤릭버스터)
   lookPick: { nick: string; options: LookOption[] } | null
-  chooseLook: (key: string) => void; closeLookPick: () => void
+  chooseLook: (lookKey: string, presetKey: string) => void; closeLookPick: () => void
   shareCurrent: () => void
   rateCodi: () => void
   rateResult: { bubbles: string[]; nonce: number } | null
@@ -569,8 +572,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     h: clampDye('h', p.hue), s: clampDye('s', p.saturation), b: clampDye('b', p.value),
     t: Math.max(0, DYE_FAMILIES.indexOf(p.colorRange ?? DYE_FAMILIES[0])), // 모르는 계열이면 0(전체)
   })
-  // 넥슨 코디 1벌 → 내부 스냅샷(착용 + 톤 + 염색). 매칭이 0건이면 null(=보여줄 게 없는 코디).
-  const lookToSnapshot = async (look: NexonLook, gender: string | null): Promise<Snapshot | null> => {
+  // 넥슨 코디 1벌(= 코디 × 프리셋) → 내부 스냅샷(착용 + 톤 + 염색). 매칭이 0건이면 null(=보여줄 게 없는 코디).
+  // 헤어/성형/피부는 프리셋과 무관하게 코디(look) 단위로 하나다 → 프리셋만 items 로 갈아끼운다.
+  const lookToSnapshot = async (look: NexonLook, items: NexonItem[], gender: string | null): Promise<Snapshot | null> => {
     const equipped: Record<string, string> = {}
     const dyePalette: Record<string, PaletteParams> = {}
     const dyeHsb: Record<string, HsbParams> = {}
@@ -594,7 +598,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (te) { tone = te.tone; matched++ }
     }
     // 캐시 아이템(옷·모자·무기 등) + 그 아이템에 걸린 컬러 프리즘 염색
-    for (const it of look.items) {
+    for (const it of items) {
       const slot = NEXON_PART_SLOT[it.part]
       if (!slot) continue
       const found = matchByName(await loadSlotFolded(slot), it.name, it.gender ?? gender)
@@ -618,8 +622,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const out: LookOption[] = []
       for (const lk of looks) {
         // 코디별 성별 우선(제로 알파=남/베타=여). 없으면 캐릭터 성별로 폴백.
-        const snap = await lookToSnapshot(lk, lk.gender ?? gender)
-        if (snap) out.push({ key: lk.key, label: lk.label, snap })
+        const g = lk.gender ?? gender
+        const presets: PresetOption[] = []
+        for (const pr of lk.presets || []) {
+          const snap = await lookToSnapshot(lk, pr.items, g)
+          if (snap) presets.push({ key: pr.key, label: pr.label, active: pr.active, snap })
+        }
+        if (presets.length) out.push({ key: lk.key, label: lk.label, presets })
       }
       if (!out.length) { showToast('보유한 데이터에서 일치하는 코디를 찾지 못했어요'); return null }
       return out
@@ -650,16 +659,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }
       const opts = await importByNick(val)
       if (!opts) return
-      // 제로·엔젤릭버스터는 코디가 2벌이다 → 바로 적용하지 않고 어느 쪽을 가져올지 고르게 한다.
-      if (opts.length > 1) { setLookPick({ nick: val, options: opts }); return }
-      await applyImported(opts[0].snap, val, true)
+      // 고를 게 하나뿐(코디 1벌 × 프리셋 1개)이면 다이얼로그 없이 바로 적용 — 불필요한 클릭을 만들지 않는다.
+      if (opts.length === 1 && opts[0].presets.length === 1) { await applyImported(opts[0].presets[0].snap, val, true); return }
+      setLookPick({ nick: val, options: opts })
     } finally { setImporting(false) }
   }
-  // 코디 선택 다이얼로그에서 한 벌 고름 → 그 코디를 적용.
-  const chooseLook = async (key: string) => {
+  // 다이얼로그에서 코디 × 프리셋을 골랐다 → 그 한 벌을 적용.
+  const chooseLook = async (lookKey: string, presetKey: string) => {
     const lp = lookPick
     if (!lp) return
-    const opt = lp.options.find((o) => o.key === key)
+    const opt = lp.options.find((o) => o.key === lookKey)?.presets.find((p) => p.key === presetKey)
     setLookPick(null)
     if (opt) await applyImported(opt.snap, lp.nick, true)
   }
