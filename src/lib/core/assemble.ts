@@ -111,10 +111,32 @@ export function getFrameSeq(meta: ItemMeta, opts: ViewOpts): Frame[] {
 
 // Layers of animation frame `i` (clamped to the item's own length). Default 0 = static
 // (thumbnails / non-animated contexts). The animator passes the current frame index.
+// 앵커 map 이 비어 있는 레이어를 같은 아이템의 다른 프레임에서 채운다.
+// assemble 은 map 의 앵커 이름으로만 위치를 잡으므로(아래 참고), map 이 {} 면 그 레이어는 영원히 배치되지 못하고
+// 조용히 사라진다. 원본 WZ 에 실제로 이런 결손이 있다(예: 00050075 들판 얼굴 (남) — 레이어 25개 중 default
+// 하나만 map={}, 나머지 24개는 brow={0,0}). meta.json 은 WZ 를 충실히 옮긴 것이므로 렌더 쪽에서 견딘다.
+// ⚠️ 빌려오는 건 map(앵커 오프셋)뿐이다. origin 은 프레임마다 다르므로 그 프레임 것을 그대로 쓴다.
+// 전 프레임에 map 이 없으면 빌려올 게 없다 → 그대로 두고 assemble 이 버린다(추측으로 지어내지 않는다).
+function fillMissingMap(meta: ItemMeta, layers: Layer[]): Layer[] {
+  if (!layers.some((l) => !l.map || !Object.keys(l.map).length)) return layers // 정상이면 원본 그대로(할당 없음)
+  const donor = new Map<string, Layer['map']>()
+  for (const seq of Object.values(meta.frames || {})) {
+    for (const fr of (seq as { layers: Layer[] }[]) || []) {
+      for (const l of fr.layers || []) {
+        if (l.map && Object.keys(l.map).length && !donor.has(l.name)) donor.set(l.name, l.map)
+      }
+    }
+  }
+  return layers.map((l) => {
+    if ((l.map && Object.keys(l.map).length) || !donor.has(l.name)) return l
+    return { ...l, map: donor.get(l.name)! } // has() 로 확인 후라 non-null
+  })
+}
+
 export function getFrameLayers(meta: ItemMeta, opts: ViewOpts, i = 0): Layer[] {
   const seq = getFrameSeq(meta, opts)
   if (!seq.length) return []
-  return seq[Math.min(i, seq.length - 1)].layers
+  return fillMissingMap(meta, seq[Math.min(i, seq.length - 1)].layers)
 }
 
 // Number of animation frames for the current view (drives the master clock = base body).

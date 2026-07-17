@@ -179,8 +179,8 @@ export function variantId(colorGroup: number, color: number, slot: string): stri
 
 export const PALETTE_8 = ['검정', '빨강', '주황', '노랑', '초록', '파랑', '보라', '갈색']
 
-import type { ItemMeta } from './data'
-import { getFrameLayers, type ViewOpts } from './assemble'
+import type { ItemMeta, Layer } from './data'
+import { frameCount, getFrameLayers, type ViewOpts } from './assemble'
 import { loadImage } from './render'
 
 export interface DyeState {
@@ -259,15 +259,35 @@ export async function renderDyedSprite(
 }
 
 // Build per-layer dyed source overrides (png path -> canvas) for equipped items.
+// allFrames: false = 지금 보이는 프레임(0)만 → 즉시 반영용. true = 이 뷰의 전 프레임 → 애니메이션 유지용.
+// ⚠️ 예전엔 getFrameLayers(meta, view) 만 불러 i 가 기본값 0 이었다 → 프레임 0 의 png 만 override 에 들어가고,
+// 액션 애니메이션의 2번째 프레임부터는 png 가 달라 override 가 없어 원본색으로 그려졌다(염색이 풀려 보임).
+// 이펙트/피부는 PreviewModel 이 따로 전 프레임을 칠하고 있어 멀쩡했던 것 — 아이템만 빠져 있었다.
+function viewLayers(meta: ItemMeta, view: ViewOpts, allFrames: boolean): Layer[] {
+  if (!allFrames) return getFrameLayers(meta, view)
+  const seen = new Set<string>()
+  const out: Layer[] = []
+  const n = Math.max(1, frameCount(meta, view))
+  for (let i = 0; i < n; i++) {
+    for (const l of getFrameLayers(meta, view, i)) { if (!seen.has(l.png)) { seen.add(l.png); out.push(l) } }
+  }
+  return out
+}
+
 export async function buildOverrides(
   metas: ItemMeta[],
   dye: DyeState,
   view: ViewOpts,
+  // ⚠️ 기본은 false(= 보이는 프레임만) — "안전한 기본값"이 아니라 "빠른 기본값"이 맞다.
+  // 호출부 대부분(카드 썸네일·염색 다이얼로그·프리셋 카드)은 THUMB_VIEW 로 프레임 0 만 그린다.
+  // 그런데 stand1 도 프레임이 여러 개(호흡)라, 기본을 true 로 두면 한 화면 18장 카드가 쓰지도 않을
+  // 프레임까지 전부 리컬러하게 된다 → 순수 낭비. 전 프레임이 정말 필요한 곳(PreviewModel 2단계)만 true 를 넘긴다.
+  allFrames = false,
 ): Promise<Map<string, HTMLCanvasElement>> {
   const out = new Map<string, HTMLCanvasElement>()
   // 아이템(meta) 간에도 병렬 처리 → 여러 팔레트/HSB 아이템이 서로를 기다리지 않는다.
   await Promise.all(metas.map(async (meta) => {
-    const layers = getFrameLayers(meta, view)
+    const layers = viewLayers(meta, view, allFrames)
     if (meta.dyeMode === 'palette') {
       const p = dye.palette[meta.slot]
       if (!p || meta.colorGroup == null) return
