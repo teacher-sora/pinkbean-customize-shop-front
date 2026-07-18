@@ -5,9 +5,9 @@ import './globals.css'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pinkbean-customize.com'
 const SITE_NAME = '핑크빈 커마샵'
 const TITLE = '핑크빈 커마샵'
-// 사이트/OG 설명 — 네이버 검색 노출용으로 80자 이내(핑크빈 말투). 검색 키워드(메이플 커마·코디)를 자연스럽게 포함.
+// 사이트/OG 설명 — 네이버 검색 노출용으로 80자 이내. 웹 코디 + AI 코디 검색을 알리고 키워드(메이플 커마·코디)를 자연스럽게 포함.
 const DESC =
-  '메이플 커마를 웹에서 미리 뿅! 헤어·성형·염색·한벌옷·무기 입혀보고 프리셋 저장·공유까지, 핑크빈이랑 코디해요.'
+  '메이플 커마를 웹에서 바로 미리 해보고, 원하는 코디는 AI 검색으로 찾아봐요. 헤어·성형·염색·프리셋도 한 번에.'
 // og:image — 넓은 임베드 이미지(Vercel Blob CDN). 카톡/디스코드/트위터/구글 미리보기에 사용.
 const OG_IMAGE = 'https://qg2tk4czk48x6wl4.public.blob.vercel-storage.com/pinkbean_embed.png'
 const OG_W = 1536, OG_H = 1024
