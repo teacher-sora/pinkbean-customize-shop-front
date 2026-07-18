@@ -341,7 +341,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch(`${SEARCH_API}/search`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: t, slot: slot ?? null, topK: 60 }),
+        body: JSON.stringify({ query: t, slot: slot ?? null, topK: 100 }),
       })
       const data = await res.json()
       const hits: { id: string; slot: string }[] = data.results || []
