@@ -5,8 +5,9 @@ import './globals.css'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pinkbean-customize.com'
 const SITE_NAME = '핑크빈 커마샵'
 const TITLE = '핑크빈 커마샵'
+// 사이트/OG 설명 — 네이버 검색 노출용으로 80자 이내(핑크빈 말투). 검색 키워드(메이플 커마·코디)를 자연스럽게 포함.
 const DESC =
-  '메이플스토리 캐릭터의 외형(코디)을 웹에서 미리 꾸며보세요. 헤어·성형·모자·한벌옷·무기 등 부위별 아이템 착용, 염색(발색), 프리셋 저장·공유, AI 코디 검색까지 설치 없이 바로.'
+  '메이플 커마를 웹에서 미리 뿅! 헤어·성형·염색·한벌옷·무기 입혀보고 프리셋 저장·공유까지, 핑크빈이랑 코디해요.'
 // og:image — 넓은 임베드 이미지(Vercel Blob CDN). 카톡/디스코드/트위터/구글 미리보기에 사용.
 const OG_IMAGE = 'https://qg2tk4czk48x6wl4.public.blob.vercel-storage.com/pinkbean_embed.png'
 const OG_W = 1536, OG_H = 1024
@@ -18,9 +19,9 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   keywords: [
     '메이플스토리', '메이플 커마', '커마샵', '커마', '코디', '외형', '코디 미리보기',
-    '메이플 코디', '메이플 코디 미리보기', '메이플 외형', '염색', '발색', '헤어', '성형',
-    '프리셋', '코디 공유', 'AI 코디 검색', '핑크빈', '핑크빈 커마샵',
-    'MapleStory', 'MapleStory cosmetic', 'avatar', 'character customization',
+    '메이플 코디', '메이플 코디 미리보기', '메이플 외형', '메이플 드레스룸', '드레스룸', '메이플 커마 사이트',
+    '염색', '발색', '헤어', '성형', '프리셋', '코디 공유', 'AI 코디 검색', '핑크빈', '핑크빈 커마샵',
+    'MapleStory', 'MapleStory cosmetic', 'MapleStory dressroom', 'avatar', 'character customization',
   ],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -77,7 +78,10 @@ const JSON_LD = {
       '@id': `${SITE_URL}/#website`,
       url: SITE_URL,
       name: SITE_NAME,
+      alternateName: ['메이플 커마', '메이플 코디', '메이플 드레스룸', '핑크빈 커마샵'],
       description: DESC,
+      // 구조화 데이터의 keywords 는 meta keywords(구글이 무시)와 달리 검색엔진이 읽는 유효 신호.
+      keywords: '메이플 커마, 메이플 코디, 메이플 드레스룸, 커마샵, 코디 미리보기, 염색, 프리셋, 핑크빈 커마샵',
       inLanguage: 'ko-KR',
       publisher: { '@id': `${SITE_URL}/#org` },
     },
