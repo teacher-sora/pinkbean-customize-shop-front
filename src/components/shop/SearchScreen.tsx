@@ -15,7 +15,8 @@ import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
 import { useShop, type GenderFilter, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
 
-const SEARCH_CATS = [{ id: 'all', label: '전체' }, ...CATS.filter((c) => c.id !== 'skin')]
+// 라이딩(탑승)은 정적 코디 아이템이라 AI 검색 대상 아님 — 슬롯 선택에서도 제외(피부와 함께).
+const SEARCH_CATS = [{ id: 'all', label: '전체' }, ...CATS.filter((c) => c.id !== 'skin' && c.id !== 'riding')]
 const MODES: { v: ListMode; l: string }[] = [{ v: 'sprite', l: '썸네일' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' }]
 const NO_CASH_BADGE = new Set(['hair', 'face', 'skin'])
 // 성별 필터 — 코디 탭과 동일 정의(공용 포함). 두 탭이 다르면 기준이 갈린다.
