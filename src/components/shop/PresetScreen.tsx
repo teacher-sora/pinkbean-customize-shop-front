@@ -14,8 +14,10 @@ export default function PresetScreen() {
   const liveSnap: Snapshot = useMemo(() => {
     const eq: Record<string, string> = {}
     for (const [slot, it] of Object.entries(s.equipped)) if (it) eq[slot] = it.id
-    return { equipped: eq, tone: s.tone, dyePalette: s.dyePalette, dyeHsb: s.dyeHsb, hidden: s.hidden }
-  }, [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden])
+    // pv(연출설정 일부)도 담아야 선택된 프리셋 카드에 형상변이·귀·무기·이펙트가 반영된다(SnapThumb 이 snap.pv 사용).
+    return { equipped: eq, tone: s.tone, dyePalette: s.dyePalette, dyeHsb: s.dyeHsb, hidden: s.hidden,
+      pv: { form: s.pv.form, ear: s.pv.ear, weapon: s.pv.weapon, wEffect: s.pv.wEffect, cEffect: s.pv.cEffect, zoom: s.pv.zoom } }
+  }, [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.pv])
 
   return (
     <section style={css(`${mob ? `flex:0 0 auto; width:100%; height:${MOBILE_H.content}` : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>

@@ -169,7 +169,10 @@ export function assemble(
   for (const it of items) {
     const faceHidden = hideFace && it.slot === 'face'
     for (const l of it.layers) {
-      remaining.push({ ...l, itemId: it.itemId, slot: it.slot, hidden: faceHidden || !isVisible(it.slot, l.z) })
+      // 귀(head 레이어 중 'head' 가 아닌 것 = 엘프/우든레프/하이레프 귀)는 모자 가림에서 예외 — 모자를 써도
+      // 귀는 삐져나와 보여야 한다(그냥 모자 vslot 이 귀 z 까지 덮어 귀가 사라지던 이슈). 사람귀는 모자에 어차피 덮임.
+      const isEar = it.slot === 'head' && l.name !== 'head'
+      remaining.push({ ...l, itemId: it.itemId, slot: it.slot, hidden: faceHidden || (!isEar && !isVisible(it.slot, l.z)) })
     }
   }
 

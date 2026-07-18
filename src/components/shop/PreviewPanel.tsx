@@ -7,6 +7,13 @@ import { useShop } from './ShopContext'
 import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
 import PreviewModel from './PreviewModel'
 import Dropdown from './Dropdown'
+import DisabledSection from './DisabledSection'
+
+// [dev] 재규어 라이딩 중 "가능한" 액션(UI 값 기준). 나머지는 목록에서 지우지 않고 연하게(disabled) 표시한다.
+//  - 이동/자세: 기본·걷기·점프·사다리·밧줄 가능 / 앉기·날기 불가
+//  - 서기·전투대기·엎드리기는 재규어가 다리를 접었다 펴는 모션이라 통짜 스프라이트로 발 고정 보정 불가 → 막음.
+//  - 근접 공격 전부 불가(와일드헌터는 원거리), 사격 중 '석궁 사격'(shoot2)만 가능
+const RIDING_ACTIONS = new Set(['basic', 'walk', 'jump', 'ladder', 'rope', 'shoot2'])
 
 export default function PreviewPanel() {
   const s = useShop()
@@ -16,6 +23,19 @@ export default function PreviewPanel() {
   const mob = isStacked(s.bp)
   const curAction = PV_ACTIONS_FLAT.find((a) => a.v === pv.action) || PV_ACTIONS_FLAT[0]
   const pvCaption = `${curAction.l} · ${(PV_EXPRS.find((x) => x.v === pv.expr) || { l: '' }).l}`
+  // [dev] 라이딩 중: 불가 액션은 목록에서 지우지 않고 연하게(disabled) 표시, 형상변이는 전부 잠근다.
+  //   현재 값이 불가로 바뀌면 안전한 기본값으로 되돌린다(액션→서기, 형상변이→기본).
+  const ridingItem = s.equipped?.riding
+  const riding = !!ridingItem
+  // 아이템별 허용 액션(riding.json ridingActions). 없으면 기본 재규어 세트. 메탈아머는 서기·전투대기·엎드리기 포함.
+  const allowedActions = ridingItem?.ridingActions ? new Set(ridingItem.ridingActions) : RIDING_ACTIONS
+  const disabledActions = riding ? new Set(PV_ACTIONS_FLAT.filter((a) => !allowedActions.has(a.v)).map((a) => a.v)) : undefined
+  useEffect(() => {
+    if (!riding) return
+    const allow = ridingItem?.ridingActions ? new Set(ridingItem.ridingActions) : RIDING_ACTIONS
+    if (!allow.has(pv.action)) s.setPv('action', 'basic')
+  }, [riding, ridingItem, pv.action, s])
+  useEffect(() => { if (riding && pv.form !== 'none') s.setPv('form', 'none') }, [riding, pv.form, s])
 
   const pvBarStyle = `flex:0 0 auto; width:100%; height:${s.bp === 'mobile' ? 40 : 46}px; padding:0 ${s.bp === 'mobile' ? 14 : 22}px; border:none; border-top:1px solid #f0e9e1; background:${s.pvOpen ? '#faf7f3' : '#fff'}; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font-family:inherit; transition:background .16s ease;`
   const pvCaretStyle = `font-size:11px; color:#a89e93; transition:transform .2s ease; transform:rotate(${s.pvOpen ? '180deg' : '0deg'}); flex:0 0 auto;`
@@ -149,16 +169,18 @@ export default function PreviewPanel() {
       </div>
       <div style={css(ROW_BETWEEN)}>
         <span style={css(PV_LABEL)}>액션</span>
-        <Dropdown value={pv.action} onChange={(v) => s.setPv('action', v)} groups={PV_ACTION_GROUPS} />
+        <Dropdown value={pv.action} onChange={(v) => s.setPv('action', v)} groups={PV_ACTION_GROUPS} disabled={disabledActions} />
       </div>
       <div style={css(ROW_BETWEEN)}>
         <span style={css(PV_LABEL)}>표정</span>
         <Dropdown value={pv.expr} onChange={(v) => s.setPv('expr', v)} options={PV_EXPRS} />
       </div>
-      <div style={css(ROW_BETWEEN)}>
-        <span style={css(PV_LABEL)}>형상 변이</span>
-        <Dropdown value={pv.form} onChange={(v) => s.setPv('form', v)} options={PV_FORMS} />
-      </div>
+      <DisabledSection active={riding}>
+        <div style={css(ROW_BETWEEN)}>
+          <span style={css(PV_LABEL)}>형상 변이</span>
+          <Dropdown value={pv.form} onChange={(v) => s.setPv('form', v)} options={PV_FORMS} />
+        </div>
+      </DisabledSection>
       <div style={css(ROW_BETWEEN)}>
         <span style={css('font-size:12px; font-weight:600; color:#8a8075; flex:0 0 auto;')}>귀</span>
         <div style={css('display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;')}>{pill(PV_EARS, 'ear')}</div>

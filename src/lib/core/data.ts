@@ -78,6 +78,11 @@ export interface ListItem {
   fixedEmotion?: string       // 표정 얼굴장식: 'smile' 같은 표정 키 또는 'blink/1' 처럼 키+프레임 인덱스
   headId?: string             // skin-only: paired head id for live compositing
   actions: string[]
+  ridingActions?: string[]    // [dev] 라이딩 아이템: 허용 연출 액션(UI값). 없으면 기본 재규어 세트.
+  ridingSeated?: string[]     // [dev] 라이딩 아이템: 캐릭터가 앉는(sit) 액션(UI값). 메탈아머는 전부 앉음.
+  ridingCenterMount?: boolean // [dev] 라이딩 아이템: 캐릭터가 아니라 마운트(메카)를 중앙정렬(메탈아머).
+  ridingBackSit?: boolean     // [dev] 라이딩 아이템: 뒷쪽 시선에도 캐릭터 sit 강제(탱크: 뒤=줄타기 프레임+앉은 조종사).
+  metaUrl?: string            // [dev] 라이딩 아이템: 로컬 meta.json 경로(CDN 밖)
 }
 
 export interface SlotSummary {
@@ -113,6 +118,8 @@ export interface Index {
 // segment from `rel`, and self-heal a doubled base ("/data/data/…") from a misconfigured
 // NEXT_PUBLIC_DATA_BASE, so a stray prefix can never yield "/data/data/sprites/…".
 const url = (rel: string) => {
+  // 절대경로(/riding/…)·완전URL 은 그대로(dev 로컬 public 서빙 — 라이딩 데이터가 CDN 밖에서 로드되게).
+  if (/^(https?:)?\//.test(rel)) return rel
   const base = DATA_BASE.replace(/\/+$/, '')
   const seg = base.split('/').filter(Boolean).pop() || '' // e.g. "data"
   let r = rel.replace(/^\/+/, '')
@@ -127,16 +134,24 @@ export async function loadIndex(): Promise<Index> {
   if (!r.ok) throw new Error(`index.json ${r.status}`)
   return r.json()
 }
+// 라이딩(dev 로컬) 아이템의 meta 경로를 id→url 로 등록. 슬롯 로드 시 채워지고 loadMeta 가 이걸 우선 쓴다.
+const ridingMetaUrl = new Map<string, string>()
 const slotCache = new Map<string, Promise<ListItem[]>>()
 export function loadSlot(file: string): Promise<ListItem[]> {
   let p = slotCache.get(file)
-  if (!p) { p = fetch(url(file)).then((r) => r.json()); slotCache.set(file, p) }
+  if (!p) {
+    p = fetch(url(file)).then((r) => r.json()).then((items: ListItem[]) => {
+      for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
+      return items
+    })
+    slotCache.set(file, p)
+  }
   return p
 }
 const metaCache = new Map<string, Promise<ItemMeta>>()
 export function loadMeta(id: string): Promise<ItemMeta> {
   let p = metaCache.get(id)
-  if (!p) { p = fetch(url(`meta/${id}.json`)).then((r) => r.json()); metaCache.set(id, p) }
+  if (!p) { p = fetch(url(ridingMetaUrl.get(id) ?? `meta/${id}.json`)).then((r) => r.json()); metaCache.set(id, p) }
   return p
 }
 

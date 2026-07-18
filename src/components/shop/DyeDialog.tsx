@@ -60,7 +60,7 @@ function DyeCell({ meta, base, mixC, zmap, selected, onClick, pal }: {
 }
 
 // 그 외(캐시) 아이템 발색 미리보기: 베이스 모델(몸+머리)에 이 아이템을 입힌 뒤 HSB 발색을 실시간 적용.
-function DyeModelPreview({ item, hsb, zoom }: { item: ListItem; hsb: HsbParams; zoom: number }) {
+function DyeModelPreview({ item, hsb, zoom, box = DIALOG_CANVAS }: { item: ListItem; hsb: HsbParams; zoom: number; box?: { w: number; h: number } }) {
   const s = useShop()
   const ref = useRef<HTMLCanvasElement>(null)
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
@@ -126,11 +126,11 @@ function DyeModelPreview({ item, hsb, zoom }: { item: ListItem; hsb: HsbParams; 
     }
     // 우측 미리보기/카드와 동일 공식: 마네킹 중앙 고정 + 정수 스냅(선명). 배율은 fraction 에 곱.
     const dpr = window.devicePixelRatio || 1
-    const pl = computeModelPlacement({ divW: DIALOG_CANVAS.w, divH: DIALOG_CANVAS.h, dpr, margin: 1, fraction: DIALOG_FRACTION, zoomMult: DIALOG_ZOOM[zoom] ?? 1, snap: true })
+    const pl = computeModelPlacement({ divW: box.w, divH: box.h, dpr, margin: 1, fraction: DIALOG_FRACTION, zoomMult: DIALOG_ZOOM[zoom] ?? 1, snap: true })
     canvas.style.width = pl.canvasCssW + 'px'
     canvas.style.height = pl.canvasCssH + 'px'
     await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov, effects: effs })
-  }, [placed, itemMeta, hsb, effs, zoom, item.slot])
+  }, [placed, itemMeta, hsb, effs, zoom, item.slot, box.w, box.h])
 
   if (!placed) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 12 }} />
   // 캔버스 intrinsic = box×scale(320×340). CSS 로 늘리지 않고 그대로(1:1) 보여줘 도트가 깨끗하게 유지된다.
@@ -184,6 +184,15 @@ export default function DyeDialog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot])
 
+  // ── +/− 스테퍼 hold ── ⚠️ 모든 hook 은 early return(`if (!slot) return null`) "앞"에서 무조건 호출해야 한다
+  //   (안 그러면 slot 유무로 hook 개수가 달라져 "Rendered more hooks..." 크래시). 슬라이더=큰 이동, 스테퍼=미세조정.
+  const holdRef = useRef<{ t: ReturnType<typeof setTimeout> | null; i: ReturnType<typeof setInterval> | null }>({ t: null, i: null })
+  const stopHold = () => {
+    if (holdRef.current.t) { clearTimeout(holdRef.current.t); holdRef.current.t = null }
+    if (holdRef.current.i) { clearInterval(holdRef.current.i); holdRef.current.i = null }
+  }
+  useEffect(() => stopHold, [])
+
   if (!slot) return null
 
   const cat = CATS.find((c) => CAT_TO_SLOT[c.id] === slot)
@@ -217,16 +226,6 @@ export default function DyeDialog() {
   // (0,0,0) 즉시 초기화(색상 계열도 전체로).
   const resetHsb = () => { setHsb({ h: 0, s: 0, b: 0, t: 0 }); setRaw({ h: '0', s: '0', b: '0' }) }
 
-  // ── +/− 스테퍼 ──────────────────────────────────────────────────────────
-  // 슬라이더만으론 모바일에서 1 단위 미세조정이 사실상 불가능하다(손가락 폭 > 1px).
-  // 슬라이더는 큰 이동, 스테퍼는 미세조정 — 역할을 나눈다.
-  // 누르고 있으면 400ms 뒤부터 70ms 간격 반복(길게 끌 땐 슬라이더를 쓰면 되므로 가속은 넣지 않는다).
-  const holdRef = useRef<{ t: ReturnType<typeof setTimeout> | null; i: ReturnType<typeof setInterval> | null }>({ t: null, i: null })
-  const stopHold = () => {
-    if (holdRef.current.t) { clearTimeout(holdRef.current.t); holdRef.current.t = null }
-    if (holdRef.current.i) { clearInterval(holdRef.current.i); holdRef.current.i = null }
-  }
-  useEffect(() => stopHold, [])
   const bump = (f: 'h' | 's' | 'b', d: number) => {
     setHsb((h) => {
       const n = clampDye(f, (h[f] ?? 0) + d)
@@ -315,16 +314,16 @@ export default function DyeDialog() {
               </div>
             )
           ) : (
-            <div style={css('display:flex; gap:24px;')}>
-              <div style={css('flex:0 0 auto; width:348px; display:flex; flex-direction:column; align-items:center; gap:8px;')}>
-                <div style={css('width:348px; height:390px; border-radius:14px; border:1px solid #eee6dc; background:#f7f2ec; display:flex; align-items:center; justify-content:center; overflow:hidden;')}>
-                  {item ? <DyeModelPreview item={item} hsb={hsb} zoom={dyeZoom} /> : null}
+            <div style={css(`display:flex; ${mobile ? 'flex-direction:column;' : ''} gap:${mobile ? 14 : 24}px;`)}>
+              <div style={css(`flex:0 0 auto; width:${mobile ? '100%' : '348px'}; display:flex; flex-direction:column; align-items:center; gap:8px;`)}>
+                <div style={css(`width:100%; ${mobile ? 'max-width:none' : 'max-width:348px'}; height:${mobile ? 240 : 390}px; border-radius:14px; border:1px solid #eee6dc; background:#f7f2ec; display:flex; align-items:center; justify-content:center; overflow:hidden;`)}>
+                  {item ? <DyeModelPreview item={item} hsb={hsb} zoom={dyeZoom} box={mobile ? { w: 260, h: 232 } : DIALOG_CANVAS} /> : null}
                 </div>
                 <div style={css('display:flex; gap:4px;')}>
                   {[1, 2, 3].map((z) => <button key={z} onClick={() => setDyeZoom(z)} style={css(zoomPill(dyeZoom === z))}>{z}x</button>)}
                 </div>
               </div>
-              <div style={css('flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:16px;')}>
+              <div style={css(`flex:${mobile ? '0 0 auto' : '1 1 0'}; min-width:0; width:100%; display:flex; flex-direction:column; gap:${mobile ? 14 : 16}px;`)}>
                 <div>
                   <div style={css('font-size:12px; font-weight:600; color:#a89e93; margin-bottom:6px;')}>색상 계열</div>
                   <select value={hsb.t ?? 0} onChange={(e) => setHsb((h) => ({ ...h, t: Number(e.target.value) }))}

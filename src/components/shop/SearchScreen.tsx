@@ -7,9 +7,9 @@ import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
 import { css } from '@/lib/style'
 import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
-import { CAT_TO_SLOT, SLOT_TO_CAT, THUMB_VIEW, fixedExpr, forceMyModel, thumbView } from '@/lib/shopData'
+import { CAT_TO_SLOT, SLOT_TO_CAT, THUMB_VIEW, animaLayers, fixedExpr, forceMyModel, thumbView } from '@/lib/shopData'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
-import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { badgeUrl, loadAnima, loadMeta, type AnimaRace, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
 import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
 import { useShop, type GenderFilter, type ListMode } from './ShopContext'
@@ -47,7 +47,9 @@ export default function SearchScreen() {
   const mobile = stacked
   const searched = s.searchQuery !== null
   const gaze = s.pv.gaze
-  const tv = thumbView(gaze)
+  const tv = thumbView(gaze, undefined, undefined, s.pv.weapon) // base(그냥 모델): 무기모션만, 귀/형상변이 ✗
+  const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
+  useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
   const mode = s.listMode
   const gf = s.genderFilter
   const catLabel = SEARCH_CATS.find((c) => c.id === cat)?.label || '전체'
@@ -86,7 +88,7 @@ export default function SearchScreen() {
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 모델: 우측 미리보기의 염색(발색/HSB)까지 동일 반영 → 키에 염색 시그니처 포함(코디 탭과 동일).
     const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
-    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}`
+    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return
     const eqIds = (mode === 'mymodel' || needMy) ? myEq.map(([, it]) => it.id) : []
     const ids = Array.from(new Set([bodyId, headId, ...eqIds]))
@@ -104,8 +106,12 @@ export default function SearchScreen() {
           // 표정 얼굴장식을 착용 중이면 이 슬롯 컨텍스트의 표정이 'default' 가 아니다. 단 후보가 들어갈
           // 슬롯의 착용품은 빠지므로(faceAcc 결과를 보는 중이면 내 얼굴장식은 제외) 슬롯마다 다르다.
           const cexpr = fixedExpr(myEq.filter(([sl]) => sl !== slot).map(([, it]) => it), THUMB_VIEW.expression)
-          const cview = thumbView(gaze, cexpr).view
-          const items = [...baseItems]
+          const cview = thumbView(gaze, cexpr, s.pv.ear, s.pv.weapon).view
+          // 내 모델: 몸통/머리를 cview(귀 반영)로 다시 짜고 형상변이를 더한다(baseItems 는 귀/형상변이 없는 그냥-모델용).
+          const items: AssembleInput[] = []
+          if (body) items.push({ itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, cview) })
+          if (head) items.push({ itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, cview) })
+          if (head) items.push(...animaLayers(s.pv.form, animaRaces))
           const dyeMetas: ItemMeta[] = []
           let faceMeta: ItemMeta | null = null
           for (const [sl, it] of myEq) {
@@ -130,7 +136,7 @@ export default function SearchScreen() {
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
+  }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect, s.pv.form, s.pv.ear, s.pv.weapon, animaRaces])
 
   const ctxFor = (item: ListItem): Ctx => {
     const em = effMode(item)
@@ -159,7 +165,7 @@ export default function SearchScreen() {
           )}
           <div style={css(thumbBox + ' position:relative;')}>
             <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} override={c.override} ctxEffs={c.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}}
-              ctxExpr={c.expr} faceMeta={c.faceMeta} dye={em === 'mymodel' ? { palette: s.dyePalette, hsb: s.dyeHsb } : undefined} />
+              ctxExpr={c.expr} faceMeta={c.faceMeta} dye={em === 'mymodel' ? { palette: s.dyePalette, hsb: s.dyeHsb } : undefined} ear={em === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={em === 'mymodel'} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
@@ -183,10 +189,11 @@ export default function SearchScreen() {
 
   return (
     <section style={css(`${mobile ? `flex:0 0 auto; width:100%; height:${MOBILE_H.search}` : stacked ? 'flex:1 1 auto; width:100%' : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>
-      {/* 헤더: 코디탭과 동일 구조(부위 드롭다운 + 표시모드 토글 + 베타 배지 + 페이지) + 검색 입력 행 */}
-      <div style={css('flex:0 0 auto; border-bottom:1px solid #f0e9e1; display:flex; flex-direction:column;')}>
-        {/* 상단 바 — 코디 헤더와 동일 크기(58px) → 탭 전환 시 시프트 없음, 아래 입력행만 추가됨 */}
-        <div style={css(`flex:0 0 auto; ${mobile ? `flex-wrap:wrap; min-height:50px; padding:7px ${phone ? 12 : 16}px;` : narrow ? 'flex-wrap:wrap; min-height:58px; padding:9px 16px;' : 'height:58px; padding:0 22px;'} display:flex; align-items:center; gap:${narrow ? 8 : 12}px;`)}>
+      {/* 헤더: 코디탭과 동일 구조(부위 드롭다운 + 표시모드 토글 + 베타 배지 + 페이지) + 검색 입력 행.
+          프리셋과 동일한 레이아웃 규칙 — 상단 바(자체 하단 border) → 입력 섹션 → 좌우 여백 있는 inset 선. */}
+      <div style={css('flex:0 0 auto; display:flex; flex-direction:column;')}>
+        {/* 상단 바 — 코디 헤더와 동일 크기(58px) → 탭 전환 시 시프트 없음. 프리셋 헤더처럼 자체 하단 border 로 닫는다. */}
+        <div style={css(`flex:0 0 auto; ${mobile ? `flex-wrap:wrap; min-height:50px; padding:7px ${phone ? 12 : 16}px;` : narrow ? 'flex-wrap:wrap; min-height:58px; padding:9px 16px;' : 'height:58px; padding:0 22px;'} display:flex; align-items:center; gap:${narrow ? 8 : 12}px; border-bottom:1px solid #f0e9e1;`)}>
           {/* 부위 선택 + 표시모드 토글 (모바일=한 줄 space-between)
               flex:1 1 0(basis 0) + 안쪽 0-0-auto 버튼 조합이 half 폭에서 페이지 입력을 뚫고 겹치던 원인.
               좁은 화면은 자연 폭 + wrap 으로 전환. */}
@@ -251,18 +258,20 @@ export default function SearchScreen() {
             <span style={css('flex:0 0 auto; font-size:11px; font-weight:600; color:#d76d9a; background:#fce9f1; padding:3px 8px; border-radius:20px; white-space:nowrap;')}>베타 · 재미용</span>
           </div>
         </div>
-        {/* 추가 입력 행(상단 58px 바 아래) — 검색 입력 + AI 검색 버튼(높이 38) */}
+        {/* LLM 입력 섹션(상단 58px 바 아래) — 검색 입력 + AI 검색 버튼(높이 34) */}
         <div style={css(`flex:0 0 auto; padding:${mobile ? `0 ${phone ? 12 : 16}px 9px` : narrow ? '0 16px 10px' : '2px 22px 12px'}; display:flex; gap:8px; flex-wrap:wrap; align-items:center;`)}>
           {/* 모바일에서 입력·버튼이 각각 100% 를 먹어 2행(84px)을 잡아먹었다 → 한 행으로 합쳐 그리드에 돌려준다. */}
           <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') run() }} placeholder={phone ? '생김새로 검색 (예: 동물 귀)' : '아이템 생김새를 적어보세요 (예: 여자 단발 헤어, 동물 귀)'}
             style={css(`flex:1 1 ${phone ? '0' : '200px'}; min-width:0; height:34px; padding:0 12px; border:1.5px solid #eeb2ce; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; color:#3d372f; outline:none; transition:border-color .14s ease;`)} />
           <button onClick={() => run()} disabled={s.searchLoading} className="pb-h-solid" style={css(`flex:0 0 auto; height:34px; padding:0 ${phone ? 14 : 18}px; border:none; border-radius:8px; background:${s.searchLoading ? '#f0aecb' : '#ec86ac'}; color:#fff; font-family:inherit; font-size:13px; font-weight:600; cursor:${s.searchLoading ? 'default' : 'pointer'}; white-space:nowrap; transition:background .18s ease, filter .18s ease;`)}>{s.searchLoading ? '검색 중…' : 'AI 검색'}</button>
         </div>
+        {/* 프리셋과 동일한 "완전히 닫히지 않은" inset 선 — 입력 섹션과 결과 캐러셀 구분 */}
+        <div style={css(`flex:0 0 auto; height:1px; margin:0 ${mobile ? (phone ? 12 : 16) : narrow ? 16 : 22}px; background:#f0e9e1;`)} />
       </div>
 
       {/* 결과 캐러셀 — 코디탭과 동일 */}
       {/* 모바일은 pan-y — 세로는 문서 스크롤(브라우저), 가로는 페이지 넘김(우리). CodiScreen 주석 참고. */}
-      <div ref={s.bindVp} style={css(`flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:${mobile ? 'pan-y' : 'none'}; cursor:grab; user-select:none;`)}>
+      <div ref={s.bindVp} style={css(`flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:${mobile ? 'pan-y' : 'none'}; cursor:${mobile ? 'grab' : 'default'}; user-select:none;`)}>
         {s.searchLoading ? (
           <div style={css('width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;')}>
             <div className="pb-spin" style={{ width: 26, height: 26, borderColor: 'rgba(236,134,172,.35)', borderTopColor: '#ec86ac' }} />

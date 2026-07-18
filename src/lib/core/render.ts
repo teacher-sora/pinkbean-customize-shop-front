@@ -91,6 +91,11 @@ export interface RenderOpts {
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
   centerX?: boolean                  // pin the body NAVEL to a fixed box point (center X, anchor.y) in BOTH axes →
                                      //   body never moves regardless of sprite/equipment/effect size (body-based, not bbox)
+  centerXOnly?: boolean              // 가로(X)만 body navel 로 동적 중앙정렬, 세로(Y)는 anchor.y 그대로 → navel 이
+                                     //   프레임마다 상하로 "드리프트"할 수 있다(전투대기 등에서 다리 고정·상체 상하 모션 유지).
+                                     //   라이딩처럼 포즈별 가로 폭이 달라 X 정렬은 필요하지만 Y 는 애니메이션대로 둬야 할 때.
+  centerMount?: boolean              // 캐릭터가 아니라 "마운트(mount* 레이어)"의 실제 스프라이트 bbox 가로중심을 캔버스
+                                     //   중앙에 둔다(메탈아머처럼 메카가 주 비주얼일 때 — 조종사 중앙정렬하면 메카가 치우침).
   cors?: boolean                     // load sprites with CORS(?cors=1). DEFAULT true so ALL canvas renders(코디 카드·
                                      //   미리보기·다이얼로그)와 염색(픽셀리드)이 한 캐시를 공유 → 장착 시 재fetch 없음,
                                      //   염색도 재fetch 없음. (Cloudflare 는 ?cors=1 에 CORS 헤더를 주므로 모두 성공.)
@@ -131,12 +136,24 @@ export async function renderCharacter(
   // 커지거나 액션으로 팔·다리가 움직여도 몸통(navel)은 절대 이동하지 않는다. 확대 기준도 합성 스프라이트
   // 전체 bbox 가 아니라 항상 몸통 기준(고정 박스). 이것이 스프라이트를 제외한 모든 모델 뷰의 단일 규칙이다.
   let anchorX = opts.anchor.x, anchorY = opts.anchor.y
-  if (opts.centerX && placed.length) {
+  if (opts.centerMount && placed.length) {
+    // 마운트(mount* 레이어)의 실제 스프라이트 가로 bbox 중심을 캔버스 중앙에. 스프라이트 폭은 로드된 이미지에서.
+    let minX = Infinity, maxX = -Infinity
+    for (const p of placed) {
+      if (!p.name.startsWith('mount')) continue
+      const src = opts.override?.get(p.png) ?? imgs.get(p.png)
+      const w = (src as HTMLImageElement | HTMLCanvasElement | undefined)?.width ?? 0
+      if (p.x < minX) minX = p.x
+      if (p.x + w > maxX) maxX = p.x + w
+    }
+    if (minX < maxX) anchorX = opts.box.w / 2 - (minX + maxX) / 2
+  } else if ((opts.centerX || opts.centerXOnly) && placed.length) {
     const body = placed.find((p) => p.name === 'body') || placed[0]
     const nav = body.map?.navel
     if (nav) {
       anchorX = opts.box.w / 2 - (body.x + body.origin.x + nav.x)
-      anchorY = opts.anchor.y - (body.y + body.origin.y + nav.y)
+      // Y 핀은 centerX 만. centerXOnly 는 anchor.y 유지 → navel 이 프레임마다 상하 드리프트(상체 상하 모션, 다리 고정).
+      if (opts.centerX) anchorY = opts.anchor.y - (body.y + body.origin.y + nav.y)
     } else {
       const src = opts.override?.get(body.png) ?? imgs.get(body.png)
       if (src) anchorX += opts.box.w / 2 - (opts.anchor.x + body.x + (src as HTMLImageElement).width / 2)

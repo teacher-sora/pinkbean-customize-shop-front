@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer, type ViewOpts } from '@/lib/core/assemble'
-import { loadMeta, type ItemMeta } from '@/lib/core/data'
+import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
+import { loadAnima, loadMeta, type AnimaRace, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { collectWornEffects } from '@/lib/core/thumbEffects'
-import { CARD_FRACTION, CARD_MARGIN, THUMB_VIEW, isColorLineSkin } from '@/lib/shopData'
-import { useShop, type Snapshot } from './ShopContext'
+import { CARD_FRACTION, CARD_MARGIN, animaLayers, isColorLineSkin, thumbView } from '@/lib/shopData'
+import { PV_SNAP_DEFAULT, useShop, type Snapshot } from './ShopContext'
 
 // 스냅샷(착용+톤+염색)을 실제 모델로 합성해 부모 div 중앙에 그린다.
 // 코디/미리보기와 동일한 computeModelPlacement 규칙 → 어디서 쓰든 모델 비율이 같다.
@@ -18,15 +18,18 @@ import { useShop, type Snapshot } from './ShopContext'
 export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN }: {
   snap: Snapshot; fraction?: number; margin?: number
 }) {
-  const { index, pv } = useShop()
+  const { index } = useShop()
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [ov, setOv] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effects, setEffects] = useState<EffectDraw[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
+  const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  // 스냅샷 또는 이펙트 토글이 변하면 재합성(토글 끄면 카드에서도 이펙트가 사라져야 한다)
-  const key = useMemo(() => JSON.stringify(snap) + `|${pv.wEffect}${pv.cEffect}`, [snap, pv.wEffect, pv.cEffect])
+  useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
+  // 프리셋은 "저장된 연출설정(snap.pv)"을 쓴다(형상변이·귀·무기모션·이펙트토글). 시선은 적용 안 함(왼쪽 고정).
+  const spv = snap.pv ?? PV_SNAP_DEFAULT
+  const key = useMemo(() => JSON.stringify(snap) + `|${animaRaces.length}`, [snap, animaRaces.length])
 
   useEffect(() => {
     if (!index) return
@@ -46,12 +49,14 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
       // 표정 얼굴장식(fixedEmotion)이 프리셋에 들어있으면 그 표정으로 굳는다. 없으면 종전대로 THUMB_VIEW.
       // 프리셋 스냅샷은 id 만 담으므로 표정은 meta 에서 읽는다.
       const snapExpr = equipMetas.find(({ meta }) => meta.fixedEmotion)?.meta.fixedEmotion
-      const TV: ViewOpts = snapExpr ? { ...THUMB_VIEW, expression: snapExpr } : THUMB_VIEW
+      // 시선=왼쪽 고정(gaze='left' → action=stand1, flip 없음) + 저장된 귀/무기모션 반영.
+      const TV = thumbView('left', snapExpr, spv.ear, spv.weapon).view
       const items: AssembleInput[] = [
         { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, TV) },
         { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, TV) },
         // name 은 투명 아이템 판별에 쓰인다 — 없으면 투명 모자/장식이 헤어·얼굴을 가려 구멍이 생긴다.
         ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: getFrameLayers(meta, TV), invisibleFace: meta.invisibleFace, name: meta.name })),
+        ...animaLayers(spv.form, animaRaces), // 형상변이 — 프리셋에 저장된 값
       ]
       const { placed: p, anchors } = assemble(items, index.zmap, index.smap)
       // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (옛 프리셋엔 dye 키가 없을 수 있어 방어)
@@ -67,12 +72,12 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
       const bnav = curBody?.map?.navel
       const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
       const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
-      const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id })), pv, snap.dyeHsb || {}, overrides).catch(() => [])
+      const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id })), spv, snap.dyeHsb || {}, overrides).catch(() => [])
       const effDraws: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, TV.action, { foot, brow }, 0))
       if (alive) { setPlaced(p); setOv(overrides); setEffects(effDraws) }
     })().catch(() => {})
     return () => { alive = false }
-  }, [key, index, pv])
+  }, [key, index, animaRaces, spv])
 
   useEffect(() => {
     const el = wrapRef.current

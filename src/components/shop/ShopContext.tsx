@@ -28,7 +28,10 @@ const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
 // AI 코디 검색 백엔드(Fly.io). 로컬/배포에서 NEXT_PUBLIC_SEARCH_API 로 덮어쓸 수 있음.
 const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김. (공유 코드/영속에 이 형태 그대로 저장)
-export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean> }
+// 프리셋에 저장하는 연출설정 일부(형상변이·귀·무기모션·이펙트토글·배율). 시선/액션/표정은 "보는 순간의 상태"라 저장 안 함.
+export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; zoom: number }
+export const PV_SNAP_DEFAULT: PvSnap = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, zoom: 2 }
+export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; pv?: PvSnap }
 
 // ── 프리셋: 20개, 초깃값은 코디 기본(녹셀 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
 const PRESET_COUNT = 20
@@ -276,9 +279,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!index || slot === 'skin') return
     if (lists[slot] !== undefined || loadingSlots.current.has(slot)) return
     const summary = index.slots.find((s) => s.slot === slot)
-    if (!summary) { setLists((m) => ({ ...m, [slot]: [] })); return }
+    // [dev] 라이딩은 CDN index 에 없고 프론트 로컬 public 에서 서빙(절대경로 → data.ts url() 패스스루).
+    const file = slot === 'riding' ? '/riding/riding.json' : summary?.file
+    if (!file) { setLists((m) => ({ ...m, [slot]: [] })); return }
     loadingSlots.current.add(slot)
-    loadSlot(summary.file)
+    loadSlot(file)
       .then((l) => setLists((m) => ({ ...m, [slot]: foldList(l) }))) // fold: 헤어/성형=검정 대표 1개, 장비=이름당 1개
       .catch(() => setLists((m) => ({ ...m, [slot]: [] })))
       .finally(() => loadingSlots.current.delete(slot))
@@ -523,7 +528,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const snapshot = (): Snapshot => {
     const eq: Record<string, string> = {}
     for (const [s, it] of Object.entries(equipped)) if (it) eq[s] = it.id
-    return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden } }
+    return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden },
+      pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, zoom: pv.zoom } }
+  }
+  // 스냅샷의 연출설정(pv 일부)을 라이브 pv 에 반영(없으면 기본값). 시선/액션/표정/fps 는 건드리지 않는다.
+  const applyPvSnap = (v?: PvSnap) => {
+    const s = v ?? PV_SNAP_DEFAULT
+    setPvState((prev) => ({ ...prev, form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, zoom: s.zoom }))
   }
   // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
   const loadSlotFolded = async (slot: string): Promise<ListItem[]> => {
@@ -558,6 +569,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setEquipped(eq)
     setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
     setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
+    applyPvSnap(snap.pv)
     // 되돌리기/다시실행은 편집 중이던 아이템 선택(dyeTarget)을 유지(여전히 착용/스킨일 때) → 염색만 되돌아가고 선택은 유지.
     if (keepTarget) setDyeTarget((t) => (t && (t === 'skin' || eq[t]) ? t : null))
     else setDyeTarget(null)
@@ -573,6 +585,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setEquipped(eq)
       setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
       setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
+      applyPvSnap(snap.pv)
       setDyeTarget(null); setSelectedPreset(id)
     }).catch(() => {})
   }

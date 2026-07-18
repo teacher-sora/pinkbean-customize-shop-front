@@ -28,6 +28,7 @@ export const CATS: Cat[] = [
   { id: 'cape', label: '망토' },
   { id: 'weapon', label: '무기' },
   { id: 'shield', label: '방패' },
+  { id: 'riding', label: '라이딩' }, // [dev] 탑승(재규어/메탈아머) — 정적 코디 아이템, AI검색 제외
 ]
 
 export const PRIMARIES = [

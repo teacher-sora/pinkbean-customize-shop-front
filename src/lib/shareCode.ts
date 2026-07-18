@@ -23,6 +23,7 @@ export function encodeShareCode(snap: Snapshot): string {
   if (snap.dyePalette && Object.keys(snap.dyePalette).length) min.p = snap.dyePalette
   if (snap.dyeHsb && Object.keys(snap.dyeHsb).length) min.h = snap.dyeHsb
   if (snap.hidden && Object.keys(snap.hidden).length) min.x = snap.hidden
+  if (snap.pv) min.v = snap.pv // 연출설정 일부(형상변이·귀·무기·이펙트·배율)
   return PREFIX + b64urlEncode(JSON.stringify(min))
 }
 
@@ -38,6 +39,7 @@ export function decodeShareCode(code: string): Snapshot | null {
       dyePalette: (m.p as Snapshot['dyePalette']) || {},
       dyeHsb: (m.h as Snapshot['dyeHsb']) || {},
       hidden: (m.x as Snapshot['hidden']) || {},
+      pv: (m.v as Snapshot['pv']) || undefined, // 구버전 코드엔 없음 → 기본값으로 복원
     }
   } catch {
     return null

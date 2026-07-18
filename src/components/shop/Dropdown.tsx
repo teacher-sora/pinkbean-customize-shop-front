@@ -18,11 +18,13 @@ interface Props {
   options?: Opt[]
   groups?: { group: string; items: Opt[] }[]
   width?: number
+  disabled?: Set<string> // 선택 불가 항목(연하게 + 취소선, 클릭 무시) — 라이딩 중 불가 액션
+  blocked?: boolean      // 컨트롤 전체 비활성(버튼 연하게 + 열리지 않음) — 라이딩 중 형상변이 확장 차단
 }
 
 const CLOSE_MS = 180 // 닫힘 애니메이션 길이(.pb-collapse-out 와 일치)
 
-export default function Dropdown({ value, onChange, options, groups, width = 190 }: Props) {
+export default function Dropdown({ value, onChange, options, groups, width = 190, disabled, blocked }: Props) {
   const [open, setOpen] = useState(false)
   const [closing, setClosing] = useState(false) // 닫힘 애니메이션 재생 중(언마운트 지연)
   const [pos, setPos] = useState<{ left: number; width: number; top?: number; bottom?: number; maxH: number } | null>(null)
@@ -94,6 +96,13 @@ export default function Dropdown({ value, onChange, options, groups, width = 190
   const btn = `width:100%; height:34px; padding:0 11px; display:flex; align-items:center; justify-content:space-between; gap:8px; border:1px solid ${active ? '#eeb2ce' : '#e7ded4'}; border-radius:8px; background:${active ? '#fdf4f8' : '#faf7f3'}; font-family:inherit; font-size:13px; color:#3d372f; cursor:pointer; transition:border-color .18s ease, background .18s ease;`
 
   const optBtn = (o: Opt) => {
+    const dis = !!disabled?.has(o.v)
+    if (dis) {
+      // 선택 불가: 연하게 + 취소선. 클릭/호버 반응 없음(라이딩 중 불가 액션·형상변이).
+      return (
+        <span key={o.v} style={css('display:block; width:100%; text-align:left; height:30px; line-height:30px; padding:0 9px; border-radius:6px; font-size:12.5px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#c7bdb2; text-decoration:line-through; text-decoration-color:#dcd3c8; opacity:.7; cursor:default;')}>{o.l}</span>
+      )
+    }
     const on = o.v === value, h = hov === o.v && !on
     return (
       <button key={o.v} data-sel={on ? '1' : undefined} onClick={() => { onChange(o.v); animateClose() }} onMouseEnter={() => setHov(o.v)} onMouseLeave={() => setHov(null)}
@@ -103,7 +112,7 @@ export default function Dropdown({ value, onChange, options, groups, width = 190
 
   return (
     <div style={{ ...css('position:relative;'), flex: `0 0 ${width}px` }}>
-      <button ref={btnRef} onClick={() => (active ? animateClose() : openMenu())} style={css(btn)}>
+      <button ref={btnRef} disabled={blocked} onClick={() => { if (blocked) return; active ? animateClose() : openMenu() }} style={css(btn + (blocked ? ' opacity:.5; cursor:not-allowed; text-decoration:line-through; text-decoration-color:#dcd3c8;' : ''))}>
         <span style={css('white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>{cur?.l}</span>
         <span style={css(`font-size:10px; color:#a89e93; transition:transform .18s ease; transform:rotate(${active ? '180deg' : '0deg'});`)}>▾</span>
       </button>

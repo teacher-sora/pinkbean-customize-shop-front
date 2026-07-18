@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
 import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
-import { badgeUrl, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { badgeUrl, loadAnima, loadMeta, type AnimaRace, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
 import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
-import { CAT_TO_SLOT, SLOT_TO_CAT, THUMB_VIEW, fixedExpr, forceMyModel, hasFixedExpr, isColorLineSkin, thumbView } from '@/lib/shopData'
+import { CAT_TO_SLOT, SLOT_TO_CAT, THUMB_VIEW, animaLayers, fixedExpr, forceMyModel, hasFixedExpr, isColorLineSkin, thumbView } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop, type GenderFilter, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
@@ -44,12 +44,17 @@ export default function CodiScreen() {
   // '전체'는 부위가 섞이므로 토글은 잠그지 않고, 아이템별로 헤어/피부만 모델로 승격한다(검색 탭과 동일).
   const noSprite = isHairCat || isSkinCat
   const mode: ListMode = noSprite && s.listMode === 'sprite' ? 'model' : s.listMode
+  // '전체' 탭 sprite 모드라도 헤어는 모델로 승격(스프라이트=모델) → 베이스(몸통/머리) ctx 가 필요하다.
+  //   (피부는 자체 몸통/머리를 self 로 그려 ctx 불필요. 헤어는 베이스 위에 얹으므로 ctx 없으면 안 그려진다.)
+  const spritePromote = mode === 'sprite' && list.some((it) => it.slot === 'hair')
   // 표정 얼굴장식은 '모델'(맨 마네킹)에 올려도 아무것도 안 보인다(성형이 없어 바뀔 얼굴이 없다) → '내 모델'로 승격.
   const effMode = (it: ListItem): ListMode =>
     forceMyModel(mode, it) ? 'mymodel'
       : (mode === 'sprite' && (it.slot === 'hair' || it.slot === 'skin')) ? 'model' : mode
   const gf = s.genderFilter
   const gaze = s.pv.gaze // 시선(왼/오/뒷)을 썸네일에도 반영
+  const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
+  useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
   const activeSlotForExpr = isAll ? null : CAT_TO_SLOT[s.activeCat]
   // 배경(내 착용)에 구워질 표정. 활성 슬롯의 아이템은 배경에서 빠지므로(후보로 대체됨) 여기서도 제외한다.
   // ⚠️ 폴백은 THUMB_VIEW 의 'default' — 카드는 원래 연출 설정 표정을 따라가지 않는다. 표정 얼굴장식이
@@ -60,7 +65,7 @@ export default function CodiScreen() {
       : [],
     THUMB_VIEW.expression,
   )
-  const tv = thumbView(gaze, ctxExpr)
+  const tv = thumbView(gaze, ctxExpr, s.pv.ear, s.pv.weapon)
 
   // 모델/내모델 공통 배경(base 또는 내 착용) 조립 입력 + 키
   // 표정 얼굴장식은 '모델'(맨 마네킹)에 올리면 아무것도 안 보여서 '내 모델'로 승격해 보여준다(effMode).
@@ -72,7 +77,7 @@ export default function CodiScreen() {
   const ctxKeyRef = useRef('')
   useEffect(() => {
     const idx = s.index
-    if (mode === 'sprite' || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx(EMPTY_CTX); setMyCtx(EMPTY_CTX) } return }
+    if ((mode === 'sprite' && !spritePromote) || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx(EMPTY_CTX); setMyCtx(EMPTY_CTX) } return }
     let alive = true
     const toneEntry = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
     const bodyId = toneEntry.body, headId = toneEntry.head
@@ -83,7 +88,7 @@ export default function CodiScreen() {
     const eqSig = (mode === 'mymodel' || needMy ? myEq : []).map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 모델: 우측 미리보기에 적용된 염색(발색/HSB)을 썸네일 배경(내 착용)에도 동일 반영 → 키에 염색 시그니처 포함.
     const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
-    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}:${ctxExpr}`
+    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}:${ctxExpr}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
     // ⚠️ ctxKeyRef 는 async 가 "실제로 setCtx 로 커밋된 뒤"에만 찍는다. StrictMode(dev)는 mount 시
     // setup→cleanup→setup 을 돌리는데, 커밋 전에 ref 를 찍어두면 두 번째 setup 이 key===ref 로 early-return
@@ -93,8 +98,10 @@ export default function CodiScreen() {
       if (!alive) return
       const map = new Map(res.filter(Boolean).map((r) => r!))
       // 한 벌의 메타로 컨텍스트를 만든다. worn=[] 이면 base(맨 마네킹) = '모델' 모드.
-      const build = async (worn: [string, ListItem][], expr: string, k: string): Promise<Ctx> => {
-        const view = thumbView(gaze, expr).view
+      // isMy = "내 모델"(내 착용 배경) 컨텍스트. 형상변이·귀·이펙트는 코디 취급 → 내 모델에만 적용.
+      //   그냥 '모델'(맨 마네킹 + 후보 아이템)엔 무기모션·피부·시선만 적용(형상변이·귀 ✗).
+      const build = async (worn: [string, ListItem][], expr: string, k: string, isMy: boolean): Promise<Ctx> => {
+        const view = thumbView(gaze, expr, isMy ? s.pv.ear : undefined, s.pv.weapon).view
         const items: AssembleInput[] = []
         if (!isSkinCat) {
           const body = map.get(bodyId), head = map.get(headId)
@@ -105,6 +112,7 @@ export default function CodiScreen() {
           const m = map.get(it.id); if (!m) continue
           items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, view), invisibleFace: m.invisibleFace, name: m.name })
         }
+        if (!isSkinCat && isMy) items.push(...animaLayers(s.pv.form, animaRaces)) // 형상변이 — 내 모델에만
         let override = new Map<string, HTMLCanvasElement>()
         let effs: WornEff[] = []
         if (worn.length) {
@@ -119,15 +127,15 @@ export default function CodiScreen() {
         const faceEntry = worn.find(([sl]) => sl === 'face')
         return { items, key: k, override, effs, expr, faceMeta: faceEntry ? (map.get(faceEntry[1].id) ?? null) : null }
       }
-      const main = await build(eqEntries, ctxExpr, key)
+      const main = await build(eqEntries, ctxExpr, key, mode === 'mymodel')
       // 승격 카드용 '내 모델' 배경. 표정은 각 카드가 자기 fixedEmotion 으로 다시 그리므로 여기선 'default'.
-      const my = needMy ? await build(myEq, THUMB_VIEW.expression, `${key}:my`) : EMPTY_CTX
+      const my = needMy ? await build(myEq, THUMB_VIEW.expression, `${key}:my`, true) : EMPTY_CTX
       if (!alive) return
       ctxKeyRef.current = key // 커밋 성공 시에만 기록(위 주석 참고)
       setCtx(main); setMyCtx(my)
     })
     return () => { alive = false }
-  }, [mode, needMy, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect])
+  }, [mode, needMy, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect, s.pv.form, s.pv.ear, s.pv.weapon, animaRaces, spritePromote])
 
   const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * s.itemsPerPage, p * s.itemsPerPage + s.itemsPerPage))
   const gridStyle = `display:grid; grid-template-columns:repeat(${s.cols},minmax(0,1fr)); grid-template-rows:repeat(${s.rows},1fr); gap:${s.bp === 'mobile' ? 10 : 16}px; height:100%;`
@@ -176,7 +184,7 @@ export default function CodiScreen() {
           )}
           <div style={css(thumbBox + ' position:relative;')}>
             <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} override={c.override} ctxEffs={c.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
-              ctxExpr={c.expr} faceMeta={c.faceMeta} dye={em === 'mymodel' ? { palette: s.dyePalette, hsb: s.dyeHsb } : undefined} />
+              ctxExpr={c.expr} faceMeta={c.faceMeta} dye={em === 'mymodel' ? { palette: s.dyePalette, hsb: s.dyeHsb } : undefined} ear={em === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={em === 'mymodel'} />
             {badgeKind && (
               <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} title={badgeKind} onError={(e) => { e.currentTarget.style.display = 'none' }}
                 style={{ position: 'absolute', bottom: 4, left: 4, height: badgeKind === 'cash' ? 14 : 17, imageRendering: 'pixelated', zIndex: 2 }} />
@@ -281,7 +289,7 @@ export default function CodiScreen() {
       {/* touch-action:none 은 브라우저 패닝을 전부 막아 모바일 문서 스크롤까지 죽인다 →
           모바일은 pan-y(세로=페이지 스크롤은 브라우저에, 가로=페이지 넘김은 우리에게).
           세로로 끌면 브라우저가 pointercancel 을 쏘고 ShopContext 가 이를 onUp 으로 받아 스와이프를 취소한다. */}
-      <div ref={s.bindVp} style={css(`flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:${mobile ? 'pan-y' : 'none'}; cursor:grab; user-select:none;`)}>
+      <div ref={s.bindVp} style={css(`flex:1 1 auto; min-height:0; overflow:hidden; position:relative; touch-action:${mobile ? 'pan-y' : 'none'}; cursor:${mobile ? 'grab' : 'default'}; user-select:none;`)}>
         {loading ? (
           <div style={css(`width:100%; height:100%; padding:${mobile ? '10px 12px' : '18px 22px'};`)}>
             <div style={css(gridStyle)}>
