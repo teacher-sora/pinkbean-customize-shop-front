@@ -259,7 +259,7 @@ export default function SearchScreen() {
           </div>
         </div>
         {/* LLM 입력 섹션(상단 58px 바 아래) — 검색 입력 + AI 검색 버튼(높이 34) */}
-        <div style={css(`flex:0 0 auto; padding:${mobile ? `0 ${phone ? 12 : 16}px 9px` : narrow ? '0 16px 10px' : '2px 22px 12px'}; display:flex; gap:8px; flex-wrap:wrap; align-items:center;`)}>
+        <div style={css(`flex:0 0 auto; padding:${mobile ? `0 ${phone ? 12 : 16}px 9px` : narrow ? '0 16px 10px' : '12px 22px'}; display:flex; gap:8px; flex-wrap:wrap; align-items:center;`)}>
           {/* 모바일에서 입력·버튼이 각각 100% 를 먹어 2행(84px)을 잡아먹었다 → 한 행으로 합쳐 그리드에 돌려준다. */}
           <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') run() }} placeholder={phone ? '생김새로 검색 (예: 동물 귀)' : '아이템 생김새를 적어보세요 (예: 여자 단발 헤어, 동물 귀)'}
             style={css(`flex:1 1 ${phone ? '0' : '200px'}; min-width:0; height:34px; padding:0 12px; border:1.5px solid #eeb2ce; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; color:#3d372f; outline:none; transition:border-color .14s ease;`)} />
