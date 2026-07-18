@@ -69,6 +69,14 @@ const COLOR_IDX: Record<string, number> = {
   '검은색': 0, '검정': 0, '빨간색': 1, '빨강': 1, '주황색': 2, '주황': 2, '노란색': 3, '노랑': 3,
   '초록색': 4, '초록': 4, '녹색': 4, '파란색': 5, '파랑': 5, '보라색': 6, '보라': 6, '갈색': 7, '밤색': 7,
 }
+// 성형(눈) 발색 순서(FACE_PALETTE): 검정0·파랑1·빨강2·초록3·갈색4·에메랄드5·보라6·자수정7.
+// ★ 헤어와 인덱스 의미가 다르다(갈색: 헤어 7 vs 눈 4 / 파랑: 헤어 5 vs 눈 1). 프리셋 가져올 때 성형은 반드시
+//    이 맵을 써야 갈색 눈이 자수정(7)으로, 파란 눈이 에메랄드(5)로 잘못 들어가지 않는다.
+const FACE_COLOR_IDX: Record<string, number> = {
+  '검은색': 0, '검정': 0, '파란색': 1, '파랑': 1, '빨간색': 2, '빨강': 2,
+  '초록색': 3, '초록': 3, '녹색': 3, '갈색': 4, '밤색': 4, '브라운': 4,
+  '에메랄드': 5, '에메랄드색': 5, '보라색': 6, '보라': 6, '자수정': 7, '자수정색': 7,
+}
 // 헤어 이름의 색 접두어("빨간색 리르하 헤어" → "리르하 헤어") 제거.
 const stripColorPrefix = (name: string, color: string | null) => (color && name.startsWith(color) ? name.slice(color.length).trim() : name)
 
@@ -578,9 +586,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return ms[0]
   }
   // 넥슨 헤어/성형 색상 → 내부 믹스 팔레트(baseColor/mixColor 인덱스 + 비율).
-  const colorPalette = (b: NexonBeauty): PaletteParams => {
-    const base = COLOR_IDX[b.baseColor ?? ''] ?? 0
-    const mix = b.mixColor ? (COLOR_IDX[b.mixColor] ?? null) : null
+  const colorPalette = (b: NexonBeauty, isFace = false): PaletteParams => {
+    const idx = isFace ? FACE_COLOR_IDX : COLOR_IDX  // 성형은 눈 색 순서(FACE_PALETTE)로 매핑
+    const base = idx[b.baseColor ?? ''] ?? 0
+    const mix = b.mixColor ? (idx[b.mixColor] ?? null) : null
     return { baseColor: base, mixColor: mix, ratio: mix != null ? (parseInt(b.mixRate, 10) || 50) : 0 }
   }
   // 넥슨 컬러 프리즘 → 내부 HSB. color_range 는 Prism 색상계열(t), 나머지는 그대로 대응된다.
@@ -606,7 +615,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 성형(염색색상)
     if (look.face?.name) {
       const found = matchByName(await loadSlotFolded('face'), stripColorPrefix(look.face.name, look.face.baseColor), gender)
-      if (found) { equipped.face = found.id; dyePalette.face = colorPalette(look.face); matched++ }
+      if (found) { equipped.face = found.id; dyePalette.face = colorPalette(look.face, true); matched++ }
     }
     if (!equipped.face && DEFAULT_EQUIP.face) equipped.face = DEFAULT_EQUIP.face.id
     // 피부(톤 이름 매칭)
