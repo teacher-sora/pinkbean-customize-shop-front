@@ -88,7 +88,7 @@ export default function CodiScreen() {
     const eqSig = (mode === 'mymodel' || needMy ? myEq : []).map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 모델: 우측 미리보기에 적용된 염색(발색/HSB)을 썸네일 배경(내 착용)에도 동일 반영 → 키에 염색 시그니처 포함.
     const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
-    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}:${ctxExpr}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
+    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${ctxExpr}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
     // ⚠️ ctxKeyRef 는 async 가 "실제로 setCtx 로 커밋된 뒤"에만 찍는다. StrictMode(dev)는 mount 시
     // setup→cleanup→setup 을 돌리는데, 커밋 전에 ref 를 찍어두면 두 번째 setup 이 key===ref 로 early-return
@@ -135,7 +135,7 @@ export default function CodiScreen() {
       setCtx(main); setMyCtx(my)
     })
     return () => { alive = false }
-  }, [mode, needMy, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect, s.pv.form, s.pv.ear, s.pv.weapon, animaRaces, spritePromote])
+  }, [mode, needMy, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, animaRaces, spritePromote])
 
   const pages = Array.from({ length: s.pageCount }, (_, p) => list.slice(p * s.itemsPerPage, p * s.itemsPerPage + s.itemsPerPage))
   const gridStyle = `display:grid; grid-template-columns:repeat(${s.cols},minmax(0,1fr)); grid-template-rows:repeat(${s.rows},1fr); gap:${s.bp === 'mobile' ? 10 : 16}px; height:100%;`

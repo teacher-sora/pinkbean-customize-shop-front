@@ -198,6 +198,10 @@ export default function PreviewPanel() {
         <span style={css(PV_LABEL)}>망토 이펙트</span>
         <button onClick={() => s.setPv('cEffect', !pv.cEffect)} style={css(switchTrack(pv.cEffect))}><span style={css(switchKnob(pv.cEffect))} /></button>
       </div>
+      <div style={css('display:flex; align-items:center; justify-content:space-between; gap:12px;')}>
+        <span style={css(PV_LABEL)}>모자 이펙트</span>
+        <button onClick={() => s.setPv('capEffect', !pv.capEffect)} style={css(switchTrack(pv.capEffect))}><span style={css(switchKnob(pv.capEffect))} /></button>
+      </div>
     </div>
   )
 

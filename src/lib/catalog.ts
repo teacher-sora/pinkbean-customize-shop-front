@@ -8,7 +8,7 @@ export type Opt = { v: string; l: string }
 export type Preset = { id: string; name: string }
 export type Pv = {
   action: string; weapon: string; expr: string; ear: string; form: string; gaze: string
-  wEffect: boolean; cEffect: boolean; fps: number; zoom: number
+  wEffect: boolean; cEffect: boolean; capEffect: boolean; fps: number; zoom: number
 }
 
 // 부위(고정 순서 15): 헤어, 성형, 피부, 모자, 얼굴장식, 눈장식, 귀고리, 한벌옷, 상의, 하의, 신발, 장갑, 망토, 무기, 방패

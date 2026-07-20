@@ -16,7 +16,7 @@ export default function PresetScreen() {
     for (const [slot, it] of Object.entries(s.equipped)) if (it) eq[slot] = it.id
     // pv(연출설정 일부)도 담아야 선택된 프리셋 카드에 형상변이·귀·무기·이펙트가 반영된다(SnapThumb 이 snap.pv 사용).
     return { equipped: eq, tone: s.tone, dyePalette: s.dyePalette, dyeHsb: s.dyeHsb, hidden: s.hidden,
-      pv: { form: s.pv.form, ear: s.pv.ear, weapon: s.pv.weapon, wEffect: s.pv.wEffect, cEffect: s.pv.cEffect, zoom: s.pv.zoom } }
+      pv: { form: s.pv.form, ear: s.pv.ear, weapon: s.pv.weapon, wEffect: s.pv.wEffect, cEffect: s.pv.cEffect, capEffect: s.pv.capEffect, zoom: s.pv.zoom } }
   }, [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.pv])
 
   return (

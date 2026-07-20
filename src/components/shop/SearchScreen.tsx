@@ -89,7 +89,7 @@ export default function SearchScreen() {
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 모델: 우측 미리보기의 염색(발색/HSB)까지 동일 반영 → 키에 염색 시그니처 포함(코디 탭과 동일).
     const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.dyePalette, h: s.dyeHsb }) : ''
-    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
+    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return
     const eqIds = (mode === 'mymodel' || needMy) ? myEq.map(([, it]) => it.id) : []
     const ids = Array.from(new Set([bodyId, headId, ...eqIds]))
@@ -137,7 +137,7 @@ export default function SearchScreen() {
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect, s.pv.form, s.pv.ear, s.pv.weapon, animaRaces])
+  }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.dyePalette, s.dyeHsb, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, animaRaces])
 
   const ctxFor = (item: ListItem): Ctx => {
     const em = effMode(item)

@@ -29,8 +29,8 @@ const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
 const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김. (공유 코드/영속에 이 형태 그대로 저장)
 // 프리셋에 저장하는 연출설정 일부(형상변이·귀·무기모션·이펙트토글·배율). 시선/액션/표정은 "보는 순간의 상태"라 저장 안 함.
-export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; zoom: number }
-export const PV_SNAP_DEFAULT: PvSnap = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, zoom: 2 }
+export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; zoom: number }
+export const PV_SNAP_DEFAULT: PvSnap = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, zoom: 2 }
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; pv?: PvSnap }
 
 // ── 프리셋: 20개, 초깃값은 코디 기본(녹셀 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
@@ -199,7 +199,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [partMenuOpen, setPartMenuOpen] = useState(false)
   const [pv, setPvState] = useState<Pv>({
     action: 'basic', weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
-    gaze: 'left', wEffect: true, cEffect: true, fps: 12, zoom: 2,
+    gaze: 'left', wEffect: true, cEffect: true, capEffect: true, fps: 12, zoom: 2,
   })
   const [pvOpen, setPvOpen] = useState(false)
   const [presets, setPresets] = useState<Preset[]>(() => PRESET_IDS.map((id, i) => ({ id, name: defaultPresetName(i) })))
@@ -529,12 +529,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const eq: Record<string, string> = {}
     for (const [s, it] of Object.entries(equipped)) if (it) eq[s] = it.id
     return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden },
-      pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, zoom: pv.zoom } }
+      pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, zoom: pv.zoom } }
   }
   // 스냅샷의 연출설정(pv 일부)을 라이브 pv 에 반영(없으면 기본값). 시선/액션/표정/fps 는 건드리지 않는다.
   const applyPvSnap = (v?: PvSnap) => {
     const s = v ?? PV_SNAP_DEFAULT
-    setPvState((prev) => ({ ...prev, form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, zoom: s.zoom }))
+    setPvState((prev) => ({ ...prev, form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, zoom: s.zoom }))
   }
   // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
   const loadSlotFolded = async (slot: string): Promise<ListItem[]> => {
