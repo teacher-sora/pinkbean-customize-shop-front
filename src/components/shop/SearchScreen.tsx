@@ -164,6 +164,11 @@ export default function SearchScreen() {
           {dyeable && (
             <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
+          {/* 즐겨찾기 별(좌상단) — 코디 탭의 카드와 동일. 어디서 담아도 코디의 '즐겨찾기' 부위에서 함께 보인다. */}
+          <button onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={s.favorites.has(item.id) ? '즐겨찾기 해제' : '즐겨찾기에 추가'} aria-label="즐겨찾기"
+            style={css(`position:absolute; top:7px; left:7px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:none; border-radius:20px; background:${s.favorites.has(item.id) ? '#fff4d1' : 'rgba(255,255,255,0.82)'}; cursor:pointer; z-index:2; box-shadow:0 1px 4px rgba(42,37,33,.12); transition:background .15s ease;`)}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill={s.favorites.has(item.id) ? '#ffc21a' : 'none'} stroke={s.favorites.has(item.id) ? '#eaa600' : '#c3b9ad'} strokeWidth={2} strokeLinejoin="round"><path d="M12 3.2l2.6 5.28 5.82.85-4.21 4.1.99 5.8L12 16.9l-5.2 2.73.99-5.8-4.21-4.1 5.82-.85z" /></svg>
+          </button>
           <div style={css(thumbBox + ' position:relative;')}>
             <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} override={c.override} ctxEffs={c.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}}
               ctxExpr={c.expr} faceMeta={c.faceMeta} dye={em === 'mymodel' ? { palette: s.dyePalette, hsb: s.dyeHsb } : undefined} ear={em === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={em === 'mymodel'} />

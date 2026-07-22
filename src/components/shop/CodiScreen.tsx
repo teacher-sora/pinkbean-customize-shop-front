@@ -13,7 +13,8 @@ import { useShop, type GenderFilter, type ListMode } from './ShopContext'
 import ItemThumb from './ItemThumb'
 
 // 부위 메뉴 = 전체 + 15부위(3열 × 6행, 마지막 줄은 방패 하나). '전체'는 모든 부위를 한 리스트로.
-const PART_CATS = [{ id: 'all', label: '전체' }, ...CATS]
+// 즐겨찾기는 '전체' 오른쪽에 둔다(기본은 전체 유지 — 신규 사용자는 즐겨찾기가 비어 첫 화면이 빌 수 있어 기본으로 두지 않는다).
+const PART_CATS = [{ id: 'all', label: '전체' }, { id: 'fav', label: '즐겨찾기' }, ...CATS]
 const MODES: { v: ListMode; l: string }[] = [
   { v: 'sprite', l: '썸네일' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' },
 ]
@@ -38,6 +39,8 @@ export default function CodiScreen() {
   const list = s.activeList // 검색 필터 + folded (정렬 순서 유지)
   const loading = s.catLoading
   const isAll = s.activeCat === 'all'
+  const isFav = s.activeCat === 'fav'
+  const mixedCat = isAll || isFav // 전체·즐겨찾기 = 여러 부위가 섞인 리스트(활성 슬롯 없음, 아이템 자신의 슬롯으로 판단)
   const isSkinCat = s.activeCat === 'skin'
   const isHairCat = s.activeCat === 'hair'
   // 헤어/피부는 썸네일(스프라이트)=모델이라 스프라이트 보기 무의미 → 썸네일 잠그고 모델로 대체.
@@ -55,7 +58,7 @@ export default function CodiScreen() {
   const gaze = s.pv.gaze // 시선(왼/오/뒷)을 썸네일에도 반영
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
   useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
-  const activeSlotForExpr = isAll ? null : CAT_TO_SLOT[s.activeCat]
+  const activeSlotForExpr = mixedCat ? null : CAT_TO_SLOT[s.activeCat]
   // 배경(내 착용)에 구워질 표정. 활성 슬롯의 아이템은 배경에서 빠지므로(후보로 대체됨) 여기서도 제외한다.
   // ⚠️ 폴백은 THUMB_VIEW 의 'default' — 카드는 원래 연출 설정 표정을 따라가지 않는다. 표정 얼굴장식이
   //    강제하는 표정만 카드에 반영한다(연출 설정 드롭다운으로 리스트 전체가 바뀌면 그건 다른 기능이다).
@@ -81,7 +84,7 @@ export default function CodiScreen() {
     let alive = true
     const toneEntry = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
     const bodyId = toneEntry.body, headId = toneEntry.head
-    const activeSlot = isAll ? null : CAT_TO_SLOT[s.activeCat] // '전체'는 제외할 활성 슬롯이 없다
+    const activeSlot = mixedCat ? null : CAT_TO_SLOT[s.activeCat] // 전체·즐겨찾기는 제외할 활성 슬롯이 없다
     // 내 착용(활성 슬롯 제외). mode==='model' 이어도 needMy 면 승격 카드용으로 필요하다.
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && !s.hidden[sl]) as [string, ListItem][]
     const eqEntries = mode === 'mymodel' ? myEq : []
@@ -165,8 +168,8 @@ export default function CodiScreen() {
   const thumbBox = 'flex:1 1 auto; width:100%; min-height:0; border-radius:8px; background:#f7f2ec; display:flex; align-items:center; justify-content:center; overflow:hidden;'
 
   const cell = (item: ListItem) => {
-    // '전체'는 부위가 섞이므로 활성 부위가 아니라 **아이템 자신의 슬롯**을 기준으로 판단한다.
-    const cat = isAll ? SLOT_TO_CAT[item.slot] : s.activeCat
+    // 전체·즐겨찾기는 부위가 섞이므로 활성 부위가 아니라 **아이템 자신의 슬롯**을 기준으로 판단한다.
+    const cat = mixedCat ? SLOT_TO_CAT[item.slot] : s.activeCat
     const em = effMode(item)
     // '모델'에서 '내 모델'로 승격된 표정 얼굴장식만 별도 배경(myCtx)을 쓴다.
     const c = (em === 'mymodel' && mode === 'model') ? myCtx : ctx
@@ -182,6 +185,11 @@ export default function CodiScreen() {
           {dyeable && (
             <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
+          {/* 즐겨찾기 별(좌상단) — 염색(우상단)·라벨배지(좌하단)와 겹치지 않는 자리. 피부 포함. */}
+          <button onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={s.favorites.has(item.id) ? '즐겨찾기 해제' : '즐겨찾기에 추가'} aria-label="즐겨찾기"
+            style={css(`position:absolute; top:7px; left:7px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border:none; border-radius:20px; background:${s.favorites.has(item.id) ? '#fff4d1' : 'rgba(255,255,255,0.82)'}; cursor:pointer; z-index:2; box-shadow:0 1px 4px rgba(42,37,33,.12); transition:background .15s ease;`)}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill={s.favorites.has(item.id) ? '#ffc21a' : 'none'} stroke={s.favorites.has(item.id) ? '#eaa600' : '#c3b9ad'} strokeWidth={2} strokeLinejoin="round"><path d="M12 3.2l2.6 5.28 5.82.85-4.21 4.1.99 5.8L12 16.9l-5.2 2.73.99-5.8-4.21-4.1 5.82-.85z" /></svg>
+          </button>
           <div style={css(thumbBox + ' position:relative;')}>
             <ItemThumb item={item} mode={em} gaze={gaze} ctxItems={c.items} ctxKey={c.key} override={c.override} ctxEffs={c.effs} pvEff={s.pv} zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
               ctxExpr={c.expr} faceMeta={c.faceMeta} dye={em === 'mymodel' ? { palette: s.dyePalette, hsb: s.dyeHsb } : undefined} ear={em === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={em === 'mymodel'} />
@@ -297,9 +305,19 @@ export default function CodiScreen() {
             </div>
           </div>
         ) : list.length === 0 ? (
-          <div style={css('width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;')}>
-            <span style={css('font-size:14px; font-weight:600; color:#8a8075;')}>검색 결과가 없어요</span>
-            <span style={css('font-size:12px; color:#b7ada2;')}>다른 이름으로 검색해 보세요.</span>
+          <div style={css('width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center; padding:0 24px;')}>
+            {isFav && !s.search.trim() ? (
+              <>
+                <div style={css('font-size:32px; color:#eeb2ce;')}>☆</div>
+                <span style={css('font-size:14px; font-weight:600; color:#8a8075;')}>즐겨찾기한 아이템이 없어요</span>
+                <span style={css('font-size:12px; color:#b7ada2;')}>카드 좌상단 별을 눌러 즐겨찾기에 추가해 보세요.</span>
+              </>
+            ) : (
+              <>
+                <span style={css('font-size:14px; font-weight:600; color:#8a8075;')}>검색 결과가 없어요</span>
+                <span style={css('font-size:12px; color:#b7ada2;')}>다른 이름으로 검색해 보세요.</span>
+              </>
+            )}
           </div>
         ) : (
           <div style={css(trackStyle)}>

@@ -42,6 +42,7 @@ const defaultSnapshot = (): Snapshot => ({
   tone: DEFAULT_TONE, dyePalette: {}, dyeHsb: {}, hidden: {},
 })
 const PRESET_KEY = 'pb_presets_v1'
+const FAV_KEY = 'pb_favorites_v1' // 즐겨찾기 아이템 id 목록(localStorage 영속, 서버 없음)
 type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null }
 const loadPresetStore = (): PresetStore | null => {
   try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
@@ -97,6 +98,7 @@ export interface ShopCtx {
   searchQuery: string | null; runSearch: (q: string, slot?: string | null) => void; searchResults: ListItem[]; searchLoading: boolean
   // codi
   activeCat: string; setActiveCat: Dispatch<string>
+  favorites: Set<string>; toggleFavorite: (id: string) => void
   listMode: ListMode; setListMode: Dispatch<ListMode>
   partMenuOpen: boolean; setPartMenuOpen: Dispatch<boolean>
   partWrapRef: React.MutableRefObject<HTMLDivElement | null>
@@ -178,6 +180,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [primary, setPrimary] = useState('codi')
   const [searchQuery, setSearchQuery] = useState<string | null>(null) // AI 코디 검색어(null=미검색)
   const [activeCat, setActiveCat] = useState('all') // 기본 = 전체(모든 부위 한 리스트)
+
+  // 즐겨찾기: 아이템 id Set. SSR 안전을 위해 빈 값으로 시작 → 클라이언트에서 localStorage 하이드레이트.
+  const [favorites, setFavoritesState] = useState<Set<string>>(new Set())
+  useEffect(() => { try { const raw = localStorage.getItem(FAV_KEY); if (raw) setFavoritesState(new Set(JSON.parse(raw))) } catch { /* noop */ } }, [])
+  const toggleFavorite = useCallback((id: string) => {
+    setFavoritesState((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      try { localStorage.setItem(FAV_KEY, JSON.stringify([...next])) } catch { /* noop */ }
+      return next
+    })
+  }, [])
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=모델(코디는 모델이 기본)
   const [search, setSearch] = useState('')
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
@@ -290,7 +304,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [index, lists])
   useEffect(() => {
     // '전체'는 모든 부위를 한 리스트로 보여주므로 전 슬롯을 로드한다(각 슬롯은 캐시돼 1회만 받음).
-    if (activeCat === 'all') { for (const c of CATS) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]) ; return }
+    // '전체'·'즐겨찾기' 는 모든 부위를 한 리스트로 보여주므로 전 슬롯을 로드한다(각 슬롯은 캐시돼 1회만 받음).
+    if (activeCat === 'all' || activeCat === 'fav') { for (const c of CATS) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]) ; return }
     if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat])
   }, [activeCat, ensureSlot])
 
@@ -306,11 +321,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (cat === 'skin') return skinList
     // '전체' = 모든 부위를 CATS 순서(헤어→방패)로 이어붙인 하나의 리스트. 슬롯 내부 정렬은 그대로 유지.
     if (cat === 'all') return CATS.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || []))
+    // '즐겨찾기' = 전 부위(피부 포함)에서 즐겨찾기한 아이템만. CATS 순서 유지. 전 슬롯 로드가 필요(아래 ensureSlot).
+    if (cat === 'fav') return CATS.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || [])).filter((it) => favorites.has(it.id))
     return lists[CAT_TO_SLOT[cat]] || []
-  }, [lists, skinList])
+  }, [lists, skinList, favorites])
 
   // 활성 부위 리스트 로딩중?(index 미로드 또는 해당 slot 미로드)
-  const catLoading = dataLoading || (activeCat === 'all'
+  const catLoading = dataLoading || ((activeCat === 'all' || activeCat === 'fav')
     ? CATS.some((c) => c.id !== 'skin' && lists[CAT_TO_SLOT[c.id]] === undefined)
     : activeCat !== 'skin' && lists[CAT_TO_SLOT[activeCat]] === undefined)
 
@@ -840,7 +857,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     primary, setPrimary,
     searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
-    activeCat, setActiveCat, listMode, setListMode, partMenuOpen, setPartMenuOpen, partWrapRef, bindVp,
+    activeCat, setActiveCat, favorites, toggleFavorite, listMode, setListMode, partMenuOpen, setPartMenuOpen, partWrapRef, bindVp,
     curIdx, pageCount, offset, snapping, setOffset, setSnapping, setIdx, step,
     bp, cols, rows, itemsPerPage,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
