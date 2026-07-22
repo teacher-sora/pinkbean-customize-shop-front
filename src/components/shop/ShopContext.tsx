@@ -146,7 +146,6 @@ export interface ShopCtx {
   // 코디 2벌 선택(제로/엔젤릭버스터)
   lookPick: { nick: string; options: LookOption[] } | null
   chooseLook: (lookKey: string, presetKey: string) => void; closeLookPick: () => void
-  shareCurrent: () => void
   shareCurrentLink: () => void
   sharedIncoming: Snapshot | null
   applySharedToPreset: (snap: Snapshot, targetId: string) => void
@@ -764,15 +763,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setLookPick(null)
     if (opt) await applyImported(opt.snap, lp.nick, true)
   }
-  // 자체 완결형 공유 코드 복사(서버 없음).
+  // 자체 완결형 공유 링크 복사(서버 없음) — 프리셋 카드 ↗. 이름까지 담아, 접속하면 '코디 받기' 시트가 뜬다.
   const sharePreset = (p: Preset) => {
     const snap = p.id === selectedPreset ? snapshot() : (presetData[p.id] ?? defaultSnapshot())
-    try { navigator.clipboard?.writeText(encodeShareCode({ ...snap, name: p.name })) } catch {}
-    showToast('공유 코드를 복사했어요')
+    try { navigator.clipboard?.writeText(`${location.origin}/#c=${encodeShareCode({ ...snap, name: p.name })}`) } catch {}
+    showToast('공유 링크를 복사했어요')
   }
   // 현재 코디 스냅샷 + 선택된 프리셋 이름(공유 시 이름까지 그대로 전달된다).
   const curSnapNamed = (): Snapshot => ({ ...snapshot(), name: presets.find((p) => p.id === selectedPreset)?.name })
-  const shareCurrent = () => { try { navigator.clipboard?.writeText(encodeShareCode(curSnapNamed())) } catch {} ; showToast('현재 코디 공유 코드를 복사했어요') }
   // 링크 공유: 현재 코디를 #c=<code> 로 담은 URL 을 복사. 접속하면 '코디 받기' 시트가 뜬다(위 sharedIncoming).
   const shareCurrentLink = () => {
     try { navigator.clipboard?.writeText(`${location.origin}/#c=${encodeShareCode(curSnapNamed())}`) } catch {}
@@ -910,7 +908,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pv, setPv, pvOpen, setPvOpen,
     presets, presetData, selectedPreset, selectPreset, sharePreset, resetPreset,
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,
-    nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrent, shareCurrentLink, sharedIncoming, applySharedToPreset, dismissShared, rateCodi, rateResult, rating,
+    nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrentLink, sharedIncoming, applySharedToPreset, dismissShared, rateCodi, rateResult, rating,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText,
     hoverCat, setHoverCat, hoverPrimary, setHoverPrimary, hoverPill, setHoverPill,

@@ -58,7 +58,7 @@ export default function PresetScreen() {
                         <button onClick={(e) => { e.stopPropagation(); s.resetPreset(p.id) }} title="기본값으로 초기화" style={css('display:flex; align-items:center; justify-content:center; width:26px; height:26px; border:none; border-radius:7px; background:rgba(255,255,255,0.92); cursor:pointer; box-shadow:0 1px 4px rgba(42,37,33,.12);')}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="#e0533e"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" /></svg>
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); s.sharePreset(p) }} title="공유 코드 복사" style={css('width:26px; height:26px; border:none; border-radius:7px; background:rgba(255,255,255,0.92); color:#8a8075; font-family:inherit; font-size:12px; cursor:pointer; box-shadow:0 1px 4px rgba(42,37,33,.12);')}>↗</button>
+                        <button onClick={(e) => { e.stopPropagation(); s.sharePreset(p) }} title="공유 링크 복사" style={css('width:26px; height:26px; border:none; border-radius:7px; background:rgba(255,255,255,0.92); color:#8a8075; font-family:inherit; font-size:12px; cursor:pointer; box-shadow:0 1px 4px rgba(42,37,33,.12);')}>↗</button>
                       </div>
                     </div>
                     <div style={css('padding:10px 11px 11px;')}>
