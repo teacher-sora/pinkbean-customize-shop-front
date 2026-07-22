@@ -31,7 +31,7 @@ const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-custo
 // 프리셋에 저장하는 연출설정 일부(형상변이·귀·무기모션·이펙트토글·배율). 시선/액션/표정은 "보는 순간의 상태"라 저장 안 함.
 export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; zoom: number }
 export const PV_SNAP_DEFAULT: PvSnap = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, zoom: 2 }
-export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; pv?: PvSnap }
+export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; pv?: PvSnap; name?: string }
 
 // ── 프리셋: 20개, 초깃값은 코디 기본(녹셀 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
 const PRESET_COUNT = 20
@@ -147,6 +147,10 @@ export interface ShopCtx {
   lookPick: { nick: string; options: LookOption[] } | null
   chooseLook: (lookKey: string, presetKey: string) => void; closeLookPick: () => void
   shareCurrent: () => void
+  shareCurrentLink: () => void
+  sharedIncoming: Snapshot | null
+  applySharedToPreset: (snap: Snapshot, targetId: string) => void
+  dismissShared: () => void
   rateCodi: () => void
   rateResult: { bubbles: string[]; nonce: number } | null
   rating: boolean
@@ -192,6 +196,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       return next
     })
   }, [])
+
+  // 공유 링크 수신: #c=<code> 로 접속하면 디코드해 '코디 받기' 시트를 띄운다(어느 프리셋에 저장할지 사용자가 선택).
+  // 창/탭 조율(포커스·자동닫기)은 일부 환경(카톡·모바일 다중탭)에서 불가·불일치라 의도적으로 넣지 않음 — 그냥 이 탭에서 처리.
+  const [sharedIncoming, setSharedIncoming] = useState<Snapshot | null>(null)
+  useEffect(() => {
+    try {
+      const m = location.hash.match(/(?:^#|&)c=([^&]+)/)
+      if (!m) return
+      const snap = decodeShareCode(decodeURIComponent(m[1]))
+      history.replaceState(null, '', location.pathname + location.search) // URL 청소: 새로고침/북마크 재적용 방지
+      if (snap) setSharedIncoming(snap)
+    } catch { /* noop */ }
+  }, [])
+  const dismissShared = useCallback(() => setSharedIncoming(null), [])
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=모델(코디는 모델이 기본)
   const [search, setSearch] = useState('')
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
@@ -606,6 +624,23 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setDyeTarget(null); setSelectedPreset(id)
     }).catch(() => {})
   }
+  // 공유받은 코디를 사용자가 고른 프리셋 슬롯에 적용 — 개인 프리셋 하나를 명시적으로 덮어씀 + 선택 + 라이브(되돌리기 가능).
+  // selectPreset 을 재사용 못 하는 이유: 그건 presetData[id](구값)를 읽어 적용하므로, 방금 넣은 snap 이 아니라 옛 값이 적용된다.
+  const applySharedToPreset = (snap: Snapshot, targetId: string) => {
+    if (selectedPreset && selectedPreset !== targetId) setPresetData((d) => ({ ...d, [selectedPreset]: snapshot() }))
+    setPresetData((d) => ({ ...d, [targetId]: snap }))
+    if (snap.name) setPresets((ps) => ps.map((p) => (p.id === targetId ? { ...p, name: snap.name! } : p))) // 공유된 이름까지 그대로
+    applyingRef.current = true
+    resolveEquipped(snap).then((eq) => {
+      setEquipped(eq)
+      setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
+      setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
+      applyPvSnap(snap.pv)
+      setDyeTarget(null); setSelectedPreset(targetId)
+    }).catch(() => {})
+    setSharedIncoming(null)
+    showToast('공유받은 코디를 프리셋에 불러왔어요')
+  }
   // 넥슨 이름 → 내부 리스트에서 매칭(성별 접미사 있는 경우 캐릭터 성별 우선).
   const matchByName = (list: ListItem[], name: string, gender: string | null): ListItem | null => {
     const target = nrmName(name)
@@ -694,7 +729,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const applyImported = async (snap: Snapshot, label: string, isNick: boolean) => {
     if (!selectedPreset) return
     setPresetData((d) => ({ ...d, [selectedPreset]: snap }))
-    if (isNick) setPresets((ps) => ps.map((p) => (p.id === selectedPreset ? { ...p, name: label } : p)))
+    const nm = isNick ? label : snap.name // 닉네임=넥슨 이름, 코드/링크=공유된 프리셋 이름
+    if (nm) setPresets((ps) => ps.map((p) => (p.id === selectedPreset ? { ...p, name: nm } : p)))
     await applySnapshot(snap)
     setNickInput('')
     showToast(isNick ? `'${label}' 코디를 불러왔어요` : '공유 코드를 프리셋에 적용했어요')
@@ -731,10 +767,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 자체 완결형 공유 코드 복사(서버 없음).
   const sharePreset = (p: Preset) => {
     const snap = p.id === selectedPreset ? snapshot() : (presetData[p.id] ?? defaultSnapshot())
-    try { navigator.clipboard?.writeText(encodeShareCode(snap)) } catch {}
+    try { navigator.clipboard?.writeText(encodeShareCode({ ...snap, name: p.name })) } catch {}
     showToast('공유 코드를 복사했어요')
   }
-  const shareCurrent = () => { try { navigator.clipboard?.writeText(encodeShareCode(snapshot())) } catch {} ; showToast('현재 코디 공유 코드를 복사했어요') }
+  // 현재 코디 스냅샷 + 선택된 프리셋 이름(공유 시 이름까지 그대로 전달된다).
+  const curSnapNamed = (): Snapshot => ({ ...snapshot(), name: presets.find((p) => p.id === selectedPreset)?.name })
+  const shareCurrent = () => { try { navigator.clipboard?.writeText(encodeShareCode(curSnapNamed())) } catch {} ; showToast('현재 코디 공유 코드를 복사했어요') }
+  // 링크 공유: 현재 코디를 #c=<code> 로 담은 URL 을 복사. 접속하면 '코디 받기' 시트가 뜬다(위 sharedIncoming).
+  const shareCurrentLink = () => {
+    try { navigator.clipboard?.writeText(`${location.origin}/#c=${encodeShareCode(curSnapNamed())}`) } catch {}
+    showToast('공유 링크를 복사했어요')
+  }
   // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말풍선을 받는다.
   const rateNonce = useRef(0)
   const rateHistory = useRef<string[]>([]) // 핑크빈이 최근에 한 말(반복 방지용으로 백엔드에 전달)
@@ -867,7 +910,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pv, setPv, pvOpen, setPvOpen,
     presets, presetData, selectedPreset, selectPreset, sharePreset, resetPreset,
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,
-    nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrent, rateCodi, rateResult, rating,
+    nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrent, shareCurrentLink, sharedIncoming, applySharedToPreset, dismissShared, rateCodi, rateResult, rating,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText,
     hoverCat, setHoverCat, hoverPrimary, setHoverPrimary, hoverPill, setHoverPill,

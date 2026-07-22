@@ -24,6 +24,7 @@ export function encodeShareCode(snap: Snapshot): string {
   if (snap.dyeHsb && Object.keys(snap.dyeHsb).length) min.h = snap.dyeHsb
   if (snap.hidden && Object.keys(snap.hidden).length) min.x = snap.hidden
   if (snap.pv) min.v = snap.pv // 연출설정 일부(형상변이·귀·무기·이펙트·배율)
+  if (snap.name) min.n = snap.name // 프리셋 이름(공유 시 그대로 전달)
   return PREFIX + b64urlEncode(JSON.stringify(min))
 }
 
@@ -40,6 +41,7 @@ export function decodeShareCode(code: string): Snapshot | null {
       dyeHsb: (m.h as Snapshot['dyeHsb']) || {},
       hidden: (m.x as Snapshot['hidden']) || {},
       pv: (m.v as Snapshot['pv']) || undefined, // 구버전 코드엔 없음 → 기본값으로 복원
+      name: typeof m.n === 'string' ? m.n : undefined, // 프리셋 이름(없으면 기존 이름 유지)
     }
   } catch {
     return null

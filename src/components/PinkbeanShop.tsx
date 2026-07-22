@@ -17,6 +17,7 @@ import PresetScreen from './shop/PresetScreen'
 import PreviewPanel from './shop/PreviewPanel'
 import DyeDialog from './shop/DyeDialog'
 import LookDialog from './shop/LookDialog'
+import ShareReceiveSheet from './shop/ShareReceiveSheet'
 import Toast from './shop/Toast'
 
 function Shell() {
@@ -40,6 +41,7 @@ function Shell() {
       </div>
       <DyeDialog />
       <LookDialog />
+      <ShareReceiveSheet />
       <Toast />
     </div>
   )

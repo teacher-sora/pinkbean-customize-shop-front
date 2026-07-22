@@ -6,7 +6,7 @@ import { isStacked } from '@/lib/useBreakpoint'
 import { useShop } from './ShopContext'
 
 export default function Header() {
-  const { primary, setPrimary, hoverPrimary, setHoverPrimary, shareCurrent, rateCodi, bp } = useShop()
+  const { primary, setPrimary, hoverPrimary, setHoverPrimary, shareCurrentLink, rateCodi, bp } = useShop()
   const stacked = isStacked(bp)
   const mobile = bp === 'mobile'
 
@@ -31,7 +31,7 @@ export default function Header() {
   )
 
   const share = (
-    <button onClick={shareCurrent} className="pb-h-solid" style={css(`flex:0 0 auto; height:36px; padding:0 ${mobile ? 13 : 18}px; border:none; background:#ec86ac; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:pointer; white-space:nowrap; transition:background .18s ease, transform .18s ease, filter .18s ease;`)}>코디 공유</button>
+    <button onClick={shareCurrentLink} title="현재 코디 공유 링크 복사" className="pb-h-solid" style={css(`flex:0 0 auto; height:36px; padding:0 ${mobile ? 13 : 18}px; border:none; background:#ec86ac; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:pointer; white-space:nowrap; transition:background .18s ease, transform .18s ease, filter .18s ease;`)}>코디 공유</button>
   )
 
   // 핑크빈 코디 평가 — 핑크빈 컬러(보라+핑크) 체크무늬는 "테두리 프레임"에만, 내부는 연핑크(hover 시 맑게 채움).
