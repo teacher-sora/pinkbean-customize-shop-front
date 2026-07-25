@@ -6,6 +6,8 @@ import { loadAnima, loadMeta, type AnimaRace, type ItemMeta } from '@/lib/core/d
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
+import { canvasToSquareBlob } from '@/lib/canvasExport'
+import { openImageMenu } from '@/lib/canvasMenu'
 import { collectWornEffects } from '@/lib/core/thumbEffects'
 import { CARD_FRACTION, CARD_MARGIN, animaLayers, isColorLineSkin, thumbView } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, useShop, type Snapshot } from './ShopContext'
@@ -106,7 +108,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
       {!placed && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '58%', height: '58%', borderRadius: 8 }} />}
-      <canvas ref={canvasRef} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
+      <canvas ref={canvasRef} onContextMenu={(e) => { const c = canvasRef.current; if (!c) return; e.preventDefault(); openImageMenu(e.clientX, e.clientY, () => canvasToSquareBlob(c), 'pinkbean-cody') }} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
     </div>
   )
 }

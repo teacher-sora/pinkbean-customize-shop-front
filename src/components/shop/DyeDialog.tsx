@@ -8,6 +8,8 @@ import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta, type ListItem } f
 import { applyHsb, buildOverrides, renderDyedSprite, type HsbParams } from '@/lib/core/dye'
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
+import { canvasToSquareBlob } from '@/lib/canvasExport'
+import { openImageMenu } from '@/lib/canvasMenu'
 import { CAT_TO_SLOT, THUMB_VIEW } from '@/lib/shopData'
 import { css } from '@/lib/style'
 import { useShop } from './ShopContext'
@@ -134,7 +136,7 @@ function DyeModelPreview({ item, hsb, zoom, box = DIALOG_CANVAS }: { item: ListI
 
   if (!placed) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 12 }} />
   // 캔버스 intrinsic = box×scale(320×340). CSS 로 늘리지 않고 그대로(1:1) 보여줘 도트가 깨끗하게 유지된다.
-  return <canvas ref={ref} style={{ display: 'block', imageRendering: 'pixelated' }} />
+  return <canvas ref={ref} onContextMenu={(e) => { const c = ref.current; if (!c) return; e.preventDefault(); openImageMenu(e.clientX, e.clientY, () => canvasToSquareBlob(c), `pinkbean-${item.name || item.id}`) }} style={{ display: 'block', imageRendering: 'pixelated' }} />
 }
 
 export default function DyeDialog() {

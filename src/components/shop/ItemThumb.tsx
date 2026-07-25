@@ -14,6 +14,8 @@ import { loadEffect, loadEffectIndex, loadMeta, spriteUrl, type ItemMeta, type L
 import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
+import { canvasToSquareBlob } from '@/lib/canvasExport'
+import { openImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
 import { CARD_FRACTION, CARD_MARGIN, thumbView } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
@@ -195,7 +197,8 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
       {!placed && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '62%', height: '62%', borderRadius: 8 }} />}
       {/* 셀보다 큰 캔버스를 절대배치 중앙정렬 → 셀 overflow:hidden 으로만 잘린다. */}
-      <canvas ref={canvasRef} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
+      {/* 우클릭 → 복사/저장 메뉴. 렌더된 캔버스 픽셀을 그 시점에만 정사각형·흰배경으로 재가공(렌더 성능 무관). */}
+      <canvas ref={canvasRef} onContextMenu={(e) => { const c = canvasRef.current; if (!c) return; e.preventDefault(); openImageMenu(e.clientX, e.clientY, () => canvasToSquareBlob(c), `pinkbean-${item.name || item.id}`) }} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
     </div>
   )
 }

@@ -155,7 +155,6 @@ export interface ShopCtx {
   rating: boolean
   // toast
   toast: boolean; toastText: string
-  showToast: (msg: string) => void
   // hover
   hoverCat: string | null; setHoverCat: Dispatch<string | null>
   hoverPrimary: string | null; setHoverPrimary: Dispatch<string | null>
@@ -911,7 +910,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,
     nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrentLink, sharedIncoming, applySharedToPreset, dismissShared, rateCodi, rateResult, rating,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
-    toast, toastText, showToast,
+    toast, toastText,
     hoverCat, setHoverCat, hoverPrimary, setHoverPrimary, hoverPill, setHoverPill,
     hoverMode, setHoverMode, hoverToggle, setHoverToggle, hoverPartBtn, setHoverPartBtn,
     hoverDlgClose, setHoverDlgClose, hoverDlgApply, setHoverDlgApply,

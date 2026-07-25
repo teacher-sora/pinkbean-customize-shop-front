@@ -17,6 +17,7 @@ import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type 
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { effectDraws, loadImage, preload, renderCharacter } from '@/lib/core/render'
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
+import { openImageMenu } from '@/lib/canvasMenu'
 import { isStacked } from '@/lib/useBreakpoint'
 import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin } from '@/lib/shopData'
 import { useShop } from './ShopContext'
@@ -33,7 +34,7 @@ const RIDING_SEATED = new Set(['basic', 'walk'])
 const COPY_SIZE = 420, COPY_MARGIN = 1.5, COPY_FRACTION = 0.5
 
 export default function PreviewModel() {
-  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dyeInteracting, bp, showToast } = useShop()
+  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dyeInteracting, bp } = useShop()
   // 세로 스택(태블릿+모바일)은 미리보기 영역이 낮고 넓다 → PC 비율(0.25)이면 모델이 콩알만 해진다.
   const fraction = isStacked(bp) ? PREVIEW_FRACTION_MOBILE : PREVIEW_FRACTION
   const [metas, setMetas] = useState<Map<string, ItemMeta>>(new Map())
@@ -338,32 +339,27 @@ export default function PreviewModel() {
     return () => { cancelled = true; cancelAnimationFrame(raf) }
   }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, dyeInteracting, dyeSettling])
 
-  // 우클릭 → 정사각형·큰 모델 이미지를 클립보드에 복사(화면 미리보기는 그대로 둔다).
-  // 브라우저 기본 "이미지 복사"는 캔버스 비트맵(세로로 길고 모델 작음)을 그대로 복사하므로, 여기서 가로챈다.
-  const onContextMenu = useCallback((e: React.MouseEvent) => {
+  // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
+  // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·큰 모델·흰 배경 이미지를 만든다.
+  // 미리보기는 스냅샷을 벡터에서 재렌더(정수 배율 스냅) → 도트가 가장 선명한 결과.
+  const makeBlob = useCallback(async (): Promise<Blob | null> => {
     const snap = copyRef.current
-    if (!snap) return                 // 아직 렌더 전이면 기본 메뉴 유지
+    if (!snap) return null
+    const off = document.createElement('canvas')
+    const pl = computeModelPlacement({ divW: COPY_SIZE, divH: COPY_SIZE, dpr: 1, margin: COPY_MARGIN, fraction: COPY_FRACTION, centerDx: snap.cDx, centerDy: snap.cDy, snap: true })
+    await renderCharacter(off, snap.placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, override: snap.override, effects: snap.effects })
+    const ctx = off.getContext('2d')!
+    ctx.globalCompositeOperation = 'destination-over' // 캐릭터 뒤에 미리보기와 동일한 흰 배경
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(0, 0, off.width, off.height)
+    return await new Promise<Blob | null>((res) => off.toBlob((b) => res(b), 'image/png'))
+  }, [])
+
+  const onContextMenu = useCallback((e: React.MouseEvent) => {
+    if (!copyRef.current) return // 아직 렌더 전이면 기본 메뉴 유지
     e.preventDefault()
-    // ClipboardItem 에 Blob 대신 Promise<Blob> 을 넘겨 사용자 제스처를 유지(await 뒤에도 복사 허용, Safari 포함).
-    const makeBlob = async (): Promise<Blob> => {
-      const off = document.createElement('canvas')
-      // 정사각형(divW=divH) · 모델을 미리보기(fraction 0.25)보다 크게. margin 여백으로 긴 머리/이펙트도 안 잘린다.
-      const pl = computeModelPlacement({ divW: COPY_SIZE, divH: COPY_SIZE, dpr: 1, margin: COPY_MARGIN, fraction: COPY_FRACTION, centerDx: snap.cDx, centerDy: snap.cDy, snap: true })
-      await renderCharacter(off, snap.placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, override: snap.override, effects: snap.effects })
-      // 미리보기와 동일한 흰 배경을 캐릭터 뒤에 칠한다(투명 크롭이면 허전하므로). destination-over = 기존 그림 뒤에 채움.
-      const ctx = off.getContext('2d')!
-      ctx.globalCompositeOperation = 'destination-over'
-      ctx.fillStyle = '#fff'
-      ctx.fillRect(0, 0, off.width, off.height)
-      return await new Promise<Blob>((res, rej) => off.toBlob((b) => (b ? res(b) : rej(new Error('toBlob 실패'))), 'image/png'))
-    }
-    ;(async () => {
-      try {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': makeBlob() })])
-        showToast('이미지를 복사했어요')
-      } catch { showToast('이미지 복사에 실패했어요') }
-    })()
-  }, [showToast])
+    openImageMenu(e.clientX, e.clientY, makeBlob, 'pinkbean-cody')
+  }, [makeBlob])
 
   return (
     <div ref={wrapRef} className={styles.wrap} onContextMenu={onContextMenu}>
