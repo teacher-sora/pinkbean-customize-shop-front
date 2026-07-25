@@ -9,7 +9,9 @@
  * ⚠️ 다음 단계: 염색 시각화(dye.buildOverrides).
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { EffectDraw } from '@/lib/core/render'
+import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
@@ -25,8 +27,13 @@ import styles from './PreviewModel.module.css'
 // 석궁사격)는 캐릭터가 일어서서 해당 모션을 한다. 메카닉 메탈아머도 동일 규칙.
 const RIDING_SEATED = new Set(['basic', 'walk'])
 
+// 우클릭 복사 이미지: 정사각형 캔버스 한 변(CSS px, ×margin 이 실제 비트맵) · 여백 배수 · 마네킹 높이 비율.
+// COPY_FRACTION 이 미리보기(0.25)보다 커서 모델이 더 크게 담긴다. 값이 클수록 모델↑(너무 크면 긴 머리 잘림).
+// 실제 출력 비트맵 = COPY_SIZE × COPY_MARGIN 정사각형(여기선 630²). 정지 이미지라 정수 배율 스냅으로 도트 선명.
+const COPY_SIZE = 420, COPY_MARGIN = 1.5, COPY_FRACTION = 0.5
+
 export default function PreviewModel() {
-  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dyeInteracting, bp } = useShop()
+  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dyeInteracting, bp, showToast } = useShop()
   // 세로 스택(태블릿+모바일)은 미리보기 영역이 낮고 넓다 → PC 비율(0.25)이면 모델이 콩알만 해진다.
   const fraction = isStacked(bp) ? PREVIEW_FRACTION_MOBILE : PREVIEW_FRACTION
   const [metas, setMetas] = useState<Map<string, ItemMeta>>(new Map())
@@ -38,6 +45,13 @@ export default function PreviewModel() {
   const [dyeSettling, setDyeSettling] = useState(false) // 이펙트/피부 전 프레임 염색 중(애니메이션 잠깐 정지 → 점멸 방지)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // 우클릭 "이미지 복사"용 스냅샷 — 화면 미리보기와 별개로, 정사각형·큰 모델 이미지를 즉석에서 그리기 위한
+  // 현재 프레임(정지=0프레임) 합성 입력. draw effect 가 매번 최신값으로 갱신한다.
+  const copyRef = useRef<{
+    placed: PlacedLayer[]; effects: EffectDraw[]; flip: boolean
+    centerXOnly: boolean; centerMount: boolean; override: Map<string, HTMLCanvasElement>
+    cDx: number; cDy: number
+  } | null>(null)
 
   // 표시 영역(div) 크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.
   useEffect(() => {
@@ -295,6 +309,16 @@ export default function PreviewModel() {
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "첫 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
+    // 우클릭 복사용 스냅샷 갱신 — 정지(0프레임) 기준. 화면 draw 와 동일 입력이되 배치만 복사 시점에 정사각형으로 다시 잡는다.
+    copyRef.current = f0
+      ? {
+          placed: f0.placed,
+          effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow }, 0)) : [],
+          flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides,
+          cDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx,
+          cDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy,
+        }
+      : null
     const essential = new Set<string>()
     f0?.placed.forEach((p) => essential.add(p.png))
     if (hasEff && f0) effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow }, 0)).forEach((d) => essential.add(d.png))
@@ -314,8 +338,35 @@ export default function PreviewModel() {
     return () => { cancelled = true; cancelAnimationFrame(raf) }
   }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, dyeInteracting, dyeSettling])
 
+  // 우클릭 → 정사각형·큰 모델 이미지를 클립보드에 복사(화면 미리보기는 그대로 둔다).
+  // 브라우저 기본 "이미지 복사"는 캔버스 비트맵(세로로 길고 모델 작음)을 그대로 복사하므로, 여기서 가로챈다.
+  const onContextMenu = useCallback((e: React.MouseEvent) => {
+    const snap = copyRef.current
+    if (!snap) return                 // 아직 렌더 전이면 기본 메뉴 유지
+    e.preventDefault()
+    // ClipboardItem 에 Blob 대신 Promise<Blob> 을 넘겨 사용자 제스처를 유지(await 뒤에도 복사 허용, Safari 포함).
+    const makeBlob = async (): Promise<Blob> => {
+      const off = document.createElement('canvas')
+      // 정사각형(divW=divH) · 모델을 미리보기(fraction 0.25)보다 크게. margin 여백으로 긴 머리/이펙트도 안 잘린다.
+      const pl = computeModelPlacement({ divW: COPY_SIZE, divH: COPY_SIZE, dpr: 1, margin: COPY_MARGIN, fraction: COPY_FRACTION, centerDx: snap.cDx, centerDy: snap.cDy, snap: true })
+      await renderCharacter(off, snap.placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, override: snap.override, effects: snap.effects })
+      // 미리보기와 동일한 흰 배경을 캐릭터 뒤에 칠한다(투명 크롭이면 허전하므로). destination-over = 기존 그림 뒤에 채움.
+      const ctx = off.getContext('2d')!
+      ctx.globalCompositeOperation = 'destination-over'
+      ctx.fillStyle = '#fff'
+      ctx.fillRect(0, 0, off.width, off.height)
+      return await new Promise<Blob>((res, rej) => off.toBlob((b) => (b ? res(b) : rej(new Error('toBlob 실패'))), 'image/png'))
+    }
+    ;(async () => {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': makeBlob() })])
+        showToast('이미지를 복사했어요')
+      } catch { showToast('이미지 복사에 실패했어요') }
+    })()
+  }, [showToast])
+
   return (
-    <div ref={wrapRef} className={styles.wrap}>
+    <div ref={wrapRef} className={styles.wrap} onContextMenu={onContextMenu}>
       {/* 캔버스는 div 보다 크게(디바이스 해상도) 잡아 절대배치 중앙정렬 → wrap overflow:hidden 으로만 잘린다. */}
       {spec ? <canvas ref={canvasRef} className={styles.canvas} /> : <div className={styles.skeleton} />}
     </div>
