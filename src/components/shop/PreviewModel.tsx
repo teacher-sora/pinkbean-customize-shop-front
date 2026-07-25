@@ -17,7 +17,7 @@ import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type 
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
 import { effectDraws, loadImage, preload, renderCharacter } from '@/lib/core/render'
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
-import { openImageMenu } from '@/lib/canvasMenu'
+import { bindImageMenu } from '@/lib/canvasMenu'
 import { isStacked } from '@/lib/useBreakpoint'
 import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin } from '@/lib/shopData'
 import { useShop } from './ShopContext'
@@ -355,14 +355,15 @@ export default function PreviewModel() {
     return await new Promise<Blob | null>((res) => off.toBlob((b) => res(b), 'image/png'))
   }, [])
 
-  const onContextMenu = useCallback((e: React.MouseEvent) => {
-    if (!copyRef.current) return // 아직 렌더 전이면 기본 메뉴 유지
-    e.preventDefault()
-    openImageMenu(e.clientX, e.clientY, makeBlob, 'pinkbean-cody')
+  // 우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등)로 복사/저장 메뉴. wrap 은 항상 존재하므로 여기 바인딩.
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    return bindImageMenu(el, makeBlob, 'pinkbean-cody')
   }, [makeBlob])
 
   return (
-    <div ref={wrapRef} className={styles.wrap} onContextMenu={onContextMenu}>
+    <div ref={wrapRef} className={styles.wrap}>
       {/* 캔버스는 div 보다 크게(디바이스 해상도) 잡아 절대배치 중앙정렬 → wrap overflow:hidden 으로만 잘린다. */}
       {spec ? <canvas ref={canvasRef} className={styles.canvas} /> : <div className={styles.skeleton} />}
     </div>
