@@ -110,7 +110,7 @@ export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[]): 
 export function openImageMenu (x: number, y: number, getBlob: () => Promise<Blob | null>, filename: string): void {
   openCanvasMenu(x, y, [
     { label: '이미지 복사', onClick: async () => flashToast((await copyImage(getBlob)) ? '이미지를 복사했어요' : '이미지 복사에 실패했어요') },
-    { label: '이미지 저장', onClick: async () => flashToast((await saveImage(getBlob, filename)) ? '이미지를 저장했어요' : '이미지 저장에 실패했어요') },
+    { label: '이미지 저장', onClick: async () => { const r = await saveImage(getBlob, filename); if (r === 'saved') flashToast('이미지를 저장했어요'); else if (r === 'error') flashToast('이미지 저장에 실패했어요') } }, // 취소는 조용히
   ])
 }
 
