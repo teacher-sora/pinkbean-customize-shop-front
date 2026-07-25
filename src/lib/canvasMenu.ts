@@ -119,8 +119,14 @@ export function openImageMenu (x: number, y: number, getBlob: () => Promise<Blob
 export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | null>, filename: string): () => void {
   const onCtx = (e: MouseEvent) => { e.preventDefault(); openImageMenu(e.clientX, e.clientY, getBlob, filename) }
   el.addEventListener('contextmenu', onCtx)
-  // iOS 등에서 롱프레스 시 뜨는 네이티브 이미지 콜아웃(저장/복사) 억제 → 우리 메뉴로 대체.
+  // 롱프레스 시 iOS 네이티브 콜아웃/이미지 드래그·선택(영역 드래그)을 막고 우리 메뉴로 대체.
   el.style.setProperty('-webkit-touch-callout', 'none')
+  el.style.setProperty('-webkit-user-select', 'none')
+  el.style.setProperty('user-select', 'none')
+  el.style.setProperty('-webkit-user-drag', 'none')
+  el.setAttribute('draggable', 'false')
+  const onDrag = (e: Event) => e.preventDefault() // 이미지 드래그 시작 자체를 차단
+  el.addEventListener('dragstart', onDrag)
 
   // 터치 롱프레스 직접 감지(iOS Safari 는 롱프레스에 contextmenu 를 안 쏜다).
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -144,6 +150,7 @@ export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | nu
 
   return () => {
     el.removeEventListener('contextmenu', onCtx)
+    el.removeEventListener('dragstart', onDrag)
     el.removeEventListener('touchstart', onStart)
     el.removeEventListener('touchmove', onMove)
     el.removeEventListener('touchend', onEnd)
