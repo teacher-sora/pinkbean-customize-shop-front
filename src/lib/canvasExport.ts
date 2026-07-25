@@ -60,15 +60,37 @@ export async function copyImage (getBlob: () => Promise<Blob | null>): Promise<b
   } catch { return false }
 }
 
-// PNG 파일로 저장(다운로드).
-export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string): Promise<boolean> {
+// PNG 파일로 저장. 가능하면 "다른 이름으로 저장" 대화상자(File System Access API)를 띄워 위치·파일명을
+// 사용자가 고르게 한다. 미지원 브라우저(Firefox/Safari/모바일 등)는 기존 다운로드로 폴백한다.
+// 반환: 'saved' 저장됨 · 'canceled' 사용자가 취소 · 'error' 실패.
+export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string): Promise<'saved' | 'canceled' | 'error'> {
+  const name = filename.endsWith('.png') ? filename : `${filename}.png`
+  const picker = (window as unknown as { showSaveFilePicker?: (o: unknown) => Promise<{ createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker
+  if (typeof picker === 'function') {
+    // 대화상자는 사용자 제스처 안에서 즉시 열어야 하므로 blob 생성보다 먼저 호출한다.
+    let handle: { createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> } | null = null
+    try {
+      handle = await picker({ suggestedName: name, types: [{ description: 'PNG 이미지', accept: { 'image/png': ['.png'] } }] })
+    } catch (e) {
+      if (e && (e as { name?: string }).name === 'AbortError') return 'canceled' // 사용자가 닫음
+      handle = null // 권한 등 다른 실패 → 폴백 다운로드로
+    }
+    if (handle) {
+      try {
+        const b = await getBlob(); if (!b) return 'error'
+        const w = await handle.createWritable(); await w.write(b); await w.close()
+        return 'saved'
+      } catch { return 'error' }
+    }
+  }
+  // 폴백: 앵커 다운로드(브라우저 설정에 따라 저장 위치를 물어보거나 다운로드 폴더로 바로 저장).
   try {
-    const b = await getBlob(); if (!b) return false
+    const b = await getBlob(); if (!b) return 'error'
     const url = URL.createObjectURL(b)
     const a = document.createElement('a')
-    a.href = url; a.download = filename.endsWith('.png') ? filename : `${filename}.png`
+    a.href = url; a.download = name
     document.body.appendChild(a); a.click(); a.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
-    return true
-  } catch { return false }
+    return 'saved'
+  } catch { return 'error' }
 }
