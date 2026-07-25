@@ -48,7 +48,11 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
+    // max-image-preview:none = 구글 검색결과에 썸네일(임베드 이미지)을 띄우지 않는다.
+    // 검색결과 썸네일 크기는 구글이 정해 "화면 가득"이 불가능하므로, 작은 썸네일을 아예 뺀다.
+    // ⚠️ 이건 검색결과 전용 신호다 — 아래 openGraph/twitter 의 og:image 는 그대로라
+    //    카톡·디스코드·트위터 링크 공유 미리보기 이미지는 유지된다.
+    googleBot: { index: true, follow: true, 'max-image-preview': 'none', 'max-snippet': -1, 'max-video-preview': -1 },
   },
   formatDetection: { telephone: false, email: false, address: false },
   // 검색엔진 소유확인(선택) — Vercel 환경변수로 주입. Google Search Console / 네이버 서치어드바이저.
