@@ -42,12 +42,16 @@ export function flashToast (msg: string): void {
 export function closeCanvasMenu (): void {
   if (cleanup) { cleanup(); cleanup = null }
   if (current) { current.remove(); current = null }
+  // 혹시라도 이전에 누적된 메뉴 노드가 남아 있으면 모두 제거(안전망).
+  document.querySelectorAll('[data-pb-canvas-menu]').forEach((n) => n.remove())
 }
 
 export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[]): void {
   closeCanvasMenu()
   const el = document.createElement('div')
   el.setAttribute('role', 'menu')
+  el.setAttribute('data-pb-canvas-menu', '')
+  el.oncontextmenu = (e) => e.preventDefault() // 메뉴 위에서 다시 우클릭해도 브라우저 기본 메뉴가 안 뜨게
   Object.assign(el.style, {
     position: 'fixed', zIndex: '9999', minWidth: '176px', padding: '5px',
     background: '#fff', border: '1px solid #e7ded4', borderRadius: '11px',
@@ -72,6 +76,7 @@ export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[]): 
   }
 
   document.body.appendChild(el)
+  current = el // ★ 반드시 대입 — 안 하면 closeCanvasMenu 가 노드를 못 지워 메뉴가 무한 누적된다.
   // 뷰포트 밖으로 나가지 않게 위치 보정.
   const r = el.getBoundingClientRect()
   const px = Math.min(x, window.innerWidth - r.width - 8)
@@ -107,4 +112,42 @@ export function openImageMenu (x: number, y: number, getBlob: () => Promise<Blob
     { label: '이미지 복사', onClick: async () => flashToast((await copyImage(getBlob)) ? '이미지를 복사했어요' : '이미지 복사에 실패했어요') },
     { label: '이미지 저장', onClick: async () => flashToast((await saveImage(getBlob, filename)) ? '이미지를 저장했어요' : '이미지 저장에 실패했어요') },
   ])
+}
+
+// 요소에 "우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등 터치)" 를 모두 걸어 이미지 메뉴를 띄운다.
+// 반환값은 해제 함수. 렌더와 무관한 이벤트 리스너만 붙이므로 성능 영향 없음.
+export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | null>, filename: string): () => void {
+  const onCtx = (e: MouseEvent) => { e.preventDefault(); openImageMenu(e.clientX, e.clientY, getBlob, filename) }
+  el.addEventListener('contextmenu', onCtx)
+  // iOS 등에서 롱프레스 시 뜨는 네이티브 이미지 콜아웃(저장/복사) 억제 → 우리 메뉴로 대체.
+  el.style.setProperty('-webkit-touch-callout', 'none')
+
+  // 터치 롱프레스 직접 감지(iOS Safari 는 롱프레스에 contextmenu 를 안 쏜다).
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let sx = 0, sy = 0, fired = false
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null } }
+  const onStart = (e: TouchEvent) => {
+    if (e.touches.length !== 1) { clear(); return }
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; fired = false
+    clear()
+    timer = setTimeout(() => { fired = true; openImageMenu(sx, sy, getBlob, filename) }, 500) // ≈0.5초 꾹
+  }
+  const onMove = (e: TouchEvent) => {
+    const t = e.touches[0]; if (!t) return
+    if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) clear() // 스크롤/스와이프면 취소
+  }
+  const onEnd = (e: TouchEvent) => { clear(); if (fired) e.preventDefault() } // 메뉴 떴으면 뒤따르는 유령 클릭 억제
+  el.addEventListener('touchstart', onStart, { passive: true })
+  el.addEventListener('touchmove', onMove, { passive: true })
+  el.addEventListener('touchend', onEnd)
+  el.addEventListener('touchcancel', clear, { passive: true })
+
+  return () => {
+    el.removeEventListener('contextmenu', onCtx)
+    el.removeEventListener('touchstart', onStart)
+    el.removeEventListener('touchmove', onMove)
+    el.removeEventListener('touchend', onEnd)
+    el.removeEventListener('touchcancel', clear)
+    clear()
+  }
 }
