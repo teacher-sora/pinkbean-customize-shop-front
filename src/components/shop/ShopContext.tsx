@@ -260,9 +260,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const applyingRef = useRef(false)                 // 프리셋 적용 중(그 변경은 자동저장 스킵)
   const initedRef = useRef(false)                   // 초기 로드+적용 완료(그 전엔 저장/영속 안 함)
   // 실행취소/다시실행: 코디 상태(equipped/tone/dye/hidden) 스냅샷 히스토리 + 현재 위치.
-  const histRef = useRef<{ stack: Snapshot[]; idx: number }>({ stack: [], idx: -1 })
-  const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 스냅샷(그 변경은 기록 안 함)
-  const histLast = useRef<string | null>(null)      // 마지막으로 기록한 스냅샷 JSON(중복 방지)
+  // 히스토리 엔트리 = 코디 스냅샷 + 그때 선택돼 있던 프리셋. 되돌리기 시 코디뿐 아니라 "선택 프리셋"도
+  // 함께 복원한다 → 프리셋 전환도 되돌리기 대상(1번→2번 후 되돌리기 = 다시 1번 선택 + 그때 코디).
+  const histRef = useRef<{ stack: { snap: Snapshot; sel: string | null }[]; idx: number }>({ stack: [], idx: -1 })
+  const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
+  const histLast = useRef<string | null>(null)      // 마지막으로 기록한 상태키(중복 방지) = {코디 스냅샷 + 선택 프리셋}
   const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
   const saveT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toastT = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -597,13 +599,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 스냅샷을 라이브 모델에 적용. applyingRef 로 이 변경의 자동저장을 스킵(원본 프리셋과 동일하므로).
   // skipAutosave: 프리셋 "적용"은 같은 데이터라 자동저장 스킵. 되돌리기/다시실행은 false →
   // 되돌린 코디가 현재 프리셋에 저장되어 프리셋 카드도 함께 갱신된다.
-  const applySnapshot = async (snap: Snapshot, skipAutosave = true, keepTarget = false): Promise<void> => {
+  // sel: 되돌리기/다시실행이 "선택 프리셋"도 함께 복원할 때 넘긴다(undefined=변경 안 함, null 도 유효값).
+  // 코디 상태 setState 들과 같은 배치(React 자동배칭)로 setSelectedPreset 을 호출해 원자적으로 반영 →
+  // 히스토리 재기록/오토세이브가 중간 상태로 오염되지 않는다.
+  const applySnapshot = async (snap: Snapshot, skipAutosave = true, keepTarget = false, sel: string | null | undefined = undefined): Promise<void> => {
     if (skipAutosave) applyingRef.current = true
     const eq = await resolveEquipped(snap)
     setEquipped(eq)
     setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
     setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
     applyPvSnap(snap.pv)
+    if (sel !== undefined) setSelectedPreset(sel)
     // 되돌리기/다시실행은 편집 중이던 아이템 선택(dyeTarget)을 유지(여전히 착용/스킨일 때) → 염색만 되돌아가고 선택은 유지.
     if (keepTarget) setDyeTarget((t) => (t && (t === 'skin' || eq[t]) ? t : null))
     else setDyeTarget(null)
@@ -839,23 +845,26 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // undo/redo 로 적용된 변경(histExpect 일치)은 기록하지 않아 스택이 오염되지 않는다. 최근 50개 유지.
   useEffect(() => {
     if (!initedRef.current || dyeInteracting) return // 초기 로드 완료 전엔 기록 안 함 → 첫 기록 = 초기 프리셋(baseline)
-    const j = JSON.stringify(snapshot())
+    const snap = snapshot()
+    // 상태키 = 코디 스냅샷 + 선택 프리셋. 프리셋만 바뀌어도(코디가 같아도) 새 엔트리로 기록된다.
+    const j = JSON.stringify({ s: snap, p: selectedPreset })
     if (j === histExpect.current) { histExpect.current = null; histLast.current = j; return }
     if (j === histLast.current) return
     histLast.current = j
     const h = histRef.current
     h.stack = h.stack.slice(0, h.idx + 1)
-    h.stack.push(JSON.parse(j) as Snapshot)
+    h.stack.push({ snap, sel: selectedPreset })
     if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
     h.idx = h.stack.length - 1
     setHistVer((v) => v + 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equipped, tone, dyePalette, dyeHsb, hidden, dyeInteracting])
+  }, [equipped, tone, dyePalette, dyeHsb, hidden, selectedPreset, dyeInteracting])
 
-  const applyHistory = (snap: Snapshot) => {
-    const j = JSON.stringify(snap)
+  const applyHistory = (e: { snap: Snapshot; sel: string | null }) => {
+    const j = JSON.stringify({ s: e.snap, p: e.sel })
     histExpect.current = j; histLast.current = j
-    applySnapshot(snap, false, true).catch(() => {}) // 자동저장 허용(프리셋 갱신) + 아이템 선택(dyeTarget) 유지
+    // 코디 + 선택 프리셋을 함께 복원. skipAutosave=false → 되돌린 코디가 그 프리셋에 저장된다.
+    applySnapshot(e.snap, false, true, e.sel).catch(() => {})
     setHistVer((v) => v + 1)
   }
   const undo = () => { const h = histRef.current; if (h.idx <= 0) return; h.idx -= 1; applyHistory(h.stack[h.idx]) }
