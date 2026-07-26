@@ -307,7 +307,11 @@ export async function buildOverrides(
             ])
             out.set(l.png, blendPalette(baseImg, mixImg, p.ratio, `${l.png}:${baseId}:${mixId}`))
           } else {
-            const baseImg = await loadImage(swapId(l.png, meta.id, baseId), false)
+            // ⚠️ 반드시 CORS(cors=true) 로 로드한다. cors=false 로 로드한 이미지를 toCanvas 로 그리면
+            //    override 캔버스가 taint 되고, 그게 렌더 캔버스에 합성되면 우클릭 "이미지 복사"의 toBlob 이
+            //    null 을 반환해 복사가 실패한다(색 입힌 헤어/성형/아이템이 있을 때만 재현되던 버그).
+            //    loadImage(true) 는 ?cors=1 별도 캐시키를 써서 일반 렌더 캐시를 오염시키지 않는다.
+            const baseImg = await loadImage(swapId(l.png, meta.id, baseId), true)
             out.set(l.png, toCanvas(baseImg, baseImg.width, baseImg.height))
           }
         } catch (_) {}
@@ -331,7 +335,8 @@ export function preloadPaletteVariant(meta: ItemMeta, p: PaletteParams, view: Vi
   const useMix = p.mixColor != null && p.ratio > 0
   const mixId = p.mixColor != null ? variantId(meta.colorGroup, p.mixColor, meta.slot) : null
   for (const l of getFrameLayers(meta, view)) {
-    loadImage(swapId(l.png, meta.id, baseId), useMix).catch(() => {})
+    // override 로드가 항상 CORS(cors=true)이므로 프리로드도 CORS 로 맞춰 같은 캐시 엔트리를 데운다.
+    loadImage(swapId(l.png, meta.id, baseId), true).catch(() => {})
     if (useMix && mixId) loadImage(swapId(l.png, meta.id, mixId), true).catch(() => {})
   }
 }
