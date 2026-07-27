@@ -27,10 +27,11 @@ export default function PresetScreen() {
       </div>
 
       <div style={css('flex:1 1 auto; min-height:0; display:flex; flex-direction:column;')}>
-        {/* 불러오기 바(닉네임 전용) — AI 코디 검색 입력행과 동일 디자인: 단일 행(입력 + 버튼), padding 12px 22px, 높이 34 */}
+        {/* 불러오기 바(닉네임 또는 공유 링크) — AI 코디 검색 입력행과 동일 디자인: 단일 행(입력 + 버튼), padding 12px 22px, 높이 34.
+            공유 링크/코드를 넣으면 링크 접속과 동일하게 '코디 받기' 시트가 떠 어느 프리셋에 넣을지 고른다. */}
         <div style={css(`flex:0 0 auto; padding:${mob ? '10px 14px' : '12px 22px'}; display:flex; gap:8px; flex-wrap:wrap; align-items:center;`)}>
           <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') s.importFetch() }} disabled={s.importing}
-            placeholder="메이플 캐릭터 닉네임 입력"
+            placeholder="메이플 닉네임 또는 공유 링크 입력"
             style={css(`flex:1 1 0; min-width:0; height:34px; padding:0 12px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; color:#3d372f; outline:none; transition:border-color .14s ease; opacity:${s.importing ? 0.6 : 1};`)} />
           <button onClick={s.importFetch} disabled={s.importing} className="pb-h-solid" style={css(`flex:0 0 auto; white-space:nowrap; height:34px; padding:0 ${mob ? 14 : 18}px; display:flex; align-items:center; justify-content:center; gap:8px; border:none; background:${s.importing ? '#f0aecb' : '#ec86ac'}; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:${s.importing ? 'default' : 'pointer'}; transition:background .18s ease, filter .18s ease;`)}>
             {s.importing ? (<><span className="pb-spin" />불러오는 중…</>) : '불러오기'}
