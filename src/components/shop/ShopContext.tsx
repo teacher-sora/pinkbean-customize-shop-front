@@ -741,10 +741,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     showToast(isNick ? `'${label}' 코디를 불러왔어요` : '공유 코드를 프리셋에 적용했어요')
   }
   // 코드/닉네임으로 선택된 프리셋에 덮어쓰기.
+  // 입력이 공유 링크(…/#c=<코드>)나 공유 코드면 그 안의 코디 스냅샷을 꺼낸다. 아니면 null(→ 닉네임으로 취급).
+  const extractSharedSnap = (input: string): Snapshot | null => {
+    let code = input.trim()
+    const m = code.match(/[#?&]c=([^&\s]+)/) // URL 안의 #c= / ?c= / &c=
+    if (m) { try { code = decodeURIComponent(m[1]) } catch { code = m[1] } }
+    try { return decodeShareCode(code) } catch { return null }
+  }
   const importFetch = async () => {
     if (importing) return
     const val = nickInput.trim()
-    if (!val) { showToast(importMode === 'code' ? '코드를 입력해 주세요' : '닉네임을 입력해 주세요'); return }
+    if (!val) { showToast('닉네임 또는 공유 링크를 입력해 주세요'); return }
+    // 공유 링크/코드 입력 → 링크로 접속했을 때와 동일하게 '코디 받기' 시트를 띄워 어느 프리셋에 넣을지 고르게 한다.
+    const shared = extractSharedSnap(val)
+    if (shared) { setSharedIncoming(shared); setNickInput(''); return }
     if (!selectedPreset) return
     setImporting(true)
     try {
