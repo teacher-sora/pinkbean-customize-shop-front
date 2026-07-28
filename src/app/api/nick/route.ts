@@ -49,6 +49,35 @@ function mergeItems(data: Cash, prefix: string, presetNo: number) {
   })
 }
 
+// 일반(비캐시) 장비 = 넥슨 item-equipment. 코디는 캐시뿐 아니라 일반 아이템도 취급하므로(예: 일반 한벌옷
+// '클래식 백금슈트'), 아바타에 보이는 일반 장비도 함께 넘겨 캐시 아이템의 "베이스 레이어"로 쓴다.
+interface NexonRegItem { item_equipment_part?: string; item_equipment_slot?: string; item_name?: string }
+type LookItem = ReturnType<typeof mergeItems>[number]
+function regularVisible(idata: Cash | null): LookItem[] {
+  const arr = (idata?.item_equipment as NexonRegItem[]) || []
+  const out: LookItem[] = []
+  for (const it of arr) {
+    const part = it.item_equipment_slot || it.item_equipment_part
+    if (!part || !it.item_name) continue // 파트명(한벌옷/상의/무기 등)은 프론트 NEXON_PART_SLOT 이 화이트리스트로 걸러낸다
+    out.push({ part, slot: part, name: it.item_name, gender: null, prism: null })
+  }
+  return out
+}
+// 일반(베이스) + 캐시(치장) 병합: 같은 부위는 캐시가 덮는다. 한벌옷↔상의/하의는 배타(치장 레이어 우선).
+function mergeLayers(reg: LookItem[], cash: LookItem[]): LookItem[] {
+  const byPart: Record<string, LookItem & { _l?: 'reg' | 'cash' }> = {}
+  for (const it of reg) byPart[it.part] = { ...it, _l: 'reg' }
+  for (const it of cash) byPart[it.part] = { ...it, _l: 'cash' } // 캐시가 일반을 덮어씀
+  const ov = byPart['한벌옷'], top = byPart['상의'], bot = byPart['하의']
+  if (ov && (top || bot)) {
+    const ovCash = ov._l === 'cash', tbCash = top?._l === 'cash' || bot?._l === 'cash'
+    if (ovCash && !tbCash) { delete byPart['상의']; delete byPart['하의'] }        // 캐시 한벌옷 → 일반 상하의 숨김
+    else if (!ovCash && tbCash) { delete byPart['한벌옷'] }                          // 캐시 상/하의 → 일반 한벌옷 숨김
+    else { delete byPart['상의']; delete byPart['하의'] }                            // 동일 레이어 → 한벌옷 우선
+  }
+  return Object.values(byPart).map(({ _l, ...r }) => r as LookItem)
+}
+
 const col = (o: NexonBeautyPart | null | undefined, nameKey: 'hair_name' | 'face_name') =>
   o && o[nameKey] ? { name: o[nameKey], baseColor: o.base_color ?? null, mixColor: o.mix_color ?? null, mixRate: o.mix_rate ?? '0' } : null
 
@@ -78,29 +107,36 @@ export async function GET(req: NextRequest) {
     if (!idr.ok) return NextResponse.json({ error: '캐릭터를 찾지 못했어요' }, { status: 404 })
     const ocid = (await idr.json())?.ocid
     if (!ocid) return NextResponse.json({ error: '캐릭터를 찾지 못했어요' }, { status: 404 })
-    // 캐시 아이템(옷·모자 등) + 뷰티(헤어·성형·피부)를 병렬 조회.
-    const [cr, br] = await Promise.all([
+    // 캐시 아이템(치장) + 일반 장비(비캐시, 예: 일반 한벌옷) + 뷰티(헤어·성형·피부)를 병렬 조회.
+    const [cr, br, ir] = await Promise.all([
       fetch(`${BASE}/character/cashitem-equipment?ocid=${encodeURIComponent(ocid)}`, { headers, cache: 'no-store' }),
       fetch(`${BASE}/character/beauty-equipment?ocid=${encodeURIComponent(ocid)}`, { headers, cache: 'no-store' }),
+      fetch(`${BASE}/character/item-equipment?ocid=${encodeURIComponent(ocid)}`, { headers, cache: 'no-store' }),
     ])
     if (!cr.ok) return NextResponse.json({ error: '코디 정보를 불러오지 못했어요' }, { status: 502 })
     const data: Cash = await cr.json()
     const beauty: Record<string, NexonBeautyPart & { skin_name?: string }> | null = br.ok ? await br.json().catch(() => null) : null
+    const itemData: Cash | null = ir.ok ? await ir.json().catch(() => null) : null // 실패해도 비치명적(일반 장비만 빠짐)
+    const reg = regularVisible(itemData) // 아바타에 보이는 일반 장비(캐시의 베이스 레이어)
     const charClass = (data.character_class as string) ?? null
     const charGender = (data.character_gender as string) ?? null
     const [labelA, labelB] = labelsFor(charClass)
 
     const activeNo = Number(data.preset_no) || 0 // None/0 = 해제(= base 착용 중)
-    const buildLook = (kkey: 'normal' | 'additional', label: string) => {
+    // includeReg=true 면 일반 장비를 베이스 레이어로 병합한다. (additional 코디 노출 여부는 캐시만으로 판정하므로
+    //  일반 코디 캐릭터에 2번째 코디가 헛노출되지 않게, additional 은 캐시만으로 먼저 판정 후 include 한다.)
+    const buildLook = (kkey: 'normal' | 'additional', label: string, includeReg: boolean) => {
       const p = kkey === 'normal' ? 'cash_item_equipment_' : 'additional_cash_item_equipment_'
       const b = kkey === 'normal' ? '' : 'additional_'
       const skinName = beauty?.[`${b}character_skin`]?.skin_name
+      const items = (n: number) => (includeReg ? mergeLayers(reg, mergeItems(data, p, n)) : mergeItems(data, p, n))
       // 기본은 항상 준다 — preset_no 가 None 인 캐릭터는 이게 곧 "지금 입고 있는 모습"이다.
-      const presets = [{ key: 'base', label: '기본', items: mergeItems(data, p, 0), active: activeNo === 0 }]
+      const presets = [{ key: 'base', label: '기본', items: items(0), active: activeNo === 0 }]
       for (const n of [1, 2, 3]) {
         // 빈 프리셋(0개)은 base 와 완전히 같아진다 → 카드로 내보내지 않는다(똑같은 걸 고르게 할 이유가 없다).
+        // 판정은 '캐시 프리셋'만으로 한다(일반 장비는 프리셋 무관 공통이므로 기준에서 제외).
         if (!((data[`${p}preset_${n}`] as NexonCashItem[]) || []).length) continue
-        presets.push({ key: String(n), label: `프리셋 ${n}`, items: mergeItems(data, p, n), active: activeNo === n })
+        presets.push({ key: String(n), label: `프리셋 ${n}`, items: items(n), active: activeNo === n })
       }
       return {
         key: kkey, label,
@@ -111,10 +147,13 @@ export async function GET(req: NextRequest) {
         skin: skinName ? { name: skinName } : null,
       }
     }
-    const looks = [buildLook('normal', labelA)]
-    const extra = buildLook('additional', labelB)
-    // 내용이 있을 때만 2번째 코디를 노출(일반 직업은 additional 자체가 없다).
-    if (extra.presets.some((x) => x.items.length) || extra.hair || extra.face || extra.skin) looks.push(extra)
+    const looks = [buildLook('normal', labelA, true)]
+    // 2번째 코디(제로/엔버) 노출 여부는 **캐시 콘텐츠만으로** 판정(일반 장비를 넣으면 항상 non-empty가 되어
+    // 일반 직업에도 헛노출됨). 실제 2번째 코디일 때만 일반 장비를 베이스로 병합해 추가한다.
+    const extraCash = buildLook('additional', labelB, false)
+    if (extraCash.presets.some((x) => x.items.length) || extraCash.hair || extraCash.face || extraCash.skin) {
+      looks.push(buildLook('additional', labelB, true))
+    }
 
     return NextResponse.json({
       gender: (data.character_gender as string) ?? null,
