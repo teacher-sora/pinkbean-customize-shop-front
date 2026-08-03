@@ -847,8 +847,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       })
     }, 100)
     return () => { if (saveT.current) clearTimeout(saveT.current) }
+    // 저장 대상 pv(형상변이·귀·무기모션·이펙트·배율) 변경도 자동저장 트리거에 포함해야 새로고침 후 유지된다.
+    // (시선/액션/표정/fps 는 snapshot 에 안 담기므로 의도적으로 제외.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equipped, tone, dyePalette, dyeHsb, hidden, selectedPreset, presets])
+  }, [equipped, tone, dyePalette, dyeHsb, hidden, selectedPreset, presets,
+      pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.zoom])
 
   // 실행취소 히스토리: 코디 상태가 바뀔 때마다 "즉시" 스냅샷 기록(부위 빠르게 눌러도 전부 남음).
   // 예외: 발색 슬라이더 드래그 중(dyeInteracting)은 보류 → 릴리즈 시 최종 상태 1개만 기록(스택 폭주 방지).
