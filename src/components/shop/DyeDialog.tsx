@@ -1,5 +1,6 @@
 'use client'
 
+import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { CATS, MIX_PALETTE, paletteFor } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
@@ -264,8 +265,8 @@ export default function DyeDialog() {
     <div
       onMouseDown={(e) => { maskDownRef.current = e.target === e.currentTarget }}
       onClick={(e) => { if (maskDownRef.current && e.target === e.currentTarget) s.closeDye() }}
-      className={closing ? 'pb-overlay-out' : 'pb-overlay'} style={css(`position:fixed; inset:0; z-index:60; background:rgba(42,37,33,0.42); display:flex; align-items:center; justify-content:center; padding:${mobile ? 14 : 32}px;`)}>
-      <div onClick={(e) => e.stopPropagation()} className={closing ? 'pb-panel-out' : 'pb-panel'} style={css(`width:100%; max-width:${mix ? 680 : 760}px; max-height:88vh; background:#fff; border-radius:18px; display:flex; flex-direction:column; overflow:hidden;`)}>
+      className={clsx(closing ? 'pb-overlay-out' : 'pb-overlay')} style={css(`position:fixed; inset:0; z-index:60; background:rgba(42,37,33,0.42); display:flex; align-items:center; justify-content:center; padding:${mobile ? 14 : 32}px;`)}>
+      <div onClick={(e) => e.stopPropagation()} className={clsx(closing ? 'pb-panel-out' : 'pb-panel')} style={css(`width:100%; max-width:${mix ? 680 : 760}px; max-height:88vh; background:#fff; border-radius:18px; display:flex; flex-direction:column; overflow:hidden;`)}>
         <div style={css('flex:0 0 auto; height:60px; padding:0 22px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #f0e9e1;')}>
           <div style={css('display:flex; align-items:baseline; gap:10px;')}>
             <span style={css('font-size:16px; font-weight:700; color:#2a2521;')}>{title}</span>

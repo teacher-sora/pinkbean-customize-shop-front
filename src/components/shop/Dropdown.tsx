@@ -7,6 +7,7 @@
  *  - 커스텀 스크롤바(pb-scroll). 바깥클릭/Esc/스크롤 시 닫힘.
  */
 
+import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Opt } from '@/lib/catalog'
@@ -117,7 +118,7 @@ export default function Dropdown({ value, onChange, options, groups, width = 190
         <span style={css(`font-size:10px; color:#a89e93; transition:transform .18s ease; transform:rotate(${active ? '180deg' : '0deg'});`)}>▾</span>
       </button>
       {open && pos && typeof document !== 'undefined' && createPortal(
-        <div ref={menuRef} className={`pb-scroll pb-scroll-thin ${closing ? 'pb-collapse-out' : 'pb-collapse'}`}
+        <div ref={menuRef} className={clsx('pb-scroll pb-scroll-thin', closing ? 'pb-collapse-out' : 'pb-collapse')}
           style={{ ...css('position:fixed; z-index:200; overflow:hidden auto; padding:5px; background:#fff; border:1px solid #eee0e8; border-radius:10px; box-shadow:0 12px 30px rgba(42,37,33,.16);'), top: pos.top, bottom: pos.bottom, left: pos.left, width: pos.width, maxHeight: pos.maxH }}>
           {groups
             ? groups.map((g) => (

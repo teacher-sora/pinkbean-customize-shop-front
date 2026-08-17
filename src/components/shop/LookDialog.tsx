@@ -1,5 +1,6 @@
 'use client'
 
+import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { css } from '@/lib/style'
 import { isStacked } from '@/lib/useBreakpoint'
@@ -57,9 +58,9 @@ export default function LookDialog() {
   const cols = Math.min(look.presets.length, stacked ? 2 : 3)
 
   return (
-    <div onClick={(e) => { if (e.target === e.currentTarget) close() }} className={closing ? 'pb-overlay-out' : 'pb-overlay'}
+    <div onClick={(e) => { if (e.target === e.currentTarget) close() }} className={clsx(closing ? 'pb-overlay-out' : 'pb-overlay')}
       style={css(`position:fixed; inset:0; z-index:60; background:rgba(42,37,33,0.42); display:flex; align-items:center; justify-content:center; padding:${stacked ? 14 : 32}px;`)}>
-      <div onClick={(e) => e.stopPropagation()} className={closing ? 'pb-panel-out' : 'pb-panel'}
+      <div onClick={(e) => e.stopPropagation()} className={clsx(closing ? 'pb-panel-out' : 'pb-panel')}
         style={css('width:100%; max-width:560px; max-height:88svh; background:#fff; border-radius:18px; display:flex; flex-direction:column; overflow:hidden;')}>
 
         <div style={css('flex:0 0 auto; padding:18px 22px 0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;')}>
@@ -80,7 +81,7 @@ export default function LookDialog() {
               {lp.options.map((o) => {
                 const on = o.key === look.key
                 return (
-                  <button key={o.key} onClick={() => setLookKey(o.key)} className={on ? 'pb-h-solid' : 'pb-h-soft'}
+                  <button key={o.key} onClick={() => setLookKey(o.key)} className={clsx(on ? 'pb-h-solid' : 'pb-h-soft')}
                     style={css(`flex:1 1 auto; height:32px; padding:0 12px; border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{o.label}</button>
                 )
               })}

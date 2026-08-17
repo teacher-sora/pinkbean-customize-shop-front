@@ -3,6 +3,7 @@
 // AI 코디 검색 — 코디탭과 "동일 경험". 헤더(부위 드롭다운 + 썸네일/모델/내모델 토글 + 베타 배지 + 페이지),
 // 카드(장착 시 translateY(-5px)+테두리), 페이징/스와이프/방향키까지 코디탭 구조를 그대로 가져온다.
 // 결과는 원본(raw) ListItem 이라 스프라이트/톤/염색/라벨이 코디와 완전히 동일하게 렌더된다.
+import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
 import { css } from '@/lib/style'
@@ -221,7 +222,7 @@ export default function SearchScreen() {
                       const on = gf === g.v
                       return (
                         <button key={g.v} onClick={() => { s.setGenderFilter(g.v); s.setOffset(0); s.setSnapping(false) }}
-                          className={on ? 'pb-h-solid' : 'pb-h-soft'} title={g.hint}
+                          className={clsx(on ? 'pb-h-solid' : 'pb-h-soft')} title={g.hint}
                           style={css(`flex:1 1 0; height:28px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{g.l}</button>
                       )
                     })}
@@ -245,7 +246,7 @@ export default function SearchScreen() {
               {MODES.map((m) => {
                 const on = mode === m.v
                 return (
-                  <button key={m.v} onClick={() => s.setListMode(m.v)} className={on ? 'pb-h-solid' : 'pb-h-soft'}
+                  <button key={m.v} onClick={() => s.setListMode(m.v)} className={clsx(on ? 'pb-h-solid' : 'pb-h-soft')}
                     style={css(`height:28px; padding:0 ${phone ? 8 : 11}px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:${phone ? 11 : 12}px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease, filter .18s ease;`)}>{m.l}</button>
                 )
               })}

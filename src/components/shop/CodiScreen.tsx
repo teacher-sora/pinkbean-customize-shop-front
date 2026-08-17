@@ -1,5 +1,6 @@
 'use client'
 
+import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
 import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
@@ -241,7 +242,7 @@ export default function CodiScreen() {
                     const on = gf === g.v
                     return (
                       <button key={g.v} onClick={() => { s.setGenderFilter(g.v); s.setOffset(0); s.setSnapping(false) }}
-                        className={on ? 'pb-h-solid' : 'pb-h-soft'} title={g.hint}
+                        className={clsx(on ? 'pb-h-solid' : 'pb-h-soft')} title={g.hint}
                         style={css(`flex:1 1 0; height:28px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{g.l}</button>
                     )
                   })}
@@ -270,7 +271,7 @@ export default function CodiScreen() {
               const disabled = noSprite && m.v === 'sprite'
               const on = !disabled && mode === m.v
               return (
-                <button key={m.v} disabled={disabled} className={on ? 'pb-h-solid' : 'pb-h-soft'} title={disabled ? (isSkinCat ? '피부는 썸네일 보기를 지원하지 않아요' : '헤어는 썸네일 보기를 지원하지 않아요') : undefined} onClick={() => { if (!disabled) s.setListMode(m.v) }}
+                <button key={m.v} disabled={disabled} className={clsx(on ? 'pb-h-solid' : 'pb-h-soft')} title={disabled ? (isSkinCat ? '피부는 썸네일 보기를 지원하지 않아요' : '헤어는 썸네일 보기를 지원하지 않아요') : undefined} onClick={() => { if (!disabled) s.setListMode(m.v) }}
                   style={css(`height:28px; padding:0 ${phone ? 8 : 11}px; border:none; border-radius:7px; cursor:${disabled ? 'not-allowed' : 'pointer'}; opacity:${disabled ? 0.4 : 1}; font-family:inherit; font-size:${phone ? 11 : 12}px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease, filter .18s ease;`)}>{m.l}</button>
               )
             })}

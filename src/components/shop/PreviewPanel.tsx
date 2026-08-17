@@ -1,5 +1,6 @@
 'use client'
 
+import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, type Opt, type Pv } from '@/lib/catalog'
 import { css, pillStyle, PV_LABEL, ROW_BETWEEN, switchKnob, switchTrack } from '@/lib/style'
@@ -239,7 +240,7 @@ export default function PreviewPanel() {
 
       {/* PC/태블릿: 인라인 아코디언. 모바일은 아래 바텀시트로 뺀다(고정 높이 패널 안에서 아코디언이 잘리던 문제). */}
       {!mob && (
-        <div className={s.pvOpen ? 'pb-acc pb-acc-open' : 'pb-acc'} style={css('flex:0 0 auto;')}>
+        <div className={clsx('pb-acc', s.pvOpen && 'pb-acc-open')} style={css('flex:0 0 auto;')}>
           <div>{pvBody}</div>
         </div>
       )}

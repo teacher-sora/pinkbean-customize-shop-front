@@ -1,5 +1,6 @@
 'use client'
 
+import clsx from 'clsx'
 import { PRIMARIES } from '@/lib/catalog'
 import { css } from '@/lib/style'
 import { isStacked } from '@/lib/useBreakpoint'
@@ -15,7 +16,7 @@ export default function Header() {
     // gap 은 PC 와 동일(5px)로 고정한 뒤 각 탭을 flex:1 1 auto 로 둔다 → 자기 글자 폭(auto basis)은 유지한 채
     // 남는 폭만 나눠 가져 auto-fit 된다. "코디 정보·염색"은 길고 "염색"은 짧은 비율이 그대로 보존된다.
     // overflow-x 는 남겨 둔다 — 폰트/언어 차이로 넘칠 때 잘리지 않고 스크롤되게 하는 안전망.
-    <div style={css(`display:flex; align-items:center; gap:5px; padding:3px; background:#f4ecf3; border-radius:10px; ${stacked ? 'overflow-x:auto; overflow-y:hidden; min-width:0; -webkit-overflow-scrolling:touch;' : ''}`)} className={stacked ? 'pb-scroll-thin' : undefined}>
+    <div style={css(`display:flex; align-items:center; gap:5px; padding:3px; background:#f4ecf3; border-radius:10px; ${stacked ? 'overflow-x:auto; overflow-y:hidden; min-width:0; -webkit-overflow-scrolling:touch;' : ''}`)} className={clsx(stacked && 'pb-scroll-thin')}>
       {PRIMARIES.map((p) => {
         const on = p.id === primary
         const hov = hoverPrimary === p.id
