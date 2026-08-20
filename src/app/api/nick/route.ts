@@ -36,7 +36,14 @@ function mergeItems(data: Cash, prefix: string, presetNo: number) {
   const bySlot: Record<string, NexonCashItem> = {}
   for (const it of ((data[`${prefix}base`] as NexonCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
   if (presetNo) for (const it of ((data[`${prefix}preset_${presetNo}`] as NexonCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
-  return Object.values(bySlot).map((it) => {
+  return Object.values(bySlot)
+    // 반투명 시리즈(반투명 모자/한벌옷/신발/망토/무기)는 자체 스프라이트가 없이 "그 부위의 일반 장비를 그대로
+    // 비쳐 보여주는" 캐시 아이템이다. 그래서 CDN 카탈로그에 없다(빈 카드가 되므로 의도적으로 제외됨).
+    // 코디로 불러올 땐 그 부위에 캐시(반투명)가 아니라 **일반 장비가 대신 들어가야** 하므로, 캐시 목록에서 뺀다.
+    // → mergeLayers 에서 그 부위의 reg(일반 장비)가 덮이지 않고 그대로 남아 코디 아이템이 된다.
+    // (투명=부위를 아무것도 없는 것처럼 비움 / 반투명=부위에 일반 장비를 대신 노출 — 둘은 반대 동작이다.)
+    .filter((it) => !it.cash_item_name.includes('반투명'))
+    .map((it) => {
     const p = it.cash_item_coloring_prism
     return {
       part: it.cash_item_equipment_part, slot: it.cash_item_equipment_slot,

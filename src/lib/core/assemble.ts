@@ -29,7 +29,9 @@ export interface AssembleInput {
 
 // 투명 시리즈(투명 모자/얼굴장식/장갑…)는 스프라이트가 비어 아무것도 안 그리는데, vslot(가림)만 남으면
 // 밑의 헤어/얼굴이 사라지는 구멍이 생긴다 → 이런 아이템은 occlusion/face-hide 에서 제외한다.
-const isTransparent = (name?: string | null) => !!name && name.includes('투명')
+// ⚠️ '반투명'도 '투명'을 포함하지만 동작이 반대다(투명=부위 비움 / 반투명=그 부위의 일반 장비를 대신 노출).
+// 반투명은 카탈로그에 없고 닉네임 임포트(api/nick)에서 일반 장비로 치환돼 여기까진 안 오지만, 만일에 대비해 배제한다.
+const isTransparent = (name?: string | null) => !!name && name.includes('투명') && !name.includes('반투명')
 
 export interface ViewOpts {
   action: string            // effective action key (resolved: stand1/swingT1/shoot6/…)
