@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import PresetMigration from '@/components/PresetMigration'
 
 // 배포 도메인(Vercel 연결 예정). 다른 도메인/프리뷰면 NEXT_PUBLIC_SITE_URL 로 덮어씀.
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pinkbean-customize.com'
@@ -132,7 +133,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://cdn.pinkbean-customize.com" crossOrigin="" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* apex→www 이전 유저의 옛 프리셋을 www 로 자동 이관(일회성, 유저 조작 불필요) */}
+        <PresetMigration />
+        {children}
+      </body>
     </html>
   )
 }
