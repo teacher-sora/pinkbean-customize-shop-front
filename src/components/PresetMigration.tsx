@@ -12,7 +12,28 @@ import { useEffect } from 'react'
 const APEX_ORIGIN = 'https://pinkbean-customize.com'
 const WWW_HOST = 'www.pinkbean-customize.com'
 const DONE_KEY = 'pb_migrated_from_apex_v1'
-const KEYS = ['pb_presets_v1', 'pb_favorites_v1'] as const
+
+// www 는 첫 로드 때 앱이 기본 프리셋(pb_presets_v1)을 자동 저장한다. 그래서 "키 존재 여부"로 가져오기를
+// 막으면 apex 서빙 전환 뒤에도 스킵돼버린다. 대신 www 프리셋이 **손 안 댄 기본값**일 때만 apex 값으로 교체한다
+// (= 유저가 www 에서 새로 만든 프리셋은 보존). 판정: 20개 스냅샷이 전부 동일 + 이름이 전부 기본("코디 N")이면 기본값.
+function presetsArePristine(raw: string | null): boolean {
+  if (!raw) return true
+  try {
+    const store = JSON.parse(raw) as { data?: Record<string, unknown>; names?: Record<string, string> }
+    const data = store?.data
+    if (!data || typeof data !== 'object') return true
+    const vals = Object.values(data)
+    if (!vals.length) return true
+    const first = JSON.stringify(vals[0])
+    if (!vals.every((v) => JSON.stringify(v) === first)) return false // 프리셋마다 내용이 다르면 = 손 댄 것
+    const names = store?.names || {}
+    return Object.entries(names).every(([k, n]) => n === `코디 ${Number(String(k).replace('d', '')) + 1}`)
+  } catch { return false }
+}
+function favoritesAreEmpty(raw: string | null): boolean {
+  if (!raw) return true
+  try { const a = JSON.parse(raw); return Array.isArray(a) ? a.length === 0 : true } catch { return false }
+}
 
 export default function PresetMigration() {
   useEffect(() => {
@@ -40,9 +61,17 @@ export default function PresetMigration() {
       if (!d || d.__pb_migrate !== 1) return
       let imported = false
       try {
-        // www 에 아직 없을 때만 넣는다 — www 에서 새로 만든 프리셋을 덮어쓰지 않기 위해.
-        if (d.presets && !localStorage.getItem('pb_presets_v1')) { localStorage.setItem('pb_presets_v1', d.presets); imported = true }
-        if (d.favorites && !localStorage.getItem('pb_favorites_v1')) { localStorage.setItem('pb_favorites_v1', d.favorites) }
+        // www 가 "손 안 댄 기본값"이고 apex 값이 다를 때만 교체 — www 에서 새로 만든 프리셋은 보존.
+        const wwwPresets = localStorage.getItem('pb_presets_v1')
+        if (d.presets && d.presets !== wwwPresets && presetsArePristine(wwwPresets)) {
+          localStorage.setItem('pb_presets_v1', d.presets); imported = true
+        }
+        // 즐겨찾기: www 가 비었을 때만.
+        const wwwFav = localStorage.getItem('pb_favorites_v1')
+        if (d.favorites && d.favorites !== wwwFav && favoritesAreEmpty(wwwFav)) {
+          localStorage.setItem('pb_favorites_v1', d.favorites)
+          if (!favoritesAreEmpty(d.favorites)) imported = true
+        }
         localStorage.setItem(DONE_KEY, '1') // apex 응답을 받았으면(빈 값이라도) 성공으로 보고 재시도 안 함
       } catch { /* 저장 실패해도 무해 */ }
       cleanup()
