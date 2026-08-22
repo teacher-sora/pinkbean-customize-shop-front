@@ -93,6 +93,7 @@ export interface ShopCtx {
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
   search: string; setSearch: Dispatch<string>
   genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter>
+  searchGenderFilter: GenderFilter; setSearchGenderFilter: Dispatch<GenderFilter>
   // primary/screen
   primary: string; setPrimary: Dispatch<string>
   searchQuery: string | null; runSearch: (q: string, slot?: string | null) => void; searchResults: ListItem[]; searchLoading: boolean
@@ -355,20 +356,23 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // ⚠️ "여자"는 여 전용만이 아니라 **여캐가 입을 수 있는 것**(여 + 공용)이다. 남자도 마찬가지.
   //    사람들이 원하는 건 "여자 전용템 목록"이 아니라 "내 캐릭터가 입을 수 있는 것만 보기"다.
   //    (실측 hair: 여 5752 / 남 5521 / 공용 376 → '여' 필터는 남 5521 을 걷어낸다)
-  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all')
+  // 코디 탭(일반 검색)과 AI 코디 검색은 성별 필터를 **각각 따로** 가진다(부위 성별을 독립적으로 바꾼다).
+  // 필터 "의미"(여 = 여+공용 등)는 공유하되, 선택된 "값"만 탭별로 분리한다.
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all')             // 코디 탭
+  const [searchGenderFilter, setSearchGenderFilter] = useState<GenderFilter>('all') // AI 코디 검색 탭
   // gender: 0=남 1=여 2=공용. 공용과 미상(null)은 항상 남긴다 — 걸러서 얻는 게 없고 오히려 빠뜨린다.
-  const byGender = useCallback((list: ListItem[]) => {
-    if (genderFilter === 'all') return list
-    const want = genderFilter === 'f' ? 1 : 0
+  const byGender = useCallback((list: ListItem[], gf: GenderFilter) => {
+    if (gf === 'all') return list
+    const want = gf === 'f' ? 1 : 0
     return list.filter((it) => it.gender === want || it.gender === 2 || it.gender == null)
-  }, [genderFilter])
+  }, [])
   const activeListFull = listForCat(activeCat)
   const activeList = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const list = byGender(activeListFull)
+    const list = byGender(activeListFull, genderFilter)
     if (!q) return list
     return list.filter((it) => (it.name || it.id).toLowerCase().includes(q))
-  }, [activeListFull, search, byGender])
+  }, [activeListFull, search, byGender, genderFilter])
 
   // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
   // 원본 해석이라 스프라이트/라벨/염색이 정확하고, 코디탭과 동일하게 ItemThumb(썸네일/모델/내모델)로 렌더된다.
@@ -408,8 +412,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const itemsPerPage = cols * rows
 
   // ── 페이징 대상: AI 검색 탭이면 검색결과, 아니면 활성 부위 리스트 (동일 캐러셀·페이지네이션 공유) ──
-  // AI 검색 결과에도 같은 성별 필터를 건다 — 한쪽에만 있으면 탭을 옮길 때마다 기준이 달라져 혼란스럽다.
-  const searchResultsView = useMemo(() => byGender(searchResults), [searchResults, byGender])
+  // AI 검색 결과는 AI 탭 전용 성별 필터(searchGenderFilter)로 거른다 — 코디 탭과 독립.
+  const searchResultsView = useMemo(() => byGender(searchResults, searchGenderFilter), [searchResults, byGender, searchGenderFilter])
   const pagedList = primary === 'search' ? searchResultsView : activeList
   const pageKey = primary === 'search' ? '__search__' : activeCat
 
@@ -917,6 +921,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const value: ShopCtx = {
     index, dataLoading, catLoading, listForCat, activeList, search, setSearch,
     genderFilter, setGenderFilter,
+    searchGenderFilter, setSearchGenderFilter,
     primary, setPrimary,
     searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,

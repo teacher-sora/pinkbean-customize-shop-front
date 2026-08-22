@@ -20,7 +20,7 @@ import ItemThumb from './ItemThumb'
 const SEARCH_CATS = [{ id: 'all', label: '전체' }, ...CATS.filter((c) => c.id !== 'skin' && c.id !== 'riding')]
 const MODES: { v: ListMode; l: string }[] = [{ v: 'sprite', l: '썸네일' }, { v: 'model', l: '모델' }, { v: 'mymodel', l: '내 모델' }]
 const NO_CASH_BADGE = new Set(['hair', 'face', 'skin'])
-// 성별 필터 — 코디 탭과 동일 정의(공용 포함). 두 탭이 다르면 기준이 갈린다.
+// 성별 필터 정의(여=여+공용 등) — 코디 탭과 동일 규칙. 단 선택된 "값"은 탭별로 독립(searchGenderFilter).
 const GENDERS: { v: GenderFilter; l: string; hint: string }[] = [
   { v: 'all', l: '전체', hint: '모든 아이템' },
   { v: 'f', l: '여자', hint: '여자 캐릭터가 입을 수 있는 것 (여자 전용 + 공용)' },
@@ -53,7 +53,7 @@ export default function SearchScreen() {
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
   useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
   const mode = s.listMode
-  const gf = s.genderFilter
+  const gf = s.searchGenderFilter // AI 검색 탭 전용 성별 필터(코디 탭과 독립)
   const catLabel = SEARCH_CATS.find((c) => c.id === cat)?.label || '전체'
   // '모델' 모드인데 표정 얼굴장식이 결과에 있으면 그 카드는 '내 모델'로 승격된다 → 내 착용 배경이 필요.
   const needMy = mode === 'model' && list.some((it) => !!it.fixedEmotion)
@@ -214,14 +214,14 @@ export default function SearchScreen() {
                 <span style={css(partBadge)}>부위 ▾</span>
               </button>
               <div style={css(partMenu)}>
-                {/* 성별 필터 — 코디 탭과 같은 자리·같은 규칙(공용 포함). 탭을 옮겨도 기준이 안 바뀐다. */}
+                {/* 성별 필터 — AI 검색 탭 전용(코디 탭과 독립적으로 바뀐다). 규칙(공용 포함)은 동일. */}
                 <div style={css('display:flex; align-items:center; gap:8px; padding:2px 2px 8px;')}>
                   <span style={css('flex:0 0 auto; font-size:11px; font-weight:600; color:#a89e93;')}>성별</span>
                   <div style={css('flex:1 1 auto; display:flex; gap:3px; padding:3px; background:#f4ecf3; border-radius:9px;')}>
                     {GENDERS.map((g) => {
                       const on = gf === g.v
                       return (
-                        <button key={g.v} onClick={() => { s.setGenderFilter(g.v); s.setOffset(0); s.setSnapping(false) }}
+                        <button key={g.v} onClick={() => { s.setSearchGenderFilter(g.v); s.setOffset(0); s.setSnapping(false) }}
                           className={clsx(on ? 'pb-h-solid' : 'pb-h-soft')} title={g.hint}
                           style={css(`flex:1 1 0; height:28px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{g.l}</button>
                       )
