@@ -33,6 +33,19 @@ export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boole
 export const PV_SNAP_DEFAULT: PvSnap = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, zoom: 2 }
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; pv?: PvSnap; name?: string }
 
+// 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
+// 사파리는 await 후 writeText 가 사용자 제스처 밖이라 거부될 수 있어, ClipboardItem 에 Promise(Blob)를 넘겨
+// 제스처와 동기적으로 쓰기를 시작하는 방식을 우선 쓴다(크롬/파폭은 writeText 폴백).
+function copyAsyncText(make: () => Promise<string>): Promise<void> {
+  try {
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      const blob = make().then((t) => new Blob([t], { type: 'text/plain' }))
+      return navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]).catch(() => {})
+    }
+  } catch { /* writeText 폴백 */ }
+  return make().then((t) => navigator.clipboard?.writeText(t)).then(() => {}).catch(() => {})
+}
+
 // ── 프리셋: 20개, 초깃값은 코디 기본(녹셀 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
 const PRESET_COUNT = 20
 const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
@@ -197,17 +210,21 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  // 공유 링크 수신: #c=<code> 로 접속하면 디코드해 '코디 받기' 시트를 띄운다(어느 프리셋에 저장할지 사용자가 선택).
-  // 창/탭 조율(포커스·자동닫기)은 일부 환경(카톡·모바일 다중탭)에서 불가·불일치라 의도적으로 넣지 않음 — 그냥 이 탭에서 처리.
+  // 공유 링크 수신: ?c=<code>(신규) 또는 #c=<code>(레거시)로 접속하면 디코드해 '코디 받기' 시트를 띄운다.
+  //  · 쿼리(?c=)를 쓰는 이유: 모바일 카톡 등 일부 링크파서가 '#' 이후를 하이퍼링크로 인식하지 못한다.
+  //  · 창/탭 조율(포커스·자동닫기)은 일부 환경(카톡·모바일 다중탭)에서 불가·불일치라 의도적으로 넣지 않음 — 그냥 이 탭에서 처리.
   const [sharedIncoming, setSharedIncoming] = useState<Snapshot | null>(null)
   useEffect(() => {
+    let code: string | null = null
     try {
-      const m = location.hash.match(/(?:^#|&)c=([^&]+)/)
-      if (!m) return
-      const snap = decodeShareCode(decodeURIComponent(m[1]))
-      history.replaceState(null, '', location.pathname + location.search) // URL 청소: 새로고침/북마크 재적용 방지
-      if (snap) setSharedIncoming(snap)
+      code = new URLSearchParams(location.search).get('c')
+      if (!code) { const h = location.hash.match(/(?:^#|&)c=([^&]+)/); if (h) code = decodeURIComponent(h[1]) }
     } catch { /* noop */ }
+    if (!code) return
+    try { history.replaceState(null, '', location.pathname) } catch {} // URL 청소: 새로고침/북마크 재적용 방지
+    let cancelled = false
+    decodeShareCode(code).then((snap) => { if (!cancelled && snap) setSharedIncoming(snap) }).catch(() => {})
+    return () => { cancelled = true }
   }, [])
   const dismissShared = useCallback(() => setSharedIncoming(null), [])
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=모델(코디는 모델이 기본)
@@ -746,24 +763,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 코드/닉네임으로 선택된 프리셋에 덮어쓰기.
   // 입력이 공유 링크(…/#c=<코드>)나 공유 코드면 그 안의 코디 스냅샷을 꺼낸다. 아니면 null(→ 닉네임으로 취급).
-  const extractSharedSnap = (input: string): Snapshot | null => {
+  const extractSharedSnap = async (input: string): Promise<Snapshot | null> => {
     let code = input.trim()
     const m = code.match(/[#?&]c=([^&\s]+)/) // URL 안의 #c= / ?c= / &c=
     if (m) { try { code = decodeURIComponent(m[1]) } catch { code = m[1] } }
-    try { return decodeShareCode(code) } catch { return null }
+    try { return await decodeShareCode(code) } catch { return null }
   }
   const importFetch = async () => {
     if (importing) return
     const val = nickInput.trim()
     if (!val) { showToast('닉네임 또는 공유 링크를 입력해 주세요'); return }
     // 공유 링크/코드 입력 → 링크로 접속했을 때와 동일하게 '코디 받기' 시트를 띄워 어느 프리셋에 넣을지 고르게 한다.
-    const shared = extractSharedSnap(val)
+    const shared = await extractSharedSnap(val)
     if (shared) { setSharedIncoming(shared); setNickInput(''); return }
     if (!selectedPreset) return
     setImporting(true)
     try {
       if (importMode === 'code') {
-        const snap = decodeShareCode(val)
+        const snap = await decodeShareCode(val)
         if (!snap) { showToast('올바른 공유 코드가 아니에요'); return }
         await applyImported(snap, val, false)
         return
@@ -786,14 +803,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 자체 완결형 공유 링크 복사(서버 없음) — 프리셋 카드 ↗. 이름까지 담아, 접속하면 '코디 받기' 시트가 뜬다.
   const sharePreset = (p: Preset) => {
     const snap = p.id === selectedPreset ? snapshot() : (presetData[p.id] ?? defaultSnapshot())
-    try { navigator.clipboard?.writeText(`${location.origin}/#c=${encodeShareCode({ ...snap, name: p.name })}`) } catch {}
+    void copyAsyncText(async () => `${location.origin}/?c=${await encodeShareCode({ ...snap, name: p.name })}`)
     showToast('공유 링크를 복사했어요')
   }
   // 현재 코디 스냅샷 + 선택된 프리셋 이름(공유 시 이름까지 그대로 전달된다).
   const curSnapNamed = (): Snapshot => ({ ...snapshot(), name: presets.find((p) => p.id === selectedPreset)?.name })
-  // 링크 공유: 현재 코디를 #c=<code> 로 담은 URL 을 복사. 접속하면 '코디 받기' 시트가 뜬다(위 sharedIncoming).
+  // 링크 공유: 현재 코디를 ?c=<code> 로 담은 URL 을 복사. 접속하면 '코디 받기' 시트가 뜬다(위 sharedIncoming).
   const shareCurrentLink = () => {
-    try { navigator.clipboard?.writeText(`${location.origin}/#c=${encodeShareCode(curSnapNamed())}`) } catch {}
+    void copyAsyncText(async () => `${location.origin}/?c=${await encodeShareCode(curSnapNamed())}`)
     showToast('공유 링크를 복사했어요')
   }
   // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말풍선을 받는다.
