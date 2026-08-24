@@ -11,13 +11,10 @@ export default function PresetScreen() {
   const s = useShop()
   const mob = isStacked(s.bp) // 세로 스택이면 태블릿도 같은 여백 절약 규칙(CodiScreen 주석 참고)
   // 라이브 모델 → Snapshot(선택된 카드가 이걸로 그려진다). 자동저장(100ms)을 기다리지 않고 즉시 반영.
-  const liveSnap: Snapshot = useMemo(() => {
-    const eq: Record<string, string> = {}
-    for (const [slot, it] of Object.entries(s.equipped)) if (it) eq[slot] = it.id
-    // pv(연출설정 일부)도 담아야 선택된 프리셋 카드에 형상변이·귀·무기·이펙트가 반영된다(SnapThumb 이 snap.pv 사용).
-    return { equipped: eq, tone: s.tone, dyePalette: s.dyePalette, dyeHsb: s.dyeHsb, hidden: s.hidden,
-      pv: { form: s.pv.form, ear: s.pv.ear, weapon: s.pv.weapon, wEffect: s.pv.wEffect, cEffect: s.pv.cEffect, capEffect: s.pv.capEffect, zoom: s.pv.zoom } }
-  }, [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.pv])
+  //  ⚠️ 반드시 context 의 snapshot() 을 그대로 쓴다 — 여기서 필드를 직접 나열하면 새 상태(점 위치·염색 등)를 빠뜨려
+  //     "선택됨" 카드에만 반영이 안 되는 버그가 난다(과거 dotPos 누락 사례). snapshot() 한 곳만 관리하면 자동 반영된다.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const liveSnap: Snapshot = useMemo(() => s.snapshot(), [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos, s.pv])
 
   return (
     <section style={css(`${mob ? `flex:0 0 auto; width:100%; height:${MOBILE_H.content}` : 'flex:0 0 65%'}; min-width:0; min-height:0; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden;`)}>

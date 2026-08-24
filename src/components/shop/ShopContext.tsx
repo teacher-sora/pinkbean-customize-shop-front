@@ -164,6 +164,9 @@ export interface ShopCtx {
   pvOpen: boolean; setPvOpen: Dispatch<boolean>
   // presets
   presets: Preset[]; presetData: Record<string, Snapshot>; selectedPreset: string | null
+  // 현재 라이브 모델 → 스냅샷. 프리셋 "선택됨" 카드가 저장본 대신 이걸로 그려진다(우측 미리보기와 100% 동일).
+  //  ⚠️ 미리보기에 영향 주는 새 상태(점 위치·염색 등)를 추가하면 snapshot()만 갱신하면 프리셋 카드에도 자동 반영된다.
+  snapshot: () => Snapshot
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   editingPreset: string | null; editName: string; setEditName: Dispatch<string>
@@ -1051,7 +1054,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     dialogSlot, dialogItem, dialogClosing, openDye, closeDye,
     dotPos, dotItem, dotClosing, openDot, closeDot, setDot, resetDot,
     pv, setPv, pvOpen, setPvOpen,
-    presets, presetData, selectedPreset, selectPreset, sharePreset, resetPreset,
+    presets, presetData, selectedPreset, selectPreset, sharePreset, resetPreset, snapshot,
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,
     nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrentLink, sharedIncoming, applySharedToPreset, dismissShared, rateCodi, rateResult, rating,
     lookPick, previewLookAt, commitLookDate, chooseLook, closeLookPick: () => setLookPick(null),
