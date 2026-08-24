@@ -12,14 +12,14 @@
  */
 
 import clsx from 'clsx'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta, type ListItem, type Vec } from '@/lib/core/data'
-import { buildOverrides, type HsbParams } from '@/lib/core/dye'
+import { applyHsb, buildOverrides, type HsbParams } from '@/lib/core/dye'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { clampDye } from '@/lib/color'
 import { DYE_FAMILIES } from '@/lib/catalog'
-import { THUMB_VIEW } from '@/lib/shopData'
+import { isColorLineSkin, THUMB_VIEW } from '@/lib/shopData'
 import { isStacked } from '@/lib/useBreakpoint'
 import { css } from '@/lib/style'
 import { useShop } from './ShopContext'
@@ -47,6 +47,8 @@ type Parts = {
   items: AssembleInput[]; eyeIdx: number; slot: string; itemMeta: ItemMeta
   dotNames: string[]; dotSizes: Record<string, { w: number; h: number }>; baseXY: Record<string, Vec>
   faceBox: Box
+  // 전체 염색 재현용: 착용 아이템 메타(헤어/성형/눈장식 등) + 피부(컬러라인) 염색 대상 body/head + 톤 이름.
+  dyeMetas: ItemMeta[]; bodyMeta: ItemMeta; headMeta: ItemMeta; toneName?: string
 }
 type Tool = 'move' | number
 
@@ -124,15 +126,18 @@ export default function DotDialog() {
       ]
       let eyeIdx = -1
       let itemMeta: ItemMeta | null = null
+      const dyeMetas: ItemMeta[] = [] // 착용 아이템 메타(염색 재현용: 헤어/성형/눈장식 등)
       eqEntries.forEach(([sl, it], k) => {
         const m = eqMetas[k]; if (!m) return
         if (it.id === item.id) { eyeIdx = items.length; itemMeta = m }
         items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, THUMB_VIEW), invisibleFace: m.invisibleFace, name: m.name })
+        dyeMetas.push(m)
       })
       if (eyeIdx < 0) { // (안전망) 편집 아이템이 착용 목록에 없으면 직접 추가
         const m = await loadMeta(item.id); if (!alive) return
         eyeIdx = items.length; itemMeta = m
         items.push({ itemId: m.id, slot: m.slot, vslot: m.vslot ?? null, layers: getFrameLayers(m, THUMB_VIEW), invisibleFace: m.invisibleFace, name: m.name })
+        dyeMetas.push(m)
       }
       const itemLayers = items[eyeIdx].layers
       const dotNames = itemLayers.filter((l) => DOT_RE.test(l.name)).map((l) => l.name)
@@ -161,7 +166,7 @@ export default function DotDialog() {
         if (p) baseXY[nm] = { x: p.x, y: p.y } // 오프셋 0 으로 배치한 값 = 기본좌표
         if (l) dotSizes[nm] = sizeByPng[l.png] || { w: 0, h: 0 }
       }
-      setParts({ items, eyeIdx, slot: item.slot, itemMeta: itemMeta!, dotNames, dotSizes, baseXY, faceBox })
+      setParts({ items, eyeIdx, slot: item.slot, itemMeta: itemMeta!, dotNames, dotSizes, baseXY, faceBox, dyeMetas, bodyMeta: body, headMeta: head, toneName: te.name })
       setLocal({ ...(s.dotPos[item.id] || {}) })
       const curHsb = s.dyeHsb[item.slot] ?? { h: 0, s: 0, b: 0, t: 0 }
       setHsb(curHsb); setRaw({ h: String(curHsb.h), s: String(curHsb.s), b: String(curHsb.b) })
@@ -171,7 +176,50 @@ export default function DotDialog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id, s.index, s.tone])
 
-  // 캔버스 재합성(오프셋+염색 반영) + 배율/패닝(focus) 반영 + 선택 점 링 위치. 배율 = fit(얼굴 기준, 불변) × zoom.
+  // 염색 오버라이드 — 두 갈래로 분리해 "눈장식 염색 슬라이더 드래그"가 헤어/성형까지 매 틱 리컬러하지 않게 한다.
+  //  baseOv: 편집 슬롯을 제외한 착용 아이템(헤어/성형 등) + 피부(컬러라인) — 커밋된 염색 기준. 다른 슬롯 염색이 바뀔 때만 재계산.
+  //  eyeOv : 편집 중인 눈장식 하나 — 이 다이얼로그의 라이브 hsb. 작은 스프라이트라 매 틱 리컬러해도 가볍다.
+  const [baseOv, setBaseOv] = useState<Map<string, HTMLCanvasElement>>(() => new Map())
+  const [eyeOv, setEyeOv] = useState<Map<string, HTMLCanvasElement>>(() => new Map())
+  useEffect(() => {
+    if (!parts) { setBaseOv(new Map()); return }
+    let alive = true
+    const others = parts.dyeMetas.filter((m) => m.id !== parts.itemMeta.id) // 편집 아이템 제외(그건 eyeOv 가 담당)
+    const skinHsb = s.dyeHsb['skin']
+    const skinDye = !!skinHsb && (skinHsb.h !== 0 || skinHsb.s !== 0 || skinHsb.b !== 0) && isColorLineSkin(parts.toneName)
+    ;(async () => {
+      try {
+        const ov = await buildOverrides(others, { palette: s.dyePalette, hsb: s.dyeHsb }, THUMB_VIEW)
+        if (skinDye) { // body+head 프레임 png 를 HSB 로 리컬러(피부는 무채색이라 라인만 변한다)
+          const pngs: string[] = []; const seen = new Set<string>()
+          for (const meta of [parts.bodyMeta, parts.headMeta]) {
+            for (const l of getFrameLayers(meta, THUMB_VIEW)) { if (!seen.has(l.png)) { seen.add(l.png); pngs.push(l.png) } }
+          }
+          const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
+          for (const e of loaded) { if (e) { try { ov.set(e[0], applyHsb(e[1], skinHsb!, e[0])) } catch { /* noop */ } } }
+        }
+        if (alive) setBaseOv(ov)
+      } catch { /* noop */ }
+    })()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parts, s.dyeHsb, s.dyePalette, s.index])
+
+  useEffect(() => {
+    if (!parts) { setEyeOv(new Map()); return }
+    if (hsb.h === 0 && hsb.s === 0 && hsb.b === 0) { setEyeOv(new Map()); return } // 무염색이면 오버라이드 불필요
+    let alive = true
+    ;(async () => {
+      try { const ov = await buildOverrides([parts.itemMeta], { palette: {}, hsb: { [parts.slot]: hsb } }, THUMB_VIEW); if (alive) setEyeOv(ov) }
+      catch { /* noop */ }
+    })()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parts, hsb])
+
+  const dyeOv = useMemo(() => { const m = new Map(baseOv); for (const [k, v] of eyeOv) m.set(k, v); return m }, [baseOv, eyeOv])
+
+  // 캔버스 재합성(점 오프셋 반영) + 배율/패닝(focus) 반영 + 선택 점 링 위치. 배율 = fit(얼굴 기준, 불변) × zoom. 염색은 dyeOv 로 주입.
   useEffect(() => {
     const canvas = canvasRef.current; const idx = s.index
     if (!canvas || !parts || !idx) return
@@ -190,13 +238,10 @@ export default function DotDialog() {
     canvas.style.width = box.w + 'px'; canvas.style.height = box.h + 'px'
     viewRef.current = { scale, anchorX, anchorY, dpr }
     rt.current = { zoom, focus: cf, fit, scale, dpr, devW, devH, tool, parts }
-    const dyed = hsb.h !== 0 || hsb.s !== 0 || hsb.b !== 0
     const seq = ++drawSeq.current
     ;(async () => {
-      let ov: Map<string, HTMLCanvasElement> | undefined
-      if (dyed) { try { ov = await buildOverrides([parts.itemMeta], { palette: {}, hsb: { [parts.slot]: hsb } }, THUMB_VIEW) } catch { /* noop */ } }
       if (seq !== drawSeq.current) return
-      await renderCharacter(canvas, placed, { scale, box: worldBox, anchor: { x: anchorX, y: anchorY }, flip: false, override: ov, shouldCancel: () => seq !== drawSeq.current }).catch(() => {})
+      await renderCharacter(canvas, placed, { scale, box: worldBox, anchor: { x: anchorX, y: anchorY }, flip: false, override: dyeOv, shouldCancel: () => seq !== drawSeq.current }).catch(() => {})
     })()
     if (typeof tool === 'number') {
       const nm = parts.dotNames[tool]
@@ -205,7 +250,7 @@ export default function DotDialog() {
         setActiveHandle({ cx: (anchorX + parts.baseXY[nm].x + off.x + sz.w / 2) * scale / dpr, cy: (anchorY + parts.baseXY[nm].y + off.y + sz.h / 2) * scale / dpr })
       } else setActiveHandle(null)
     } else setActiveHandle(null)
-  }, [parts, local, hsb, zoom, focus, tool, box.w, box.h, s.index])
+  }, [parts, local, dyeOv, zoom, focus, tool, box.w, box.h, s.index])
 
   // 마우스 휠 = 커서 기준 줌(캔버스 위에서만). 우측 배율바는 표시 전용.
   useEffect(() => {
@@ -323,7 +368,8 @@ export default function DotDialog() {
             <span style={css('font-size:12px; font-weight:600; color:#a89e93;')}>{label}</span>
             <input inputMode="numeric" aria-label={label} value={raw[f]} placeholder="0" onChange={(e) => setField(f)(e.target.value)} style={css(numInput)} />
           </div>
-          <input type="range" min={lo} max={hi} value={hsb[f]} onChange={(e) => setField(f)(e.target.value)} style={css('width:100%; accent-color:#ec86ac; cursor:pointer;')} />
+          {/* touch-action:none → 세로 스크롤 컨테이너 안에서도 터치 드래그가 스크롤로 새지 않고 thumb 를 부드럽게 끈다. */}
+          <input type="range" min={lo} max={hi} value={hsb[f]} onChange={(e) => setField(f)(e.target.value)} style={css('width:100%; accent-color:#ec86ac; cursor:pointer; touch-action:none;')} />
         </div>
       ))}
       <div style={css('display:flex; align-items:center; justify-content:space-between; gap:10px;')}>

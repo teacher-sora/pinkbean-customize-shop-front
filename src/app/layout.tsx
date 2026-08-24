@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import NoNativeZoom from './NoNativeZoom'
 
 // 배포 도메인(Vercel 연결 예정). 다른 도메인/프리뷰면 NEXT_PUBLIC_SITE_URL 로 덮어씀.
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pinkbean-customize.com'
@@ -67,6 +68,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // 페이지 자체의 핀치/더블탭 확대를 막는다(모바일에서 얼굴 확대 편집 시 화면이 통째로 확대되던 문제).
+  // 확대가 필요한 곳은 DotDialog 캔버스뿐이고, 그건 pointer 기반 자체 핀치라 네이티브 확대에 의존하지 않는다.
+  // Android(Chrome) 는 이 설정을 존중. iOS Safari 는 무시하므로 NoNativeZoom 이 gesture 이벤트로 보강한다.
+  maximumScale: 1,
+  userScalable: false,
   colorScheme: 'light',
   themeColor: '#ec86ac',
   // 가상 키보드가 뜰 때 100dvh 를 줄여 레이아웃을 다시 맞춘다(입력창 포커스 시 하단이 가려지지 않게).
@@ -132,7 +138,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://cdn.pinkbean-customize.com" crossOrigin="" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       </head>
-      <body>{children}</body>
+      <body><NoNativeZoom />{children}</body>
     </html>
   )
 }

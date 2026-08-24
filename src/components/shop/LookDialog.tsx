@@ -61,15 +61,19 @@ export default function LookDialog() {
   const epochRef = useRef(0)     // stopLoader 마다 증가 → 이전 조회 결과/구동 무효화
   const abortRef = useRef<AbortController | null>(null)
 
-  const today = iso(kstNow())
-  const yesterday = addDaysStr(today, -1)
+  const kNow = kstNow()
+  const today = iso(kNow)
+  // 인게임 코디는 "다음날 오전 5시(KST)"에 반영된다 → 그 전엔 전날 코디를 아직 못 가져온다.
+  //  예) 8/25 05:00 이전엔 8/24 코디가 아직 없어 최신 조회 가능일 = 8/23. 05:00 이후엔 8/24.
+  const latestFetch = addDaysStr(today, kNow.getUTCHours() >= 5 ? -1 : -2)
 
-  // 전체 날짜(내림차순): [현재(최신)=오늘, 어제, …, 2023-12-21]. 하루 1회만 생성.
-  const allDatesRef = useRef<{ today: string; list: string[] }>({ today: '', list: [] })
-  if (allDatesRef.current.today !== today) {
+  // 전체 날짜(내림차순): [현재(최신)=오늘, 최신조회일, …, 2023-12-21]. 경계(오늘/최신조회일)가 바뀔 때만 재생성.
+  const allDatesRef = useRef<{ key: string; list: string[] }>({ key: '', list: [] })
+  const dkey = today + latestFetch
+  if (allDatesRef.current.key !== dkey) {
     const list = [today]
-    for (let d = yesterday; d >= MIN_DATE; d = addDaysStr(d, -1)) list.push(d)
-    allDatesRef.current = { today, list }
+    for (let d = latestFetch; d >= MIN_DATE; d = addDaysStr(d, -1)) list.push(d)
+    allDatesRef.current = { key: dkey, list }
   }
   const allDates = allDatesRef.current.list
 
@@ -413,7 +417,7 @@ export default function LookDialog() {
 
       {/* 날짜(자체 달력으로 점프) + 인덱스 */}
       <div style={css('flex:0 0 auto; padding:14px 22px 0; display:flex; align-items:center; gap:10px;')}>
-        <MiniCalendar value={inputDate} min={MIN_DATE} max={today} today={today} onPick={jumpToDate} width={stacked ? 150 : 168} />
+        <MiniCalendar value={inputDate} min={MIN_DATE} max={latestFetch} today={latestFetch} onPick={jumpToDate} width={stacked ? 150 : 168} />
         <span style={css('margin-left:auto; flex:0 0 auto; font-size:12px; color:#a89e93; font-variant-numeric:tabular-nums;')}>{curPage + 1} / {pageCount}</span>
       </div>
 
