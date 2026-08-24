@@ -99,6 +99,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     setPlaced(null); setEffs([]); setOvr(override)
     ;(async () => {
       let self: AssembleInput[]
+      let selfMeta: ItemMeta | null = null
       if (item.slot === 'skin' && skinHeadId) {
         const [body, head] = await Promise.all([loadMeta(item.id), loadMeta(skinHeadId)])
         self = [
@@ -107,21 +108,34 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
         ]
       } else {
         const m = await loadMeta(item.id)
+        selfMeta = m
         self = [{ itemId: m.id, slot: m.slot, vslot: m.vslot ?? null, layers: getFrameLayers(m, view), invisibleFace: m.invisibleFace, name: m.name }]
       }
       if (!alive) return
+      // 후보 아이템 자신도 "내가 고른 색"으로 물들여 보여준다 — 단, 헤어·성형만(내 모델에서만 dye 전달됨).
+      //   이 둘은 전체 영역이 팔레트 변이(같은 색 인덱스)라 다른 헤어/성형에 그대로 적용해도 자연스럽다.
+      //   다른 부위는 부분 발색/HSB(아이템마다 다르게 발색)라 후보엔 적용하지 않는다(배경 override 로만 반영).
+      let selfOvr: Map<string, HTMLCanvasElement> | null = null
+      if (dye && selfMeta && (item.slot === 'hair' || item.slot === 'face')) {
+        selfOvr = await buildOverrides([selfMeta], dye, view).catch(() => null)
+        if (!alive) return
+      }
       // 표정 얼굴장식 카드: 배경에 구워진 얼굴은 ctxExpr(내 현재 표정) 기준이라, 이 카드가 보여줄
       // 표정으로 **얼굴만 다시 그린다**. 이때 염색 override 는 png 경로가 키라서 표정이 바뀌면
       // 통째로 빗나간다 → 그 표정 기준으로 얼굴 염색을 다시 굽고 배경 override 위에 덮어쓴다.
       // (안 하면 표정 얼굴장식 카드에서만 얼굴 염색이 풀려 보인다.)
       let bg = ctxItems
+      let faceOvr: Map<string, HTMLCanvasElement> | null = null
       if (cardExpr !== ctxExpr && faceMeta) {
         bg = ctxItems.map((ci) => (ci.slot === 'face' ? { ...ci, layers: getFrameLayers(faceMeta, view) } : ci))
         if (dye) {
-          const faceOvr = await buildOverrides([faceMeta], dye, view).catch(() => new Map<string, HTMLCanvasElement>())
+          faceOvr = await buildOverrides([faceMeta], dye, view).catch(() => null)
           if (!alive) return
-          if (faceOvr.size) setOvr(new Map([...(override ?? new Map()), ...faceOvr]))
         }
+      }
+      // 배경 염색(override) 위에 표정-재구운 얼굴(faceOvr) + 후보 헤어/성형 발색(selfOvr)을 덮어쓴다.
+      if ((selfOvr && selfOvr.size) || (faceOvr && faceOvr.size)) {
+        setOvr(new Map<string, HTMLCanvasElement>([...(override ?? new Map()), ...(faceOvr ?? new Map()), ...(selfOvr ?? new Map())]))
       }
       // [dev] 라이딩(탈것) 카드 = 탑승 장착샷 (미리보기 규칙과 동일하게 리스트에도 반영).
       //   · 방패는 탑승 중 숨김. 무기는 앉은 채(비-back)에선 숨김.
