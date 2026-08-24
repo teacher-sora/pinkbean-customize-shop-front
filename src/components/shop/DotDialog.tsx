@@ -77,6 +77,15 @@ export default function DotDialog() {
   const modeRef = useRef<'dot' | 'pan' | 'pinch' | null>(null)
   const panRef = useRef<{ fx: number; fy: number; px: number; py: number }>({ fx: 0, fy: 0, px: 0, py: 0 })
   const pinchRef = useRef<{ lastDist: number }>({ lastDist: 0 })
+  // 염색 +/− 스테퍼(길게 누르면 반복). hsbRef 로 인터벌 반복이 최신값을 읽는다.
+  const holdRef = useRef<{ t: ReturnType<typeof setTimeout> | null; i: ReturnType<typeof setInterval> | null }>({ t: null, i: null })
+  const stopHold = () => {
+    if (holdRef.current.t) { clearTimeout(holdRef.current.t); holdRef.current.t = null }
+    if (holdRef.current.i) { clearInterval(holdRef.current.i); holdRef.current.i = null }
+  }
+  const hsbRef = useRef(hsb)
+  hsbRef.current = hsb
+  useEffect(() => stopHold, [])
 
   // 다이얼로그 오픈 중: ESC 닫기 + 방향키 미세조정 + 그 외 앱 단축키(리스트 ←/→ 페이지 등) 캡처 차단.
   useEffect(() => {
@@ -332,6 +341,19 @@ export default function DotDialog() {
     const n = val === '' || val === '-' ? 0 : clampDye(f, parseInt(val, 10))
     setHsb((h) => ({ ...h, [f]: n }))
   }
+  // +/− 1 단위 미세조정(스테퍼). 인터벌 반복이 stale 하지 않도록 hsbRef 로 최신값을 읽어 누적.
+  const bump = (f: 'h' | 's' | 'b', d: number) => {
+    const v = clampDye(f, (hsbRef.current[f] ?? 0) + d)
+    hsbRef.current = { ...hsbRef.current, [f]: v }
+    setHsb((h) => ({ ...h, [f]: v }))
+    setRaw((r) => ({ ...r, [f]: String(v) }))
+  }
+  const startHold = (fn: () => void) => (e: React.PointerEvent) => {
+    if (e.button != null && e.button !== 0) return
+    e.preventDefault() // 길게 누를 때 텍스트 선택/확대 방지
+    stopHold(); fn()
+    holdRef.current.t = setTimeout(() => { holdRef.current.i = setInterval(fn, 70) }, 400)
+  }
   const resetHsb = () => { setHsb({ h: 0, s: 0, b: 0, t: 0 }); setRaw({ h: '0', s: '0', b: '0' }) }
 
   const applyAll = () => {
@@ -350,7 +372,10 @@ export default function DotDialog() {
   const closeStyle = `height:38px; padding:0 18px; border:1px solid ${s.hoverDlgClose ? '#ec86ac' : '#ddd4ca'}; background:#fff; border-radius:8px; font-family:inherit; font-size:13px; font-weight:500; color:${s.hoverDlgClose ? '#ec86ac' : '#5c534b'}; cursor:pointer; transition:border-color .2s ease, color .2s ease;`
   const applyStyle = `height:38px; padding:0 20px; border:none; background:${s.hoverDlgApply ? '#e07ba0' : '#ec86ac'}; border-radius:8px; font-family:inherit; font-size:13px; font-weight:600; color:#fff; cursor:pointer; transition:background .2s ease;`
   const toolBtn = (on: boolean) => `min-width:46px; height:30px; padding:0 12px; border:1px solid ${on ? '#ec86ac' : '#e7ded4'}; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:${on ? 700 : 500}; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : '#fff'}; transition:background .14s ease, color .14s ease, border-color .14s ease;`
-  const numInput = 'width:56px; height:30px; padding:0 8px; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; font-family:inherit; font-size:13px; text-align:right; color:#3d372f; outline:none;'
+  // 염색 +/− 스테퍼(다른 염색 컨트롤과 동일: [−][값(중앙)][+]).
+  const stepWrap = 'flex:0 0 auto; display:flex; align-items:center; border:1px solid #e7ded4; border-radius:8px; background:#faf7f3; overflow:hidden;'
+  const stepBtn = (disabled: boolean) => `flex:0 0 auto; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border:none; background:transparent; color:${disabled ? '#d8cfc5' : '#a2786f'}; font-family:inherit; font-size:15px; font-weight:700; line-height:1; cursor:${disabled ? 'default' : 'pointer'}; user-select:none; touch-action:manipulation; transition:color .12s ease;`
+  const stepNum = 'width:52px; height:30px; padding:0 2px; border:none; border-left:1px solid #ece4da; border-right:1px solid #ece4da; background:#fff; font-family:inherit; font-size:13px; font-weight:600; text-align:center; color:#3d372f; outline:none; font-variant-numeric:tabular-nums;'
 
   // ── 염색 컨트롤 ──
   const dyeCol = (
@@ -366,7 +391,16 @@ export default function DotDialog() {
         <div key={f}>
           <div style={css('display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:10px;')}>
             <span style={css('font-size:12px; font-weight:600; color:#a89e93;')}>{label}</span>
-            <input inputMode="numeric" aria-label={label} value={raw[f]} placeholder="0" onChange={(e) => setField(f)(e.target.value)} style={css(numInput)} />
+            {/* [−][값(중앙)][+] — 다른 염색 컨트롤과 동일. 길게 누르면 400ms 뒤 70ms 간격 반복. */}
+            <div style={css(stepWrap)}>
+              <button className="pb-step" aria-label={`${label} 1 감소`} title="1 감소 (길게 누르면 계속)" disabled={hsb[f] <= lo}
+                onPointerDown={startHold(() => bump(f, -1))} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
+                style={css(stepBtn(hsb[f] <= lo))}>−</button>
+              <input inputMode="numeric" aria-label={label} value={raw[f]} placeholder="0" onChange={(e) => setField(f)(e.target.value)} style={css(stepNum)} />
+              <button className="pb-step" aria-label={`${label} 1 증가`} title="1 증가 (길게 누르면 계속)" disabled={hsb[f] >= hi}
+                onPointerDown={startHold(() => bump(f, +1))} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
+                style={css(stepBtn(hsb[f] >= hi))}>+</button>
+            </div>
           </div>
           {/* touch-action:none → 세로 스크롤 컨테이너 안에서도 터치 드래그가 스크롤로 새지 않고 thumb 를 부드럽게 끈다. */}
           <input type="range" min={lo} max={hi} value={hsb[f]} onChange={(e) => setField(f)(e.target.value)} style={css('width:100%; accent-color:#ec86ac; cursor:pointer; touch-action:none;')} />
