@@ -57,7 +57,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
         { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, TV) },
         { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, TV) },
         // name 은 투명 아이템 판별에 쓰인다 — 없으면 투명 모자/장식이 헤어·얼굴을 가려 구멍이 생긴다.
-        ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: getFrameLayers(meta, TV), invisibleFace: meta.invisibleFace, name: meta.name })),
+        ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: getFrameLayers(meta, TV), invisibleFace: meta.invisibleFace, name: meta.name, dotOffsets: snap.dotPos?.[meta.id] })),
         ...animaLayers(spv.form, animaRaces), // 형상변이 — 프리셋에 저장된 값
       ]
       const { placed: p, anchors } = assemble(items, index.zmap, index.smap)

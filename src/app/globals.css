@@ -138,6 +138,16 @@ button { will-change: transform; }
 
 @keyframes pbCollapseIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 .pb-collapse { animation: pbCollapseIn .2s ease both; }
+
+/* 다이얼로그 안에서 화면(뷰)을 좌우로 밀며 전환 — 양방향(앞으로/뒤로). 코디 선택 ↔ 날짜 선택 */
+@keyframes pbViewInR { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes pbViewOutL { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-26px); } }
+@keyframes pbViewInL { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes pbViewOutR { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(26px); } }
+.pb-view-in-r { animation: pbViewInR .24s cubic-bezier(.22,.61,.36,1) both; }
+.pb-view-out-l { animation: pbViewOutL .17s cubic-bezier(.4,0,.7,.4) both; }
+.pb-view-in-l { animation: pbViewInL .24s cubic-bezier(.22,.61,.36,1) both; }
+.pb-view-out-r { animation: pbViewOutR .17s cubic-bezier(.4,0,.7,.4) both; }
 @keyframes pbCollapseOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
 .pb-collapse-out { animation: pbCollapseOut .18s ease both; }
 .pb-acc { overflow: hidden; max-height: 0; transition: max-height .32s cubic-bezier(.22,.61,.36,1); }

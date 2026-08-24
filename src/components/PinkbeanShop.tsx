@@ -17,6 +17,7 @@ import InfoScreen from './shop/InfoScreen'
 import PresetScreen from './shop/PresetScreen'
 import PreviewPanel from './shop/PreviewPanel'
 import DyeDialog from './shop/DyeDialog'
+import DotDialog from './shop/DotDialog'
 import LookDialog from './shop/LookDialog'
 import ShareReceiveSheet from './shop/ShareReceiveSheet'
 import Toast from './shop/Toast'
@@ -41,6 +42,7 @@ function Shell() {
         </main>
       </div>
       <DyeDialog />
+      <DotDialog />
       <LookDialog />
       <ShareReceiveSheet />
       <Toast />

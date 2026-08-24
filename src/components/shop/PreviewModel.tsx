@@ -34,7 +34,7 @@ const RIDING_SEATED = new Set(['basic', 'walk'])
 const COPY_SIZE = 420, COPY_MARGIN = 1.5, COPY_FRACTION = 0.5
 
 export default function PreviewModel() {
-  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dyeInteracting, bp } = useShop()
+  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dotPos, dyeInteracting, bp } = useShop()
   // 세로 스택(태블릿+모바일)은 미리보기 영역이 낮고 넓다 → PC 비율(0.25)이면 모델이 콩알만 해진다.
   const fraction = isStacked(bp) ? PREVIEW_FRACTION_MOBILE : PREVIEW_FRACTION
   const [metas, setMetas] = useState<Map<string, ItemMeta>>(new Map())
@@ -155,7 +155,7 @@ export default function PreviewModel() {
         const itemV = slot === 'riding' ? jagV : charV // 탈것은 자기(매핑된) 액션, 나머지는 캐릭터 포즈(sit/선택)를 따른다
         let layers = getFrameLayers(m, itemV, fi)
         if (slot === 'weapon' && !pv.wEffect) layers = layers.filter((l) => l.name !== 'effect')
-        items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace, name: m.name })
+        items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace, name: m.name, dotOffsets: dotPos[m.id] })
       }
       items.push(...animaParts)
       // navel-only 앵커링은 프레임마다 navel 의 스프라이트 내부 위치가 달라 몸통이 몇 px 흔들린다. 매 프레임
@@ -182,7 +182,7 @@ export default function PreviewModel() {
     // 메탈아머(ridingCenterMount)는 메카(마운트)를 중앙정렬, 그 외 라이딩은 캐릭터(navel) 가로 중앙정렬(centerXOnly).
     const centerMount = riding && !!ridingItem?.ridingCenterMount
     return { frames, delays, N, riding, centerMount, animated: !viewInfo.isStatic && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action) }
-  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, pv.form, pv.wEffect, pv.gaze, pv.action, V, viewInfo.isStatic])
+  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, V, viewInfo.isStatic])
 
   const effList = useMemo(() => {
     const out: EffectMeta[] = []
@@ -291,7 +291,8 @@ export default function PreviewModel() {
     // 사다리/밧줄(등반) 포즈는 stand1 과 navel↔시각중심 오프셋이 달라 centerDx(stand1 튜닝)로는 오른쪽으로 쏠린다.
     // 뒷쪽 시선(rope 첫프레임)이 previewBack* 로 중앙에 오는 것과 동일하게, 비라이딩 사다리/밧줄도 previewBack* 사용.
     const climbCenter = back || (!riding && (pv.action === 'ladder' || pv.action === 'rope'))
-    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, zoomMult: ZOOM_WORLD[pv.zoom] ?? 1, centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy })
+    // snap:true — 정수 배율로 렌더해 도트(애교점 등)가 픽셀에 딱 맞고 선명하다(카드 썸네일·내보내기와 동일 규칙).
+    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, zoomMult: ZOOM_WORLD[pv.zoom] ?? 1, centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true })
     canvas.style.width = pl.canvasCssW + 'px'
     canvas.style.height = pl.canvasCssH + 'px'
     const pngs = new Set<string>()
