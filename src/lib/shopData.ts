@@ -59,6 +59,11 @@ export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배�
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.
 export const THUMB_VIEW: ViewOpts = { action: 'stand1', expression: 'default', ear: 'humanEar', weaponMotion: 'basic' }
 
+// 점(애교점) 위치를 직접 옮길 수 있는 눈장식(eyeAcc) 아이템 — 사소한 변경점(1점)/변경쩜(2점).
+// 이 아이템들만 "점 위치" 편집 다이얼로그를 열 수 있다(고정판 매력만점/매력만쩜은 제외).
+// 편집 대상 = 아이템 자기 점 레이어(accessoryEye = 점1, accessoryEye2 = 점2).
+export const DOT_MOVER_IDS = new Set(['01022395', '01022396'])
+
 // 썸네일에도 현재 시선(gaze)을 반영: 뒷쪽=rope(뒷모습), 오른쪽=좌우반전(flip). 액션/표정은 카드 고정(THUMB_VIEW).
 // expr/ear/weapon 을 주면 연출설정의 표정·귀·무기모션도 카드에 반영한다(안 주면 THUMB_VIEW 기본값).
 export function thumbView(gaze: string, expr?: string, ear?: string, weapon?: string): { view: ViewOpts; flip: boolean } {

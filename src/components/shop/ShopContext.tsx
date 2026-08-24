@@ -9,14 +9,15 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { CATS, DYE_FAMILIES, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
+import { CATS, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { GRID, useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
-import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadSlot, type Index, type ListItem } from '@/lib/core/data'
+import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
+import { getFrameLayers } from '@/lib/core/assemble'
 import { decodeShareCode, encodeShareCode } from '@/lib/shareCode'
-import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, EQUIP_SLOTS, THUMB_VIEW, foldList } from '@/lib/shopData'
+import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, THUMB_VIEW, foldList, isColorLineSkin } from '@/lib/shopData'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 아이템 리스트 표시: 스프라이트 / 베이스 모델 / 내 모델
@@ -31,7 +32,9 @@ const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-custo
 // 프리셋에 저장하는 연출설정 일부(형상변이·귀·무기모션·이펙트토글·배율). 시선/액션/표정은 "보는 순간의 상태"라 저장 안 함.
 export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; zoom: number }
 export const PV_SNAP_DEFAULT: PvSnap = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, zoom: 2 }
-export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; pv?: PvSnap; name?: string }
+// 점(애교점) 위치 오프셋: 레이어이름(accessoryEye/accessoryEye2) → 월드 오프셋. 사소한 변경점/쩜 전용.
+export type DotOffsets = Record<string, Vec>
+export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; dotPos?: Record<string, DotOffsets>; pv?: PvSnap; name?: string }
 
 // 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
 // 사파리는 await 후 writeText 가 사용자 제스처 밖이라 거부될 수 있어, ClipboardItem 에 Promise(Blob)를 넘겨
@@ -52,7 +55,7 @@ const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
 const defaultPresetName = (i: number) => `코디 ${i + 1}`
 const defaultSnapshot = (): Snapshot => ({
   equipped: Object.fromEntries(Object.entries(DEFAULT_EQUIP).map(([slot, it]) => [slot, it.id])),
-  tone: DEFAULT_TONE, dyePalette: {}, dyeHsb: {}, hidden: {},
+  tone: DEFAULT_TONE, dyePalette: {}, dyeHsb: {}, hidden: {}, dotPos: {},
 })
 const PRESET_KEY = 'pb_presets_v1'
 const FAV_KEY = 'pb_favorites_v1' // 즐겨찾기 아이템 id 목록(localStorage 영속, 서버 없음)
@@ -66,6 +69,8 @@ type PresetStore = { data: Record<string, Snapshot>; names: Record<string, strin
 const loadPresetStore = (): PresetStore | null => {
   try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
 }
+// 오늘(KST, YYYY-MM-DD). 넥슨 시점 조회 기준 + 날짜 입력 max 로 쓴다.
+const kstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10)
 // 넥슨 캐시아이템 part → 내부 slot. (part 로 매핑: '한벌옷'=longcoat, '상의'=coat 구분)
 const NEXON_PART_SLOT: Record<string, string> = {
   '모자': 'cap', '얼굴장식': 'faceAcc', '눈장식': 'eyeAcc', '귀고리': 'earring',
@@ -76,14 +81,15 @@ const NEXON_PART_SLOT: Record<string, string> = {
 const nrmName = (n: string) => (n || '').replace(/\s*\((여|남)\)\s*$/, '').replace(/\s+/g, ' ').trim()
 // prism = 캐시 아이템 염색(컬러 프리즘). 넥슨의 color_range/hue/saturation/value 를 그대로 받는다.
 type NexonPrism = { colorRange: string | null; hue: number; saturation: number; value: number }
-type NexonItem = { part: string; slot: string; name: string; gender: string | null; prism?: NexonPrism | null }
+type NexonCustomOrigin = { no: number; x: number; y: number }
+type NexonItem = { part: string; slot: string; name: string; gender: string | null; prism?: NexonPrism | null; customOrigin?: NexonCustomOrigin[] | null }
 type NexonBeauty = { name: string; baseColor: string | null; mixColor: string | null; mixRate: string }
 // 넥슨이 주는 코디 1벌. 제로/엔젤릭버스터는 2벌이 온다(제로=알파/베타, 엔버=일반/드레스업) — /api/nick 참고.
 // gender 는 코디별로 다를 수 있다 — 제로는 캐릭터 성별이 '기타'로 오고 알파=남/베타=여 이므로
 // 이걸 쓰지 않으면 헤어·성형의 (남)/(여) 변형이 엉뚱하게 잡힌다.
 // 치장 프리셋 한 벌 = base + preset_n 덮어쓰기(items 는 서버에서 이미 병합된 결과). active = 지금 게임에서 입고 있는 것.
 type NexonPreset = { key: string; label: string; items: NexonItem[]; active: boolean }
-type NexonLook = { key: string; label: string; gender: string | null; presets: NexonPreset[]; hair: NexonBeauty | null; face: NexonBeauty | null; skin: { name: string } | null }
+type NexonLook = { key: string; label: string; gender: string | null; presets: NexonPreset[]; hair: NexonBeauty | null; face: NexonBeauty | null; skin: { name: string; prism?: NexonPrism | null } | null }
 // 불러오기 후보. 다이얼로그 구조 = [코디 탭(제로/엔버만 2개)] + [그 코디의 프리셋 카드들].
 export type PresetOption = { key: string; label: string; active: boolean; snap: Snapshot }
 export type LookOption = { key: string; label: string; presets: PresetOption[] }
@@ -148,6 +154,11 @@ export interface ShopCtx {
   // 염색 다이얼로그(slot 대상)
   dialogSlot: string | null; dialogItem: ListItem | null; dialogClosing: boolean
   openDye: (slot: string, item?: ListItem | null) => void; closeDye: () => void
+  // 점(애교점) 위치 편집 다이얼로그 + 오프셋(아이템ID 키 → 레이어이름 → 오프셋)
+  dotPos: Record<string, DotOffsets>
+  dotItem: ListItem | null; dotClosing: boolean
+  openDot: (item: ListItem) => void; closeDot: () => void
+  setDot: (itemId: string, layer: string, v: Vec) => void; resetDot: (itemId: string) => void
   // preview
   pv: Pv; setPv: (key: keyof Pv, val: Pv[keyof Pv]) => void
   pvOpen: boolean; setPvOpen: Dispatch<boolean>
@@ -163,8 +174,12 @@ export interface ShopCtx {
   importMode: 'nick' | 'code'; setImportMode: Dispatch<'nick' | 'code'>
   importFetch: () => void
   importing: boolean
-  // 코디 2벌 선택(제로/엔젤릭버스터)
-  lookPick: { nick: string; options: LookOption[] } | null
+  // 코디 선택(닉네임 불러오기) — 날짜(시점) 기반 코디 열람 지원
+  //  · previewLookAt: 특정 날짜의 코디를 조회만(상태 변화 없음) — 날짜 카드 미리보기용.
+  //  · commitLookDate: 이미 받아둔 그 날짜의 코디로 다이얼로그를 확정(재조회 없음).
+  lookPick: { nick: string; options: LookOption[]; date: string } | null
+  previewLookAt: (date: string, signal?: AbortSignal, full?: boolean) => Promise<LookOption[] | null>
+  commitLookDate: (date: string, options: LookOption[]) => void
   chooseLook: (lookKey: string, presetKey: string) => void; closeLookPick: () => void
   shareCurrentLink: () => void
   sharedIncoming: Snapshot | null
@@ -246,6 +261,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [dialogSlot, setDialogSlot] = useState<string | null>(null)
   const [dialogItem, setDialogItem] = useState<ListItem | null>(null) // 염색 버튼을 누른 카드의 아이템
   const [dialogClosing, setDialogClosing] = useState(false)
+  const [dotPos, setDotPos] = useState<Record<string, DotOffsets>>({}) // 아이템ID → 점 레이어별 위치 오프셋
+  const [dotItem, setDotItem] = useState<ListItem | null>(null)         // 점 위치 편집 중인 아이템(사소한 변경점/쩜)
+  const [dotClosing, setDotClosing] = useState(false)
   const [pageByCat, setPageByCat] = useState<Record<string, number>>({})
   const [offset, setOffset] = useState(0)
   const [snapping, setSnapping] = useState(false)
@@ -264,7 +282,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [importMode, setImportMode] = useState<'nick' | 'code'>('nick')
   const [importing, setImporting] = useState(false) // 불러오기 진행 중(로딩 애니메이션)
   // 코디가 2벌인 캐릭터(제로=알파/베타, 엔젤릭버스터=일반/드레스업) → 어느 걸 가져올지 고르는 다이얼로그.
-  const [lookPick, setLookPick] = useState<{ nick: string; options: LookOption[] } | null>(null)
+  const [lookPick, setLookPick] = useState<{ nick: string; options: LookOption[]; date: string } | null>(null)
   const [editingPreset, setEditingPreset] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [toast, setToast] = useState(false)
@@ -293,6 +311,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const saveT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toastT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dlgT = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dotT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pageT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const wheel = useRef({ acc: 0, dir: 0, t: 0 }) // 휠 delta 누적 / 제스처 방향 / 마지막 이벤트 시각
   const drag = useRef({ on: false, captured: false, startX: 0, lastX: 0, lastT: 0, vel: 0 })
@@ -322,6 +341,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setPresets(PRESET_IDS.map((id, i) => ({ id, name: store?.names[id] || defaultPresetName(i) })))
       setEquipped(eq); setTone(snap.tone ?? DEFAULT_TONE)
       setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
+      setDotPos({ ...(snap.dotPos || {}) })
       setSelectedPreset(sel)
       // 연출설정 복원: 저장된 전역 pv 가 있으면 그대로(전체) 복원, 없으면(첫 로드/구유저) 선택 프리셋의 pv 서브셋으로.
       const savedPv = loadPv()
@@ -595,7 +615,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const snapshot = (): Snapshot => {
     const eq: Record<string, string> = {}
     for (const [s, it] of Object.entries(equipped)) if (it) eq[s] = it.id
-    return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden },
+    return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden }, dotPos: { ...dotPos },
       pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, zoom: pv.zoom } }
   }
   // 스냅샷의 연출설정(pv 일부)을 라이브 pv 에 반영(없으면 기본값). 시선/액션/표정/fps 는 건드리지 않는다.
@@ -639,6 +659,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setEquipped(eq)
     setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
     setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
+    setDotPos({ ...(snap.dotPos || {}) })
     applyPvSnap(snap.pv)
     if (sel !== undefined) setSelectedPreset(sel)
     // 되돌리기/다시실행은 편집 중이던 아이템 선택(dyeTarget)을 유지(여전히 착용/스킨일 때) → 염색만 되돌아가고 선택은 유지.
@@ -656,6 +677,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setEquipped(eq)
       setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
       setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
+      setDotPos({ ...(snap.dotPos || {}) })
       applyPvSnap(snap.pv)
       setDyeTarget(null); setSelectedPreset(id)
     }).catch(() => {})
@@ -671,6 +693,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setEquipped(eq)
       setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
       setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
+      setDotPos({ ...(snap.dotPos || {}) })
       applyPvSnap(snap.pv)
       setDyeTarget(null); setSelectedPreset(targetId)
     }).catch(() => {})
@@ -693,11 +716,23 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const mix = b.mixColor ? (idx[b.mixColor] ?? null) : null
     return { baseColor: base, mixColor: mix, ratio: mix != null ? (parseInt(b.mixRate, 10) || 50) : 0 }
   }
-  // 넥슨 컬러 프리즘 → 내부 HSB. color_range 는 Prism 색상계열(t), 나머지는 그대로 대응된다.
+  // 넥슨 색상계열 문자열 → 내부 DYE_FAMILIES 인덱스. 캐시(color_range="파란 색상 계열")와 피부(color_style="파란색 계열")
+  // 표기가 조금 달라 정확 매칭(indexOf)이 실패한다 → 색 키워드로 견고하게 매핑. (0 전체·1 빨강·2 노랑·3 초록·4 청록·5 파랑·6 자주)
+  const familyIdx = (name?: string | null): number => {
+    const t = name || ''
+    if (t.includes('빨')) return 1
+    if (t.includes('노')) return 2
+    if (t.includes('청')) return 4 // '청록'은 '초'를 포함하지 않으므로 먼저 검사
+    if (t.includes('초') || t.includes('녹')) return 3
+    if (t.includes('파')) return 5
+    if (t.includes('자') || t.includes('보')) return 6
+    return 0
+  }
+  // 넥슨 컬러 프리즘 → 내부 HSB. color_range/color_style 는 색상계열(t), 나머지는 그대로 대응된다.
   // clampDye 와 같은 범위로 자른다(h 0~359, s/b -99~99) — 넥슨 값이 범위를 벗어나도 렌더가 깨지지 않게.
   const prismToHsb = (p: NexonPrism): HsbParams => ({
     h: clampDye('h', p.hue), s: clampDye('s', p.saturation), b: clampDye('b', p.value),
-    t: Math.max(0, DYE_FAMILIES.indexOf(p.colorRange ?? DYE_FAMILIES[0])), // 모르는 계열이면 0(전체)
+    t: familyIdx(p.colorRange),
   })
   // 넥슨 코디 1벌(= 코디 × 프리셋) → 내부 스냅샷(착용 + 톤 + 염색). 매칭이 0건이면 null(=보여줄 게 없는 코디).
   // 헤어/성형/피부는 프리셋과 무관하게 코디(look) 단위로 하나다 → 프리셋만 items 로 갈아끼운다.
@@ -705,6 +740,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const equipped: Record<string, string> = {}
     const dyePalette: Record<string, PaletteParams> = {}
     const dyeHsb: Record<string, HsbParams> = {}
+    const dotPos: Record<string, DotOffsets> = {}
     let tone = DEFAULT_TONE
     let matched = 0
     // 헤어(색 접두어 제거 + 염색색상)
@@ -722,7 +758,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 피부(톤 이름 매칭)
     if (look.skin?.name) {
       const te = indexRef.current?.base.tones.find((t) => nrmName(t.name || '') === nrmName(look.skin!.name))
-      if (te) { tone = te.tone; matched++ }
+      if (te) {
+        tone = te.tone; matched++
+        // 컬러라인(커스텀) 피부는 HSB 염색까지 반영 — 안 하면 기본 컬러라인 색으로 들어와 "피부 색이 안 들어온다".
+        if (look.skin.prism && isColorLineSkin(te.name)) dyeHsb.skin = prismToHsb(look.skin.prism)
+      }
     }
     // 캐시 아이템(옷·모자·무기 등) + 그 아이템에 걸린 컬러 프리즘 염색
     for (const it of items) {
@@ -732,18 +772,36 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (found) {
         equipped[slot] = found.id; matched++
         if (it.prism) dyeHsb[slot] = prismToHsb(it.prism)
+        // 점 위치(사소한 변경점/쩜): 넥슨 custom_origin(no/x/y) → 우리 오프셋. 그림 규칙 topLeft = brow − origin 이라
+        // custom_origin(=게임이 쓰는 origin)으로 그리려면 오프셋 = WZ기본origin − custom_origin. no 1→첫째 점(accessoryEye).
+        if (DOT_MOVER_IDS.has(found.id) && it.customOrigin && it.customOrigin.length) {
+          const m = await loadMeta(found.id).catch(() => null)
+          if (m) {
+            const dl = getFrameLayers(m, THUMB_VIEW).filter((l) => /^accessoryEye\d*$/.test(l.name)).sort((a, b) => a.name.localeCompare(b.name))
+            const off: DotOffsets = {}
+            for (const co of it.customOrigin) {
+              const layer = dl[(co.no || 1) - 1]
+              if (layer) off[layer.name] = { x: layer.origin.x - co.x, y: layer.origin.y - co.y }
+            }
+            if (Object.keys(off).length) dotPos[found.id] = off
+          }
+        }
       }
     }
     if (!matched) return null
-    return { equipped, tone, dyePalette, dyeHsb, hidden: {} }
+    return { equipped, tone, dyePalette, dyeHsb, hidden: {}, dotPos }
   }
   // 닉네임 → 코디 후보 목록: 내부 프록시(/api/nick)로 넥슨 착용(캐시아이템 + 헤어/성형/피부)을 받아 내부 아이템에 매칭.
   // 일반 직업은 1벌, 제로/엔젤릭버스터는 2벌이 나온다 → 2벌이면 호출부가 선택 다이얼로그를 띄운다.
-  const importByNick = async (nick: string): Promise<LookOption[] | null> => {
+  //  · silent=true 면 실패/무매칭에도 토스트를 띄우지 않는다(날짜 카드 미리보기 — 못 가져온 날은 카드에만 표기).
+  //  · signal 로 취소 가능(다이얼로그 닫힘/페이지 이동 시 진행 중 조회 중단).
+  //  · light=true 면 일반 장비 생략(썸네일 미리보기 — 넥슨 콜↓·속도↑). 실제 적용은 full 로 다시 받는다.
+  const importByNick = async (nick: string, date?: string, silent = false, signal?: AbortSignal, light = false): Promise<LookOption[] | null> => {
     try {
-      const r = await fetch(`/api/nick?name=${encodeURIComponent(nick)}`)
+      // v: 캐시 버스터. 응답 로직이 바뀌면 올린다 → 과거의 잘못 캐시된 응답(예: beauty 누락 검은머리)을 무시하고 새로 받는다.
+      const r = await fetch(`/api/nick?name=${encodeURIComponent(nick)}${date ? `&date=${date}` : ''}${light ? '&light=1' : ''}&v=2`, { signal })
       const j = await r.json().catch(() => null)
-      if (!r.ok) { showToast(j?.error || '불러오기에 실패했어요'); return null }
+      if (!r.ok) { if (!silent) showToast(j?.error || '불러오기에 실패했어요'); return null }
       const gender: string | null = j?.gender ?? null
       const looks: NexonLook[] = Array.isArray(j?.looks) ? j.looks : []
       const out: LookOption[] = []
@@ -757,9 +815,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }
         if (presets.length) out.push({ key: lk.key, label: lk.label, presets })
       }
-      if (!out.length) { showToast('보유한 데이터에서 일치하는 코디를 찾지 못했어요'); return null }
+      if (!out.length) { if (!silent) showToast('보유한 데이터에서 일치하는 코디를 찾지 못했어요'); return null }
       return out
-    } catch { showToast('불러오기에 실패했어요'); return null }
+    } catch { if (!silent) showToast('불러오기에 실패했어요'); return null }
   }
   // 불러온 스냅샷을 선택된 프리셋에 덮어쓰고 라이브에 적용.
   const applyImported = async (snap: Snapshot, label: string, isNick: boolean) => {
@@ -797,10 +855,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }
       const opts = await importByNick(val)
       if (!opts) return
-      // 고를 게 하나뿐(코디 1벌 × 프리셋 1개)이면 다이얼로그 없이 바로 적용 — 불필요한 클릭을 만들지 않는다.
-      if (opts.length === 1 && opts[0].presets.length === 1) { await applyImported(opts[0].presets[0].snap, val, true); return }
-      setLookPick({ nick: val, options: opts })
+      // 프리셋이 하나뿐이어도 다이얼로그를 연다 — 날짜(시점) 선택 기능을 쓸 수 있어야 하니까.
+      setLookPick({ nick: val, options: opts, date: kstToday() })
     } finally { setImporting(false) }
+  }
+  // 특정 날짜의 코디를 조회만 한다(상태 변화 없음) — 날짜 카드 미리보기용. date 가 오늘/미래면 최신(현재) 조회.
+  //  넥슨 데이터는 전날치까지만 있으므로(오전 갱신) 호출부가 어제까지의 날짜만 넘긴다.
+  //  · full=false(기본): 썸네일용 light 조회. full=true: 실제 적용용 정확 조회(일반 장비 포함).
+  const previewLookAt = async (date: string, signal?: AbortSignal, full = false): Promise<LookOption[] | null> => {
+    const lp = lookPick
+    if (!lp) return null
+    const q = !date || date >= kstToday() ? undefined : date
+    return importByNick(lp.nick, q, true, signal, !full) // silent — 못 가져온 날은 카드에만 "코디 없음"으로 표기
+  }
+  // 이미 받아둔(미리보기로 조회한) 그 날짜의 코디로 다이얼로그를 확정 — 재조회 없이 프리셋 화면으로 전환.
+  const commitLookDate = (date: string, options: LookOption[]) => {
+    setLookPick((lp) => (lp ? { ...lp, options, date } : lp))
   }
   // 다이얼로그에서 코디 × 프리셋을 골랐다 → 그 한 벌을 적용.
   const chooseLook = async (lookKey: string, presetKey: string) => {
@@ -881,7 +951,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 저장 대상 pv(형상변이·귀·무기모션·이펙트·배율) 변경도 자동저장 트리거에 포함해야 새로고침 후 유지된다.
     // (시선/액션/표정/fps 는 snapshot 에 안 담기므로 의도적으로 제외.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equipped, tone, dyePalette, dyeHsb, hidden, selectedPreset, presets,
+  }, [equipped, tone, dyePalette, dyeHsb, hidden, dotPos, selectedPreset, presets,
       pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.zoom])
 
   // 연출설정(pv) 전체를 새로고침 후에도 유지 — 프리셋 스냅샷엔 서브셋만 담기므로 전체 pv 를 별도 키에 영속.
@@ -909,7 +979,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     h.idx = h.stack.length - 1
     setHistVer((v) => v + 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equipped, tone, dyePalette, dyeHsb, hidden, selectedPreset, dyeInteracting])
+  }, [equipped, tone, dyePalette, dyeHsb, hidden, dotPos, selectedPreset, dyeInteracting])
 
   const applyHistory = (e: { snap: Snapshot; sel: string | null }) => {
     const j = JSON.stringify({ s: e.snap, p: e.sel })
@@ -942,6 +1012,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (dlgT.current) clearTimeout(dlgT.current)
     dlgT.current = setTimeout(() => { setDialogSlot(null); setDialogClosing(false) }, 200)
   }
+  // 점(애교점) 위치 편집 다이얼로그.
+  const openDot = (item: ListItem) => { setDotItem(item); setDotClosing(false) }
+  const closeDot = () => {
+    if (dotClosing) return
+    setDotClosing(true)
+    if (dotT.current) clearTimeout(dotT.current)
+    dotT.current = setTimeout(() => { setDotItem(null); setDotClosing(false) }, 200)
+  }
+  // 오프셋 커밋(아이템ID → 레이어 → Vec) / 초기화(그 아이템 오프셋 전부 제거 = 기본 위치).
+  const setDot = (itemId: string, layer: string, v: Vec) =>
+    setDotPos((prev) => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), [layer]: v } }))
+  const resetDot = (itemId: string) =>
+    setDotPos((prev) => { if (!prev[itemId]) return prev; const n = { ...prev }; delete n[itemId]; return n })
   const onPageFocus = (e: React.FocusEvent<HTMLInputElement>) => { setPageEditing(true); setPageInput(String(curIdx + 1)); const el = e.target; requestAnimationFrame(() => el.select()) }
   const onPageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 6)
@@ -966,11 +1049,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     equipped, tone, equipFromCat, isEquippedInCat, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeEdit, setDyeEdit, dyeInteracting, setDyeInteracting, isMixSlot,
     dialogSlot, dialogItem, dialogClosing, openDye, closeDye,
+    dotPos, dotItem, dotClosing, openDot, closeDot, setDot, resetDot,
     pv, setPv, pvOpen, setPvOpen,
     presets, presetData, selectedPreset, selectPreset, sharePreset, resetPreset,
     editingPreset, editName, setEditName, setEditingPreset, startRename, commitRename,
     nickInput, setNickInput, importMode, setImportMode, importFetch, importing, shareCurrentLink, sharedIncoming, applySharedToPreset, dismissShared, rateCodi, rateResult, rating,
-    lookPick, chooseLook, closeLookPick: () => setLookPick(null),
+    lookPick, previewLookAt, commitLookDate, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText,
     hoverCat, setHoverCat, hoverPrimary, setHoverPrimary, hoverPill, setHoverPill,
     hoverMode, setHoverMode, hoverToggle, setHoverToggle, hoverPartBtn, setHoverPartBtn,

@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
 import { css } from '@/lib/style'
 import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
-import { CAT_TO_SLOT, SLOT_TO_CAT, THUMB_VIEW, animaLayers, fixedExpr, forceMyModel, thumbView } from '@/lib/shopData'
+import { CAT_TO_SLOT, DOT_MOVER_IDS, SLOT_TO_CAT, THUMB_VIEW, animaLayers, fixedExpr, forceMyModel, thumbView } from '@/lib/shopData'
 import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { badgeUrl, loadAnima, loadMeta, type AnimaRace, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
@@ -163,7 +163,7 @@ export default function SearchScreen() {
       <div key={item.id} onClick={() => s.equipFromCat(SLOT_TO_CAT[item.slot], item)} className="pb-cardwrap">
         <div className="pb-card" style={css(`display:flex; flex-direction:column; align-items:center; gap:${mobile ? 5 : 8}px; padding:${mobile ? '7px 5px 6px' : '12px 8px 10px'}; ${sel ? `border:1px solid #ec86ac; transform:translateY(-${mobile ? 3 : 5}px); ` : ''}border-radius:12px; background:${sel ? '#fdf0f5' : '#fff'}; cursor:pointer; min-height:0; min-width:0;`)}>
           {dyeable && (
-            <button onClick={(e) => { e.stopPropagation(); s.openDye(item.slot, item) }} className="pb-dye" title="이 아이템 염색" style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
+            <button onClick={(e) => { e.stopPropagation(); if (DOT_MOVER_IDS.has(item.id)) { s.equipFromCat(SLOT_TO_CAT[item.slot], item); s.openDot(item) } else s.openDye(item.slot, item) }} className="pb-dye" title={DOT_MOVER_IDS.has(item.id) ? '염색 · 점 위치' : '이 아이템 염색'} style={css('position:absolute; top:7px; right:7px; height:22px; padding:0 9px; border-radius:20px; border:1px solid #f4cfdf; background:#fce9f1; color:#d76d9a; font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; z-index:2;')}>염색</button>
           )}
           {/* 즐겨찾기 별(좌상단) — 코디 탭의 카드와 동일. 어디서 담아도 코디의 '즐겨찾기' 부위에서 함께 보인다. */}
           <button onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={s.favorites.has(item.id) ? '즐겨찾기 해제' : '즐겨찾기에 추가'} aria-label="즐겨찾기"

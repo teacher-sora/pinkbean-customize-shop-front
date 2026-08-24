@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, type Opt, type Pv } from '@/lib/catalog'
 import { css, pillStyle, PV_LABEL, ROW_BETWEEN, switchKnob, switchTrack } from '@/lib/style'
+import { DOT_MOVER_IDS } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import { MOBILE_H, isStacked } from '@/lib/useBreakpoint'
 import PreviewModel from './PreviewModel'
@@ -228,6 +229,13 @@ export default function PreviewPanel() {
         {bubbles.map((b) => (
           <div key={b.id} className="pb-bubble" style={{ top: `${b.top}%`, left: `${b.left}%`, animation: `pbBubbleFloat 3.6s ease ${b.delay}s both` }}>{b.text}</div>
         ))}
+        {/* 애교점(사소한 변경점/쩜) 착용 시: 점 위치 편집 진입 — 미리보기 우측 하단 라벨 버튼. */}
+        {s.equipped['eyeAcc'] && DOT_MOVER_IDS.has(s.equipped['eyeAcc']!.id) && (
+          <button onClick={() => s.openDot(s.equipped['eyeAcc']!)} title="애교점 위치를 직접 옮기기" style={css('position:absolute; right:10px; bottom:10px; height:30px; padding:0 12px; display:flex; align-items:center; gap:5px; border:1px solid #e4d6ea; background:rgba(255,255,255,0.94); border-radius:9px; color:#8a6db0; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; box-shadow:0 1px 6px rgba(42,37,33,0.14); z-index:4;')}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg>
+            점 위치 변경
+          </button>
+        )}
       </div>
 
       <button onClick={() => s.setPvOpen(!s.pvOpen)} style={css(pvBarStyle)}>

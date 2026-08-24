@@ -25,6 +25,9 @@ export interface AssembleInput {
   layers: Layer[]
   invisibleFace?: number   // an equipped invisibleFace accessory hides the 성형(face)
   name?: string | null     // 투명(투명 시리즈) 판별용 — 투명 아이템은 아무것도 안 그리므로 가림에서 제외
+  // 점 위치 커스터마이즈(사소한 변경점/쩜): 레이어 이름(accessoryEye/accessoryEye2)별 월드 오프셋.
+  // 그 레이어의 그림 위치만 이동시킨다(앵커 발행에는 영향 없음). 지정 안 하면 원본 위치 그대로.
+  dotOffsets?: Record<string, Vec>
 }
 
 // 투명 시리즈(투명 모자/얼굴장식/장갑…)는 스프라이트가 비어 아무것도 안 그리는데, vslot(가림)만 남으면
@@ -162,7 +165,7 @@ export function assemble(
   const hideFace = items.some((i) => i.invisibleFace && !isTransparent(i.name))
 
   const anchors: Record<string, Vec> = { navel: { x: 0, y: 0 } }
-  type Pending = Layer & { itemId: string; slot: string; hidden: boolean }
+  type Pending = Layer & { itemId: string; slot: string; hidden: boolean; ox?: number; oy?: number }
   const remaining: Pending[] = []
   // ⚠️ 가림(occlusion)은 "그리지 않는 것"이지 "골격에서 빼는 것"이 아니다.
   // 숨긴 레이어도 자기 map 앵커(brow/neck/hand…)는 그대로 제공해야 한다.
@@ -174,7 +177,8 @@ export function assemble(
       // 귀(head 레이어 중 'head' 가 아닌 것 = 엘프/우든레프/하이레프 귀)는 모자 가림에서 예외 — 모자를 써도
       // 귀는 삐져나와 보여야 한다(그냥 모자 vslot 이 귀 z 까지 덮어 귀가 사라지던 이슈). 사람귀는 모자에 어차피 덮임.
       const isEar = it.slot === 'head' && l.name !== 'head'
-      remaining.push({ ...l, itemId: it.itemId, slot: it.slot, hidden: faceHidden || (!isEar && !isVisible(it.slot, l.z)) })
+      const off = it.dotOffsets?.[l.name]
+      remaining.push({ ...l, itemId: it.itemId, slot: it.slot, hidden: faceHidden || (!isEar && !isVisible(it.slot, l.z)), ox: off?.x, oy: off?.y })
     }
   }
 
@@ -193,7 +197,9 @@ export function assemble(
       const aw = anchors[aname]
       const x = aw.x - (L.origin.x + L.map[aname].x)
       const y = aw.y - (L.origin.y + L.map[aname].y)
-      if (!L.hidden) placed.push({ ...L, x, y, tintable: TINTABLE_SLOTS.has(L.slot) }) // 숨긴 건 안 그린다(앵커는 아래에서 제공)
+      // 점 위치 오프셋(있으면)은 "그림 위치"에만 더한다. 앵커 발행(아래)은 오프셋 없는 x,y 로 계산해
+      // 다른 파츠의 골격이 흔들리지 않게 한다. (점 레이어는 brow 만 소비하고 새 앵커를 안 내므로 실무상 무해하나 명시.)
+      if (!L.hidden) placed.push({ ...L, x: x + (L.ox || 0), y: y + (L.oy || 0), tintable: TINTABLE_SLOTS.has(L.slot) }) // 숨긴 건 안 그린다(앵커는 아래에서 제공)
       for (const n of names) {
         if (!anchors[n]) anchors[n] = { x: x + L.origin.x + L.map[n].x, y: y + L.origin.y + L.map[n].y }
       }
