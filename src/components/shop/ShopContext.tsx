@@ -56,6 +56,12 @@ const defaultSnapshot = (): Snapshot => ({
 })
 const PRESET_KEY = 'pb_presets_v1'
 const FAV_KEY = 'pb_favorites_v1' // 즐겨찾기 아이템 id 목록(localStorage 영속, 서버 없음)
+// 연출설정(pv) 전체 영속 — 새로고침 후에도 마지막 상태(무기모션·액션·표정·형상·시선·이펙트·배율)를 그대로 유지.
+// 프리셋 스냅샷엔 일부(pv 서브셋)만 담기므로, 전체 pv 는 프리셋과 별개의 전역 키에 저장해 정확히 복원한다.
+const PV_KEY = 'pb_pv_v1'
+const loadPv = (): Partial<Pv> | null => {
+  try { const raw = localStorage.getItem(PV_KEY); if (!raw) return null; const v = JSON.parse(raw); return v && typeof v === 'object' ? v as Partial<Pv> : null } catch { return null }
+}
 type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null }
 const loadPresetStore = (): PresetStore | null => {
   try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
@@ -317,6 +323,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setEquipped(eq); setTone(snap.tone ?? DEFAULT_TONE)
       setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setHidden({ ...(snap.hidden || {}) })
       setSelectedPreset(sel)
+      // 연출설정 복원: 저장된 전역 pv 가 있으면 그대로(전체) 복원, 없으면(첫 로드/구유저) 선택 프리셋의 pv 서브셋으로.
+      const savedPv = loadPv()
+      if (savedPv) setPvState((prev) => ({ ...prev, ...savedPv }))
+      else applyPvSnap(snap.pv)
       initedRef.current = true
     }).catch((e) => console.error('[shop] index 로드 실패', e))
       .finally(() => { if (alive) setDataLoading(false) })
@@ -873,6 +883,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equipped, tone, dyePalette, dyeHsb, hidden, selectedPreset, presets,
       pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.zoom])
+
+  // 연출설정(pv) 전체를 새로고침 후에도 유지 — 프리셋 스냅샷엔 서브셋만 담기므로 전체 pv 를 별도 키에 영속.
+  // (초기 로드 완료 전엔 기본 pv 를 덮어써 저장된 값을 날리지 않도록 initedRef 로 가드.)
+  useEffect(() => {
+    if (!initedRef.current) return
+    try { localStorage.setItem(PV_KEY, JSON.stringify(pv)) } catch {}
+  }, [pv])
 
   // 실행취소 히스토리: 코디 상태가 바뀔 때마다 "즉시" 스냅샷 기록(부위 빠르게 눌러도 전부 남음).
   // 예외: 발색 슬라이더 드래그 중(dyeInteracting)은 보류 → 릴리즈 시 최종 상태 1개만 기록(스택 폭주 방지).
