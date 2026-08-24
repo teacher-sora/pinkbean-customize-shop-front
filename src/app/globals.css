@@ -3,6 +3,10 @@
    custom <select> caret, and the 연출 설정 accordion. */
 
 * { box-sizing: border-box; }
+/* touch-action: manipulation → 모바일 더블탭 확대 제거(단일 탭/스크롤/스와이프는 그대로).
+   페이지 핀치 확대는 viewport(maximum-scale/user-scalable) + NoNativeZoom 이 막는다.
+   확대가 필요한 DotDialog 캔버스는 자체적으로 touch-action:none 을 지정해 이 값을 덮어쓴다. */
+html { touch-action: manipulation; }
 html, body { margin: 0; padding: 0; height: 100%; }
 body {
   font-family: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont, sans-serif;
