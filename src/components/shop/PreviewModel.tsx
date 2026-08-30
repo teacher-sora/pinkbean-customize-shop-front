@@ -298,11 +298,19 @@ export default function PreviewModel() {
     const pngs = new Set<string>()
     frames.forEach((f) => f.placed.forEach((p) => pngs.add(p.png)))
     effList.forEach((em) => Object.values(em.groups).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
+    let lastSig = '' // 마지막으로 실제 합성한 "보이는 프레임" 시그니처
     const draw = (elapsed: number) => {
       if (cancelled) return
       const fi = animated ? (pingpong ? frameAtElapsedAlt : frameAtElapsed)(delays, elapsed) : 0
       const f = frames[Math.min(fi, frames.length - 1)]
       const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow }, elapsed)) : []
+      // ⚠️ 매 rAF(60fps)마다 재합성하지 않는다 — 메이플 스프라이트/이펙트 프레임 delay 는 ~100~180ms(≈6~10fps)라
+      //   60fps 로 그리면 "같은 프레임"을 5~6번 덧그리는 순수 낭비다(착용·이펙트가 많을수록 비용↑). 캐릭터 프레임
+      //   인덱스 + 이 프레임의 이펙트 draw(png·위치) 시그니처가 직전과 같으면 픽셀이 동일하므로 건너뛴다(화질 손실 0).
+      //   염색/착용/액션이 바뀌면 이 effect 자체가 재실행되어 lastSig 가 초기화되므로 즉시 다시 그린다.
+      const sig = fi + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';')
+      if (sig === lastSig) return
+      lastSig = sig
       // 분수 scale = 디바이스 해상도(1:1 표시로 선명). 마네킹 중심을 캔버스 중앙에(anchor 보정) → flip 대칭.
       // renderCharacter 는 CORS(기본)로 로드 → 코디 카드/미리보기/염색이 한 캐시 공유(장착·염색 재fetch 없음).
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
