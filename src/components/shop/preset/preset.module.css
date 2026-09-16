@@ -24,12 +24,17 @@
 .busy { background: #f0aecb; cursor: default; }
 
 .scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 10px 16px; }
-.scrollM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 8px 12px; }
+/* 모바일: 코디 리스트와 같은 가로 스크롤 — 뷰포트 좌우 7px 들임 + 안쪽 5px(가장자리 12px), 열 간격 10px, 열 단위 스냅.
+   2줄 고정, 열 수는 폭에 따라 2(좁음) / 3(콘텐츠 폭 330px 이상). cqw = 스크롤 영역 콘텐츠 폭 → n열이 한 화면에 정확히 들어간다. */
+.hscrollM { flex: 1 1 auto; min-height: 0; margin: 0 7px; padding: 8px 5px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-left: 5px; touch-action: pan-x pan-y; container-type: inline-size; }
+.gridHM { display: grid; height: 100%; grid-auto-flow: column; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-columns: calc((100cqw - 10px) / 2); gap: 10px; }
+@container (min-width: 330px) { .gridHM { grid-auto-columns: calc((100cqw - 20px) / 3); } }
+.gridHM > * { scroll-snap-align: start; }
+.thumbM { aspect-ratio: auto; min-height: 0; } /* 줄 높이를 채운다(고정 3:4 대신) */
 .grid { display: grid; gap: 10px; }
 .gridTight { gap: 8px; }
 .cols5 { grid-template-columns: repeat(5,minmax(0,1fr)); }
 .cols3 { grid-template-columns: repeat(3,minmax(0,1fr)); }
-.cols2 { grid-template-columns: repeat(2,minmax(0,1fr)); }
 
 /* ── 카드 ── */
 .wrap { cursor: pointer; }
