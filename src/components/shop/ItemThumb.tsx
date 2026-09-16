@@ -2,7 +2,7 @@
 
 /*
  * ItemThumb — 아이템 리스트 셀의 3가지 표시 모드.
- *  - sprite  : 아이템 아이콘/스프라이트 이미지(가장 가벼움)
+ *  - sprite  : 아이템 아이콘/스프라이트 이미지(가장 가벼움). 헤어는 몸 없이 모든 파츠 합성(염색표와 동일)
  *  - model   : 베이스 몸통+머리에 이 아이템을 올린 미니 합성
  *  - mymodel : 현재 내 착용(해당 슬롯 제외)에 이 아이템을 올린 미니 합성
  * 이 아이템에 이펙트가 있으면(effects/index.json) 함께 합성한다. centerX 로 sprite 처럼 정중앙 정렬.
@@ -19,6 +19,7 @@ import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
 import { CARD_FRACTION, CARD_MARGIN, thumbView } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
+import { DyeSprite, INFO_FRAC_HAIR } from './render/DyeSprite'
 
 // 모델/내모델 썸네일: computeModelPlacement 로 셀(div) 크기·dpr 에 맞춰 캔버스를 셀보다 크게(디바이스
 // 픽셀 해상도) 만들고, 마네킹을 셀 중앙에 고정 비율로 그린다. 캔버스는 셀 위에 절대배치 중앙정렬 →
@@ -67,6 +68,15 @@ function Sprite({ item }: { item: ListItem }) {
       <img ref={imgRef} src={sources[idx]} alt={item.name || item.id} loading="lazy" decoding="async" draggable={false}
         onLoad={fitIcon} onError={() => setIdx((i) => i + 1)}
         style={{ imageRendering: 'pixelated', display: 'block', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }} />
+    </div>
+  )
+}
+
+// 헤어 '아이템' 보기: 셀 짧은 변 기준 정사각 캔버스에 헤어 전 파츠를 몸 없이 합성(무염색 = 대표색).
+function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
+  return (
+    <div className="pb-hairsprite">
+      <div className="pb-hairsprite-box"><DyeSprite id={item.id} mix zmap={zmap} frac={INFO_FRAC_HAIR} /></div>
     </div>
   )
 }
@@ -235,6 +245,6 @@ export default function ItemThumb(props: {
   dye?: DyeState
   ear?: string; weapon?: string; isMy?: boolean
 }) {
-  if (props.mode === 'sprite') return <Sprite item={props.item} />
+  if (props.mode === 'sprite') return props.item.slot === 'hair' ? <HairSprite item={props.item} zmap={props.zmap} /> : <Sprite item={props.item} />
   return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} />
 }

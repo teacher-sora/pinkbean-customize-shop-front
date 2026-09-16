@@ -53,6 +53,7 @@ function buildMin(snap: Snapshot): Record<string, unknown> {
   if (snap.dyeHsb && Object.keys(snap.dyeHsb).length) min.h = snap.dyeHsb
   if (snap.hidden && Object.keys(snap.hidden).length) min.x = snap.hidden
   if (snap.dotPos && Object.keys(snap.dotPos).length) min.d = snap.dotPos
+  if (snap.dyeOff && Object.keys(snap.dyeOff).length) min.o = snap.dyeOff
   const v = minPv(snap.pv)
   if (v) min.v = v
   if (snap.name) min.n = snap.name
@@ -69,6 +70,7 @@ function reviveMin(m: Record<string, unknown>): Snapshot | null {
     dyeHsb: (m.h as Snapshot['dyeHsb']) || {},
     hidden: (m.x as Snapshot['hidden']) || {},
     dotPos: (m.d as Snapshot['dotPos']) || {},
+    ...(m.o && typeof m.o === 'object' ? { dyeOff: m.o as Record<string, boolean> } : {}),
     // PB2 는 부분 pv, 레거시 PB1 은 전체 pv — 둘 다 기본값 위에 얹으면 정확히 복원된다.
     pv: v ? { ...PV_SNAP_DEFAULT, ...v } : undefined,
     name: typeof m.n === 'string' ? m.n : undefined,

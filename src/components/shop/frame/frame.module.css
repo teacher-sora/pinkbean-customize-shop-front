@@ -1,0 +1,34 @@
+/* 셸·헤더 — v2 마크업(루트/pcFrameStyle/header/모바일 헤더) 값 그대로. */
+
+.root { position: fixed; inset: 0; height: 100svh; z-index: 2; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+
+/* PC / 절반 / 태블릿 프레임 */
+.frame { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.framePc { width: 100%; max-width: 1440px; padding: 8px 26px 16px; }
+.frameHalf { width: min(860px, 100%); margin: 0 auto; padding: 8px 16px 16px; }
+.frameTablet { width: min(1024px, 100%); margin: 0 auto; padding: 8px 18px 16px; }
+.main { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
+
+/* 모바일: 폰 프레임(390×780·scale)은 미리보기 전용이라 제외 → 화면 전체를 쓰는 흰 컬럼 */
+.mobileCol { width: 100%; height: 100svh; flex: 0 0 auto; background: #fff; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+
+/* ── PC 헤더 ── */
+.header { flex: 0 0 auto; height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.logoBox { display: flex; align-items: center; gap: 9px; min-width: 0; height: 100%; padding: 0 16px 0 10px; background: #fff; border: 1px solid #efe6dc; border-radius: 12px; }
+.logoImg { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
+.logoText { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; background: linear-gradient(100deg,#e5699a,#e894bb 55%,#b978d6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.headerActs { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; height: 100%; }
+.rateBtn { display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 16px; background: #fff; border: 1px solid #efe6dc; border-radius: 12px; font-size: 13px; font-weight: 500; color: #a8748f; letter-spacing: -0.01em; cursor: pointer; white-space: nowrap; }
+.copyBtn { display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 18px; border: none; background: #ec86ac; border-radius: 12px; font-size: 13px; font-weight: 600; color: #fff; letter-spacing: -0.01em; cursor: pointer; white-space: nowrap; }
+
+/* ── 모바일 헤더 ── */
+.headerM { flex: 0 0 auto; height: 46px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f4efe8; }
+.logoBoxM { display: flex; align-items: center; gap: 7px; }
+.logoImgM { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.logoTextM { font-size: 15px; font-weight: 700; background: linear-gradient(100deg,#ec86ac,#c98fe0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.headerActsM { display: flex; align-items: center; min-height: 32px; gap: 6px; }
+.rateBtnM { display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border: 1px solid #f0d3e0; border-radius: 8px; background: #fff; color: #c05a94; font-size: 11.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.copyBtnM { display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 11px; border: none; border-radius: 8px; background: #ec86ac; color: #fff; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+
+/* 배경 일러스트(next/image) 채우기 */
+.bgImg { object-fit: cover; object-position: center; }

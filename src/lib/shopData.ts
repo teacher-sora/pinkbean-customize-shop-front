@@ -107,7 +107,7 @@ export const isColorLineSkin = (name?: string): boolean => !!name && name.includ
 // 헤어/성형은 검정 대표(color 0) id. 실제 부위 리스트를 열면 folded 대표와 id가 일치해 선택 표시됨.
 export const DEFAULT_TONE = 12 // 엘프 피부
 export const DEFAULT_EQUIP: Record<string, ListItem> = {
-  hair: { id: '00071400', slot: 'hair', isCash: false, grade: 'none', islot: null, vslot: null, dyeMode: 'palette', colorGroup: 7140, color: 0, name: '녹셀 헤어 (여)', actions: [] },
+  hair: { id: '00071540', slot: 'hair', isCash: false, grade: 'none', islot: null, vslot: null, dyeMode: 'palette', colorGroup: 7154, color: 0, name: '밤의 레아 헤어 (여)', actions: [] },
   face: { id: '00022060', slot: 'face', isCash: false, grade: 'none', islot: null, vslot: null, dyeMode: 'palette', colorGroup: 2260, name: '운명의 인도자 얼굴', actions: [] },
   longcoat: { id: '01051917', slot: 'longcoat', isCash: true, grade: 'cash', islot: 'MaPn', vslot: null, dyeMode: 'none', name: '금단의 계약 (여)', actions: [] },
 }

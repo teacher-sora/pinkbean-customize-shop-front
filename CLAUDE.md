@@ -11,8 +11,9 @@ src/
     PinkbeanShop.tsx      # 조합 루트 (ShopProvider + Shell)
     shop/
       ShopContext.tsx     # 모든 상태·핸들러의 단일 출처 (useShop())
-      Header.tsx / CodiScreen.tsx / InfoScreen.tsx / PresetScreen.tsx
-      PreviewPanel.tsx / DyeDialog.tsx / Toast.tsx
+      frame/ nav/ list/ info/ preset/ preview/ surface/ ui/   # UI v2(핸드오프 v2 마크업 1:1, 각 *.module.css)
+      render/             # 재활용 캔버스(염색 스프라이트·발색표·점 위치 편집기)
+      PreviewModel.tsx / ItemThumb.tsx / SnapThumb.tsx / LookDialog.tsx / ShareReceiveSheet.tsx
   lib/
     catalog.ts      # 정적 데이터 + 공유 타입 (부위/팔레트/연출 옵션/상수)
     color.ts        # 염색·색상 계산 (디자인 재현용 근사)
