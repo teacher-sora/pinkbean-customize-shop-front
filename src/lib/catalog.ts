@@ -31,13 +31,6 @@ export const CATS: Cat[] = [
   { id: 'riding', label: '라이딩' }, // [dev] 탑승(재규어/메탈아머) — 정적 코디 아이템, AI검색 제외
 ]
 
-export const PRIMARIES = [
-  { id: 'codi', label: '코디' },
-  { id: 'search', label: 'AI 코디 검색' },
-  { id: 'info', label: '코디 정보 · 염색' },
-  { id: 'preset', label: '프리셋' },
-]
-
 // 믹스 염색 8색 팔레트
 export const MIX_PALETTE = [
   { name: '검정', hex: '#2f2b27' },

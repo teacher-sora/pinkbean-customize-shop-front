@@ -1,0 +1,76 @@
+/* 코디 정보 · 염색 — v2 마크업/infoVals 값 그대로. */
+
+.panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
+.header { flex: 0 0 auto; padding: 10px 16px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
+.hr { flex: 0 0 auto; height: 1px; margin: 10px 16px 0; background: #f2ebe3; }
+.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 6px; }
+.hrM { flex: 0 0 auto; height: 1px; background: #f2ebe3; }
+
+/* 착용 n / 16 칩 */
+.chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+.chipM { gap: 5px; height: 32px; padding: 0 10px; border-radius: 9px; }
+.chipLabel { font-size: 12px; font-weight: 600; color: #8a8075; line-height: 1; }
+.chipNum { font-size: 12px; font-weight: 700; color: #d76d9a; line-height: 1; }
+.chipSlash { font-size: 12px; color: #ccc2b8; line-height: 1; }
+.right { flex: 1 1 0; min-width: 0; display: flex; justify-content: flex-end; }
+.btn { flex: 0 0 auto; height: 34px; padding: 0 12px; border: 1px solid #f0e9e1; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; white-space: nowrap; cursor: pointer; }
+.btnM { height: 32px; border-radius: 9px; }
+
+.scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; justify-content: space-between; }
+.scrollM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 8px 12px; }
+.slots { flex: 0 0 auto; padding: 10px 6px; }
+.grid { display: grid; gap: 8px; }
+
+/* 부위 행 */
+.slot { display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 7px 9px; overflow: hidden; border: 1px dashed #e7ded4; border-radius: 11px; background: #fbf8f4; cursor: default; text-align: left; font-family: inherit; transition: background-color .22s ease, border-color .22s ease; }
+.slotOn { border-style: solid; border-color: #f4cfdf; background: #fdf7fa; cursor: pointer; }
+.slotHidden { background: #f7f3ee; }
+.slotSel { border-color: #ec86ac; }
+.slotThumb { position: relative; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 8px; background: #f4efe8; display: flex; align-items: center; justify-content: center; }
+.slotThumbOn { background: #fff; }
+.slotEmpty { width: 16px; height: 16px; border-radius: 4px; background: #e7ded2; }
+.slotSprite { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.slotSpriteHidden { opacity: .6; }
+.dyedDot { position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; background: conic-gradient(from 90deg,#ff8fb0,#ffd36b,#7fd88a,#6bb8ff,#c79bff,#ff8fb0); }
+/* 염색 비활성화: 같은 무지개 점에서 색조만 뺀 무채색 */
+.dyedDotOff { filter: grayscale(1); }
+.slotText { flex: 1 1 0; min-width: 56px; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.slotTextM { min-width: 48px; }
+.slotPart { font-size: 10.5px; font-weight: 600; color: #a89e93; letter-spacing: -0.01em; }
+.slotName { font-size: 12px; font-weight: 500; color: #c3b9ad; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.slotNameOn { font-weight: 600; color: #2a2521; }
+.toggle { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #f4cfdf; border-radius: 8px; background: #fce9f1; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+.toggleHidden { border-color: #e7ded4; background: #f4efe8; color: #a89e93; }
+
+/* ── 하단 인라인 염색(PC) ── */
+.dyeWrap { flex: 0 0 auto; }
+.dyeHr { height: 1px; margin: 0 6px; background: #f2ebe3; }
+.dyeArea { flex: 0 0 auto; padding: 10px 6px; display: flex; flex-direction: column; }
+.dyeAreaFit { flex-direction: row; align-items: stretch; gap: 14px; }
+.sideCards { flex: 1 1 0; min-width: 0; max-width: 100%; display: flex; align-items: stretch; gap: 10px; }
+.sideCard { flex: 1 1 0; min-width: 0; align-self: stretch; border: 1px dashed #efe6dc; border-radius: 12px; background: #fbf8f4; }
+.dyeOff { flex: 1 1 auto; min-height: 76px; border: 1px dashed #e7ded4; border-radius: 11px; background: #fbf8f4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+.dyeOffTitle { font-size: 12.5px; font-weight: 600; color: #8a8075; }
+.dyeOffHint { font-size: 11.5px; color: #b7ada2; }
+.dyeBody { flex: 1 1 auto; width: 100%; min-height: 0; display: flex; align-items: stretch; gap: 12px; padding: 12px; border: 1px solid #f0e9e1; border-radius: 12px; background: #fdfbf9; }
+.dyeBodyFit { flex: 0 0 auto; width: auto; margin-left: auto; }
+.pvCol { flex: 0 0 auto; align-self: flex-start; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; width: 116px; }
+.pvColCompact { width: 96px; }
+.pvBox { flex: 0 0 auto; width: 88px; height: 88px; border-radius: 12px; border: 1px solid #eee6dc; background: #faf7f3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.pvBoxCompact { width: 72px; height: 72px; }
+.pvText { text-align: center; max-width: 100%; }
+.pvPart { font-size: 10.5px; font-weight: 600; color: #a89e93; }
+.pvName { font-size: 11.5px; font-weight: 600; color: #2a2521; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 92px; }
+.divider { flex: 0 0 1px; align-self: stretch; width: 1px; margin-right: 6px; background: #f0e9e1; }
+.ctrlCol { flex: 1 1 auto; min-width: 0; width: 100%; align-self: stretch; padding: 5px 14px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+.ctrlColFit { flex: 0 0 482px; width: 482px; }
+.group { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.swRow { display: flex; align-items: center; gap: 10px; }
+.swLabel { flex: 0 0 38px; font-size: 11px; font-weight: 600; color: #a89e93; }
+.swList { flex: 1 1 0; min-width: 0; display: flex; gap: 5px; flex-wrap: nowrap; }
+.groupHr { height: 1px; margin: 2px 0 0; background: #f2ebe3; }
+.famRow { display: flex; align-items: center; gap: 9px; }
+.acts { display: flex; justify-content: flex-end; gap: 6px; }
+/* 염색 비활성화 토글 — 켜짐 상태 */
+.btnOn { background: #fce9f1; border-color: #f5c6da; color: #d76d9a; }
+.noDye { flex: 1 1 auto; min-height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center; }

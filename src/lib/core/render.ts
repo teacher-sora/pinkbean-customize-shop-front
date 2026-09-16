@@ -125,10 +125,14 @@ export async function renderCharacter(
   // 정수 배율이면 확대가 nearest 로 완벽히 선명. 카드/미리보기는 캔버스를 "디바이스 픽셀" 해상도로 맞추려고
   // 분수 배율을 넘긴다(1:1 표시 → CSS 재확대 없음, nearest). dx/dy 는 아래에서 정수 스냅한다.
   const scale = Math.max(0.01, opts.scale ?? 1)
-  canvas.width = Math.round(opts.box.w * scale)
-  canvas.height = Math.round(opts.box.h * scale)
+  // 크기가 같으면 재할당하지 않는다 — width 대입은 같은 값이어도 비트맵을 새로 잡아(GPU 캔버스 재할당) 애니메이션·
+  // 착용 변경 중 한 프레임 비거나 세로줄이 찢겨 보였다. 같은 크기면 clearRect 만으로 충분.
+  const cw = Math.round(opts.box.w * scale), ch = Math.round(opts.box.h * scale)
+  if (canvas.width !== cw) canvas.width = cw
+  if (canvas.height !== ch) canvas.height = ch
 
   const ctx = canvas.getContext('2d')!
+  ctx.setTransform(1, 0, 0, 1, 0, 0) // 재할당을 건너뛰므로 이전 상태가 남지 않게 초기화
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 

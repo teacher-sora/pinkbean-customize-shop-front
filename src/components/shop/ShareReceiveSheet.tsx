@@ -4,6 +4,7 @@ import { css } from '@/lib/style'
 import { isStacked } from '@/lib/useBreakpoint'
 import SnapThumb from './SnapThumb'
 import { useShop } from './ShopContext'
+import { useMaskClose } from './ui/useMaskClose'
 
 // 공유 링크(#c=…)로 접속하면 뜨는 '코디 받기' 시트.
 // 설계: 링크 접속 = 이미 "확인·소유" 의사 → 슬롯 선택을 앞에 둬 단계 최소화(뒤로 뺀 저장이 오히려 병목).
@@ -12,13 +13,14 @@ import { useShop } from './ShopContext'
 //  - 아무 슬롯도 안 고르고 닫으면 개인 프리셋은 그대로(안전).
 export default function ShareReceiveSheet() {
   const s = useShop()
+  const mask = useMaskClose(() => s.dismissShared()) // 마스크에서 누르고 마스크에서 뗐을 때만 닫힘
   const snap = s.sharedIncoming
   if (!snap) return null
   const mob = isStacked(s.bp)
   const cols = s.bp === 'pc' ? 5 : s.bp === 'half' ? 4 : s.bp === 'tablet' ? 3 : 2
 
   return (
-    <div onClick={s.dismissShared} style={css('position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(42,37,33,0.45);')}>
+    <div {...mask} style={css('position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(42,37,33,0.45);')}>
       <div onClick={(e) => e.stopPropagation()} style={css(`width:100%; max-width:${mob ? 520 : 720}px; max-height:88vh; background:#fff; border:1px solid #e7ded4; border-radius:16px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(42,37,33,.22);`)}>
         <div style={css('flex:0 0 auto; padding:15px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #f0e9e1;')}>
           <span style={css('font-size:15px; font-weight:700; color:#2a2521; flex:0 0 auto;')}>공유받은 코디</span>
