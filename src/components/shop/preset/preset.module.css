@@ -42,3 +42,5 @@
 .pencil { position: absolute; right: 7px; pointer-events: none; }
 .share { position: absolute; top: -3px; right: 6px; z-index: 4; width: 18px; height: 24px; padding: 4px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: #a9b7cf; color: #fff; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
 .del { position: absolute; top: -3px; right: 28px; z-index: 4; width: 16px; height: 21px; padding: 3px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: #e08a9b; color: #fff; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
+/* 모바일: 삭제 띠지도 코디 카드 즐겨찾기 띠지(18×24)와 같은 크기(사용자 지시) — 복사 띠지(right 6 + 18) 옆 4px 간격 유지 */
+.delM { width: 18px; height: 24px; padding: 4px 0 0; right: 28px; }
