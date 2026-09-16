@@ -161,7 +161,7 @@ function genderForLook(charClass: string | null, kkey: 'normal' | 'additional', 
 
 // 넥슨 실패 응답 → 우리 응답. 점검(OPENAPI00010 게임 점검 / 00011 API 점검)은 400 으로 오는데, 이걸 일반 실패(502·404)로
 // 뭉뚱그리면 "코디 정보를 불러오지 못했어요"만 떠 원인을 알 수 없었다(2026-09-17 패치 점검 중 실측) → 503 + 점검 안내.
-const MAINT = { error: '메이플스토리 점검 중이라 코디를 불러올 수 없어요. 점검이 끝난 뒤 다시 시도해 주세요' }
+const MAINT = { error: '메이플 점검 중이라 불러올 수 없어요' }
 async function nexonFail(r: Response, fallback: { error: string }, status: number) {
   const name = await r.clone().json().then((j) => j?.error?.name as string | undefined).catch(() => undefined)
   if (name === 'OPENAPI00010' || name === 'OPENAPI00011') return NextResponse.json(MAINT, { status: 503 })
