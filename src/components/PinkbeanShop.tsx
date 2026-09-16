@@ -1,52 +1,68 @@
 'use client'
 
 /*
- * 핑크빈 커마샵 — 화면 조합 루트.
- * 상태/핸들러는 shop/ShopContext 에, 각 화면은 shop/*Screen · PreviewPanel · DyeDialog · Toast 에 있다.
- * (design_handoff_pinkbean_shop 재현. 아이템/캐릭터는 플레이스홀더 — CDN 단계에서 실제 데이터/합성으로 교체.)
+ * 핑크빈 커마샵 — 화면 조합 루트(핸드오프 v2).
+ * 상태/핸들러는 shop/ShopContext. 레이아웃 모드는 화면 폭(useBreakpoint): PC · 절반 · 태블릿 = 2분할, 모바일 = 세로 적층.
+ * 시트·다이얼로그는 단일 서피스(shop/surface/Surface) 하나. 불러오기 코디 선택(LookDialog)·공유 받기 시트는 현행 유지.
  */
 
 import clsx from 'clsx'
-import { css } from '@/lib/style'
-import { isStacked } from '@/lib/useBreakpoint'
 import { ShopProvider, useShop } from './shop/ShopContext'
-import Header from './shop/Header'
-import CodiScreen from './shop/CodiScreen'
-import SearchScreen from './shop/SearchScreen'
-import InfoScreen from './shop/InfoScreen'
-import PresetScreen from './shop/PresetScreen'
-import PreviewPanel from './shop/PreviewPanel'
-import DyeDialog from './shop/DyeDialog'
-import DotDialog from './shop/DotDialog'
+import Background from './shop/frame/Background'
+import AppHeader from './shop/frame/AppHeader'
+import BottomNav from './shop/nav/BottomNav'
+import ListArea from './shop/list/ListArea'
+import InfoPanel from './shop/info/InfoPanel'
+import PresetPanel from './shop/preset/PresetPanel'
+import PreviewColumn, { MobileHero } from './shop/preview/PreviewColumn'
+import { useRidingGuards } from './shop/preview/pvControls'
+import Surface from './shop/surface/Surface'
 import LookDialog from './shop/LookDialog'
 import ShareReceiveSheet from './shop/ShareReceiveSheet'
-import Toast from './shop/Toast'
+import Toast from './shop/ui/Toast'
+import styles from './shop/frame/frame.module.css'
 
 function Shell() {
-  const { primary, bp } = useShop()
-  const stacked = isStacked(bp)
-  const mobile = bp === 'mobile'
+  const s = useShop()
+  useRidingGuards()
+  const mobile = s.bp === 'mobile'
+  const isList = s.primary === 'codi' || s.primary === 'search'
+
   return (
-    // ⚠️ 100vh 금지: iOS Safari 의 100vh 는 "툴바가 없을 때" 기준 큰 뷰포트라, 하단 주소창/탭바가 떠 있으면
-    // 그만큼 콘텐츠가 툴바 뒤로 밀려 가려진다. 100dvh = 지금 실제로 보이는 높이.
-    // 세로 스택(태블릿+모바일)은 height 대신 min-height + 문서 스크롤(globals.css) → 헤더를 스크롤로 치우고 툴바도 접히게.
-    <div className={clsx(stacked && 'pb-mobile')} style={css(`width:100%; ${stacked ? 'min-height:100dvh' : 'height:100dvh'}; display:flex; justify-content:center; background:linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%);`)}>
-      <div style={css(`width:100%; max-width:1440px; ${stacked ? '' : 'height:100%;'} padding:${mobile ? '12px 12px 0' : stacked ? '14px 16px 0' : '20px 32px 0'}; display:flex; flex-direction:column;`)}>
-        <Header />
-        <main style={css(`${stacked ? 'flex:0 0 auto; flex-direction:column;' : 'flex:1 1 auto; min-height:0;'} display:flex; gap:${stacked ? 10 : 20}px; padding:${stacked ? '10px 0 12px' : '12px 0 20px'};`)}>
-          {primary === 'codi' && <CodiScreen />}
-          {primary === 'search' && <SearchScreen />}
-          {primary === 'info' && <InfoScreen />}
-          {primary === 'preset' && <PresetScreen />}
-          <PreviewPanel />
-        </main>
-      </div>
-      <DyeDialog />
-      <DotDialog />
+    <>
+      <Background />
+      {mobile ? (
+        // 모바일: 폰 프레임(390×780) 없이 화면 전체. 터치 기기는 셸이 문서 스크롤로 풀린다(.pb-shell).
+        <div className={clsx('pb-root', 'pb-shell', styles.root)}>
+          <div className={styles.mobileCol}>
+            <AppHeader mobile />
+            <MobileHero />
+            {isList && <ListArea mobile />}
+            {s.primary === 'preset' && <PresetPanel mobile />}
+            {s.primary === 'info' && <InfoPanel mobile />}
+            <BottomNav mobile />
+          </div>
+        </div>
+      ) : (
+        // PC·절반·태블릿: 2분할은 높이가 고정돼야(리스트 그리드 height:100%) 하므로 문서 스크롤로 풀지 않는다.
+        <div className={clsx('pb-root', styles.root)}>
+          <div className={clsx(styles.frame, s.bp === 'pc' ? styles.framePc : s.bp === 'half' ? styles.frameHalf : styles.frameTablet)}>
+            <AppHeader mobile={false} />
+            <main className={styles.main}>
+              {isList && <ListArea mobile={false} />}
+              {s.primary === 'info' && <InfoPanel mobile={false} />}
+              {s.primary === 'preset' && <PresetPanel mobile={false} />}
+              <PreviewColumn />
+            </main>
+            <BottomNav mobile={false} />
+          </div>
+        </div>
+      )}
+      <Surface />
       <LookDialog />
       <ShareReceiveSheet />
       <Toast />
-    </div>
+    </>
   )
 }
 

@@ -70,6 +70,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover', // 핸드오프 v2 README 지정값
   // 페이지 자체의 핀치/더블탭 확대를 막는다(모바일에서 얼굴 확대 편집 시 화면이 통째로 확대되던 문제).
   // 확대가 필요한 곳은 DotDialog 캔버스뿐이고, 그건 pointer 기반 자체 핀치라 네이티브 확대에 의존하지 않는다.
   // Android(Chrome) 는 이 설정을 존중. iOS Safari 는 무시하므로 NoNativeZoom 이 gesture 이벤트로 보강한다.

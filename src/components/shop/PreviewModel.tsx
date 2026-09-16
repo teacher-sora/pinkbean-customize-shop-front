@@ -15,11 +15,12 @@ import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, buildOverrides } from '@/lib/core/dye'
-import { effectDraws, loadImage, preload, renderCharacter } from '@/lib/core/render'
-import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
+import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
+import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS } from '@/lib/catalog'
+import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { isStacked } from '@/lib/useBreakpoint'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin } from '@/lib/shopData'
+import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin, resolveAction } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
@@ -34,18 +35,23 @@ const RIDING_SEATED = new Set(['basic', 'walk'])
 const COPY_SIZE = 420, COPY_MARGIN = 1.5, COPY_FRACTION = 0.5
 
 export default function PreviewModel() {
-  const { index, equipped, hidden, tone, pv, dyePalette, dyeHsb, dotPos, dyeInteracting, bp } = useShop()
+  const { index, equipped, hidden, tone, pv, renderPalette: dyePalette, renderHsb: dyeHsb, dotPos, dyeInteracting, bp } = useShop() // 염색 비활성화 슬롯은 제외된 렌더용 값
   // 세로 스택(태블릿+모바일)은 미리보기 영역이 낮고 넓다 → PC 비율(0.25)이면 모델이 콩알만 해진다.
   const fraction = isStacked(bp) ? PREVIEW_FRACTION_MOBILE : PREVIEW_FRACTION
   const [metas, setMetas] = useState<Map<string, ItemMeta>>(new Map())
   const [dyeOverrides, setDyeOverrides] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effectIndex, setEffectIndex] = useState<Set<string>>(new Set())
-  const [effMetas, setEffMetas] = useState<Map<string, EffectMeta>>(new Map())
+  const [effMetas, setEffMetas] = useState<Map<string, EffectMeta | null>>(new Map()) // null = 로드 실패(대기 해제용)
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   const [dyeSettling, setDyeSettling] = useState(false) // 이펙트/피부 전 프레임 염색 중(애니메이션 잠깐 정지 → 점멸 방지)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // 애니메이션 시계(effect 밖에 유지). 염색·착용·이펙트 변경으로 그리기 effect 가 연달아 재실행돼도 프레임이 0으로
+  // 되돌아가지 않게 한다 — 되돌아가면 숨쉬기 모션 중이던 상체가 첫 프레임 자세로 툭툭 튀어 "일렁"인다.
+  // 액션·시선·프레임 구성이 바뀔 때만 0부터. 정지(발색 드래그·전 프레임 염색 중)는 시계를 멈춘다.
+  const clockRef = useRef({ key: '', elapsed: 0, since: 0, running: false })
+  const drawSeqRef = useRef(0) // 가장 최근에 시작한 합성만 캔버스에 반영(늦게 끝난 이전 합성이 덮어쓰기 방지)
   // 우클릭 "이미지 복사"용 스냅샷 — 화면 미리보기와 별개로, 정사각형·큰 모델 이미지를 즉석에서 그리기 위한
   // 현재 프레임(정지=0프레임) 합성 입력. draw effect 가 매번 최신값으로 갱신한다.
   const copyRef = useRef<{
@@ -95,9 +101,9 @@ export default function PreviewModel() {
     for (const it of Object.values(equipped)) if (it && effectIndex.has(String(parseInt(it.id, 10))) && !effMetas.has(it.id)) missing.push(it.id)
     if (!missing.length) return
     let alive = true
-    Promise.all(missing.map((id) => loadEffect(id).then((m) => [id, m] as const).catch(() => null))).then((res) => {
+    Promise.all(missing.map((id) => loadEffect(id).then((m) => [id, m ?? null] as const).catch(() => [id, null] as const))).then((res) => {
       if (!alive) return
-      setEffMetas((prev) => { const n = new Map(prev); for (const r of res) if (r && r[1]) n.set(r[0], r[1]); return n })
+      setEffMetas((prev) => { const n = new Map(prev); for (const r of res) n.set(r[0], r[1]); return n })
     })
     return () => { alive = false }
   }, [equipped, effectIndex, effMetas])
@@ -120,6 +126,9 @@ export default function PreviewModel() {
     //   V.action 은 이미 resolved WZ 키(walk1/jump/rope/shoot2…)라 재규어 프레임과 그대로 매칭된다(없으면
     //   stand1 폴백). 뒤 시선(back)은 buildView 가 action='rope' 정지 → 재규어 rope(캐릭터 뒤)도 함께 나온다.
     //   방패는 탑승 중 항상 숨김(직업 불일치).
+    // ⚠️ 착용 아이템 메타가 하나라도 아직 안 왔으면 조립하지 않는다(null → 캔버스는 직전 그림 유지). 되돌리기/다시실행·
+    //    프리셋 전환처럼 여러 부위가 한꺼번에 바뀔 때 "일부 부위가 빠진 중간 상태"가 한 프레임 그려지던 티어링의 원인.
+    for (const it of Object.values(equipped)) if (it && !metas.has(it.id)) return null
     const ridingItem = equipped['riding']
     const ridingMeta = ridingItem && !hidden['riding'] ? metas.get(ridingItem.id) : undefined
     const riding = !!ridingMeta
@@ -202,7 +211,16 @@ export default function PreviewModel() {
   // 장착 직후 지연 제거: "정지/첫 프레임에 보이는 것"(아이템 레이어 + 이펙트 프레임0 + 피부 프레임0)을 먼저
   // 칠해 즉시 반영하고(장착 시 애니메이션은 프레임0부터 재시작하므로 이게 곧 보이는 프레임), 나머지 전 프레임은
   // 백그라운드로 이어 칠한다(망토 같은 큰 이펙트도 지연 없이 염색돼 보임).
+  // 염색 오버라이드가 "지금 입력"으로 계산된 것인지 판별하는 키. 착용·염색·뷰가 바뀐 직후엔 이전 착용 기준 오버라이드만
+  // 있어 새 아이템이 원본색으로 한 프레임 그려졌다(되돌리기 티어링) → 키가 맞을 때까지 그리기를 보류한다.
+  const dyeKey = JSON.stringify([
+    Object.entries(equipped).map(([k, it]) => [k, it?.id ?? null, !!(it && metas.has(it.id)), !!(it && effMetas.has(it.id))]),
+    hidden, dyePalette, dyeHsb, V, pv.gaze, pv.action, toneEntry?.name ?? '', !!bodyMeta, !!headMeta,
+  ])
+  const hasDye = Object.keys(dyePalette).length > 0 || Object.values(dyeHsb).some((h) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0))
+  const [ovKey, setOvKey] = useState('')
   useLiveRedraw(async () => {
+    const myKey = dyeKey
     const dyeable: ItemMeta[] = []
     for (const it of Object.values(equipped)) { if (!it) continue; const m = metas.get(it.id); if (m) dyeable.push(m) }
     // [dev] 라이딩 앉은 액션이면 캐릭터가 sit 로 그려지므로 염색도 sit 프레임 기준으로 계산해야 그 프레임 옷/피부
@@ -215,7 +233,8 @@ export default function PreviewModel() {
     const dyeV = dyeSeated ? { ...V, action: 'sit' } : V
     // ⚠️ 1단계는 반드시 allFrames=false — 보이는 프레임만 칠해 즉시 반영한다(기존과 동일한 비용/체감속도).
     //    전 프레임은 아래 2단계에서 백그라운드로 이어 칠한다. 여기서 전 프레임을 칠하면 장착/드래그가 눈에 띄게 느려진다.
-    const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, false)
+    // 실패해도 키는 반드시 갱신돼야 미리보기가 보류 상태로 멈추지 않는다 → 1단계는 예외를 삼킨다.
+    const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, false).catch(() => new Map<string, HTMLCanvasElement>())
     // 이펙트/피부 프레임 염색을 override(ov)에 추가. allFrames=false 면 프레임0만, true 면 전 프레임.
     // ⚠️ 프레임 png 는 반드시 "병렬 로드"(Promise.all)로 받는다 — 순차 fetch(프레임마다 await)면 큰 이펙트(망토)
     //    처럼 프레임이 많을 때 fetch 가 줄줄이 늘어져 매우 느리고 점멸한다. 병렬로 한 번에 받아 즉시 리컬러.
@@ -257,8 +276,8 @@ export default function PreviewModel() {
       }
     }
     // 1) 보이는 프레임(0)만 먼저 → 즉시 반영(장착/드래그 모두 지연 없음).
-    await dyeExtras(false)
-    setDyeOverrides(new Map(ov))
+    await dyeExtras(false).catch(() => {})
+    setDyeOverrides(new Map(ov)); setOvKey(myKey)
     // 2) 드래그 중이 아니면 나머지 전 프레임까지 이어서 → 애니메이션에서도 색 유지. 이 동안(전 프레임 염색 중)
     //    이펙트/피부가 있으면 애니메이션을 잠깐 정지해 덜 칠해진 프레임 점멸을 막는다(끝나면 재개).
     if (!dyeInteracting) {
@@ -278,10 +297,56 @@ export default function PreviewModel() {
     }
   }, [equipped, metas, effMetas, dyePalette, dyeHsb, V, hidden, pv.gaze, pv.action, bodyMeta, headMeta, toneEntry, dyeInteracting])
 
+  // 연출 변경 즉시 반영용 유휴 프리페치: 지금 착용·시선·귀 기준으로 "다른 액션 / 표정 / 무기 모션"의 첫 프레임
+  // 스프라이트를 미리 받고, 염색이 있으면 그 발색(override)도 미리 구워 캐시를 데운다. 바꾸는 순간엔 네트워크·리컬러
+  // 대기 없이 그린다. 첫 프레임만(나머지 프레임은 선택 후 재생하며 받음), 8장씩 쉬어가며, 조건이 바뀌면 중단.
+  useEffect(() => {
+    if (!bodyMeta || !headMeta || dyeInteracting) return
+    let alive = true
+    const wornMetas: ItemMeta[] = [bodyMeta, headMeta]
+    for (const [slot, it] of Object.entries(equipped)) { if (!it || hidden[slot]) continue; const m = metas.get(it.id); if (m) wornMetas.push(m) }
+    const dyeable = wornMetas.slice(2)
+    const views = [
+      ...(pv.gaze === 'back' ? [] : PV_ACTIONS_FLAT.map((a) => ({ ...V, action: resolveAction(a.v, pv.weapon) }))),
+      ...PV_EXPRS.map((e) => ({ ...V, expression: e.v })),
+      ...(pv.gaze === 'back' ? [] : PV_WEAPONS.map((w) => ({ ...V, action: resolveAction(pv.action, w.v), weaponMotion: w.v }))),
+    ]
+    const idle = (fn: () => void) => {
+      const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
+      if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout: 300 }); else setTimeout(fn, 16)
+    }
+    const nextIdle = () => new Promise<void>((r) => idle(r))
+    const timer = setTimeout(async () => {
+      const seen = new Set<string>()
+      const queue: string[] = []
+      for (const v of views) for (const m of wornMetas) for (const l of getFrameLayers(m, v, 0)) if (!seen.has(l.png)) { seen.add(l.png); queue.push(l.png) }
+      for (let i = 0; i < queue.length && alive; i += 8) {
+        await Promise.all(queue.slice(i, i + 8).map((p) => loadImage(p, true).catch(() => null)))
+        await nextIdle()
+      }
+      const hasDye = Object.keys(dyePalette).length > 0 || Object.values(dyeHsb).some((h) => h && (h.h || h.s || h.b))
+      if (!hasDye) return
+      for (const v of views) {
+        if (!alive) return
+        await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, v, false).catch(() => null)
+        await nextIdle()
+      }
+    }, 600) // 연속 변경 중엔 시작하지 않는다
+    return () => { alive = false; clearTimeout(timer) }
+  }, [bodyMeta, headMeta, equipped, hidden, metas, V, pv.gaze, pv.weapon, pv.action, dyePalette, dyeHsb, dyeInteracting])
+
+  // 이펙트 인덱스에 있는 착용 아이템의 이펙트 메타가 아직 안 왔으면(성공/실패 무관 도착 전) 그리기 보류 — 이펙트 없이 한 번
+  // 그려졌다가 붙는 깜빡임 방지.
+  const [everReady, setEverReady] = useState(false)
+  useEffect(() => { if (spec && !everReady) setEverReady(true) }, [spec, everReady])
+  const effPending = effectIndex.size > 0 && Object.values(equipped).some((it) => !!it && effectIndex.has(String(parseInt(it.id, 10))) && !effMetas.has(it.id))
+  const dyeStale = hasDye && !dyeInteracting && ovKey !== dyeKey
+
   // 명령형 rAF: 프리로드 후 캔버스에 직접 그림(React state 갱신 없음 → 부드럽고 렉 없음).
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !spec || !dims.w || !dims.h) return
+    if (effPending || dyeStale) return // 입력이 다 모일 때까지 직전 그림 유지(중간 상태 미표시)
     let cancelled = false, raf = 0
     const { frames, delays, animated, pingpong, riding, centerMount } = spec
     const hasEff = effList.length > 0
@@ -292,18 +357,37 @@ export default function PreviewModel() {
     // 뒷쪽 시선(rope 첫프레임)이 previewBack* 로 중앙에 오는 것과 동일하게, 비라이딩 사다리/밧줄도 previewBack* 사용.
     const climbCenter = back || (!riding && (pv.action === 'ladder' || pv.action === 'rope'))
     // snap:true — 정수 배율로 렌더해 도트(애교점 등)가 픽셀에 딱 맞고 선명하다(카드 썸네일·내보내기와 동일 규칙).
-    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, zoomMult: ZOOM_WORLD[pv.zoom] ?? 1, centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true })
-    canvas.style.width = pl.canvasCssW + 'px'
-    canvas.style.height = pl.canvasCssH + 'px'
+    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: pv.zoom, mults: ZOOM_WORLD }), centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true })
+    // 캔버스를 화면 픽셀 격자에 정확히 맞춘다: CSS 크기 = 비트맵 ÷ dpr, 위치는 translate(-50%) 대신 디바이스 픽셀 단위로
+    // 반올림한 left/top(+ wrap 자신의 소수 px 위치 보정). 소수 px 크기·위치면 재샘플링돼 세로줄이 찢겨 보였다.
+    const bw = Math.round(pl.box.w * pl.scale), bh = Math.round(pl.box.h * pl.scale)
+    const wrapEl = wrapRef.current
+    const rect = wrapEl?.getBoundingClientRect()
+    const fx = rect ? (rect.left * dims.dpr) % 1 : 0, fy = rect ? (rect.top * dims.dpr) % 1 : 0
+    canvas.style.width = bw / dims.dpr + 'px'
+    canvas.style.height = bh / dims.dpr + 'px'
+    canvas.style.left = (Math.round((dims.w * dims.dpr - bw) / 2) - fx) / dims.dpr + 'px'
+    canvas.style.top = (Math.round((dims.h * dims.dpr - bh) / 2) - fy) / dims.dpr + 'px'
     const pngs = new Set<string>()
     frames.forEach((f) => f.placed.forEach((p) => pngs.add(p.png)))
     effList.forEach((em) => Object.values(em.groups).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
     let lastSig = '' // 마지막으로 실제 합성한 "보이는 프레임" 시그니처
+    const clock = clockRef.current
+    const clockKey = `${V.action}|${pv.action}|${pv.gaze}|${frames.length}|${pingpong ? 1 : 0}`
+    const nowElapsed = () => (clock.running ? clock.elapsed + (performance.now() - clock.since) : clock.elapsed)
+    if (clock.key !== clockKey) { clock.key = clockKey; clock.elapsed = 0; clock.since = performance.now() }
+    else { clock.elapsed = nowElapsed(); clock.since = performance.now() }
+    clock.running = false // 이 effect 가 루프를 시작할 때만 다시 흐른다
+    // 이 effect 에서 로드가 끝난 스프라이트. 애니메이션은 전 프레임 로드를 기다리지 않고 바로 시작하고, 아직 안 받은
+    // 프레임 차례면 직전 프레임을 유지한다(액션·표정·모션 변경 즉시 반영). 캐시된 이미지는 마이크로태스크로 곧바로 채워진다.
+    const loaded = new Set<string>()
+    const track = (list: Iterable<string>) => Promise.all([...list].map((p) => loadImage(p, true).then(() => { loaded.add(p) }, () => { loaded.add(p) })))
     const draw = (elapsed: number) => {
       if (cancelled) return
       const fi = animated ? (pingpong ? frameAtElapsedAlt : frameAtElapsed)(delays, elapsed) : 0
       const f = frames[Math.min(fi, frames.length - 1)]
       const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow }, elapsed)) : []
+      if (!f.placed.every((p) => loaded.has(p.png)) || !effects.every((d) => loaded.has(d.png))) return // 아직 로드 중 → 직전 프레임 유지
       // ⚠️ 매 rAF(60fps)마다 재합성하지 않는다 — 메이플 스프라이트/이펙트 프레임 delay 는 ~100~180ms(≈6~10fps)라
       //   60fps 로 그리면 "같은 프레임"을 5~6번 덧그리는 순수 낭비다(착용·이펙트가 많을수록 비용↑). 캐릭터 프레임
       //   인덱스 + 이 프레임의 이펙트 draw(png·위치) 시그니처가 직전과 같으면 픽셀이 동일하므로 건너뛴다(화질 손실 0).
@@ -315,10 +399,13 @@ export default function PreviewModel() {
       // renderCharacter 는 CORS(기본)로 로드 → 코디 카드/미리보기/염색이 한 캐시 공유(장착·염색 재fetch 없음).
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, shouldCancel: () => cancelled }).catch(() => {})
+      const seq = ++drawSeqRef.current
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
     }
-    // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "첫 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
+    // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
+    const e0 = animated || hasEff ? clock.elapsed : 0
+    const fNow = animated ? frames[Math.min((pingpong ? frameAtElapsedAlt : frameAtElapsed)(delays, e0), frames.length - 1)] : f0
     // 우클릭 복사용 스냅샷 갱신 — 정지(0프레임) 기준. 화면 draw 와 동일 입력이되 배치만 복사 시점에 정사각형으로 다시 잡는다.
     copyRef.current = f0
       ? {
@@ -330,23 +417,24 @@ export default function PreviewModel() {
         }
       : null
     const essential = new Set<string>()
-    f0?.placed.forEach((p) => essential.add(p.png))
-    if (hasEff && f0) effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow }, 0)).forEach((d) => essential.add(d.png))
-    preload([...essential]).then(() => {
+    fNow?.placed.forEach((p) => essential.add(p.png))
+    if (hasEff && fNow) effList.flatMap((em) => effectDraws(em, V.action, { foot: fNow.foot, brow: fNow.brow }, e0)).forEach((d) => essential.add(d.png))
+    track(essential).then(() => {
       if (cancelled) return
-      draw(0) // 첫 프레임 즉시 합성(장착 지연 제거)
+      draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)
       // 발색 조절 중/전 프레임 염색 중/정지 뷰면 애니메이션 없이 여기서 끝(정지 프레임 유지).
       if (dyeInteracting || dyeSettling || (!animated && !hasEff)) return
-      // 나머지 프레임은 백그라운드로 프리로드한 뒤 애니메이션 시작.
-      preload([...pngs]).then(() => {
-        if (cancelled) return
-        const start = performance.now()
-        const loop = (now: number) => { draw(now - start); raf = requestAnimationFrame(loop) }
-        raf = requestAnimationFrame(loop)
-      })
+      // 나머지 프레임은 백그라운드로 받으면서 곧바로 애니메이션 시작(안 받은 프레임은 draw 가 건너뜀).
+      track(pngs)
+      clock.elapsed = e0; clock.since = performance.now(); clock.running = true
+      const loop = () => { draw(nowElapsed()); raf = requestAnimationFrame(loop) }
+      raf = requestAnimationFrame(loop)
     })
-    return () => { cancelled = true; cancelAnimationFrame(raf) }
-  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, dyeInteracting, dyeSettling])
+    return () => {
+      cancelled = true; cancelAnimationFrame(raf)
+      if (clock.running) { clock.elapsed = nowElapsed(); clock.since = performance.now(); clock.running = false }
+    }
+  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
 
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·큰 모델·흰 배경 이미지를 만든다.
@@ -374,7 +462,9 @@ export default function PreviewModel() {
   return (
     <div ref={wrapRef} className={styles.wrap}>
       {/* 캔버스는 div 보다 크게(디바이스 해상도) 잡아 절대배치 중앙정렬 → wrap overflow:hidden 으로만 잘린다. */}
-      {spec ? <canvas ref={canvasRef} className={styles.canvas} /> : <div className={styles.skeleton} />}
+      {/* 한 번이라도 그릴 수 있게 된 뒤엔 캔버스를 절대 언마운트하지 않는다 — 착용 변경 중 조립 보류(spec=null)마다
+          스켈레톤으로 바뀌면 캐릭터가 사라졌다 나타나는 점멸이 생긴다. 보류 중엔 직전 그림이 그대로 남는다. */}
+      {everReady ? <canvas ref={canvasRef} className={styles.canvas} /> : <div className={styles.skeleton} />}
     </div>
   )
 }

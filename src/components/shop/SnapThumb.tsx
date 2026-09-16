@@ -62,8 +62,12 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
       ]
       const { placed: p, anchors } = assemble(items, index.zmap, index.smap)
       // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (옛 프리셋엔 dye 키가 없을 수 있어 방어)
-      const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snap.dyePalette || {}, hsb: snap.dyeHsb || {} }, TV)
-      const skinHsb = (snap.dyeHsb || {})['skin']
+      // 염색 비활성화(dyeOff) 슬롯은 수치가 있어도 렌더에서 뺀다.
+      const off = snap.dyeOff || {}
+      const onlyOn = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
+      const snapPal = onlyOn(snap.dyePalette), snapHsb = onlyOn(snap.dyeHsb)
+      const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snapPal, hsb: snapHsb }, TV)
+      const skinHsb = snapHsb['skin']
       if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && isColorLineSkin(te.name)) {
         for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, TV)) {
           try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinHsb, l.png)) } catch (_) {}
@@ -74,7 +78,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
       const bnav = curBody?.map?.navel
       const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
       const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
-      const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id })), spv, snap.dyeHsb || {}, overrides).catch(() => [])
+      const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id })), spv, snapHsb, overrides).catch(() => [])
       const effDraws: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, TV.action, { foot, brow }, 0))
       if (alive) { setPlaced(p); setOv(overrides); setEffects(effDraws) }
     })().catch(() => {})

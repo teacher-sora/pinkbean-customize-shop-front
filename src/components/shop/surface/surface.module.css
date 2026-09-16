@@ -1,0 +1,86 @@
+/* 단일 서피스(연출 설정 · 북마크 · 염색 · 점 위치) — v2 surfaceVals/dotDialogVals/dyeDialogVals 값 그대로. */
+
+.layer { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
+.overlay { position: absolute; inset: 0; pointer-events: auto; background: rgba(42,37,33,0.40); display: flex; align-items: center; justify-content: center; padding: 28px; transition: opacity .24s ease; opacity: 1; }
+.overlayM { align-items: flex-end; padding: 0; }
+.overlayHidden { opacity: 0; }
+
+/* PC 다이얼로그 */
+.panel { max-height: min(620px, 86svh); background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0) scale(1); opacity: 1; }
+.panelTall { height: min(620px, 86svh); }
+.panelHidden { transform: translateY(10px) scale(.985); opacity: 0; }
+/* 모바일 하단 시트 */
+.panelM { width: 100%; height: auto; max-height: 85%; background: #fff; border-top: 1px solid #e7ded4; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+.panelMTall { height: 85%; }
+
+.handle { flex: 0 0 auto; display: flex; justify-content: center; padding: 10px 0 4px; touch-action: none; }
+.handleBar { width: 40px; height: 4px; border-radius: 99px; background: #e7ded4; }
+.head { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid #f0e9e1; }
+.headL { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.title { font-size: 15px; font-weight: 700; color: #2a2521; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { flex: 0 0 auto; font-size: 11.5px; color: #a89e93; }
+.close { flex: 0 0 auto; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: #faf7f3; color: #8a8075; cursor: pointer; }
+.foot { flex: 0 0 auto; padding: 10px 16px; border-top: 1px solid #f0e9e1; display: flex; justify-content: flex-end; gap: 8px; }
+.btnClose { height: 38px; padding: 0 18px; border: 1px solid #ddd4ca; border-radius: 8px; background: #fff; font-family: inherit; font-size: 13.5px; font-weight: 500; letter-spacing: -0.01em; color: #5c534b; cursor: pointer; }
+.btnApply { height: 38px; padding: 0 22px; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; color: #fff; cursor: pointer; }
+
+/* ── 염색: 발색표(믹스) ── */
+.mixScroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; }
+.mixGrid { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 8px; }
+.mixGridM { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.cell { position: relative; width: 100%; padding: 0; display: flex; flex-direction: column; align-items: stretch; gap: 0; border: 2px solid #eee6dc; border-radius: 10px; background: #fff; overflow: hidden; cursor: pointer; transition: border-color .18s ease, transform .16s ease; }
+.cellOn { border-color: #ec86ac; transform: translateY(-3px); }
+.cellSprite { display: block; width: 100%; aspect-ratio: 1/1; background: #f7f2ec; }
+.cellDots { flex: 0 0 auto; height: 22px; display: flex; align-items: center; justify-content: center; gap: 4px; background: #faf7f3; border-top: 1px solid #f2ebe3; }
+.cellOn .cellDots { background: #fdf0f5; }
+.cellDot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0,0,0,0.12); }
+.cellSolo { font-size: 9.5px; font-weight: 600; color: #a89e93; }
+.cellOn .cellSolo { color: #d76d9a; }
+
+/* ── 염색: HSB ── */
+.hsvPc { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; padding: 16px; overflow: hidden; }
+.hsvLeft { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.pvBox { flex: 1 1 auto; width: 100%; min-height: 0; border: 1px solid #eee6dc; border-radius: 12px; background: #faf7f3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.zoomRow { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.zoom { min-width: 36px; height: 28px; padding: 0 10px; border: 1px solid transparent; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 500; color: #8a8075; background: #f4ecf3; }
+.zoomOn { font-weight: 600; color: #fff; background: #ec86ac; }
+.hsvRight { flex: 0 0 300px; min-width: 0; overflow: hidden auto; padding-left: 16px; border-left: 1px solid #f0e9e1; display: flex; flex-direction: column; gap: 14px; }
+.famRow { flex: 0 0 auto; height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.hr { flex: 0 0 auto; height: 1px; background: #f2ebe3; }
+.rows { display: flex; flex-direction: column; gap: 10px; }
+.rowsCol { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.resetRow { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: 6px; }
+.resetBtn { height: 30px; padding: 0 12px; border: 1px solid #e7ded4; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; cursor: pointer; }
+.hsvM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.topM { flex: 1 1 auto; min-height: 150px; display: flex; align-items: stretch; gap: 10px; }
+.pvBoxM { flex: 1 1 0; min-width: 0; border: 1px solid #eee6dc; border-radius: 12px; background: #faf7f3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.zoomCol { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+.resetIcon { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 1px solid #e7ded4; border-radius: 9px; background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #8a8075; cursor: pointer; }
+
+/* ── 점 위치 ── */
+.dotBody { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 16px; display: flex; gap: 16px; }
+.dotBodyM { padding: 12px; flex-direction: column; gap: 12px; }
+.dotLeft { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.dotLeftM { flex: 1 1 auto; min-height: 0; gap: 8px; }
+.tools { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; }
+.toolsSide { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+.tool { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 500; color: #8a8075; background: #f4ecf3; }
+.toolOn { border-color: #ec86ac; font-weight: 600; color: #d76d9a; background: #fce9f1; }
+.canvasRow { flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; gap: 10px; }
+.canvasArea { position: relative; flex: 1 1 auto; min-height: 260px; border: 1px solid #eee6dc; border-radius: 12px; background: #faf7f3; overflow: hidden; cursor: grab; touch-action: none; }
+.canvasAreaM { min-height: 150px; }
+.canvasAreaDot { cursor: crosshair; }
+.canvas { display: block; position: absolute; left: 0; top: 0; image-rendering: pixelated; touch-action: none; }
+.canvasSkel { width: 70%; height: 70%; margin: 15% auto; border-radius: 12px; }
+.ring { position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border: 2px solid rgba(236,134,172,0.6); border-radius: 50%; pointer-events: none; transition: left .08s linear, top .08s linear; }
+.zoomLine { flex: 0 0 auto; margin-top: 10px; min-height: 34px; display: flex; align-items: center; gap: 12px; }
+.gauge { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.gaugeBar { flex: 1 1 0; min-width: 0; height: 6px; border-radius: 99px; background: #efe6db; position: relative; overflow: hidden; }
+.gaugeFill { position: absolute; left: 0; top: 0; bottom: 0; background: #ec86ac; border-radius: 99px; transition: width .18s ease; }
+.gaugeLabel { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: #a89e93; font-variant-numeric: tabular-nums; }
+.posReset { flex: 0 0 auto; height: 32px; padding: 0 13px; border: 1px solid #e7ded4; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; white-space: nowrap; cursor: pointer; }
+.dotRight { flex: 0 0 300px; display: flex; flex-direction: column; gap: 14px; padding-left: 16px; border-left: 1px solid #f0e9e1; }
+.dotRightM { flex: 0 0 auto; gap: 10px; padding-left: 0; border-left: none; }
+
+/* 염색 비활성화 토글 — 켜짐 상태(문구는 그대로) */
+.offOn { background: #fce9f1; border-color: #f5c6da; color: #d76d9a; }

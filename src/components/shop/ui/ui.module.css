@@ -1,0 +1,66 @@
+/* 공용 UI 프리미티브 — 값은 v2 DCLogic 빌더(seg/segFlex/dd/track/knob/stepBtn/familyDots/toast) 그대로. */
+
+/* ── 세그먼트(알약 트랙) ── */
+.segTrack { flex: 0 0 auto; display: flex; align-items: center; gap: 3px; padding: 3px; background: #f4ecf3; border-radius: 9px; }
+.segTrackM { flex: 1 1 0; min-width: 0; display: flex; gap: 3px; padding: 2px; background: #f4ecf3; border-radius: 9px; }
+.segTrackMFit { flex: 0 0 auto; display: flex; gap: 3px; padding: 2px; background: #f4ecf3; border-radius: 9px; }
+.seg { flex: 0 0 auto; height: 28px; padding: 0 14px; border: 1px solid transparent; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; color: #8a8075; background: transparent; }
+.segFlex { flex: 1 1 0; min-width: 0; height: 26px; padding: 0 4px; border: 1px solid transparent; border-radius: 7px; cursor: pointer; font-size: 11.5px; font-weight: 500; white-space: nowrap; color: #8a8075; background: transparent; }
+.segOn { font-weight: 600; color: #fff; background: #ec86ac; }
+.segDisabled { opacity: .4; cursor: not-allowed; }
+
+/* ── 커스텀 드롭다운(OS select 금지) ── */
+.ddRow { flex: 0 0 152px; height: 28px; padding: 0 8px 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-size: 12px; color: #3d372f; cursor: pointer; }
+.ddRowM { flex: 0 0 172px; height: 32px; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-size: 12.5px; color: #3d372f; cursor: pointer; }
+.ddField { flex: 1 1 0; min-width: 50px; height: 30px; padding: 0 5px 0 9px; display: flex; align-items: center; gap: 3px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; cursor: pointer; }
+.ddFieldNarrow { min-width: 42px; padding: 0 4px 0 7px; }
+.ddFieldM { width: 100%; min-width: 0; height: 36px; padding: 0 7px 0 11px; display: flex; align-items: center; gap: 4px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; cursor: pointer; }
+.ddOpen { border-color: #eeb2ce; background: #fdf4f8; }
+.ddDisabled { opacity: .4; cursor: not-allowed; }
+.ddRowText { flex: 1 1 0; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ddFieldText { flex: 1 1 0; min-width: 0; font-size: 11.5px; font-weight: 600; color: #3d372f; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ddFieldTextDef { font-weight: 500; color: #a89e93; }
+.caret { flex: 0 0 auto; font-size: 9px; color: #a89e93; transition: transform .2s ease; transform: rotate(0deg); }
+.caretOpen { transform: rotate(180deg); }
+.ddMenu { position: fixed; z-index: 120; overflow: hidden auto; padding: 5px; background: #fff; border: 1px solid #f0dde7; border-radius: 10px; box-shadow: 0 10px 26px rgba(42,37,33,.14); }
+.ddItem { display: block; width: 100%; height: 28px; padding: 0 9px; text-align: left; border: none; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #5c534b; background: transparent; transition: background-color .16s ease, color .16s ease; }
+.ddItemOn { font-weight: 600; color: #d76d9a; background: #fce9f1; }
+.ddItemDisabled { opacity: .4; cursor: not-allowed; }
+
+/* ── 스위치 ── */
+.track { position: relative; width: 40px; height: 23px; border-radius: 20px; border: none; cursor: pointer; padding: 0; background: #e0d8ce; transition: background .2s ease; }
+.trackOn { background: #ec86ac; }
+.knob { position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%; background: #fff; transition: left .2s cubic-bezier(.22,.61,.36,1); }
+.trackOn .knob { left: 20px; }
+
+/* ── 염색 스테퍼 [−][값][+] ── */
+.stepWrap { flex: 0 0 auto; display: flex; align-items: center; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; overflow: hidden; }
+.stepBtn { flex: 0 0 auto; width: 26px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: #a2786f; font-family: inherit; font-size: 13px; font-weight: 700; line-height: 1; cursor: pointer; }
+.stepBtnLg { font-size: 14px; }
+.stepOff { color: #d8cfc5; cursor: default; }
+.stepNum { width: 40px; height: 28px; padding: 0 2px; border: none; border-left: 1px solid #ece4da; border-right: 1px solid #ece4da; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; text-align: center; color: #3d372f; outline: none; font-variant-numeric: tabular-nums; }
+.stepNumLg { width: 44px; font-size: 12.5px; }
+
+/* ── 색상 계열 점 ── */
+.fam { flex: 0 0 auto; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; padding: 0; border: 2px solid #efe6dc; border-radius: 50%; background: #fff; cursor: pointer; transition: border-color .18s ease, background-color .2s ease; }
+.famLg { width: 30px; height: 30px; }
+.famLgMin { min-width: 30px; }
+.famOn { border-color: #ec86ac; background: #fce9f1; }
+.famDot { display: block; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); }
+.famLg .famDot { width: 18px; height: 18px; }
+.hue0 { background: conic-gradient(#ff6f8f,#ffd36b,#7fd88a,#6bb8ff,#c79bff,#ff6f8f); }
+.hue1 { background: hsl(0,68%,60%); }
+.hue2 { background: hsl(48,68%,60%); }
+.hue3 { background: hsl(120,68%,60%); }
+.hue4 { background: hsl(174,68%,60%); }
+.hue5 { background: hsl(220,68%,60%); }
+.hue6 { background: hsl(300,68%,60%); }
+
+/* ── 믹스 스와치 ── */
+.swatch { flex: 0 0 auto; width: 22px; height: 22px; padding: 0; border-radius: 50%; cursor: pointer; background: var(--sw); border: 2px solid rgba(0,0,0,0.08); box-shadow: none; }
+.swatchOn { border-color: #2a2521; box-shadow: 0 0 0 2px #fff inset; }
+
+/* ── 토스트 ── */
+.toast { position: fixed; bottom: 26px; left: 50%; z-index: 80; display: flex; align-items: center; gap: 8px; padding: 11px 20px 11px 16px; background: linear-gradient(100deg,#ec86ac,#b57bdb); color: #fff; border-radius: 12px; font-size: 12.5px; font-weight: 600; box-shadow: 0 10px 28px rgba(180,123,219,.36); pointer-events: none; transition: opacity .28s ease, transform .28s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translate(-50%, 12px); }
+.toastShow { opacity: 1; transform: translate(-50%, 0); }
+.toastDot { width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.35); }

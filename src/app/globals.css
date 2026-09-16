@@ -1,163 +1,145 @@
-/* Ported verbatim from the design handoff (PinkbeanShop.dc.html <style> block).
-   Source of truth for base resets, scrollbars, card/preset hover, dialog anim,
-   custom <select> caret, and the 연출 설정 accordion. */
+/* 정본: maple test/handoff_v2_final/PinkbeanShop v2.dc.html <style> 이식.
+   - 디자인 확인용 요소(.pb-touch 강제 클래스, 폰 프레임)는 제외했다.
+   - hover 는 전부 (hover:hover) and (pointer:fine) 안에서만 — 터치 기기에서는 hover 가 발생하지 않는다.
+   - 컴포넌트 고유 스타일은 각 *.module.css, 여기엔 v2 공용 클래스만 둔다. */
 
-* { box-sizing: border-box; }
-/* touch-action: manipulation → 모바일 더블탭 확대 제거(단일 탭/스크롤/스와이프는 그대로).
-   페이지 핀치 확대는 viewport(maximum-scale/user-scalable) + NoNativeZoom 이 막는다.
-   확대가 필요한 DotDialog 캔버스는 자체적으로 touch-action:none 을 지정해 이 값을 덮어쓴다. */
+* { box-sizing: border-box; word-break: keep-all; }
+/* 더블탭 확대 제거(단일 탭/스크롤/스와이프는 그대로). 핀치는 viewport + NoNativeZoom 이 막는다. */
 html { touch-action: manipulation; }
-html, body { margin: 0; padding: 0; height: 100%; }
-body {
-  font-family: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #fbf4f8;
-  color: #2a2521;
-  overflow: hidden;
-  -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.01em;
-  word-break: keep-all;   /* 한글 단어 중간 줄바꿈 방지(공백에서만 개행) */
-}
-* { word-break: keep-all; }
-a { color: #ec86ac; text-decoration: none; } /* a:hover 는 아래 (hover:hover) 블록에 */
 
-/* 폼 요소는 body 의 font/color 를 상속하지 않는다 → OS·브라우저 기본값(기기마다 다른 색/폰트)으로 렌더될 수 있다.
-   특히 iOS 는 자체 기본 색을 넣고, 일부 안드로이드 런처 브라우저는 다크모드에서 색을 강제로 뒤집는다.
-   인라인 스타일이 색을 지정한 요소는 그쪽이 이기므로(우선순위) 여기 값은 "명시하지 않은 곳의 기본"으로만 쓰인다. */
-input, textarea, select, button {
-  font-family: inherit;
-  color: #2a2521;
-  -webkit-text-fill-color: currentColor; /* iOS 가 색을 덮어쓰는 것 방지 */
+/* 100vh·100dvh 금지 → 100svh 고정 + 터치 기기는 문서 스크롤로 나머지를 흡수. */
+html, body { margin: 0; padding: 0; height: 100%; min-height: 100svh; }
+@media (pointer: coarse) {
+  body { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+  .pb-shell { position: relative !important; inset: auto !important; height: auto !important; min-height: 100svh; }
 }
-input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
-/* 다크모드 자동 반전 방지(viewport 의 colorScheme:light 와 짝). */
+body { font-family: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont, sans-serif; color: #2a2521; overflow: hidden; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; background: linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%); }
+a { color: #ec86ac; text-decoration: none; }
+@media (hover: hover) and (pointer: fine) { a:hover { color: #d76d9a; } }
+input, select, button { font-family: inherit; color: #2a2521; }
+input, textarea, select, button { -webkit-text-fill-color: currentColor; } /* iOS 가 폼 글자색을 덮어쓰는 것 방지 */
+input::placeholder { color: #b7ada2; opacity: 1; }
 :root { color-scheme: light; }
 
-/* 세로 스택 구간(<940px = useBreakpoint 의 isStacked = tablet + mobile): 문서 스크롤을 푼다.
-   ① 헤더(~84px)를 스크롤로 치워 그만큼을 리스트/미리보기가 되찾는다.
-   ② iOS Safari·삼성인터넷 툴바는 "문서가 스크롤될 때만" 접힌다 — 스크롤이 없으면 영영 안 접힌다.
-   섹션 높이 합이 100dvh 를 약간 넘도록 잡혀 있어 스크롤 양 ≈ 헤더 높이다(무한히 늘어지지 않음). */
-@media (max-width: 939.98px) {
-  html, body { height: auto; min-height: 100%; overflow: visible; }
-  body { overscroll-behavior-y: none; } /* 위/아래 끝에서 새로고침·바운스 체이닝 방지 */
-}
-
-/* 화면엔 안 보이지만 크롤러·스크린리더는 읽는 콘텐츠(접근성/SEO). */
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-
-/* 상단 탭: 활성 시 굵어져(500→600) 글자 폭이 변하며 움찔거리는 현상 방지.
-   보이지 않는 굵은 라벨(::after)로 폭을 항상 확보하고, 실제 라벨을 같은 칸에 겹쳐 폭 변화를 없앤다. */
-.pb-tab { display: grid; place-items: center; }
-.pb-tab > span { grid-area: 1 / 1; }
-.pb-tab::after { content: attr(data-label); grid-area: 1 / 1; font-weight: 600; height: 0; visibility: hidden; pointer-events: none; }
+.pb-bg { position: fixed; inset: -24px; z-index: 0; filter: blur(4px) saturate(0.88); }
+.pb-tone { position: fixed; inset: 0; z-index: 1; pointer-events: none; background:
+    linear-gradient(180deg, rgba(255,255,255,0.74) 0, rgba(255,255,255,0) 150px),
+    linear-gradient(0deg, rgba(255,255,255,0.5) 0, rgba(255,255,255,0) 130px),
+    linear-gradient(165deg, rgba(253,242,248,0.6) 0%, rgba(246,236,246,0.62) 55%, rgba(239,232,247,0.62) 100%); }
 
 .pb-scroll { scrollbar-width: thin; scrollbar-color: #e7c3d4 transparent; }
-.pb-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
-.pb-scroll::-webkit-scrollbar-thumb { background: #e7c3d4; border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; transition: background .2s ease; }
-.pb-scroll::-webkit-scrollbar-thumb:hover { background: #d98db2; background-clip: padding-box; }
+.pb-scroll::-webkit-scrollbar { width: 9px; height: 9px; }
+.pb-scroll::-webkit-scrollbar-thumb { background: #e7c3d4; border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
 .pb-scroll::-webkit-scrollbar-track { background: transparent; }
 .pb-scroll-thin { scrollbar-width: thin; scrollbar-color: #eecfdd transparent; }
 .pb-scroll-thin::-webkit-scrollbar { width: 8px; }
 .pb-scroll-thin::-webkit-scrollbar-thumb { border-width: 2px; }
+.pb-norail { scrollbar-width: none; }
+.pb-norail::-webkit-scrollbar { display: none; }
 
-/* will-change/backface 영구 승격은 카드 수만큼 GPU 레이어를 만들어 페이지 전환 시 stale-tile 잔상을 유발 →
-   제거(트랜지션 중에는 브라우저가 자동 승격하므로 리프트 애니메이션은 그대로 부드럽다). */
-.pb-card { border: 1px solid #eee6dc; position: relative; transition: transform .16s ease, border-color .12s ease, background .12s ease; }
+button, input, select { transition: background-color .24s ease, border-color .22s ease, color .22s ease, transform .2s ease, opacity .22s ease, filter .2s ease; }
+.pb-card { border: 1px solid #eee6dc; position: relative; transition: transform .18s ease, border-color .2s ease, background-color .22s ease; }
 .pb-cardwrap { display: grid; min-width: 0; min-height: 0; cursor: pointer; }
-.pb-dye { opacity: 0; pointer-events: none; transition: opacity .14s ease; }
-.pb-preset { border: 1.5px solid #eee6dc; border-radius: 12px; overflow: hidden; background: #fff; display: flex; flex-direction: column; cursor: pointer; transition: transform .18s ease, border-color .3s ease, background-color .3s ease; }
-/* 프리셋 카드 액션(공유·초기화): 평소 숨김, 카드 호버 시 표시. */
-.pb-preset-acts { opacity: 0; transition: opacity .16s ease; }
-.pb-preset-acts > button { transition: filter .14s ease; }
+.pb-slot-x { opacity: 0; transition: opacity .18s ease; }
 
-/* ⚠️ hover 는 반드시 (hover:hover) 안에서만. 터치 기기는 탭이 hover 로 "굳어" 다음 탭까지 남는다. */
 @media (hover: hover) and (pointer: fine) {
   .pb-cardwrap:hover > .pb-card { transform: translateY(-4px); border-color: #ec86ac; }
-  .pb-cardwrap:hover .pb-dye { opacity: 1; pointer-events: auto; }
-  .pb-presetwrap:hover > .pb-preset { transform: translateY(-4px); border-color: #eeb2ce; }
-  .pb-presetwrap:hover .pb-preset-acts { opacity: 1; }
+  .pb-slot:hover .pb-slot-x { opacity: 1; }
+  .pb-solid:hover:not(:disabled) { background-color: #d5578e !important; }
+  .pb-ghost:hover:not(:disabled) { background-color: #fbe0ec !important; border-color: #ec86ac !important; color: #c05a94 !important; }
+  .pb-soft:hover:not(:disabled) { background-color: #f6dbe8 !important; color: #c85d8a !important; }
+  .pb-cardact:hover { background-color: #fce9f1 !important; color: #d76d9a !important; }
+  .pb-icon:hover:not(:disabled) { background-color: #f7ecf1 !important; color: #c85d8a !important; }
+  .pb-ddbtn:hover { border-color: #eeb2ce !important; background-color: #fff !important; }
+  .pb-ddrow:hover { background-color: #fdf1f6 !important; color: #c85d8a !important; }
+  .pb-accbar:hover { background-color: #fbf0f5 !important; }
+  .pb-arrow:hover:not(:disabled) { background-color: #fce9f1 !important; color: #d76d9a !important; }
+  .pb-input:hover { border-color: #eeb2ce !important; }
+  .pb-row:hover { background-color: #fdf4f8 !important; border-color: #eeb2ce !important; }
+  .pb-step:hover { background-color: #f7ecf1 !important; color: #d76d9a !important; }
+  .pb-slotrow:hover { background: #fce9f1 !important; border-color: #eeb2ce !important; }
+  .pb-pageinput:hover { background: #ead9e2 !important; color: #a1657f !important; }
+  .pb-presetname:hover { background: #ead9e2 !important; color: #a1657f !important; }
 }
+/* 터치 기기: hover 로만 드러나던 요소는 상시 노출 */
+@media (hover: none), (pointer: coarse) {
+  .pb-slot-x { opacity: 1; }
+}
+.pb-input:focus, .pb-select:focus { border-color: #ec86ac !important; outline: none; }
+.pb-presetname:focus { background: #fff !important; border-color: #ec86ac !important; color: #ec86ac !important; }
+.pb-pageinput:focus { background: #fff !important; border-color: #ec86ac !important; color: #ec86ac !important; }
+button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
 
-/* 터치(hover 불가) 기기: hover 로만 보이던 요소를 항상 표시 */
-@media (hover: none) {
-  .pb-dye { opacity: 1; pointer-events: auto; }
-  .pb-preset-acts { opacity: 1; }
-}
-/* 모바일 폭(반응형 데스크탑 포함): hover 요소를 항상 표시 */
-.pb-mobile .pb-dye { opacity: 1; pointer-events: auto; }
-.pb-mobile .pb-preset-acts { opacity: 1; }
-/* 이름(클릭해서 변경) 호버 힌트. */
+.pb-drawer { position: absolute; left: 0; right: 0; z-index: 4; display: flex; flex-direction: column; background: #fff; border-top: 1px solid #f0e9e1; transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
+.pb-slide { position: absolute; inset: 0; overflow: hidden auto; scrollbar-gutter: stable; transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
+
+/* 슬라이더: 트랙을 썸 이동 범위(양끝 9px 인셋)에 맞춰 별도 div 로 깔아, 0 일 때 썸이 트랙 끝에 정확히 붙는다 */
+.pb-slider { position: relative; height: 22px; }
+.pb-presetacts, .pb-ribbon { transition: filter .24s ease, transform .24s cubic-bezier(.22,.61,.36,1), opacity .16s ease, background-color .24s ease !important; }
 @media (hover: hover) and (pointer: fine) {
-  .pb-preset-name:hover { border-color: #eeb2ce; background: #fff; }
-  .pb-preset-acts > button:hover { filter: brightness(0.96); }
+  .pb-presetacts:hover,
+  .pb-ribbon:hover { filter: brightness(0.8) saturate(1.15) !important; transform: translateY(1px) !important; }
 }
-/* 불러오기 스피너. */
-@keyframes pbSpin { to { transform: rotate(360deg); } }
-.pb-spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; border-radius: 50%; animation: pbSpin .7s linear infinite; }
+.pb-presetwrap { display: grid; min-width: 0; padding-top: 3px; }
+.pb-presetwrap > .pb-preset { border: 1.5px solid #eee6dc; border-radius: 12px; overflow: visible; background: #fff; display: flex; flex-direction: column; position: relative; transition: transform .18s ease, border-color .22s ease, background-color .24s ease; }
+@media (hover: hover) and (pointer: fine) {
+  .pb-presetwrap:hover > .pb-preset { transform: translateY(-4px); border-color: #ec86ac; }
+}
+/* 선택 상태는 hover 이동(-4px)보다 우선(-5px 고정) — hover 규칙 뒤에 둔다. */
+.pb-cardwrap > .pb-card.pb-card-sel { border-color: #ec86ac; background: #fdf0f5; transform: translateY(-5px); }
+.pb-presetwrap > .pb-preset.pb-preset-sel { border-color: #ec86ac; background: #fdf0f5; transform: translateY(-5px); }
 
+/* 염색 조절 인라인(공용): 컨테이너 폭에 따라 한 줄 ↔ 두 줄 */
+.pb-dyecol { container-type: inline-size; }
+.pb-dyerow { display: flex; flex-wrap: nowrap; align-items: center; gap: 9px; margin-bottom: 7px; }
+.pb-dyerow > .pb-dyelabel { flex: 0 0 38px; font-size: 11px; font-weight: 600; color: #a89e93; }
+.pb-dyerow > .pb-slider { flex: 1 1 auto; min-width: 0; max-width: 300px; order: 2; }
+.pb-dyerow > .pb-dyestep { order: 3; display: flex; }
+.pb-dyecol > .pb-dyerow:last-child { margin-bottom: 0; }
+@media (max-width: 520px) { .pb-dyerow { margin-bottom: 3px; } }
+/* 세로형: 가로 배치 시 슬라이더가 250px 이하가 되는 줄(DyeRow 가 실측해 data-stack 을 단다) */
+.pb-dyerow[data-stack] { flex-wrap: wrap; gap: 6px; }
+.pb-dyerow[data-stack] > .pb-dyelabel { flex: 0 0 auto; }
+.pb-dyerow[data-stack] > .pb-slider { flex: 1 1 100%; min-width: 100%; max-width: none; order: 3; }
+.pb-dyerow[data-stack] > .pb-dyestep { order: 2; margin-left: auto; }
+.pb-slider .pb-track { position: absolute; top: 7px; left: 9px; right: 9px; height: 8px; border-radius: 99px; border: none; overflow: hidden; pointer-events: none; }
+.pb-track-h { background: linear-gradient(90deg,#ff5a5a 0%,#ffd24d 15%,#7fe07f 33%,#4fd6d6 50%,#5aa6ff 66%,#c48cff 80%,#ff6fc0 92%,#ff5a5a 100%); }
+.pb-track-s { background: linear-gradient(90deg,#d8d2cb 0%,#f2c6d8 50%,#ec86ac 100%); }
+.pb-track-v { background: linear-gradient(90deg,#4a3f38 0%,#e9dfd6 50%,#fdfbf9 100%); }
+/* touch-action:none → 스크롤 영역·시트 안에서도 가로 드래그가 스크롤로 새지 않고 썸을 끈다 */
+.pb-range { position: absolute; inset: 0; width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; touch-action: none; }
+.pb-range::-webkit-slider-runnable-track { height: 8px; background: transparent; border: none; }
+.pb-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -5px; border-radius: 50%; background: #fff; border: 2px solid #ec86ac; }
+.pb-range::-moz-range-track { height: 8px; background: transparent; }
+.pb-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #ec86ac; }
+.pb-ddmenu { animation: pbDdIn .16s ease both; }
+@keyframes pbDdIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+input[type=range] { accent-color: #ec86ac; }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-input[type=number] { -moz-appearance: textfield; appearance: textfield; }
-
-button, input, .pb-card { transition: background-color .26s ease, border-color .24s ease, color .24s ease, transform .22s ease, box-shadow .24s ease, opacity .24s ease, filter .2s ease; }
-button { will-change: transform; }
-
-@keyframes pbOverlayIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pbPanelIn { from { opacity: 0; transform: translateY(10px) scale(.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.pb-overlay { animation: pbOverlayIn .22s ease both; }
-.pb-panel { animation: pbPanelIn .28s cubic-bezier(.22,.61,.36,1) both; }
-.pb-pop { animation: pbPanelIn .18s cubic-bezier(.22,.61,.36,1) both; }
-@keyframes pbOverlayOut { from { opacity: 1; } to { opacity: 0; } }
-@keyframes pbPanelOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(.975); } }
-.pb-overlay-out { animation: pbOverlayOut .2s ease both; }
-.pb-panel-out { animation: pbPanelOut .2s cubic-bezier(.4,0,.7,.4) both; }
-/* 염색 +/− 스테퍼: 눌림 피드백은 터치에서도 보여야 하므로 :active 로(=hover 게이팅 대상 아님). */
-.pb-step:active:not(:disabled) { background: #f4dfe9 !important; color: #d76d9a !important; }
-@media (hover: hover) and (pointer: fine) {
-  .pb-step:hover:not(:disabled) { background: #f7ecf1; color: #d76d9a; }
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+@media (max-height: 760px) {
+  .pb-partnav { height: 34px !important; }
+  .pb-tabnav { height: 40px !important; }
+  .pb-tabnav button { height: 32px !important; }
+  .pb-hintbar { height: 24px !important; }
+  .pb-pinbox { padding: 7px 12px 9px !important; }
+  .pb-page { padding-top: 10px !important; padding-bottom: 10px !important; }
 }
-@keyframes pbBlink { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
-
-/* 상호작용 버튼 통일 hover — 위치/크기 변화(translate·scale) 및 그림자 없이,
-   배경색이 부드럽게 채워지거나 빠지는 절제된 효과만. 인라인 스타일을 이기려 !important. */
-.pb-h-solid, .pb-h-ghost, .pb-h-soft { transition: background-color .22s ease, border-color .2s ease, color .2s ease, filter .2s ease !important; }
-@media (hover: hover) and (pointer: fine) {
-  /* 채워진 버튼(공유·AI검색·토글 ON 등): 한 톤 더 진하게 채워짐. */
-  .pb-h-solid:hover:not(:disabled) { background-color: #de6fa0 !important; filter: brightness(.97); }
-  /* 테두리형(되돌리기·다시실행): 안이 연핑크로 부드럽게 채워지고 테두리에 핑크가 살아남. */
-  .pb-h-ghost:hover:not(:disabled) { background: #fbe0ec !important; border-color: #ec86ac !important; color: #d76d9a !important; }
-  /* 투명배경 토글 OFF pill: 연핑크로 부드럽게 채워짐. */
-  .pb-h-soft:hover:not(:disabled) { background: #f6dbe8 !important; color: #c85d8a !important; }
-}
-/* 코디 평가: 체크무늬는 테두리(프레임)에만. 내부 fill div 가 hover 시 위→아래로 내려오며 채워짐. */
-.pb-rate-inner { position: relative; overflow: hidden; }
-.pb-rate-fill { position: absolute; inset: 0; background: #ffffff; transform: translateY(-100%); transition: transform .34s cubic-bezier(.33,0,.2,1); }
-.pb-rate-text { transition: color .22s ease; }
-@media (hover: hover) and (pointer: fine) {
-  .pb-rate:hover .pb-rate-fill { transform: translateY(0); }
-  .pb-rate:hover .pb-rate-text { color: #a8478a; }
-  a:hover { color: #d76d9a; }
+@media (max-height: 620px) {
+  .pb-hintbar { height: 22px !important; }
+  .pb-partnav { height: 32px !important; }
+  .pb-tabnav { height: 36px !important; }
+  .pb-tabnav button { height: 30px !important; }
 }
 
-.pb-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a89e93' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat: no-repeat; background-position: right 10px center; }
-@media (hover: hover) and (pointer: fine) { .pb-select:hover { border-color: #eeb2ce !important; } }
+/* ── 로딩 스켈레톤(v2 가 쓰는 pb-skel 셔머) ── */
+/* 리스트 카드 헤어 '아이템' 보기: 셀 짧은 변 크기의 정사각 캔버스를 중앙에 */
+.pb-hairsprite { position: absolute; inset: 0; container-type: size; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.pb-hairsprite-box { width: 100cqmin; height: 100cqmin; }
+.pb-skel { background: linear-gradient(100deg, #f4ede4 30%, #efe6da 48%, #f4ede4 66%); background-size: 220% 100%; animation: pbSkelShimmer 1.25s ease-in-out infinite; }
+@keyframes pbSkelShimmer { 0% { background-position: 220% 0; } 100% { background-position: -220% 0; } }
 
-@keyframes pbCollapseIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-.pb-collapse { animation: pbCollapseIn .2s ease both; }
-
-/* 다이얼로그 안에서 화면(뷰)을 좌우로 밀며 전환 — 양방향(앞으로/뒤로). 코디 선택 ↔ 날짜 선택 */
-@keyframes pbViewInR { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes pbViewOutL { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-26px); } }
-@keyframes pbViewInL { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes pbViewOutR { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(26px); } }
-.pb-view-in-r { animation: pbViewInR .24s cubic-bezier(.22,.61,.36,1) both; }
-.pb-view-out-l { animation: pbViewOutL .17s cubic-bezier(.4,0,.7,.4) both; }
-.pb-view-in-l { animation: pbViewInL .24s cubic-bezier(.22,.61,.36,1) both; }
-.pb-view-out-r { animation: pbViewOutR .17s cubic-bezier(.4,0,.7,.4) both; }
-@keyframes pbCollapseOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
-.pb-collapse-out { animation: pbCollapseOut .18s ease both; }
-.pb-acc { overflow: hidden; max-height: 0; transition: max-height .32s cubic-bezier(.22,.61,.36,1); }
-.pb-acc-open { max-height: 340px; }
-
-/* 핑크빈 코디 평가 말풍선 — 캐릭터 주변에서 페이드업(아래→제자리) 하며 나타났다가 페이드다운 하며 사라짐. */
+/* ── 코디 평가 말풍선(기존 기능 유지) — 캐릭터 주변에서 페이드업 → 유지 → 페이드다운 ── */
 @keyframes pbBubbleFloat {
   0% { opacity: 0; transform: translateY(16px) scale(.9); }
   13% { opacity: 1; transform: translateY(0) scale(1); }
@@ -167,6 +149,17 @@ button { will-change: transform; }
 .pb-bubble { position: absolute; max-width: 60%; padding: 7px 11px; border-radius: 14px; background: #fff; border: 1.5px solid #f4b8d0; color: #c05a94; font-size: 12px; font-weight: 700; line-height: 1.35; box-shadow: 0 5px 16px rgba(200,90,150,.22); word-break: keep-all; pointer-events: none; z-index: 8; }
 .pb-bubble::after { content: ''; position: absolute; left: 18px; bottom: -7px; width: 12px; height: 12px; background: #fff; border-right: 1.5px solid #f4b8d0; border-bottom: 1.5px solid #f4b8d0; transform: rotate(45deg); }
 
-/* 로딩 스켈레톤(아이템 셀 등 공용 프리미티브) */
-.pb-skel { background: linear-gradient(100deg, #f4ede4 30%, #efe6da 48%, #f4ede4 66%); background-size: 220% 100%; animation: pbSkelShimmer 1.25s ease-in-out infinite; }
-@keyframes pbSkelShimmer { 0% { background-position: 220% 0; } 100% { background-position: -220% 0; } }
+/* ── 현행 유지 다이얼로그(LookDialog · ShareReceiveSheet)가 쓰는 클래스 ── */
+@keyframes pbSpin { to { transform: rotate(360deg); } }
+.pb-spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; border-radius: 50%; animation: pbSpin .7s linear infinite; }
+@keyframes pbOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pbPanelIn { from { opacity: 0; transform: translateY(10px) scale(.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pbOverlayOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes pbPanelOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(.975); } }
+.pb-overlay { animation: pbOverlayIn .22s ease both; }
+.pb-panel { animation: pbPanelIn .28s cubic-bezier(.22,.61,.36,1) both; }
+.pb-overlay-out { animation: pbOverlayOut .2s ease both; }
+.pb-panel-out { animation: pbPanelOut .2s cubic-bezier(.4,0,.7,.4) both; }
+
+/* 화면엔 안 보이지만 크롤러·스크린리더는 읽는 콘텐츠(접근성/SEO). */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

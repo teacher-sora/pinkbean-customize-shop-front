@@ -35,6 +35,7 @@ export function computeModelPlacement(a: {
   centerDx?: number   // navel→중심 가로 오프셋(시선별로 다름; 기본 MODEL_REF.centerDx)
   centerDy?: number   // navel→중심 세로 오프셋(기본 MODEL_REF.centerDy)
   snap?: boolean      // 배율을 가장 가까운 정수로 스냅(도트 완전 선명; 크기는 살짝 이산적)
+  scale?: number      // 디바이스 배율을 직접 지정(연출 배율 단계별 정수 — zoomStepScale). 주면 fraction/zoom/snap 무시
 }): ModelPlacement {
   const zoom = a.zoomMult ?? 1
   const cx = a.centerDx ?? MODEL_REF.centerDx
@@ -47,9 +48,21 @@ export function computeModelPlacement(a: {
   // snap=true 면 정수 배율로 스냅 → nearest 확대가 완벽히 선명(모든 카드 동일 배율, 화면 크기별로만 살짝 다름).
   let scale = Math.max(0.01, (a.fraction * zoom * a.divH * a.dpr) / MODEL_REF.bodyRefH)
   if (a.snap) scale = Math.max(1, Math.round(scale))
+  if (a.scale) scale = a.scale
   // box*scale = 캔버스 디바이스 해상도(1:1 표시로 선명).
   const box = { w: canvasDevW / scale, h: canvasDevH / scale }
   // navel 을 (박스중앙 - centerDx, 박스중앙 - centerDy)에 → 마네킹 시각중심이 박스 정중앙에 온다.
   const anchor = { x: box.w / 2 - cx, y: box.h / 2 - cy }
   return { box, scale, anchor, canvasCssW, canvasCssH }
+}
+
+// 연출 배율(1x/2x/3x) 단계별 정수 디바이스 배율. 단계마다 따로 반올림하면 미리보기 높이에 따라 1x·2x 가 같은 정수로
+// 뭉친다(PC 스테이지 ≈570px: 1.56→2, 2.23→2). 기본 2x 크기는 그대로 두고, 1x 는 2x 보다 최소 1 작게·3x 는 최소 1 크게
+// 강제해 항상 구분된다(2x 가 1 이면 1x 자리를 위해 2 로 올린다).
+export function zoomStepScale(a: { fraction: number; divH: number; dpr: number; level: number; mults: Record<number, number> }): number {
+  const raw = (lv: number) => (a.fraction * (a.mults[lv] ?? 1) * a.divH * a.dpr) / MODEL_REF.bodyRefH
+  const s2 = Math.max(2, Math.round(raw(2)))
+  if (a.level <= 1) return Math.max(1, Math.min(s2 - 1, Math.round(raw(1))))
+  if (a.level >= 3) return Math.max(s2 + 1, Math.round(raw(3)))
+  return s2
 }
