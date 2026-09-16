@@ -49,7 +49,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') s.importFetch() }
 
   const grid = (
-    <div className={clsx(styles.grid, (narrow || mobile) && styles.gridTight, mobile ? styles.cols2 : narrow ? styles.cols3 : styles.cols5)}>
+    <div className={mobile ? styles.gridHM : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
       {s.presets.map((p, i) => {
         const on = s.selectedPreset === p.id
         const snap = on ? liveSnap : s.presetData[p.id]
@@ -57,7 +57,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           <div key={p.id} onClick={() => s.selectPreset(p.id)} className={clsx('pb-presetwrap', styles.wrap)}>
             <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
               <span className={clsx(styles.badge, on && styles.badgeOn)}>선택됨</span>
-              <div className={styles.thumb}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} />}</div>
+              <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} />}</div>
               <div className={styles.nameRow}>
                 <span className={styles.nameWrap}>
                   <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
@@ -87,7 +87,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           <button type="button" onClick={s.importFetch} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconImport /></button>
         </div>
         <div className={styles.hrM} />
-        <div className={clsx('pb-scroll', 'pb-norail', styles.scrollM)}>{grid}</div>
+        {/* 모바일: 코디 리스트처럼 가로 스크롤(열 단위 스냅, 스크롤바 숨김) — 2줄 × 폭에 따라 2열/3열 */}
+        <div className={clsx('pb-norail', styles.hscrollM)}>{grid}</div>
       </>
     )
   }
