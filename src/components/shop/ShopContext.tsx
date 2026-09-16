@@ -607,12 +607,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 속도(0.35px/ms)로 넘길지 정해 같은 곡선으로 스냅. 세로는 touch-action:pan-y 로 브라우저 스크롤. 마우스는 제외.
   const onDown = useCallback((e: PointerEvent) => {
     if (e.pointerType === 'mouse' || e.button !== 0) return
+    if (bpRef.current === 'mobile') return // 모바일은 네이티브 가로 스크롤(ListArea)이 담당
     const w = vpElRef.current?.clientWidth || window.innerWidth
     swipe.current = { on: true, id: e.pointerId, x0: e.clientX, y0: e.clientY, mode: null, lx: e.clientX, lt: e.timeStamp, vx: 0, w }
   }, [])
   const bindTrack = useCallback((el: HTMLDivElement | null) => { trackRef.current = el }, [])
   // 포커스 시 브라우저가 overflow 뷰포트를 강제 스크롤해 페이지가 넘어가 보이는 현상 차단.
-  const killVpScroll = useCallback((e: Event) => { const el = e.currentTarget as HTMLElement; if (el.scrollLeft) el.scrollLeft = 0; if (el.scrollTop) el.scrollTop = 0 }, [])
+  const killVpScroll = useCallback((e: Event) => {
+    if (bpRef.current === 'mobile') return // 모바일 뷰포트는 가로 스크롤 컨테이너 자체라 되돌리면 안 된다
+    const el = e.currentTarget as HTMLElement; if (el.scrollLeft) el.scrollLeft = 0; if (el.scrollTop) el.scrollTop = 0
+  }, [])
   const bindVp = useCallback((el: HTMLDivElement | null) => {
     if (vpElRef.current === el) return
     const prev = vpElRef.current

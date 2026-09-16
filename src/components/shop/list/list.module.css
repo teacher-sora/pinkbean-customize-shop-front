@@ -33,9 +33,14 @@
 
 /* ── 뷰포트 · 페이지 ── */
 .viewport { flex: 1 1 auto; min-height: 0; position: relative; overflow: clip; touch-action: pan-y; }
+/* 모바일: 가로 스크롤 컨테이너(페이지 스냅, 스크롤바는 pb-norail 로 숨김). cqw = 이 뷰포트 폭 → 페이지 위치·폭이 정확히 한 화면. */
+.viewportM { margin: 0 7px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-left: 5px; touch-action: pan-x pan-y; container-type: inline-size; }
+/* 열(1×2) 단위 스냅: 카드 왼쪽 끝이 스냅 지점. 페이지 좌우 패딩 5px + 뷰포트 들임 7px = 화면 가장자리 12px 유지,
+   페이지 경계 간격(5+5)이 카드 간격(10)과 같아 열이 끊김 없이 이어진다. */
+.viewportM .gridM > * { scroll-snap-align: start; }
 .track { position: relative; height: 100%; width: 100%; will-change: transform; backface-visibility: hidden; }
 .page { position: absolute; top: 0; width: 100%; height: 100%; padding: 10px 16px; overflow: hidden; }
-.pageM { position: absolute; top: 0; width: 100%; height: 100%; padding: 8px 12px; overflow: hidden; } /* 세로 스크롤 없음 — 좌우 넘기기 전용 */
+.pageM { position: absolute; top: 0; width: 100cqw; height: 100%; padding: 8px 5px; overflow: hidden; } /* 세로 스크롤 없음 — 좌우 넘기기 전용 */
 .grid { display: grid; gap: 10px; height: 100%; }
 /* 모바일 3×2: 남는 높이를 두 줄이 나눠 가진다. 최소 높이를 두지 않아 어떤 화면에서도 세로 스크롤이 생기지 않는다
    (세로 스크롤이 좌우 넘기기와 겹치면 조작이 불편 — 사용자 지시). 카드 안 썸네일이 줄어든 높이를 흡수한다. */
@@ -43,7 +48,7 @@
 .skel { border-radius: 11px; }
 .skelM { min-height: 0; }
 .loadWrap { width: 100%; height: 100%; padding: 10px 16px; }
-.loadWrapM { height: 100%; padding: 8px 12px; }
+.loadWrapM { height: 100%; padding: 8px 5px; } /* 뷰포트 들임 7px 과 합쳐 가장자리 12px */
 
 /* 빈 상태 */
 .empty { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; padding: 0 24px; }

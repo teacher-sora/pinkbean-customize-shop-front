@@ -4,7 +4,7 @@
 //  PC(절반·태블릿 포함) = 패널(section) + 헤더 + 뷰포트 + 힌트 바 / 모바일 = 컨트롤 2줄 + 뷰포트.
 
 import clsx from 'clsx'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop, type GenderFilter, type ListMode } from '../ShopContext'
@@ -74,7 +74,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     const vp = vpRef.current
     const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
     if (!vp || !col) return
-    const CARD_MIN_RATIO = 1.34, PAD_X = 24, PAD_Y = 16, GAP = 10
+    const CARD_MIN_RATIO = 1.34, PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 스냅 정렬용)
     const m = () => {
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - PAD_X - GAP * 2) / 3
@@ -86,6 +86,42 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     ro?.observe(col); ro?.observe(vp)
     return () => { ro?.disconnect(); col.style.removeProperty('--pb-min-h') }
   }, [mobile])
+  // ── 모바일: 네이티브 가로 스크롤(overflow-x + 페이지 스냅, 스크롤바 숨김) ↔ 페이지 인덱스 동기화 ──
+  //  스냅 단위 = 카드 한 열(1×2). 페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라
+  //  열 스냅 위치가 정확히 폭/3 배수(페이지 = 3열). 스크롤 → 인덱스: 열 = round(스크롤/(폭/3)), 페이지 = floor(열/3).
+  //  인덱스 → 스크롤: 화살표·페이지 입력 등으로 인덱스가 바뀌어 스크롤 위치와 어긋날 때만 이동(같으면 아무것도 안 함 →
+  //  사용자 스크롤·프로그램 스크롤이 서로 싸우지 않는다). 부위·탭이 바뀌면 애니메이션 없이 즉시.
+  //  가상화 유지: 트랙 폭만 페이지 수만큼 잡고, 페이지 DOM 은 현재 ±1 만 만든다(아래 pages).
+  const live = useRef({ idx: s.curIdx, setIdx: s.setIdx })
+  live.current = { idx: s.curIdx, setIdx: s.setIdx }
+  useEffect(() => {
+    const vp = vpRef.current
+    if (!mobile || !vp) return
+    let raf = 0
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const w = vp.clientWidth; if (!w) return
+        const i = Math.floor(Math.round(vp.scrollLeft / (w / 3)) / 3)
+        if (i !== live.current.idx) live.current.setIdx(i, false)
+      })
+    }
+    vp.addEventListener('scroll', onScroll, { passive: true })
+    return () => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
+  }, [mobile])
+  const scrollKey = `${s.primary}|${s.activeCat}|${isAi ? s.searchQuery : ''}`
+  const lastScrollKey = useRef(scrollKey)
+  useLayoutEffect(() => {
+    const vp = vpRef.current
+    if (!mobile || !vp) return
+    const w = vp.clientWidth; if (!w) return
+    const jump = lastScrollKey.current !== scrollKey
+    lastScrollKey.current = scrollKey
+    if (Math.floor(Math.round(vp.scrollLeft / (w / 3)) / 3) === s.curIdx && !jump) return
+    if (jump || Math.abs(vp.scrollLeft - s.curIdx * w) > w * 3) vp.scrollTo({ left: s.curIdx * w, behavior: 'instant' as ScrollBehavior })
+    else vp.scrollTo({ left: s.curIdx * w, behavior: 'smooth' })
+  }, [mobile, s.curIdx, scrollKey, s.pageCount])
   const hero = isAi && s.searchQuery === null && !loading
   const noSprite = thumbs.noSprite
   const viewOpts = VIEW_MODES.map((m) => (m.v === 'sprite' && noSprite
@@ -162,7 +198,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const viewport = (
-    <div ref={setVp} className={styles.viewport}>
+    <div ref={setVp} className={clsx(styles.viewport, mobile && 'pb-norail', mobile && styles.viewportM)}>
       {hero ? (
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>
@@ -188,9 +224,12 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       ) : (
         // 트랙 위치·전환은 즉시 반영 값이라 인라인(스와이프 중엔 ShopContext 가 DOM 직접 갱신). 셀은 현재 페이지 ±1 만
         // 마운트하되, 스냅 애니메이션 중에는 새로 창에 들어온 페이지 마운트를 미뤄(캔버스 합성 부하) 전환이 끊기지 않게 한다.
-        <div ref={s.bindTrack} className={styles.track} style={{ transform: `translateX(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
+        <div ref={mobile ? undefined : s.bindTrack} className={styles.track}
+          style={mobile
+            ? { width: `calc(${s.pageCount} * 100cqw)` } // 모바일: 스크롤 폭만 페이지 수만큼(페이지 DOM 은 ±1)
+            : { transform: `translateX(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
           {pages.map(({ pi, items }) => (
-            <div key={pi} className={clsx('pb-page', mobile && 'pb-scroll pb-norail', mobile ? styles.pageM : styles.page)} style={{ left: `${pi * 100}%` }}>
+            <div key={pi} className={clsx('pb-page', mobile && 'pb-scroll pb-norail', mobile ? styles.pageM : styles.page)} style={{ left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
               {(!s.snapping || pi === s.curIdx || Math.abs(pi - s.snapFrom) <= 1) && (
                 <div className={mobile ? styles.gridM : styles.grid} style={gridStyle}>
                   {items.map((it) => (
