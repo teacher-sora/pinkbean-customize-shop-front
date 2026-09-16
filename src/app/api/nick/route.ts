@@ -159,6 +159,15 @@ function genderForLook(charClass: string | null, kkey: 'normal' | 'additional', 
   return charGender
 }
 
+// 넥슨 실패 응답 → 우리 응답. 점검(OPENAPI00010 게임 점검 / 00011 API 점검)은 400 으로 오는데, 이걸 일반 실패(502·404)로
+// 뭉뚱그리면 "코디 정보를 불러오지 못했어요"만 떠 원인을 알 수 없었다(2026-09-17 패치 점검 중 실측) → 503 + 점검 안내.
+const MAINT = { error: '메이플스토리 점검 중이라 코디를 불러올 수 없어요. 점검이 끝난 뒤 다시 시도해 주세요' }
+async function nexonFail(r: Response, fallback: { error: string }, status: number) {
+  const name = await r.clone().json().then((j) => j?.error?.name as string | undefined).catch(() => undefined)
+  if (name === 'OPENAPI00010' || name === 'OPENAPI00011') return NextResponse.json(MAINT, { status: 503 })
+  return NextResponse.json(fallback, { status })
+}
+
 export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get('name')?.trim()
   if (!name) return NextResponse.json({ error: '닉네임을 입력해 주세요' }, { status: 400 })
@@ -185,7 +194,7 @@ export async function GET(req: NextRequest) {
     else {
       const idr = await fetchNexon(`${BASE}/id?character_name=${encodeURIComponent(name)}`, init)
       if (idr.status === 429) return NextResponse.json(RATE, { status: 429 })
-      if (!idr.ok) return NextResponse.json({ error: '캐릭터를 찾지 못했어요' }, { status: 404 })
+      if (!idr.ok) return nexonFail(idr, { error: '캐릭터를 찾지 못했어요' }, 404)
       ocid = (await idr.json())?.ocid || ''
       if (!ocid) return NextResponse.json({ error: '캐릭터를 찾지 못했어요' }, { status: 404 })
       ocidCache.set(name, { ocid, t: Date.now() })
@@ -193,7 +202,7 @@ export async function GET(req: NextRequest) {
     // 캐시 아이템(치장)을 "먼저" 게이트로 조회 — 레이트리밋이면 이 1콜에서 바로 멈춘다(뒤 조회를 안 쏴 회복이 빨라짐).
     const cr = await fetchNexon(`${BASE}/character/cashitem-equipment?ocid=${encodeURIComponent(ocid)}${dq}`, init)
     if (cr.status === 429) return NextResponse.json(RATE, { status: 429 })
-    if (!cr.ok) return NextResponse.json({ error: '코디 정보를 불러오지 못했어요' }, { status: 502 })
+    if (!cr.ok) return nexonFail(cr, { error: '코디 정보를 불러오지 못했어요' }, 502)
     const data: Cash = await cr.json()
     // 통과했으면 뷰티(+일반장비)만 병렬로. light면 일반 장비는 생략.
     const [br, ir] = await Promise.all([
@@ -203,7 +212,7 @@ export async function GET(req: NextRequest) {
     // ⚠️ 뷰티(헤어·성형·피부)는 "필수"다. 여기서 실패한 걸 무시하고 진행하면 헤어가 null → 기본(검은) 머리로 잘못
     //    렌더된다(예: 레이트리밋으로 뷰티만 429일 때 8/23 미리보기가 검은머리로 나오던 버그). 실패면 통째로 실패시킨다.
     if (br.status === 429) return NextResponse.json(RATE, { status: 429 })
-    if (!br.ok) return NextResponse.json({ error: '코디 정보를 불러오지 못했어요' }, { status: 502 })
+    if (!br.ok) return nexonFail(br, { error: '코디 정보를 불러오지 못했어요' }, 502)
     const beauty: Record<string, NexonBeautyPart & NexonSkinPart> | null = await br.json().catch(() => null)
     const itemData: Cash | null = ir && ir.ok ? await ir.json().catch(() => null) : null // light면 null(일반 장비 생략), 실패도 비치명적
     const reg = regularVisible(itemData) // 아바타에 보이는 일반 장비(캐시의 베이스 레이어)
