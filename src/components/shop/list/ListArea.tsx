@@ -35,12 +35,13 @@ function CodiList({ mobile }: { mobile: boolean }) {
   const list = s.activeList
   const thumbs = useCodiThumbs(list)
   const isFav = s.activeCat === 'fav'
+  const isNew = s.activeCat === 'new'
   const empty = !s.catLoading && list.length === 0
   return (
     <ListFrame mobile={mobile} thumbs={thumbs} isAi={false}
       list={list} loading={s.catLoading}
-      emptyTitle={empty ? (isFav ? '즐겨찾기한 아이템이 없어요' : '검색 결과가 없어요') : null}
-      emptyHint={isFav ? '카드 오른쪽 위 별 띠지를 눌러 즐겨찾기에 모아둬요.' : '다른 이름이나 필터로 찾아주세요.'} />
+      emptyTitle={empty ? (isFav ? '즐겨찾기한 아이템이 없어요' : isNew && !s.search ? '신규 아이템이 없어요' : '검색 결과가 없어요') : null}
+      emptyHint={isFav ? '카드 오른쪽 위 별 띠지를 눌러 즐겨찾기에 모아둬요.' : isNew && !s.search ? '업데이트로 새 아이템이 추가되면 여기에 모여요.' : '다른 이름이나 필터로 찾아주세요.'} />
   )
 }
 

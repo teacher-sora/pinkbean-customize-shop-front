@@ -44,14 +44,17 @@ function Sprite({ item }: { item: ListItem }) {
   const fitIcon = () => {
     const wrap = wrapRef.current, img = imgRef.current
     if (!wrap || !img || !img.naturalWidth || !wrap.clientWidth) return
-    const cw = wrap.clientWidth, ch = wrap.clientHeight
+    // 배율은 **디바이스 픽셀** 정수로 고른다(CSS 정수면 DPR≈3 모바일에서 셀이 남아도 한 단계 작게 멈췄다).
+    // 표시 크기 = 원본 × k / dpr → 화면 픽셀에 정수배로 맞아 선명.
+    const dpr = window.devicePixelRatio || 1
+    const cw = wrap.clientWidth * dpr, ch = wrap.clientHeight * dpr
     const nw = img.naturalWidth, nh = img.naturalHeight
     const target = TARGET_FRAC * Math.min(cw, ch)          // 큰 변을 이 크기에 맞춤(정규화 목표)
     const fitK = Math.min(cw / nw, ch / nh)                // 셀에 들어가는 최대 배율
     let k = Math.round(target / Math.max(nw, nh))          // 목표에 가장 가까운 정수 배율
     k = Math.max(1, Math.min(k, Math.floor(fitK) || 1))    // 셀 초과 방지(원본이 셀보다 크면 1배)
-    img.style.width = nw * k + 'px'
-    img.style.height = nh * k + 'px'
+    img.style.width = (nw * k) / dpr + 'px'
+    img.style.height = (nh * k) / dpr + 'px'
   }
   useEffect(() => {
     const wrap = wrapRef.current

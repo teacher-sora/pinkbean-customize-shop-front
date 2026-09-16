@@ -113,14 +113,35 @@ export function DyeRow({ label, track, min, max, value, onRange, onDragStart, st
     ro?.observe(row)
     return () => ro?.disconnect()
   }, [])
+  // x 좌표 → 값. 손잡이(18px) 중심이 움직이는 구간 = 좌우 9px 안쪽(트랙과 동일)이라 그 구간 기준으로 환산.
+  const pick = (el: HTMLElement, clientX: number) => {
+    const r = el.getBoundingClientRect()
+    const span = Math.max(1, r.width - 18)
+    const f = Math.max(0, Math.min(1, (clientX - r.left - 9) / span))
+    const v = Math.round(min + f * (max - min))
+    if (v !== value) onRange(v)
+  }
   return (
     <div ref={rowRef} className="pb-dyerow" data-stack={stack ? '' : undefined}>
       <span className="pb-dyelabel">{label}</span>
-      <div className="pb-slider">
+      {/* 포인터는 슬라이더 영역이 직접 처리한다: 누른 위치로 손잡이가 즉시 이동하고, 포인터 캡처로 그대로 드래그.
+          (모바일 기본 range 는 트랙을 탭해도 안 오고 손잡이를 정확히 잡아야만 끌려서 조작이 어긋났다.)
+          input 은 키보드 조작·접근성용으로 남기고 포인터만 막는다(.pb-range pointer-events:none). */}
+      <div className="pb-slider"
+        onPointerDown={(e) => {
+          if (e.pointerType === 'mouse' && e.button !== 0) return
+          e.preventDefault()
+          const el = e.currentTarget
+          el.setPointerCapture(e.pointerId)
+          el.querySelector('input')?.focus({ preventScroll: true })
+          onDragStart?.()
+          pick(el, e.clientX)
+        }}
+        onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) pick(e.currentTarget, e.clientX) }}>
         <div className={`pb-track pb-track-${track}`} />
         {/* 슬라이더 값은 즉시 수치 반영 요소라 value 를 그대로 바인딩 */}
         <input type="range" className="pb-range" min={min} max={max} value={value} aria-label={label}
-          onPointerDown={onDragStart} onChange={(e) => onRange(parseInt(e.target.value, 10) || 0)} />
+          onChange={(e) => onRange(parseInt(e.target.value, 10) || 0)} />
       </div>
       <div ref={stepRef} className="pb-dyestep">{stepper}</div>
     </div>
