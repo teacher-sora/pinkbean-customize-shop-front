@@ -7,6 +7,7 @@
  */
 
 import clsx from 'clsx'
+import { useEffect } from 'react'
 import { ShopProvider, useShop } from './shop/ShopContext'
 import Background from './shop/frame/Background'
 import AppHeader from './shop/frame/AppHeader'
@@ -22,9 +23,38 @@ import ShareReceiveSheet from './shop/ShareReceiveSheet'
 import Toast from './shop/ui/Toast'
 import styles from './shop/frame/frame.module.css'
 
+// 모바일 가상 키보드가 내려간 뒤 하단에 남는 공백 제거: 브라우저가 레이아웃을 다시 잡지 않고 남겨둔 상태라
+// (사용자가 스크롤을 살짝 움직이면 사라짐) 키보드가 닫히는 순간 1px 스크롤했다 되돌려 같은 효과를 낸다.
+// 판정 = visualViewport 높이가 다시 커질 때(키보드 닫힘) + 입력칸 포커스 해제 직후(visualViewport 미지원 대비).
+function useKeyboardGapFix(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return
+    const nudge = () => requestAnimationFrame(() => {
+      const y = window.scrollY
+      window.scrollTo(0, y > 0 ? y - 1 : y + 1) // 맨 위면 +1, 아니면 −1(맨 아래에서 +1 은 막힘)
+      window.scrollTo(0, y)
+    })
+    const vv = window.visualViewport
+    let lastH = vv?.height ?? 0
+    const onVv = () => {
+      if (!vv) return
+      if (vv.height > lastH + 80) nudge() // 키보드 높이만큼 커짐 = 닫힘
+      lastH = vv.height
+    }
+    const onFocusOut = (e: FocusEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) setTimeout(nudge, 350)
+    }
+    vv?.addEventListener('resize', onVv)
+    window.addEventListener('focusout', onFocusOut)
+    return () => { vv?.removeEventListener('resize', onVv); window.removeEventListener('focusout', onFocusOut) }
+  }, [enabled])
+}
+
 function Shell() {
   const s = useShop()
   useRidingGuards()
+  useKeyboardGapFix(s.bp === 'mobile')
   const mobile = s.bp === 'mobile'
   const isList = s.primary === 'codi' || s.primary === 'search'
 
