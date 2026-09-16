@@ -62,7 +62,8 @@
 .slot { position: relative; aspect-ratio: 1/1; border-radius: 9px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; background: #fbf8f4; cursor: default; transition: border-color .22s ease, background-color .22s ease; }
 .slotFilled { border-style: solid; border-color: #efe8e0; background: #fff; cursor: pointer; }
 .slotWorn { border-color: #ec86ac; background: #fce9f1; }
-.slotSprite { width: 62%; height: 62%; display: flex; align-items: center; justify-content: center; }
+/* 스프라이트 캔버스 = 칸 거의 전체(v2 의 62% 는 색 블롭 목업 크기라 실제 스프라이트엔 작았다) */
+.slotSprite { width: calc(100% - 6px); height: calc(100% - 6px); display: flex; align-items: center; justify-content: center; }
 .slotX { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f0d3e0; border-radius: 50%; background: #fff; color: #d76d9a; font-size: 9px; line-height: 1; cursor: pointer; }
 
 /* 북마크 시트(모바일) */
@@ -76,7 +77,7 @@
 .bmGrid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; }
 .chip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 9px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .chipWorn { border-color: #ec86ac; background: #fce9f1; }
-.chipSprite { width: 60%; height: 60%; display: flex; align-items: center; justify-content: center; }
+.chipSprite { width: calc(100% - 8px); height: calc(100% - 8px); display: flex; align-items: center; justify-content: center; }
 .chipX { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0d3e0; border-radius: 50%; background: #fff; color: #d76d9a; font-size: 10px; line-height: 1; }
 
 /* 모바일 히어로 */
