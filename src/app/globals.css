@@ -113,10 +113,10 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
 .pb-track-v { background: linear-gradient(90deg,#4a3f38 0%,#e9dfd6 50%,#fdfbf9 100%); }
 /* touch-action:none → 스크롤 영역·시트 안에서도 가로 드래그가 스크롤로 새지 않고 썸을 끈다 */
 .pb-slider { touch-action: none; cursor: pointer; }
-/* 터치 기기: 슬라이더 위아래 10px 씩 보이지 않는 터치 영역을 덧댄다. 레이아웃 크기는 그대로(주변 위치 영향 없음).
+/* 터치 기기: 슬라이더 위아래 3px 씩 보이지 않는 터치 영역을 덧댄다. 레이아웃 크기는 그대로(주변 위치 영향 없음).
    겹칠 수 있는 스테퍼(−/+)는 한 단계 위(z-index 1)로 올려 그쪽 터치가 우선한다(음수 z-index 는 상위 패널 배경 밑으로 들어가 판정이 사라질 수 있어 쓰지 않는다). */
 @media (pointer: coarse) {
-  .pb-slider::before { content: ''; position: absolute; left: 0; right: 0; top: -10px; bottom: -10px; }
+  .pb-slider::before { content: ''; position: absolute; left: 0; right: 0; top: -3px; bottom: -3px; }
   .pb-dyerow > .pb-dyestep { position: relative; z-index: 1; }
 }
 .pb-range { position: absolute; inset: 0; width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; touch-action: none; pointer-events: none; } /* 포인터는 .pb-slider 가 처리(DyeRow) */
