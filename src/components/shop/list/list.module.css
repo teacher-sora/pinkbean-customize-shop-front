@@ -90,10 +90,11 @@
 .nameM { flex: 0 0 auto; width: 100%; font-size: 11.5px; font-weight: 500; color: #3d372f; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 즐겨찾기 · 북마크 띠지(우상단, 카드 경계에 살짝 걸침) */
-.fav { position: absolute; top: -3px; right: 5px; z-index: 4; width: 18px; height: 24px; padding: 4px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: #e2d9cf; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
+/* 띠지 규격(코디·프리셋 공통, 2026-09-17 확대): 큰 띠지 20×27 · 작은 띠지 18×24 · 사이 간격 5px */
+.fav { position: absolute; top: -3px; right: 5px; z-index: 4; width: 20px; height: 27px; padding: 5px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: #e2d9cf; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
 .favOn { background: #f5b91f; }
 .favGlyph { display: block; color: #fff; }
-.pinMark { position: absolute; top: -3px; right: 27px; z-index: 4; width: 16px; height: 21px; padding: 0; border: none; cursor: pointer; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); background: #ec86ac; pointer-events: none; opacity: 0; transform: translateY(-2px); }
+.pinMark { position: absolute; top: -3px; right: 30px; z-index: 4; width: 18px; height: 24px; padding: 0; border: none; cursor: pointer; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); background: #ec86ac; pointer-events: none; opacity: 0; transform: translateY(-2px); }
 .pinMarkOn { pointer-events: auto; opacity: 1; transform: translateY(0); }
 
 /* 카드 액션 바: 기본 = 터치 기기(상시 노출, 이름 아래) */
