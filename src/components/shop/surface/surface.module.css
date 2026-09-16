@@ -34,8 +34,6 @@
 .cellDots { flex: 0 0 auto; height: 22px; display: flex; align-items: center; justify-content: center; gap: 4px; background: #faf7f3; border-top: 1px solid #f2ebe3; }
 .cellOn .cellDots { background: #fdf0f5; }
 .cellDot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0,0,0,0.12); }
-.cellSolo { font-size: 9.5px; font-weight: 600; color: #a89e93; }
-.cellOn .cellSolo { color: #d76d9a; }
 
 /* ── 염색: HSB ── */
 .hsvPc { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; padding: 16px; overflow: hidden; }
