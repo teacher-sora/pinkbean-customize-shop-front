@@ -7,11 +7,18 @@
 /* 더블탭 확대 제거(단일 탭/스크롤/스와이프는 그대로). 핀치는 viewport + NoNativeZoom 이 막는다. */
 html { touch-action: manipulation; }
 
-/* 100vh·100dvh 금지. 앱은 PC·모바일 모두 100svh(브라우저 주소창·툴바가 펼쳐진 실제 보이는 높이)에 딱 맞추고 문서 스크롤을 두지
-   않는다(사용자 지시 2026-09-17: 모바일에서 문서/리스트 세로 스크롤이 좌우 넘기기와 겹치면 조작이 불편 → 스크롤 자체를 없앤다.
-   문서가 안 스크롤되니 바가 접힐 일도 없어 svh = 보이는 화면). v2 의 "터치 기기 문서 스크롤" 규칙은 적용하지 않는다. */
+/* PC = 100svh 고정·문서 스크롤 없음. 모바일(사용자 지시 2026-09-17) = 페이지 높이 max(100vh, 리스트 최소 높이) +
+   **페이지(문서) 스크롤 허용** → 스크롤하면 브라우저 하단 툴바가 접힌다. 리스트 안의 세로 스크롤은 만들지 않는다. */
 html, body { margin: 0; padding: 0; height: 100%; min-height: 100svh; }
 body { font-family: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont, sans-serif; color: #2a2521; overflow: hidden; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; background: linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%); }
+/* 터치 기기: 모바일 셸을 풀어 **문서(루트)** 가 스크롤되게 한다(브라우저는 루트 스크롤일 때만 툴바를 접는다).
+   ⚠️ 반드시 위 공통 body{overflow:hidden} **뒤**에 둔다 — 앞에 두면 덮여서 문서가 안 스크롤되고 페이지가 잘린다.
+   html/body 는 height:auto — 100% 면 body 가 스크롤 주체가 돼 툴바가 안 접힌다. */
+@media (pointer: coarse) {
+  html, body { height: auto; min-height: 100%; overflow-y: visible; }
+  body { overflow-x: hidden; }
+  .pb-shell { position: relative !important; inset: auto !important; height: auto !important; }
+}
 a { color: #ec86ac; text-decoration: none; }
 @media (hover: hover) and (pointer: fine) { a:hover { color: #d76d9a; } }
 input, select, button { font-family: inherit; color: #2a2521; }

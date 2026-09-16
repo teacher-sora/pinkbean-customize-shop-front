@@ -80,7 +80,7 @@
 .chipX { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0d3e0; border-radius: 50%; background: #fff; color: #d76d9a; font-size: 10px; line-height: 1; }
 
 /* 모바일 히어로 */
-.hero { flex: 0 0 auto; position: relative; height: 236px; border-bottom: 1px solid #f4efe8; overflow: hidden; }
+.hero { flex: 0 0 auto; position: relative; height: 216px; /* v2 236px → 216px: 리스트 여유 확보(사용자 지시 2026-09-17) */ border-bottom: 1px solid #f4efe8; overflow: hidden; }
 .heroImg { object-fit: cover; object-position: center 76%; }
 .heroTone { position: absolute; inset: 0; background: rgba(255,255,255,0.28); }
 .heroModel { position: absolute; inset: 0; }
