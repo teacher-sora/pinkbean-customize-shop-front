@@ -7,6 +7,7 @@
  */
 
 import clsx from 'clsx'
+import { useEffect } from 'react'
 import { ShopProvider, useShop } from './shop/ShopContext'
 import Background from './shop/frame/Background'
 import AppHeader from './shop/frame/AppHeader'
@@ -22,9 +23,37 @@ import ShareReceiveSheet from './shop/ShareReceiveSheet'
 import Toast from './shop/ui/Toast'
 import styles from './shop/frame/frame.module.css'
 
+// 모바일 가상 키보드를 내린 뒤 하단에 남는 공백 제거. 브라우저가 레이아웃을 다시 잡지 않고 남겨둔 상태라(스크롤을 살짝
+// 움직이면 사라짐) 키보드가 닫히는 순간 **한 번만** 1px 스크롤했다 되돌린다.
+// 판정은 "입력칸에 포커스 + 보이는 화면이 창 높이의 75% 미만(= 키보드 열림)" → 그 상태가 풀릴 때만.
+// (예전 구현은 포커스 해제·높이 변화 전반에 반응해 탭 이동 때도 스크롤을 건드려 꼬였다 → 키보드 열림→닫힘 전이에만 반응.)
+function useKeyboardGapFix(enabled: boolean) {
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!enabled || !vv) return
+    const typing = () => { const a = document.activeElement as HTMLElement | null; return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') }
+    let open = false
+    const onResize = () => {
+      const nowOpen = vv.height < window.innerHeight * 0.75
+      if (nowOpen && typing()) { open = true; return }
+      if (open && !nowOpen) {
+        open = false
+        requestAnimationFrame(() => {
+          const y = window.scrollY
+          window.scrollTo(0, y > 0 ? y - 1 : y + 1)
+          window.scrollTo(0, y)
+        })
+      }
+    }
+    vv.addEventListener('resize', onResize)
+    return () => vv.removeEventListener('resize', onResize)
+  }, [enabled])
+}
+
 function Shell() {
   const s = useShop()
   useRidingGuards()
+  useKeyboardGapFix(s.bp === 'mobile')
   const mobile = s.bp === 'mobile'
   const isList = s.primary === 'codi' || s.primary === 'search'
 
