@@ -16,10 +16,10 @@ import { useLiveRedraw } from '../useLiveRedraw'
 const hsbActive = (h?: HsbParams) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0)
 
 // 채움 비율(스프라이트가 캔버스에서 차지할 큰-변 비율). 원본이 커도 넘치지 않게 맞추고, ≥1배는 정수 스냅으로
-// 선명(하드 도트), 축소(<1배)만 부드럽게. 헤어는 합성 bbox 가 커서 "확대 배율"을 안정적으로 더 줄이고, 피부(전신)는
-// 조금 키운다.
+// 선명(하드 도트), 축소(<1배)만 부드럽게. 헤어도 bbox 기준으로 맞추므로 같은 채움 비율을 쓴다
+// (예전 0.55 는 배율 상한이 있던 시절 보정이라 모바일에서 헤어가 캔버스에 비해 너무 작게 보였다).
 export const INFO_FRAC = 0.82
-export const INFO_FRAC_HAIR = 0.55
+export const INFO_FRAC_HAIR = 0.82
 // 피부는 모델(body+head)로 렌더해 중앙 정렬 — fraction 으로 크기 조절(아이콘=작게, 미리보기=크게).
 export const SKIN_ICON_FRACTION = 0.72
 export const SKIN_PREVIEW_FRACTION = 0.52

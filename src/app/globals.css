@@ -7,7 +7,7 @@
 /* 더블탭 확대 제거(단일 탭/스크롤/스와이프는 그대로). 핀치는 viewport + NoNativeZoom 이 막는다. */
 html { touch-action: manipulation; }
 
-/* 100vh·100dvh 금지 → 100svh 고정 + 터치 기기는 문서 스크롤로 나머지를 흡수. */
+/* 100dvh 금지(바 접힘마다 리플로우). PC=100svh 고정, 모바일 컬럼=100lvh(바가 접힌 전체 화면) + 터치 기기는 문서 스크롤로 바를 접는다. */
 html, body { margin: 0; padding: 0; height: 100%; min-height: 100svh; }
 @media (pointer: coarse) {
   body { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
@@ -107,7 +107,8 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
 .pb-track-s { background: linear-gradient(90deg,#d8d2cb 0%,#f2c6d8 50%,#ec86ac 100%); }
 .pb-track-v { background: linear-gradient(90deg,#4a3f38 0%,#e9dfd6 50%,#fdfbf9 100%); }
 /* touch-action:none → 스크롤 영역·시트 안에서도 가로 드래그가 스크롤로 새지 않고 썸을 끈다 */
-.pb-range { position: absolute; inset: 0; width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; touch-action: none; }
+.pb-slider { touch-action: none; cursor: pointer; }
+.pb-range { position: absolute; inset: 0; width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; touch-action: none; pointer-events: none; } /* 포인터는 .pb-slider 가 처리(DyeRow) */
 .pb-range::-webkit-slider-runnable-track { height: 8px; background: transparent; border: none; }
 .pb-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -5px; border-radius: 50%; background: #fff; border: 2px solid #ec86ac; }
 .pb-range::-moz-range-track { height: 8px; background: transparent; }

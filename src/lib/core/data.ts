@@ -129,6 +129,18 @@ const url = (rel: string) => {
   return out
 }
 
+// 최근 패치 신규 아이템 id(파서 stringwz-merge 가 패치마다 catalog/new.json 을 교체). 없거나 실패하면 빈 집합.
+let newItemsPromise: Promise<Set<string>> | null = null
+export function loadNewItems(): Promise<Set<string>> {
+  if (!newItemsPromise) {
+    newItemsPromise = fetch(url('catalog/new.json'))
+      .then((r) => (r.ok ? r.json() : { ids: [] }))
+      .then((j: { ids?: string[] }) => new Set(j.ids || []))
+      .catch(() => new Set<string>())
+  }
+  return newItemsPromise
+}
+
 export async function loadIndex(): Promise<Index> {
   const r = await fetch(url('index.json'))
   if (!r.ok) throw new Error(`index.json ${r.status}`)

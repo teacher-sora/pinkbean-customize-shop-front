@@ -10,7 +10,7 @@ import { loadAnima, loadMeta, type AnimaRace, type ItemMeta, type ListItem } fro
 import { buildOverrides } from '@/lib/core/dye'
 import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
 import { CAT_TO_SLOT, DEFAULT_TONE, THUMB_VIEW, animaLayers, fixedExpr, forceMyModel, hasFixedExpr, thumbView } from '@/lib/shopData'
-import { useShop, type ListMode } from '../ShopContext'
+import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 
 type Tones = { base: { tones: { tone: number; body: string; head: string }[]; default: number } }
 // 톤 → body/head id. 없으면 기본 톤 → 첫 톤.
@@ -39,8 +39,7 @@ export type ThumbApi = {
 export function useCodiThumbs(list: ListItem[]): ThumbApi {
   const s = useShop()
   const isAll = s.activeCat === 'all'
-  const isFav = s.activeCat === 'fav'
-  const mixedCat = isAll || isFav // 전체·즐겨찾기 = 여러 부위가 섞인 리스트(활성 슬롯 없음, 아이템 자신의 슬롯으로 판단)
+  const mixedCat = isMultiCat(s.activeCat) // 전체·신규·즐겨찾기 = 여러 부위가 섞인 리스트(활성 슬롯 없음, 아이템 자신의 슬롯으로 판단)
   const isSkinCat = s.activeCat === 'skin'
   // 피부는 스프라이트=모델이라 '아이템' 보기 무의미 → 잠그고 '기본 캐릭터'로 대체.
   // 헤어의 '아이템' 보기 = 몸 없이 모든 파츠를 합성한 스프라이트(염색표·북마크와 동일, ItemThumb).
