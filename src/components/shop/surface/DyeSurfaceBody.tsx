@@ -81,7 +81,6 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
                 <span className={styles.cellDots}>
                   <span className={styles.cellDot} style={{ ['--c' as string]: PAL[r].hex }} />
                   {r !== c && <span className={styles.cellDot} style={{ ['--c' as string]: PAL[c].hex }} />}
-                  {r === c && <span className={styles.cellSolo}>단색</span>}
                 </span>
               </button>
             )
