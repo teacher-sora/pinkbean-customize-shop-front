@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { SLOT_TO_CAT } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
-import { DyeSprite, INFO_FRAC, INFO_FRAC_HAIR } from '../render/DyeSprite'
+import { DyeSprite } from '../render/DyeSprite'
+
+const BOOKMARK_FRAC = 0.9
 import { IconCaretUp } from '../ui/Icons'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
 import styles from './preview.module.css'
@@ -49,9 +51,10 @@ export function RateBubbles() {
 export function BookmarkSprite({ item }: { item: ListItem }) {
   const s = useShop()
   const zmap = s.index?.zmap || []
-  if (item.slot === 'hair' || item.slot === 'face') return <DyeSprite id={item.id} mix zmap={zmap} frac={item.slot === 'hair' ? INFO_FRAC_HAIR : INFO_FRAC} />
-  if (item.slot === 'skin') return <DyeSprite id={item.id} thumb={`sprites/${item.id}/thumb.png`} mix={false} zmap={zmap} frac={INFO_FRAC} />
-  return <DyeSprite id={item.id} thumb={item.icon || `sprites/${item.id}/icon.png`} mix={false} zmap={zmap} frac={INFO_FRAC} />
+  // 북마크 칸은 작아서 채움 비율을 조금 더 높인다(캔버스 대비 아이콘이 작게 보이지 않게).
+  if (item.slot === 'hair' || item.slot === 'face') return <DyeSprite id={item.id} mix zmap={zmap} frac={BOOKMARK_FRAC} />
+  if (item.slot === 'skin') return <DyeSprite id={item.id} thumb={`sprites/${item.id}/thumb.png`} mix={false} zmap={zmap} frac={BOOKMARK_FRAC} />
+  return <DyeSprite id={item.id} thumb={item.icon || `sprites/${item.id}/icon.png`} mix={false} zmap={zmap} frac={BOOKMARK_FRAC} />
 }
 
 const wornOf = (s: ReturnType<typeof useShop>, it: ListItem) => s.isEquippedInCat(SLOT_TO_CAT[it.slot], it.id)
