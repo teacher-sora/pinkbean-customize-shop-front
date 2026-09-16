@@ -84,7 +84,9 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
     ro?.observe(col); ro?.observe(vp)
-    return () => { ro?.disconnect(); col.style.removeProperty('--pb-min-h') }
+    // ⚠️ 언마운트(염색·프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
+    //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다(컬럼 높이는 탭과 무관한 숫자일 뿐).
+    return () => { ro?.disconnect() }
   }, [mobile])
   // ── 모바일: 네이티브 가로 스크롤(overflow-x + 페이지 스냅, 스크롤바 숨김) ↔ 페이지 인덱스 동기화 ──
   //  스냅 단위 = 카드 한 열(1×2). 페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라
