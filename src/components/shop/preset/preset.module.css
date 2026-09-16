@@ -24,7 +24,7 @@
 .busy { background: #f0aecb; cursor: default; }
 
 .scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 10px 16px; }
-.scrollM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior-x: contain; overscroll-behavior-y: auto; /* 끝에 닿으면 문서 스크롤로 이어져 브라우저 바가 접힌다 */ padding: 8px 12px; }
+.scrollM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 8px 12px; }
 .grid { display: grid; gap: 10px; }
 .gridTight { gap: 8px; }
 .cols5 { grid-template-columns: repeat(5,minmax(0,1fr)); }

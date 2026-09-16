@@ -23,7 +23,7 @@
 .drawer { bottom: 50px; height: 166px; max-height: calc(100% - 124px); transform: translateY(calc(100% + 46px)); }
 .drawerOpen { transform: translateY(0); }
 .slides { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }
-.slidesM { flex: 0 0 auto; position: relative; height: 132px; overflow: hidden; border-top: 1px solid #f0e9e1; }
+.slidesM { flex: 0 0 auto; position: relative; height: 132px; overflow: hidden; } /* 윗선은 시트 헤더(border-bottom)가 담당 — 겹치면 두 줄 */
 .slide { transform: translateY(100%); }
 .slideOn { transform: translateY(0); }
 .slidePad { padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; }
@@ -67,7 +67,7 @@
 
 /* 북마크 시트(모바일) */
 .sheetBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.bmHead { flex: 0 0 auto; padding: 0 14px 6px; display: flex; align-items: center; justify-content: space-between; }
+.bmHead { flex: 0 0 auto; padding: 6px 14px; display: flex; align-items: center; justify-content: space-between; }
 .bmTitle { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #2a2521; }
 .bmBody { flex: 0 0 auto; padding: 8px 14px 18px; border-top: 1px solid #f0e9e1; }
 .bmEmpty { height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
