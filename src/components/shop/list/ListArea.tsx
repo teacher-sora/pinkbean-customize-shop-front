@@ -4,6 +4,7 @@
 //  PC(절반·태블릿 포함) = 패널(section) + 헤더 + 뷰포트 + 힌트 바 / 모바일 = 컨트롤 2줄 + 뷰포트.
 
 import clsx from 'clsx'
+import { useCallback, useEffect, useRef } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop, type GenderFilter, type ListMode } from '../ShopContext'
@@ -62,6 +63,29 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
 }) {
   const s = useShop()
   const narrow = isNarrow(s.bp)
+  // 모바일: 카드가 세로형(높이/폭 ≥ CARD_MIN_RATIO)으로 2줄 들어갈 최소 뷰포트 높이를 보장한다. 부족하면 페이지 컬럼
+  // 높이(--pb-min-h)를 늘려 페이지 스크롤로 흡수(리스트 안 세로 스크롤은 만들지 않음). 그 외 요소 높이(chrome)는
+  // 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다.
+  const vpRef = useRef<HTMLDivElement | null>(null)
+  const bindVp = s.bindVp
+  const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
+  useEffect(() => {
+    if (!mobile) return
+    const vp = vpRef.current
+    const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
+    if (!vp || !col) return
+    const CARD_MIN_RATIO = 1.34, PAD_X = 24, PAD_Y = 16, GAP = 10
+    const m = () => {
+      const chrome = col.clientHeight - vp.clientHeight
+      const cardW = (vp.clientWidth - PAD_X - GAP * 2) / 3
+      const need = Math.ceil(chrome + PAD_Y + GAP + 2 * cardW * CARD_MIN_RATIO) + 'px'
+      if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
+    }
+    m()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
+    ro?.observe(col); ro?.observe(vp)
+    return () => { ro?.disconnect(); col.style.removeProperty('--pb-min-h') }
+  }, [mobile])
   const hero = isAi && s.searchQuery === null && !loading
   const noSprite = thumbs.noSprite
   const viewOpts = VIEW_MODES.map((m) => (m.v === 'sprite' && noSprite
@@ -138,7 +162,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const viewport = (
-    <div ref={s.bindVp} className={styles.viewport}>
+    <div ref={setVp} className={styles.viewport}>
       {hero ? (
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>
