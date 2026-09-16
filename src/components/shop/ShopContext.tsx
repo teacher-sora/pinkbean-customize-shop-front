@@ -13,7 +13,7 @@ import { nameMatcher } from '@/lib/nameSearch'
 import { CATS, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
-import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
+import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
@@ -27,6 +27,8 @@ export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이�
 export type GenderFilter = 'all' | 'f' | 'm'
 // 염색 대상은 실제 slot. hair/face(성형)만 믹스 염색, 그 외 HSV.
 const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
+// 여러 부위를 합친 목록 필터(전체·신규·즐겨찾기) — 활성 슬롯이 없어 아이템 자신의 슬롯으로 판단한다.
+export const isMultiCat = (cat: string) => cat === 'all' || cat === 'new' || cat === 'fav'
 
 // AI 코디 검색 백엔드(Fly.io). 로컬/배포에서 NEXT_PUBLIC_SEARCH_API 로 덮어쓸 수 있음.
 const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
@@ -143,6 +145,7 @@ export interface ShopCtx {
   // codi
   activeCat: string; setActiveCat: Dispatch<string>
   favorites: Set<string>; toggleFavorite: (id: string) => void
+  newIds: Set<string> // 최근 패치 신규 아이템(CDN catalog/new.json) — NEW 라벨·'신규' 필터
   warmForPreview: (item: ListItem) => void // 착용 전 워밍(현재 연출 기준 메타·첫 프레임·이펙트·발색)
   bookmarks: ListItem[]; isBookmarked: (id: string) => boolean; toggleBookmark: (item: ListItem) => void; clearBookmarks: () => void
   listMode: ListMode; setListMode: Dispatch<ListMode>
@@ -234,6 +237,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // 즐겨찾기: 아이템 id Set. SSR 안전을 위해 빈 값으로 시작 → 클라이언트에서 localStorage 하이드레이트.
   const [favorites, setFavoritesState] = useState<Set<string>>(new Set())
+  const [newIds, setNewIds] = useState<Set<string>>(new Set())
+  useEffect(() => { loadNewItems().then(setNewIds).catch(() => {}) }, [])
   useEffect(() => { try { const raw = localStorage.getItem(FAV_KEY); if (raw) setFavoritesState(new Set(JSON.parse(raw))) } catch { /* noop */ } }, [])
   const toggleFavorite = useCallback((id: string) => {
     setFavoritesState((prev) => {
@@ -381,7 +386,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [index, lists])
   useEffect(() => {
     // '전체'·'즐겨찾기' 는 모든 부위를 한 리스트로 보여주므로 전 슬롯을 로드한다(각 슬롯은 캐시돼 1회만 받음).
-    if (activeCat === 'all' || activeCat === 'fav') { for (const c of CATS) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]); return }
+    if (isMultiCat(activeCat)) { for (const c of CATS) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]); return }
     if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat])
   }, [activeCat, ensureSlot])
 
@@ -399,11 +404,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (cat === 'all') return CATS.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || []))
     // '즐겨찾기' = 전 부위(피부 포함)에서 즐겨찾기한 아이템만. CATS 순서 유지. 전 슬롯 로드가 필요(위 ensureSlot).
     if (cat === 'fav') return CATS.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || [])).filter((it) => favorites.has(it.id))
+    // '신규' = 최근 패치에서 추가된 아이템만(전 부위, CATS 순서). 헤어/성형은 폴딩 대표 id 로 매칭된다.
+    if (cat === 'new') return CATS.flatMap((c) => (c.id === 'skin' ? [] : lists[CAT_TO_SLOT[c.id]] || [])).filter((it) => newIds.has(it.id))
     return lists[CAT_TO_SLOT[cat]] || []
-  }, [lists, skinList, favorites])
+  }, [lists, skinList, favorites, newIds])
 
   // 활성 부위 리스트 로딩중?(index 미로드 또는 해당 slot 미로드)
-  const catLoading = dataLoading || ((activeCat === 'all' || activeCat === 'fav')
+  const catLoading = dataLoading || (isMultiCat(activeCat)
     ? CATS.some((c) => c.id !== 'skin' && lists[CAT_TO_SLOT[c.id]] === undefined)
     : activeCat !== 'skin' && lists[CAT_TO_SLOT[activeCat]] === undefined)
 
@@ -508,9 +515,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const searchResultsView = useMemo(() => {
     let out = searchResults
     if (activeCat === 'fav') out = out.filter((it) => favorites.has(it.id))
+    else if (activeCat === 'new') out = out.filter((it) => newIds.has(it.id))
     else if (activeCat !== 'all') out = out.filter((it) => it.slot === CAT_TO_SLOT[activeCat])
     return byGender(out, genderFilter)
-  }, [searchResults, activeCat, favorites, byGender, genderFilter])
+  }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter])
   const pagedList = primary === 'search' ? searchResultsView : activeList
   // 페이지 인덱스는 탭 × 부위 조합별로 기억한다.
   const pageKey = primary === 'search' ? 'search:' + activeCat : activeCat
@@ -537,7 +545,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 팔레트 염색(헤어/성형)이 걸린 리스트를 볼 때, 현재+다음 페이지 아이템의 발색 변이를 백그라운드 프리로드
   // → 리스트에서 아무 아이템이나 클릭해도 발색이 이미 캐시돼 즉시 반영(HSB 아이템 수준의 체감 속도).
   useEffect(() => {
-    if (activeCat === 'skin' || activeCat === 'all' || activeCat === 'fav') return
+    if (activeCat === 'skin' || isMultiCat(activeCat)) return
     const slot = CAT_TO_SLOT[activeCat]
     const pal = dyePalette[slot]
     if (!isMixSlot(slot) || !pal) return
@@ -1152,7 +1160,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     primary, setPrimary,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
-    activeCat, setActiveCat, favorites, toggleFavorite,
+    activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
     warmForPreview, listMode, setListMode, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,

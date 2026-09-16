@@ -9,7 +9,7 @@ import { useShop } from '../ShopContext'
 import { IconTab } from '../ui/Icons'
 import styles from './nav.module.css'
 
-const PARTS = [{ id: 'all', label: '전체' }, { id: 'fav', label: '즐겨찾기' }, ...CATS]
+const PARTS = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }, ...CATS]
 export const TABS = [
   { id: 'codi', label: '코디' },
   { id: 'search', label: 'AI 코디 검색' },

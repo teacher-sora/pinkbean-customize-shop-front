@@ -243,11 +243,22 @@ export async function renderDyedSprite(
   //  - frac 지정(코디정보): avail=size*frac 에 맞추되, 원본이 크면 분수 배율로 축소(넘침 없음, 안정적).
   let scale: number
   if (frac == null) {
-    scale = Math.max(1, Math.round(Math.min(2, (size - 6) / bw, (size - 6) / bh)))
+    // 발색표 셀: 셀(디바이스 픽셀)을 최대한 채우는 정수 배율. 예전엔 최대 2배 제한이라 고해상도 모바일(DPR≈3)
+    // 셀에서 스프라이트가 작게 보였다 → 제한 없이, 반올림 배율이 셀을 넘치면 내림 배율로(넘침 없음·선명 유지).
+    const pad = Math.max(6, Math.round(size * 0.06))
+    const fit = Math.min((size - pad) / bw, (size - pad) / bh)
+    scale = Math.max(1, Math.round(fit))
+    if (scale * bw > size - pad / 2 || scale * bh > size - pad / 2) scale = Math.max(1, Math.floor(fit))
   } else {
+    // 상한 없음 — 예전 "최대 2배"는 디바이스 픽셀 기준이라 DPR≈3 모바일에선 CSS 0.67배 수준으로 작게 보였다.
+    // ≥1 이면 정수(선명): 반올림 배율이 캔버스 안에 들어가면 그걸, 넘치면 내림. <1 이면 분수(맞춤).
     const avail = size * frac
-    const fit = Math.min(2, avail / bw, avail / bh)
-    scale = fit >= 1 ? Math.floor(fit) : fit // ≥1: 정수(선명), <1: 분수(맞춤)
+    const fit = Math.min(avail / bw, avail / bh)
+    if (fit < 1) scale = fit
+    else {
+      scale = Math.round(fit)
+      if (scale * bw > size * 0.96 || scale * bh > size * 0.96) scale = Math.max(1, Math.floor(fit))
+    }
   }
   canvas.width = size; canvas.height = size
   const ctx = canvas.getContext('2d')!

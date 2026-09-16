@@ -18,6 +18,8 @@ import { useLiveRedraw } from '../useLiveRedraw'
 // 우측 미리보기/카드와 동일한 computeModelPlacement 공식 사용(마네킹 중앙 고정 + 정수 스냅으로 항상 선명).
 // 배율(1x/2x/3x)은 fraction 에 곱하는 월드 배율.
 const DIALOG_FRACTION = 0.33
+// 모바일 시트처럼 낮은 미리보기 상자(≈150~260px)에선 높이의 1/3이면 캐릭터가 50px 안팎으로 작다 → 낮은 상자는 비율을 올린다.
+const fractionFor = (h: number) => (h < 300 ? 0.5 : DIALOG_FRACTION)
 const DIALOG_ZOOM: Record<number, number> = { 1: 0.6, 2: 1.0, 3: 1.6 }
 
 export default function DyeModelPreview({ item, hsb, zoom, box }: { item: ListItem; hsb: HsbParams; zoom: number; box: { w: number; h: number } }) {
@@ -86,7 +88,7 @@ export default function DyeModelPreview({ item, hsb, zoom, box }: { item: ListIt
     }
     // 우측 미리보기/카드와 동일 공식: 마네킹 중앙 고정 + 정수 스냅(선명). 배율은 fraction 에 곱.
     const dpr = window.devicePixelRatio || 1
-    const pl = computeModelPlacement({ divW: box.w, divH: box.h, dpr, margin: 1, fraction: DIALOG_FRACTION, scale: zoomStepScale({ fraction: DIALOG_FRACTION, divH: box.h, dpr, level: zoom, mults: DIALOG_ZOOM }), snap: true })
+    const pl = computeModelPlacement({ divW: box.w, divH: box.h, dpr, margin: 1, fraction: fractionFor(box.h), scale: zoomStepScale({ fraction: fractionFor(box.h), divH: box.h, dpr, level: zoom, mults: DIALOG_ZOOM }), snap: true })
     canvas.style.width = pl.canvasCssW + 'px'
     canvas.style.height = pl.canvasCssH + 'px'
     await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov, effects: effs })

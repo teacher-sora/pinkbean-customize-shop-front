@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { badgeUrl, type ListItem } from '@/lib/core/data'
 import { DOT_MOVER_IDS, SLOT_TO_CAT, isColorLineSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
-import { useShop, type ListMode } from '../ShopContext'
+import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 import { IconStar } from '../ui/Icons'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
@@ -37,6 +37,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   return (
     <div onClick={equip} onPointerDown={warm} className="pb-cardwrap" title={name}>
       <div className={clsx('pb-card', styles.card, mobile && styles.cardM, sel && 'pb-card-sel')}>
+        {s.newIds.has(item.id) && <span className={styles.newBadge}>NEW</span>}
         <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={fav ? '즐겨찾기 해제' : '즐겨찾기에 모아두기'} aria-label="즐겨찾기" aria-pressed={fav}
           className={clsx('pb-ribbon', styles.fav, fav && styles.favOn)}>
           <IconStar size={mobile ? 10 : 9} className={styles.favGlyph} />
@@ -67,4 +68,4 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
 }
 
 // 전체·즐겨찾기처럼 부위가 섞인 리스트는 아이템 자신의 슬롯으로 착용 부위를 정한다.
-export const catOf = (item: ListItem, activeCat: string) => (activeCat === 'all' || activeCat === 'fav' ? SLOT_TO_CAT[item.slot] : activeCat)
+export const catOf = (item: ListItem, activeCat: string) => (isMultiCat(activeCat) ? SLOT_TO_CAT[item.slot] : activeCat)
