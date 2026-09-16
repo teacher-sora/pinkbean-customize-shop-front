@@ -17,7 +17,7 @@
 .btnM { height: 32px; border-radius: 9px; }
 
 .scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; justify-content: space-between; }
-.scrollM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior-x: contain; overscroll-behavior-y: auto; /* 끝에 닿으면 문서 스크롤로 이어져 브라우저 바가 접힌다 */ padding: 8px 12px; }
+.scrollM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 8px 12px; }
 .slots { flex: 0 0 auto; padding: 10px 6px; }
 .grid { display: grid; gap: 8px; }
 

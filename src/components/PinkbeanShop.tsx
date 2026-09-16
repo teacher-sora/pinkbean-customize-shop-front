@@ -32,7 +32,7 @@ function Shell() {
     <>
       <Background />
       {mobile ? (
-        // 모바일: 폰 프레임(390×780) 없이 화면 전체. 터치 기기는 셸이 문서 스크롤로 풀린다(.pb-shell).
+        // 모바일: 폰 프레임(390×780) 없이 화면 전체(100svh 고정, 문서 스크롤 없음).
         <div className={clsx('pb-root', 'pb-shell', styles.root)}>
           <div className={styles.mobileCol}>
             <AppHeader mobile />

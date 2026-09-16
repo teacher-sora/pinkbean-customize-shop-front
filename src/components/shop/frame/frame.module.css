@@ -10,10 +10,8 @@
 .main { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
 
 /* 모바일: 폰 프레임(390×780·scale)은 미리보기 전용이라 제외 → 화면 전체를 쓰는 흰 컬럼.
-   높이 = 브라우저 주소창·하단 툴바가 접힌 전체 화면(100lvh, 사용자 지시 2026-09-17 — v2 의 100svh 규칙 대신).
-   처음엔 바가 보이고, 문서를 한 번 스크롤하면 바가 접히며 앱이 화면을 꽉 채운다(바를 코드로 강제 숨길 수는 없다).
-   높이가 고정값(lvh)이라 바가 접혀도 리플로우는 없다. 구형 브라우저는 100vh(=lvh 와 동일) 폴백. */
-.mobileCol { width: 100%; height: 100vh; height: 100lvh; flex: 0 0 auto; background: #fff; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+   높이 = 실제 보이는 화면(100svh)에 딱 맞춤, 문서 스크롤 없음(globals.css 참고). */
+.mobileCol { width: 100%; height: 100svh; flex: 0 0 auto; background: #fff; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 
 /* ── PC 헤더 ── */
 .header { flex: 0 0 auto; height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
