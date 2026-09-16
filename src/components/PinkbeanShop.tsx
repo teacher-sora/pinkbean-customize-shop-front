@@ -34,7 +34,7 @@ function Shell() {
       {mobile ? (
         // 모바일: 폰 프레임(390×780) 없이 화면 전체(100svh 고정, 문서 스크롤 없음).
         <div className={clsx('pb-root', 'pb-shell', styles.root)}>
-          <div className={styles.mobileCol}>
+          <div data-mobile-col className={styles.mobileCol}>
             <AppHeader mobile />
             <MobileHero />
             {isList && <ListArea mobile />}
