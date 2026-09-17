@@ -17,7 +17,7 @@ import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot
 import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
-import { buildShareUrl, resolveShareCode } from '@/lib/shareCode'
+import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 
@@ -1025,18 +1025,25 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setLookPick(null)
     if (opt) await applyImported(opt.snap, lp.nick)
   }
-  // 공유 링크 복사(짧은 코드, 저장 실패 시 긴 코드 폴백) — 프리셋 카드의 복사 띠지. 이름까지 담아, 접속하면 '코디 받기' 시트가 뜬다.
+  // 공유 링크 복사: 링크는 로컬에서 즉시 만들어 바로 클립보드에 넣고, 카드 이미지·서버 저장은 뒤에서 한다(shareCode).
+  const copyShareLink = (snap: Snapshot) => {
+    const prep = prepareShare(location.origin, snap)
+    void copyAsyncText(() => prep.then((x) => x.url))
+    notify('프리셋을 복사했어요')
+    prep.then((x) => uploadShare(x, snap))
+      .then((ok) => { if (!ok) notify('공유 링크를 저장하지 못했어요. 다시 복사해 주세요') })
+      .catch(() => {})
+  }
+  // 프리셋 카드의 복사 띠지. 이름까지 담아, 접속하면 '코디 받기' 시트가 뜬다.
   const sharePreset = (p: Preset) => {
     const snap = p.id === selectedPreset ? snapshot() : (presetData[p.id] ?? defaultSnapshot())
-    void copyAsyncText(() => buildShareUrl(location.origin, { ...snap, name: p.name }))
-    notify('프리셋을 복사했어요')
+    copyShareLink({ ...snap, name: p.name })
   }
   // 현재 코디 스냅샷 + 선택된 프리셋 이름(공유 시 이름까지 그대로 전달된다).
   const curSnapNamed = (): Snapshot => ({ ...snapshot(), name: presets.find((p) => p.id === selectedPreset)?.name })
   // 헤더 "프리셋 복사": 현재 코디를 ?c=<code> 로 담은 URL 을 복사. 접속하면 '코디 받기' 시트가 뜬다(위 sharedIncoming).
   const shareCurrentLink = () => {
-    void copyAsyncText(() => buildShareUrl(location.origin, curSnapNamed()))
-    notify('프리셋을 복사했어요')
+    copyShareLink(curSnapNamed())
   }
   // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말풍선을 받는다.
   const rateNonce = useRef(0)

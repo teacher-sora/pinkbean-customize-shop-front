@@ -1,16 +1,16 @@
-// 공유 링크(/?n=<이름>&c=<코드>) 전용 페이지 — middleware.ts 가 c 가 있는 / 요청만 여기로 rewrite 한다(주소창은 그대로).
+// 공유 링크(/?c=<코드>&n=<이름>) 전용 페이지 — middleware.ts 가 c 가 있는 / 요청만 여기로 rewrite 한다(주소창은 그대로).
 // 본문은 홈과 같고, 링크 미리보기(카카오톡·디스코드 등)용 메타만 프리셋 기준으로 바꾼다:
 //   og:title = 프리셋 이름 · og:description = 받아가기 안내 · og:image = 복사 시 올린 캐릭터 카드(share/<id>.jpg)
 // 홈(/)은 정적 페이지로 남기기 위해 동적 메타를 여기로 분리했다.
 import type { Metadata } from 'next'
 import { inflateRawSync } from 'zlib'
 import ShopHome from '@/components/ShopHome'
+import { r2, r2Configured } from '@/lib/server/r2'
 
 const CDN = process.env.NEXT_PUBLIC_DATA_BASE?.startsWith('http') ? process.env.NEXT_PUBLIC_DATA_BASE : 'https://cdn.pinkbean-customize.com'
 const SHORT_RE = /^PB-[0-9A-Za-z]{8,12}$/
 const DEFAULT_TITLE = '핑크빈 커마샵 코디'
 const DESC = '링크를 눌러 이 코디를 미리 보고, 내 프리셋으로 바로 복사해 가세요!'
-const YEAR = 60 * 60 * 24 * 365
 // 이미지가 없을 때(긴 코드·업로드 실패)는 사이트 기본 카드 — 자식 openGraph 는 부모 것을 통째로 대체하므로 명시해야 한다.
 const DEFAULT_IMAGE = { url: 'https://qg2tk4czk48x6wl4.public.blob.vercel-storage.com/pinkbean_embed.png', width: 1536, height: 1024, alt: '핑크빈 커마샵 미리보기', type: 'image/png' }
 
@@ -32,13 +32,18 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   let name: string | null = null
   let image: string | null = null
   if (SHORT_RE.test(c)) {
-    // 짧은 코드·카드 이미지는 immutable 이라 1년 캐시.
-    const [code, img] = await Promise.all([
-      fetch(`${CDN}/share/${c}`, { next: { revalidate: YEAR } }).then((r) => (r.ok ? r.text() : '')).catch(() => ''),
-      fetch(`${CDN}/share/${c}.jpg`, { method: 'HEAD', next: { revalidate: YEAR } }).then((r) => r.ok).catch(() => false),
-    ])
-    name = code ? nameOf(code.trim()) : null
-    if (img) image = `${CDN}/share/${c}.jpg`
+    // R2 를 직접 읽는다(CDN 은 방금 생긴 객체의 404 를 캐시할 수 있고, Next fetch 캐시도 실패를 굳힌다).
+    // 복사 직후 바로 붙여넣어 보내면 백그라운드 업로드보다 스크래핑이 먼저 올 수 있다 → 코드가 나타날 때까지 최대 ~3초 대기.
+    // 서버는 이미지를 코드보다 먼저 저장하므로, 코드가 보이면 카드 이미지도 준비돼 있다.
+    let code = ''
+    for (let i = 0; i < 7 && r2Configured(); i++) {
+      const r = await r2('GET', `share/${c}`).catch(() => null)
+      if (r?.ok) { code = (await r.text()).trim(); break }
+      if (r && r.status !== 404) break
+      await new Promise((res) => setTimeout(res, 450))
+    }
+    name = code ? nameOf(code) : null
+    if (code && (await r2('HEAD', `share/${c}.jpg`).then((r) => r.ok).catch(() => false))) image = `${CDN}/share/${c}.jpg`
   } else if (c) name = nameOf(c)
   const title = (name || one(searchParams.n) || DEFAULT_TITLE).slice(0, 60)
   const images = [image ? { url: image, width: 1200, height: 630, alt: `${title} 코디 미리보기`, type: 'image/jpeg' } : DEFAULT_IMAGE]

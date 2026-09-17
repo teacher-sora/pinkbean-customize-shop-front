@@ -106,12 +106,17 @@ export async function decodeShareCode(code: string): Promise<Snapshot | null> {
 // 불러오기 입력칸에서 닉네임과 헷갈리지 않는다. 저장이 실패하면(오프라인·서버 미설정) 긴 코드 링크로 폴백한다.
 export const SHORT_CODE_RE = /^PB-[0-9A-Za-z]{8,12}$/
 
-async function shortenShareCode(long: string, image: string | null): Promise<string | null> {
+// 짧은 코드 = sha256(긴 코드) → base62 앞 8자. 서버(/api/share)와 **같은 식**이라 브라우저에서 미리 계산해 즉시 복사할 수 있다.
+const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+async function shortIdOf(long: string): Promise<string | null> {
   try {
-    const r = await fetch('/api/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: long, ...(image ? { image } : {}) }) })
-    if (!r.ok) return null
-    const id = (await r.json())?.id
-    return typeof id === 'string' && SHORT_CODE_RE.test(id) ? id : null
+    if (!globalThis.crypto?.subtle) return null
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(long)))
+    let n = BigInt(0)
+    for (const x of h) n = (n << BigInt(8)) | BigInt(x)
+    let out = ''
+    while (n > BigInt(0)) { out = B62[Number(n % BigInt(62))] + out; n /= BigInt(62) }
+    return 'PB-' + out.padStart(12, '0').slice(0, 8)
   } catch { return null }
 }
 
@@ -137,16 +142,35 @@ export async function resolveShareCode(code: string): Promise<Snapshot | null> {
   return decodeShareCode(c)
 }
 
-// 공유 링크: https://…/?n=<프리셋 이름>&c=<짧은 코드>
-//  · 이름(n)은 받는 사람이 어떤 코디인지 링크만 보고 알게 하려는 표시용이다(실제 이름은 코드 안에 있음).
-//    공백은 '+', 쿼리를 깨는 문자(& # % + ?)만 인코딩해 한글은 읽히는 그대로 둔다.
-//  · c 를 맨 끝에 둔다. 폴백인 긴 코드는 base64url 이라 '-'/'_' 로 끝날 수 있는데, 카톡 링크 파서가 끝의 '_' 를 링크에서
-//    떼어내 미리보기 카드가 안 뜬다 → 그럴 땐 끝에 '&e=1' 을 붙여 링크가 영숫자로 끝나게 한다.
-export async function buildShareUrl(origin: string, snap: Snapshot): Promise<string> {
-  // 코드 인코딩과 미리보기 카드 이미지(프리셋 캐릭터) 렌더를 병렬로. 이미지는 코드와 함께 올려 og:image 가 된다.
-  const [long, image] = await Promise.all([encodeShareCode(snap), renderShareImage(snap)])
-  const code = (await shortenShareCode(long, image)) || long
+// 공유 링크: https://…/?c=<짧은 코드>&n=<프리셋 이름>
+//  · 복사는 즉시: 긴 코드 인코딩 + 짧은 코드 해시(둘 다 로컬, 수 ms)만으로 URL 을 만들어 클립보드에 넣고,
+//    카드 이미지 렌더·서버 저장(uploadShare)은 그 뒤 백그라운드로 한다(예전엔 이미지 렌더+업로드를 기다려 복사가 수 초 늦었다).
+//  · c 를 **앞에** 둔다. 카카오톡 링크 인식이 한글에서 끊겨(`?n=요시노…` → `/?n=` 까지만 링크) 코드가 빠진 홈 카드가 떴다.
+//    n 은 받는 사람이 어떤 코디인지 보게 하는 표시용(실제 이름은 코드 안). 공백은 '+', 쿼리를 깨는 문자(& # % + ?)만 인코딩.
+//  · 짧은 코드를 못 만들면(구형 브라우저) 긴 코드. 긴 코드가 '-'/'_' 로 끝나고 뒤에 아무것도 없으면 카톡이 끝 '_' 를 떼므로 '&e=1'.
+export type SharePrep = { url: string; long: string; id: string | null }
+export async function prepareShare(origin: string, snap: Snapshot): Promise<SharePrep> {
+  const long = await encodeShareCode(snap)
+  const id = await shortIdOf(long)
+  const code = id || long
   const name = snap.name?.trim()
-  const n = name ? `n=${name.replace(/[&#%+?]/g, (ch) => encodeURIComponent(ch)).replace(/\s+/g, '+')}&` : ''
-  return `${origin}/?${n}c=${code}${/[-_]$/.test(code) ? '&e=1' : ''}`
+  const n = name ? `&n=${name.replace(/[&#%+?]/g, (ch) => encodeURIComponent(ch)).replace(/\s+/g, '+')}` : ''
+  const tail = !n && /[-_]$/.test(code) ? '&e=1' : ''
+  return { url: `${origin}/?c=${code}${n}${tail}`, long, id }
+}
+
+// 백그라운드 저장: 카드 이미지(프리셋 캐릭터)를 그려 긴 코드와 함께 올린다. 서버가 돌려준 id 가 로컬 계산과 다르면
+// (해시 충돌로 더 긴 id 발급 — 사실상 없음) 복사된 링크가 틀리므로 false.
+export async function uploadShare(prep: SharePrep, snap: Snapshot): Promise<boolean> {
+  if (!prep.id) return true // 긴 코드 링크는 저장할 게 없다
+  const image = await renderShareImage(snap)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch('/api/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: prep.long, ...(image ? { image } : {}) }) })
+      if (r.ok) return (await r.json())?.id === prep.id
+      if (r.status === 400) return false
+    } catch { /* 재시도 */ }
+    await new Promise((res) => setTimeout(res, 600 * (attempt + 1)))
+  }
+  return false
 }
