@@ -11,7 +11,7 @@ import SnapThumb from '../SnapThumb'
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게 — 사용자 지시 2026-09-17)
 const PRESET_FRACTION = 0.38
 import { useShop, type Snapshot } from '../ShopContext'
-import { IconImport, IconPencil, IconShare, IconTrash } from '../ui/Icons'
+import { IconImport, IconPencil, IconShare, IconTrash, IconCheck } from '../ui/Icons'
 import styles from './preset.module.css'
 
 export default function PresetPanel({ mobile }: { mobile: boolean }) {
@@ -56,7 +56,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         return (
           <div key={p.id} onClick={() => s.selectPreset(p.id)} className={clsx('pb-presetwrap', styles.wrap)}>
             <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
-              <span className={clsx(styles.badge, on && styles.badgeOn)}>선택됨</span>
+              <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
               <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} />}</div>
               <div className={styles.nameRow}>
                 <span className={styles.nameWrap}>
