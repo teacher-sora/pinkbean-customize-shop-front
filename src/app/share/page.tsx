@@ -3,7 +3,6 @@
 //   og:title = 프리셋 이름 · og:description = 받아가기 안내 · og:image = 복사 시 올린 캐릭터 카드(share/<id>.jpg)
 // 홈(/)은 정적 페이지로 남기기 위해 동적 메타를 여기로 분리했다.
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
 import { inflateRawSync } from 'zlib'
 import ShopHome from '@/components/ShopHome'
 
@@ -43,20 +42,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   } else if (c) name = nameOf(c)
   const title = (name || one(searchParams.n) || DEFAULT_TITLE).slice(0, 60)
   const images = [image ? { url: image, width: 1200, height: 630, alt: `${title} 코디 미리보기`, type: 'image/jpeg' } : DEFAULT_IMAGE]
-  // og:url·canonical 은 공유 링크 자체 — 홈으로 두면 카톡 카드를 눌렀을 때 코드 없이 홈으로 갈 수 있다.
-  const q = new URLSearchParams()
-  const n = one(searchParams.n)
-  if (n) q.set('n', n)
-  q.set('c', c)
-  // ⚠️ 상대경로('/?…')를 주면 metadataBase(www) 기준으로 풀리며 쿼리가 빠진다(실측) → 요청 호스트 기준 절대 URL 객체로 준다.
-  const host = headers().get('host') || 'pinkbean-customize.com'
-  const url = new URL(`https://${host}/?${q.toString()}`)
+  // og:url·canonical 은 **넣지 않는다**. 홈으로 두면 카톡 카드를 눌렀을 때 코드 없이 홈으로 갈 수 있고, 공유 링크(쿼리 포함)를
+  // 넣으려 해도 Next 메타 해석이 쿼리를 떼어낸다(상대경로·URL 객체 모두 실측) → 비워 두면 스크래퍼는 공유된 링크 그대로를 쓴다.
   return {
     title: { absolute: title },
     description: DESC,
     robots: { index: false, follow: true }, // 공유 링크는 검색 색인 제외
-    alternates: { canonical: url },
-    openGraph: { type: 'website', siteName: '핑크빈 커마샵', locale: 'ko_KR', url, title, description: DESC, images },
+    alternates: { canonical: null }, // 레이아웃의 canonical('/') 상속 차단
+    openGraph: { type: 'website', siteName: '핑크빈 커마샵', locale: 'ko_KR', title, description: DESC, images },
     twitter: { card: 'summary_large_image', title, description: DESC, images: [images[0].url] },
   }
 }
