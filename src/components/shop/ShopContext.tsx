@@ -17,7 +17,7 @@ import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot
 import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
-import { decodeShareCode, encodeShareCode } from '@/lib/shareCode'
+import { buildShareUrl, resolveShareCode } from '@/lib/shareCode'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 
@@ -257,7 +257,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [])
   const saveBookmarks = (next: ListItem[]) => { try { localStorage.setItem(BOOKMARK_KEY, JSON.stringify(next)) } catch { /* noop */ } }
 
-  // 공유 링크 수신: ?c=<code>(신규) 또는 #c=<code>(레거시)로 접속하면 디코드해 '코디 받기' 시트를 띄운다.
+  // 공유 링크 수신: ?n=<이름>&c=<짧은 코드 PB-…|긴 코드>(신규) 또는 #c=<code>(레거시)로 접속하면 디코드해 '코디 받기' 시트를 띄운다.
   //  · 쿼리(?c=)를 쓰는 이유: 모바일 카톡 등 일부 링크파서가 '#' 이후를 하이퍼링크로 인식하지 못한다.
   //  · 창/탭 조율(포커스·자동닫기)은 일부 환경(카톡·모바일 다중탭)에서 불가·불일치라 의도적으로 넣지 않음 — 그냥 이 탭에서 처리.
   const [sharedIncoming, setSharedIncoming] = useState<Snapshot | null>(null)
@@ -270,7 +270,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!code) return
     try { history.replaceState(null, '', location.pathname) } catch {} // URL 청소: 새로고침 재적용 방지
     let cancelled = false
-    decodeShareCode(code).then((snap) => { if (!cancelled && snap) setSharedIncoming(snap) }).catch(() => {})
+    resolveShareCode(code).then((snap) => { if (!cancelled && snap) setSharedIncoming(snap) }).catch(() => {})
     return () => { cancelled = true }
   }, [])
   const dismissShared = useCallback(() => setSharedIncoming(null), [])
@@ -1000,7 +1000,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     let code = input.trim()
     const m = code.match(/[#?&]c=([^&\s]+)/) // URL 안의 #c= / ?c= / &c=
     if (m) { try { code = decodeURIComponent(m[1]) } catch { code = m[1] } }
-    try { return await decodeShareCode(code) } catch { return null }
+    try { return await resolveShareCode(code) } catch { return null }
   }
   const importFetch = async () => {
     if (importing) return
@@ -1025,17 +1025,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setLookPick(null)
     if (opt) await applyImported(opt.snap, lp.nick)
   }
-  // 자체 완결형 공유 링크 복사(서버 없음) — 프리셋 카드의 복사 띠지. 이름까지 담아, 접속하면 '코디 받기' 시트가 뜬다.
+  // 공유 링크 복사(짧은 코드, 저장 실패 시 긴 코드 폴백) — 프리셋 카드의 복사 띠지. 이름까지 담아, 접속하면 '코디 받기' 시트가 뜬다.
   const sharePreset = (p: Preset) => {
     const snap = p.id === selectedPreset ? snapshot() : (presetData[p.id] ?? defaultSnapshot())
-    void copyAsyncText(async () => `${location.origin}/?c=${await encodeShareCode({ ...snap, name: p.name })}`)
+    void copyAsyncText(() => buildShareUrl(location.origin, { ...snap, name: p.name }))
     notify('프리셋을 복사했어요')
   }
   // 현재 코디 스냅샷 + 선택된 프리셋 이름(공유 시 이름까지 그대로 전달된다).
   const curSnapNamed = (): Snapshot => ({ ...snapshot(), name: presets.find((p) => p.id === selectedPreset)?.name })
   // 헤더 "프리셋 복사": 현재 코디를 ?c=<code> 로 담은 URL 을 복사. 접속하면 '코디 받기' 시트가 뜬다(위 sharedIncoming).
   const shareCurrentLink = () => {
-    void copyAsyncText(async () => `${location.origin}/?c=${await encodeShareCode(curSnapNamed())}`)
+    void copyAsyncText(() => buildShareUrl(location.origin, curSnapNamed()))
     notify('프리셋을 복사했어요')
   }
   // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말풍선을 받는다.
