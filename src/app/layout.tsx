@@ -140,6 +140,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* 이미지 CDN 미리 연결(초기 로딩 체감 개선) */}
         <link rel="preconnect" href="https://cdn.pinkbean-customize.com" crossOrigin="" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
+        {/* NEXON Open API Analytics — 넥슨 콘솔 발급 스크립트 그대로. 연동 확인이 SSR HTML 의 태그를 보므로 next/script 대신 원형 태그. */}
+        <script type="text/javascript" src="https://openapi.nexon.com/js/analytics.js?app_id=316464" async />
       </head>
       <body><NoNativeZoom />{children}<Analytics /><SpeedInsights /></body>
     </html>
