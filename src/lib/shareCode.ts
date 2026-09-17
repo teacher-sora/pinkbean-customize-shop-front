@@ -6,6 +6,7 @@
 import type { Snapshot, PvSnap } from '@/components/shop/ShopContext'
 import { PV_SNAP_DEFAULT } from '@/components/shop/ShopContext'
 import { DATA_BASE } from '@/lib/core/data'
+import { renderShareImage } from '@/lib/shareImage'
 
 const PREFIX_PLAIN = 'PB1'   // base64url(JSON)          — 레거시/폴백
 const PREFIX_DEFLATE = 'PB2' // base64url(deflate-raw(JSON)) — 기본(짧음)
@@ -105,9 +106,9 @@ export async function decodeShareCode(code: string): Promise<Snapshot | null> {
 // 불러오기 입력칸에서 닉네임과 헷갈리지 않는다. 저장이 실패하면(오프라인·서버 미설정) 긴 코드 링크로 폴백한다.
 export const SHORT_CODE_RE = /^PB-[0-9A-Za-z]{8,12}$/
 
-async function shortenShareCode(long: string): Promise<string | null> {
+async function shortenShareCode(long: string, image: string | null): Promise<string | null> {
   try {
-    const r = await fetch('/api/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: long }) })
+    const r = await fetch('/api/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: long, ...(image ? { image } : {}) }) })
     if (!r.ok) return null
     const id = (await r.json())?.id
     return typeof id === 'string' && SHORT_CODE_RE.test(id) ? id : null
@@ -142,8 +143,9 @@ export async function resolveShareCode(code: string): Promise<Snapshot | null> {
 //  · c 를 맨 끝에 둔다. 폴백인 긴 코드는 base64url 이라 '-'/'_' 로 끝날 수 있는데, 카톡 링크 파서가 끝의 '_' 를 링크에서
 //    떼어내 미리보기 카드가 안 뜬다 → 그럴 땐 끝에 '&e=1' 을 붙여 링크가 영숫자로 끝나게 한다.
 export async function buildShareUrl(origin: string, snap: Snapshot): Promise<string> {
-  const long = await encodeShareCode(snap)
-  const code = (await shortenShareCode(long)) || long
+  // 코드 인코딩과 미리보기 카드 이미지(프리셋 캐릭터) 렌더를 병렬로. 이미지는 코드와 함께 올려 og:image 가 된다.
+  const [long, image] = await Promise.all([encodeShareCode(snap), renderShareImage(snap)])
+  const code = (await shortenShareCode(long, image)) || long
   const name = snap.name?.trim()
   const n = name ? `n=${name.replace(/[&#%+?]/g, (ch) => encodeURIComponent(ch)).replace(/\s+/g, '+')}&` : ''
   return `${origin}/?${n}c=${code}${/[-_]$/.test(code) ? '&e=1' : ''}`
