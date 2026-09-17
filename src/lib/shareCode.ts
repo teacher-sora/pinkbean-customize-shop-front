@@ -108,7 +108,7 @@ export const SHORT_CODE_RE = /^PB-[0-9A-Za-z]{8,12}$/
 
 // 짧은 코드 = sha256(긴 코드) → base62 앞 8자. 서버(/api/share)와 **같은 식**이라 브라우저에서 미리 계산해 즉시 복사할 수 있다.
 const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-const ID_SALT = 'c3|' // app/api/share/route.ts 와 동일해야 함
+const ID_SALT = 'c4|' // app/api/share/route.ts 와 동일해야 함
 async function shortIdOf(long: string): Promise<string | null> {
   try {
     if (!globalThis.crypto?.subtle) return null
