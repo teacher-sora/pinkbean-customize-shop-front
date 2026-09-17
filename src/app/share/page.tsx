@@ -33,14 +33,15 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   let image: string | null = null
   if (SHORT_RE.test(c)) {
     // R2 를 직접 읽는다(CDN 은 방금 생긴 객체의 404 를 캐시할 수 있고, Next fetch 캐시도 실패를 굳힌다).
-    // 복사 직후 바로 붙여넣어 보내면 백그라운드 업로드보다 스크래핑이 먼저 올 수 있다 → 코드가 나타날 때까지 최대 ~3초 대기.
+    // 복사 직후 바로 붙여넣어 보내면 백그라운드 업로드보다 스크래핑이 먼저 올 수 있다 → 코드가 나타날 때까지 최대 ~2.5초 대기.
     // 서버는 이미지를 코드보다 먼저 저장하므로, 코드가 보이면 카드 이미지도 준비돼 있다.
     let code = ''
-    for (let i = 0; i < 7 && r2Configured(); i++) {
+    const deadline = Date.now() + 2500 // 없는 코드로 들어온 사람이 오래 기다리지 않게 전체 대기 상한
+    while (r2Configured()) {
       const r = await r2('GET', `share/${c}`).catch(() => null)
       if (r?.ok) { code = (await r.text()).trim(); break }
-      if (r && r.status !== 404) break
-      await new Promise((res) => setTimeout(res, 450))
+      if ((r && r.status !== 404) || Date.now() + 400 > deadline) break
+      await new Promise((res) => setTimeout(res, 400))
     }
     name = code ? nameOf(code) : null
     if (code && (await r2('HEAD', `share/${c}.jpg`).then((r) => r.ok).catch(() => false))) image = `${CDN}/share/${c}.jpg`
