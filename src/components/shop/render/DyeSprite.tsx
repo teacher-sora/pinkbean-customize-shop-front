@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta } from '@/lib/core/data'
-import { applyHsb, renderDyedSprite, type HsbParams, type PaletteParams } from '@/lib/core/dye'
+import { applyHsb, renderDyedSprite, skinLineHsb, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { THUMB_VIEW } from '@/lib/shopData'
@@ -95,7 +95,7 @@ export function SkinModel({ bodyId, headId, hsb, dyeable, zmap, smap, box, fract
     const canvas = ref.current; if (!canvas || !placed) return
     const ov = new Map<string, HTMLCanvasElement>()
     const active = dyeable && hsbActive(hsb)
-    if (active) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), hsb, p.png)) } catch (_) {} }
+    if (active) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), skinLineHsb(hsb!), p.png)) } catch (_) {} }
     const dpr = window.devicePixelRatio || 1
     const pl = computeModelPlacement({ divW: box, divH: box, dpr, margin: 1, fraction, snap: true })
     canvas.style.width = pl.canvasCssW + 'px'

@@ -80,11 +80,11 @@ export function Stepper({ label, valueStr, placeholder, onNum, onBlur, onStep, d
   const btn = clsx('pb-step', styles.stepBtn, size === 'lg' && styles.stepBtnLg)
   return (
     <div className={styles.stepWrap}>
-      <button type="button" aria-label="1 감소" className={clsx(btn, decOff && styles.stepOff)}
+      <button type="button" tabIndex={-1} aria-label="1 감소" className={clsx(btn, decOff && styles.stepOff)}
         onPointerDown={start(-1)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onClick={key(-1)}>−</button>
       <input inputMode="numeric" aria-label={label} value={valueStr} placeholder={placeholder}
         onChange={(e) => onNum(e.target.value)} onBlur={onBlur} className={clsx(styles.stepNum, size === 'lg' && styles.stepNumLg)} />
-      <button type="button" aria-label="1 증가" className={clsx(btn, incOff && styles.stepOff)}
+      <button type="button" tabIndex={-1} aria-label="1 증가" className={clsx(btn, incOff && styles.stepOff)}
         onPointerDown={start(1)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onClick={key(1)}>+</button>
     </div>
   )
@@ -140,7 +140,7 @@ export function DyeRow({ label, track, min, max, value, onRange, onDragStart, st
         onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) pick(e.currentTarget, e.clientX) }}>
         <div className={`pb-track pb-track-${track}`} />
         {/* 슬라이더 값은 즉시 수치 반영 요소라 value 를 그대로 바인딩 */}
-        <input type="range" className="pb-range" min={min} max={max} value={value} aria-label={label}
+        <input type="range" tabIndex={-1} className="pb-range" min={min} max={max} value={value} aria-label={label}
           onChange={(e) => onRange(parseInt(e.target.value, 10) || 0)} />
       </div>
       <div ref={stepRef} className="pb-dyestep">{stepper}</div>

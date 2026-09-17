@@ -143,6 +143,12 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
   return c
 }
 
+// 컬러라인 피부 전용 HSB. 스프라이트 실측(00002042/43 body·head): 라인 = 순청 (0,0,255) 하나, 피부 음영 = 연분홍
+// (255,238,255)·(255,221,238) 등 — HSL 채도 1.0 인 '유채색'이다(무채색 아님). 그래서 '전체 색상 계열'로 적용하면
+// 피부 음영까지 색조·채도가 돌아 회색(238,238,238)으로 뭉개진다(2026-09-17 사용자 제보: 인게임은 라인만 바뀜).
+// 라인이 파랑 계열(210~270)에만 있으므로 '전체'는 파란 색상 계열로 적용해 라인만 바꾼다. 다른 계열을 고르면 그대로.
+export const skinLineHsb = (h: HsbParams): HsbParams => (h.t ? h : { ...h, t: 5 })
+
 // Blend base sprite toward mix sprite by ratio% (per-pixel lerp on RGB; alpha from base).
 export function blendPalette(base: HTMLImageElement, mix: HTMLImageElement, ratio: number, key: string): HTMLCanvasElement {
   const ck = `pal|${key}|${ratio}`
