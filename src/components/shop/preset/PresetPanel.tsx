@@ -69,8 +69,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
                   <IconPencil className={styles.pencil} />
                 </span>
               </div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); s.sharePreset(p) }} title="프리셋 복사" aria-label="프리셋 복사" className={clsx('pb-presetacts', styles.share)}><IconShare /></button>
-              <button type="button" onClick={(e) => { e.stopPropagation(); remove(p) }} title="프리셋 삭제" aria-label="삭제" className={clsx('pb-presetacts', styles.del)}><IconTrash /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); s.sharePreset(p) }} title="프리셋 복사" aria-label="프리셋 복사" className={clsx('pb-presetacts', styles.share, mobile && styles.shareM)}><IconShare /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); remove(p) }} title="프리셋 삭제" aria-label="삭제" className={clsx('pb-presetacts', styles.del, mobile && styles.delM)}><IconTrash /></button>
             </div>
           </div>
         )

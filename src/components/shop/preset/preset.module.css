@@ -30,7 +30,9 @@
 .gridHM { display: grid; height: 100%; grid-auto-flow: column; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-columns: calc((100cqw - 10px) / 2); gap: 10px; }
 @container (min-width: 330px) { .gridHM { grid-auto-columns: calc((100cqw - 20px) / 3); } }
 .gridHM > * { scroll-snap-align: start; }
-.thumbM { aspect-ratio: auto; min-height: 0; } /* 줄 높이를 채운다(고정 3:4 대신) */
+/* 줄 높이를 채운다(고정 3:4 대신). ⚠️ .thumb 보다 앞에 있어 단일 클래스로는 3:4 에 덮였다(카드가 칸보다 길어져 줄이 어긋남) → 복합 선택자로 우선순위를 올린다. */
+.thumb.thumbM { aspect-ratio: auto; min-height: 0; }
+.gridHM > :global(.pb-presetwrap), .gridHM :global(.pb-preset) { min-height: 0; }
 .grid { display: grid; gap: 10px; }
 .gridTight { gap: 8px; }
 .cols5 { grid-template-columns: repeat(5,minmax(0,1fr)); }
@@ -45,6 +47,8 @@
 .nameWrap { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
 .nameInput { flex: 1 1 0; min-width: 0; width: 100%; height: 24px; padding: 0 20px 0 7px; border: 1px solid transparent; border-radius: 6px; background: #f1e7ec; font-family: inherit; font-size: 12px; font-weight: 600; color: #b0748f; letter-spacing: -0.01em; outline: none; cursor: text; }
 .pencil { position: absolute; right: 7px; pointer-events: none; }
-/* 띠지 규격(코디 카드와 동일): 공유 = 즐겨찾기 크기 25×32, 휴지통 = 북마크 크기 23×29, 사이 간격 7px */
+/* 띠지 규격(코디 카드와 동일): 공유 = 즐겨찾기 크기, 휴지통 = 북마크 크기, 사이 간격 5px (PC 25×32/23×29, 모바일 22×29/20×26) */
 .share { position: absolute; top: -3px; right: 6px; z-index: 4; width: 25px; height: 32px; padding: 6px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: #a9b7cf; color: #fff; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
-.del { position: absolute; top: -3px; right: 38px; z-index: 4; width: 23px; height: 29px; padding: 5px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: #e08a9b; color: #fff; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
+.del { position: absolute; top: -3px; right: 36px; z-index: 4; width: 23px; height: 29px; padding: 5px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: #e08a9b; color: #fff; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
+.share.shareM { width: 22px; height: 29px; padding-top: 5px; }
+.del.delM { width: 20px; height: 26px; padding-top: 4px; right: 33px; } /* 6 + 22 + 5 */
