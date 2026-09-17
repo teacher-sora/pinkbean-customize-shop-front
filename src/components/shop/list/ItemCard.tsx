@@ -48,7 +48,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
           <ItemThumb item={item} mode={mode} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
             zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
             ctxExpr={ctx.expr} faceMeta={ctx.faceMeta} dye={mode === 'mymodel' ? { palette: s.renderPalette, hsb: s.renderHsb } : undefined}
-            ear={mode === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={mode === 'mymodel'} />
+            ear={mode === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={mode === 'mymodel'} stance={ctx.stance} dotOffsets={mode === 'mymodel' ? s.dotPos[item.id] : undefined} />
           {badgeKind && (
             // eslint-disable-next-line @next/next/no-img-element -- WZ 등급 배지(픽셀 아트)는 리샘플링 없이 원본 도트로 그린다
             <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
