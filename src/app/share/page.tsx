@@ -34,18 +34,20 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   let image: string | null = null
   if (SHORT_RE.test(c)) {
     // R2 를 직접 읽는다(CDN 은 방금 생긴 객체의 404 를 캐시할 수 있고, Next fetch 캐시도 실패를 굳힌다).
-    // 복사 직후 바로 붙여넣어 보내면 백그라운드 업로드보다 스크래핑이 먼저 올 수 있다 → 코드가 나타날 때까지 최대 ~2.5초 대기.
-    // 서버는 이미지를 코드보다 먼저 저장하므로, 코드가 보이면 카드 이미지도 준비돼 있다.
-    let code = ''
-    const deadline = Date.now() + 2500 // 없는 코드로 들어온 사람이 오래 기다리지 않게 전체 대기 상한
+    // 복사 직후 바로 보내면 백그라운드 업로드(카드 렌더 + 저장, 수 초)보다 스크래핑이 먼저 온다 — 실측: 카톡이 이미지 저장 0.5초 전에
+    // 긁어가 기본 카드로 굳음(카톡은 URL 별로 카드를 캐시). 서버는 이미지→코드 순으로 저장하므로 **이미지** 등장을 최대 ~5초 기다린다.
+    const deadline = Date.now() + 5000
+    let hasImage = false
     while (r2Configured()) {
-      const r = await r2('GET', `share/${c}`).catch(() => null)
-      if (r?.ok) { code = (await r.text()).trim(); break }
-      if ((r && r.status !== 404) || Date.now() + 400 > deadline) break
-      await new Promise((res) => setTimeout(res, 400))
+      const r = await r2('HEAD', `share/${c}.jpg`).catch(() => null)
+      if (r?.ok) { hasImage = true; break }
+      if ((r && r.status !== 404) || Date.now() + 350 > deadline) break
+      await new Promise((res) => setTimeout(res, 350))
     }
-    name = code ? nameOf(code) : null
-    if (code && (await r2('HEAD', `share/${c}.jpg`).then((r) => r.ok).catch(() => false))) image = `${CDN}/share/${c}.jpg`
+    if (hasImage) image = `${CDN}/share/${c}.jpg`
+    // 이름은 코드 안의 것을 우선(이미지가 먼저 저장되므로 코드는 곧 따라온다 — 없으면 링크의 n 으로)
+    const got = r2Configured() ? await r2('GET', `share/${c}`).catch(() => null) : null
+    name = got?.ok ? nameOf((await got.text()).trim()) : null
   } else if (c) name = nameOf(c)
   const title = (name || one(searchParams.n) || DEFAULT_TITLE).slice(0, 60)
   const images = [image ? { url: image, width: 1200, height: 630, alt: `${title} 코디 미리보기`, type: 'image/jpeg' } : DEFAULT_IMAGE]
