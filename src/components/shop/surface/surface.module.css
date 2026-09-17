@@ -57,16 +57,17 @@
 
 /* ── 점 위치 ── */
 .dotBody { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 16px; display: flex; gap: 16px; }
-.dotBodyM { padding: 12px; flex-direction: column; gap: 12px; }
+/* 모바일: 본문 세로 스크롤(염색표와 동일). 줄어들지 않게 해야 캔버스·확대 게이지·위치 초기화가 겹치지 않는다(작은 화면에서 압축돼 겹침). */
+.dotBodyM { padding: 12px; flex-direction: column; gap: 12px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .dotLeft { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.dotLeftM { flex: 1 1 auto; min-height: 0; gap: 8px; }
+.dotLeftM { flex: 0 0 auto; gap: 8px; }
 .tools { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; }
 .toolsSide { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
 .tool { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 500; color: #8a8075; background: #f4ecf3; }
 .toolOn { border-color: #ec86ac; font-weight: 600; color: #d76d9a; background: #fce9f1; }
 .canvasRow { flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; gap: 10px; }
 .canvasArea { position: relative; flex: 1 1 auto; min-height: 260px; border: 1px solid #eee6dc; border-radius: 12px; background: #faf7f3; overflow: hidden; cursor: grab; touch-action: none; }
-.canvasAreaM { min-height: 150px; }
+.canvasAreaM { flex: 1 1 auto; height: 260px; min-height: 260px; }
 .canvasAreaDot { cursor: crosshair; }
 .canvas { display: block; position: absolute; left: 0; top: 0; image-rendering: pixelated; touch-action: none; }
 .canvasSkel { width: 70%; height: 70%; margin: 15% auto; border-radius: 12px; }
