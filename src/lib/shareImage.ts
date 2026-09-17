@@ -18,16 +18,6 @@ const loadBg = () => new Promise<HTMLImageElement>((res, rej) => {
   img.src = bg.src
 })
 
-// 불투명 픽셀의 경계 상자(끝 좌표는 미포함). 전부 투명이면 null.
-function opaqueBox(c: HTMLCanvasElement): { x0: number; y0: number; x1: number; y1: number } | null {
-  const { data, width, height } = c.getContext('2d')!.getImageData(0, 0, c.width, c.height)
-  let x0 = width, y0 = height, x1 = -1, y1 = -1
-  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-    if (data[(y * width + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y }
-  }
-  return x1 < 0 ? null : { x0, y0, x1: x1 + 1, y1: y1 + 1 }
-}
-
 // 성공 시 base64(데이터 URL 접두어 제외) JPEG, 실패 시 null(링크는 기본 카드 이미지로 동작).
 export async function renderShareImage(snap: Snapshot): Promise<string | null> {
   try {
@@ -49,10 +39,9 @@ export async function renderShareImage(snap: Snapshot): Promise<string | null> {
     const ch = document.createElement('canvas')
     await renderCharacter(ch, comp.placed, { scale: p.scale, box: p.box, anchor: p.anchor, override: comp.overrides, effects: comp.effects })
     ctx.imageSmoothingEnabled = false
-    // 몸통 기준 배치는 무기·가방·이펙트가 한쪽으로 뻗으면 그림이 치우쳐 보인다 → 실제로 그려진 픽셀 bbox 의 중심을 카드 중앙에.
-    const box = opaqueBox(ch)
-    const cx = box ? (box.x0 + box.x1) / 2 : ch.width / 2, cy = box ? (box.y0 + box.y1) / 2 : ch.height / 2
-    ctx.drawImage(ch, Math.round(SHARE_IMG_W / 2 - cx), Math.round(SHARE_IMG_H / 2 - cy))
+    // 미리보기와 같은 규칙: computeModelPlacement 가 몸통(navel)을 MODEL_REF 기준으로 박스 정중앙에 고정한다.
+    // (그려진 픽셀 전체 bbox 로 맞추면 총·가방이 긴 코디는 몸통이 한쪽으로 밀려 보였다 — 사용자 피드백으로 되돌림)
+    ctx.drawImage(ch, Math.round((SHARE_IMG_W - ch.width) / 2), Math.round((SHARE_IMG_H - ch.height) / 2))
     return out.toDataURL('image/jpeg', 0.92).split(',')[1] || null
   } catch { return null }
 }
