@@ -39,11 +39,11 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
       <div className={clsx('pb-card', styles.card, mobile && styles.cardM, sel && 'pb-card-sel')}>
         {s.newIds.has(item.id) && <span className={styles.newBadge}>NEW</span>}
         <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={fav ? '즐겨찾기 해제' : '즐겨찾기에 모아두기'} aria-label="즐겨찾기" aria-pressed={fav}
-          className={clsx('pb-ribbon', styles.fav, fav && styles.favOn)}>
+          className={clsx('pb-ribbon', styles.fav, mobile && styles.favM, fav && styles.favOn)}>
           <IconStar size={mobile ? 10 : 9} className={styles.favGlyph} />
         </button>
         <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
-          className={clsx('pb-ribbon', styles.pinMark, pinned && styles.pinMarkOn)} />
+          className={clsx('pb-ribbon', styles.pinMark, mobile && styles.pinMarkM, pinned && styles.pinMarkOn)} />
         <div className={styles.thumb}>
           <ItemThumb item={item} mode={mode} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
             zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
