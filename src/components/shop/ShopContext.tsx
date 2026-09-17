@@ -520,22 +520,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return byGender(out, genderFilter)
   }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter])
   const pagedList = primary === 'search' ? searchResultsView : activeList
-  // 페이지 인덱스는 탭 × 부위 조합별로 기억한다.
+  // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
+  //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다
+  //   (setIdx 를 거치지 않으니 스냅 전환·스크롤 애니메이션 없이 리스트가 그대로 유지되는 인상).
   const pageKey = primary === 'search' ? 'search:' + activeCat : activeCat
 
   // ── 페이지네이션 ──
   const pageCount = Math.max(1, Math.ceil(pagedList.length / itemsPerPage))
   const maxIndex = pageCount - 1
-  const curIdx = Math.max(0, Math.min(maxIndex, pageByCat[pageKey] || 0))
+  const curIdx = Math.max(0, Math.min(maxIndex, Math.floor((pageByCat[pageKey] || 0) / itemsPerPage)))
 
-  const live = useRef({ pageKey, maxIndex, curIdx })
-  live.current = { pageKey, maxIndex, curIdx }
+  const live = useRef({ pageKey, maxIndex, curIdx, itemsPerPage })
+  live.current = { pageKey, maxIndex, curIdx, itemsPerPage }
 
   const setIdx = useCallback((i: number, snap = true) => {
     const cat = live.current.pageKey
     const v = Math.max(0, Math.min(live.current.maxIndex, i))
     setSnapFrom(live.current.curIdx)
-    setPageByCat((s) => ({ ...s, [cat]: v }))
+    setPageByCat((s) => ({ ...s, [cat]: v * live.current.itemsPerPage }))
     setSnapping(snap)
     if (snapT.current) clearTimeout(snapT.current)
     if (snap) snapT.current = setTimeout(() => setSnapping(false), 340)

@@ -114,12 +114,15 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   }, [mobile])
   const scrollKey = `${s.primary}|${s.activeCat}|${isAi ? s.searchQuery : ''}`
   const lastScrollKey = useRef(scrollKey)
+  const scrolledOnce = useRef(false)
   useLayoutEffect(() => {
     const vp = vpRef.current
     if (!mobile || !vp) return
     const w = vp.clientWidth; if (!w) return
-    const jump = lastScrollKey.current !== scrollKey
+    // 첫 마운트(예: 태블릿 → 모바일 폭 전환)도 즉시 이동 — 보던 위치가 스크롤 애니메이션 없이 유지돼 보이게.
+    const jump = lastScrollKey.current !== scrollKey || !scrolledOnce.current
     lastScrollKey.current = scrollKey
+    scrolledOnce.current = true
     if (Math.floor(Math.round(vp.scrollLeft / (w / 3)) / 3) === s.curIdx && !jump) return
     if (jump || Math.abs(vp.scrollLeft - s.curIdx * w) > w * 3) vp.scrollTo({ left: s.curIdx * w, behavior: 'instant' as ScrollBehavior })
     else vp.scrollTo({ left: s.curIdx * w, behavior: 'smooth' })
