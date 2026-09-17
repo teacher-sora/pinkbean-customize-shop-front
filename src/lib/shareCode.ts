@@ -5,6 +5,7 @@
 //  - 링크는 해시(#c=)가 아니라 쿼리(?c=)에 담는다 — 모바일 카톡 등 일부 링크파서가 '#' 이후를 링크로 인식하지 못해서다.
 import type { Snapshot, PvSnap } from '@/components/shop/ShopContext'
 import { PV_SNAP_DEFAULT } from '@/components/shop/ShopContext'
+import { DATA_BASE } from '@/lib/core/data'
 
 const PREFIX_PLAIN = 'PB1'   // base64url(JSON)          — 레거시/폴백
 const PREFIX_DEFLATE = 'PB2' // base64url(deflate-raw(JSON)) — 기본(짧음)
@@ -97,4 +98,53 @@ export async function decodeShareCode(code: string): Promise<Snapshot | null> {
     }
     return null
   } catch { return null }
+}
+
+// ── 짧은 공유 코드(PB-xxxxxxxx) ─────────────────────────────────────────────
+// 긴 코드는 서버(/api/share → R2 `share/<id>`)에 영구 저장하고 링크엔 짧은 id 만 싣는다. '-' 는 닉네임에 못 쓰는 문자라
+// 불러오기 입력칸에서 닉네임과 헷갈리지 않는다. 저장이 실패하면(오프라인·서버 미설정) 긴 코드 링크로 폴백한다.
+export const SHORT_CODE_RE = /^PB-[0-9A-Za-z]{8,12}$/
+
+async function shortenShareCode(long: string): Promise<string | null> {
+  try {
+    const r = await fetch('/api/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: long }) })
+    if (!r.ok) return null
+    const id = (await r.json())?.id
+    return typeof id === 'string' && SHORT_CODE_RE.test(id) ? id : null
+  } catch { return null }
+}
+
+// 짧은 코드 → 긴 코드. CDN(캐시·빠름)을 먼저, 안 되면 API(R2 직접) 폴백.
+async function expandShortCode(id: string): Promise<string | null> {
+  const tries = [`${DATA_BASE}/share/${id}`, `/api/share?id=${encodeURIComponent(id)}`]
+  for (const url of tries) {
+    try {
+      const r = await fetch(url)
+      if (r.ok) { const t = (await r.text()).trim(); if (t.startsWith('PB')) return t }
+    } catch { /* 다음 경로 */ }
+  }
+  return null
+}
+
+// 짧은/긴 코드 모두 받아 스냅샷으로.
+export async function resolveShareCode(code: string): Promise<Snapshot | null> {
+  const c = code.trim()
+  if (SHORT_CODE_RE.test(c)) {
+    const long = await expandShortCode(c)
+    return long ? decodeShareCode(long) : null
+  }
+  return decodeShareCode(c)
+}
+
+// 공유 링크: https://…/?n=<프리셋 이름>&c=<짧은 코드>
+//  · 이름(n)은 받는 사람이 어떤 코디인지 링크만 보고 알게 하려는 표시용이다(실제 이름은 코드 안에 있음).
+//    공백은 '+', 쿼리를 깨는 문자(& # % + ?)만 인코딩해 한글은 읽히는 그대로 둔다.
+//  · c 를 맨 끝에 둔다. 폴백인 긴 코드는 base64url 이라 '-'/'_' 로 끝날 수 있는데, 카톡 링크 파서가 끝의 '_' 를 링크에서
+//    떼어내 미리보기 카드가 안 뜬다 → 그럴 땐 끝에 '&e=1' 을 붙여 링크가 영숫자로 끝나게 한다.
+export async function buildShareUrl(origin: string, snap: Snapshot): Promise<string> {
+  const long = await encodeShareCode(snap)
+  const code = (await shortenShareCode(long)) || long
+  const name = snap.name?.trim()
+  const n = name ? `n=${name.replace(/[&#%+?]/g, (ch) => encodeURIComponent(ch)).replace(/\s+/g, '+')}&` : ''
+  return `${origin}/?${n}c=${code}${/[-_]$/.test(code) ? '&e=1' : ''}`
 }
