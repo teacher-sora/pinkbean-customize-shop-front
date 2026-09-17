@@ -37,7 +37,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   return (
     <div onClick={equip} onPointerDown={warm} className="pb-cardwrap" title={name}>
       <div className={clsx('pb-card', styles.card, mobile && styles.cardM, sel && 'pb-card-sel')}>
-        {s.newIds.has(item.id) && <span className={styles.newBadge}>NEW</span>}
+        {s.newIds.has(item.id) && <span className={clsx(styles.newBadge, mobile && styles.newBadgeM)} aria-label="신규">{mobile ? 'N' : 'NEW'}</span>}
         <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={fav ? '즐겨찾기 해제' : '즐겨찾기에 모아두기'} aria-label="즐겨찾기" aria-pressed={fav}
           className={clsx('pb-ribbon', styles.fav, mobile && styles.favM, fav && styles.favOn)}>
           <IconStar size={mobile ? 10 : 9} className={styles.favGlyph} />
