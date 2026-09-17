@@ -66,9 +66,10 @@ export const DOT_MOVER_IDS = new Set(['01022395', '01022396'])
 
 // 썸네일에도 현재 시선(gaze)을 반영: 뒷쪽=rope(뒷모습), 오른쪽=좌우반전(flip). 액션/표정은 카드 고정(THUMB_VIEW).
 // expr/ear/weapon 을 주면 연출설정의 표정·귀·무기모션도 카드에 반영한다(안 주면 THUMB_VIEW 기본값).
-export function thumbView(gaze: string, expr?: string, ear?: string, weapon?: string): { view: ViewOpts; flip: boolean } {
+// stance=true('내 캐릭터' 카드) 면 무기모션에 맞는 서기 자세(두손=stand2)도 미리보기와 같게 잡는다.
+export function thumbView(gaze: string, expr?: string, ear?: string, weapon?: string, stance?: boolean): { view: ViewOpts; flip: boolean } {
   return {
-    view: { ...THUMB_VIEW, action: gaze === 'back' ? 'rope' : 'stand1', expression: expr || THUMB_VIEW.expression, ear: ear || THUMB_VIEW.ear, weaponMotion: weapon || THUMB_VIEW.weaponMotion },
+    view: { ...THUMB_VIEW, action: gaze === 'back' ? 'rope' : stance ? resolveAction('basic', weapon || 'basic') : 'stand1', expression: expr || THUMB_VIEW.expression, ear: ear || THUMB_VIEW.ear, weaponMotion: weapon || THUMB_VIEW.weaponMotion },
     flip: gaze === 'right',
   }
 }

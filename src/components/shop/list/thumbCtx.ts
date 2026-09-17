@@ -19,7 +19,8 @@ const toneIds = (idx: Tones, tone: number) => {
   return { bodyId: e.body, headId: e.head }
 }
 
-export type ThumbCtx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement>; effs?: WornEff[]; expr?: string; faceMeta?: ItemMeta | null }
+// stance = 배경이 무기모션 자세(두손=stand2)로 구워졌는지 — 카드의 후보 아이템도 같은 자세로 그려야 어긋나지 않는다.
+export type ThumbCtx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement>; effs?: WornEff[]; expr?: string; faceMeta?: ItemMeta | null; stance?: boolean }
 const EMPTY: ThumbCtx = { items: [], key: '' }
 
 function useAnimaRaces() {
@@ -54,12 +55,12 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
   const animaRaces = useAnimaRaces()
   const activeSlotForExpr = mixedCat ? null : CAT_TO_SLOT[s.activeCat]
   // 배경(내 착용)에 구워질 표정. 활성 슬롯의 아이템은 배경에서 빠지므로(후보로 대체됨) 여기서도 제외한다.
-  // ⚠️ 폴백은 THUMB_VIEW 의 'default' — 카드는 연출 설정 표정을 따라가지 않는다(표정 얼굴장식이 강제하는 표정만 반영).
+  // '내 캐릭터'는 연출 설정 표정(pv.expr)을 따라간다(표정 얼굴장식이 있으면 그게 우선). '기본 캐릭터'는 THUMB_VIEW 'default'.
   const ctxExpr = fixedExpr(
     mode === 'mymodel'
       ? Object.entries(s.equipped).filter(([sl]) => sl !== activeSlotForExpr && !s.hidden[sl]).map(([, it]) => it)
       : [],
-    THUMB_VIEW.expression,
+    mode === 'mymodel' ? s.pv.expr : THUMB_VIEW.expression,
   )
   // 표정 얼굴장식은 '기본 캐릭터'에 올리면 안 보여서 '내 캐릭터'로 승격 → 그 카드용 내 착용 배경(myCtx)을 하나 더 만든다.
   const needMy = mode === 'model' && list.some(hasFixedExpr)
@@ -77,7 +78,8 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
     const eqEntries = mode === 'mymodel' ? myEq : []
     const eqSig = (mode === 'mymodel' || needMy ? myEq : []).map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 캐릭터: 우측 미리보기에 적용된 염색(발색/HSB)을 썸네일 배경(내 착용)에도 동일 반영 → 키에 염색 시그니처 포함.
-    const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.renderPalette, h: s.renderHsb }) : ''
+    // 점 위치(변경점/변경쩜)도 미리보기와 동일하게 배경에 반영 → 키에 포함.
+    const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.renderPalette, h: s.renderHsb, d: s.dotPos }) : ''
     const key = `${mode}:${needMy}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${ctxExpr}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
     // ⚠️ ctxKeyRef 는 async 가 "실제로 setCtx 로 커밋된 뒤"에만 찍는다(StrictMode 이중 setup 대비).
@@ -87,7 +89,8 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
       const map = new Map(res.filter(Boolean).map((r) => r!))
       // isMy = "내 캐릭터"(내 착용 배경) 컨텍스트. 형상변이·귀·이펙트는 코디 취급 → 내 캐릭터에만 적용.
       const build = async (worn: [string, ListItem][], expr: string, k: string, isMy: boolean): Promise<ThumbCtx> => {
-        const view = thumbView(gaze, expr, isMy ? s.pv.ear : undefined, s.pv.weapon).view
+        const stance = isMy && mode === 'mymodel' // 무기모션 자세는 '내 캐릭터' 보기에서만(승격 카드 제외)
+        const view = thumbView(gaze, expr, isMy ? s.pv.ear : undefined, s.pv.weapon, stance).view
         const items: AssembleInput[] = []
         if (!isSkinCat) {
           const t = isMy ? mine : elf
@@ -97,7 +100,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
         }
         for (const [sl, it] of worn) {
           const m = map.get(it.id); if (!m) continue
-          items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, view), invisibleFace: m.invisibleFace, name: m.name })
+          items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, view), invisibleFace: m.invisibleFace, name: m.name, dotOffsets: s.dotPos[m.id] })
         }
         if (!isSkinCat && isMy) items.push(...animaLayers(s.pv.form, animaRaces)) // 형상변이 — 내 캐릭터에만
         let override = new Map<string, HTMLCanvasElement>()
@@ -111,7 +114,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
         }
         // 표정 얼굴장식 카드는 배경의 얼굴을 **자기 표정으로 다시 그려야** 한다(ItemThumb) → 메타를 넘긴다.
         const faceEntry = worn.find(([sl]) => sl === 'face')
-        return { items, key: k, override, effs, expr, faceMeta: faceEntry ? (map.get(faceEntry[1].id) ?? null) : null }
+        return { items, key: k, override, effs, expr, faceMeta: faceEntry ? (map.get(faceEntry[1].id) ?? null) : null, stance }
       }
       const main = await build(eqEntries, ctxExpr, key, mode === 'mymodel')
       const my = needMy ? await build(myEq, THUMB_VIEW.expression, `${key}:my`, true) : EMPTY
@@ -121,7 +124,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, needMy, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.renderPalette, s.renderHsb, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, animaRaces, spritePromote])
+  }, [mode, needMy, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.renderPalette, s.renderHsb, s.dotPos, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, ctxExpr, animaRaces, spritePromote])
 
   const ctxFor = (it: ListItem) => ((effMode(it) === 'mymodel' && mode === 'model') ? myCtx : ctx)
   return { mode, noSprite, effMode, ctxFor }
@@ -150,8 +153,9 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
     const slotsInList = Array.from(new Set(list.map((it) => it.slot)))
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl]) as [string, ListItem][]
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
-    const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.renderPalette, h: s.renderHsb }) : ''
-    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
+    // 점 위치(변경점/변경쩜)도 미리보기와 동일하게 배경에 반영 → 키에 포함.
+    const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.renderPalette, h: s.renderHsb, d: s.dotPos }) : ''
+    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${mode === 'mymodel' ? s.pv.expr : ''}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return
     const eqIds = (mode === 'mymodel' || needMy) ? myEq.map(([, it]) => it.id) : []
     const ids = Array.from(new Set([elf.bodyId, elf.headId, mine.bodyId, mine.headId, ...eqIds]))
@@ -167,8 +171,10 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
       if (mode === 'mymodel' || needMy) {
         for (const slot of slotsInList) {
           // 표정 얼굴장식을 착용 중이면 이 슬롯 컨텍스트의 표정이 'default' 가 아니다(후보가 들어갈 슬롯의 착용품은 빠진다).
-          const cexpr = fixedExpr(myEq.filter(([sl]) => sl !== slot).map(([, it]) => it), THUMB_VIEW.expression)
-          const cview = thumbView(gaze, cexpr, s.pv.ear, s.pv.weapon).view
+          // '내 캐릭터' 보기는 연출 설정 표정·무기모션 자세를 따라간다(승격 카드는 기본 표정·자세).
+          const stance = mode === 'mymodel'
+          const cexpr = fixedExpr(myEq.filter(([sl]) => sl !== slot).map(([, it]) => it), stance ? s.pv.expr : THUMB_VIEW.expression)
+          const cview = thumbView(gaze, cexpr, s.pv.ear, s.pv.weapon, stance).view
           const items: AssembleInput[] = []
           if (myBody) items.push({ itemId: myBody.id, slot: 'body', vslot: null, layers: getFrameLayers(myBody, cview) })
           if (myHead) items.push({ itemId: myHead.id, slot: 'head', vslot: null, layers: getFrameLayers(myHead, cview) })
@@ -178,7 +184,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
           for (const [sl, it] of myEq) {
             if (sl === slot) continue // 후보 아이템이 들어갈 슬롯은 내 착용에서 제외
             const m = map.get(it.id); if (!m) continue
-            items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, cview), invisibleFace: m.invisibleFace, name: m.name })
+            items.push({ itemId: m.id, slot: sl, vslot: m.vslot ?? null, layers: getFrameLayers(m, cview), invisibleFace: m.invisibleFace, name: m.name, dotOffsets: s.dotPos[m.id] })
             dyeMetas.push(m)
             if (sl === 'face') faceMeta = m
           }
@@ -186,7 +192,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
           const effs = await collectWornEffects(
             myEq.filter(([sl]) => sl !== slot).map(([sl, it]) => ({ slot: sl, id: it.id })), s.pv, s.renderHsb, override,
           ).catch(() => [])
-          bySlot[slot] = { items, key: `${key}:${slot}:${cexpr}`, override, effs, expr: cexpr, faceMeta }
+          bySlot[slot] = { items, key: `${key}:${slot}:${cexpr}`, override, effs, expr: cexpr, faceMeta, stance }
         }
       }
       if (!alive) return
@@ -195,7 +201,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.renderPalette, s.renderHsb, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, animaRaces])
+  }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.renderPalette, s.renderHsb, s.dotPos, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, s.pv.expr, animaRaces])
 
   const ctxFor = (item: ListItem): ThumbCtx => {
     const em = effMode(item)
