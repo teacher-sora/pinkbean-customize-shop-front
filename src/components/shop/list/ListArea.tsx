@@ -74,7 +74,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     const vp = vpRef.current
     const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
     if (!vp || !col) return
-    const CARD_MIN_RATIO = 1.34, PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 스냅 정렬용)
+    const CARD_MIN_RATIO = 1.34, PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - PAD_X - GAP * 2) / 3
@@ -88,9 +88,9 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다(컬럼 높이는 탭과 무관한 숫자일 뿐).
     return () => { ro?.disconnect() }
   }, [mobile])
-  // ── 모바일: 네이티브 가로 스크롤(overflow-x + 페이지 스냅, 스크롤바 숨김) ↔ 페이지 인덱스 동기화 ──
-  //  스냅 단위 = 카드 한 열(1×2). 페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라
-  //  열 스냅 위치가 정확히 폭/3 배수(페이지 = 3열). 스크롤 → 인덱스: 열 = round(스크롤/(폭/3)), 페이지 = floor(열/3).
+  // ── 모바일: 네이티브 자유 가로 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화 ──
+  //  페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라 열 위치가 정확히 폭/3 배수(페이지 = 3열).
+  //  스크롤 → 인덱스: 열 = round(스크롤/(폭/3)), 페이지 = floor(열/3).
   //  인덱스 → 스크롤: 화살표·페이지 입력 등으로 인덱스가 바뀌어 스크롤 위치와 어긋날 때만 이동(같으면 아무것도 안 함 →
   //  사용자 스크롤·프로그램 스크롤이 서로 싸우지 않는다). 부위·탭이 바뀌면 애니메이션 없이 즉시.
   //  가상화 유지: 트랙 폭만 페이지 수만큼 잡고, 페이지 DOM 은 현재 ±1 만 만든다(아래 pages).
