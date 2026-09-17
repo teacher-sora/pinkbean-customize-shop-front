@@ -3,7 +3,7 @@
 // 복사 시점에 브라우저에서 그려 /api/share 로 코드와 함께 올린다(서버는 캔버스·염색 로직이 없어 여기서 그린다).
 import bg from '@/assets/pinkbean-bg.png'
 import { loadAnima, loadIndex } from '@/lib/core/data'
-import { computeModelPlacement } from '@/lib/core/modelPlacement'
+import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
 import { renderCharacter } from '@/lib/core/render'
 import { composeSnapshot } from '@/lib/core/snapRender'
 import type { Snapshot } from '@/components/shop/ShopContext'
@@ -41,7 +41,10 @@ export async function renderShareImage(snap: Snapshot): Promise<string | null> {
     ctx.imageSmoothingEnabled = false
     // 미리보기와 같은 규칙: computeModelPlacement 가 몸통(navel)을 MODEL_REF 기준으로 박스 정중앙에 고정한다.
     // (그려진 픽셀 전체 bbox 로 맞추면 총·가방이 긴 코디는 몸통이 한쪽으로 밀려 보였다 — 사용자 피드백으로 되돌림)
-    ctx.drawImage(ch, Math.round((SHARE_IMG_W - ch.width) / 2), Math.round((SHARE_IMG_H - ch.height) / 2))
+    // 세로는 몸통 중앙에서 '발 아래 빈 공간의 절반'만큼 내린다 — 모자·귀 등으로 위로 길어지는 코디가 대부분이라 정중앙이면 위로 붙어 보였다.
+    const feetGap = SHARE_IMG_H / 2 - (MODEL_REF.bodyRefH / 2) * p.scale
+    const dy = Math.round(feetGap / 2)
+    ctx.drawImage(ch, Math.round((SHARE_IMG_W - ch.width) / 2), Math.round((SHARE_IMG_H - ch.height) / 2) + dy)
     return out.toDataURL('image/jpeg', 0.92).split(',')[1] || null
   } catch { return null }
 }
