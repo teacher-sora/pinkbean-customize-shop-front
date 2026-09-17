@@ -11,7 +11,7 @@ const CDN = process.env.NEXT_PUBLIC_DATA_BASE?.startsWith('http') ? process.env.
 const SHORT_RE = /^PB-[0-9A-Za-z]{8,12}$/
 const DEFAULT_TITLE = '핑크빈 커마샵 코디'
 // 카카오톡 카드 설명은 한 줄(약 20자)만 보인다 → 짧게.
-const DESC = '링크를 눌러 코디를 복사해 가세요!'
+const DESC = '링크를 눌러 코디를 가져와요'
 // 이미지가 없을 때(긴 코드·업로드 실패)는 사이트 기본 카드 — 자식 openGraph 는 부모 것을 통째로 대체하므로 명시해야 한다.
 const DEFAULT_IMAGE = { url: 'https://qg2tk4czk48x6wl4.public.blob.vercel-storage.com/pinkbean_embed.png', width: 1536, height: 1024, alt: '핑크빈 커마샵 미리보기', type: 'image/png' }
 

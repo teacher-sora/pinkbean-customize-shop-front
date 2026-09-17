@@ -11,6 +11,9 @@ import { r2, r2Configured as configured, sha256 } from '@/lib/server/r2'
 export const runtime = 'nodejs'
 
 const MAX_CODE = 8000
+// id 해시 솔트 — 카톡 등은 URL 별로 카드를 영구 캐시하므로, 카드 모양을 바꿔 전부 새로 만들 땐 솔트를 올려 URL 자체를 바꾼다.
+// ⚠️ lib/shareCode.ts 의 ID_SALT 와 반드시 같아야 한다(브라우저가 같은 id 를 미리 계산해 즉시 복사).
+const ID_SALT = 'c2|'
 const SHORT_RE = /^PB-[0-9A-Za-z]{8,12}$/
 
 const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
@@ -49,7 +52,7 @@ export async function POST(req: NextRequest) {
   let code = '', image = ''
   try { const b = await req.json(); code = String(b?.code || '').trim(); image = typeof b?.image === 'string' ? b.image : '' } catch { /* noop */ }
   if (!validLong(code)) return NextResponse.json({ error: 'invalid code' }, { status: 400 })
-  const digest = base62(sha256(code))
+  const digest = base62(sha256(ID_SALT + code))
   for (let len = 8; len <= 12; len++) {
     const id = 'PB-' + digest.slice(0, len)
     const key = `share/${id}`
