@@ -3,6 +3,7 @@
 //   og:title = 프리셋 이름 · og:description = 받아가기 안내 · og:image = 복사 시 올린 캐릭터 카드(share/<id>.jpg)
 // 홈(/)은 정적 페이지로 남기기 위해 동적 메타를 여기로 분리했다.
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { inflateRawSync } from 'zlib'
 import ShopHome from '@/components/ShopHome'
 
@@ -47,7 +48,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const n = one(searchParams.n)
   if (n) q.set('n', n)
   q.set('c', c)
-  const url = `/?${q.toString()}`
+  // ⚠️ 상대경로('/?…')를 주면 metadataBase(www) 기준으로 풀리며 쿼리가 빠진다(실측) → 요청 호스트 기준 절대 URL 객체로 준다.
+  const host = headers().get('host') || 'pinkbean-customize.com'
+  const url = new URL(`https://${host}/?${q.toString()}`)
   return {
     title: { absolute: title },
     description: DESC,
