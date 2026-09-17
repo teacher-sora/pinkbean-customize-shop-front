@@ -14,7 +14,7 @@ import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
-import { applyHsb, buildOverrides } from '@/lib/core/dye'
+import { applyHsb, buildOverrides, skinLineHsb } from '@/lib/core/dye'
 import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
@@ -270,7 +270,7 @@ export default function PreviewModel() {
         const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
         for (const e of loaded) {
-          if (e) { try { ov.set(e[0], applyHsb(e[1], skinHsb, e[0])) } catch (_) {} }
+          if (e) { try { ov.set(e[0], applyHsb(e[1], skinLineHsb(skinHsb), e[0])) } catch (_) {} }
           if (++n % 6 === 0) await new Promise((r) => setTimeout(r, 0))
         }
       }

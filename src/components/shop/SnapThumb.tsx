@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadAnima, loadMeta, type AnimaRace, type ItemMeta } from '@/lib/core/data'
-import { applyHsb, buildOverrides } from '@/lib/core/dye'
+import { applyHsb, buildOverrides, skinLineHsb } from '@/lib/core/dye'
 import { computeModelPlacement } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { canvasToSquareBlob } from '@/lib/canvasExport'
@@ -70,7 +70,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
       const skinHsb = snapHsb['skin']
       if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && isColorLineSkin(te.name)) {
         for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, TV)) {
-          try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinHsb, l.png)) } catch (_) {}
+          try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinLineHsb(skinHsb), l.png)) } catch (_) {}
         }
       }
       // 이펙트(망토 등 ItemEff): 착용 아이템의 이펙트를 정지 프레임0으로 합성.

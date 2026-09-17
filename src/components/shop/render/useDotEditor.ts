@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta, type ListItem, type Vec } from '@/lib/core/data'
-import { applyHsb, buildOverrides, type HsbParams } from '@/lib/core/dye'
+import { applyHsb, buildOverrides, skinLineHsb, type HsbParams } from '@/lib/core/dye'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { clampDye } from '@/lib/color'
 import { isColorLineSkin, THUMB_VIEW } from '@/lib/shopData'
@@ -189,7 +189,7 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
             for (const l of getFrameLayers(meta, THUMB_VIEW)) { if (!seen.has(l.png)) { seen.add(l.png); pngs.push(l.png) } }
           }
           const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
-          for (const e of loaded) { if (e) { try { ov.set(e[0], applyHsb(e[1], skinHsb!, e[0])) } catch { /* noop */ } } }
+          for (const e of loaded) { if (e) { try { ov.set(e[0], applyHsb(e[1], skinLineHsb(skinHsb!), e[0])) } catch { /* noop */ } } }
         }
         if (alive) setBaseOv(ov)
       } catch { /* noop */ }
