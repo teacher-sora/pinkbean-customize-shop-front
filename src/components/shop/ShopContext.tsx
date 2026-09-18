@@ -982,7 +982,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }
         if (presets.length) out.push({ key: lk.key, label: lk.label, presets })
       }
-      if (!out.length) { notify('보유한 데이터에서 일치하는 코디를 찾지 못했어요'); return null }
+      if (!out.length) { notify('불러올 수 있는 아이템이 없어요'); return null }
       return out
     } catch { notify('불러오기에 실패했어요'); return null }
   }
@@ -1005,11 +1005,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const importFetch = async () => {
     if (importing) return
     const val = nickInput.trim()
-    if (!val) { notify('닉네임 또는 공유 링크를 입력해주세요'); return }
+    if (!val) { notify('닉네임이나 공유 링크를 입력해 주세요'); return }
     // 공유 링크/코드 입력 → 링크로 접속했을 때와 동일하게 '코디 받기' 시트를 띄워 어느 프리셋에 넣을지 고르게 한다.
     const shared = await extractSharedSnap(val)
     if (shared) { setSharedIncoming(shared); setNickInput(''); return }
-    if (!selectedPreset) { notify('덮어쓸 프리셋을 먼저 선택해주세요'); return }
+    if (!selectedPreset) { notify('덮어쓸 프리셋을 먼저 골라 주세요'); return }
     setImporting(true)
     try {
       const opts = await importByNick(val)
@@ -1031,7 +1031,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     void copyAsyncText(() => prep.then((x) => x.url))
     notify('프리셋을 복사했어요')
     prep.then((x) => uploadShare(x, snap))
-      .then((ok) => { if (!ok) notify('공유 링크를 저장하지 못했어요. 다시 복사해 주세요') })
+      .then((ok) => { if (!ok) notify('링크 저장에 실패했어요. 다시 복사해 주세요') })
       .catch(() => {})
   }
   // 프리셋 카드의 복사 띠지. 이름까지 담아, 접속하면 '코디 받기' 시트가 뜬다.
@@ -1050,7 +1050,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const rateHistory = useRef<string[]>([]) // 핑크빈이 최근에 한 말(반복 방지용으로 백엔드에 전달)
   const rateCodi = async () => {
     if (rating) return
-    notify('핑크빈이 코디를 살펴보는 중...')
+    notify('핑크빈이 코디를 살펴보고 있어요…')
     setRating(true)
     try {
       // id 도 함께 → 백엔드가 그 아이템의 캡션(생김새)을 붙여 "이름"이 아니라 "모습"을 보고 말하게 한다.
@@ -1139,7 +1139,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const canUndo = histRef.current.idx > 0
   const canRedo = histRef.current.idx < histRef.current.stack.length - 1
   const undo = () => { const h = histRef.current; if (h.idx <= 0) { notify('되돌릴 변경이 없어요'); return } h.idx -= 1; applyHistory(h.stack[h.idx]) }
-  const redo = () => { const h = histRef.current; if (h.idx >= h.stack.length - 1) { notify('다시실행할 변경이 없어요'); return } h.idx += 1; applyHistory(h.stack[h.idx]) }
+  const redo = () => { const h = histRef.current; if (h.idx >= h.stack.length - 1) { notify('다시 실행할 변경이 없어요'); return } h.idx += 1; applyHistory(h.stack[h.idx]) }
 
   // 영속: 프리셋 데이터/이름/선택을 localStorage 에 저장(디바운스). 서버 없이 새로고침/재실행에도 유지.
   useEffect(() => {
