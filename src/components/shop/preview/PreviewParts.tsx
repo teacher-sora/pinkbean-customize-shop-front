@@ -8,11 +8,12 @@ import type { ListItem } from '@/lib/core/data'
 import { SLOT_TO_CAT } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { DyeSprite } from '../render/DyeSprite'
-
-const BOOKMARK_FRAC = 0.9
 import { VsPanes } from '../surface/VsBody'
+import { useVsFlip, VS_WRAP_H } from '../surface/sheetMotion'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
 import styles from './preview.module.css'
+
+const BOOKMARK_FRAC = 0.9
 
 // 핑크빈 코디 평가 말풍선 — 평가가 오면 캐릭터 주변 링 모양 위치에 2~3개를 페이드업→3초 유지→페이드다운(기존 기능 유지).
 export function RateBubbles() {
@@ -98,20 +99,24 @@ export function BookmarkBox() {
 // 모바일: 북마크 시트 본문(delta §4·§5). 위에서부터 VS 확장 영역(0↔248px, 비교 캔버스 고정 236px) → 북마크 줄(VS·비우기)
 // → 4×2 = 항상 8칸 예약(빈칸 점선). VS 가 켜진 동안 칩은 장착이 아니라 비교 대상 선택, 꺼져 있으면 장착 후 닫기.
 // 북마크 줄의 윗선은 상시 유지하고 margin-top:-1px 로 접힌 상태에선 헤더 밑선과 정확히 겹친다.
+// VS 펼침/접힘은 높이 전환이 아니라 transform FLIP(surface/sheetMotion.useVsFlip) — 목록(bmList)이 비교 영역을 덮고 있다가 드러낸다.
+// 본문은 스크롤 가능(브라우저 내비게이션 바가 올라와 시트가 줄어도 잘리지 않게).
 export function BookmarkSheetBody() {
   const s = useShop()
   const n = s.bookmarks.length
   const pickId = s.bookmarks.some((b) => b.id === s.vsPick) ? s.vsPick : s.bookmarks[0]?.id
+  const flip = useVsFlip()
   return (
-    <div className={styles.sheetBody}>
-      {/* 확장 높이는 즉시 값(전환)이라 인라인 */}
-      <div className={styles.vsWrap} style={{ height: s.vsOn ? 248 : 0 }}>
+    <div ref={flip.bodyRef} className={clsx('pb-scroll', styles.sheetBody)}>
+      {/* 확장 높이는 상태 값이라 인라인(전환은 FLIP 이 transform 으로) */}
+      <div className={styles.vsWrap} style={{ height: s.vsOn ? VS_WRAP_H : 0 }}>
         <div className={styles.vsWrapIn}><VsPanes mobile /></div>
       </div>
+      <div ref={flip.listRef} className={styles.bmList}>
       <div className={styles.bmRow}>
         <span className={styles.bmTitle}>북마크<PinCount n={n} /></span>
         <span className={styles.pinActs}>
-          <button type="button" onClick={s.toggleVs} title="북마크한 아이템을 나란히 비교하기" aria-pressed={s.vsOn} className={clsx('pb-ghost', styles.vsBtn, s.vsOn && styles.vsBtnOn)}>VS</button>
+          <button type="button" onClick={flip.toggle} title="북마크한 아이템을 나란히 비교하기" aria-pressed={s.vsOn} className={clsx('pb-ghost', styles.vsBtn, s.vsOn && styles.vsBtnOn)}>VS</button>
           <button type="button" onClick={s.clearBookmarks} title="북마크 전체 비우기" className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
         </span>
       </div>
@@ -139,6 +144,7 @@ export function BookmarkSheetBody() {
           })}
         </div>
       </div>
+      </div>
     </div>
   )
 }
@@ -147,7 +153,7 @@ export function BookmarkSheetBody() {
 export function PvSheetBody() {
   const [group, setGroup] = useState<PvGroup>('char')
   return (
-    <div className={styles.sheetBody}>
+    <div className={clsx('pb-scroll', styles.sheetBody)}>
       <PvGroups group={group} onGroup={setGroup} mobile />
       <div className={styles.gridM}>
         <PvInlineFields mobile narrow={false} />
