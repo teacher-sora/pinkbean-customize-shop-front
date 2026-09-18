@@ -10,12 +10,18 @@
  *  - 마스크는 누름(pointerdown)·뗌(pointerup)이 둘 다 마스크일 때만 닫힘. click 으로 판정하면 마스크에서 눌러 패널에서
  *    떼도 click 대상이 공통 조상(마스크)이 되어 닫히므로 쓰지 않는다. 8px 넘게 움직였거나 드래그 직후 400ms 는 무시.
  *  - 등장은 마운트 후 한 프레임 뒤, 닫힘은 대칭 곡선 후 320ms 뒤 언마운트(ShopContext).
+ *  - PC 등장·퇴장은 translateY + opacity 만(scale 금지 — 내용까지 확대돼 미리보기 캔버스가 움찔했다, delta §8).
+ *  - 부위 염색 ↔ 염색/점 위치 전환은 패널을 유지한 채 **본문만** 가로 슬라이드(본문 래퍼만 kind·item 키로 리마운트).
+ *  - 모든 종류에 공용 푸터(닫기)가 있다. 부위 염색을 거쳐 들어온 염색/점 위치만 '이전'(delta §6·§8).
  */
 
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { useShop, type Surface as SurfaceState } from '../ShopContext'
 import { BookmarkSheetBody, PvSheetBody } from '../preview/PreviewParts'
+import { BM_SHEET_H, SHEET_EASE } from './sheetMotion'
+import PartPickBody from './PartPickBody'
+import VsBody from './VsBody'
 import { IconClose } from '../ui/Icons'
 import { useMaskClose } from '../ui/useMaskClose'
 import DotSurfaceBody from './DotSurfaceBody'
@@ -26,7 +32,7 @@ export default function Surface() {
   const s = useShop()
   const sf = s.surface
   if (!sf) return null
-  return <SurfaceView key={`${sf.kind}:${sf.item?.id ?? ''}`} sf={sf} />
+  return <SurfaceView sf={sf} />
 }
 
 // 앱 영역(프레임) 폭 — 다이얼로그 폭 기준(뷰포트가 아니라 앱 영역).
@@ -50,7 +56,10 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const frameW = useFrameWidth(s.bp)
   const hidden = s.surfaceClosing || !entered
-  const tall = sf.kind === 'dye' || sf.kind === 'dot'
+  // 모바일 시트 높이: 연출 설정 = 내용 높이(최대 85%), 북마크 = 명시값 376↔624(VS 확장 — 전환은 sheetMotion FLIP), 그 외 85%.
+  // 어느 시트든 뷰포트가 줄면(내비게이션 바 등) max-height 85% 로 줄고 본문이 스크롤된다.
+  const tall = sf.kind !== 'pv' && sf.kind !== 'bm'
+  const bmH = sf.kind === 'bm' ? (s.vsOn ? BM_SHEET_H.vs : BM_SHEET_H.base) : null
 
   // 등장 전환이 보이도록 마운트 후 한 프레임 뒤 위치를 바꾼다.
   useEffect(() => {
@@ -74,7 +83,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   }, [mobile])
 
   // 모바일 끌어내리기(터치 — 마우스 에뮬레이션은 넣지 않는다).
-  const EASE = 'transform .3s cubic-bezier(.45,0,.55,1)'
+  const EASE = SHEET_EASE
   useEffect(() => {
     const layer = overlayRef.current
     if (!mobile || !layer) return
@@ -147,13 +156,16 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
     return recent
   })
 
-  const title = sf.kind === 'pv' ? '연출 설정' : sf.kind === 'bm' ? '북마크' : (sf.item?.name || sf.item?.id || '')
-  const sub = sf.kind === 'pv' ? '미리보기 연출' : sf.kind === 'bm' ? '간이 가방' : sf.kind === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
+  const k = sf.kind
+  const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'vs' ? '코디 비교' : (sf.item?.name || sf.item?.id || '')
+  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' ? '' : k === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
 
   // 패널 폭(앱 영역 기준)·등장/닫힘 위치는 즉시 반영 값이라 인라인(드래그 중 오프셋은 위 터치 핸들러가 DOM 직접).
   const panelStyle: React.CSSProperties = mobile
-    ? { transform: `translateY(${hidden ? '100%' : '0px'})`, transition: EASE }
+    ? { transform: `translateY(${hidden ? '100%' : '0px'})`, transition: EASE, ...(bmH ? { height: bmH } : {}) }
     : { width: `min(900px, ${Math.max(320, frameW - 40)}px)` }
+  // 본문 가로 슬라이드(부위 염색 전환) — 즉시 값이라 인라인.
+  const slideStyle: React.CSSProperties = { transform: `translateX(${s.partSlide}px)`, opacity: s.partSlide ? 0 : 1 }
 
   return (
     <div className={styles.layer}>
@@ -164,7 +176,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
         <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
           ref={panelRef}
           onPointerDown={(e) => e.stopPropagation()}
-          className={clsx(mobile ? styles.panelM : styles.panel, mobile ? tall && styles.panelMTall : tall && styles.panelTall, !mobile && hidden && styles.panelHidden)}
+          className={clsx(mobile ? styles.panelM : styles.panel, mobile && tall && styles.panelMTall, !mobile && hidden && styles.panelHidden)}
           style={panelStyle}>
           {mobile && (
             <div title="아래로 끌어 닫기" data-sheet-handle className={styles.handle}>
@@ -174,26 +186,34 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
           <div className={styles.head}>
             <div className={styles.headL}>
               <span className={styles.title}>{title}</span>
-              <span className={styles.sub}>{sub}</span>
+              {sub && <span className={styles.sub}>{sub}</span>}
             </div>
             <button type="button" onClick={s.closeSurface} title="닫기 (Esc)" aria-label="닫기" className={clsx('pb-icon', styles.close)}><IconClose /></button>
           </div>
-          {sf.kind === 'pv' && <PvSheetBody />}
-          {sf.kind === 'bm' && <BookmarkSheetBody />}
-          {sf.kind === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
-          {sf.kind === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}
+          <div key={`${k}:${sf.item?.id ?? ''}`} className={styles.slide} style={slideStyle}>
+            {k === 'pv' && <><PvSheetBody /><SurfaceFooter /></>}
+            {k === 'bm' && <><BookmarkSheetBody /><SurfaceFooter /></>}
+            {k === 'part' && <><PartPickBody mobile={mobile} /><SurfaceFooter /></>}
+            {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
+            {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
+            {k === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-export function SurfaceFooter({ onApply }: { onApply: () => void }) {
+// 공용 푸터. 적용은 염색·점 위치만. 부위 염색을 거쳐 들어온 염색·점 위치는 '이전'(부위 고르기로 슬라이드 복귀), 그 외는 '닫기'(즉시 종료).
+// 모바일은 얇고 긴 34px(버튼 하나면 전체 폭, 닫기+적용이면 반씩).
+export function SurfaceFooter({ onApply }: { onApply?: () => void }) {
   const s = useShop()
+  const mobile = s.bp === 'mobile'
+  const back = !!s.surface?.fromPart && (s.surface.kind === 'dye' || s.surface.kind === 'dot')
   return (
-    <div className={styles.foot}>
-      <button type="button" onClick={s.closeSurface} className={clsx('pb-ghost', styles.btnClose)}>닫기</button>
-      <button type="button" onClick={onApply} className={clsx('pb-solid', styles.btnApply)}>적용</button>
+    <div data-sheet-foot className={mobile ? styles.footM : styles.foot}>
+      <button type="button" onClick={back ? s.partBack : s.closeSurface} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>{back ? '이전' : '닫기'}</button>
+      {onApply && <button type="button" onClick={onApply} className={clsx('pb-solid', mobile ? styles.btnApplyM : styles.btnApply)}>적용</button>}
     </div>
   )
 }

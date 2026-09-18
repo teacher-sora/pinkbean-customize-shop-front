@@ -1,6 +1,6 @@
 'use client'
 
-// 코디 미리보기(PC·절반·태블릿): 헤더(되돌리기/다시실행) · 스테이지(배경 일러스트 + PreviewModel + 점 위치) ·
+// 코디 미리보기(PC·절반·태블릿): 헤더(좌 부위 염색 · 우 되돌리기/다시실행) · 스테이지(배경 일러스트 + PreviewModel + 점 위치) ·
 // 연출 설정 드로어 · 상시 필드 행 · 북마크 박스.  모바일은 MobileHero.
 
 import clsx from 'clsx'
@@ -10,7 +10,7 @@ import bg from '@/assets/pinkbean-bg.png'
 import { DOT_MOVER_IDS } from '@/lib/shopData'
 import PreviewModel from '../PreviewModel'
 import { useShop } from '../ShopContext'
-import { IconBookmark, IconCaretDown, IconDot, IconRedo, IconUndo } from '../ui/Icons'
+import { IconBookmark, IconCaretDown, IconDot, IconDrop, IconRedo, IconUndo } from '../ui/Icons'
 import { BookmarkBox, RateBubbles } from './PreviewParts'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
 import styles from './preview.module.css'
@@ -28,12 +28,17 @@ export default function PreviewColumn() {
   const [group, setGroup] = useState<PvGroup>('char')
   const dotItem = useDotEquipped()
   const histCls = (on: boolean) => clsx('pb-icon', narrow ? styles.iconBtn : styles.histBtn, on && styles.histOn)
+  const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
 
   return (
     <section className={clsx(styles.col, s.bp === 'half' && styles.colHalf, s.bp === 'tablet' && styles.colTablet)}>
       <div className={styles.card}>
         <div className={styles.head}>
-          <span className={styles.title}>코디 미리보기</span>
+          {/* 부위 염색(delta §3): 옛 '코디 미리보기' 제목 자리. 절반·태블릿은 아이콘만. */}
+          <button type="button" onClick={() => s.openSheet('part')} title="부위를 골라 염색하기" aria-label="부위 염색"
+            className={clsx('pb-ghost', styles.partBtn, narrow && styles.partBtnNarrow, partOpen && styles.partBtnOn)}>
+            <IconDrop size={14} />{!narrow && <span>부위 염색</span>}
+          </button>
           <div className={styles.hist}>
             <button type="button" onClick={s.undo} title="되돌리기" className={histCls(s.canUndo)}>
               <IconUndo />{!narrow && <span>되돌리기</span>}
@@ -74,11 +79,12 @@ export default function PreviewColumn() {
   )
 }
 
-// 모바일 히어로: 배경 일러스트 위 모델 + 되돌리기/다시실행 · 연출 설정 · 점 위치 · 북마크 FAB.
+// 모바일 히어로: 배경 일러스트 위 모델 + 되돌리기/다시실행 · 연출 설정 · 우하단 [점 위치][부위 염색][북마크].
 export function MobileHero() {
   const s = useShop()
   const dotItem = useDotEquipped()
   const bmOpen = s.surface?.kind === 'bm' && !s.surfaceClosing
+  const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
   const n = s.bookmarks.length
   return (
     <div className={styles.hero}>
@@ -99,6 +105,9 @@ export function MobileHero() {
         <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} title="점 위치 변경" aria-label="점 위치 변경" tabIndex={dotItem ? 0 : -1}
           className={clsx(styles.dotBtnM, dotItem && styles.dotBtnMOn)}>
           <IconDot size={15} />
+        </button>
+        <button type="button" onClick={() => s.openSheet('part')} title="부위를 골라 염색하기" aria-label="부위 염색" className={clsx(styles.fab, styles.partFab, partOpen && styles.fabOn)}>
+          <IconDrop size={16} />
         </button>
         <button type="button" onClick={() => s.openSheet('bm')} title="북마크 간이 가방" aria-label="북마크" className={clsx(styles.fab, bmOpen && styles.fabOn)}>
           <IconBookmark filled={bmOpen} />

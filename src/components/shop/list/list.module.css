@@ -87,8 +87,9 @@
 .newBadgeM { width: 17px; padding: 0; justify-content: center; }
 .labelBadge { position: absolute; bottom: 4px; left: 4px; height: 17px; image-rendering: pixelated; z-index: 2; }
 .labelBadgeCash { height: 14px; }
-.name { flex: 0 0 auto; width: 100%; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #3d372f; letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nameM { flex: 0 0 auto; width: 100%; font-size: 11.5px; font-weight: 500; color: #3d372f; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 이름 줄은 block + line-height 로 가운데 — flex 중앙정렬은 ellipsis 가 박스에 안 걸려 양끝이 잘렸다(delta §7). */
+.name { flex: 0 0 auto; width: 100%; min-width: 0; height: 18px; line-height: 18px; display: block; font-size: 12px; font-weight: 500; color: #3d372f; letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nameM { flex: 0 0 auto; width: 100%; min-width: 0; display: block; font-size: 11.5px; font-weight: 500; color: #3d372f; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 즐겨찾기 · 북마크 띠지(우상단, 카드 경계에 살짝 걸침) */
 /* 띠지 규격(코디·프리셋 공통): PC 큰 25×32 · 작은 23×29 / 모바일 큰 22×29 · 작은 20×26 · 사이 간격 5px */
