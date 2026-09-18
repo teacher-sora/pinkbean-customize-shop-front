@@ -41,8 +41,11 @@ export type DotOffsets = Record<string, Vec>
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; dotPos?: Record<string, DotOffsets>; dyeOff?: Record<string, boolean>; pv?: PvSnap; name?: string }
 
 // 단일 서피스(시트·다이얼로그): 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 하나를 쓴다(v2 §10.4).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot'
-export type Surface = { kind: SurfaceKind; item: ListItem | null }
+// part = 부위 염색(착용 부위 고르기 → 같은 다이얼로그 안에서 염색/점 위치로 슬라이드), vs = 북마크 코디 비교(PC).
+// fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다(delta §3·§8).
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs'
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean }
+const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴(delta 값)
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
 // 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
@@ -181,10 +184,15 @@ export interface ShopCtx {
   isMixSlot: (slot: string) => boolean
   // 단일 서피스(연출 설정 · 북마크 · 염색 · 점 위치)
   surface: Surface | null; surfaceClosing: boolean
-  openSheet: (kind: 'pv' | 'bm') => void
+  openSheet: (kind: 'pv' | 'bm' | 'part') => void
   openDye: (item: ListItem) => void
   openDot: (item: ListItem) => void
   closeSurface: () => void
+  // 부위 염색: 칩 선택 → 염색/점 위치로(가로 슬라이드), 이전 → 부위 고르기로. partSlide = 본문 translateX(px).
+  openPartItem: (item: ListItem) => void; partBack: () => void; partSlide: number
+  // 북마크 VS: PC 는 비교 다이얼로그, 모바일은 북마크 시트 확장(vsOn). vsPick = 오른쪽에 끼울 북마크 id.
+  openVs: () => void; toggleVs: () => void; vsOn: boolean; vsPick: string | null; setVsPick: (id: string) => void
+  swapSnapshot: (item: ListItem) => Snapshot
   // 점(애교점) 위치 오프셋(아이템ID 키 → 레이어이름 → 오프셋)
   dotPos: Record<string, DotOffsets>
   setDot: (itemId: string, layer: string, v: Vec) => void; resetDot: (itemId: string) => void
@@ -289,6 +297,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [dyeInteracting, setDyeInteracting] = useState(false)
   const [surface, setSurface] = useState<Surface | null>(null)
   const [surfaceClosing, setSurfaceClosing] = useState(false)
+  const [partSlide, setPartSlide] = useState(0)
+  const [vsOn, setVsOn] = useState(false)
+  const [vsPick, setVsPick] = useState<string | null>(null)
+  const partT = useRef<ReturnType<typeof setTimeout>[]>([])
   const [dotPos, setDotPos] = useState<Record<string, DotOffsets>>({}) // 아이템ID → 점 레이어별 위치 오프셋
   const [pageByCat, setPageByCat] = useState<Record<string, number>>({})
   const [snapping, setSnapping] = useState(false)
@@ -505,6 +517,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
     best = best || near
     if (!best) best = { cols: 3, rows: Math.max(1, Math.min(3, Math.floor((h + gap) / (MINH + gap)))), dev: 0 }
+    // 최소 카드 높이 가드(delta §7): 어떤 경로로 골랐든 96px 미만 행은 만들지 않는다(띠지가 아트워크를 덮지 않게).
+    const fitRows = Math.max(1, Math.floor((h + gap) / (MINH + gap)))
+    if (best.rows > fitRows) best = { ...best, rows: fitRows }
     apply(best.cols, best.rows)
   }, [])
   useEffect(() => { measure() }, [bp, measure])
@@ -761,7 +776,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   const clearBookmarks = () => {
     if (!bookmarks.length) return
-    setBookmarks([]); saveBookmarks([])
+    setBookmarks([]); saveBookmarks([]); setVsPick(null)
     notify('북마크를 비웠어요')
   }
 
@@ -771,18 +786,60 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setSurfaceClosing(false)
     setSurface(next)
   }
+  // ✕·마스크·Esc·닫기 모두 즉시 종료(이전으로 가지 않음). 슬라이드·VS 확장 상태도 함께 초기화(다음에 열면 접힌 상태).
   const closeSurface = () => {
     if (!surface || surfaceClosing) return
+    for (const t of partT.current) clearTimeout(t)
+    partT.current = []
     setSurfaceClosing(true)
     if (surfT.current) clearTimeout(surfT.current)
-    surfT.current = setTimeout(() => { surfT.current = null; setSurface(null); setSurfaceClosing(false) }, SURFACE_UNMOUNT_MS)
+    surfT.current = setTimeout(() => { surfT.current = null; setSurface(null); setSurfaceClosing(false); setPartSlide(0); setVsOn(false) }, SURFACE_UNMOUNT_MS)
   }
-  const openSheet = (kind: 'pv' | 'bm') => {
+  const openSheet = (kind: 'pv' | 'bm' | 'part') => {
     if (surface?.kind === kind && !surfaceClosing) { closeSurface(); return }
     openSurface({ kind, item: null })
   }
   const openDye = (item: ListItem) => openSurface({ kind: 'dye', item })
   const openDot = (item: ListItem) => openSurface({ kind: 'dot', item })
+  // 부위 염색 ↔ 염색/점 위치: 다이얼로그는 그대로 두고 본문만 가로 슬라이드(진입 = 왼쪽으로 빠지고 오른쪽에서 들어옴, 이전 = 반대).
+  const slideTo = (dir: 1 | -1, next: Surface) => {
+    for (const t of partT.current) clearTimeout(t)
+    setPartSlide(-34 * dir)
+    partT.current = [
+      setTimeout(() => { setSurface(next); setPartSlide(34 * dir) }, PART_SLIDE_SWAP_MS),
+      setTimeout(() => setPartSlide(0), PART_SLIDE_IN_MS),
+    ]
+  }
+  const openPartItem = (item: ListItem) => slideTo(1, { kind: DOT_MOVER_IDS.has(item.id) ? 'dot' : 'dye', item, fromPart: true })
+  const partBack = () => slideTo(-1, { kind: 'part', item: null })
+  // VS: 북마크가 없으면 열지 않는다. 비교 대상은 직전 선택(아직 북마크돼 있으면) → 첫 북마크.
+  const pickFor = (cur: string | null) => (cur && bookmarks.some((b) => b.id === cur) ? cur : bookmarks[0]?.id ?? null)
+  const openVs = () => {
+    if (!bookmarks.length) { notify('먼저 아이템을 북마크해주세요'); return }
+    setVsPick(pickFor(vsPick))
+    openSurface({ kind: 'vs', item: null })
+  }
+  const toggleVs = () => {
+    if (!vsOn && !bookmarks.length) { notify('먼저 아이템을 북마크해주세요'); return }
+    setVsPick(pickFor(vsPick))
+    setVsOn((v) => !v)
+  }
+  // VS 오른쪽 = 현재 코디에 북마크 아이템 하나를 끼운 스냅샷. 착용 규칙은 equipFromCat 과 같다(islot 충돌 슬롯 해제, 피부 = 톤 교체).
+  // 헤어·성형은 현재 발색을 유지(내 캐릭터 카드와 같은 규칙), 그 외 부위의 HSB·염색 비활성화는 다른 아이템에 억지로 옮기지 않는다.
+  const swapSnapshot = (item: ListItem): Snapshot => {
+    const base = snapshot()
+    if (item.slot === 'skin') {
+      const t = index?.base.tones.find((x) => x.body === item.id)?.tone
+      return t == null ? base : { ...base, tone: t }
+    }
+    const slot = item.slot
+    const eq: Record<string, string> = { ...base.equipped, [slot]: item.id }
+    for (const c of conflictSlots(equipped, slot, item)) delete eq[c]
+    const hid = { ...base.hidden }; delete hid[slot]
+    const hsb = { ...base.dyeHsb }, off = { ...(base.dyeOff || {}) }
+    if (!isMixSlot(slot)) { delete hsb[slot]; delete off[slot] }
+    return { ...base, equipped: eq, hidden: hid, dyeHsb: hsb, ...(Object.keys(off).length ? { dyeOff: off } : { dyeOff: undefined }) }
+  }
 
   // 현재 라이브 모델 → 스냅샷.
   const snapshot = (): Snapshot => {
@@ -1182,6 +1239,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, dyeInteracting, setDyeInteracting, isMixSlot,
     surface, surfaceClosing, openSheet, openDye, openDot, closeSurface,
+    openPartItem, partBack, partSlide, openVs, toggleVs, vsOn, vsPick, setVsPick, swapSnapshot,
     dotPos, setDot, resetDot,
     pv, setPv,
     presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, snapshot,

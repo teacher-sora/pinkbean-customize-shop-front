@@ -35,6 +35,10 @@ export const IconDot = ({ size = 13 }: P) => (
 export const IconCaretDown = ({ size = 12, className }: P) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9.5l6 6 6-6" /></svg>
 )
+// 부위 염색(물방울)
+export const IconDrop = ({ size = 14 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.4s5.6 6.3 5.6 10.2a5.6 5.6 0 0 1-11.2 0C6.4 9.7 12 3.4 12 3.4z" /></svg>
+)
 export const IconCaretUp = ({ size = 12 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14.5l6-6 6 6" /></svg>
 )

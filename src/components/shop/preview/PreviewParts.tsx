@@ -10,7 +10,7 @@ import { useShop } from '../ShopContext'
 import { DyeSprite } from '../render/DyeSprite'
 
 const BOOKMARK_FRAC = 0.9
-import { IconCaretUp } from '../ui/Icons'
+import { VsPanes } from '../surface/VsBody'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
 import styles from './preview.module.css'
 
@@ -63,7 +63,7 @@ function PinCount({ n }: { n: number }) {
   return <span className={clsx(styles.count, n > 0 && styles.countOn)}>{n}</span>
 }
 
-// PC: 미리보기 아래 8칸 박스. 슬롯을 누르면 입혀보기(토글), ✕ 로 해제.
+// PC: 미리보기 아래 8칸 박스. 슬롯을 누르면 입혀보기(토글), ✕ 로 해제. VS = 코디 비교 다이얼로그(비우기 왼쪽, 한 그룹).
 export function BookmarkBox() {
   const s = useShop()
   const n = s.bookmarks.length
@@ -71,7 +71,10 @@ export function BookmarkBox() {
     <div className={clsx('pb-pinbox', styles.pinbox)}>
       <div className={styles.pinHead}>
         <span className={styles.pinTitle}>북마크<PinCount n={n} /></span>
-        <button type="button" onClick={s.clearBookmarks} title="북마크 전체 비우기" className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
+        <span className={styles.pinActs}>
+          <button type="button" onClick={s.openVs} title="북마크한 아이템을 나란히 비교하기" className={clsx('pb-ghost', styles.vsBtn, s.surface?.kind === 'vs' && styles.vsBtnOn)}>VS</button>
+          <button type="button" onClick={s.clearBookmarks} title="북마크 전체 비우기" className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
+        </span>
       </div>
       <div className={styles.pinGrid}>
         {Array.from({ length: 8 }, (_, i) => {
@@ -83,7 +86,7 @@ export function BookmarkBox() {
             <div key={it.id} onClick={() => s.equipFromCat(SLOT_TO_CAT[it.slot], it)} title={`${name} — ${worn ? '현재 장착 중' : '눌러서 입혀보기'}`}
               className={clsx('pb-slot', styles.slot, styles.slotFilled, worn && styles.slotWorn)}>
               <div className={styles.slotSprite}><BookmarkSprite item={it} /></div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleBookmark(it) }} title="찜 해제" aria-label="찜 해제" className={clsx('pb-slot-x', styles.slotX)}>✕</button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleBookmark(it) }} title="북마크 해제" aria-label="북마크 해제" className={clsx('pb-slot-x', styles.slotX)}>✕</button>
             </div>
           )
         })}
@@ -92,56 +95,62 @@ export function BookmarkBox() {
   )
 }
 
-// 모바일: 북마크 시트 본문.
+// 모바일: 북마크 시트 본문(delta §4·§5). 위에서부터 VS 확장 영역(0↔248px, 비교 캔버스 고정 236px) → 북마크 줄(VS·비우기)
+// → 4×2 = 항상 8칸 예약(빈칸 점선). VS 가 켜진 동안 칩은 장착이 아니라 비교 대상 선택, 꺼져 있으면 장착 후 닫기.
+// 북마크 줄의 윗선은 상시 유지하고 margin-top:-1px 로 접힌 상태에선 헤더 밑선과 정확히 겹친다.
 export function BookmarkSheetBody() {
   const s = useShop()
   const n = s.bookmarks.length
+  const pickId = s.bookmarks.some((b) => b.id === s.vsPick) ? s.vsPick : s.bookmarks[0]?.id
   return (
     <div className={styles.sheetBody}>
-      <div className={styles.bmHead}>
+      {/* 확장 높이는 즉시 값(전환)이라 인라인 */}
+      <div className={styles.vsWrap} style={{ height: s.vsOn ? 248 : 0 }}>
+        <div className={styles.vsWrapIn}><VsPanes mobile /></div>
+      </div>
+      <div className={styles.bmRow}>
         <span className={styles.bmTitle}>북마크<PinCount n={n} /></span>
-        <button type="button" onClick={s.clearBookmarks} className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
+        <span className={styles.pinActs}>
+          <button type="button" onClick={s.toggleVs} title="북마크한 아이템을 나란히 비교하기" aria-pressed={s.vsOn} className={clsx('pb-ghost', styles.vsBtn, s.vsOn && styles.vsBtnOn)}>VS</button>
+          <button type="button" onClick={s.clearBookmarks} title="북마크 전체 비우기" className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
+        </span>
       </div>
       <div className={styles.bmBody}>
-        {n === 0 ? (
-          <div className={styles.bmEmpty}>
-            <span className={styles.bmEmptyTitle}>북마크가 비어 있어요</span>
-            <span className={styles.bmEmptyHint}>아이템 카드의 북마크를 눌러 담아둬요.</span>
-          </div>
-        ) : (
-          <div className={styles.bmGrid}>
-            {s.bookmarks.map((it) => {
-              const worn = wornOf(s, it)
-              const name = it.name || it.id
-              return (
-                <button key={it.id} type="button" onClick={() => { s.equipFromCat(SLOT_TO_CAT[it.slot], it); s.closeSurface() }} title={`${name} — ${worn ? '장착 중' : '눌러서 입혀보기'}`}
-                  className={clsx(styles.chip, worn && styles.chipWorn)}>
-                  <span className={styles.chipSprite}><BookmarkSprite item={it} /></span>
-                  <span role="button" tabIndex={0} title="북마크 해제" aria-label="북마크 해제" className={styles.chipX}
-                    onClick={(e) => { e.stopPropagation(); s.toggleBookmark(it) }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); s.toggleBookmark(it) } }}>✕</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
+        <div className={styles.bmGrid}>
+          {Array.from({ length: 8 }, (_, i) => {
+            const it = s.bookmarks[i]
+            if (!it) return <div key={i} title="북마크한 아이템이 여기에 담겨요" className={styles.chipEmpty} />
+            const worn = wornOf(s, it)
+            const on = s.vsOn ? it.id === pickId : worn
+            const name = it.name || it.id
+            const pick = () => {
+              if (s.vsOn) { s.setVsPick(it.id); return }
+              s.equipFromCat(SLOT_TO_CAT[it.slot], it); s.closeSurface()
+            }
+            return (
+              <button key={it.id} type="button" onClick={pick} title={`${name} — ${s.vsOn ? '오른쪽에 끼워 비교' : worn ? '장착 중' : '눌러서 입혀보기'}`}
+                className={clsx(styles.chip, on && styles.chipWorn)}>
+                <span className={styles.chipSprite}><BookmarkSprite item={it} /></span>
+                <span role="button" tabIndex={0} title="북마크 해제" aria-label="북마크 해제" className={styles.chipX}
+                  onClick={(e) => { e.stopPropagation(); s.toggleBookmark(it) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); s.toggleBookmark(it) } }}>✕</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
 }
 
-// 모바일: 연출 설정 시트 본문.
+// 모바일: 연출 설정 시트 본문. 닫기는 공용 푸터가 맡는다(자체 '연출 설정 닫기' 버튼 제거, delta §6).
 export function PvSheetBody() {
-  const s = useShop()
   const [group, setGroup] = useState<PvGroup>('char')
   return (
     <div className={styles.sheetBody}>
       <PvGroups group={group} onGroup={setGroup} mobile />
       <div className={styles.gridM}>
         <PvInlineFields mobile narrow={false} />
-        <button type="button" onClick={s.closeSurface} className={clsx('pb-soft', styles.closeSheet)}>
-          연출 설정 닫기<IconCaretUp />
-        </button>
       </div>
     </div>
   )

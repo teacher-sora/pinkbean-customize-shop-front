@@ -6,9 +6,9 @@
 .overlayHidden { opacity: 0; }
 
 /* PC 다이얼로그 */
-.panel { max-height: min(620px, 86svh); background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0) scale(1); opacity: 1; }
-.panelTall { height: min(620px, 86svh); }
-.panelHidden { transform: translateY(10px) scale(.985); opacity: 0; }
+/* 크기는 종류와 무관하게 동일(delta §6). 등장·퇴장은 translateY + opacity 만 — scale 금지(delta §8). */
+.panel { height: min(620px, 86svh); background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0); opacity: 1; }
+.panelHidden { transform: translateY(10px); opacity: 0; }
 /* 모바일 하단 시트 */
 .panelM { width: 100%; height: auto; max-height: 85%; background: #fff; border-top: 1px solid #e7ded4; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; overflow: hidden; }
 .panelMTall { height: 85%; }
@@ -22,6 +22,12 @@
 .close { flex: 0 0 auto; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: #faf7f3; color: #8a8075; cursor: pointer; }
 .foot { flex: 0 0 auto; padding: 10px 16px; border-top: 1px solid #f0e9e1; display: flex; justify-content: flex-end; gap: 8px; }
 .btnClose { height: 38px; padding: 0 18px; border: 1px solid #ddd4ca; border-radius: 8px; background: #fff; font-family: inherit; font-size: 13.5px; font-weight: 500; letter-spacing: -0.01em; color: #5c534b; cursor: pointer; }
+/* 본문 슬라이드 래퍼(부위 염색 ↔ 염색/점 위치) */
+.slide { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
+/* 모바일 푸터: 얇고 긴 34px */
+.footM { flex: 0 0 auto; padding: 8px 12px 12px; border-top: 1px solid #f0e9e1; display: flex; align-items: stretch; gap: 8px; }
+.btnCloseM { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; background: #f4ecf3; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; cursor: pointer; }
+.btnApplyM { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; }
 .btnApply { height: 38px; padding: 0 22px; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; color: #fff; cursor: pointer; }
 
 /* ── 염색: 발색표(믹스) ── */
@@ -83,3 +89,43 @@
 
 /* 염색 비활성화 토글 — 켜짐 상태(문구는 그대로) */
 .offOn { background: #fce9f1; border-color: #f5c6da; color: #d76d9a; }
+
+/* ── 부위 염색(부위 고르기) — delta partPickVals ── */
+.partBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; }
+.partEmpty { height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+.partEmptyTitle { font-size: 13px; font-weight: 600; color: #8a8075; }
+.partEmptyHint { font-size: 11.5px; color: #b7ada2; }
+.partGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.partGridM { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.partChip { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px 10px; border: 1px solid #eee6dc; border-radius: 11px; background: #fff; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.partThumb { position: relative; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 8px; background: #f7f2ec; display: flex; align-items: center; justify-content: center; }
+.partSprite { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.partDot { position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; background: conic-gradient(from 90deg,#ff8fb0,#ffd36b,#7fd88a,#6bb8ff,#c79bff,#ff8fb0); }
+.partDotOff { filter: grayscale(1); }
+.partText { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.partSlot { font-size: 10.5px; font-weight: 600; color: #a89e93; line-height: 1.2; }
+.partName { width: 100%; min-width: 0; display: block; font-size: 12px; font-weight: 500; color: #3d372f; line-height: 1.3; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── 북마크 VS(코디 비교) — delta vsVals ── */
+.vsBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 12px; gap: 10px; }
+.vsRow { flex: 1 1 auto; min-height: 230px; display: flex; gap: 10px; }
+.vsRowM { flex: 0 0 auto; height: 236px; min-height: 0; }
+.vsPane { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.vsPaneM { gap: 5px; }
+.vsLabelRow { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.vsLabelRowM { padding-top: 10px; }
+.vsLabel { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: #a89e93; letter-spacing: .02em; }
+.vsLabelM { font-size: 10.5px; }
+.vsName { min-width: 0; font-size: 11.5px; font-weight: 500; color: #3d372f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vsNameM { font-size: 11px; }
+.vsStage { position: relative; flex: 1 1 auto; min-height: 0; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; }
+.vsStageImg { object-fit: cover; object-position: center 78%; }
+.vsStageTone { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.45)); }
+.vsHr { flex: 0 0 auto; height: 1px; background: #f0e9e1; }
+.vsPick { flex: 0 0 auto; }
+.vsPickLabel { font-size: 11px; font-weight: 700; color: #a89e93; margin-bottom: 7px; }
+.vsChips { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 7px; }
+.vsChipsM { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
+.vsChip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1.5px solid #f0e9e1; border-radius: 9px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.vsChipOn { border-color: #ec86ac; background: #fce9f1; }
+.vsChipSprite { width: calc(100% - 8px); height: calc(100% - 8px); display: flex; align-items: center; justify-content: center; }
