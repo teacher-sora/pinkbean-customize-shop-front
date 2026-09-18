@@ -11,9 +11,10 @@ import type { HsbParams, PaletteParams } from '@/lib/core/dye'
 import { CAT_TO_SLOT, DOT_MOVER_IDS, isColorLineSkin } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
-import { DyeSprite, INFO_FRAC, INFO_FRAC_HAIR, SKIN_ICON_FRACTION, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
+import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
 import { DyeRow, FamilyDots, Stepper, Swatch } from '../ui/controls'
 import { IconEye } from '../ui/Icons'
+import { SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
 
 const defPal = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 }) // 믹스 기본 비율 50%
@@ -31,8 +32,6 @@ export function useSkinItem(): ListItem | null {
 export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const narrow = isNarrow(s.bp)
-  const zmap = s.index?.zmap || []
-  const smap = s.index?.smap || {}
   const toneEntry = s.index?.base.tones.find((t) => t.tone === s.tone)
   const toneName = toneEntry?.name || `피부 ${s.tone}`
   const skinItem = useSkinItem()
@@ -85,11 +84,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
             <span className={clsx(styles.slotThumb, r.on && !r.hidden && styles.slotThumbOn)}>
               {r.on && r.item ? (
                 <span className={clsx(styles.slotSprite, r.hidden && styles.slotSpriteHidden)}>
-                  {r.isSkin
-                    ? (toneEntry ? <SkinModel bodyId={toneEntry.body} headId={toneEntry.head} hsb={s.renderHsb.skin || defHsb()} dyeable={isColorLineSkin(toneName)} zmap={zmap} smap={smap} box={34} fraction={SKIN_ICON_FRACTION} /> : null)
-                    : r.isMix
-                      ? <DyeSprite id={r.item.id} mix palette={s.renderPalette[r.slot]} zmap={zmap} grayscale={r.hidden} frac={r.slot === 'hair' ? INFO_FRAC_HAIR : INFO_FRAC} />
-                      : <DyeSprite id={r.item.id} thumb={r.item.icon || `sprites/${r.item.id}/icon.png`} mix={false} hsb={s.renderHsb[r.slot]} zmap={zmap} grayscale={r.hidden} frac={INFO_FRAC} />}
+                  <SlotSprite slot={r.slot} item={r.item} grayscale={r.hidden} />
                 </span>
               ) : <span className={styles.slotEmpty} />}
               {r.dyed && <span title={r.dyeOff ? '염색 비활성화됨' : '염색됨'} className={clsx(styles.dyedDot, r.dyeOff && styles.dyedDotOff)} />}

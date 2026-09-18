@@ -63,6 +63,7 @@ button, input, select { transition: background-color .24s ease, border-color .22
   .pb-row:hover { background-color: #fdf4f8 !important; border-color: #eeb2ce !important; }
   .pb-step:hover { background-color: #f7ecf1 !important; color: #d76d9a !important; }
   .pb-slotrow:hover { background: #fce9f1 !important; border-color: #eeb2ce !important; }
+  .pb-partchip:hover { background: #fdf4f8 !important; border-color: #eeb2ce !important; }
   .pb-pageinput:hover { background: #ead9e2 !important; color: #a1657f !important; }
   .pb-presetname:hover { background: #ead9e2 !important; color: #a1657f !important; }
 }
@@ -165,9 +166,10 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 @keyframes pbSpin { to { transform: rotate(360deg); } }
 .pb-spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; border-radius: 50%; animation: pbSpin .7s linear infinite; }
 @keyframes pbOverlayIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pbPanelIn { from { opacity: 0; transform: translateY(10px) scale(.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
+/* 다이얼로그 등장·퇴장은 translateY + opacity 만(scale 금지 — delta §8) */
+@keyframes pbPanelIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pbOverlayOut { from { opacity: 1; } to { opacity: 0; } }
-@keyframes pbPanelOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(.975); } }
+@keyframes pbPanelOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(10px); } }
 .pb-overlay { animation: pbOverlayIn .22s ease both; }
 .pb-panel { animation: pbPanelIn .28s cubic-bezier(.22,.61,.36,1) both; }
 .pb-overlay-out { animation: pbOverlayOut .2s ease both; }

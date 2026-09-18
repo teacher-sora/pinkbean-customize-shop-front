@@ -6,6 +6,10 @@
 .card { flex: 1 1 auto; min-height: 0; position: relative; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
 .head { flex: 0 0 auto; height: 44px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0e9e1; }
 .title { font-size: 14px; font-weight: 700; }
+/* 부위 염색 칩(헤더 좌측, delta partDyeBtnStyle) */
+.partBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border: 1px solid #f0d3e0; border-radius: 9px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; }
+.partBtnNarrow { padding: 0 8px; }
+.partBtnOn { border-color: #ec86ac; background: #fce9f1; }
 .hist { display: flex; align-items: center; gap: 4px; }
 .histBtn { flex: 0 0 auto; height: 30px; padding: 0 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; color: #b8ada2; font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; cursor: default; }
 .iconBtn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; color: #cdc2b7; cursor: default; }
@@ -48,7 +52,6 @@
 .pvCaret { flex: 0 0 auto; transition: transform .24s cubic-bezier(.22,.61,.36,1); transform: rotate(0deg); }
 .pvCaretOn { transform: rotate(180deg); }
 .gridM { flex: 0 0 auto; padding: 10px 16px; border-top: 1px solid #f0e9e1; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
-.closeSheet { grid-column: 1 / -1; height: 34px; display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px solid transparent; border-radius: 8px; background: #f4ecf3; color: #8a8075; font-size: 12px; font-weight: 600; cursor: pointer; }
 
 /* 북마크 박스(PC) */
 .pinbox { flex: 0 0 auto; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; padding: 8px 12px 13px; }
@@ -58,6 +61,9 @@
 .countOn { background: #fce9f1; color: #d76d9a; }
 .clear { height: 26px; padding: 0 10px; border: 1px solid #f2ece5; border-radius: 8px; background: #fff; font-size: 11px; font-weight: 600; color: #cdc2b7; cursor: default; }
 .clearOn { border-color: #f0d3e0; color: #c05a94; cursor: pointer; }
+.pinActs { display: flex; align-items: center; gap: 6px; }
+.vsBtn { flex: 0 0 auto; height: 26px; padding: 0 12px; border: 1px solid #f0d3e0; border-radius: 8px; background: #fff; font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.vsBtnOn { border-color: #ec86ac; background: #fce9f1; }
 .pinGrid { display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); gap: 6px; }
 .slot { position: relative; aspect-ratio: 1/1; border-radius: 9px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; background: #fbf8f4; cursor: default; transition: border-color .22s ease, background-color .22s ease; }
 .slotFilled { border-style: solid; border-color: #efe8e0; background: #fff; cursor: pointer; }
@@ -68,14 +74,14 @@
 
 /* 북마크 시트(모바일) */
 .sheetBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.bmHead { flex: 0 0 auto; padding: 6px 14px; display: flex; align-items: center; justify-content: space-between; }
+.vsWrap { flex: 0 0 auto; overflow: hidden; transition: height .3s cubic-bezier(.45,0,.55,1); }
+.vsWrapIn { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+.bmRow { flex: 0 0 auto; margin-top: -1px; padding: 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f0e9e1; }
 .bmTitle { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #2a2521; }
-.bmBody { flex: 0 0 auto; padding: 8px 14px 18px; border-top: 1px solid #f0e9e1; }
-.bmEmpty { height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
-.bmEmptyTitle { font-size: 13px; font-weight: 600; color: #8a8075; }
-.bmEmptyHint { font-size: 11.5px; color: #b7ada2; }
-.bmGrid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; }
-.chip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 9px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.bmBody { flex: 0 0 auto; padding: 12px; border-top: 1px solid #f0e9e1; }
+.bmGrid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
+.chipEmpty { position: relative; aspect-ratio: 1/1; border: 1px dashed #e4dcd2; border-radius: 9px; background: #fbf8f4; }
+.chip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1.5px solid #f0e9e1; border-radius: 9px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .chipWorn { border-color: #ec86ac; background: #fce9f1; }
 .chipSprite { width: calc(100% - 8px); height: calc(100% - 8px); display: flex; align-items: center; justify-content: center; }
 .chipX { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0d3e0; border-radius: 50%; background: #fff; color: #d76d9a; font-size: 10px; line-height: 1; }
@@ -95,4 +101,5 @@
 .dotBtnMOn { opacity: 1; transform: scale(1); pointer-events: auto; }
 .fab { position: relative; flex: 0 0 auto; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f4cfdf; border-radius: 10px; background: #fff; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .fabOn { border-color: #ec86ac; background: #fce9f1; }
+.partFab { border-radius: 9px; }
 .fabCount { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; display: flex; align-items: center; justify-content: center; border-radius: 20px; background: #fff; border: 1px solid #f4cfdf; color: #d76d9a; font-size: 9.5px; font-weight: 700; }
