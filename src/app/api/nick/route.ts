@@ -17,7 +17,7 @@ const BASE = 'https://open.api.nexon.com/maplestory/v1'
 const ocidCache = new Map<string, { ocid: string; t: number }>()
 const OCID_TTL = 60 * 60 * 1000
 
-const RATE = { error: '넥슨 요청이 많아요. 잠시 후 다시 시도해 주세요' } // 429는 "캐릭터 못 찾음"이 아니다 — 구분해서 알린다
+const RATE = { error: '요청이 많아요. 잠시 후 다시 시도해 주세요' } // 429는 "캐릭터 못 찾음"이 아니다 — 구분해서 알린다
 
 // ── 레이트리밋 서킷브레이커 ──
 // 넥슨은 분당 1000회 제한이고, 초과하면 remaining 이 음수로 내려가며 **때릴수록 페널티가 커져 회복이 안 된다.**
@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get('name')?.trim()
   if (!name) return NextResponse.json({ error: '닉네임을 입력해 주세요' }, { status: 400 })
   const key = process.env.NEXON_API_KEY
-  if (!key) return NextResponse.json({ error: 'API 키가 설정되지 않았어요 (NEXON_API_KEY)' }, { status: 500 })
+  if (!key) return NextResponse.json({ error: '지금은 불러올 수 없어요' }, { status: 500 })
   const headers = { 'x-nxopen-api-key': key }
   // 특정 시점 조회: date=YYYY-MM-DD(넥슨은 2023-12-21 이후, KST 기준). 형식이 맞고 범위 안일 때만 넘긴다.
   const dp = req.nextUrl.searchParams.get('date')?.trim()
