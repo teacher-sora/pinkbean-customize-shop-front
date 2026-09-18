@@ -19,6 +19,7 @@ import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { useShop, type Surface as SurfaceState } from '../ShopContext'
 import { BookmarkSheetBody, PvSheetBody } from '../preview/PreviewParts'
+import { BM_SHEET_H, SHEET_EASE } from './sheetMotion'
 import PartPickBody from './PartPickBody'
 import VsBody from './VsBody'
 import { IconClose } from '../ui/Icons'
@@ -55,9 +56,10 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const frameW = useFrameWidth(s.bp)
   const hidden = s.surfaceClosing || !entered
-  // 모바일 시트 높이: 연출 설정 = 내용 높이(최대 85%), 북마크 = 명시값 376↔624(VS 확장, auto↔% 는 전환이 안 걸림), 그 외 85%.
+  // 모바일 시트 높이: 연출 설정 = 내용 높이(최대 85%), 북마크 = 명시값 376↔624(VS 확장 — 전환은 sheetMotion FLIP), 그 외 85%.
+  // 어느 시트든 뷰포트가 줄면(내비게이션 바 등) max-height 85% 로 줄고 본문이 스크롤된다.
   const tall = sf.kind !== 'pv' && sf.kind !== 'bm'
-  const bmH = sf.kind === 'bm' ? (s.vsOn ? 624 : 376) : null
+  const bmH = sf.kind === 'bm' ? (s.vsOn ? BM_SHEET_H.vs : BM_SHEET_H.base) : null
 
   // 등장 전환이 보이도록 마운트 후 한 프레임 뒤 위치를 바꾼다.
   useEffect(() => {
@@ -81,7 +83,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   }, [mobile])
 
   // 모바일 끌어내리기(터치 — 마우스 에뮬레이션은 넣지 않는다).
-  const EASE = 'transform .3s cubic-bezier(.45,0,.55,1), height .3s cubic-bezier(.45,0,.55,1)'
+  const EASE = SHEET_EASE
   useEffect(() => {
     const layer = overlayRef.current
     if (!mobile || !layer) return
@@ -209,7 +211,7 @@ export function SurfaceFooter({ onApply }: { onApply?: () => void }) {
   const mobile = s.bp === 'mobile'
   const back = !!s.surface?.fromPart && (s.surface.kind === 'dye' || s.surface.kind === 'dot')
   return (
-    <div className={mobile ? styles.footM : styles.foot}>
+    <div data-sheet-foot className={mobile ? styles.footM : styles.foot}>
       <button type="button" onClick={back ? s.partBack : s.closeSurface} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>{back ? '이전' : '닫기'}</button>
       {onApply && <button type="button" onClick={onApply} className={clsx('pb-solid', mobile ? styles.btnApplyM : styles.btnApply)}>적용</button>}
     </div>
