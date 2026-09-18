@@ -35,7 +35,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     }
     if (a.t) clearTimeout(a.t)
     armRef.current = { id: p.id, t: setTimeout(() => { armRef.current = { id: null, t: null } }, 3000) }
-    s.notify(`'${p.name}' 삭제할까요? 한 번 더 누르면 삭제돼요`)
+    s.notify(`한 번 더 누르면 '${p.name}' 프리셋을 삭제해요`)
   }
 
   const chip = (
