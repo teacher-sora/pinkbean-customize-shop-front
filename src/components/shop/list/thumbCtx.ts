@@ -110,7 +110,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
           const dyeMetas = worn.map(([, it]) => map.get(it.id)).filter(Boolean) as ItemMeta[]
           override = await buildOverrides(dyeMetas, { palette: s.renderPalette, hsb: s.renderHsb }, view).catch(() => new Map())
           // 착용 아이템의 이펙트(망토 오라 등)도 카드에 그린다 + 그 이펙트 염색을 override 에 굽는다(토글 꺼진 슬롯 제외).
-          effs = await collectWornEffects(worn.map(([sl, it]) => ({ slot: sl, id: it.id })), s.pv, s.renderHsb, override).catch(() => [])
+          effs = await collectWornEffects(worn.map(([sl, it]) => ({ slot: sl, id: it.id, dyeable: it.dyeMode !== 'none' })), s.pv, s.renderHsb, override).catch(() => [])
         }
         // 표정 얼굴장식 카드는 배경의 얼굴을 **자기 표정으로 다시 그려야** 한다(ItemThumb) → 메타를 넘긴다.
         const faceEntry = worn.find(([sl]) => sl === 'face')
@@ -190,7 +190,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
           }
           const override = await buildOverrides(dyeMetas, { palette: s.renderPalette, hsb: s.renderHsb }, cview).catch(() => new Map())
           const effs = await collectWornEffects(
-            myEq.filter(([sl]) => sl !== slot).map(([sl, it]) => ({ slot: sl, id: it.id })), s.pv, s.renderHsb, override,
+            myEq.filter(([sl]) => sl !== slot).map(([sl, it]) => ({ slot: sl, id: it.id, dyeable: it.dyeMode !== 'none' })), s.pv, s.renderHsb, override,
           ).catch(() => [])
           bySlot[slot] = { items, key: `${key}:${slot}:${cexpr}`, override, effs, expr: cexpr, faceMeta, stance }
         }
