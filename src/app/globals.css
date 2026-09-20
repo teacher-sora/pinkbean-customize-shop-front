@@ -129,6 +129,9 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
 @keyframes pbDdIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 input[type=range] { accent-color: #ec86ac; }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* 새로고침 복원 중에는 본문만 감춘다(배경은 그대로 보인다). 표시는 layout.tsx 의 인라인 스크립트가 켠다. */
+html[data-pb-restore] .pb-root { visibility: hidden; }
+
 @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 @media (max-height: 760px) {
   .pb-partnav { height: 34px !important; }
