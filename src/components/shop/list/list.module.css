@@ -12,9 +12,13 @@
 .chipDiv { width: 1px; height: 16px; margin: 0 12px; background: #e7ded4; }
 .arrow { flex: 0 0 auto; width: 22px; height: 24px; margin: 0 2px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 6px; background: transparent; color: #ded5cb; cursor: default; transition: background-color .2s ease, color .2s ease; }
 .arrowOn { color: #c08fa4; cursor: pointer; }
-.pageInput { width: 34px; height: 22px; padding: 0 3px; border: 1px solid transparent; border-radius: 6px; background: #f1e7ec; text-align: center; font-size: 12px; font-weight: 700; color: #b0748f; outline: none; }
+/* 페이지 번호는 **4자리(9999)** 까지 자리를 미리 잡는다 — 숫자가 바뀔 때마다 칸이 넓어지며
+   화살표가 밀리던 것을 막는다(사용자 지시 2026-09-21).
+   폭을 px 로 박으면 글꼴이 두툼할 때 모자라므로 숫자 한 칸(ch) 기준으로 잡고 여유를 더한다.
+   입력칸과 총 페이지 수를 같은 폭으로 둬 '/' 양옆이 대칭이 되게 한다. */
+.pageInput { width: calc(4ch + 16px); height: 22px; padding: 0 4px; border: 1px solid transparent; border-radius: 6px; background: #f1e7ec; text-align: center; font-size: 12px; font-weight: 700; color: #b0748f; outline: none; }
 .slash { font-size: 12px; color: #ccc2b8; margin: 0 4px; }
-.total { min-width: 27px; text-align: center; font-size: 12px; font-weight: 600; color: #8a8075; }
+.total { min-width: calc(4ch + 16px); text-align: center; font-size: 12px; font-weight: 600; color: #8a8075; }
 .searchWrap { flex: 0 1 200px; min-width: 148px; position: relative; display: flex; align-items: center; }
 .searchWrapNarrow { flex: 1 1 200px; min-width: 160px; }
 .searchIcon { position: absolute; left: 10px; pointer-events: none; }
