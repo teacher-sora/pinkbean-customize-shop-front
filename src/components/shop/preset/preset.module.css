@@ -42,7 +42,8 @@
 .badge { position: absolute; top: 7px; left: 7px; z-index: 3; display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 20px; background: #fce9f1; border: 1px solid #f4cfdf; color: #d76d9a; font-size: 10px; font-weight: 700; pointer-events: none; transition: opacity .22s ease, transform .22s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); }
 .badgeOn { opacity: 1; transform: translateY(0); }
 /* 모바일: '선택됨' 대신 체크 아이콘 — 원형 */
-.badgeM { width: 19px; padding: 0; justify-content: center; }
+/* 모바일: 코디 탭 신규(N) 라벨과 같은 모서리 둥근 정사각형(사용자 지시 2026-09-20) */
+.badgeM { width: 19px; padding: 0; justify-content: center; border-radius: 6px; }
 .thumb { position: relative; flex: 1 1 auto; width: 100%; aspect-ratio: 3/4; background: #f7f2ec; border-radius: 11px 11px 0 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .nameRow { position: relative; flex: 0 0 auto; padding: 8px; display: flex; align-items: center; gap: 4px; border-top: 1px solid #f4efe8; }
 .nameWrap { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
