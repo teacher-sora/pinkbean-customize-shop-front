@@ -124,7 +124,14 @@ const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
 })
 
 // 목록 = ISR 캐시(/api/plaza) + 내 좋아요(실시간, 사용자마다 다름). 정렬·검색·필터는 화면에서.
-//  글 목록과 좋아요 수는 캐시된 값이라 남이 방금 올린 글·누른 좋아요가 바로 보이지는 않는다(의도).
+//  좋아요 수는 캐시된 값이라 남이 방금 누른 좋아요는 바로 보이지 않는다(의도 — 가장 잦은 변화).
+//  새 글·내린 글은 쓰기 직후 캐시를 비워(bumpPlazaCache) 다음에 들어오는 사람에게 바로 보인다.
+
+// 목록 캐시를 즉시 비운다. 실패해도 시간 만료로 따라오니 흐름을 막지 않는다(fire-and-forget).
+function bumpPlazaCache(): void {
+  try { void fetch('/api/plaza/revalidate', { method: 'POST', keepalive: true }).catch(() => undefined) } catch { /* noop */ }
+}
+
 async function loadRows(): Promise<Row[] | null> {
   try {
     const r = await fetch('/api/plaza', { cache: 'no-store' })
@@ -171,6 +178,7 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
   if (ins.error) throw ins.error
   const row = ins.data as Row
   if (d.contest && d.email) await c.from('plaza_contest_entries').insert({ post_id: row.id, email: d.email })
+  bumpPlazaCache()
   return toPost(row, uid, new Set())
 }
 
@@ -193,6 +201,7 @@ export async function deletePlazaPost(post: PlazaPost): Promise<void> {
   if (!c) throw new Error('supabase not configured')
   const { error } = await c.from('plaza_posts').delete().eq('id', post.id)
   if (error) throw error
+  bumpPlazaCache()
   // 첨부 이미지도 같이 지운다(글만 지우면 버킷에 주인 없는 파일이 쌓인다).
   // 글은 이미 사라졌으니 이미지 삭제가 실패해도 화면 흐름은 막지 않는다.
   if (post.imagePath) await c.storage.from(plazaTarget().bucket).remove([post.imagePath]).catch(() => undefined)
