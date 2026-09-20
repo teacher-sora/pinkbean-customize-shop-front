@@ -78,6 +78,31 @@ function describe(el: Element): Info {
   }
 }
 
+// 터치 프레임 보정 — 앱의 `@media (pointer: coarse)` 규칙을 CSSOM 에서 읽어 조건 없이 다시 깐다.
+// iframe 은 pointer 종류를 못 바꾸므로 그냥 두면 모바일에서 문서 스크롤이 풀리지 않아 아래가 잘린다.
+// 규칙을 복사해 적어 두지 않고 앱 스타일시트에서 읽어 오므로, 앱이 바뀌면 여기도 따라간다.
+function applyCoarse(doc: Document) {
+  const win = doc.defaultView
+  if (!win) return
+  const out: string[] = []
+  for (const sheet of Array.from(doc.styleSheets)) {
+    let rules: CSSRuleList
+    try { rules = sheet.cssRules } catch { continue } // 다른 출처 스타일시트는 건너뛴다
+    for (const rule of Array.from(rules)) {
+      if (!(rule instanceof win.CSSMediaRule)) continue
+      if (!/pointer:\s*coarse|hover:\s*none/.test(rule.conditionText)) continue
+      for (const inner of Array.from(rule.cssRules)) out.push(inner.cssText)
+    }
+  }
+  if (!out.length) return
+  const id = 'pb-viewer-coarse'
+  doc.getElementById(id)?.remove()
+  const style = doc.createElement('style')
+  style.id = id
+  style.textContent = out.join('\n')
+  doc.head.appendChild(style) // 항상 마지막에 놓아야 원래 규칙을 덮는다
+}
+
 type FrameProps = {
   preset: Preset
   zoom: number
@@ -108,6 +133,17 @@ function Frame({ preset, zoom, path, tab, nonce, inspect, onPick }: FrameProps) 
     }, 200)
     return () => window.clearInterval(t)
   }, [ready, tab])
+
+  // 터치 프레임은 coarse 규칙을 다시 깔아 준다. Next 가 CSS 청크를 나눠 넣어서 잠시 되풀이한다.
+  useEffect(() => {
+    if (!ready || !preset.touch) return
+    const doc = ref.current?.contentDocument
+    if (!doc) return
+    applyCoarse(doc)
+    let n = 0
+    const t = window.setInterval(() => { applyCoarse(doc); if (++n > 12) window.clearInterval(t) }, 400)
+    return () => window.clearInterval(t)
+  }, [ready, preset.touch, tab, nonce])
 
   // 요소 검사 — 같은 출처라 iframe 문서에 바로 리스너를 건다. 끄면 앱이 평소대로 동작한다.
   useEffect(() => {
@@ -272,6 +308,16 @@ export default function Viewer() {
               <button type="button" onClick={toParent} disabled={!info} className={styles.btn}>부모로</button>
             </div>
             <p className={styles.note}>{inspect ? '화면의 요소를 누르면 값이 여기 나옵니다(클릭은 앱에 전달되지 않아요).' : '앱을 평소처럼 조작할 수 있어요.'}</p>
+          </section>
+
+          <section>
+            <h2 className={styles.h}>터치 동작을 보려면</h2>
+            <p className={styles.note}>
+              터치 프레임은 <code>pointer: coarse</code> 규칙을 다시 깔아 레이아웃·스크롤을 맞춰 둡니다.
+              시트 끌어 닫기·스와이프처럼 <b>손가락 제스처</b>까지 보려면 크롬 개발자도구의 기기 모드
+              (<code>Ctrl</code>+<code>Shift</code>+<code>M</code>)를 켜세요. 기기 모드는 이 프레임 안까지 적용돼
+              마우스가 터치로 인식됩니다. 크기는 Responsive 로 크게 두면 됩니다.
+            </p>
           </section>
 
           {info && (
