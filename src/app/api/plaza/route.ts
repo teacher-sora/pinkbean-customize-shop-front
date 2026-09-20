@@ -23,18 +23,23 @@ export async function GET(req: NextRequest) {
   if (!url || !key) return NextResponse.json({ error: 'not configured' }, { status: 503 })
 
   const schema = plazaSchema(req.nextUrl.hostname)
+  // `fresh` = 방금 글을 올리거나 내린 사람의 브라우저만 붙인다(lib/plaza.ts, 쓰기 뒤 30초).
+  // 올리자마자 새로고침해도 자기 글이 보여야 하는데, 무효화가 퍼지기 전에 엣지 캐시가 옛 응답을 내줄 수 있다.
+  //  · URL 이 달라 엣지 캐시 자체를 비켜 가고, 원본도 캐시 없이 읽는다.
+  //  · 그 사람 한 명이 30초 동안 몇 번 더 읽는 것뿐이라, 나머지 전부의 캐시(=속도)는 그대로다.
+  const fresh = req.nextUrl.searchParams.has('fresh')
   const q = `${url}/rest/v1/plaza_posts?select=*&order=created_at.desc&limit=${POST_LIMIT}`
   const r = await fetch(q, {
     headers: { apikey: key, 'Accept-Profile': schema },
-    next: { revalidate: PLAZA_TTL, tags: [plazaTag(schema)] },
+    ...(fresh ? { cache: 'no-store' as const } : { next: { revalidate: PLAZA_TTL, tags: [plazaTag(schema)] } }),
   }).catch(() => null)
   if (!r || !r.ok) return NextResponse.json({ error: 'upstream' }, { status: 502 })
 
   const posts = await r.json()
-  return NextResponse.json({ posts, revalidate: PLAZA_TTL }, {
+  return NextResponse.json({ posts, revalidate: fresh ? 0 : PLAZA_TTL }, {
     // 엣지 캐시는 **짧게만** 건다. 길게 걸면 on-demand 무효화가 이 층에 막혀 등록이 바로 안 보인다.
     // 여기 s-maxage 는 동시 진입 몰림을 막는 용도이고, 실제 절약은 위의 데이터 캐시(tags)가 한다.
     // 브라우저는 캐시하지 않는다(탭에 들어올 때마다 최신 결과를 받아야 한다).
-    headers: { 'cache-control': 'public, max-age=0, s-maxage=10, stale-while-revalidate=60' },
+    headers: { 'cache-control': fresh ? 'private, no-store' : 'public, max-age=0, s-maxage=10, stale-while-revalidate=60' },
   })
 }

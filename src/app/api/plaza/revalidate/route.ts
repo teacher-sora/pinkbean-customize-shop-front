@@ -12,7 +12,8 @@ import { plazaSchema, plazaTag } from '../shared'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const MIN_GAP_MS = 3000
+// 실제 쓰기를 건너뛰면 남들 화면에 최대 PLAZA_TTL 동안 안 보인다 → 남용 상한만 남기고 짧게 잡는다.
+const MIN_GAP_MS = 1000
 const last = new Map<string, number>()
 
 export async function POST(req: NextRequest) {

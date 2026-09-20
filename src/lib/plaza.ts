@@ -133,14 +133,28 @@ const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
 //  좋아요 수는 캐시된 값이라 남이 방금 누른 좋아요는 바로 보이지 않는다(의도 — 가장 잦은 변화).
 //  새 글·내린 글은 쓰기 직후 캐시를 비워(bumpPlazaCache) 다음에 들어오는 사람에게 바로 보인다.
 
-// 목록 캐시를 즉시 비운다. 실패해도 시간 만료로 따라오니 흐름을 막지 않는다(fire-and-forget).
-function bumpPlazaCache(): void {
-  try { void fetch('/api/plaza/revalidate', { method: 'POST', keepalive: true }).catch(() => undefined) } catch { /* noop */ }
+// 쓰기 직후 30초 동안은 이 브라우저만 캐시를 비켜 읽는다.
+// 올리자마자 새로고침하는 사람이 자기 글을 못 보는 일이 없어야 한다. localStorage 라 새로고침해도 남는다.
+const FRESH_KEY = 'pb:plaza-fresh-until'
+const FRESH_MS = 30000
+const freshNow = () => {
+  try { return Number(localStorage.getItem(FRESH_KEY) || 0) > Date.now() } catch { return false }
+}
+// 목록 캐시를 비운다. **기다린다** — 비우기가 끝나기 전에 새로고침이 들어가면 옛 응답을 받을 수 있다.
+// 느리거나 실패해도 흐름을 막지 않도록 2초에서 끊는다(시간 만료로도 결국 따라온다).
+async function bumpPlazaCache(): Promise<void> {
+  try { localStorage.setItem(FRESH_KEY, String(Date.now() + FRESH_MS)) } catch { /* 저장 못 해도 계속 */ }
+  try {
+    await Promise.race([
+      fetch('/api/plaza/revalidate', { method: 'POST', keepalive: true }).then(() => undefined),
+      new Promise<void>((r) => setTimeout(r, 2000)),
+    ])
+  } catch { /* noop */ }
 }
 
 async function loadRows(): Promise<Row[] | null> {
   try {
-    const r = await fetch('/api/plaza', { cache: 'no-store' })
+    const r = await fetch(freshNow() ? '/api/plaza?fresh=1' : '/api/plaza', { cache: 'no-store' })
     if (!r.ok) return null
     const j = await r.json()
     return Array.isArray(j?.posts) ? (j.posts as Row[]) : null
@@ -192,7 +206,7 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
   }
   const row = ins.data as Row
   if (d.contest && d.email) await c.from('plaza_contest_entries').insert({ post_id: row.id, email: d.email })
-  bumpPlazaCache()
+  await bumpPlazaCache()
   return toPost(row, uid, new Set())
 }
 
@@ -215,7 +229,7 @@ export async function deletePlazaPost(post: PlazaPost): Promise<void> {
   if (!c) throw new Error('supabase not configured')
   const { error } = await c.from('plaza_posts').delete().eq('id', post.id)
   if (error) throw error
-  bumpPlazaCache()
+  await bumpPlazaCache()
   // 첨부 이미지도 같이 지운다(글만 지우면 버킷에 주인 없는 파일이 쌓인다).
   // 글은 이미 사라졌으니 이미지 삭제가 실패해도 화면 흐름은 막지 않는다.
   if (post.imagePath) await c.storage.from(plazaTarget().bucket).remove([post.imagePath]).catch(() => undefined)
