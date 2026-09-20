@@ -104,7 +104,6 @@ export function BookmarkBox() {
 export function BookmarkSheetBody() {
   const s = useShop()
   const n = s.bookmarks.length
-  const pickId = s.bookmarks.some((b) => b.id === s.vsPick) ? s.vsPick : s.bookmarks[0]?.id
   const flip = useVsFlip()
   return (
     <div ref={flip.bodyRef} className={clsx('pb-scroll', styles.sheetBody)}>
@@ -126,14 +125,15 @@ export function BookmarkSheetBody() {
             const it = s.bookmarks[i]
             if (!it) return <div key={i} title="북마크한 아이템이 여기에 담겨요" className={styles.chipEmpty} />
             const worn = wornOf(s, it)
-            const on = s.vsOn ? it.id === pickId : worn
+            const picked = s.vsPicks.includes(it.id)
+            const on = s.vsOn ? picked : worn
             const name = it.name || it.id
             const pick = () => {
-              if (s.vsOn) { s.setVsPick(it.id); return }
+              if (s.vsOn) { s.toggleVsPick(it.id); return }
               s.equipFromCat(SLOT_TO_CAT[it.slot], it); s.closeSurface()
             }
             return (
-              <button key={it.id} type="button" onClick={pick} title={`${name} — ${s.vsOn ? '오른쪽에 끼워 비교' : worn ? '장착 중' : '눌러서 입혀보기'}`}
+              <button key={it.id} type="button" onClick={pick} title={`${name} — ${s.vsOn ? (picked ? '비교에서 빼기' : '오른쪽에 끼워 비교') : worn ? '장착 중' : '눌러서 입혀보기'}`}
                 className={clsx(styles.chip, on && styles.chipWorn)}>
                 <span className={styles.chipSprite}><BookmarkSprite item={it} /></span>
                 <span role="button" tabIndex={0} title="북마크 해제" aria-label="북마크 해제" className={styles.chipX}

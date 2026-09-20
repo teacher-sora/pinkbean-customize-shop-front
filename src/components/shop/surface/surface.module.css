@@ -123,7 +123,8 @@
 .vsStageTone { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.45)); }
 .vsHr { flex: 0 0 auto; height: 1px; background: #f0e9e1; }
 .vsPick { flex: 0 0 auto; }
-.vsPickLabel { font-size: 11px; font-weight: 700; color: #a89e93; margin-bottom: 7px; }
+.vsPickLabel { display: flex; align-items: baseline; gap: 7px; font-size: 11px; font-weight: 700; color: #a89e93; margin-bottom: 7px; }
+.vsPickHint { font-size: 10.5px; font-weight: 500; color: #c2b8ad; }
 .vsChips { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 7px; }
 .vsChipsM { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
 .vsChip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1.5px solid #f0e9e1; border-radius: 9px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }

@@ -23,14 +23,22 @@ export const INFO_FRAC_HAIR = 0.82
 // 피부는 모델(body+head)로 렌더해 중앙 정렬 — fraction 으로 크기 조절(아이콘=작게, 미리보기=크게).
 export const SKIN_ICON_FRACTION = 0.72
 export const SKIN_PREVIEW_FRACTION = 0.52
-function drawSprite(canvas: HTMLCanvasElement, src: CanvasImageSource, w: number, h: number, size: number, frac = INFO_FRAC) {
+// 인벤 아이콘(CDN `sprites/<id>/icon.png`, 29×31 같은 도트 그림)은 화면 기준 2배까지만 키운다.
+// VS 칩처럼 칸이 크면 예전 규칙이 90% 를 채우려 3배 이상으로 늘려 도트가 뭉개져 보였다(사용자 제보 2026-09-20).
+// 상한은 "화면 배율"이라 고해상도(DPR 2·3)에서도 2배로 보이며, 캔버스 픽셀은 여전히 디바이스 픽셀 1:1 이라 선명하다.
+const MAX_ICON_ZOOM = 2
+function drawSprite(canvas: HTMLCanvasElement, src: CanvasImageSource, w: number, h: number, size: number, frac = INFO_FRAC, dpr = 1) {
   canvas.width = size; canvas.height = size
   const ctx = canvas.getContext('2d'); if (!ctx) return
   ctx.clearRect(0, 0, size, size)
   if (!w || !h) return
   const avail = size * frac
   let k = Math.min(avail / w, avail / h)
-  if (k >= 1) { k = Math.max(1, Math.min(Math.round(k), Math.floor(Math.min(size / w, size / h)) || 1)); ctx.imageSmoothingEnabled = false }
+  if (k >= 1) {
+    const zoomCap = Math.max(1, Math.floor(MAX_ICON_ZOOM * dpr))
+    k = Math.max(1, Math.min(Math.round(k), Math.floor(Math.min(size / w, size / h)) || 1, zoomCap))
+    ctx.imageSmoothingEnabled = false
+  }
   else ctx.imageSmoothingEnabled = true // 원본이 큰 경우(피부 전신 등) 분수 축소(부드럽게)
   const dw = Math.round(w * k), dh = Math.round(h * k)
   ctx.drawImage(src, Math.round((size - dw) / 2), Math.round((size - dh) / 2), dw, dh)
@@ -44,16 +52,29 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const [meta, setMeta] = useState<ItemMeta | null>(null)
+  const [boxW, setBoxW] = useState(0)
   useEffect(() => {
     if (!mix) { setMeta(null); return }
     let a = true
     loadMeta(id).then((m) => { if (a) setMeta(m) }).catch(() => {})
     return () => { a = false }
   }, [id, mix])
+  // 칸 크기가 바뀌면(다이얼로그 전환·화면 회전 등) 그 크기로 다시 그린다 — 예전엔 처음 잰 크기로만 그려
+  // 나중에 커진 칸에서는 CSS 가 캔버스를 늘려 도트가 깨졌다.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setBoxW((p) => (p === el.clientWidth ? p : el.clientWidth))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   // 드래그 중에도 렉 없이 바로바로 발색(single-flight + 최신값 수렴).
   useLiveRedraw(async () => {
     const el = ref.current; if (!el) return
-    const dev = Math.round((el.clientWidth || 48) * (window.devicePixelRatio || 1))
+    const dpr = window.devicePixelRatio || 1
+    const dev = Math.round((el.clientWidth || 48) * dpr)
     if (mix) {
       if (!meta) return
       const base = palette?.baseColor ?? 0, mixC = palette?.mixColor ?? base, ratio = palette?.ratio ?? 0
@@ -63,9 +84,9 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
       const active = hsbActive(hsb)
       const img = await loadImage(rel, active)
       const src: CanvasImageSource = active ? applyHsb(img, hsb!, rel) : img
-      drawSprite(el, src, (src as HTMLCanvasElement).width, (src as HTMLCanvasElement).height, dev, frac)
+      drawSprite(el, src, (src as HTMLCanvasElement).width, (src as HTMLCanvasElement).height, dev, frac, dpr)
     }
-  }, [meta, id, thumb, mix, palette, hsb, zmap, frac])
+  }, [meta, id, thumb, mix, palette, hsb, zmap, frac, boxW])
   return <canvas ref={ref} style={{ width: '100%', height: '100%', imageRendering: 'pixelated', ...(grayscale ? { filter: 'grayscale(1)' } : {}) }} />
 }
 
