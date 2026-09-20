@@ -319,7 +319,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [vsPicks, setVsPicks] = useState<string[]>([])
   // 코디 광장: 목록은 한 번 받아 두고 거르기·정렬은 화면에서(검색이 즉시 반응).
   const [plazaPosts, setPlazaPosts] = useState<PlazaPost[]>([])
-  const [plazaLoading, setPlazaLoading] = useState(false)
+  const [plazaLoaded, setPlazaLoaded] = useState(false) // 첫 로드가 끝났는지(스켈레톤은 이 전에만)
   const [plazaFilter, setPlazaFilter] = useState<PlazaFilter>('all')
   const [plazaSort, setPlazaSort] = useState<PlazaSort>('popular')
   const [plazaGen, setPlazaGen] = useState(0) // 목록을 새로 받아온 횟수 — 정렬을 다시 잡는 기준
@@ -842,26 +842,40 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const notifyLive = useRef(notify)
   notifyLive.current = notify
   const setPlazaQ = (v: string) => { setPlazaQState(v); setIdx(0, false) }
-  // 탭에 다시 들어올 때마다 스켈레톤을 깔면 목록이 깜빡인다(사용자 제보) → 보여줄 게 없을 때만 스켈레톤.
-  const havePosts = useRef(false)
+  // 스켈레톤은 **첫 로드 전에만** 보여준다.
+  // 전에는 '보여줄 글이 있는지'로 판단했는데, 글이 0개면 그 조건이 영원히 거짓이라
+  // 들를 때마다 다시 깔려 깜빡였다(사용자 제보 2026-09-21, PC·모바일 모두).
+  // 성공이든 실패든 한 번 끝나면 다시는 깔지 않는다 — 빈 목록에는 빈 상태 문구만 남는다.
+  const loadedOnce = useRef(false)
   const lastPlazaLoad = useRef(0)
+  // 미리 받기와 탭 진입이 겹칠 수 있다. 두 번 받으면 로딩 플래그가 엇갈려 또 깜빡인다 → 한 번만 받는다.
+  const plazaInFlight = useRef<Promise<void> | null>(null)
   // 목록은 ISR 캐시라 내가 방금 올리거나 내린 글이 아직 안 담겨 있다 → 내 것만 화면에서 보정한다.
   const myAdded = useRef<PlazaPost[]>([])
   const myRemoved = useRef<Set<string>>(new Set())
-  const refreshPlaza = useCallback(async () => {
+  const refreshPlaza = useCallback(async (): Promise<void> => {
     if (!plazaConfigured()) return
-    if (!havePosts.current) setPlazaLoading(true)
-    try {
-      const list = await loadPlaza()
-      const ids = new Set(list.map((p) => p.id))
-      myAdded.current = myAdded.current.filter((p) => !ids.has(p.id)) // 캐시에 나타났으면 보정 해제
-      for (const id of Array.from(myRemoved.current)) if (!ids.has(id)) myRemoved.current.delete(id)
-      const merged = [...myAdded.current, ...list].filter((p) => !myRemoved.current.has(p.id))
-      setPlazaPosts(merged)
-      setPlazaGen((g) => g + 1) // 새로 받아온 목록 = 정렬을 다시 잡는 시점
-      havePosts.current = merged.length > 0
-      lastPlazaLoad.current = Date.now()
-    } catch { notifyLive.current('광장을 불러오지 못했어요') } finally { setPlazaLoading(false) }
+    if (plazaInFlight.current) return plazaInFlight.current
+    const run = (async () => {
+      try {
+        const list = await loadPlaza()
+        const ids = new Set(list.map((p) => p.id))
+        myAdded.current = myAdded.current.filter((p) => !ids.has(p.id)) // 캐시에 나타났으면 보정 해제
+        for (const id of Array.from(myRemoved.current)) if (!ids.has(id)) myRemoved.current.delete(id)
+        const merged = [...myAdded.current, ...list].filter((p) => !myRemoved.current.has(p.id))
+        setPlazaPosts(merged)
+        setPlazaGen((g) => g + 1) // 새로 받아온 목록 = 정렬을 다시 잡는 시점
+        lastPlazaLoad.current = Date.now()
+      } catch {
+        notifyLive.current('광장을 불러오지 못했어요')
+        // 실패했으면 다음 진입 때 다시 받는다(아래 20초 건너뛰기는 lastPlazaLoad 를 보므로 걸리지 않는다).
+      } finally {
+        loadedOnce.current = true
+        setPlazaLoaded(true)
+      }
+    })()
+    plazaInFlight.current = run
+    try { await run } finally { plazaInFlight.current = null }
   }, [])
   // 탭에 들어올 때 한 번 받아온다(등록·좋아요 뒤에는 그 자리에서 갱신).
   // 탭을 누른 **뒤에** 처음 받기 시작하면 광장만 유독 늦게 뜬다(코디 탭은 이미 받아 둔 카탈로그를 쓴다).
@@ -878,7 +892,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 탭에 들어올 때 새로 읽는다. 다만 방금 받아 둔 게 있으면 건너뛴다(미리 받기와 겹치지 않게).
   useEffect(() => {
     if (primary !== 'share') return
-    if (havePosts.current && Date.now() - lastPlazaLoad.current < 20000) return
+    if (loadedOnce.current && Date.now() - lastPlazaLoad.current < 20000) return
     void refreshPlaza()
   }, [primary, refreshPlaza])
   useEffect(() => { if (primary !== 'share') setPlazaUpload(false) }, [primary])
@@ -1423,7 +1437,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     warmForPreview, listMode, setListMode, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,
     bp, cols, rows, itemsPerPage,
-    plazaPosts, plazaList, plazaLoading, plazaReady: plazaConfigured(),
+    plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
     openPlazaPost, plazaTakeDirect,
