@@ -130,12 +130,34 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
 input[type=range] { accent-color: #ec86ac; }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 /* 새로고침 복원 중(html[data-pb-csr]) — 뼈대만 남긴다.
-   헤더·미리보기·하단 탭·부위 칩 줄은 그대로 두되, 패널 내용은 빈 상자로 바꾸고
+   헤더·하단 탭·부위 칩 줄은 그대로 두고, 본문 두 칸(패널 + 오른쪽 칸)을 빈 상자로 바꾼다.
    선택(토글) 표시는 켜지 않는다(각 모듈에서 :global(html:not([data-pb-csr])) 로 막는다).
-   지우는 시점은 되살린 화면이 커밋된 뒤라 고정 대기 시간이 없다. */
+   지우는 시점은 되살린 화면이 커밋된 뒤라 고정 대기 시간이 없다.
+   ⚠️ display:contents 는 **반드시 여기(스타일시트)에서** 준다. 인라인 style 로 주면
+      우선순위가 높아 아래 display:none 이 영원히 지고, 뼈대 대신 기본 화면이 그대로 보인다. */
+[data-pb-panel] { display: contents; }
 [data-pb-stub] { display: none; }
 html[data-pb-csr] [data-pb-panel] { display: none; }
-html[data-pb-csr] [data-pb-stub] { display: block; flex: 1 1 auto; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; }
+html[data-pb-csr] [data-pb-stub] { display: block; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; }
+html[data-pb-csr] [data-pb-stub='main'] { flex: 1 1 auto; min-width: 0; min-height: 0; }
+/* 오른쪽 칸 = 미리보기(코디·프리셋·정보) 또는 등록 폼(광장). 둘의 폭이 같아 한 상자로 덮인다.
+   폭은 JS(useBreakpoint) 가 아니라 미디어쿼리로 잡는다 — 하이드레이션 전에도 정확해야 하므로. */
+html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
+@media (min-width: 521px) and (max-width: 1199px) { html[data-pb-csr] [data-pb-stub='side'] { flex-basis: 312px; } }
+@media (min-width: 861px) and (max-width: 1199px) and (hover: none) { html[data-pb-csr] [data-pb-stub='side'] { flex-basis: 330px; } }
+@media (min-width: 861px) and (max-width: 1199px) and (pointer: coarse) { html[data-pb-csr] [data-pb-stub='side'] { flex-basis: 330px; } }
+/* 모바일 폭에서는 서버 HTML 이 아직 PC 레이아웃이다 — 폭은 JS(useBreakpoint)가 정하므로
+   하이드레이션 전까지 눌린 PC 머리글·탭 줄이 비친다. 뼈대 동안은 흰 시트 한 장으로 덮어
+   모바일의 빈 컬럼과 같은 모습으로 만든다(모바일 레이아웃도 흰 전체화면 컬럼이다). */
+@media (max-width: 520px) {
+  html[data-pb-csr] [data-pb-stub='side'] { display: none; }
+  html[data-pb-csr] [data-pb-stub='main'] { position: fixed; inset: 0; z-index: 3; border: 0; border-radius: 0; }
+  /* 머리글(46px)·하단 탭(56px) 경계선만 그려 둔다 — 비어 있어도 '틀'로 읽히게. */
+  html[data-pb-csr] [data-pb-stub='main']::before,
+  html[data-pb-csr] [data-pb-stub='main']::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: #f4efe8; }
+  html[data-pb-csr] [data-pb-stub='main']::before { top: 46px; }
+  html[data-pb-csr] [data-pb-stub='main']::after { bottom: 56px; }
+}
 
 @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 @media (max-height: 760px) {
