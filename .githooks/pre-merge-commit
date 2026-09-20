@@ -1,0 +1,8 @@
+#!/bin/sh
+. "$(dirname "$0")/_dev-only-guard.sh"
+
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+[ "$branch" = "main" ] || [ "$branch" = "master" ] || exit 0
+
+if index_has_dev_only; then dev_only_msg; exit 1; fi
+exit 0

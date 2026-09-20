@@ -20,7 +20,8 @@ const isTouchDevice = () => {
   if (typeof window === 'undefined') return false
   // 개발 뷰어(/viewer)가 iframe 에 pbtouch=1 을 붙여 태블릿(터치) 모드를 재현한다.
   // iframe 은 폭만 바꿀 수 있고 pointer:coarse 를 만들 수 없어서, 이 한 가지만 쿼리로 강제한다.
-  if (window.location.search.includes('pbtouch=1')) return true
+  // 뷰어는 dev 전용이므로 운영 도메인에서는 이 쿼리를 무시한다(파일은 병합돼도 동작하지 않게).
+  if (window.location.search.includes('pbtouch=1') && !/^(www\.)?pinkbean-customize\.com$/.test(location.hostname)) return true
   return !!window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches
 }
 

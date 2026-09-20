@@ -1,0 +1,22 @@
+# main 에 개발 전용 화면(/viewer)이 섞였는지 막는 마지막 그물.
+# 로컬 훅(.githooks)을 쓰지 않는 환경·다른 기기에서도 동작한다.
+name: dev 전용 경로 차단
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: /viewer 가 없는지 확인
+        run: |
+          if [ -e src/app/viewer ]; then
+            echo "::error::개발 전용 화면 src/app/viewer 가 main 에 있습니다. dev 에서만 유지해야 합니다."
+            exit 1
+          fi
+          echo "확인: src/app/viewer 없음"
