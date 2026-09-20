@@ -185,8 +185,9 @@ export default function Viewer() {
 
   const shown = useMemo(() => (all ? PRESETS : PRESETS.filter((p) => p.id === presetId)), [all, presetId])
   const widest = Math.max(...shown.map((p) => p.w))
-  const fit = Math.min(1, (stageW - 48 - (all ? 24 * (shown.length - 1) : 0)) / (all ? shown.reduce((a, p) => a + p.w, 0) : widest))
-  const zoom = zoomMode === 'fit' ? Math.max(0.2, Number(fit.toFixed(3))) : zoomMode
+  const fit = (stageW - 48 - (all ? 24 * (shown.length - 1) : 0)) / (all ? shown.reduce((a, p) => a + p.w, 0) : widest)
+  // 올림하면 마지막 프레임이 반 칸 잘린다 — 항상 내림.
+  const zoom = zoomMode === 'fit' ? Math.max(0.2, Math.min(1, Math.floor(fit * 1000) / 1000)) : zoomMode
 
   const onPick = useCallback((el: Element) => {
     picked.current = el
@@ -230,7 +231,7 @@ export default function Viewer() {
               ))}
               <button type="button" onClick={() => setAll(true)} className={all ? styles.chipOn : styles.chip}>전부</button>
             </div>
-            <p className={styles.note}>{all ? '네 화면을 한 줄에 놓고 비교합니다.' : PRESETS.find((p) => p.id === presetId)?.note}</p>
+            <p className={styles.note}>{all ? '모든 화면을 한 줄에 놓고 비교합니다.' : PRESETS.find((p) => p.id === presetId)?.note}</p>
           </section>
 
           <section>
