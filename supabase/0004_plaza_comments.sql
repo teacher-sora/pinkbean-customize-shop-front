@@ -11,6 +11,7 @@ create table if not exists public.plaza_comments (
   owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
   body text not null check (char_length(btrim(body)) between 1 and 200),
   created_at timestamptz not null default now()
+  -- parent_id(답글)는 0005_plaza_comment_replies.sql 에서 붙인다.
 );
 create index if not exists plaza_comments_post_idx on public.plaza_comments (post_id, created_at);
 
@@ -33,6 +34,7 @@ create table if not exists plaza_dev.plaza_comments (
   owner uuid not null default auth.uid() references auth.users(id) on delete cascade,
   body text not null check (char_length(btrim(body)) between 1 and 200),
   created_at timestamptz not null default now()
+  -- parent_id(답글)는 0005_plaza_comment_replies.sql 에서 붙인다.
 );
 create index if not exists plaza_comments_post_idx on plaza_dev.plaza_comments (post_id, created_at);
 

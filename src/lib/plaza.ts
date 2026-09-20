@@ -148,9 +148,12 @@ async function loadRows(): Promise<Row[] | null> {
 export async function loadPlaza(): Promise<PlazaPost[]> {
   const c = sb()
   if (!c) return []
+  // 목록은 로그인과 **무관**하다(공개 읽기). 익명 세션을 기다렸다가 받기 시작하면 왕복이 한 번 더 늘어
+  // 광장 탭만 유독 늦게 뜬다 — 둘을 동시에 시작한다(2026-09-20).
+  const rowsP = loadRows()
   const uid = await plazaAuth()
   const [cached, likesRes] = await Promise.all([
-    loadRows(),
+    rowsP,
     uid ? c.from('plaza_likes').select('post_id').eq('owner', uid) : Promise.resolve({ data: [], error: null } as never),
   ])
   const liked0 = new Set<string>(((likesRes as { data: { post_id: string }[] | null }).data || []).map((l) => l.post_id))
@@ -218,6 +221,7 @@ export async function deletePlazaPost(post: PlazaPost): Promise<void> {
 export type PlazaComment = {
   id: string
   postId: string
+  parentId: string | null   // 답글이면 부모 댓글 id(1단까지 — DB 트리거가 막는다)
   owner: string
   body: string
   createdAt: string
@@ -226,11 +230,12 @@ export type PlazaComment = {
   canDelete: boolean
 }
 
-type CRow = { id: string; post_id: string; owner: string; body: string; created_at: string }
+type CRow = { id: string; post_id: string; parent_id: string | null; owner: string; body: string; created_at: string }
 
 const toComment = (r: CRow, uid: string | null, post: PlazaPost): PlazaComment => ({
   id: r.id,
   postId: r.post_id,
+  parentId: r.parent_id,
   owner: r.owner,
   body: r.body,
   createdAt: r.created_at,
@@ -239,6 +244,37 @@ const toComment = (r: CRow, uid: string | null, post: PlazaPost): PlazaComment =
   // 글 주인은 자기 글에 달린 댓글을 정리할 수 있다(신고 화면이 없는 동안의 최소 장치 — RLS 와 같은 조건).
   canDelete: !!uid && (r.owner === uid || post.owner === uid),
 })
+
+// ── 익명 이름 ──
+// 로그인을 받지 않으므로 **모두 익명**이다. 다만 '익명 1' 같은 번호는 대화를 따라가기 어렵고 심심하다.
+// 익명 uid 를 해시해 메이플다운 이름을 고정으로 뽑는다 — 같은 사람은 어느 글에서나 같은 이름이고,
+// 이름에서 uid 를 되짚을 수는 없다. 낱말 조합이 1,600 가지라 드물게 겹치는데,
+// 그때만 화면에서 짧은 꼬리표를 붙인다(plazaAliasTag) — 평소에는 이름만 깔끔하게 보인다.
+const ALIAS_ADJ = [
+  '말랑한', '새침한', '포근한', '나른한', '몽글한', '수줍은', '느긋한', '상냥한',
+  '엉뚱한', '야무진', '반짝이는', '소곤대는', '까칠한', '다정한', '장난스런', '조용한',
+  '씩씩한', '발랄한', '산뜻한', '촉촉한', '폭신한', '달콤한', '은은한', '아늑한',
+  '깜찍한', '담백한', '우아한', '무던한', '똘똘한', '싱그러운', '보송한', '나긋한',
+  '홀가분한', '청량한', '따스한', '오동통한', '초롱한', '해맑은', '느릿한', '멋쟁이',
+]
+const ALIAS_NOUN = [
+  '핑크빈', '슬라임', '주황버섯', '파란버섯', '뿔버섯', '스텀프', '리본돼지', '초록달팽이',
+  '파란달팽이', '빨간달팽이', '스포아', '옥토퍼스', '예티', '펭귄', '루팡', '와일드보어',
+  '좀비버섯', '도로시', '코니', '메이플잎', '별조각', '달빛', '구름', '솜사탕',
+  '마시멜로', '캐러멜', '푸딩', '딸기우유', '체리', '복숭아', '라떼', '도넛',
+  '마카롱', '단팥빵', '쿠키', '젤리', '사탕', '호박마차', '민트초코', '눈꽃',
+]
+const hash32 = (s: string) => {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) }
+  return h >>> 0
+}
+export function plazaAlias(uid: string): string {
+  const h = hash32(uid)
+  return `${ALIAS_ADJ[h % ALIAS_ADJ.length]} ${ALIAS_NOUN[(h >>> 11) % ALIAS_NOUN.length]}`
+}
+// 같은 이름이 한 글에 둘 이상 나올 때만 붙이는 꼬리표.
+export const plazaAliasTag = (uid: string) => hash32(`#${uid}`).toString(36).slice(-2).toUpperCase()
 
 export async function loadComments(post: PlazaPost): Promise<PlazaComment[]> {
   const c = sb()
@@ -250,7 +286,7 @@ export async function loadComments(post: PlazaPost): Promise<PlazaComment[]> {
   return (data as CRow[]).map((r) => toComment(r, uid, post))
 }
 
-export async function addComment(post: PlazaPost, body: string): Promise<PlazaComment> {
+export async function addComment(post: PlazaPost, body: string, parentId: string | null = null): Promise<PlazaComment> {
   const c = sb()
   if (!c) throw new Error('supabase not configured')
   const uid = await plazaAuth()
@@ -258,7 +294,7 @@ export async function addComment(post: PlazaPost, body: string): Promise<PlazaCo
   const text = body.trim().slice(0, PLAZA_COMMENT_MAX)
   if (!text) throw new Error('empty')
   const { data, error } = await c.from('plaza_comments')
-    .insert({ post_id: post.id, owner: uid, body: text }).select('*').single()
+    .insert({ post_id: post.id, parent_id: parentId, owner: uid, body: text }).select('*').single()
   if (error) throw error
   return toComment(data as CRow, uid, post)
 }

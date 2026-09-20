@@ -14,7 +14,7 @@ import bg from '@/assets/pinkbean-bg.png'
 import type { PlazaPost } from '@/lib/plaza'
 import SnapThumb from '../SnapThumb'
 import { useShop } from '../ShopContext'
-import { IconHeart, IconLinkCopy } from '../ui/Icons'
+import { IconHeart, IconLinkCopy, IconTakeDown } from '../ui/Icons'
 import PlazaComments from './PlazaComments'
 import styles from './plaza.module.css'
 
@@ -22,6 +22,8 @@ const DETAIL_FRACTION = 0.5
 
 export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mobile: boolean }) {
   const s = useShop()
+  // 좋아요는 상세에서도 누를 수 있어야 한다 → 서피스가 들고 있는 사본이 아니라 **지금 목록의 값**을 읽는다.
+  const live = s.plazaPosts.find((p) => p.id === post.id) || post
   const tagPick = (t: string) => {
     s.closeSurface()
     setTimeout(() => { s.setPlazaQ(t); s.setPlazaFilter('all') }, 330)
@@ -44,17 +46,27 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
         )}
       </div>
       <div className={styles.detailHr} />
+      {/* 하트 · 링크 복사 · 가져오기를 한 줄에 모은다(사용자 지시). 푸터에는 닫기만 남긴다. */}
+      <div className={clsx(styles.actBar, mobile && styles.actBarM)}>
+        <button type="button" onClick={() => s.plazaLike(live)} aria-pressed={live.liked}
+          title={live.liked ? '좋아요 취소' : '좋아요'}
+          className={clsx(styles.actBtn, live.liked && styles.actBtnOn)}>
+          <IconHeart filled={live.liked} size={13} />{live.likes}
+        </button>
+        <button type="button" onClick={() => s.plazaCopyLink(post)} title="공유 링크 복사" className={styles.actBtn}>
+          <IconLinkCopy size={13} />링크 복사
+        </button>
+        <button type="button" onClick={() => s.plazaTakeDirect(post)} title="내 프리셋으로 가져오기"
+          className={clsx(styles.actBtn, styles.actTake)}>
+          <IconTakeDown />가져오기
+        </button>
+      </div>
       <div className={styles.descBlock}>
-        <div className={styles.descHead}>
-          <span className={styles.descLabel}>설명</span>
-          <span className={styles.descActs}>
-            <span className={styles.likeText}><IconHeart filled size={12} /> {post.likes}</span>
-            <button type="button" onClick={() => s.plazaCopyLink(post)} title="공유 링크 복사" className={clsx('pb-ghost', styles.copyBtn)}>
-              <IconLinkCopy size={13} />링크 복사
-            </button>
-          </span>
-        </div>
-        <p className={styles.descText}>{post.description || '설명을 아직 적지 않았어요.'}</p>
+        <span className={styles.descLabel}>설명</span>
+        {/* 등록 뒤에는 고칠 수 없으므로 '아직 적지 않았다'가 아니라 끝난 사실로 적는다(사용자 지시). */}
+        <p className={clsx(styles.descText, !post.description && styles.descNone)}>
+          {post.description || '설명 없이 올라온 코디예요.'}
+        </p>
         {post.tags.length > 0 && (
           <div className={styles.tagRow}>
             {post.tags.map((t) => (

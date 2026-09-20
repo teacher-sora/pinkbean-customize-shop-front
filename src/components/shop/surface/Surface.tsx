@@ -200,7 +200,8 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'bm' && <><BookmarkSheetBody /><SurfaceFooter /></>}
             {k === 'part' && <><PartPickBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
-            {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter onApply={s.plazaTake} applyLabel="가져오기" /></>}
+            {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다(사용자 지시). */}
+            {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
             {k === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}
           </div>

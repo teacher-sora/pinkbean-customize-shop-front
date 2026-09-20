@@ -169,7 +169,7 @@ export interface ShopCtx {
   plazaUpload: boolean; setPlazaUpload: Dispatch<boolean>
   plazaCols: number; plazaRows: number
   openPlazaPost: (post: PlazaPost) => void
-  plazaTake: () => void; plazaTakeDirect: (post: PlazaPost) => void
+  plazaTakeDirect: (post: PlazaPost) => void
   plazaLike: (post: PlazaPost) => void
   plazaRemove: (post: PlazaPost) => void
   plazaCopyLink: (post: PlazaPost) => void
@@ -844,6 +844,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const setPlazaQ = (v: string) => { setPlazaQState(v); setIdx(0, false) }
   // 탭에 다시 들어올 때마다 스켈레톤을 깔면 목록이 깜빡인다(사용자 제보) → 보여줄 게 없을 때만 스켈레톤.
   const havePosts = useRef(false)
+  const lastPlazaLoad = useRef(0)
   // 목록은 ISR 캐시라 내가 방금 올리거나 내린 글이 아직 안 담겨 있다 → 내 것만 화면에서 보정한다.
   const myAdded = useRef<PlazaPost[]>([])
   const myRemoved = useRef<Set<string>>(new Set())
@@ -859,10 +860,27 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setPlazaPosts(merged)
       setPlazaGen((g) => g + 1) // 새로 받아온 목록 = 정렬을 다시 잡는 시점
       havePosts.current = merged.length > 0
+      lastPlazaLoad.current = Date.now()
     } catch { notifyLive.current('광장을 불러오지 못했어요') } finally { setPlazaLoading(false) }
   }, [])
   // 탭에 들어올 때 한 번 받아온다(등록·좋아요 뒤에는 그 자리에서 갱신).
-  useEffect(() => { if (primary === 'share') void refreshPlaza() }, [primary, refreshPlaza])
+  // 탭을 누른 **뒤에** 처음 받기 시작하면 광장만 유독 늦게 뜬다(코디 탭은 이미 받아 둔 카탈로그를 쓴다).
+  // 첫 화면이 자리를 잡은 뒤 한가할 때 미리 받아 둔다 — 목록 한 건이라 비용이 거의 없다.
+  useEffect(() => {
+    if (!plazaConfigured()) return
+    type Ric = (cb: () => void, o?: { timeout: number }) => number
+    const ric: Ric | undefined = (window as unknown as { requestIdleCallback?: Ric }).requestIdleCallback
+    let t = 0
+    const run = () => { void refreshPlaza() }
+    if (ric) { t = ric(run, { timeout: 4000 }) } else { t = window.setTimeout(run, 1500) }
+    return () => { if (ric) (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(t); else window.clearTimeout(t) }
+  }, [refreshPlaza])
+  // 탭에 들어올 때 새로 읽는다. 다만 방금 받아 둔 게 있으면 건너뛴다(미리 받기와 겹치지 않게).
+  useEffect(() => {
+    if (primary !== 'share') return
+    if (havePosts.current && Date.now() - lastPlazaLoad.current < 20000) return
+    void refreshPlaza()
+  }, [primary, refreshPlaza])
   useEffect(() => { if (primary !== 'share') setPlazaUpload(false) }, [primary])
 
   const openPlazaPost = (post: PlazaPost) => openSurface({ kind: 'plaza', item: null, post })
@@ -872,7 +890,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     closeSurface()
     setSharedIncoming({ ...post.snapshot, name: post.name })
   }
-  const plazaTake = () => { const post = surface?.post; if (post) plazaTakeDirect(post) }
   const plazaLike = (post: PlazaPost) => {
     // 먼저 화면부터 바꾸고(하트는 자주 눌린다) 서버에 반영, 실패하면 되돌린다.
     const next = !post.liked
@@ -1407,7 +1424,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     plazaPosts, plazaList, plazaLoading, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
-    openPlazaPost, plazaTake, plazaTakeDirect,
+    openPlazaPost, plazaTakeDirect,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,
