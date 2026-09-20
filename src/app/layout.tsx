@@ -33,6 +33,9 @@ export const metadata: Metadata = {
   alternates: { canonical: '/', languages: { 'ko-KR': '/' } },
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: 'default' },
+  // appleWebApp.capable 이 내보내는 apple-mobile-web-app-capable 은 크롬에서 deprecated 경고가 난다.
+  // 표준 이름을 함께 넣어 둔다(사파리는 apple- 쪽만 읽으므로 둘 다 필요).
+  other: { 'mobile-web-app-capable': 'yes' },
   openGraph: {
     type: 'website',
     url: SITE_URL,
