@@ -45,8 +45,8 @@ export type Snapshot = { equipped: Record<string, string>; tone: number; dyePale
 // 단일 서피스(시트·다이얼로그): 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 하나를 쓴다(v2 §10.4).
 // part = 부위 염색(착용 부위 고르기 → 같은 다이얼로그 안에서 염색/점 위치로 슬라이드), vs = 북마크 코디 비교(PC).
 // fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다(delta §3·§8).
-// plaza = 코디 광장 글 상세, ptake = 그 코디를 받을 프리셋 칸 고르기(상세에서 들어오면 푸터가 '이전').
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza' | 'ptake'
+// plaza = 코디 광장 글 상세(가져오기는 공유 받기 다이얼로그를 그대로 쓴다).
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza'
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴(delta 값)
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
@@ -169,8 +169,7 @@ export interface ShopCtx {
   plazaUpload: boolean; setPlazaUpload: Dispatch<boolean>
   plazaCols: number; plazaRows: number
   openPlazaPost: (post: PlazaPost) => void
-  plazaTake: () => void; plazaTakeBack: () => void; plazaTakeDirect: (post: PlazaPost) => void
-  plazaTakeInto: (slotId: string) => void
+  plazaTake: () => void; plazaTakeDirect: (post: PlazaPost) => void
   plazaLike: (post: PlazaPost) => void
   plazaRemove: (post: PlazaPost) => void
   plazaCopyLink: (post: PlazaPost) => void
@@ -827,31 +826,29 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const notifyLive = useRef(notify)
   notifyLive.current = notify
   const setPlazaQ = (v: string) => { setPlazaQState(v); setIdx(0, false) }
+  // 탭에 다시 들어올 때마다 스켈레톤을 깔면 목록이 깜빡인다(사용자 제보) → 보여줄 게 없을 때만 스켈레톤.
+  const havePosts = useRef(false)
   const refreshPlaza = useCallback(async () => {
     if (!plazaConfigured()) return
-    setPlazaLoading(true)
-    try { setPlazaPosts(await loadPlaza()) } catch { notifyLive.current('광장을 불러오지 못했어요') } finally { setPlazaLoading(false) }
+    if (!havePosts.current) setPlazaLoading(true)
+    try {
+      const list = await loadPlaza()
+      setPlazaPosts(list)
+      havePosts.current = list.length > 0
+    } catch { notifyLive.current('광장을 불러오지 못했어요') } finally { setPlazaLoading(false) }
   }, [])
   // 탭에 들어올 때 한 번 받아온다(등록·좋아요 뒤에는 그 자리에서 갱신).
   useEffect(() => { if (primary === 'share') void refreshPlaza() }, [primary, refreshPlaza])
   useEffect(() => { if (primary !== 'share') setPlazaUpload(false) }, [primary])
 
   const openPlazaPost = (post: PlazaPost) => openSurface({ kind: 'plaza', item: null, post })
-  const plazaTake = () => {
-    const post = surface?.post
-    if (post) slideTo(1, { kind: 'ptake', item: null, post, fromDetail: true })
-  }
-  const plazaTakeBack = () => {
-    const post = surface?.post
-    if (post) slideTo(-1, { kind: 'plaza', item: null, post })
-  }
-  const plazaTakeDirect = (post: PlazaPost) => openSurface({ kind: 'ptake', item: null, post })
-  const plazaTakeInto = (slotId: string) => {
-    const post = surface?.post
-    if (!post) return
+  // 가져오기는 공유 링크로 받을 때와 **같은 다이얼로그**(ShareReceiveSheet)를 쓴다(사용자 지시).
+  // 칸을 고르면 그대로 applySharedToPreset 으로 들어가므로 덮어쓰기·되돌리기 동작이 완전히 같다.
+  const plazaTakeDirect = (post: PlazaPost) => {
     closeSurface()
-    applySharedToPreset({ ...post.snapshot, name: post.name }, slotId)
+    setSharedIncoming({ ...post.snapshot, name: post.name })
   }
+  const plazaTake = () => { const post = surface?.post; if (post) plazaTakeDirect(post) }
   const plazaLike = (post: PlazaPost) => {
     // 먼저 화면부터 바꾸고(하트는 자주 눌린다) 서버에 반영, 실패하면 되돌린다.
     const next = !post.liked
@@ -1380,7 +1377,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     plazaPosts, plazaList, plazaLoading, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
-    openPlazaPost, plazaTake, plazaTakeBack, plazaTakeDirect, plazaTakeInto,
+    openPlazaPost, plazaTake, plazaTakeDirect,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,

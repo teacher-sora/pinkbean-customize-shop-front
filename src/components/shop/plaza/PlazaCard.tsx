@@ -25,11 +25,14 @@ export default function PlazaCard({ post, mobile }: { post: PlazaPost; mobile: b
             className={clsx(styles.railBtn, mobile && styles.railBtnM)}><IconTakeDown /></button>
           <button type="button" onClick={stop(() => s.plazaCopyLink(post))} title="공유 링크 복사" aria-label="링크 복사"
             className={clsx(styles.railBtn, mobile && styles.railBtnM)}><IconLinkCopy /></button>
-          {post.mine && (
+        </div>
+        {/* 내리기는 반대쪽(좌상단)에 둔다 — 가져오기·링크 복사와 나란히 두면 잘못 누르기 쉽다(사용자 지시) */}
+        {post.mine && (
+          <div className={clsx(styles.railLeft, mobile && styles.railM)}>
             <button type="button" onClick={stop(() => s.plazaRemove(post))} title="광장에서 내리기 (두 번 누르기)" aria-label="내리기"
               className={clsx(styles.railBtn, styles.delBtn, mobile && styles.railBtnM)}><IconTrashSolid /></button>
-          )}
-        </div>
+          </div>
+        )}
         <div className={styles.thumb}>
           <SnapThumb snap={post.snapshot} fraction={CARD_FRACTION} />
           <div className={clsx(styles.likeWrap, mobile && styles.likeWrapM)}>

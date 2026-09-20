@@ -22,7 +22,6 @@ import { BookmarkSheetBody, PvSheetBody } from '../preview/PreviewParts'
 import { BM_SHEET_H, SHEET_EASE } from './sheetMotion'
 import PartPickBody from './PartPickBody'
 import PlazaDetailBody from '../plaza/PlazaDetailBody'
-import PlazaTakeBody from '../plaza/PlazaTakeBody'
 import { plazaWhen } from '@/lib/plaza'
 import VsBody from './VsBody'
 import { IconClose } from '../ui/Icons'
@@ -161,10 +160,9 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
   const k = sf.kind
   const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'vs' ? '코디 비교'
-    : k === 'plaza' || k === 'ptake' ? (sf.post?.name || '코디') : (sf.item?.name || sf.item?.id || '')
+    : k === 'plaza' ? (sf.post?.name || '코디') : (sf.item?.name || sf.item?.id || '')
   const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' ? ''
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '')
-      : k === 'ptake' ? '가져올 프리셋을 골라주세요'
         : k === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
 
   // 패널 폭(앱 영역 기준)·등장/닫힘 위치는 즉시 반영 값이라 인라인(드래그 중 오프셋은 위 터치 핸들러가 DOM 직접).
@@ -203,7 +201,6 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'part' && <><PartPickBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter onApply={s.plazaTake} applyLabel="가져오기" /></>}
-            {k === 'ptake' && <><PlazaTakeBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
             {k === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}
           </div>
@@ -220,8 +217,8 @@ export function SurfaceFooter({ onApply, applyLabel = '적용' }: { onApply?: ()
   const mobile = s.bp === 'mobile'
   const sf = s.surface
   // '이전' = 부위 염색을 거쳐 들어온 염색·점 위치, 그리고 광장 상세를 거쳐 들어온 프리셋 칸 고르기.
-  const back = (!!sf?.fromPart && (sf.kind === 'dye' || sf.kind === 'dot')) || (!!sf?.fromDetail && sf.kind === 'ptake')
-  const goBack = sf?.kind === 'ptake' ? s.plazaTakeBack : s.partBack
+  const back = !!sf?.fromPart && (sf.kind === 'dye' || sf.kind === 'dot')
+  const goBack = s.partBack
   return (
     <div data-sheet-foot className={mobile ? styles.footM : styles.foot}>
       <button type="button" onClick={back ? goBack : s.closeSurface} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>{back ? '이전' : '닫기'}</button>

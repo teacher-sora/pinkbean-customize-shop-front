@@ -123,7 +123,9 @@ async function shortIdOf(long: string): Promise<string | null> {
 
 // 짧은 코드 → 긴 코드. CDN(캐시·빠름)을 먼저, 안 되면 API(R2 직접) 폴백.
 async function expandShortCode(id: string): Promise<string | null> {
-  const tries = [`${DATA_BASE}/share/${id}`, `/api/share?id=${encodeURIComponent(id)}`]
+  // dev 는 저장 경로가 다르다(`share-dev/`) — api/share · app/share/page.tsx 와 규칙이 같아야 한다.
+  const prefix = typeof window !== 'undefined' && /^(www\.)?pinkbean-customize\.com$/.test(location.hostname) ? 'share' : 'share-dev'
+  const tries = [`${DATA_BASE}/${prefix}/${id}`, `/api/share?id=${encodeURIComponent(id)}`]
   for (const url of tries) {
     try {
       const r = await fetch(url)

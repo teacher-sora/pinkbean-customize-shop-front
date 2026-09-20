@@ -59,6 +59,8 @@
 .nameM { font-size: 11px; }
 .rail { position: absolute; right: 6px; top: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .railM { right: 5px; top: 5px; gap: 3px; }
+.railLeft { position: absolute; left: 6px; top: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.railLeft.railM { left: 5px; right: auto; top: 5px; }
 .railBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #efe8e0; border-radius: 50%; background: rgba(255,255,255,0.94); color: #a89e93; cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
 .railBtnM { width: 26px; height: 26px; }
 .delBtn { border-color: #f2d7d2; color: #d1735f; }
@@ -90,13 +92,6 @@
 .tagChip { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid #f0e9e1; border-radius: 20px; background: #faf7f3; font-family: inherit; font-size: 11.5px; font-weight: 500; color: #8a8075; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
 
 /* ── 가져오기: 프리셋 칸 고르기 ── */
-.takeBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; }
-.takeGrid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; }
-.takeGridM { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
-.slot { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; border: 1.5px solid #eee6dc; border-radius: 11px; background: #fff; overflow: hidden; cursor: pointer; text-align: left; transition: border-color .2s ease, background-color .2s ease; }
-.slotThumb { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 3/4; background: #f7f2ec; }
-.slotEmpty { background: #fbf8f4; }
-.slotName { display: block; width: 100%; min-width: 0; padding: 7px 8px; border-top: 1px solid #f4efe8; font-size: 11.5px; font-weight: 600; color: #2a2521; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── 등록 ── */
 .upCol { flex: 0 0 360px; min-width: 0; display: flex; flex-direction: column; }
@@ -149,7 +144,6 @@
   .upBtn:hover { background: #fdf4f8; }
   .tagChip:hover { border-color: #f4cfdf; background: #fdf4f8; color: #d76d9a; }
   .copyBtn:hover { border-color: #ec86ac; color: #d76d9a; }
-  .slot:hover { border-color: #ec86ac; background: #fdf4f8; }
   .pickOpt:hover { background: #fdf1f6; color: #d76d9a; }
   .imgBtn:hover { border-color: #f4cfdf; color: #d76d9a; }
   .arrowOn:hover { background: #fce9f1; color: #d76d9a; }
