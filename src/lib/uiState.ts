@@ -10,6 +10,7 @@
 // 저장이 막힌 환경(시크릿 창 등)에서도 앱이 멀쩡해야 하므로 읽기·쓰기를 모두 try 로 감싼다.
 
 import { useEffect, useLayoutEffect } from 'react'
+import type { ListItem } from '@/lib/core/data'
 
 // SSR 에선 useLayoutEffect 가 경고 → 클라이언트에서만 layout effect(페인트 전에 되살려 깜빡임을 막는다).
 export const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
@@ -19,6 +20,11 @@ export type UiSession = {
   activeCat?: string
   search?: string
   pageByCat?: Record<string, number>
+  // AI 코디 검색: 검색어와 **결과까지** 담는다. 되살릴 때 다시 검색하지 않으려는 것이다
+  //  — 재검색은 외부 API 왕복이라 느리고, 같은 질의에 다른 결과가 나올 수도 있다.
+  aiQ?: string
+  searchQuery?: string | null
+  searchResults?: ListItem[]
   // 아래 둘은 코디 광장이 있는 배포에서만 쓴다(main 에는 광장이 없어 저장되지 않는다).
   plazaFilter?: string
   plazaQ?: string
@@ -28,8 +34,11 @@ export type UiPref = { plazaSort?: string }
 const SESSION_KEY = 'pb_ui_session_v1'
 const PREF_KEY = 'pb_ui_pref_v1'
 
-// 되살릴 탭. 'search'(AI 코디 검색)는 결과를 저장하지 않아 되살리면 빈 화면이 되므로 뺀다.
-export const RESTORE_TABS = new Set(['codi', 'info', 'preset', 'share'])
+export const RESTORE_TABS = new Set(['codi', 'search', 'info', 'preset', 'share'])
+// 검색 결과 저장 상한(검색 자체가 topK 100 이다). sessionStorage 를 과하게 쓰지 않도록 둔다.
+export const SEARCH_KEEP = 100
+// 새로고침 복원 중 표시. layout.tsx 의 인라인 스크립트가 켜고, 되살리기가 끝나면 끈다.
+export const RESTORE_ATTR = 'data-pb-restore'
 
 function read<T>(store: 'sessionStorage' | 'localStorage', key: string): Partial<T> {
   try {
@@ -39,11 +48,15 @@ function read<T>(store: 'sessionStorage' | 'localStorage', key: string): Partial
     return v && typeof v === 'object' ? (v as Partial<T>) : {}
   } catch { return {} }
 }
-function write(store: 'sessionStorage' | 'localStorage', key: string, v: unknown): void {
-  try { window[store].setItem(key, JSON.stringify(v)) } catch { /* 저장이 막혀도 앱은 그대로 */ }
+function write(store: 'sessionStorage' | 'localStorage', key: string, v: unknown): boolean {
+  try { window[store].setItem(key, JSON.stringify(v)); return true } catch { return false } // 저장이 막혀도 앱은 그대로
 }
 
 export const readUiSession = (): UiSession => read<UiSession>('sessionStorage', SESSION_KEY)
-export const writeUiSession = (v: UiSession): void => write('sessionStorage', SESSION_KEY, v)
+export function writeUiSession(v: UiSession): void {
+  if (write('sessionStorage', SESSION_KEY, v)) return
+  // 검색 결과가 커서 막혔을 수 있다 → 결과만 빼고 다시. 탭·검색어는 반드시 남겨야 한다.
+  write('sessionStorage', SESSION_KEY, { ...v, searchResults: undefined })
+}
 export const readUiPref = (): UiPref => read<UiPref>('localStorage', PREF_KEY)
-export const writeUiPref = (v: UiPref): void => write('localStorage', PREF_KEY, v)
+export const writeUiPref = (v: UiPref): void => { write('localStorage', PREF_KEY, v) }
