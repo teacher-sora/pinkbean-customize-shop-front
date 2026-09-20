@@ -506,9 +506,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const pref = readUiPref()
     if (pref.plazaSort === 'popular' || pref.plazaSort === 'recent') setPlazaSort(pref.plazaSort)
     setUiReady(true)
-    // 감춰 둔 본문을 다시 보여준다. 이 시점은 **페인트 전**이라 되살린 화면이 처음부터 그려진다.
-    document.documentElement.removeAttribute(RESTORE_ATTR)
   }, [])
+  // 뼈대를 거두는 건 **되살린 화면이 실제로 커밋된 뒤**다(uiReady 가 켜진 다음 렌더).
+  // 되살리기 effect 안에서 바로 지우면 setState 가 아직 반영되기 전이라 기본 화면이 한 프레임 새어 나간다.
+  useIsoLayoutEffect(() => { if (uiReady) document.documentElement.removeAttribute(RESTORE_ATTR) }, [uiReady])
   useEffect(() => {
     if (!uiReady) return
     writeUiSession({

@@ -129,8 +129,13 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
 @keyframes pbDdIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 input[type=range] { accent-color: #ec86ac; }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-/* 새로고침 복원 중에는 본문만 감춘다(배경은 그대로 보인다). 표시는 layout.tsx 의 인라인 스크립트가 켠다. */
-html[data-pb-restore] .pb-root { visibility: hidden; }
+/* 새로고침 복원 중(html[data-pb-csr]) — 뼈대만 남긴다.
+   헤더·미리보기·하단 탭·부위 칩 줄은 그대로 두되, 패널 내용은 빈 상자로 바꾸고
+   선택(토글) 표시는 켜지 않는다(각 모듈에서 :global(html:not([data-pb-csr])) 로 막는다).
+   지우는 시점은 되살린 화면이 커밋된 뒤라 고정 대기 시간이 없다. */
+[data-pb-stub] { display: none; }
+html[data-pb-csr] [data-pb-panel] { display: none; }
+html[data-pb-csr] [data-pb-stub] { display: block; flex: 1 1 auto; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 @media (max-height: 760px) {

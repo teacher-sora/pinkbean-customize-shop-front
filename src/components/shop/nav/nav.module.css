@@ -1,3 +1,5 @@
+/* 선택(토글) 표시는 새로고침 복원 중(html[data-pb-csr])에는 켜지 않는다 — 기본값이 잠깐 비쳤다가
+   sessionStorage 값으로 바뀌는 점멸을 없애려는 것. 되살린 값이 그려질 때 한 번에 켜진다. */
 /* 하단 부위 바 + 탭 바 — v2 partNavStyle/partTabs/mainTabs/railFade 값 그대로. */
 
 /* ── PC(절반·태블릿 포함) ── */
@@ -5,7 +7,7 @@
 .partNav { position: relative; height: 40px; width: fit-content; max-width: 95%; margin-bottom: -1px; background: #fff; border: 1px solid #e7ded4; border-bottom: none; border-radius: 10px 10px 0 0; overflow: hidden; z-index: 2; }
 .rail { height: 100%; padding: 0 8px; display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
 .part { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 12.5px; font-weight: 500; white-space: nowrap; color: #7a7066; background: transparent; }
-.partOn { font-weight: 600; color: #fff; background: #ec86ac; }
+:global(html:not([data-pb-csr])) .partOn { font-weight: 600; color: #fff; background: #ec86ac; }
 .fadeL, .fadeR { position: absolute; top: 0; bottom: 0; width: 56px; pointer-events: none; z-index: 2; transition: opacity .2s ease; opacity: 0; }
 .fadeL { left: 0; background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); }
 .fadeR { right: 0; background: linear-gradient(270deg, #fff, rgba(255,255,255,0)); }
@@ -14,7 +16,7 @@
 .tabBox { position: relative; width: 100%; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; }
 .tabNav { width: 100%; height: 44px; padding: 0 6px; display: flex; align-items: center; gap: 4px; }
 .tab { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; color: #8a8075; background: transparent; }
-.tabOn { font-weight: 600; color: #fff; background: #ec86ac; }
+:global(html:not([data-pb-csr])) .tabOn { font-weight: 600; color: #fff; background: #ec86ac; }
 
 /* ── 모바일 ── */
 .partNavM { flex: 0 0 auto; position: relative; height: 42px; border-top: 1px solid #f0e9e1; background: #fff; }
@@ -22,8 +24,8 @@
 .partM { flex: 0 0 auto; height: 28px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; color: #7a7066; background: transparent; }
 /* 코디 광장 분류는 4개뿐이라 폭을 나눠 채운다(핸드오프 §1) */
 .partWideM { flex: 1 1 0; min-width: 0; padding: 0 4px; }
-.partM.partOn { font-weight: 600; color: #fff; background: #ec86ac; }
+:global(html:not([data-pb-csr])) .partM.partOn { font-weight: 600; color: #fff; background: #ec86ac; }
 .fadeM { width: 44px; }
 .tabNavM { flex: 0 0 auto; height: 56px; padding: 0 4px; display: flex; align-items: stretch; border-top: 1px solid #f0e9e1; background: #fff; }
 .tabM { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; border: none; border-top: 2px solid transparent; background: transparent; cursor: pointer; color: #c3b9ad; }
-.tabMOn { color: #ec86ac; border-top-color: #ec86ac; }
+:global(html:not([data-pb-csr])) .tabMOn { color: #ec86ac; border-top-color: #ec86ac; }
