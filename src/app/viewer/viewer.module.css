@@ -3,9 +3,10 @@
 .wrap { position: fixed; inset: 0; display: flex; background: #17151a; color: #e8e3ea; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
 
 .stage { flex: 1 1 0; min-width: 0; overflow: auto; padding: 24px; }
-.frames { display: flex; align-items: flex-start; gap: 24px; width: max-content; margin: 0 auto; }
-.frameWrap { display: flex; flex-direction: column; gap: 8px; }
-.frameHead { font-size: 12px; color: #9a92a5; display: flex; gap: 8px; align-items: baseline; }
+.frames { display: flex; align-items: flex-start; gap: 24px; width: max-content; margin: 0 auto; padding-top: 24px; }
+.frameWrap { position: relative; display: flex; flex-direction: column; }
+/* 제목이 프레임보다 넓어도 폭 계산에 끼어들지 않게 띄워 둔다(맞춤 배율이 어긋나 마지막 프레임이 잘렸다) */
+.frameHead { position: absolute; left: 0; bottom: 100%; margin-bottom: 7px; font-size: 12px; color: #9a92a5; display: flex; gap: 8px; align-items: baseline; white-space: nowrap; }
 .frameHead b { color: #e8e3ea; font-size: 13px; }
 .frameBox { position: relative; overflow: hidden; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
 .frameScale { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
