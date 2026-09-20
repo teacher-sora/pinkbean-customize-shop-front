@@ -38,7 +38,10 @@
 
 /* ── 뷰포트 · 페이지 · 그리드 ── */
 .viewport { flex: 1 1 auto; min-height: 0; position: relative; overflow: clip; }
-.viewportM { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x; container-type: inline-size; }
+/* 모바일은 코디 탭과 같은 네이티브 가로 넘기기(트랙을 페이지 수만큼 넓혀 두고 뷰포트가 스크롤한다).
+   touch-action 은 코디 탭과 같은 값이어야 한다 — pan-x 만 주면 목록 위에서 손가락으로 페이지를 위아래로
+   움직일 수 없어 같은 몸짓이 탭마다 다르게 먹는다(2026-09-21). */
+.viewportM { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y; container-type: inline-size; }
 .track { position: relative; height: 100%; width: 100%; will-change: transform; }
 .page { position: absolute; top: 0; width: 100%; height: 100%; padding: 10px 16px; overflow: hidden; }
 .pageM { position: absolute; top: 0; width: 100cqw; height: 100%; padding: 10px 12px; overflow: hidden; } /* 모바일 트랙은 페이지 수만큼 넓다 — width:100% 면 한 페이지가 트랙 전체 폭이 된다 */
