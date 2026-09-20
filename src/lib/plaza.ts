@@ -30,6 +30,7 @@ export type PlazaPost = {
   snapshot: Snapshot
   shareCode: string | null
   imageUrl: string | null
+  imagePath: string | null   // 글을 내릴 때 이미지도 같이 지우려면 경로가 필요하다
   contest: boolean
   likes: number
   liked: boolean
@@ -115,6 +116,7 @@ const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
   snapshot: r.snapshot,
   shareCode: r.share_code,
   imageUrl: publicUrl(r.image_path),
+  imagePath: r.image_path,
   contest: r.contest,
   likes: r.like_count,
   liked: liked.has(r.id),
@@ -177,6 +179,9 @@ export async function deletePlazaPost(post: PlazaPost): Promise<void> {
   if (!c) throw new Error('supabase not configured')
   const { error } = await c.from('plaza_posts').delete().eq('id', post.id)
   if (error) throw error
+  // 첨부 이미지도 같이 지운다(글만 지우면 버킷에 주인 없는 파일이 쌓인다).
+  // 글은 이미 사라졌으니 이미지 삭제가 실패해도 화면 흐름은 막지 않는다.
+  if (post.imagePath) await c.storage.from(plazaTarget().bucket).remove([post.imagePath]).catch(() => undefined)
 }
 
 // ── 화면용 거르기·정렬(핸드오프 규칙: 이름·설명·태그 검색, 앞의 # 무시) ──
