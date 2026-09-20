@@ -5,6 +5,7 @@
 import clsx from 'clsx'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CATS } from '@/lib/catalog'
+import { PLAZA_FILTERS } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import { IconTab } from '../ui/Icons'
 import styles from './nav.module.css'
@@ -18,7 +19,7 @@ export const TABS = [
   { id: 'share', label: '코디 광장' },
   { id: 'notice', label: '공지 및 건의함' },
 ]
-const READY = new Set(['codi', 'search', 'info', 'preset'])
+const READY = new Set(['codi', 'search', 'info', 'preset', 'share'])
 
 // 가로 레일: 휠 → 가로 스크롤(rAF 보간), 양끝 페이드는 스크롤 위치로 표시.
 // ⚠️ 레일은 CSS scroll-behavior:smooth 라 휠마다 scrollLeft += d 를 넣으면 진행 중인 스무스 스크롤이 중간 위치에서
@@ -66,6 +67,13 @@ function useRail() {
 export default function BottomNav({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const { railRef, edge } = useRail()
+  // 코디 광장은 부위 대신 광장 분류(전체·대회·내 등록·찜한 코디)를 쓴다. 항목이 4개뿐이라 양끝 페이드는 끈다
+  // (요소는 그대로 두고 opacity 만 0 — 탭을 오갈 때 전환이 끊기지 않게).
+  const plaza = s.primary === 'share'
+  const chips = plaza
+    ? PLAZA_FILTERS.map((f) => ({ id: f.id as string, label: f.label, on: s.plazaFilter === f.id, pick: () => s.setPlazaFilter(f.id) }))
+    : PARTS.map((p) => ({ id: p.id, label: p.label, on: s.activeCat === p.id, pick: () => s.setActiveCat(p.id) }))
+  const fadeOn = (side: boolean) => !plaza && side
   const pickTab = (t: { id: string; label: string }) => {
     if (READY.has(t.id)) { s.setPrimary(t.id); return }
     s.notify(`${t.label}은 아직 준비 중이에요!`)
@@ -75,14 +83,14 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
     return (
       <>
         <div className={styles.partNavM}>
-          <nav ref={railRef} className={clsx('pb-norail', styles.railM)} aria-label="부위">
-            {PARTS.map((p) => {
-              const on = s.activeCat === p.id
-              return <button key={p.id} type="button" onClick={() => s.setActiveCat(p.id)} title={p.label} className={clsx(on ? 'pb-solid' : 'pb-soft', styles.partM, on && styles.partOn)}>{p.label}</button>
-            })}
+          <nav ref={railRef} className={clsx('pb-norail', styles.railM)} aria-label={plaza ? '분류' : '부위'}>
+            {chips.map((c) => (
+              <button key={c.id} type="button" onClick={c.pick} title={c.label}
+                className={clsx(c.on ? 'pb-solid' : 'pb-soft', styles.partM, plaza && styles.partWideM, c.on && styles.partOn)}>{c.label}</button>
+            ))}
           </nav>
-          <div className={clsx(styles.fadeL, styles.fadeM, edge.l && styles.fadeShow)} />
-          <div className={clsx(styles.fadeR, styles.fadeM, edge.r && styles.fadeShow)} />
+          <div className={clsx(styles.fadeL, styles.fadeM, fadeOn(edge.l) && styles.fadeShow)} />
+          <div className={clsx(styles.fadeR, styles.fadeM, fadeOn(edge.r) && styles.fadeShow)} />
         </div>
         <nav className={styles.tabNavM} aria-label="메뉴">
           {TABS.map((t) => {
@@ -101,14 +109,14 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   return (
     <div className={styles.bottom}>
       <div className={clsx('pb-partnav', styles.partNav)}>
-        <nav ref={railRef} className={clsx('pb-norail', styles.rail)} aria-label="부위">
-          {PARTS.map((p) => {
-            const on = s.activeCat === p.id
-            return <button key={p.id} type="button" onClick={() => s.setActiveCat(p.id)} title={p.label} className={clsx(on ? 'pb-solid' : 'pb-soft', styles.part, on && styles.partOn)}>{p.label}</button>
-          })}
+        <nav ref={railRef} className={clsx('pb-norail', styles.rail)} aria-label={plaza ? '분류' : '부위'}>
+          {chips.map((c) => (
+            <button key={c.id} type="button" onClick={c.pick} title={c.label}
+              className={clsx(c.on ? 'pb-solid' : 'pb-soft', styles.part, c.on && styles.partOn)}>{c.label}</button>
+          ))}
         </nav>
-        <div className={clsx(styles.fadeL, edge.l && styles.fadeShow)} />
-        <div className={clsx(styles.fadeR, edge.r && styles.fadeShow)} />
+        <div className={clsx(styles.fadeL, fadeOn(edge.l) && styles.fadeShow)} />
+        <div className={clsx(styles.fadeR, fadeOn(edge.r) && styles.fadeShow)} />
         <div className={styles.partLine} />
       </div>
       <div className={styles.tabBox}>

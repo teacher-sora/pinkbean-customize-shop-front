@@ -1,0 +1,168 @@
+/* 코디 광장(handoff_v2_plaza) — 목록·카드·상세·등록. 값은 정본 HTML 의 인라인 스타일 그대로. */
+
+/* ── 목록 패널 ── */
+.panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
+.header { flex: 0 0 auto; padding: 10px 16px 0; display: flex; align-items: center; column-gap: 10px; row-gap: 10px; flex-wrap: wrap; }
+.sortWrap { flex: 0 0 98px; display: flex; }
+.sortWrapNarrow { flex: 0 0 92px; }
+.sortWrap :global(.pb-ddbtn) { flex: 1 1 auto; height: 34px; padding: 0 8px 0 11px; font-size: 12.5px; }
+.groupB { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.searchWrap { flex: 1 1 0; min-width: 96px; max-width: 200px; position: relative; display: flex; align-items: center; }
+.searchIcon { position: absolute; left: 10px; color: #b7ada2; pointer-events: none; }
+.searchInput { height: 34px; width: 100%; min-width: 0; padding: 0 12px 0 30px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-size: 13px; color: #3d372f; outline: none; }
+.hr { flex: 0 0 auto; height: 1px; margin: 10px 16px 0; background: #f2ebe3; }
+.hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f2ebe3; }
+
+/* 모바일: 정렬+검색 / 페이지 칩+등록 두 줄 */
+.controlsM { flex: 0 0 auto; display: flex; flex-direction: column; }
+.rowM1 { padding: 8px 12px 0; display: flex; align-items: center; gap: 8px; }
+.rowM2 { padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sortWrapM { flex: 0 0 84px; display: flex; }
+.sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; height: 34px; padding: 0 8px 0 10px; font-size: 12px; }
+.searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
+.searchIconM { position: absolute; left: 11px; color: #b7ada2; pointer-events: none; }
+.searchInputM { width: 100%; min-width: 0; height: 34px; padding: 0 10px 0 31px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-size: 16px; color: #3d372f; outline: none; }
+.upBtn { flex: 0 0 auto; height: 32px; padding: 0 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #f4cfdf; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+
+/* ── 페이지 칩 ── */
+.pageChip { flex: 0 0 auto; margin-left: auto; height: 34px; padding: 0 4px 0 12px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+/* 모바일은 등록 버튼과 양끝 정렬이라 margin-left:auto 를 쓰지 않는다(쓰면 space-between 이 무력화된다) */
+.pageChipM { flex: 0 0 auto; height: 34px; padding: 0 4px 0 12px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+.count { font-size: 12px; font-weight: 600; color: #8a8075; line-height: 1; }
+.chipDiv { width: 1px; height: 14px; margin: 0 8px; background: #e7ded4; }
+.arrow { flex: 0 0 auto; width: 22px; height: 24px; margin: 0 2px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 6px; background: transparent; color: #ded5cb; cursor: default; transition: background-color .2s ease, color .2s ease; }
+.arrowOn { color: #c08fa4; cursor: pointer; }
+.pageInput { width: 34px; height: 22px; padding: 0 3px; border: 1px solid transparent; border-radius: 6px; background: #f1e7ec; text-align: center; font-size: 12px; font-weight: 700; color: #b0748f; outline: none; }
+.slash { font-size: 12px; color: #ccc2b8; margin: 0 3px; }
+.total { font-size: 12px; font-weight: 600; color: #8a8075; }
+
+/* ── 뷰포트 · 페이지 · 그리드 ── */
+.viewport { flex: 1 1 auto; min-height: 0; position: relative; overflow: clip; }
+.viewportM { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x; container-type: inline-size; }
+.track { position: relative; height: 100%; width: 100%; will-change: transform; }
+.page { position: absolute; top: 0; width: 100%; height: 100%; padding: 10px 16px; overflow: hidden; }
+.pageM { padding: 10px 12px; }
+.grid { display: grid; height: 100%; }
+.empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 0 24px; }
+.emptyM { padding: 0 20px; }
+.emptyTitle { font-size: 14px; font-weight: 600; color: #8a8075; }
+.emptyHint { font-size: 12px; color: #b7ada2; }
+.hintBar { flex: 0 0 auto; height: 30px; display: flex; align-items: center; justify-content: center; border-top: 1px solid #f0e9e1; }
+.hintText { font-size: 11.5px; color: #b7ada2; }
+.skel { width: 100%; height: 100%; border-radius: 12px; }
+
+/* ── 카드 ── (바깥 래퍼는 프리셋 카드와 같은 pb-presetwrap/pb-preset 을 쓴다) */
+.thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; background: #f7f2ec; border-radius: 11px 11px 0 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.meta { position: relative; flex: 0 0 auto; padding: 6px 8px; display: flex; align-items: center; border-top: 1px solid #f4efe8; }
+.metaM { padding: 5px 6px; }
+.name { display: block; width: 100%; min-width: 0; font-size: 12px; font-weight: 500; color: #3d372f; letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nameM { font-size: 11px; }
+.rail { position: absolute; right: 6px; top: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.railM { right: 5px; top: 5px; gap: 3px; }
+.railBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #efe8e0; border-radius: 50%; background: rgba(255,255,255,0.94); color: #a89e93; cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+.railBtnM { width: 26px; height: 26px; }
+.delBtn { border-color: #f2d7d2; color: #d1735f; }
+.likeWrap { position: absolute; right: 6px; bottom: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.likeWrapM { right: 5px; bottom: 5px; }
+.likeCount { font-size: 10px; font-weight: 700; color: #8a8075; line-height: 1; font-variant-numeric: tabular-nums; }
+.likeBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #efe8e0; border-radius: 50%; background: rgba(255,255,255,0.94); color: #a89e93; cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+.likeBtnM { width: 26px; height: 26px; }
+.likeOn { border-color: #f4cfdf; background: #fce9f1; color: #ec86ac; }
+
+/* ── 상세(서피스 본문) ── */
+.detail { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.stages { flex: 0 0 auto; height: 280px; display: flex; gap: 10px; }
+.stagesM { height: 220px; }
+.stage { position: relative; flex: 1 1 0; min-width: 0; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.stageImg { object-fit: cover; object-position: center 78%; }
+.stageTone { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.45)); }
+.stageRef { border: 1px dashed #e4dcd2; background: #fbf8f4; }
+.refImg { object-fit: contain; }
+.detailHr { height: 1px; background: #f0e9e1; }
+.descBlock { display: flex; flex-direction: column; gap: 8px; }
+.descHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.descLabel { font-size: 11px; font-weight: 700; color: #a89e93; }
+.descActs { display: flex; align-items: center; gap: 8px; }
+.likeText { font-size: 12px; font-weight: 600; color: #d76d9a; }
+.copyBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px; border: 1px solid #f0d3e0; border-radius: 8px; background: #fff; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #8a8075; cursor: pointer; }
+.descText { margin: 0; font-size: 12.5px; line-height: 1.6; color: #5c534b; word-break: keep-all; }
+.tagRow { display: flex; flex-wrap: wrap; gap: 6px; }
+.tagChip { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid #f0e9e1; border-radius: 20px; background: #faf7f3; font-family: inherit; font-size: 11.5px; font-weight: 500; color: #8a8075; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
+
+/* ── 가져오기: 프리셋 칸 고르기 ── */
+.takeBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; }
+.takeGrid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; }
+.takeGridM { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.slot { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; border: 1.5px solid #eee6dc; border-radius: 11px; background: #fff; overflow: hidden; cursor: pointer; text-align: left; transition: border-color .2s ease, background-color .2s ease; }
+.slotThumb { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 3/4; background: #f7f2ec; }
+.slotEmpty { background: #fbf8f4; }
+.slotName { display: block; width: 100%; min-width: 0; padding: 7px 8px; border-top: 1px solid #f4efe8; font-size: 11.5px; font-weight: 600; color: #2a2521; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── 등록 ── */
+.upCol { flex: 0 0 360px; min-width: 0; display: flex; flex-direction: column; }
+.upColHalf { flex: 0 0 312px; }
+.upColTablet { flex: 0 0 330px; }
+.upPanel { flex: 1 1 auto; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
+.upHead { flex: 0 0 auto; height: 44px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0e9e1; }
+.upTitle { font-size: 14px; font-weight: 700; color: #2a2521; }
+.upBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable; padding: 12px 16px; display: flex; flex-direction: column; gap: 22px; }
+.upBodyM { padding: 10px 12px 12px; scrollbar-gutter: auto; }
+.upFoot { flex: 0 0 auto; padding: 10px 16px; border-top: 1px solid #f0e9e1; }
+.label { font-size: 11px; font-weight: 700; color: #a89e93; margin-bottom: 6px; }
+.labelWide { margin-bottom: 7px; }
+.star { color: #ec86ac; }
+.field { width: 100%; height: 34px; padding: 0 11px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-size: 13px; color: #3d372f; outline: none; }
+.fieldM { font-size: 16px; }
+.textarea { width: 100%; padding: 8px 11px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; resize: none; outline: none; }
+.textareaM { font-size: 16px; }
+.pickWrap { position: relative; }
+.pickBtn { width: 100%; height: 34px; padding: 0 9px 0 11px; display: flex; align-items: center; gap: 7px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
+.pickOpen { border-color: #eeb2ce; background: #fdf4f8; }
+.pickText { flex: 1 1 0; min-width: 0; font-size: 12.5px; font-weight: 500; color: #3d372f; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pickCaret { flex: 0 0 auto; font-size: 9px; color: #a89e93; transition: transform .2s ease; }
+.caretOpen { transform: rotate(180deg); }
+.pickPanel { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; padding: 8px; background: #fff; border: 1px solid #f0dde7; border-radius: 10px; box-shadow: 0 10px 26px rgba(42,37,33,.14); transform-origin: top center; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none; }
+.panelOn { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.pickGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; max-height: 190px; overflow: hidden auto; }
+.pickGridM { max-height: 168px; }
+.pickCell { position: relative; width: 100%; padding: 7px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1.5px solid #f0e9e1; border-radius: 9px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.pickCellOn { border-color: #ec86ac; background: #fce9f1; }
+.pickSprite { position: relative; width: 28px; height: 36px; border-radius: 5px; overflow: hidden; }
+.pickLabel { width: 100%; font-size: 10px; font-weight: 500; color: #8a8075; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pickLabelOn { font-weight: 700; color: #d76d9a; }
+.upStage { position: relative; flex: 0 0 auto; height: 164px; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.tagChips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.tagDel { flex: 0 0 auto; height: 24px; padding: 0 9px; display: flex; align-items: center; gap: 4px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fce9f1; font-family: inherit; font-size: 11px; font-weight: 600; color: #d76d9a; cursor: pointer; }
+.imgBtn { width: 100%; height: 56px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; border-radius: 9px; background: #fbf8f4; font-family: inherit; font-size: 12px; font-weight: 600; color: #a89e93; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+.imgBtnOn { height: 34px; border: 1px solid #f4cfdf; background: #fce9f1; color: #d76d9a; }
+.scopeGroup { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }
+.scopeBtn { width: 100%; display: flex; align-items: center; gap: 7px; padding: 8px 10px 8px 11px; border: 1px solid #f0e9e1; border-radius: 9px; background: #faf7f3; font-family: inherit; cursor: pointer; text-align: left; transition: border-color .2s ease, background-color .2s ease; }
+.scopeContest { border-color: #f4cfdf; background: #fce9f1; }
+.scopeOpen { border-color: #eeb2ce; }
+.scopeText { flex: 1 1 0; min-width: 0; }
+.scopeName { display: block; font-size: 12px; font-weight: 600; color: #5c534b; }
+.scopeHint { display: block; font-size: 10.5px; color: #a89e93; margin-top: 1px; }
+.scopeCaret { flex: 0 0 auto; font-size: 15px; color: #c3b9ad; line-height: 1; transition: transform .2s ease; }
+.scopeCaretOpen { transform: rotate(90deg); }
+/* 하단 요소라 팝오버는 반드시 위로 펼친다 */
+.scopePanel { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 20; padding: 6px; display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid #f0dde7; border-radius: 10px; box-shadow: 0 10px 26px rgba(42,37,33,.14); transform-origin: bottom center; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); opacity: 0; transform: translateY(6px) scale(.98); pointer-events: none; }
+.scopeOpt { width: 100%; padding: 8px 10px; text-align: left; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #5c534b; font-family: inherit; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
+.scopeOptOn { border-color: #f4cfdf; background: #fce9f1; color: #d76d9a; }
+.emailHint { margin-top: 5px; font-size: 10.5px; color: #b7ada2; }
+.submit { width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; line-height: 1; border: none; border-radius: 9px; background: #ec86ac; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; transition: background-color .2s ease; }
+.submitOff { background: #f0c9d9; cursor: default; }
+.submitWrapM { padding: 4px 0 0; }
+
+@media (hover: hover) and (pointer: fine) {
+  .railBtn:hover { border-color: #f0d3e0; background: #fff; color: #d76d9a; }
+  .delBtn:hover { border-color: #e8b6ac; color: #c14a32; }
+  .likeBtn:hover { border-color: #f4cfdf; color: #ec86ac; }
+  .upBtn:hover { background: #fdf4f8; }
+  .tagChip:hover { border-color: #f4cfdf; background: #fdf4f8; color: #d76d9a; }
+  .copyBtn:hover { border-color: #ec86ac; color: #d76d9a; }
+  .slot:hover { border-color: #ec86ac; background: #fdf4f8; }
+  .pickCell:hover { border-color: #f4cfdf; background: #fdf4f8; }
+  .scopeOpt:hover { background: #fdf1f6; }
+  .imgBtn:hover { border-color: #f4cfdf; color: #d76d9a; }
+  .arrowOn:hover { background: #fce9f1; color: #d76d9a; }
+}
