@@ -37,8 +37,9 @@ const PREF_KEY = 'pb_ui_pref_v1'
 export const RESTORE_TABS = new Set(['codi', 'search', 'info', 'preset', 'share'])
 // 검색 결과 저장 상한(검색 자체가 topK 100 이다). sessionStorage 를 과하게 쓰지 않도록 둔다.
 export const SEARCH_KEEP = 100
-// 새로고침 복원 중 표시. layout.tsx 의 인라인 스크립트가 켜고, 되살리기가 끝나면 끈다.
-export const RESTORE_ATTR = 'data-pb-restore'
+// 새로고침 복원 중 표시. layout.tsx 의 인라인 스크립트가 **새로고침일 때만** 켜고,
+// 되살린 화면이 실제로 그려진 뒤(uiReady) 끈다. 고정 대기 시간은 두지 않는다.
+export const RESTORE_ATTR = 'data-pb-csr'
 
 function read<T>(store: 'sessionStorage' | 'localStorage', key: string): Partial<T> {
   try {

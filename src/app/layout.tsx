@@ -140,13 +140,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* 이미지 CDN 미리 연결(초기 로딩 체감 개선) */}
         <link rel="preconnect" href="https://cdn.pinkbean-customize.com" crossOrigin="" />
         {/*
-          새로고침 점멸 방지. 서버가 만든 HTML 은 언제나 '코디 탭'이라, 하이드레이션 전에 그 화면이 한 번 그려지고
-          그 뒤에야 sessionStorage 의 탭으로 바뀐다 → 순간 점멸. 저장된 탭이 코디가 **아닐 때만** 본문을 잠깐 감춘다
-          (배경·헤더는 그대로라 '불러오는 중'으로 보인다). 되살리기가 끝나면 ShopContext 가 이 표시를 끈다.
-          JS 가 늦거나 죽어도 영영 빈 화면이 되지 않도록 1.2초 뒤 스스로 푼다 — CSS 애니메이션은
-          prefers-reduced-motion 에서 즉시 끝나 버려 안전장치가 되지 못한다.
+          새로고침 점멸 방지 — **새로고침일 때만** 켠다(performance navigation type = 'reload').
+          첫 진입·뒤로가기는 여기서 즉시 빠져나가므로 SSG 출력이 그대로 쓰인다(연산·지연 0).
+
+          서버가 만든 HTML 은 언제나 기본값(코디 탭 · 전체 칩 선택 · 빈 목록)이라, 새로고침하면
+          그 기본 화면이 한 번 그려진 뒤 sessionStorage 값으로 바뀐다 → 토글이 튀고 목록이 갈린다.
+          그래서 새로고침에 한해 **토글 없는 빈 뼈대**로 시작하고, 되살린 값이 그려질 때 한 번에 채운다.
+          표시를 끄는 건 되살린 화면이 실제로 커밋된 뒤(ShopContext) — 고정 대기 시간은 쓰지 않는다.
         */}
-        <script dangerouslySetInnerHTML={{ __html: "try{var r=sessionStorage.getItem('pb_ui_session_v1');if(r){var v=JSON.parse(r);if(v&&v.primary&&v.primary!=='codi'){var d=document.documentElement;d.setAttribute('data-pb-restore','1');setTimeout(function(){d.removeAttribute('data-pb-restore')},1200)}}}catch(e){}" }} />
+        <script dangerouslySetInnerHTML={{ __html: "try{var n=performance.getEntriesByType('navigation')[0];if(n&&n.type==='reload'&&sessionStorage.getItem('pb_ui_session_v1'))document.documentElement.setAttribute('data-pb-csr','1')}catch(e){}" }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
         {/* NEXON Open API Analytics — 넥슨 콘솔 발급 스크립트 그대로. 연동 확인이 SSR HTML 의 태그를 보므로 next/script 대신 원형 태그. */}
         <script type="text/javascript" src="https://openapi.nexon.com/js/analytics.js?app_id=316464" async />
