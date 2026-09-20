@@ -1,11 +1,12 @@
-// 코디 광장 데이터 — Supabase(테이블 plaza_posts / plaza_likes / plaza_contest_entries, 스토리지 'plaza').
+// 코디 광장 데이터 — Supabase(테이블 plaza_posts / plaza_likes / plaza_contest_entries + 이미지 버킷).
+//  · 운영과 dev 는 **스키마·버킷이 다르다**(운영 public/plaza, 그 외 plaza_dev/plaza-dev). plazaTarget() 참고.
 // 저장소를 바꿀 일이 생기면 이 파일만 갈아끼우면 되도록 화면 쪽은 여기 함수만 쓴다.
 //  · 사용자 구분 = 익명 로그인(auth.uid()). 계정 없이도 '내 등록'·좋아요·내리기 권한이 RLS 로 막힌다.
 //  · 코디는 스냅샷(jsonb) 그대로 담는다 → 카드 18장을 조회 한 번으로 그린다(추가 요청 없음).
 //  · 공유 코드(PB-…)는 기존 R2 공유 링크를 그대로 쓴다(링크 복사·카톡 카드 재사용).
 //  · 목록은 한 번에 받아 화면에서 거르고 정렬한다(광장 규모가 작고, 검색·필터가 즉시 반응해야 한다).
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 import type { Snapshot } from '@/components/shop/ShopContext'
 
 export type PlazaSort = 'popular' | 'recent'
@@ -50,10 +51,30 @@ const URL_ENV = process.env.NEXT_PUBLIC_SUPABASE_URL
 const KEY_ENV = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 export const plazaConfigured = () => !!(URL_ENV && KEY_ENV)
 
-let client: SupabaseClient | null = null
-function sb(): SupabaseClient | null {
+// ── dev / 운영 데이터 분리 ──
+// 무료 플랜이 조직당 프로젝트 2개까지라 프로젝트를 더 만들 수 없어서, 같은 프로젝트 안에서
+// 스키마와 버킷을 나눴다(supabase/0003_plaza_dev.sql). 테이블 이름·구조는 양쪽이 같다.
+// 고르는 기준은 **호스트**다 — 환경변수를 빠뜨리면 dev 가 운영 데이터를 건드리게 되므로,
+// '운영 도메인일 때만 운영'으로 두어 실수가 안전한 쪽으로 떨어지게 한다.
+const PROD = { schema: 'public', bucket: 'plaza' }
+const DEV = { schema: 'plaza_dev', bucket: 'plaza-dev' }
+const PROD_HOST = /^(www\.)?pinkbean-customize\.com$/
+function plazaTarget() {
+  const forced = process.env.NEXT_PUBLIC_PLAZA_TARGET // 'prod' 로 두면 강제(필요할 때만)
+  if (forced) return forced === 'prod' ? PROD : DEV
+  if (typeof window !== 'undefined' && PROD_HOST.test(window.location.hostname)) return PROD
+  return DEV
+}
+
+// 스키마가 실행 환경에 따라 정해지므로 제네릭을 'public' 으로 못 박지 않는다.
+const makeClient = () => createClient(URL_ENV!, KEY_ENV!, {
+  auth: { persistSession: true, autoRefreshToken: true },
+  db: { schema: plazaTarget().schema },
+})
+let client: ReturnType<typeof makeClient> | null = null
+function sb() {
   if (!plazaConfigured()) return null
-  if (!client) client = createClient(URL_ENV!, KEY_ENV!, { auth: { persistSession: true, autoRefreshToken: true } })
+  if (!client) client = makeClient()
   return client
 }
 
@@ -82,7 +103,7 @@ type Row = {
 const publicUrl = (path: string | null) => {
   const c = sb()
   if (!c || !path) return null
-  return c.storage.from('plaza').getPublicUrl(path).data.publicUrl
+  return c.storage.from(plazaTarget().bucket).getPublicUrl(path).data.publicUrl
 }
 
 const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
@@ -123,7 +144,7 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
   if (d.image) {
     const ext = (d.image.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png'
     const path = `${uid}/${Date.now()}.${ext}`
-    const up = await c.storage.from('plaza').upload(path, d.image, { cacheControl: '31536000', upsert: false })
+    const up = await c.storage.from(plazaTarget().bucket).upload(path, d.image, { cacheControl: '31536000', upsert: false })
     if (up.error) throw up.error
     imagePath = path
   }

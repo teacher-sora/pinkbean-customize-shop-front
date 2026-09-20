@@ -16,7 +16,6 @@ const PRESETS: Preset[] = [
   { id: 'half', label: '절반', w: 860, h: 900, touch: false, note: '521~1199 · 마우스' },
   { id: 'tablet', label: '태블릿', w: 1000, h: 1280, touch: true, note: '861~1199 · 터치' },
   { id: 'mobile', label: '모바일', w: 390, h: 844, touch: true, note: '≤520 · 터치' },
-  { id: 'mobile-sm', label: '모바일 소형', w: 360, h: 640, touch: true, note: '낮은 화면' },
 ]
 
 const TABS = ['', '코디', 'AI 코디 검색', '코디 정보 · 염색', '프리셋', '코디 광장', '공지 및 건의함']
