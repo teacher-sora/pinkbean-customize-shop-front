@@ -8,7 +8,7 @@
 import clsx from 'clsx'
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { isNarrow } from '@/lib/useBreakpoint'
-import type { PlazaSort } from '@/lib/plaza'
+import { PLAZA_CONTEST, type PlazaSort } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
 import { IconChevronLeft, IconChevronRight, IconCloseSmall, IconPlus, IconSearch } from '../ui/Icons'
@@ -99,7 +99,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
       : s.plazaFilter === 'mine' ? '등록한 코디가 없어요'
         : s.plazaFilter === 'liked' ? '찜한 코디가 없어요' : '아직 등록된 코디가 없어요'
   const emptyHint = searching ? '다른 이름 · 설명 · 태그로 찾아주세요.'
-    : s.plazaFilter === 'contest' ? '봄맞이 코디 대회 출품작이 아직 없어요.'
+    : s.plazaFilter === 'contest' ? `${PLAZA_CONTEST} 출품작이 아직 없어요.`
       : s.plazaFilter === 'mine' ? '내 프리셋의 코디를 등록해보세요.'
         : s.plazaFilter === 'liked' ? '마음에 드는 코디에 하트를 눌러주세요.' : '첫 코디를 올려보세요.'
 

@@ -19,7 +19,7 @@ import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { createPlazaPost, deletePlazaPost, loadPlaza, plazaConfigured, plazaView, togglePlazaLike,
-  type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
+  PLAZA_CONTEST, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 
@@ -938,10 +938,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       myAdded.current = [post, ...myAdded.current]
       setPlazaPosts((list) => [post, ...list])
       setPlazaUpload(false)
-      notify(draft.contest ? `'${draft.name}' 코디를 봄맞이 코디 대회에 등록했어요` : `'${draft.name}' 코디를 광장에 등록했어요`)
+      notify(draft.contest ? `'${draft.name}' 코디를 ${PLAZA_CONTEST}에 등록했어요` : `'${draft.name}' 코디를 광장에 등록했어요`)
       return true
-    } catch {
-      notify('등록하지 못했어요. 잠시 후 다시 시도해 주세요')
+    } catch (e) {
+      // DB 가 막은 사유(대회 3개 제한 등)는 그대로 보여준다 — '잠시 후 다시'는 거짓말이 된다.
+      const msg = e instanceof Error ? e.message : ''
+      notify(/기기당|대회에는/.test(msg) ? msg : '등록하지 못했어요. 잠시 후 다시 시도해 주세요')
       return false
     } finally { setPlazaSubmitting(false) }
   }

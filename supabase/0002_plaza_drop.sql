@@ -11,6 +11,7 @@ drop table if exists public.plaza_likes cascade;
 drop table if exists public.plaza_posts cascade;
 drop function if exists public.plaza_like_count() cascade;
 drop function if exists public.plaza_comment_depth() cascade;
+drop function if exists public.plaza_contest_limit() cascade;
 
 -- dev 쪽(0003_plaza_dev.sql)도 같이 지운다.
 delete from storage.objects where bucket_id = 'plaza-dev';

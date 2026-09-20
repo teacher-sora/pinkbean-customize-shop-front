@@ -8,7 +8,7 @@ import clsx from 'clsx'
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import bg from '@/assets/pinkbean-bg.png'
-import { PLAZA_CONTEST, PLAZA_TAG_MAX } from '@/lib/plaza'
+import { PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_TAG_MAX } from '@/lib/plaza'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
@@ -44,7 +44,11 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const current = options.find((p) => p.id === presetId) || options[0] || null
   const snap = current ? snapOf(current.id) : null
   const finalName = (name || current?.name || '').trim()
-  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !s.plazaSubmitting
+  // 대회는 기기(익명 세션)당 3개까지. 여기 셈은 안내용이고, 실제로 막는 건 DB 트리거다(supabase/0006).
+  const myContest = s.plazaPosts.filter((p) => p.mine && p.contest).length
+  const contestLeft = Math.max(0, PLAZA_CONTEST_MAX - myContest)
+  const contestFull = contest && contestLeft === 0
+  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !s.plazaSubmitting
 
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
@@ -64,6 +68,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     setTags([...tags, v]); setTagDraft('')
   }
   const submit = async () => {
+    if (contestFull) { s.notify(`${PLAZA_CONTEST}에는 이 기기에서 ${PLAZA_CONTEST_MAX}개까지 올릴 수 있어요`); return }
     if (!canSubmit || !snap) { s.notify(contest ? '이메일을 확인해 주세요' : '프리셋과 이름을 확인해 주세요'); return }
     const ok = await s.plazaSubmit({ name: finalName, description: desc.trim(), tags, snapshot: snap, contest, email: contest ? email.trim() : '', image })
     if (ok) { setName(''); setDesc(''); setTags([]); setTagDraft(''); setImage(null); if (fileRef.current) fileRef.current.value = '' }
@@ -166,7 +171,11 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
               </div>
             </div>
           </div>
-          <div className={styles.scopeHint}>{contest ? '대회 출품으로 등록해요. 이메일이 필요해요.' : '누구나 볼 수 있게 공개로 등록해요.'}</div>
+          <div className={clsx(styles.scopeHint, contestFull && styles.scopeHintWarn)}>
+            {!contest ? '누구나 볼 수 있게 공개로 등록해요.'
+              : contestFull ? `이 기기에서는 이미 ${PLAZA_CONTEST_MAX}개를 올렸어요.`
+              : `대회 출품으로 등록해요. 이메일이 필요하고, ${contestLeft}개 더 올릴 수 있어요.`}
+          </div>
         </div>
         {contest && (
           <div>

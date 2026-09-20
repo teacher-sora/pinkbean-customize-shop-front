@@ -201,3 +201,4 @@
 .cmtSend { flex: 0 0 auto; height: 28px; padding: 0 14px; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; }
 .cmtSendOff { background: #f0c9d9; cursor: default; }
 .descNone { color: #a89e93; }
+.scopeHintWarn { color: #d1735f; }

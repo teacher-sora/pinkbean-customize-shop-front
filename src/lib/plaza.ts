@@ -11,10 +11,12 @@ import type { Snapshot } from '@/components/shop/ShopContext'
 
 export type PlazaSort = 'popular' | 'recent'
 export type PlazaFilter = 'all' | 'contest' | 'mine' | 'liked'
-export const PLAZA_CONTEST = '봄맞이 코디 대회'
+export const PLAZA_CONTEST = '블아 코디 대회'
+// 대회 출품은 기기(익명 세션)당 3개까지. 진짜 방어선은 DB 트리거다(supabase/0006) — 여기 값은 화면 안내용.
+export const PLAZA_CONTEST_MAX = 3
 export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
   { id: 'all', label: '전체' },
-  { id: 'contest', label: '봄맞이 대회' },
+  { id: 'contest', label: '블아 대회' },
   { id: 'mine', label: '내 등록' },
   { id: 'liked', label: '찜한 코디' },
 ]
@@ -182,7 +184,12 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
     owner: uid, name: d.name, description: d.description, tags: d.tags,
     snapshot: d.snapshot, share_code: d.shareCode, image_path: imagePath, contest: d.contest,
   }).select('*').single()
-  if (ins.error) throw ins.error
+  if (ins.error) {
+    // 대회 제한처럼 사용자가 알아야 하는 사유는 그대로 올려보낸다.
+    // 글이 안 만들어졌으니 방금 올린 이미지는 주인 없는 파일이 된다 — 같이 치운다.
+    if (imagePath) await c.storage.from(plazaTarget().bucket).remove([imagePath]).catch(() => undefined)
+    throw new Error(ins.error.message || '등록에 실패했어요')
+  }
   const row = ins.data as Row
   if (d.contest && d.email) await c.from('plaza_contest_entries').insert({ post_id: row.id, email: d.email })
   bumpPlazaCache()
