@@ -123,15 +123,29 @@ const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
   mine: !!uid && r.owner === uid,
 })
 
-// 목록 전체 + 내 좋아요. 정렬·검색·필터는 화면에서(즉시 반응).
+// 목록 = ISR 캐시(/api/plaza) + 내 좋아요(실시간, 사용자마다 다름). 정렬·검색·필터는 화면에서.
+//  글 목록과 좋아요 수는 캐시된 값이라 남이 방금 올린 글·누른 좋아요가 바로 보이지는 않는다(의도).
+async function loadRows(): Promise<Row[] | null> {
+  try {
+    const r = await fetch('/api/plaza', { cache: 'no-store' })
+    if (!r.ok) return null
+    const j = await r.json()
+    return Array.isArray(j?.posts) ? (j.posts as Row[]) : null
+  } catch { return null }
+}
+
 export async function loadPlaza(): Promise<PlazaPost[]> {
   const c = sb()
   if (!c) return []
   const uid = await plazaAuth()
-  const [postsRes, likesRes] = await Promise.all([
-    c.from('plaza_posts').select('*').order('created_at', { ascending: false }).limit(POST_LIMIT),
+  const [cached, likesRes] = await Promise.all([
+    loadRows(),
     uid ? c.from('plaza_likes').select('post_id').eq('owner', uid) : Promise.resolve({ data: [], error: null } as never),
   ])
+  const liked0 = new Set<string>(((likesRes as { data: { post_id: string }[] | null }).data || []).map((l) => l.post_id))
+  if (cached) return cached.map((r) => toPost(r, uid, liked0))
+  // ISR 라우트가 없거나 실패하면 예전처럼 직접 읽는다(로컬·장애 대비).
+  const postsRes = await c.from('plaza_posts').select('*').order('created_at', { ascending: false }).limit(POST_LIMIT)
   if (postsRes.error) throw postsRes.error
   const liked = new Set<string>(((likesRes as { data: { post_id: string }[] | null }).data || []).map((l) => l.post_id))
   return (postsRes.data as Row[]).map((r) => toPost(r, uid, liked))

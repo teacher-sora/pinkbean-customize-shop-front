@@ -165,15 +165,16 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 /* ── 현행 유지 다이얼로그(LookDialog · ShareReceiveSheet)가 쓰는 클래스 ── */
 @keyframes pbSpin { to { transform: rotate(360deg); } }
 .pb-spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; border-radius: 50%; animation: pbSpin .7s linear infinite; }
-@keyframes pbOverlayIn { from { opacity: 0; } to { opacity: 1; } }
-/* 다이얼로그 등장·퇴장은 translateY + opacity 만(scale 금지 — delta §8) */
-@keyframes pbPanelIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pbOverlayOut { from { opacity: 1; } to { opacity: 0; } }
-@keyframes pbPanelOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(10px); } }
-.pb-overlay { animation: pbOverlayIn .22s ease both; }
-.pb-panel { animation: pbPanelIn .28s cubic-bezier(.22,.61,.36,1) both; }
-.pb-overlay-out { animation: pbOverlayOut .2s ease both; }
-.pb-panel-out { animation: pbPanelOut .2s cubic-bezier(.4,0,.7,.4) both; }
+/* 다이얼로그 등장·퇴장 — 서피스(surface.module.css)와 **같은 값·같은 대칭 곡선**을 쓴다.
+   등장 전용 @keyframes 대신 transition + 클래스 토글(DESIGN_RULES §10.3): 들어올 때와 나갈 때가 같은 곡선이라
+   한쪽만 튀지 않는다. scale 은 쓰지 않는다(내용 캔버스가 움찔한다 — delta §8). */
+.pb-dlg-mask { transition: opacity .24s ease; opacity: 1; }
+.pb-dlg-panel { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0); opacity: 1; }
+.pb-dlg-hidden.pb-dlg-mask { opacity: 0; }
+.pb-dlg-hidden.pb-dlg-panel { transform: translateY(10px); opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .pb-dlg-panel, .pb-dlg-hidden.pb-dlg-panel { transform: none; }
+}
 
 /* 화면엔 안 보이지만 크롤러·스크린리더는 읽는 콘텐츠(접근성/SEO). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

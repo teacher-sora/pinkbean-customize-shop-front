@@ -322,6 +322,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [plazaLoading, setPlazaLoading] = useState(false)
   const [plazaFilter, setPlazaFilter] = useState<PlazaFilter>('all')
   const [plazaSort, setPlazaSort] = useState<PlazaSort>('popular')
+  const [plazaGen, setPlazaGen] = useState(0) // 목록을 새로 받아온 횟수 — 정렬을 다시 잡는 기준
   const [plazaQ, setPlazaQState] = useState('')
   const [plazaUpload, setPlazaUpload] = useState(false)
   const [plazaSubmitting, setPlazaSubmitting] = useState(false)
@@ -573,7 +574,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     else if (activeCat !== 'all') out = out.filter((it) => it.slot === CAT_TO_SLOT[activeCat])
     return byGender(out, genderFilter)
   }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter])
-  const plazaList = useMemo(() => plazaView(plazaPosts, plazaFilter, plazaQ, plazaSort), [plazaPosts, plazaFilter, plazaQ, plazaSort])
+  // 정렬은 **화면에 들어올 때 한 번만** 확정한다(사용자 지시) — 좋아요를 누를 때마다 카드가 자리를 바꾸면 보던 곳을 잃는다.
+  // 같은 (분류·검색어·정렬·목록 세대) 안에서는 처음 잡은 순서를 그대로 쓰고, 그 사이 새로 생긴 글(내 등록)만 맨 앞에 붙는다.
+  const plazaOrder = useRef<{ key: string; ids: string[] }>({ key: '', ids: [] })
+  const plazaList = useMemo(() => {
+    const view = plazaView(plazaPosts, plazaFilter, plazaQ, plazaSort)
+    const key = `${plazaFilter}|${plazaQ}|${plazaSort}|${plazaGen}`
+    if (plazaOrder.current.key !== key) {
+      plazaOrder.current = { key, ids: view.map((p) => p.id) }
+      return view
+    }
+    const rank = new Map(plazaOrder.current.ids.map((id, i) => [id, i] as const))
+    return view.slice().sort((a, b) => (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1))
+  }, [plazaPosts, plazaFilter, plazaQ, plazaSort, plazaGen])
   const pagedList = primary === 'search' ? searchResultsView : activeList
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
   //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다
@@ -828,13 +841,21 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const setPlazaQ = (v: string) => { setPlazaQState(v); setIdx(0, false) }
   // 탭에 다시 들어올 때마다 스켈레톤을 깔면 목록이 깜빡인다(사용자 제보) → 보여줄 게 없을 때만 스켈레톤.
   const havePosts = useRef(false)
+  // 목록은 ISR 캐시라 내가 방금 올리거나 내린 글이 아직 안 담겨 있다 → 내 것만 화면에서 보정한다.
+  const myAdded = useRef<PlazaPost[]>([])
+  const myRemoved = useRef<Set<string>>(new Set())
   const refreshPlaza = useCallback(async () => {
     if (!plazaConfigured()) return
     if (!havePosts.current) setPlazaLoading(true)
     try {
       const list = await loadPlaza()
-      setPlazaPosts(list)
-      havePosts.current = list.length > 0
+      const ids = new Set(list.map((p) => p.id))
+      myAdded.current = myAdded.current.filter((p) => !ids.has(p.id)) // 캐시에 나타났으면 보정 해제
+      for (const id of Array.from(myRemoved.current)) if (!ids.has(id)) myRemoved.current.delete(id)
+      const merged = [...myAdded.current, ...list].filter((p) => !myRemoved.current.has(p.id))
+      setPlazaPosts(merged)
+      setPlazaGen((g) => g + 1) // 새로 받아온 목록 = 정렬을 다시 잡는 시점
+      havePosts.current = merged.length > 0
     } catch { notifyLive.current('광장을 불러오지 못했어요') } finally { setPlazaLoading(false) }
   }, [])
   // 탭에 들어올 때 한 번 받아온다(등록·좋아요 뒤에는 그 자리에서 갱신).
@@ -863,7 +884,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (d.id === post.id && Date.now() - d.at < 3000) {
       plazaDel.current = { id: '', at: 0 }
       deletePlazaPost(post)
-        .then(() => { setPlazaPosts((list) => list.filter((p) => p.id !== post.id)); notify('등록한 코디를 내렸어요') })
+        .then(() => {
+          myRemoved.current.add(post.id)
+          myAdded.current = myAdded.current.filter((p) => p.id !== post.id)
+          setPlazaPosts((list) => list.filter((p) => p.id !== post.id))
+          notify('등록한 코디를 내렸어요')
+        })
         .catch(() => notify('내리지 못했어요. 다시 시도해 주세요'))
       return
     }
@@ -889,6 +915,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const prep = await prepareShare(location.origin, named).catch(() => null)
       const post = await createPlazaPost({ ...draft, shareCode: prep?.id ?? null })
       if (prep) void uploadShare(prep, named)
+      myAdded.current = [post, ...myAdded.current]
       setPlazaPosts((list) => [post, ...list])
       setPlazaUpload(false)
       notify(draft.contest ? `'${draft.name}' 코디를 봄맞이 코디 대회에 등록했어요` : `'${draft.name}' 코디를 광장에 등록했어요`)
