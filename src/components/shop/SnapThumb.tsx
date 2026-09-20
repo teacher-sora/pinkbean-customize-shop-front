@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { type PlacedLayer } from '@/lib/core/assemble'
 import { loadAnima, type AnimaRace } from '@/lib/core/data'
-import { computeModelPlacement } from '@/lib/core/modelPlacement'
+import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { composeSnapshot } from '@/lib/core/snapRender'
 import { canvasToSquareBlob } from '@/lib/canvasExport'
@@ -59,8 +59,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     if (!canvas || !placed || !dims.w || !dims.h) return
     let cancelled = false
     const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, snap: true })
-    canvas.style.width = p.canvasCssW + 'px'
-    canvas.style.height = p.canvasCssH + 'px'
+    const { bw, bh } = canvasBitmap(p)
+    fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
     renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, override: ov, effects, shouldCancel: () => cancelled }).catch(() => {})
     return () => { cancelled = true }
   }, [placed, ov, effects, dims, fraction, margin])
@@ -75,7 +75,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
       {!placed && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '58%', height: '58%', borderRadius: 8 }} />}
-      <canvas ref={canvasRef} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
+      <canvas ref={canvasRef} style={{ position: 'absolute', transform: 'translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
     </div>
   )
 }
