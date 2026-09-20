@@ -321,7 +321,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [plazaPosts, setPlazaPosts] = useState<PlazaPost[]>([])
   const [plazaLoaded, setPlazaLoaded] = useState(false) // 첫 로드가 끝났는지(스켈레톤은 이 전에만)
   const [plazaFilter, setPlazaFilter] = useState<PlazaFilter>('all')
-  const [plazaSort, setPlazaSort] = useState<PlazaSort>('popular')
+  // 기본은 **최신순**(2026-09-21). 인기순은 '좋아요 → 같으면 최신' 이라 초기에는 결과가 최신순과 같으면서,
+  // 먼저 좋아요를 받은 글이 1페이지를 계속 차지해 새 글이 묻히는 고착만 만든다.
+  // 정렬이 진입 시 한 번 고정이고 좋아요 수는 최대 3분 캐시라 그 고착이 더 오래간다.
+  const [plazaSort, setPlazaSort] = useState<PlazaSort>('recent')
   const [plazaGen, setPlazaGen] = useState(0) // 목록을 새로 받아온 횟수 — 정렬을 다시 잡는 기준
   const [plazaQ, setPlazaQState] = useState('')
   const [plazaUpload, setPlazaUpload] = useState(false)
