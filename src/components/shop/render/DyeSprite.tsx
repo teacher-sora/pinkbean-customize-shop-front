@@ -15,25 +15,32 @@ import { useLiveRedraw } from '../useLiveRedraw'
 
 const hsbActive = (h?: HsbParams) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0)
 
-// 채움 비율(스프라이트가 캔버스에서 차지할 큰-변 비율). 원본이 커도 넘치지 않게 맞추고, ≥1배는 정수 스냅으로
-// 선명(하드 도트), 축소(<1배)만 부드럽게. 헤어도 bbox 기준으로 맞추므로 같은 채움 비율을 쓴다
+// 채움 비율(스프라이트가 칸에서 차지할 큰-변 비율). 원본이 커도 넘치지 않게 맞추고, 확대는 정수배만
+// (하드 도트), 축소(<1배)만 부드럽게. 헤어도 bbox 기준으로 맞추므로 같은 채움 비율을 쓴다
 // (예전 0.55 는 배율 상한이 있던 시절 보정이라 모바일에서 헤어가 캔버스에 비해 너무 작게 보였다).
 export const INFO_FRAC = 0.82
 export const INFO_FRAC_HAIR = 0.82
 // 피부는 모델(body+head)로 렌더해 중앙 정렬 — fraction 으로 크기 조절(아이콘=작게, 미리보기=크게).
 export const SKIN_ICON_FRACTION = 0.72
 export const SKIN_PREVIEW_FRACTION = 0.52
-function drawSprite(canvas: HTMLCanvasElement, src: CanvasImageSource, w: number, h: number, size: number, frac = INFO_FRAC) {
-  canvas.width = size; canvas.height = size
+// 아이콘 그리기 — 칸에 맞춰 **정수 배율**로만 키운다(사용자 지시 2026-09-20).
+//  - 캔버스를 칸 크기로 잡고 그 안에 그리면(예전) 반올림 때문에 채움 비율을 넘고, 캔버스 픽셀 수가
+//    화면 픽셀과 어긋나(DPR 1.25·1.5) 도트가 뭉개졌다 — VS 칩에서 특히 심했다.
+//  - 지금은 캔버스 자체가 "그린 그림 크기"다: 화면 배율 = floor(칸 맞춤 배율) 정수, 캔버스 픽셀 = 그 × DPR,
+//    CSS 크기 = 캔버스 픽셀 ÷ DPR → 화면 픽셀 격자와 1:1. 가운데 정렬은 바깥 칸(flex)이 한다.
+//  - 원본이 칸보다 큰 경우(피부 전신 베이크 등)만 분수 축소(부드럽게).
+function drawSprite(canvas: HTMLCanvasElement, src: CanvasImageSource, w: number, h: number, boxW: number, boxH: number, frac = INFO_FRAC, dpr = 1) {
   const ctx = canvas.getContext('2d'); if (!ctx) return
-  ctx.clearRect(0, 0, size, size)
-  if (!w || !h) return
-  const avail = size * frac
-  let k = Math.min(avail / w, avail / h)
-  if (k >= 1) { k = Math.max(1, Math.min(Math.round(k), Math.floor(Math.min(size / w, size / h)) || 1)); ctx.imageSmoothingEnabled = false }
-  else ctx.imageSmoothingEnabled = true // 원본이 큰 경우(피부 전신 등) 분수 축소(부드럽게)
-  const dw = Math.round(w * k), dh = Math.round(h * k)
-  ctx.drawImage(src, Math.round((size - dw) / 2), Math.round((size - dh) / 2), dw, dh)
+  if (!w || !h || !boxW || !boxH) { canvas.width = 0; canvas.height = 0; return }
+  const fit = Math.min((boxW * frac) / w, (boxH * frac) / h) // 칸(CSS) 안에 들어가는 배율
+  // 화면 배율은 정수(1·2·3…)라 어느 기기에서도 같은 크기로 보이고, 캔버스 픽셀 배율(정수 × DPR)은 화면 픽셀 격자에 맞는다.
+  const zoom = fit >= 1 ? Math.max(1, Math.round(Math.floor(fit) * dpr)) : fit * dpr
+  const dw = Math.max(1, Math.round(w * zoom)), dh = Math.max(1, Math.round(h * zoom))
+  canvas.width = dw; canvas.height = dh // 크기를 바꾸면 컨텍스트 상태가 초기화되므로 스무딩은 그 뒤에 설정
+  canvas.style.width = `${dw / dpr}px`
+  canvas.style.height = `${dh / dpr}px`
+  ctx.imageSmoothingEnabled = fit < 1
+  ctx.drawImage(src, 0, 0, dw, dh)
 }
 
 // 아이템 "스프라이트"(발색 반영) — 아이콘/미리보기 공용. 절대 모델 착용 베이크(thumb.png)를 쓰지 않는다.
@@ -43,30 +50,49 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
   id: string; thumb?: string | null; mix: boolean; palette?: PaletteParams; hsb?: HsbParams; zmap: string[]; grayscale?: boolean; frac?: number
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const boxRef = useRef<HTMLSpanElement>(null)
   const [meta, setMeta] = useState<ItemMeta | null>(null)
+  const [box, setBox] = useState({ w: 0, h: 0 })
   useEffect(() => {
     if (!mix) { setMeta(null); return }
     let a = true
     loadMeta(id).then((m) => { if (a) setMeta(m) }).catch(() => {})
     return () => { a = false }
   }, [id, mix])
+  // 칸 크기를 재고, 바뀌면(다이얼로그 전환·화면 회전 등) 그 크기로 다시 그린다 — 예전엔 처음 잰 크기로만 그려
+  // 나중에 커진 칸에서는 CSS 가 캔버스를 늘려 도트가 깨졌다. 캔버스는 그림 크기로 줄어드므로 바깥 칸을 잰다.
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const measure = () => setBox((p) => (p.w === el.clientWidth && p.h === el.clientHeight ? p : { w: el.clientWidth, h: el.clientHeight }))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   // 드래그 중에도 렉 없이 바로바로 발색(single-flight + 최신값 수렴).
   useLiveRedraw(async () => {
     const el = ref.current; if (!el) return
-    const dev = Math.round((el.clientWidth || 48) * (window.devicePixelRatio || 1))
+    const dpr = window.devicePixelRatio || 1
+    const boxW = box.w || 48, boxH = box.h || box.w || 48 // CSS 픽셀(칸)
     if (mix) {
       if (!meta) return
       const base = palette?.baseColor ?? 0, mixC = palette?.mixColor ?? base, ratio = palette?.ratio ?? 0
-      await renderDyedSprite(el, meta, base, mixC, base === mixC ? 0 : ratio, THUMB_VIEW, zmap, dev, frac)
+      await renderDyedSprite(el, meta, base, mixC, base === mixC ? 0 : ratio, THUMB_VIEW, zmap, Math.round(Math.min(boxW, boxH) * dpr), frac)
     } else {
       const rel = thumb || `sprites/${id}/icon.png` // 아이템 스프라이트(모델 베이크 아님)
       const active = hsbActive(hsb)
       const img = await loadImage(rel, active)
       const src: CanvasImageSource = active ? applyHsb(img, hsb!, rel) : img
-      drawSprite(el, src, (src as HTMLCanvasElement).width, (src as HTMLCanvasElement).height, dev, frac)
+      drawSprite(el, src, (src as HTMLCanvasElement).width, (src as HTMLCanvasElement).height, boxW, boxH, frac, dpr)
     }
-  }, [meta, id, thumb, mix, palette, hsb, zmap, frac])
-  return <canvas ref={ref} style={{ width: '100%', height: '100%', imageRendering: 'pixelated', ...(grayscale ? { filter: 'grayscale(1)' } : {}) }} />
+  }, [meta, id, thumb, mix, palette, hsb, zmap, frac, box.w, box.h])
+  // 바깥 span = 칸(크기 측정·가운데 정렬), 캔버스 = 그림 크기(mix 는 예전처럼 정사각 캔버스가 칸을 채운다).
+  return (
+    <span ref={boxRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <canvas ref={ref} style={{ ...(mix ? { width: '100%', height: '100%' } : {}), imageRendering: 'pixelated', ...(grayscale ? { filter: 'grayscale(1)' } : {}) }} />
+    </span>
+  )
 }
 
 // 피부 모델: 코디 탭과 동일한 computeModelPlacement 로 body+head(피부 자체)를 마네킹 중심 기준 중앙에 배치해
