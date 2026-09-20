@@ -4,6 +4,13 @@
 export const PLAZA_TTL = 180 // 초
 export const POST_LIMIT = 300
 
-// dev 와 운영은 스키마가 다르다 — 호스트로 고른다(lib/plaza.ts 와 같은 규칙).
-export const plazaSchema = (host: string) => (/^(www\.)?pinkbean-customize\.com$/.test(host) ? 'public' : 'plaza_dev')
+// 운영과 dev 는 스키마가 다르다. **경로**로 고른다 — 호스트로 고르면 빌드 시점에 굳어 버린다(아래 주석 참고).
+export type PlazaTarget = 'prod' | 'dev'
+export const PLAZA_TARGETS: PlazaTarget[] = ['prod', 'dev']
+export const isTarget = (v: string): v is PlazaTarget => v === 'prod' || v === 'dev'
+export const schemaOf = (t: PlazaTarget) => (t === 'prod' ? 'public' : 'plaza_dev')
 export const plazaTag = (schema: string) => `plaza:${schema}`
+
+export function plazaQuery(url: string) {
+  return `${url}/rest/v1/plaza_posts?select=*&order=created_at.desc&limit=${POST_LIMIT}`
+}

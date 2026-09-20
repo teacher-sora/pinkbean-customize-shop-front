@@ -71,6 +71,9 @@ function plazaTarget() {
   if (typeof window !== 'undefined' && PROD_HOST.test(window.location.hostname)) return PROD
   return DEV
 }
+// 목록 라우트도 같은 규칙으로 고른다. 서버가 호스트를 읽지 않아야 정적으로 캐시되고,
+// 그래야 무효화가 엣지까지 즉시 닿는다(app/api/plaza/[target]/route.ts 주석 참고).
+const targetName = () => (plazaTarget() === PROD ? 'prod' : 'dev')
 
 // 스키마가 실행 환경에 따라 정해지므로 제네릭을 'public' 으로 못 박지 않는다.
 const makeClient = () => createClient(URL_ENV!, KEY_ENV!, {
@@ -146,7 +149,7 @@ async function bumpPlazaCache(): Promise<void> {
   try { localStorage.setItem(FRESH_KEY, String(Date.now() + FRESH_MS)) } catch { /* 저장 못 해도 계속 */ }
   try {
     await Promise.race([
-      fetch('/api/plaza/revalidate', { method: 'POST', keepalive: true }).then(() => undefined),
+      fetch(`/api/plaza/revalidate?target=${targetName()}`, { method: 'POST', keepalive: true }).then(() => undefined),
       new Promise<void>((r) => setTimeout(r, 2000)),
     ])
   } catch { /* noop */ }
@@ -154,7 +157,8 @@ async function bumpPlazaCache(): Promise<void> {
 
 async function loadRows(): Promise<Row[] | null> {
   try {
-    const r = await fetch(freshNow() ? '/api/plaza?fresh=1' : '/api/plaza', { cache: 'no-store' })
+    const base = `/api/plaza/${targetName()}`
+    const r = await fetch(freshNow() ? `${base}/fresh` : base, { cache: 'no-store' })
     if (!r.ok) return null
     const j = await r.json()
     return Array.isArray(j?.posts) ? (j.posts as Row[]) : null
