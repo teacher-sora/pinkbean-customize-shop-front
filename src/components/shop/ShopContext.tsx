@@ -20,6 +20,7 @@ import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
+import { RESTORE_TABS, readUiSession, useIsoLayoutEffect, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
@@ -303,6 +304,25 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const partT = useRef<ReturnType<typeof setTimeout>[]>([])
   const [dotPos, setDotPos] = useState<Record<string, DotOffsets>>({}) // 아이템ID → 점 레이어별 위치 오프셋
   const [pageByCat, setPageByCat] = useState<Record<string, number>>({})
+
+  // ── 보던 자리 기억(새로고침까지만) ──
+  // 실수로 새로고침해도 탭·부위·검색어·페이지를 잃지 않는다. 탭을 닫고 다시 들어오면
+  // sessionStorage 가 비어 있으므로 저절로 첫 화면(코디 탭 · 전체 · 1페이지)에서 시작한다.
+  //  · 되살리기는 **페인트 전**(layout effect)에 해서 기본 화면이 한 번 스치지 않게 한다.
+  //  · 저장은 되살리기가 끝난 뒤에만 한다 — 먼저 돌면 기본값으로 덮어써 버린다.
+  const [uiReady, setUiReady] = useState(false)
+  useIsoLayoutEffect(() => {
+    const u = readUiSession()
+    if (u.primary && RESTORE_TABS.has(u.primary)) setPrimary(u.primary)
+    if (typeof u.activeCat === 'string') setActiveCat(u.activeCat)
+    if (typeof u.search === 'string') setSearch(u.search)
+    if (u.pageByCat && typeof u.pageByCat === 'object') setPageByCat(u.pageByCat)
+    setUiReady(true)
+  }, [])
+  useEffect(() => {
+    if (!uiReady) return
+    writeUiSession({ primary, activeCat, search, pageByCat })
+  }, [uiReady, primary, activeCat, search, pageByCat])
   const [snapping, setSnapping] = useState(false)
   const [snapFrom, setSnapFrom] = useState(0)
   const trackRef = useRef<HTMLDivElement | null>(null)
