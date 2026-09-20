@@ -19,10 +19,10 @@ import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { createPlazaPost, deletePlazaPost, loadPlaza, plazaConfigured, plazaView, togglePlazaLike,
-  PLAZA_CONTEST, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
+  PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
-import { RESTORE_TABS, readUiSession, useIsoLayoutEffect, writeUiSession } from '@/lib/uiState'
+import { RESTORE_TABS, readUiPref, readUiSession, useIsoLayoutEffect, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
@@ -348,12 +348,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (typeof u.activeCat === 'string') setActiveCat(u.activeCat)
     if (typeof u.search === 'string') setSearch(u.search)
     if (u.pageByCat && typeof u.pageByCat === 'object') setPageByCat(u.pageByCat)
+    if (u.plazaFilter && PLAZA_FILTERS.some((f: { id: string }) => f.id === u.plazaFilter)) setPlazaFilter(u.plazaFilter as PlazaFilter)
+    if (typeof u.plazaQ === 'string') setPlazaQState(u.plazaQ)
+    // 광장 정렬만 **영구**다(취향에 가까운 값 — 사용자 지시). 나머지는 전부 새로고침까지만.
+    const pref = readUiPref()
+    if (pref.plazaSort === 'popular' || pref.plazaSort === 'recent') setPlazaSort(pref.plazaSort)
     setUiReady(true)
   }, [])
   useEffect(() => {
     if (!uiReady) return
-    writeUiSession({ primary, activeCat, search, pageByCat })
-  }, [uiReady, primary, activeCat, search, pageByCat])
+    writeUiSession({ primary, activeCat, search, pageByCat, plazaFilter, plazaQ })
+  }, [uiReady, primary, activeCat, search, pageByCat, plazaFilter, plazaQ])
+  useEffect(() => { if (uiReady) writeUiPref({ plazaSort }) }, [uiReady, plazaSort])
   const [snapping, setSnapping] = useState(false)
   const [snapFrom, setSnapFrom] = useState(0)
   const trackRef = useRef<HTMLDivElement | null>(null)
