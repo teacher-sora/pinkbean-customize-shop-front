@@ -68,15 +68,16 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
     //    시점엔 아직 한 페이지 폭**이다. 그때 scrollTo 를 부르면 브라우저가 목표를 최대 스크롤(=0)로 깎는다
     //    → 인덱스는 6 인데 스크롤은 0 이라 페이지 DOM(현재 ±1) 이 화면 밖에 있어 **빈 리스트**가 보였다
     //    (2026-09-21 실측: scrollTo({left:1880}) 호출 4회 모두 scrollWidth-clientWidth = 0).
-    //    트랙이 다 자랄 때까지 프레임을 넘겨 다시 시도한다. 폭이 더 이상 변하지 않으면 그 자리에서 멈춘다
-    //    (고정 대기 횟수가 아니라 '레이아웃이 따라잡을 때까지'가 조건이다).
+    //    트랙이 다 자랄 때까지 프레임을 넘겨 다시 시도한다(조건이 맞는 즉시 끝난다).
     let raf = 0
-    let prev = -1
+    let left = 120 // 폭주 방지용 상한(≈2초). 대기 시간이 아니라 안전장치다 — 조건이 맞는 즉시 빠져나간다.
     const go = () => {
       raf = 0
-      const max = vp.scrollWidth - vp.clientWidth
-      if (max < target && max !== prev) { prev = max; raf = requestAnimationFrame(go); return }
-      vp.scrollTo({ left: Math.min(target, Math.max(0, max)), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
+      if (!vp.isConnected) return
+      // 트랙이 목표까지 자랐으면 이동. 아직이면 다음 프레임에 다시 본다(보통 1~3프레임).
+      if (vp.scrollWidth - vp.clientWidth < target && left-- > 0) { raf = requestAnimationFrame(go); return }
+      const max = Math.max(0, vp.scrollWidth - vp.clientWidth)
+      vp.scrollTo({ left: Math.min(target, max), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
     }
     go()
     return () => { if (raf) cancelAnimationFrame(raf) }
