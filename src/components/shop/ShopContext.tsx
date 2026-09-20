@@ -22,7 +22,7 @@ import { createPlazaPost, deletePlazaPost, loadPlaza, plazaConfigured, plazaView
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
-import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, readUiPref, readUiSession, useIsoLayoutEffect, writeUiPref, writeUiSession } from '@/lib/uiState'
+import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
@@ -346,7 +346,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   })
   const [presets, setPresets] = useState<Preset[]>(() => PRESET_IDS.map((id, i) => ({ id, name: defaultPresetName(i) })))
   const [presetData, setPresetData] = useState<Record<string, Snapshot>>(() => Object.fromEntries(PRESET_IDS.map((id) => [id, defaultSnapshot()])))
-  const [selectedPreset, setSelectedPreset] = useState<string | null>('d0')
+  // 처음엔 **아무것도 선택하지 않는다**. 'd0' 으로 시작하면 저장소를 읽기 전 잠깐 1번 칸에
+  // '선택됨' 띠지가 붙었다가 실제 프리셋으로 옮겨 간다(사용자 지적 2026-09-21). 아래 초기 로드에서 채운다.
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
   const [nickInput, setNickInput] = useState('')
   const [importing, setImporting] = useState(false) // 불러오기 진행 중(로딩 애니메이션)
   // 코디가 2벌인 캐릭터(제로=알파/베타, 엔젤릭버스터=일반/드레스업) → 어느 걸 가져올지 고르는 다이얼로그.
@@ -406,6 +408,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const savedPv = loadPv()
       if (savedPv) setPvState((prev) => ({ ...prev, ...savedPv }))
       else applyPvSnap(snap.pv)
+      // 되돌리기 스택 복원(새로고침까지). 코디 자체는 localStorage 로 살아남는데 스택만 비어 있어
+      // 새로고침 뒤엔 되돌릴 수 없었다. 맨 위 항목을 '마지막 기록'으로 잡아 두면 아래 기록 effect 가
+      // 같은 상태를 한 번 더 쌓지 않는다.
+      const savedHist = readUiHistory<Snapshot>()
+      if (savedHist) {
+        histRef.current = savedHist
+        const cur = savedHist.stack[savedHist.idx]
+        histLast.current = JSON.stringify({ s: cur.snap, p: cur.sel })
+        setHistVer((v) => v + 1)
+      }
       initedRef.current = true
     }).catch((e) => console.error('[shop] index 로드 실패', e))
       .finally(() => { if (alive) setDataLoading(false) })
@@ -1425,6 +1437,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setHistVer((v) => v + 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, dyeInteracting])
+
+  // 스택을 sessionStorage 에 남긴다(새로고침까지). 변경이 몰아칠 수 있어 한 박자 묶어서 쓴다.
+  const histSaveT = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!initedRef.current || !histVer) return
+    if (histSaveT.current) clearTimeout(histSaveT.current)
+    histSaveT.current = setTimeout(() => writeUiHistory(histRef.current), 300)
+    return () => { if (histSaveT.current) clearTimeout(histSaveT.current) }
+  }, [histVer])
 
   const applyHistory = (e: { snap: Snapshot; sel: string | null }) => {
     const j = JSON.stringify({ s: e.snap, p: e.sel })

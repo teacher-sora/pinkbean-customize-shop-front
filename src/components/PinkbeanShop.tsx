@@ -40,16 +40,17 @@ function Shell() {
           <div data-mobile-col className={styles.mobileCol}>
             <AppHeader mobile />
             {/* 새로고침 복원 중에는 이 슬롯을 통째로 감추고 아래 빈 뼈대를 대신 보여준다.
-                display:contents 라 평소 배치에는 아무 영향이 없다. */}
-            {/* 미리보기(히어로)는 뼈대에도 남긴다 — PC 의 미리보기 칸과 같은 취급. */}
-            {!isPlaza && <MobileHero />}
-            <div data-pb-panel style={{ display: 'contents' }}>
+                display:contents(globals.css)라 평소 배치에는 아무 영향이 없다.
+                히어로(미리보기)도 안에 넣는다 — 광장 탭에서는 아예 없어지는 칸이라,
+                밖에 두면 뼈대 동안 보였다가 사라진다. */}
+            <div data-pb-panel>
+              {!isPlaza && <MobileHero />}
               {isList && <ListArea mobile />}
               {isPlaza && <PlazaPanel mobile />}
               {s.primary === 'preset' && <PresetPanel mobile />}
               {s.primary === 'info' && <InfoPanel mobile />}
             </div>
-            <div data-pb-stub aria-hidden />
+            <div data-pb-stub="main" aria-hidden />
             <BottomNav mobile />
           </div>
         </div>
@@ -59,15 +60,18 @@ function Shell() {
           <div className={clsx(styles.frame, s.bp === 'pc' ? styles.framePc : s.bp === 'half' ? styles.frameHalf : styles.frameTablet)}>
             <AppHeader mobile={false} />
             <main className={styles.main}>
-              <div data-pb-panel style={{ display: 'contents' }}>
+              {/* 오른쪽 칸(미리보기 ↔ 등록 폼)도 같은 슬롯 안에 둔다. 탭에 따라 바뀌는 칸이라
+                  밖에 두면 뼈대 동안 미리보기가 보였다가 등록 폼으로 갈아끼워진다. */}
+              <div data-pb-panel>
                 {isList && <ListArea mobile={false} />}
                 {s.primary === 'info' && <InfoPanel mobile={false} />}
                 {s.primary === 'preset' && <PresetPanel mobile={false} />}
                 {isPlaza && <PlazaPanel mobile={false} />}
                 {isPlaza && <PlazaUpload mobile={false} />}
+                {!isPlaza && <PreviewColumn />}
               </div>
-              <div data-pb-stub aria-hidden />
-              {!isPlaza && <PreviewColumn />}
+              <div data-pb-stub="main" aria-hidden />
+              <div data-pb-stub="side" aria-hidden />
             </main>
             <BottomNav mobile={false} />
           </div>

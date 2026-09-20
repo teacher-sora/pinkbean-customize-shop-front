@@ -28,11 +28,15 @@ export type UiSession = {
   // 아래 둘은 코디 광장이 있는 배포에서만 쓴다(main 에는 광장이 없어 저장되지 않는다).
   plazaFilter?: string
   plazaQ?: string
+  // 서버가 그린 첫 화면과 다른 값이 들어 있는가 — 뼈대를 띄울지 말지를 layout.tsx 의 인라인
+  // 스크립트가 이 한 글자로 판단한다(거기선 앱 기본값을 알 수 없다).
+  dirty?: boolean
 }
 export type UiPref = { plazaSort?: string }
 
 const SESSION_KEY = 'pb_ui_session_v1'
 const PREF_KEY = 'pb_ui_pref_v1'
+const HIST_KEY = 'pb_ui_hist_v1'
 
 export const RESTORE_TABS = new Set(['codi', 'search', 'info', 'preset', 'share'])
 // 검색 결과 저장 상한(검색 자체가 topK 100 이다). sessionStorage 를 과하게 쓰지 않도록 둔다.
@@ -53,11 +57,47 @@ function write(store: 'sessionStorage' | 'localStorage', key: string, v: unknown
   try { window[store].setItem(key, JSON.stringify(v)); return true } catch { return false } // 저장이 막혀도 앱은 그대로
 }
 
+// 서버 HTML(SSG)이 그리는 첫 화면과 다른 값이 하나라도 있는가.
+// 같다면 되살려도 화면이 그대로라 뼈대를 띄울 이유가 없다(쓸데없는 한 프레임을 아낀다).
+// ⚠️ 여기 적힌 기본값은 ShopContext 의 useState 초기값과 같아야 한다.
+function differs(v: UiSession): boolean {
+  return Boolean(
+    (v.primary && v.primary !== 'codi') ||
+    (v.activeCat && v.activeCat !== 'all') ||
+    v.search || v.aiQ || v.searchQuery ||
+    (v.searchResults && v.searchResults.length) ||
+    (v.plazaFilter && v.plazaFilter !== 'all') || v.plazaQ ||
+    (v.pageByCat && Object.values(v.pageByCat).some((n) => n !== 0)),
+  )
+}
+
 export const readUiSession = (): UiSession => read<UiSession>('sessionStorage', SESSION_KEY)
 export function writeUiSession(v: UiSession): void {
-  if (write('sessionStorage', SESSION_KEY, v)) return
+  const x = { ...v, dirty: differs(v) }
+  if (write('sessionStorage', SESSION_KEY, x)) return
   // 검색 결과가 커서 막혔을 수 있다 → 결과만 빼고 다시. 탭·검색어는 반드시 남겨야 한다.
-  write('sessionStorage', SESSION_KEY, { ...v, searchResults: undefined })
+  write('sessionStorage', SESSION_KEY, { ...x, searchResults: undefined })
+}
+
+// ── 되돌리기/다시실행 스택(새로고침까지) ──
+// 코디 자체는 localStorage(프리셋)로 살아남는데 히스토리만 사라져서, 새로고침 뒤엔 되돌릴 수 없었다.
+// 수명은 다른 "보던 자리" 값들과 같게 sessionStorage — 탭을 닫으면 깨끗해진다.
+export type UiHistory<S> = { stack: { snap: S; sel: string | null }[]; idx: number }
+export function readUiHistory<S>(): UiHistory<S> | null {
+  const h = read<UiHistory<S>>('sessionStorage', HIST_KEY)
+  if (!Array.isArray(h.stack) || !h.stack.length || typeof h.idx !== 'number') return null
+  if (h.idx < 0 || h.idx >= h.stack.length) return null
+  if (h.stack.some((e) => !e || typeof e !== 'object' || !e.snap)) return null
+  return { stack: h.stack, idx: h.idx }
+}
+export function writeUiHistory<S>(h: UiHistory<S>): void {
+  if (!h.stack.length) { try { window.sessionStorage.removeItem(HIST_KEY) } catch {} ; return }
+  // 스냅샷 50개가 저장 한도를 넘을 수 있다 → 오래된 것부터 잘라 가며 다시 시도(현재 위치는 보존).
+  for (let keep = h.stack.length; keep >= 1; keep = Math.floor(keep / 2)) {
+    const cut = Math.min(h.stack.length - keep, h.idx)
+    if (write('sessionStorage', HIST_KEY, { stack: h.stack.slice(cut), idx: h.idx - cut })) return
+  }
+  try { window.sessionStorage.removeItem(HIST_KEY) } catch {}
 }
 export const readUiPref = (): UiPref => read<UiPref>('localStorage', PREF_KEY)
 export const writeUiPref = (v: UiPref): void => { write('localStorage', PREF_KEY, v) }
