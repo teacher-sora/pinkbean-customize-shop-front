@@ -107,7 +107,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   const viewport = (
     <div ref={setVp} className={clsx(styles.viewport, mobile && 'pb-norail', mobile && styles.viewportM)}>
       {s.plazaLoading ? (
-        <div className={clsx(styles.page, mobile && styles.pageM)} style={{ left: 0 }}>
+        <div className={mobile ? styles.pageM : styles.page} style={{ left: 0 }}>
           <div className={styles.grid} style={gridStyle}>
             {Array.from({ length: per }, (_, i) => <div key={i} className={clsx('pb-skel', styles.skel)} />)}
           </div>
@@ -128,7 +128,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
             ? { width: `calc(${s.pageCount} * 100cqw)` }
             : { transform: `translateX(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
           {pages.map(({ pi, items }) => (
-            <div key={pi} className={clsx('pb-page', mobile ? styles.pageM : undefined, styles.page)} style={{ left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
+            <div key={pi} className={clsx('pb-page', mobile ? styles.pageM : styles.page)} style={{ left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
               {(!s.snapping || pi === s.curIdx || Math.abs(pi - s.snapFrom) <= 1) && (
                 <div className={styles.grid} style={gridStyle}>
                   {items.map((post) => <PlazaCard key={post.id} post={post} mobile={mobile} />)}
