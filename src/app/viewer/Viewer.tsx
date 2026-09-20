@@ -119,6 +119,7 @@ function Frame({ preset, zoom, path, tab, nonce, inspect, onPick }: FrameProps) 
     }
     const leave = () => setHover(null)
     const click = (e: Event) => {
+      if (!e.isTrusted) return // 탭 자동 전환 같은 프로그램 클릭은 앱으로 그대로 보낸다
       e.preventDefault(); e.stopPropagation()
       const el = e.target as Element | null
       if (el) onPick(el, preset)
