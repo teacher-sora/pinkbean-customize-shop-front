@@ -62,7 +62,24 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
     scrolledOnce.current = true
     const c = live.current.cols
     if (Math.floor(Math.round(vp.scrollLeft / (w / c)) / c) === s.curIdx && !jump) return
-    vp.scrollTo({ left: s.curIdx * w, behavior: jump ? ('instant' as ScrollBehavior) : 'smooth' })
+    const target = s.curIdx * w
+    const smooth = !jump
+    // ⚠️ 트랙 폭은 `pageCount * 100cqw`(컨테이너 쿼리 단위)라, 페이지 수가 늘어난 **그 커밋의 layout effect
+    //    시점엔 아직 한 페이지 폭**이다. 그때 scrollTo 를 부르면 브라우저가 목표를 최대 스크롤(=0)로 깎는다
+    //    → 인덱스는 6 인데 스크롤은 0 이라 페이지 DOM(현재 ±1) 이 화면 밖에 있어 **빈 리스트**가 보였다
+    //    (2026-09-21 실측: scrollTo({left:1880}) 호출 4회 모두 scrollWidth-clientWidth = 0).
+    //    트랙이 다 자랄 때까지 프레임을 넘겨 다시 시도한다. 폭이 더 이상 변하지 않으면 그 자리에서 멈춘다
+    //    (고정 대기 횟수가 아니라 '레이아웃이 따라잡을 때까지'가 조건이다).
+    let raf = 0
+    let prev = -1
+    const go = () => {
+      raf = 0
+      const max = vp.scrollWidth - vp.clientWidth
+      if (max < target && max !== prev) { prev = max; raf = requestAnimationFrame(go); return }
+      vp.scrollTo({ left: Math.min(target, Math.max(0, max)), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
+    }
+    go()
+    return () => { if (raf) cancelAnimationFrame(raf) }
   }, [mobile, s.curIdx, scrollKey, s.pageCount])
 
   const pageChip = (
