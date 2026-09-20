@@ -27,7 +27,7 @@
 /* ── 페이지 칩 ── */
 .pageChip { flex: 0 0 auto; margin-left: auto; height: 34px; padding: 0 4px 0 12px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; font-variant-numeric: tabular-nums; }
 /* 모바일은 등록 버튼과 양끝 정렬이라 margin-left:auto 를 쓰지 않는다(쓰면 space-between 이 무력화된다) */
-.pageChipM { flex: 0 0 auto; height: 34px; padding: 0 4px 0 12px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+.pageChipM { flex: 0 0 auto; height: 34px; padding: 0 4px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; font-variant-numeric: tabular-nums; }
 .count { font-size: 12px; font-weight: 600; color: #8a8075; line-height: 1; }
 .chipDiv { width: 1px; height: 14px; margin: 0 8px; background: #e7ded4; }
 .arrow { flex: 0 0 auto; width: 22px; height: 24px; margin: 0 2px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 6px; background: transparent; color: #ded5cb; cursor: default; transition: background-color .2s ease, color .2s ease; }
@@ -113,12 +113,13 @@
 .pickBtn { width: 100%; height: 34px; padding: 0 9px 0 11px; display: flex; align-items: center; gap: 7px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
 .pickOpen { border-color: #eeb2ce; background: #fdf4f8; }
 .pickText { flex: 1 1 0; min-width: 0; font-size: 12.5px; font-weight: 500; color: #3d372f; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pickCaret { flex: 0 0 auto; font-size: 9px; color: #a89e93; transition: transform .2s ease; }
+.pickCaret { flex: 0 0 auto; color: #a89e93; transition: transform .22s cubic-bezier(.45,0,.55,1); transform: rotate(0deg); }
 .caretOpen { transform: rotate(180deg); }
 .pickPanel { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; padding: 8px; background: #fff; border: 1px solid #f0dde7; border-radius: 10px; box-shadow: 0 10px 26px rgba(42,37,33,.14); transform-origin: top center; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none; }
 .panelOn { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
 /* 아래로 자리가 없는 하단 항목(등록할 곳)은 위로 펼친다 */
 .pickPanelUp { top: auto; bottom: calc(100% + 6px); transform-origin: bottom center; transform: translateY(6px) scale(.98); }
+.pickPanelUp.panelOn { transform: translateY(0) scale(1); }
 .pickContest { border-color: #f4cfdf; background: #fce9f1; }
 .pickList { display: flex; flex-direction: column; gap: 2px; max-height: 196px; overflow: hidden auto; }
 .pickListM { max-height: 168px; }
@@ -128,13 +129,16 @@
 .tagChips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .tagDel { flex: 0 0 auto; height: 24px; padding: 0 9px; display: flex; align-items: center; gap: 4px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fce9f1; font-family: inherit; font-size: 11px; font-weight: 600; color: #d76d9a; cursor: pointer; }
 .imgBtn { width: 100%; height: 56px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; border-radius: 9px; background: #fbf8f4; font-family: inherit; font-size: 12px; font-weight: 600; color: #a89e93; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
-.imgBtnOn { height: 34px; border: 1px solid #f4cfdf; background: #fce9f1; color: #d76d9a; }
+.imgBtnOn { border: 1px solid #f4cfdf; background: #fce9f1; color: #d76d9a; }
 .scopeGroup { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }
 .scopeHint { margin-top: 6px; font-size: 10.5px; color: #a89e93; }
 .emailHint { margin-top: 5px; font-size: 10.5px; color: #b7ada2; }
 .submit { width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; line-height: 1; border: none; border-radius: 9px; background: #ec86ac; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; transition: background-color .2s ease; }
 .submitOff { background: #f0c9d9; cursor: default; }
-.submitWrapM { padding: 4px 0 0; }
+/* 모바일 등록 폼 푸터 — 닫기 + 등록. 본문 맨 아래에 있던 등록 버튼을 여기로 옮겼다. */
+.upFootM { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px 12px 10px; border-top: 1px solid #f0e9e1; }
+.upCloseM { flex: 0 0 84px; height: 40px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 9px; background: #f4ecf3; font-family: inherit; font-size: 13px; font-weight: 600; color: #8a8075; cursor: pointer; }
+.upSubmitM { flex: 1 1 auto; min-width: 0; }
 
 @media (hover: hover) and (pointer: fine) {
   .railBtn:hover { border-color: #f0d3e0; background: #fff; color: #d76d9a; }

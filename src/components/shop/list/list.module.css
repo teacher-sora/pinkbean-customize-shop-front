@@ -24,7 +24,7 @@
 /* ── 리스트 컨트롤(모바일) ── */
 .controlsM { flex: 0 0 auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
 .rowM { display: flex; align-items: center; min-height: 32px; gap: 6px; }
-.pageChipM { flex: 0 0 auto; display: flex; align-items: center; height: 32px; padding: 0 4px 0 10px; border: 1px solid #f0e9e1; border-radius: 9px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+.pageChipM { flex: 0 0 auto; display: flex; align-items: center; height: 32px; padding: 0 4px; border: 1px solid #f0e9e1; border-radius: 9px; background: #faf7f3; font-variant-numeric: tabular-nums; }
 .slashM { font-size: 12px; color: #ccc2b8; margin: 0 3px; }
 .searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; pointer-events: none; }

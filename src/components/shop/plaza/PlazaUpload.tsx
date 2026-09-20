@@ -12,6 +12,7 @@ import { PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_TAG_MAX } from '@/lib/plaza'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
+import { IconCaretDown } from '../ui/Icons'
 import styles from './plaza.module.css'
 
 const STAGE_FRACTION = 0.46
@@ -89,7 +90,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
           <button type="button" onClick={() => setPickOpen((v) => !v)} title="등록할 프리셋 선택" aria-expanded={pickOpen}
             className={clsx('pb-ddbtn', styles.pickBtn, pickOpen && styles.pickOpen)}>
             <span className={styles.pickText}>{current ? current.name : '프리셋을 골라주세요'}</span>
-            <span className={clsx(styles.pickCaret, pickOpen && styles.caretOpen)}>▾</span>
+            <IconCaretDown size={13} className={clsx(styles.pickCaret, pickOpen && styles.caretOpen)} />
           </button>
           <div className={clsx(styles.pickPanel, pickOpen && styles.panelOn)}>
             <div className={clsx('pb-scroll', 'pb-scroll-thin', styles.pickList, mobile && styles.pickListM)}>
@@ -157,7 +158,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
             <button type="button" onClick={() => setScopeOpen((v) => !v)} title="등록할 곳 선택" aria-expanded={scopeOpen}
               className={clsx('pb-ddbtn', styles.pickBtn, contest && styles.pickContest, scopeOpen && styles.pickOpen)}>
               <span className={styles.pickText}>{contest ? PLAZA_CONTEST : '코디 광장'}</span>
-              <span className={clsx(styles.pickCaret, scopeOpen && styles.caretOpen)}>▾</span>
+              <IconCaretDown size={13} className={clsx(styles.pickCaret, scopeOpen && styles.caretOpen)} />
             </button>
             {/* 폼 맨 아래에 있는 항목이라 위(빈 공간이 많은 쪽)로 펼친다. */}
             <div className={clsx(styles.pickPanel, styles.pickPanelUp, scopeOpen && styles.panelOn)}>
@@ -186,11 +187,20 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
         )}
       </div>
 
-      {mobile && <div className={styles.submitWrapM}>{submitBtn}</div>}
     </div>
   )
 
-  if (mobile) return body
+  // 모바일은 목록 자리에서 폼으로 바뀌므로, 닫기도 폼 안에 있어야 한다(위쪽 '닫기'만으로는 멀다 — 사용자 지시).
+  // PC 는 오른쪽에 상주하는 컬럼이라 닫을 대상이 없어 등록만 둔다.
+  if (mobile) return (
+    <>
+      {body}
+      <div className={styles.upFootM}>
+        <button type="button" onClick={() => s.setPlazaUpload(false)} className={clsx('pb-soft', styles.upCloseM)}>닫기</button>
+        <div className={styles.upSubmitM}>{submitBtn}</div>
+      </div>
+    </>
+  )
   return (
     <section className={clsx(styles.upCol, s.bp === 'half' && styles.upColHalf, s.bp === 'tablet' && styles.upColTablet, narrow && undefined)}>
       <div className={styles.upPanel}>
