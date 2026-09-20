@@ -22,16 +22,20 @@ export function SlotSprite({ slot, item, grayscale }: { slot: string; item: List
     return te ? <SkinModel bodyId={te.body} headId={te.head} hsb={s.renderHsb.skin || defHsb()} dyeable={isColorLineSkin(te.name)} zmap={zmap} smap={smap} box={34} fraction={SKIN_ICON_FRACTION} /> : null
   }
   if (s.isMixSlot(slot)) return <DyeSprite id={item.id} mix palette={s.renderPalette[slot]} zmap={zmap} grayscale={grayscale} frac={slot === 'hair' ? INFO_FRAC_HAIR : INFO_FRAC} />
-  return <DyeSprite id={item.id} thumb={item.icon || `sprites/${item.id}/icon.png`} mix={false} hsb={s.renderHsb[slot]} zmap={zmap} grayscale={grayscale} frac={INFO_FRAC} />
+  // 염색 불가(일반 메소 아이템 등)는 슬롯에 남은 수치를 쓰지 않는다 — 실제 렌더(buildOverrides)와 같은 기준.
+  const dyeableItem = item.dyeMode !== 'none'
+  return <DyeSprite id={item.id} thumb={item.icon || `sprites/${item.id}/icon.png`} mix={false} hsb={dyeableItem ? s.renderHsb[slot] : undefined} zmap={zmap} grayscale={grayscale} frac={INFO_FRAC} />
 }
 
 // 부위에 염색 수치가 걸려 있는지(비활성화 여부와 무관 — 표시 점은 비활성화면 무채색).
+// 염색 불가 아이템은 수치가 남아 있어도 '염색됨'이 아니다(실제로 칠해지지 않는다).
 export function useSlotDyed() {
   const s = useShop()
   const toneName = s.index?.base.tones.find((t) => t.tone === s.tone)?.name
   return (slot: string): boolean => {
     if (slot === 'skin') return isColorLineSkin(toneName) && hsbActive(s.dyeHsb.skin)
     if (s.isMixSlot(slot)) { const p = s.dyePalette[slot]; return !!p && (p.baseColor !== 0 || (p.mixColor != null && p.ratio > 0)) }
+    if (s.equipped[slot]?.dyeMode === 'none') return false
     return hsbActive(s.dyeHsb[slot])
   }
 }

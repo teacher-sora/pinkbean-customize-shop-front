@@ -52,7 +52,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const bnav = curBody?.map?.navel
   const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
   const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
-  const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id })), spv, snapHsb, overrides).catch(() => [])
+  const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
   const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, TV.action, { foot, brow }, 0))
   return { placed, overrides, effects }
 }

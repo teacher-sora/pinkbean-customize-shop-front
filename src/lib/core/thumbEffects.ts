@@ -24,7 +24,8 @@ export const effectEnabled = (slot: string, pv: { wEffect: boolean; cEffect: boo
  * override 를 그 자리에서 변형(mutate)한다 — 호출부가 renderCharacter 에 그대로 넘기면 된다.
  */
 export async function collectWornEffects(
-  worn: { slot: string; id: string }[],
+  // dyeable=false(일반 메소 아이템 등 염색 불가)면 슬롯에 남은 수치가 있어도 이펙트를 칠하지 않는다.
+  worn: { slot: string; id: string; dyeable?: boolean }[],
   pv: { wEffect: boolean; cEffect: boolean; capEffect?: boolean },
   dyeHsb: Record<string, HsbParams>,
   override: Map<string, HTMLCanvasElement>,
@@ -32,12 +33,13 @@ export async function collectWornEffects(
   if (!worn.length) return []
   const idx = await loadEffectIndex().catch(() => new Set<string>())
   const out: WornEff[] = []
-  for (const { slot, id } of worn) {
+  for (const { slot, id, dyeable } of worn) {
     if (!effectEnabled(slot, pv)) continue                       // 토글 꺼짐 → 카드에서도 안 보인다
     if (!idx.has(String(parseInt(id, 10)))) continue             // 이펙트 없는 아이템
     const em = await loadEffect(id).catch(() => null)
     if (!em) continue
     out.push({ slot, em })
+    if (dyeable === false) continue                              // 염색 불가 아이템 → 이펙트도 원본 색
     const h = dyeHsb[slot]
     if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue     // 염색 없음 → 원본 그대로
     // 프레임 png 는 병렬 로드(순차면 프레임 많은 망토에서 줄줄이 늘어져 느리다).

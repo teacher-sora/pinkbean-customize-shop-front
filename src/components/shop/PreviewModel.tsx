@@ -241,6 +241,7 @@ export default function PreviewModel() {
     const dyeExtras = async (allFrames: boolean) => {
       for (const [slot, it] of Object.entries(equipped)) {
         if (!it) continue
+        if (it.dyeMode === 'none') continue // 일반(메소) 아이템 등 염색 불가 → 이펙트도 원본 색
         const h = dyeHsb[slot]
         if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
         const em = effMetas.get(it.id); if (!em) continue
