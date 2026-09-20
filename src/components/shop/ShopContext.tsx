@@ -18,6 +18,8 @@ import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
+import { createPlazaPost, deletePlazaPost, loadPlaza, plazaConfigured, plazaView, togglePlazaLike,
+  type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 
@@ -43,8 +45,9 @@ export type Snapshot = { equipped: Record<string, string>; tone: number; dyePale
 // 단일 서피스(시트·다이얼로그): 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 하나를 쓴다(v2 §10.4).
 // part = 부위 염색(착용 부위 고르기 → 같은 다이얼로그 안에서 염색/점 위치로 슬라이드), vs = 북마크 코디 비교(PC).
 // fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다(delta §3·§8).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs'
-export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean }
+// plaza = 코디 광장 글 상세, ptake = 그 코디를 받을 프리셋 칸 고르기(상세에서 들어오면 푸터가 '이전').
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza' | 'ptake'
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴(delta 값)
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
@@ -158,6 +161,21 @@ export interface ShopCtx {
   consumeSwipeClick: () => boolean // 스와이프 직후의 카드 클릭은 착용으로 처리하지 않는다
   curIdx: number; pageCount: number
   bp: Breakpoint; cols: number; rows: number; itemsPerPage: number
+  // ── 코디 광장 ──
+  plazaPosts: PlazaPost[]; plazaList: PlazaPost[]; plazaLoading: boolean; plazaReady: boolean
+  plazaFilter: PlazaFilter; setPlazaFilter: Dispatch<PlazaFilter>
+  plazaSort: PlazaSort; setPlazaSort: Dispatch<PlazaSort>
+  plazaQ: string; setPlazaQ: (v: string) => void
+  plazaUpload: boolean; setPlazaUpload: Dispatch<boolean>
+  plazaCols: number; plazaRows: number
+  openPlazaPost: (post: PlazaPost) => void
+  plazaTake: () => void; plazaTakeBack: () => void; plazaTakeDirect: (post: PlazaPost) => void
+  plazaTakeInto: (slotId: string) => void
+  plazaLike: (post: PlazaPost) => void
+  plazaRemove: (post: PlazaPost) => void
+  plazaCopyLink: (post: PlazaPost) => void
+  plazaSubmit: (draft: Omit<PlazaDraft, 'shareCode'>) => Promise<boolean>
+  plazaSubmitting: boolean
   snapping: boolean
   setIdx: (i: number, snap?: boolean) => void; step: (dir: number) => void
   pageEditing: boolean; pageInput: string
@@ -300,6 +318,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [partSlide, setPartSlide] = useState(0)
   const [vsOn, setVsOn] = useState(false)
   const [vsPicks, setVsPicks] = useState<string[]>([])
+  // 코디 광장: 목록은 한 번 받아 두고 거르기·정렬은 화면에서(검색이 즉시 반응).
+  const [plazaPosts, setPlazaPosts] = useState<PlazaPost[]>([])
+  const [plazaLoading, setPlazaLoading] = useState(false)
+  const [plazaFilter, setPlazaFilter] = useState<PlazaFilter>('all')
+  const [plazaSort, setPlazaSort] = useState<PlazaSort>('popular')
+  const [plazaQ, setPlazaQState] = useState('')
+  const [plazaUpload, setPlazaUpload] = useState(false)
+  const [plazaSubmitting, setPlazaSubmitting] = useState(false)
+  const [plazaGrid, setPlazaGrid] = useState<{ cols: number; rows: number }>({ cols: 6, rows: 3 })
+  const plazaDel = useRef<{ id: string; at: number }>({ id: '', at: 0 })
   const partT = useRef<ReturnType<typeof setTimeout>[]>([])
   const [dotPos, setDotPos] = useState<Record<string, DotOffsets>>({}) // 아이템ID → 점 레이어별 위치 오프셋
   const [pageByCat, setPageByCat] = useState<Record<string, number>>({})
@@ -485,12 +513,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const bp = useBreakpoint()
   const bpRef = useRef(bp)
   bpRef.current = bp
+  const primaryRef = useRef(primary)
+  primaryRef.current = primary
   const [grid, setGrid] = useState<{ cols: number; rows: number }>({ cols: 6, rows: 3 })
   const measure = useCallback(() => {
     const el = vpElRef.current
     if (!el || !el.clientWidth || !el.clientHeight) return
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
+    // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄(핸드오프 perPage).
+    if (primaryRef.current === 'share') {
+      const mob = vp === 'mobile'
+      const pcols = mob ? 2 : (vp === 'half' || vp === 'tablet') ? 3 : 6
+      const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10
+      const avail = el.clientHeight - 20
+      const prows = Math.max(1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx))))
+      setPlazaGrid((g) => (g.cols === pcols && g.rows === prows ? g : { cols: pcols, rows: prows }))
+      return
+    }
     if (vp === 'mobile') { apply(3, 2); return }
     const gap = 10, pad = 20
     const TARGET = 1.34, MINW = 78, MINH = 96
@@ -522,7 +562,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (best.rows > fitRows) best = { ...best, rows: fitRows }
     apply(best.cols, best.rows)
   }, [])
-  useEffect(() => { measure() }, [bp, measure])
+  useEffect(() => { measure() }, [bp, primary, measure])
   const { cols, rows } = grid
   const itemsPerPage = cols * rows
 
@@ -534,19 +574,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     else if (activeCat !== 'all') out = out.filter((it) => it.slot === CAT_TO_SLOT[activeCat])
     return byGender(out, genderFilter)
   }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter])
+  const plazaList = useMemo(() => plazaView(plazaPosts, plazaFilter, plazaQ, plazaSort), [plazaPosts, plazaFilter, plazaQ, plazaSort])
   const pagedList = primary === 'search' ? searchResultsView : activeList
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
   //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다
   //   (setIdx 를 거치지 않으니 스냅 전환·스크롤 애니메이션 없이 리스트가 그대로 유지되는 인상).
-  const pageKey = primary === 'search' ? 'search:' + activeCat : activeCat
+  const pageKey = primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : activeCat
 
-  // ── 페이지네이션 ──
-  const pageCount = Math.max(1, Math.ceil(pagedList.length / itemsPerPage))
+  // ── 페이지네이션 ── (광장은 자기 그리드·목록 길이를 쓴다)
+  const isPlazaTab = primary === 'share'
+  const perPage = isPlazaTab ? plazaGrid.cols * plazaGrid.rows : itemsPerPage
+  const pageCount = Math.max(1, Math.ceil((isPlazaTab ? plazaList.length : pagedList.length) / perPage))
   const maxIndex = pageCount - 1
-  const curIdx = Math.max(0, Math.min(maxIndex, Math.floor((pageByCat[pageKey] || 0) / itemsPerPage)))
+  const curIdx = Math.max(0, Math.min(maxIndex, Math.floor((pageByCat[pageKey] || 0) / perPage)))
 
-  const live = useRef({ pageKey, maxIndex, curIdx, itemsPerPage })
-  live.current = { pageKey, maxIndex, curIdx, itemsPerPage }
+  const live = useRef({ pageKey, maxIndex, curIdx, itemsPerPage: perPage })
+  live.current = { pageKey, maxIndex, curIdx, itemsPerPage: perPage }
 
   const setIdx = useCallback((i: number, snap = true) => {
     const cat = live.current.pageKey
@@ -778,6 +821,85 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!bookmarks.length) return
     setBookmarks([]); saveBookmarks([]); setVsPicks([])
     notify('북마크를 비웠어요')
+  }
+
+  // ── 코디 광장 ──
+  const notifyLive = useRef(notify)
+  notifyLive.current = notify
+  const setPlazaQ = (v: string) => { setPlazaQState(v); setIdx(0, false) }
+  const refreshPlaza = useCallback(async () => {
+    if (!plazaConfigured()) return
+    setPlazaLoading(true)
+    try { setPlazaPosts(await loadPlaza()) } catch { notifyLive.current('광장을 불러오지 못했어요') } finally { setPlazaLoading(false) }
+  }, [])
+  // 탭에 들어올 때 한 번 받아온다(등록·좋아요 뒤에는 그 자리에서 갱신).
+  useEffect(() => { if (primary === 'share') void refreshPlaza() }, [primary, refreshPlaza])
+  useEffect(() => { if (primary !== 'share') setPlazaUpload(false) }, [primary])
+
+  const openPlazaPost = (post: PlazaPost) => openSurface({ kind: 'plaza', item: null, post })
+  const plazaTake = () => {
+    const post = surface?.post
+    if (post) slideTo(1, { kind: 'ptake', item: null, post, fromDetail: true })
+  }
+  const plazaTakeBack = () => {
+    const post = surface?.post
+    if (post) slideTo(-1, { kind: 'plaza', item: null, post })
+  }
+  const plazaTakeDirect = (post: PlazaPost) => openSurface({ kind: 'ptake', item: null, post })
+  const plazaTakeInto = (slotId: string) => {
+    const post = surface?.post
+    if (!post) return
+    closeSurface()
+    applySharedToPreset({ ...post.snapshot, name: post.name }, slotId)
+  }
+  const plazaLike = (post: PlazaPost) => {
+    // 먼저 화면부터 바꾸고(하트는 자주 눌린다) 서버에 반영, 실패하면 되돌린다.
+    const next = !post.liked
+    setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: next, likes: Math.max(0, p.likes + (next ? 1 : -1)) } : p)))
+    togglePlazaLike(post).catch(() => {
+      setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: post.liked, likes: post.likes } : p)))
+      notify('좋아요를 저장하지 못했어요')
+    })
+  }
+  const plazaRemove = (post: PlazaPost) => {
+    const d = plazaDel.current
+    if (d.id === post.id && Date.now() - d.at < 3000) {
+      plazaDel.current = { id: '', at: 0 }
+      deletePlazaPost(post)
+        .then(() => { setPlazaPosts((list) => list.filter((p) => p.id !== post.id)); notify('등록한 코디를 내렸어요') })
+        .catch(() => notify('내리지 못했어요. 다시 시도해 주세요'))
+      return
+    }
+    plazaDel.current = { id: post.id, at: Date.now() }
+    notify('한 번 더 누르면 광장에서 내려요')
+  }
+  const plazaCopyLink = (post: PlazaPost) => {
+    if (post.shareCode) {
+      const name = post.name ? `&n=${encodeURIComponent(post.name)}` : ''
+      const url = `${location.origin}/?c=${post.shareCode}${name}`
+      void copyAsyncText(async () => url)
+      notify('공유 링크를 복사했어요')
+      return
+    }
+    copyShareLink({ ...post.snapshot, name: post.name })
+  }
+  const plazaSubmit = async (draft: Omit<PlazaDraft, 'shareCode'>): Promise<boolean> => {
+    if (plazaSubmitting) return false
+    setPlazaSubmitting(true)
+    try {
+      // 공유 코드도 함께 만들어 둔다 — '링크 복사'와 카톡 카드가 기존 공유 기능을 그대로 쓴다.
+      const named = { ...draft.snapshot, name: draft.name }
+      const prep = await prepareShare(location.origin, named).catch(() => null)
+      const post = await createPlazaPost({ ...draft, shareCode: prep?.id ?? null })
+      if (prep) void uploadShare(prep, named)
+      setPlazaPosts((list) => [post, ...list])
+      setPlazaUpload(false)
+      notify(draft.contest ? `'${draft.name}' 코디를 봄맞이 코디 대회에 등록했어요` : `'${draft.name}' 코디를 광장에 등록했어요`)
+      return true
+    } catch {
+      notify('등록하지 못했어요. 잠시 후 다시 시도해 주세요')
+      return false
+    } finally { setPlazaSubmitting(false) }
   }
 
   // ── 단일 서피스 ── 열 때 다른 서피스를 대체, 같은 시트를 다시 누르면 닫는다. 닫힘은 320ms 뒤 언마운트.
@@ -1255,6 +1377,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     warmForPreview, listMode, setListMode, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,
     bp, cols, rows, itemsPerPage,
+    plazaPosts, plazaList, plazaLoading, plazaReady: plazaConfigured(),
+    plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
+    plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
+    openPlazaPost, plazaTake, plazaTakeBack, plazaTakeDirect, plazaTakeInto,
+    plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, dyeInteracting, setDyeInteracting, isMixSlot,

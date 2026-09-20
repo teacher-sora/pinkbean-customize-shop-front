@@ -14,6 +14,8 @@ import BottomNav from './shop/nav/BottomNav'
 import ListArea from './shop/list/ListArea'
 import InfoPanel from './shop/info/InfoPanel'
 import PresetPanel from './shop/preset/PresetPanel'
+import PlazaPanel from './shop/plaza/PlazaPanel'
+import PlazaUpload from './shop/plaza/PlazaUpload'
 import PreviewColumn, { MobileHero } from './shop/preview/PreviewColumn'
 import { useRidingGuards } from './shop/preview/pvControls'
 import Surface from './shop/surface/Surface'
@@ -27,6 +29,7 @@ function Shell() {
   useRidingGuards()
   const mobile = s.bp === 'mobile'
   const isList = s.primary === 'codi' || s.primary === 'search'
+  const isPlaza = s.primary === 'share' // 코디 광장: 미리보기 자리에 등록 폼이 들어가고 모바일 히어로는 감춘다
 
   return (
     <>
@@ -36,8 +39,9 @@ function Shell() {
         <div className={clsx('pb-root', 'pb-shell', styles.root)}>
           <div data-mobile-col className={styles.mobileCol}>
             <AppHeader mobile />
-            <MobileHero />
+            {!isPlaza && <MobileHero />}
             {isList && <ListArea mobile />}
+            {isPlaza && <PlazaPanel mobile />}
             {s.primary === 'preset' && <PresetPanel mobile />}
             {s.primary === 'info' && <InfoPanel mobile />}
             <BottomNav mobile />
@@ -52,7 +56,8 @@ function Shell() {
               {isList && <ListArea mobile={false} />}
               {s.primary === 'info' && <InfoPanel mobile={false} />}
               {s.primary === 'preset' && <PresetPanel mobile={false} />}
-              <PreviewColumn />
+              {isPlaza && <PlazaPanel mobile={false} />}
+              {isPlaza ? <PlazaUpload mobile={false} /> : <PreviewColumn />}
             </main>
             <BottomNav mobile={false} />
           </div>
