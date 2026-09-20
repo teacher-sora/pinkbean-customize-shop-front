@@ -5,6 +5,7 @@ drop policy if exists plaza_img_read on storage.objects;
 drop policy if exists plaza_img_insert on storage.objects;
 drop policy if exists plaza_img_delete on storage.objects;
 
+drop table if exists public.plaza_comments cascade;
 drop table if exists public.plaza_contest_entries cascade;
 drop table if exists public.plaza_likes cascade;
 drop table if exists public.plaza_posts cascade;

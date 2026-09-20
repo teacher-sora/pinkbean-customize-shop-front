@@ -1,6 +1,11 @@
 'use client'
 
-// 코디 광장 글 상세 — 공용 서피스 본문. 미리보기(첨부 이미지가 있으면 두 칸) · 설명 · 좋아요 · 링크 복사 · 태그.
+// 코디 광장 글 상세 — 공용 서피스 본문.
+//  · PC·태블릿: 왼쪽 = 미리보기(첨부 이미지가 있으면 두 칸 그대로) · 설명 · 태그, 오른쪽 = 댓글 열.
+//    두 칸을 세로로 쌓거나 한 칸으로 합치지 않는다 — 코디와 참고 이미지를 **나란히 두고 비교**하는 게 이 화면의 목적이다
+//    (사용자 지시 2026-09-20). 대신 댓글 열이 들어온 만큼 스테이지를 조금 줄였다(432×280 → 292×250).
+//  · 모바일: 폭이 없어 나눌 수 없다. 스테이지는 지금처럼 나란히 두고 댓글은 설명 아래로 이어 붙인다
+//    (가로 슬라이드로 빼면 댓글을 보는 동안 코디가 사라진다).
 // 태그를 누르면 시트를 닫고 그 태그로 검색한다(닫힘 애니메이션을 끝까지 보여준 뒤 검색어를 넣는다).
 
 import clsx from 'clsx'
@@ -10,6 +15,7 @@ import type { PlazaPost } from '@/lib/plaza'
 import SnapThumb from '../SnapThumb'
 import { useShop } from '../ShopContext'
 import { IconHeart, IconLinkCopy } from '../ui/Icons'
+import PlazaComments from './PlazaComments'
 import styles from './plaza.module.css'
 
 const DETAIL_FRACTION = 0.5
@@ -20,11 +26,12 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
     s.closeSurface()
     setTimeout(() => { s.setPlazaQ(t); s.setPlazaFilter('all') }, 330)
   }
-  return (
-    <div className={clsx('pb-scroll', styles.detail)}>
+
+  const main = (
+    <>
       <div className={clsx(styles.stages, mobile && styles.stagesM)}>
         <div className={styles.stage}>
-          <Image src={bg} alt="" fill sizes="440px" className={styles.stageImg} />
+          <Image src={bg} alt="" fill sizes="300px" className={styles.stageImg} />
           <div className={styles.stageTone} />
           <SnapThumb snap={post.snapshot} fraction={DETAIL_FRACTION} />
         </div>
@@ -56,6 +63,22 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
           </div>
         )}
       </div>
+    </>
+  )
+
+  if (mobile) {
+    return (
+      <div className={clsx('pb-scroll', styles.detail)}>
+        {main}
+        <div className={styles.detailHr} />
+        <PlazaComments post={post} mobile />
+      </div>
+    )
+  }
+  return (
+    <div className={styles.detailPc}>
+      <div className={clsx('pb-scroll', styles.detailMain)}>{main}</div>
+      <PlazaComments post={post} mobile={false} />
     </div>
   )
 }

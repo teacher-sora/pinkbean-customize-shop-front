@@ -11,6 +11,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PLAZA_TTL, POST_LIMIT, plazaSchema, plazaTag } from './shared'
 
 export const runtime = 'nodejs'
+// ⚠️ 반드시 요청마다 실행돼야 한다. 이걸 빼면 Next 가 이 라우트를 **빌드 시점에 프리렌더**해 버리고,
+// 그때의 호스트(운영 도메인이 아님)로 스키마가 굳어 운영이 dev 데이터를 내보낸다.
+// 2026-09-20 빌드 산출물에서 실제로 확인: .next/.../plaza.meta 의 캐시 태그가 'plaza:plaza_dev' 로 박혔다.
+// 대신 위쪽 upstream fetch 가 태그 붙은 데이터 캐시를 써서 Supabase 읽기는 그대로 아낀다.
+export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL

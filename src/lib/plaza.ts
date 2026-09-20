@@ -19,11 +19,14 @@ export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
   { id: 'liked', label: '찜한 코디' },
 ]
 export const PLAZA_TAG_MAX = 5
+export const PLAZA_COMMENT_MAX = 200
 const POST_LIMIT = 300
+const COMMENT_LIMIT = 200
 
 export type PlazaPost = {
   id: string
   createdAt: string
+  owner: string            // 익명 uid. 댓글에서 '글쓴이'를 가려내는 데 쓴다(이미 목록 응답에 들어 있던 값)
   name: string
   description: string
   tags: string[]
@@ -110,6 +113,7 @@ const publicUrl = (path: string | null) => {
 const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
   id: r.id,
   createdAt: r.created_at,
+  owner: r.owner,
   name: r.name,
   description: r.description || '',
   tags: r.tags || [],
@@ -205,6 +209,65 @@ export async function deletePlazaPost(post: PlazaPost): Promise<void> {
   // 첨부 이미지도 같이 지운다(글만 지우면 버킷에 주인 없는 파일이 쌓인다).
   // 글은 이미 사라졌으니 이미지 삭제가 실패해도 화면 흐름은 막지 않는다.
   if (post.imagePath) await c.storage.from(plazaTarget().bucket).remove([post.imagePath]).catch(() => undefined)
+}
+
+// ── 댓글 ──
+// 목록(/api/plaza)과 달리 **캐시하지 않는다**. 내가 쓴 댓글이 바로 보이지 않으면 고장으로 느껴진다.
+// 상세를 열 때 그 글의 댓글만 읽으므로 양이 적고, 캐시로 아낄 것도 거의 없다.
+// 이름은 저장하지 않는다 — 계정이 없어 이름을 받으면 사칭이 된다. 화면에서 글쓴이/나/익명N 으로만 가른다.
+export type PlazaComment = {
+  id: string
+  postId: string
+  owner: string
+  body: string
+  createdAt: string
+  mine: boolean
+  author: boolean   // 글쓴이(그 코디를 올린 사람)가 단 댓글
+  canDelete: boolean
+}
+
+type CRow = { id: string; post_id: string; owner: string; body: string; created_at: string }
+
+const toComment = (r: CRow, uid: string | null, post: PlazaPost): PlazaComment => ({
+  id: r.id,
+  postId: r.post_id,
+  owner: r.owner,
+  body: r.body,
+  createdAt: r.created_at,
+  mine: !!uid && r.owner === uid,
+  author: r.owner === post.owner,
+  // 글 주인은 자기 글에 달린 댓글을 정리할 수 있다(신고 화면이 없는 동안의 최소 장치 — RLS 와 같은 조건).
+  canDelete: !!uid && (r.owner === uid || post.owner === uid),
+})
+
+export async function loadComments(post: PlazaPost): Promise<PlazaComment[]> {
+  const c = sb()
+  if (!c) return []
+  const uid = await plazaAuth()
+  const { data, error } = await c.from('plaza_comments').select('*')
+    .eq('post_id', post.id).order('created_at', { ascending: true }).limit(COMMENT_LIMIT)
+  if (error) throw error
+  return (data as CRow[]).map((r) => toComment(r, uid, post))
+}
+
+export async function addComment(post: PlazaPost, body: string): Promise<PlazaComment> {
+  const c = sb()
+  if (!c) throw new Error('supabase not configured')
+  const uid = await plazaAuth()
+  if (!uid) throw new Error('auth failed')
+  const text = body.trim().slice(0, PLAZA_COMMENT_MAX)
+  if (!text) throw new Error('empty')
+  const { data, error } = await c.from('plaza_comments')
+    .insert({ post_id: post.id, owner: uid, body: text }).select('*').single()
+  if (error) throw error
+  return toComment(data as CRow, uid, post)
+}
+
+export async function deleteComment(comment: PlazaComment): Promise<void> {
+  const c = sb()
+  if (!c) throw new Error('supabase not configured')
+  const { error } = await c.from('plaza_comments').delete().eq('id', comment.id)
+  if (error) throw error
 }
 
 // ── 화면용 거르기·정렬(핸드오프 규칙: 이름·설명·태그 검색, 앞의 # 무시) ──
