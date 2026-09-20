@@ -123,31 +123,20 @@
 .caretOpen { transform: rotate(180deg); }
 .pickPanel { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; padding: 8px; background: #fff; border: 1px solid #f0dde7; border-radius: 10px; box-shadow: 0 10px 26px rgba(42,37,33,.14); transform-origin: top center; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none; }
 .panelOn { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-.pickGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; max-height: 190px; overflow: hidden auto; }
-.pickGridM { max-height: 168px; }
-.pickCell { position: relative; width: 100%; padding: 7px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1.5px solid #f0e9e1; border-radius: 9px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
-.pickCellOn { border-color: #ec86ac; background: #fce9f1; }
-.pickSprite { position: relative; width: 28px; height: 36px; border-radius: 5px; overflow: hidden; }
-.pickLabel { width: 100%; font-size: 10px; font-weight: 500; color: #8a8075; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pickLabelOn { font-weight: 700; color: #d76d9a; }
+/* 아래로 자리가 없는 하단 항목(등록할 곳)은 위로 펼친다 */
+.pickPanelUp { top: auto; bottom: calc(100% + 6px); transform-origin: bottom center; transform: translateY(6px) scale(.98); }
+.pickContest { border-color: #f4cfdf; background: #fce9f1; }
+.pickList { display: flex; flex-direction: column; gap: 2px; max-height: 196px; overflow: hidden auto; }
+.pickListM { max-height: 168px; }
+.pickOpt { width: 100%; height: 32px; padding: 0 10px; display: flex; align-items: center; border: none; border-radius: 7px; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 500; color: #5c534b; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: background-color .18s ease, color .18s ease; }
+.pickOptOn { background: #fce9f1; font-weight: 700; color: #d76d9a; }
 .upStage { position: relative; flex: 0 0 auto; height: 164px; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .tagChips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .tagDel { flex: 0 0 auto; height: 24px; padding: 0 9px; display: flex; align-items: center; gap: 4px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fce9f1; font-family: inherit; font-size: 11px; font-weight: 600; color: #d76d9a; cursor: pointer; }
 .imgBtn { width: 100%; height: 56px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; border-radius: 9px; background: #fbf8f4; font-family: inherit; font-size: 12px; font-weight: 600; color: #a89e93; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
 .imgBtnOn { height: 34px; border: 1px solid #f4cfdf; background: #fce9f1; color: #d76d9a; }
 .scopeGroup { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }
-.scopeBtn { width: 100%; display: flex; align-items: center; gap: 7px; padding: 8px 10px 8px 11px; border: 1px solid #f0e9e1; border-radius: 9px; background: #faf7f3; font-family: inherit; cursor: pointer; text-align: left; transition: border-color .2s ease, background-color .2s ease; }
-.scopeContest { border-color: #f4cfdf; background: #fce9f1; }
-.scopeOpen { border-color: #eeb2ce; }
-.scopeText { flex: 1 1 0; min-width: 0; }
-.scopeName { display: block; font-size: 12px; font-weight: 600; color: #5c534b; }
-.scopeHint { display: block; font-size: 10.5px; color: #a89e93; margin-top: 1px; }
-.scopeCaret { flex: 0 0 auto; font-size: 15px; color: #c3b9ad; line-height: 1; transition: transform .2s ease; }
-.scopeCaretOpen { transform: rotate(90deg); }
-/* 하단 요소라 팝오버는 반드시 위로 펼친다 */
-.scopePanel { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 20; padding: 6px; display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid #f0dde7; border-radius: 10px; box-shadow: 0 10px 26px rgba(42,37,33,.14); transform-origin: bottom center; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); opacity: 0; transform: translateY(6px) scale(.98); pointer-events: none; }
-.scopeOpt { width: 100%; padding: 8px 10px; text-align: left; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #5c534b; font-family: inherit; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
-.scopeOptOn { border-color: #f4cfdf; background: #fce9f1; color: #d76d9a; }
+.scopeHint { margin-top: 6px; font-size: 10.5px; color: #a89e93; }
 .emailHint { margin-top: 5px; font-size: 10.5px; color: #b7ada2; }
 .submit { width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; line-height: 1; border: none; border-radius: 9px; background: #ec86ac; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; transition: background-color .2s ease; }
 .submitOff { background: #f0c9d9; cursor: default; }
@@ -161,8 +150,7 @@
   .tagChip:hover { border-color: #f4cfdf; background: #fdf4f8; color: #d76d9a; }
   .copyBtn:hover { border-color: #ec86ac; color: #d76d9a; }
   .slot:hover { border-color: #ec86ac; background: #fdf4f8; }
-  .pickCell:hover { border-color: #f4cfdf; background: #fdf4f8; }
-  .scopeOpt:hover { background: #fdf1f6; }
+  .pickOpt:hover { background: #fdf1f6; color: #d76d9a; }
   .imgBtn:hover { border-color: #f4cfdf; color: #d76d9a; }
   .arrowOn:hover { background: #fce9f1; color: #d76d9a; }
 }

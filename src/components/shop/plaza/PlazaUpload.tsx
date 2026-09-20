@@ -15,7 +15,6 @@ import { useShop, type Snapshot } from '../ShopContext'
 import styles from './plaza.module.css'
 
 const STAGE_FRACTION = 0.46
-const PICK_FRACTION = 0.72
 
 export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const s = useShop()
@@ -36,9 +35,12 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
 
   // 하단 필터를 대회로 두면 등록할 곳도 대회를 따라간다(사용자가 직접 고르면 그 선택 유지).
   const contest = (scope ?? (s.plazaFilter === 'contest' ? 'contest' : 'all')) === 'contest'
-  // 채워진 칸만 보여준다(빈 칸은 앞쪽 몇 개만 — 처음 쓰는 사람도 고를 게 보이도록).
-  const options = useMemo(() => s.presets.filter((p, i) => s.presetData[p.id] || i < 3), [s.presets, s.presetData])
+  // 올릴 수 있는 칸만 보여준다(지금 보고 있는 코디 + 저장해 둔 프리셋). 빈 칸은 올릴 게 없어 뺀다.
   const snapOf = (id: string): Snapshot | null => (id === s.selectedPreset ? s.snapshot() : s.presetData[id] ?? null)
+  const options = useMemo(
+    () => s.presets.filter((p) => p.id === s.selectedPreset || !!s.presetData[p.id]),
+    [s.presets, s.presetData, s.selectedPreset],
+  )
   const current = options.find((p) => p.id === presetId) || options[0] || null
   const snap = current ? snapOf(current.id) : null
   const finalName = (name || current?.name || '').trim()
@@ -84,19 +86,14 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
             <span className={styles.pickText}>{current ? current.name : '프리셋을 골라주세요'}</span>
             <span className={clsx(styles.pickCaret, pickOpen && styles.caretOpen)}>▾</span>
           </button>
-          <div className={clsx('pb-scroll', 'pb-scroll-thin', styles.pickPanel, pickOpen && styles.panelOn)}>
-            <div className={clsx(styles.pickGrid, mobile && styles.pickGridM)}>
-              {options.map((p) => {
-                const ps = snapOf(p.id)
-                const on = current?.id === p.id
-                return (
-                  <button key={p.id} type="button" onClick={() => { setPresetId(p.id); setPickOpen(false) }} title={p.name}
-                    className={clsx(styles.pickCell, on && styles.pickCellOn)}>
-                    <span className={styles.pickSprite}>{ps && <SnapThumb snap={ps} fraction={PICK_FRACTION} />}</span>
-                    <span className={clsx(styles.pickLabel, on && styles.pickLabelOn)}>{p.name}</span>
-                  </button>
-                )
-              })}
+          <div className={clsx(styles.pickPanel, pickOpen && styles.panelOn)}>
+            <div className={clsx('pb-scroll', 'pb-scroll-thin', styles.pickList, mobile && styles.pickListM)}>
+              {options.map((p) => (
+                <button key={p.id} type="button" onClick={() => { setPresetId(p.id); setPickOpen(false) }} title={p.name}
+                  className={clsx(styles.pickOpt, current?.id === p.id && styles.pickOptOn)}>
+                  {p.name}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -153,23 +150,23 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
           <div className={clsx(styles.label, styles.labelWide)}>등록할 곳 {contest && <span className={styles.star}>*</span>}</div>
           <div ref={scopeRef} className={styles.pickWrap}>
             <button type="button" onClick={() => setScopeOpen((v) => !v)} title="등록할 곳 선택" aria-expanded={scopeOpen}
-              className={clsx('pb-ddbtn', styles.scopeBtn, contest && styles.scopeContest, scopeOpen && styles.scopeOpen)}>
-              <span className={styles.scopeText}>
-                <span className={styles.scopeName}>{contest ? PLAZA_CONTEST : '코디 광장'}</span>
-                <span className={styles.scopeHint}>{contest ? '대회 출품으로 등록, 이메일 필요' : '누구나 볼 수 있게 공개로 등록'}</span>
-              </span>
-              <span className={clsx(styles.scopeCaret, scopeOpen && styles.scopeCaretOpen)}>›</span>
+              className={clsx('pb-ddbtn', styles.pickBtn, contest && styles.pickContest, scopeOpen && styles.pickOpen)}>
+              <span className={styles.pickText}>{contest ? PLAZA_CONTEST : '코디 광장'}</span>
+              <span className={clsx(styles.pickCaret, scopeOpen && styles.caretOpen)}>▾</span>
             </button>
-            <div className={clsx(styles.scopePanel, scopeOpen && styles.panelOn)}>
-              {([{ v: 'all', label: '코디 광장', hint: '누구나 볼 수 있게 공개로 등록' }, { v: 'contest', label: PLAZA_CONTEST, hint: '대회 출품으로 등록, 이메일 필요' }] as const).map((o) => (
-                <button key={o.v} type="button" onClick={() => { setScope(o.v); setScopeOpen(false) }}
-                  className={clsx(styles.scopeOpt, (o.v === 'contest') === contest && styles.scopeOptOn)}>
-                  <span className={styles.scopeName}>{o.label}</span>
-                  <span className={styles.scopeHint}>{o.hint}</span>
-                </button>
-              ))}
+            {/* 폼 맨 아래에 있는 항목이라 위(빈 공간이 많은 쪽)로 펼친다. */}
+            <div className={clsx(styles.pickPanel, styles.pickPanelUp, scopeOpen && styles.panelOn)}>
+              <div className={styles.pickList}>
+                {([{ v: 'all', label: '코디 광장' }, { v: 'contest', label: PLAZA_CONTEST }] as const).map((o) => (
+                  <button key={o.v} type="button" onClick={() => { setScope(o.v); setScopeOpen(false) }}
+                    className={clsx(styles.pickOpt, (o.v === 'contest') === contest && styles.pickOptOn)}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+          <div className={styles.scopeHint}>{contest ? '대회 출품으로 등록해요. 이메일이 필요해요.' : '누구나 볼 수 있게 공개로 등록해요.'}</div>
         </div>
         {contest && (
           <div>
