@@ -17,7 +17,7 @@ git merge --no-ff --no-commit origin/dev || {
 }
 
 if git ls-files -- "$DEV_ONLY" | grep -q .; then
-  git rm -r -q "$DEV_ONLY"
+  git rm -r -f -q "$DEV_ONLY"
   echo "· $DEV_ONLY 를 빼고 병합합니다(dev 전용)."
 fi
 
