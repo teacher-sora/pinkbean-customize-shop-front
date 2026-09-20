@@ -12,10 +12,14 @@ import type { Snapshot } from '@/components/shop/ShopContext'
 export type PlazaSort = 'popular' | 'recent'
 export type PlazaFilter = 'all' | 'contest' | 'mine' | 'liked'
 export const PLAZA_CONTEST = '블아 코디 대회'
+// 대회와 **별개**인 평소 광장. 전에는 이 자리가 '전체'였는데, 대회 출품작까지 섞여 보여서
+// '대회 + 그 밖의 전부'처럼 읽혔다(사용자 지시 2026-09-21). 이름과 내용을 함께 바꿨다 —
+// 이제 대회 출품작은 대회 칸에서만 보이고, 등록 폼의 '등록할 곳'과 같은 낱말을 쓴다.
+export const PLAZA_OPEN = '자유 코디'
 // 대회 출품은 기기(익명 세션)당 3개까지. 진짜 방어선은 DB 트리거다(supabase/0006) — 여기 값은 화면 안내용.
 export const PLAZA_CONTEST_MAX = 3
 export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
-  { id: 'all', label: '전체' },
+  { id: 'all', label: PLAZA_OPEN },
   { id: 'contest', label: '블아 대회' },
   { id: 'mine', label: '내 등록' },
   { id: 'liked', label: '찜한 코디' },
@@ -334,7 +338,8 @@ export async function deleteComment(comment: PlazaComment): Promise<void> {
 // ── 화면용 거르기·정렬(핸드오프 규칙: 이름·설명·태그 검색, 앞의 # 무시) ──
 export function plazaView(posts: PlazaPost[], filter: PlazaFilter, query: string, sort: PlazaSort): PlazaPost[] {
   let out = posts
-  if (filter === 'contest') out = out.filter((p) => p.contest)
+  if (filter === 'all') out = out.filter((p) => !p.contest)   // 대회 출품작은 대회 칸에서만 본다
+  else if (filter === 'contest') out = out.filter((p) => p.contest)
   else if (filter === 'mine') out = out.filter((p) => p.mine)
   else if (filter === 'liked') out = out.filter((p) => p.liked)
   const q = query.trim().replace(/^#/, '')

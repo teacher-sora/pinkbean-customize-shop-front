@@ -8,7 +8,7 @@ import clsx from 'clsx'
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import bg from '@/assets/pinkbean-bg.png'
-import { PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_TAG_MAX } from '@/lib/plaza'
+import { PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX } from '@/lib/plaza'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
@@ -157,13 +157,13 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
           <div ref={scopeRef} className={styles.pickWrap}>
             <button type="button" onClick={() => setScopeOpen((v) => !v)} title="등록할 곳 선택" aria-expanded={scopeOpen}
               className={clsx('pb-ddbtn', styles.pickBtn, contest && styles.pickContest, scopeOpen && styles.pickOpen)}>
-              <span className={styles.pickText}>{contest ? PLAZA_CONTEST : '코디 광장'}</span>
+              <span className={styles.pickText}>{contest ? PLAZA_CONTEST : PLAZA_OPEN}</span>
               <IconCaretDown size={13} className={clsx(styles.pickCaret, scopeOpen && styles.caretOpen)} />
             </button>
             {/* 폼 맨 아래에 있는 항목이라 위(빈 공간이 많은 쪽)로 펼친다. */}
             <div className={clsx(styles.pickPanel, styles.pickPanelUp, scopeOpen && styles.panelOn)}>
               <div className={styles.pickList}>
-                {([{ v: 'all', label: '코디 광장' }, { v: 'contest', label: PLAZA_CONTEST }] as const).map((o) => (
+                {([{ v: 'all', label: PLAZA_OPEN }, { v: 'contest', label: PLAZA_CONTEST }] as const).map((o) => (
                   <button key={o.v} type="button" onClick={() => { setScope(o.v); setScopeOpen(false) }}
                     className={clsx(styles.pickOpt, (o.v === 'contest') === contest && styles.pickOptOn)}>
                     {o.label}
