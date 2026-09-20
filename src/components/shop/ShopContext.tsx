@@ -585,7 +585,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       return view
     }
     const rank = new Map(plazaOrder.current.ids.map((id, i) => [id, i] as const))
-    return view.slice().sort((a, b) => (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1))
+    const out = view.slice().sort((a, b) => (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1))
+    // 새로 들어온 글(내 등록)까지 포함해 다시 고정한다 — 안 그러면 그 글만 좋아요 때마다 자리를 옮긴다.
+    plazaOrder.current = { key, ids: out.map((p) => p.id) }
+    return out
   }, [plazaPosts, plazaFilter, plazaQ, plazaSort, plazaGen])
   const pagedList = primary === 'search' ? searchResultsView : activeList
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
