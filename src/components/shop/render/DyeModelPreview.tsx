@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { applyHsb, buildOverrides, skinLineHsb, type HsbParams } from '@/lib/core/dye'
-import { computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
+import { canvasBitmap, computeModelPlacement, fitCanvas, zoomStepScale } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { canvasToSquareBlob } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
@@ -89,8 +89,8 @@ export default function DyeModelPreview({ item, hsb, zoom, box }: { item: ListIt
     // 우측 미리보기/카드와 동일 공식: 마네킹 중앙 고정 + 정수 스냅(선명). 배율은 fraction 에 곱.
     const dpr = window.devicePixelRatio || 1
     const pl = computeModelPlacement({ divW: box.w, divH: box.h, dpr, margin: 1, fraction: fractionFor(box.h), scale: zoomStepScale({ fraction: fractionFor(box.h), divH: box.h, dpr, level: zoom, mults: DIALOG_ZOOM }), snap: true })
-    canvas.style.width = pl.canvasCssW + 'px'
-    canvas.style.height = pl.canvasCssH + 'px'
+    const { bw, bh } = canvasBitmap(pl)
+    fitCanvas(canvas, canvas.parentElement, bw, bh, box.w, box.h, dpr)
     await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov, effects: effs })
   }, [placed, itemMeta, hsb, effs, zoom, item.slot, box.w, box.h])
 
@@ -102,6 +102,10 @@ export default function DyeModelPreview({ item, hsb, zoom, box }: { item: ListIt
   }, [placed, item.name, item.id])
 
   if (!placed) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 12 }} />
-  // 캔버스 intrinsic = box×scale. CSS 로 늘리지 않고 그대로(1:1) 보여줘 도트가 깨끗하게 유지된다.
-  return <canvas ref={ref} style={{ display: 'block', imageRendering: 'pixelated' }} />
+  // 캔버스 intrinsic = box×scale. CSS 로 늘리지 않고(1:1) 화면 픽셀 격자에 맞춰 배치(fitCanvas).
+  return (
+    <span style={{ position: 'relative', width: '100%', height: '100%', display: 'block' }}>
+      <canvas ref={ref} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated' }} />
+    </span>
+  )
 }

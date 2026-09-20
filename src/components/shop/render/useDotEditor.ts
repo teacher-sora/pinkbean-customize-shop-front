@@ -228,7 +228,9 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
     const worldBox = { w: devW / scale, h: devH / scale }
     const anchorX = worldBox.w / 2 - cf.x
     const anchorY = worldBox.h / 2 - cf.y
-    canvas.style.width = box.w + 'px'; canvas.style.height = box.h + 'px'
+    // 표시 크기 = 비트맵 ÷ dpr(화면 픽셀 1:1). box 를 그대로 쓰면 비트맵 반올림과 어긋나 도트가 미세하게 뭉갠다.
+    const bw = Math.round(worldBox.w * scale), bh = Math.round(worldBox.h * scale)
+    canvas.style.width = bw / dpr + 'px'; canvas.style.height = bh / dpr + 'px'
     viewRef.current = { scale, anchorX, anchorY, dpr }
     rt.current = { zoom, focus: cf, fit, scale, dpr, devW, devH, tool, parts }
     const seq = ++drawSeq.current

@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, renderDyedSprite, skinLineHsb, type HsbParams, type PaletteParams } from '@/lib/core/dye'
-import { computeModelPlacement } from '@/lib/core/modelPlacement'
+import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { THUMB_VIEW } from '@/lib/shopData'
 import { useLiveRedraw } from '../useLiveRedraw'
@@ -27,7 +27,7 @@ export const SKIN_PREVIEW_FRACTION = 0.52
 //  - 캔버스를 칸 크기로 잡고 그 안에 그리면(예전) 반올림 때문에 채움 비율을 넘고, 캔버스 픽셀 수가
 //    화면 픽셀과 어긋나(DPR 1.25·1.5) 도트가 뭉개졌다 — VS 칩에서 특히 심했다.
 //  - 지금은 캔버스 자체가 "그린 그림 크기"다: 화면 배율 = floor(칸 맞춤 배율) 정수, 캔버스 픽셀 = 그 × DPR,
-//    CSS 크기 = 캔버스 픽셀 ÷ DPR → 화면 픽셀 격자와 1:1. 가운데 정렬은 바깥 칸(flex)이 한다.
+//    CSS 크기·위치는 fitCanvas 가 화면 픽셀 격자에 맞춘다(모든 미리보기 공통 규칙).
 //  - 원본이 칸보다 큰 경우(피부 전신 베이크 등)만 분수 축소(부드럽게).
 function drawSprite(canvas: HTMLCanvasElement, src: CanvasImageSource, w: number, h: number, boxW: number, boxH: number, frac = INFO_FRAC, dpr = 1) {
   const ctx = canvas.getContext('2d'); if (!ctx) return
@@ -37,8 +37,6 @@ function drawSprite(canvas: HTMLCanvasElement, src: CanvasImageSource, w: number
   const zoom = fit >= 1 ? Math.max(1, Math.round(Math.floor(fit) * dpr)) : fit * dpr
   const dw = Math.max(1, Math.round(w * zoom)), dh = Math.max(1, Math.round(h * zoom))
   canvas.width = dw; canvas.height = dh // 크기를 바꾸면 컨텍스트 상태가 초기화되므로 스무딩은 그 뒤에 설정
-  canvas.style.width = `${dw / dpr}px`
-  canvas.style.height = `${dh / dpr}px`
   ctx.imageSmoothingEnabled = fit < 1
   ctx.drawImage(src, 0, 0, dw, dh)
 }
@@ -86,11 +84,12 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
       const src: CanvasImageSource = active ? applyHsb(img, hsb!, rel) : img
       drawSprite(el, src, (src as HTMLCanvasElement).width, (src as HTMLCanvasElement).height, boxW, boxH, frac, dpr)
     }
+    fitCanvas(el, boxRef.current, el.width, el.height, boxW, boxH, dpr)
   }, [meta, id, thumb, mix, palette, hsb, zmap, frac, box.w, box.h])
-  // 바깥 span = 칸(크기 측정·가운데 정렬), 캔버스 = 그림 크기(mix 는 예전처럼 정사각 캔버스가 칸을 채운다).
+  // 바깥 span = 칸(크기 측정 기준), 캔버스 = 그린 그림 크기로 화면 픽셀 격자에 맞춰 가운데(fitCanvas).
   return (
-    <span ref={boxRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <canvas ref={ref} style={{ ...(mix ? { width: '100%', height: '100%' } : {}), imageRendering: 'pixelated', ...(grayscale ? { filter: 'grayscale(1)' } : {}) }} />
+    <span ref={boxRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%' }}>
+      <canvas ref={ref} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated', ...(grayscale ? { filter: 'grayscale(1)' } : {}) }} />
     </span>
   )
 }
@@ -102,6 +101,7 @@ export function SkinModel({ bodyId, headId, hsb, dyeable, zmap, smap, box, fract
   bodyId: string; headId: string; hsb: HsbParams; dyeable: boolean; zmap: string[]; smap: Record<string, string>; box: number; fraction: number
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const wrapRef = useRef<HTMLSpanElement>(null)
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   useEffect(() => {
     let alive = true
@@ -124,10 +124,14 @@ export function SkinModel({ bodyId, headId, hsb, dyeable, zmap, smap, box, fract
     if (active) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), skinLineHsb(hsb!), p.png)) } catch (_) {} }
     const dpr = window.devicePixelRatio || 1
     const pl = computeModelPlacement({ divW: box, divH: box, dpr, margin: 1, fraction, snap: true })
-    canvas.style.width = pl.canvasCssW + 'px'
-    canvas.style.height = pl.canvasCssH + 'px'
     await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov })
+    const { bw, bh } = canvasBitmap(pl)
+    fitCanvas(canvas, wrapRef.current, bw, bh, box, box, dpr)
   }, [placed, hsb, dyeable, box, fraction])
   if (!placed) return <div className="pb-skel" style={{ width: '60%', height: '60%', borderRadius: 10 }} />
-  return <canvas ref={ref} style={{ display: 'block', imageRendering: 'pixelated' }} />
+  return (
+    <span ref={wrapRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%' }}>
+      <canvas ref={ref} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated' }} />
+    </span>
+  )
 }
