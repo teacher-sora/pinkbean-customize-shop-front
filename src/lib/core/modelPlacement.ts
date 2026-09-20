@@ -40,10 +40,12 @@ export function computeModelPlacement(a: {
   const zoom = a.zoomMult ?? 1
   const cx = a.centerDx ?? MODEL_REF.centerDx
   const cy = a.centerDy ?? MODEL_REF.centerDy
-  const canvasCssW = a.divW * a.margin
-  const canvasCssH = a.divH * a.margin
-  const canvasDevW = Math.max(1, Math.round(canvasCssW * a.dpr))
-  const canvasDevH = Math.max(1, Math.round(canvasCssH * a.dpr))
+  const canvasDevW = Math.max(1, Math.round(a.divW * a.margin * a.dpr))
+  const canvasDevH = Math.max(1, Math.round(a.divH * a.margin * a.dpr))
+  // 표시 크기 = 비트맵 ÷ dpr(디바이스 픽셀 1:1). div*margin 을 그대로 쓰면 비트맵 반올림과 어긋나
+  // 브라우저가 캔버스를 미세하게 다시 늘려(DPR 1.25·1.5) 도트가 뭉갠다.
+  const canvasCssW = canvasDevW / a.dpr
+  const canvasCssH = canvasDevH / a.dpr
   // 마네킹(bodyRefH) 이 fraction*divH CSS px 가 되도록: 디바이스 배율 = fraction*zoom*divH*dpr / bodyRefH.
   // snap=true 면 정수 배율로 스냅 → nearest 확대가 완벽히 선명(모든 카드 동일 배율, 화면 크기별로만 살짝 다름).
   let scale = Math.max(0.01, (a.fraction * zoom * a.divH * a.dpr) / MODEL_REF.bodyRefH)
@@ -54,6 +56,23 @@ export function computeModelPlacement(a: {
   // navel 을 (박스중앙 - centerDx, 박스중앙 - centerDy)에 → 마네킹 시각중심이 박스 정중앙에 온다.
   const anchor = { x: box.w / 2 - cx, y: box.h / 2 - cy }
   return { box, scale, anchor, canvasCssW, canvasCssH }
+}
+
+// 캔버스 비트맵 크기(디바이스 px) — renderCharacter 가 잡는 크기와 같은 식.
+export const canvasBitmap = (pl: ModelPlacement) => ({ bw: Math.round(pl.box.w * pl.scale), bh: Math.round(pl.box.h * pl.scale) })
+
+// 캔버스를 화면 픽셀 격자에 맞춰 표시 영역 가운데 둔다 — 모든 미리보기·썸네일의 단일 규칙(2026-09-20 통일).
+//  - CSS 크기 = 비트맵 ÷ dpr → 브라우저가 캔버스를 다시 늘리거나 줄이지 않는다(배율은 렌더 때 이미 정수).
+//  - 가운데 정렬도 translate(-50%)(소수 px)가 아니라 디바이스 픽셀로 반올림한 left/top 으로, 감싼 박스가
+//    소수 위치에 있으면 그만큼 되빼서 보정한다. 소수 위치면 재샘플링돼 세로줄이 찢겨 보였다(우측 미리보기 관측).
+// wrap = position:relative 인 표시 영역, canvas = 그 안의 position:absolute.
+export function fitCanvas(canvas: HTMLCanvasElement, wrap: HTMLElement | null, bw: number, bh: number, divW: number, divH: number, dpr: number) {
+  const rect = wrap?.getBoundingClientRect()
+  const fx = rect ? (rect.left * dpr) % 1 : 0, fy = rect ? (rect.top * dpr) % 1 : 0
+  canvas.style.width = `${bw / dpr}px`
+  canvas.style.height = `${bh / dpr}px`
+  canvas.style.left = `${(Math.round((divW * dpr - bw) / 2) - fx) / dpr}px`
+  canvas.style.top = `${(Math.round((divH * dpr - bh) / 2) - fy) / dpr}px`
 }
 
 // 연출 배율(1x/2x/3x) 단계별 정수 디바이스 배율. 단계마다 따로 반올림하면 미리보기 높이에 따라 1x·2x 가 같은 정수로
