@@ -158,13 +158,14 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
       {/* 태그 */}
       <div>
         <div className={styles.label}>태그</div>
-        {/* 오른쪽 안쪽의 '추가' — Enter 를 몰라도(모바일 키보드) 눌러서 단다(2026-09-21 사용자 지시).
+        {/* 입력칸 옆 '추가' — Enter 를 몰라도(모바일 키보드) 눌러서 단다(2026-09-21 사용자 지시).
+            AI 코디 검색(입력 + 옆 솔리드 버튼)과 같은 모양: 안에 끼운 26px 버튼보다 누르기 쉽고 글자 자리도 넓다.
             누를 때 입력칸 포커스를 뺏지 않아 모바일 키보드가 내려가지 않고 이어서 칠 수 있다. */}
         <div className={styles.tagField}>
           <input value={tagDraft} onChange={(e) => setTagDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
             placeholder={`입력 후 Enter (최대 ${PLAZA_TAG_MAX}개)`} aria-label="태그" className={clsx('pb-input', styles.field, styles.tagInput, mobile && styles.fieldM)} />
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={addTag} disabled={!tagDraft.trim()} title="태그 추가"
-            className={clsx(styles.tagAdd, !tagDraft.trim() && styles.tagAddOff)}>추가</button>
+            className={clsx('pb-solid', styles.tagAdd, !tagDraft.trim() && styles.tagAddOff)}>추가</button>
         </div>
         {tags.length > 0 && (
           <div className={styles.tagChips}>

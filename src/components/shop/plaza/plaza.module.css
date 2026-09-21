@@ -177,11 +177,11 @@
 .tagDel { flex: 0 0 auto; padding: 0; border: none; background: transparent; font-family: inherit; cursor: pointer; } /* 자리(hover 판정)는 고정 */
 .tagDelPill { display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fce9f1; font-size: 11px; font-weight: 600; color: #d76d9a; transition: transform .2s ease, border-color .22s ease, background-color .24s ease, color .22s ease; }
 .tagDelX { font-size: 10px; }
-/* 태그 입력 + 안쪽 '추가' 버튼(오른쪽 4px 안쪽, 26px) — 입력 글자가 버튼 밑으로 들어가지 않게 오른쪽을 비운다. */
-.tagField { position: relative; }
-.tagInput { padding-right: 60px; }
-.tagAdd { position: absolute; right: 4px; top: 4px; height: 26px; padding: 0 10px; border: 1px solid #f4cfdf; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
-.tagAddOff { border-color: #eee6dc; color: #c3b9ad; cursor: default; }
+/* 태그 입력 + 옆 '추가' 버튼 — AI 코디 검색(heroRow·heroBtn)과 같은 모양, 높이는 이 폼 입력칸(34px)에 맞춘다. */
+.tagField { display: flex; align-items: center; gap: 6px; }
+.tagInput { flex: 1 1 0; min-width: 0; }
+.tagAdd { flex: 0 0 auto; height: 34px; padding: 0 14px; display: flex; align-items: center; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; transition: background-color .2s ease; }
+.tagAddOff { background: #f0c9d9; cursor: default; } /* 등록 버튼 비활성과 같은 연한 핑크 */
 /* 이미지 칸(2026-09-21 키움): 비었을 땐 넉넉한 추가 버튼, 고르면 상세 칸 비율의 편집기. */
 .imgBtn { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px dashed #e4dcd2; border-radius: 11px; background: #fbf8f4; font-family: inherit; color: #a89e93; cursor: pointer; transition: background-color .24s ease, border-color .22s ease, color .22s ease; }
 .imgBtnMain { font-size: 12.5px; font-weight: 600; }
@@ -211,7 +211,6 @@
   .upBtn:hover { border-color: #ec86ac; background: #fce9f1; }
   .tagChip:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
   .pickOpt:hover { background: #fce9f1; color: #d76d9a; }
-  .tagAdd:not(.tagAddOff):hover { border-color: #ec86ac; background: #fce9f1; }
   .imgBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
   .arrowOn:hover { background: #fce9f1; color: #d76d9a; }
   .pickCell:hover { border-color: #ec86ac; background: #fce9f1; }
