@@ -1039,7 +1039,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       .finally(() => likePending.current.delete(post.id))
   }
   // 남이 누른 좋아요를 몇 초 안에 보이게 — 광장 탭이 보일 때 **화면에 있는 카드(앞뒤 한 쪽 포함) + 열린 상세**만
-  // 6초마다 좋아요 수를 새로 받는다(목록 캐시는 3분). 창이 가려져 있으면 쉰다. 18~54개 id 라 응답이 작다.
+  // 4초마다 좋아요 수를 새로 받는다(캐시를 거치지 않는 직접 조회). 창이 가려져 있으면 쉰다. 18~54개 id 라 응답이 작다.
   const likeWatch = useRef<string[]>([])
   {
     const ids = new Set<string>()
@@ -1066,13 +1066,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         return changed ? out : list
       })
     }
-    const t = window.setInterval(() => { void tick() }, 6000)
+    // 4초 주기 — 마침 요청이 나가 있는 사이에 남이 누르면 그 응답은 옛 수를 담고 오므로, 실제 최악은 주기의 두 배다.
+    // 6초였을 때 실측 9.1초(최악 12초)로 '5~10초' 를 넘길 수 있었다 → 4초(최악 8초). 응답은 54개 id 라도 1KB 안팎이다.
+    const t = window.setInterval(() => { void tick() }, 4000)
     return () => { alive = false; window.clearInterval(t) }
   }, [watching])
   // 광장을 **열어 둔 채로도** 남이 올린 글·내린 글이 몇 초 안에 보이게 한다
   // (2026-09-21 사용자 제보 — 남이 올린 코디가 화면에 나타나지 않았다).
   // 목록은 탭에 들어올 때만 받아서, 화면을 켜 두고 기다리는 사람에게는 새 글이 영영 오지 않았다.
-  // 좋아요 수와 같은 6초 주기로 **첫 쪽만** 본다(lib/plaza.loadPlazaHead — 엣지 캐시에 걸려 대개 DB 까지 가지 않는다).
+  // 5초마다 **첫 쪽만** 본다(lib/plaza.loadPlazaHead — 엣지 캐시에 걸려 대개 DB 까지 가지 않는다).
   // ⚠️ plazaGen 은 올리지 않는다 — 올리면 보던 순서가 다시 잡혀 카드가 자리를 옮긴다. 새 글은 맨 앞에 붙는다.
   useEffect(() => {
     if (!watching || !plazaConfigured()) return
@@ -1100,7 +1102,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         return keepLikes([...add, ...synced])
       })
     }
-    const t = window.setInterval(() => { void tick() }, 6000)
+    const t = window.setInterval(() => { void tick() }, 5000)
     return () => { alive = false; window.clearInterval(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watching])
