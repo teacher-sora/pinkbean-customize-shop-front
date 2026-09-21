@@ -134,10 +134,9 @@
 
 /* 염색 다이얼로그 안에서 화면만 바뀌는 슬라이드(색 조절 ↔ 염색표) — 서피스 본문 슬라이드와 같은 곡선·시간. */
 .innerSlide { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
-/* 고른 두 색 표시 + '염색표 보기'(헤어·성형만) */
+/* '염색표 보기'(헤어·성형만) */
 .tableRow { flex: 0 0 auto; display: flex; }
-.tableBtn { height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #ddd4ca; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 500; color: #5c534b; cursor: pointer; }
-.tableDots { display: inline-flex; align-items: center; gap: 3px; }
+.tableBtn { height: 32px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid #ddd4ca; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 500; color: #5c534b; cursor: pointer; }
 /* 색상 A · 색상 B 줄(헤어·성형) — 코디 정보 염색 탭과 같은 배치, 다이얼로그라 조금 크다. */
 .swRow { display: flex; align-items: center; gap: 10px; }
 .swLabel { flex: 0 0 42px; font-size: 11.5px; font-weight: 600; color: #a89e93; }
