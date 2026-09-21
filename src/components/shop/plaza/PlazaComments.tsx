@@ -178,8 +178,11 @@ function Composer({ post, mobile, parentId, onAdded, autoFocus, initial = '' }: 
   useEffect(() => {
     const el = ref.current
     if (!autoFocus || !el) return
-    el.focus()
+    // 문서가 아니라 시트 안에서만 보이게 한다 — 그냥 focus() 는 브라우저가 스크롤할 곳으로 뒤 페이지(문서)를 골라
+    // 마스크 뒤 배경이 움직였다(2026-09-21 사용자 제보).
+    el.focus({ preventScroll: true })
     el.setSelectionRange(el.value.length, el.value.length) // '@이름 ' 뒤에서 바로 이어 쓰게
+    el.scrollIntoView({ block: 'nearest' })
   }, [autoFocus])
 
   const text0 = text.trim()
@@ -189,7 +192,8 @@ function Composer({ post, mobile, parentId, onAdded, autoFocus, initial = '' }: 
     if (!canSend) return
     setBusy(true)
     addComment(post, text0, parentId)
-      .then((c) => { setText(''); onAdded(c) })
+      // 모바일은 올라간 뒤에 키보드를 내린다(누르는 도중에 내려가면 화면 높이가 바뀌며 터치가 어긋났다).
+      .then((c) => { setText(''); onAdded(c); if (mobile) ref.current?.blur() })
       .catch(() => s.notify('댓글을 남기지 못했어요. 잠시 후 다시 시도해 주세요'))
       .finally(() => setBusy(false))
   }
@@ -207,7 +211,8 @@ function Composer({ post, mobile, parentId, onAdded, autoFocus, initial = '' }: 
         className={clsx('pb-input', 'pb-scroll', styles.cmtInput, mobile && styles.cmtInputM)} />
       <div className={styles.cmtFormFoot}>
         <span className={styles.cmtLen}>{text.length}/{PLAZA_COMMENT_MAX}</span>
-        <button type="button" onClick={submit} disabled={!canSend}
+        {/* 누를 때 입력칸 포커스를 뺏지 않는다 — 뺏으면 그 순간 가상 키보드가 닫혀 화면 높이가 바뀐다. */}
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={submit} disabled={!canSend}
           className={clsx(styles.cmtSend, !canSend && styles.cmtSendOff)}>{parentId ? '답글' : '등록'}</button>
       </div>
     </div>
