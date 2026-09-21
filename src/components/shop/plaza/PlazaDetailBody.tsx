@@ -194,7 +194,7 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
   return (
     <div ref={wrapRef} className={styles.worn}>
       <button type="button" onClick={toggle} aria-expanded={open} aria-controls={`worn-${postId}`}
-        title={open ? '착용 아이템 접기' : '착용 아이템 펼치기'} className={styles.wornBar}>
+        title={open ? '착용 아이템 접기' : '착용 아이템 펼치기'} className={clsx(styles.wornBar, mobile && styles.wornBarM)}>
         <span className={styles.descLabel}>착용 아이템</span>
         {items && <span className={styles.wornCount}>{items.length}</span>}
         <IconCaretDown size={11} className={clsx(styles.wornCaret, open && styles.wornCaretOn)} />
