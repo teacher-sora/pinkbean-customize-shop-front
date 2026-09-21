@@ -64,7 +64,7 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
             <span className={styles.ntTitle}>{open.title}</span>
             <span className={styles.ntDate}>{plazaWhen(open.createdAt)}</span>
           </div>
-          <p className={clsx(styles.descText, styles.ntText)}>{open.body}</p>
+          {open.body.trim() && <p className={clsx(styles.descText, styles.ntText)}>{open.body}</p>}
           <div className={styles.ntHr} />
           <NoticeComments key={open.id} notice={open} mobile={mobile} notify={s.notify} />
         </>

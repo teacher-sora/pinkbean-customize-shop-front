@@ -119,7 +119,11 @@ export function plazaAuth(): Promise<string | null> {
     if (error) return null
     return made.user?.id ?? null
   })().catch(() => null)
-  return authP
+  // 실패(가입 한도 초과 등)는 붙잡아 두지 않는다 — 다음에 부를 때 다시 시도한다(새로고침 없이 한도가 풀리면 쓰기가 된다).
+  // 성공한 세션만 재사용하므로 정상일 때 추가 요청은 없다.
+  const p = authP
+  void p.then((id) => { if (!id && authP === p) authP = null })
+  return p
 }
 
 type Row = {
