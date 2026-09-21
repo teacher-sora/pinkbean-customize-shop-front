@@ -141,4 +141,5 @@
 /* 색상 A · 색상 B 줄(헤어·성형) — 코디 정보 염색 탭과 같은 배치, 다이얼로그라 조금 크다. */
 .swRow { display: flex; align-items: center; gap: 10px; }
 .swLabel { flex: 0 0 42px; font-size: 11.5px; font-weight: 600; color: #a89e93; }
-.swList { flex: 1 1 0; min-width: 0; display: flex; gap: 6px; flex-wrap: nowrap; }
+/* 색 동그라미는 줄 전체에 고르게 편다(색 계열 줄 .famRow 와 같은 배치). gap 은 좁은 폭에서의 최소 간격. */
+.swList { flex: 1 1 0; min-width: 0; display: flex; justify-content: space-between; gap: 6px; flex-wrap: nowrap; }
