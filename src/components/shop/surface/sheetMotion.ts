@@ -10,6 +10,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useShop } from '../ShopContext'
+import { glideTo, place, release } from './glide'
 
 export const SHEET_MS = 300
 export const SHEET_EASE = `transform ${SHEET_MS / 1000}s cubic-bezier(.45,0,.55,1)`
@@ -22,7 +23,7 @@ const topOf = (el: Element) => el.getBoundingClientRect().top
 const tyOf = (el: Element) => { const t = getComputedStyle(el).transform; return !t || t === 'none' ? 0 : new DOMMatrixReadOnly(t).m42 }
 
 // 2026-09-21: 전환 도중에도 다시 누를 수 있다(사용자 지시 — 한 동작이 끝나야 다음 동작을 받던 busy 잠금 제거).
-// 모든 움직임은 CSS transition 이라, 목표만 바꾸면 **지금 위치에서** 새 목표로 이어 간다.
+// 움직임은 glide.ts(되돌릴 때 지금 위치·속도를 이어받는 CSS transition)로 한다.
 //  - 접는 중(vsOn 은 아직 true) 다시 누름 → 커밋 타이머 취소, 셋 다 0 으로(펼친 모습으로 되돌아감).
 //  - 펼치는 중 다시 누름 → 접힘 목표를 **레이아웃 위치**(지금 걸린 transform 을 뺀 값) 기준으로 계산해 그리로.
 export function useVsFlip() {
@@ -43,26 +44,21 @@ export function useVsFlip() {
     const foot = panel?.querySelector<HTMLElement>('[data-sheet-foot]') ?? null
     return body && list && panel && foot ? { body, list, panel, foot } : null
   }
-  const put = (el: HTMLElement, y: number, animate: boolean) => {
-    el.style.transition = animate ? SHEET_EASE : 'none'
-    el.style.transform = `translateY(${y}px)`
-  }
   const stop = () => { clearTimeout(timer.current); cancelAnimationFrame(raf.current) }
   // 전환 흔적 정리. 패널 transform·transition 은 React 인라인 값과 같게 되돌린다(닫히는 중이면 건드리지 않음).
   const settle = (e: Els) => {
     stop()
-    for (const el of [e.list, e.foot]) { el.style.transition = 'none'; el.style.transform = '' }
+    release([e.list, e.foot])
     if (!closing.current) { e.panel.style.transition = 'none'; e.panel.style.transform = 'translateY(0px)' }
     e.panel.getBoundingClientRect()
     e.panel.style.transition = SHEET_EASE // 닫히는 중이면 React 가 넣은 translateY(100%) 를 이 곡선으로 마저 내려간다
-    for (const el of [e.list, e.foot]) el.style.transition = ''
     phase.current = 'idle'
   }
-  // 목표로 transition(출발점은 지금 그려진 위치). done 은 도착 뒤.
+  // 목표로 이동(진행 중이면 지금 위치·속도에서 이어 간다). done 은 도착 뒤.
   const glide = (e: Els, to: number[], done: () => void) => {
     stop()
-    put(e.panel, to[0], true); put(e.list, to[1], true); put(e.foot, to[2], true)
-    timer.current = window.setTimeout(done, SHEET_MS + 30)
+    const ms = glideTo([[e.panel, to[0]], [e.list, to[1]], [e.foot, to[2]]])
+    timer.current = window.setTimeout(done, ms + 30)
   }
 
   const collapse = (e: Els) => {
@@ -77,11 +73,6 @@ export function useVsFlip() {
     const lTo = ob - hc + (topOf(e.body) - pr.top) - 1 // 목록 = 본문 맨 위(margin-top -1px)
     const fTo = ob - e.foot.offsetHeight
     const lTop = topOf(e.list) - tyOf(e.list) - pty, fTop = topOf(e.foot) - tyOf(e.foot) - pty
-    // 출발 값을 셋 다 같은 표기(translateY(0px))로 맞춘다. 브라우저는 '출발 값으로 되돌아가는' 전환을 걸린 시간만큼만
-    // 짧게 돌리는데, 목록·푸터는 출발 값이 빈 값('')이라 이 규칙을 못 받아 접는 도중 되돌릴 때 패널보다 늦게 돌아와
-    // 목록이 70px 떠올랐다(2026-09-21 실측). 패널은 React 가 늘 translateY(0px) 로 둔다.
-    for (const el of [e.list, e.foot]) if (!el.style.transform) { el.style.transition = 'none'; el.style.transform = 'translateY(0px)' }
-    e.list.getBoundingClientRect()
     phase.current = 'closing'
     glide(e, [d, lTo - lTop - d, fTo - fTop - d], () => s.toggleVs())
   }
@@ -118,7 +109,7 @@ export function useVsFlip() {
       // ⚠️ 세 값을 **모두 잰 다음** 옮긴다 — 패널을 먼저 옮기고 목록·푸터를 재면 패널 이동분이 섞여
       //    목록·푸터가 첫 프레임에 튀고 패널을 따라 요동친다(2026-09-21 이 순서를 바꿨다가 모바일 VS 가 깨졌다).
       const dp = f0.p - topOf(e.panel), dl = f0.l - topOf(e.list) - dp, df = f0.f - topOf(e.foot) - dp
-      put(e.panel, dp, false); put(e.list, dl, false); put(e.foot, df, false)
+      place([[e.panel, dp], [e.list, dl], [e.foot, df]])
       e.panel.getBoundingClientRect()
       phase.current = 'opening'
       raf.current = requestAnimationFrame(() => {

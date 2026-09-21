@@ -25,7 +25,7 @@ import { CAT_TO_SLOT } from '@/lib/shopData'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
 import { LookSprite, lookDyed } from '../info/SlotSprite'
-import { SHEET_EASE, SHEET_MS } from '../surface/sheetMotion'
+import { glideTo, place, release } from '../surface/glide'
 import surf from '../surface/surface.module.css'
 import { IconCaretDown, IconHeart, IconLinkCopy, IconTakeDown } from '../ui/Icons'
 import PlazaComments from './PlazaComments'
@@ -164,18 +164,16 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
     for (let n = wrapRef.current?.nextElementSibling; n; n = n.nextElementSibling) out.push(n as HTMLElement)
     return out
   }
-  const put = (els: HTMLElement[], y: number, animate: boolean) => {
-    for (const el of els) { el.style.transition = animate ? SHEET_EASE : 'none'; el.style.transform = `translateY(${y}px)` }
-  }
-  const clear = () => { for (const el of moving.current) { el.style.transition = 'none'; el.style.transform = ''; el.getBoundingClientRect(); el.style.transition = '' } moving.current = [] }
+  const clear = () => { release(moving.current); moving.current = [] }
   // 목표로 transition. 접힘 목표는 칩 높이만큼 위(창 밖), 펼침 목표는 0. 끝나면 접힘은 칩을 빼고, 펼침은 흔적을 지운다.
   const go = (open: boolean) => {
     const inner = innerRef.current
     if (!inner) return
     clearTimeout(timer.current); cancelAnimationFrame(raf.current)
     moving.current = [inner, ...followers()]
-    put(moving.current, open ? 0 : -inner.offsetHeight, true)
-    timer.current = window.setTimeout(() => { if (open) clear(); else setMounted(false) }, SHEET_MS + 20)
+    const y = open ? 0 : -inner.offsetHeight
+    const ms = glideTo(moving.current.map((el) => [el, y] as [HTMLElement, number])) // 진행 중이면 지금 위치·속도에서 이어 간다
+    timer.current = window.setTimeout(() => { if (open) clear(); else setMounted(false) }, ms + 20)
   }
 
   const toggle = () => {
@@ -191,7 +189,7 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
     if (!inner) return
     // 칩이 막 들어온 레이아웃: 칩·아래 구역을 칩 높이만큼 위(접힌 자리)에 두고 다음 프레임에 목표로.
     moving.current = [inner, ...followers()]
-    put(moving.current, -inner.offsetHeight, false)
+    place(moving.current.map((el) => [el, -inner.offsetHeight] as [HTMLElement, number]))
     inner.getBoundingClientRect()
     raf.current = requestAnimationFrame(() => go(wantRef.current))
     // eslint-disable-next-line react-hooks/exhaustive-deps
