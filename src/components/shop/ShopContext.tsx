@@ -18,7 +18,7 @@ import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
-import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, plazaConfigured, plazaView, togglePlazaLike,
+import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, plazaConfigured, plazaView, togglePlazaLike,
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
@@ -39,9 +39,15 @@ export const isMultiCat = (cat: string) => cat === 'all' || cat === 'new' || cat
 const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김. (공유 코드/영속에 이 형태 그대로 저장)
 // 프리셋에 저장하는 연출설정 일부(형상변이·귀·무기모션·이펙트토글·배율). 시선/액션/표정은 "보는 순간의 상태"라 저장 안 함.
-// zoom(배율)은 광장에 올릴 때 빠진다(lib/plazaLook.plazaSnapshot) → 없을 수 있다. 없으면 지금 배율을 유지한다.
-export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; zoom?: number }
-export const PV_SNAP_DEFAULT: PvSnap = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, zoom: 2 }
+// 프리셋에 담기는 연출 설정은 두 갈래다(2026-09-21 사용자 지시).
+//  · 코디에 속하는 연출(PV_LOOK_DEFAULT) = 형상변이·귀·무기모션·이펙트 3종. 저장되고 **카드에도 그대로 그려진다**.
+//  · 보기 설정(PV_VIEW_DEFAULT) = 시선·액션·표정·배율. **정보로만** 담아 프리셋을 쓸 때 화면에 되살리고, 카드에는 적용하지 않는다.
+// 보기 설정은 광장에 올릴 때 빠진다(lib/plazaLook.plazaSnapshot) → 없을 수 있고, 없으면 지금 보던 값을 유지한다.
+export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean
+  gaze?: string; action?: string; expr?: string; zoom?: number }
+export const PV_LOOK_DEFAULT = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true }
+export const PV_VIEW_DEFAULT = { gaze: 'left', action: 'basic', expr: 'default', zoom: 2 }
+export const PV_SNAP_DEFAULT: PvSnap = { ...PV_LOOK_DEFAULT, ...PV_VIEW_DEFAULT }
 // 점(애교점) 위치 오프셋: 레이어이름(accessoryEye/accessoryEye2) → 월드 오프셋. 사소한 변경점/쩜 전용.
 export type DotOffsets = Record<string, Vec>
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; dotPos?: Record<string, DotOffsets>; dyeOff?: Record<string, boolean>; pv?: PvSnap; name?: string }
@@ -1058,6 +1064,32 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const t = window.setInterval(() => { void tick() }, 6000)
     return () => { alive = false; window.clearInterval(t) }
   }, [watching])
+  // 광장을 **열어 둔 채로도** 남이 올린 글·내린 글이 몇 초 안에 보이게 한다
+  // (2026-09-21 사용자 제보 — 남이 올린 코디가 화면에 나타나지 않았다).
+  // 목록은 탭에 들어올 때만 받아서, 화면을 켜 두고 기다리는 사람에게는 새 글이 영영 오지 않았다.
+  // 좋아요 수와 같은 6초 주기로 **첫 쪽만** 본다(lib/plaza.loadPlazaHead — 엣지 캐시에 걸려 대개 DB 까지 가지 않는다).
+  // ⚠️ plazaGen 은 올리지 않는다 — 올리면 보던 순서가 다시 잡혀 카드가 자리를 옮긴다. 새 글은 맨 앞에 붙는다.
+  useEffect(() => {
+    if (!watching || !plazaConfigured()) return
+    let alive = true
+    const tick = async () => {
+      if (document.hidden) return
+      const head = await loadPlazaHead()
+      if (!alive || !head) return
+      setPlazaPosts((list) => {
+        const here = new Set(list.map((p) => p.id))
+        const add = head.posts.filter((p) => !here.has(p.id) && !myRemoved.current.has(p.id))
+        // 첫 쪽이 전체를 담고 있을 때만 '사라진 글'을 지운다. 내가 방금 올린 글은 캐시에 늦게 담기므로 남긴다.
+        const live = head.covers ? new Set(head.posts.map((p) => p.id)) : null
+        const kept = live ? list.filter((p) => live.has(p.id) || myAdded.current.some((m) => m.id === p.id)) : list
+        if (!add.length && kept.length === list.length) return list
+        return keepLikes([...add, ...kept])
+      })
+    }
+    const t = window.setInterval(() => { void tick() }, 6000)
+    return () => { alive = false; window.clearInterval(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watching])
   const plazaRemove = (post: PlazaPost) => {
     // 3초 안에, 다른 상호작용 없이 연속으로 두 번 눌러야 내린다(lib/confirmTwice).
     if (confirmTwice(`plaza:${post.id}`)) {
@@ -1196,13 +1228,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     for (const [s, it] of Object.entries(equipped)) if (it) eq[s] = it.id
     return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden }, dotPos: { ...dotPos },
       ...(Object.keys(dyeOff).length ? { dyeOff: { ...dyeOff } } : {}),
-      pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, zoom: pv.zoom } }
+      pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect,
+        // 보기 설정은 **정보로만** 담는다 — 프리셋을 쓸 때 화면을 되살리는 데만 쓰이고 카드에는 그려지지 않는다.
+        gaze: pv.gaze, action: pv.action, expr: pv.expr, zoom: pv.zoom } }
   }
-  // 스냅샷의 연출설정(pv 일부)을 라이브 pv 에 반영(없으면 기본값). 시선/액션/표정/fps 는 건드리지 않는다.
-  // 배율(zoom)도 스냅샷에 없으면 지금 값을 유지한다 — 광장에서 가져온 코디가 내 미리보기 크기를 바꾸지 않는다.
+  // 스냅샷의 연출설정을 라이브 pv 에 반영. 코디에 속하는 연출(형상변이·귀·무기모션·이펙트)은 없으면 기본값으로,
+  // 보기 설정(시선·액션·표정·배율)은 **담겨 있을 때만** 되살린다 — 광장 코디나 옛 프리셋처럼 담기지 않은 것을
+  // 적용할 때 보던 화면 설정이 제멋대로 바뀌면 안 된다. fps 는 담지 않는다.
   const applyPvSnap = (v?: PvSnap) => {
-    const s = v ?? PV_SNAP_DEFAULT
-    setPvState((prev) => ({ ...prev, form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, zoom: s.zoom ?? prev.zoom }))
+    const s = v ?? PV_LOOK_DEFAULT
+    setPvState((prev) => ({ ...prev,
+      form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true,
+      gaze: v?.gaze ?? prev.gaze, action: v?.action ?? prev.action, expr: v?.expr ?? prev.expr, zoom: v?.zoom ?? prev.zoom }))
   }
   // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
   const loadSlotFolded = async (slot: string): Promise<ListItem[]> => {
@@ -1516,11 +1553,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       })
     }, 100)
     return () => { if (saveT.current) clearTimeout(saveT.current) }
-    // 저장 대상 pv(형상변이·귀·무기모션·이펙트·배율) 변경도 자동저장 트리거에 포함해야 새로고침 후 유지된다.
-    // (시선/액션/표정/fps 는 snapshot 에 안 담기므로 의도적으로 제외.)
+    // 저장 대상 pv 변경도 자동저장 트리거에 포함해야 새로고침 후 유지된다 — 코디 연출(형상변이·귀·무기모션·이펙트)과
+    // 보기 설정(시선·액션·표정·배율) 모두. (fps 만 담지 않는다.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, presets,
-      pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.zoom])
+      pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.zoom, pv.gaze, pv.action, pv.expr])
 
   // 연출설정(pv) 전체를 새로고침 후에도 유지 — 프리셋 스냅샷엔 서브셋만 담기므로 전체 pv 를 별도 키에 영속.
   useEffect(() => {
