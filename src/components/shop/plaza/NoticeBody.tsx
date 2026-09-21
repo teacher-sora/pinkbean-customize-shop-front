@@ -8,7 +8,7 @@
 // 탭 전체 화면 대신 서피스로 둔 이유: 4개 폭의 새 레이아웃 없이 기존 상세·댓글 부품을 그대로 쓴다('간이').
 
 import clsx from 'clsx'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   NOTICE_PAGE, PLAZA_COMMENT_MAX, addNoticeComment, deleteNoticeComment, loadNoticeComments, loadNotices, plazaAlias, plazaWhen,
   type NoticeComment, type PlazaNotice,
@@ -79,6 +79,7 @@ function NoticeComments({ notice, mobile, notify }: { notice: PlazaNotice; mobil
   const [failed, setFailed] = useState(false)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
+  const headRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback((p: number) => {
     setFailed(false)
@@ -89,7 +90,12 @@ function NoticeComments({ notice, mobile, notify }: { notice: PlazaNotice; mobil
   useEffect(() => { void load(page) }, [load, page])
 
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / NOTICE_PAGE))
-  const go = (p: number) => { if (p >= 0 && p < pages && p !== page) setPage(p) }
+  // 쪽을 넘기면 댓글 머리로 올라간다(아래쪽 쪽 넘김 버튼에서 누르므로 그대로 두면 새 쪽의 끝부터 보인다).
+  const go = (p: number) => {
+    if (p < 0 || p >= pages || p === page) return
+    setPage(p)
+    headRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
   const text0 = text.trim()
   const canSend = !!text0 && !busy
   const send = () => {
@@ -110,7 +116,7 @@ function NoticeComments({ notice, mobile, notify }: { notice: PlazaNotice; mobil
 
   return (
     <div className={styles.ntCmt}>
-      <div className={styles.cmtHead}>
+      <div ref={headRef} className={styles.cmtHead}>
         <span className={styles.descLabel}>건의 · 신고</span>
         {data && <span className={styles.cmtCount}>{data.total}</span>}
       </div>
