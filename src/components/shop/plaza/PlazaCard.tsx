@@ -43,7 +43,7 @@ export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaP
           <SnapThumb snap={post.snapshot} fraction={mobile ? CARD_FRACTION_M : CARD_FRACTION} priority={priority} />
           {/* 대회 출품 날짜(간략히 M.D) — 순번(#n)은 중간 글이 내려가면 비어 보여 날짜로 바꿨다(2026-09-21 사용자 지시). */}
           {post.contest && (
-            <span className={clsx(styles.contestNo, mobile && styles.contestNoM)} title={`${fullDate(post.createdAt)} 출품`}>{shortDate(post.createdAt)}</span>
+            <span className={clsx(styles.contestNo, mobile && styles.contestNoM)} title={`${fullDate(post.createdAt)} 등록`}>{shortDate(post.createdAt)}</span>
           )}
           <div className={clsx(styles.likeWrap, mobile && styles.likeWrapM)}>
             <span className={styles.likeCount}>{post.likes > 999 ? '999+' : post.likes}</span>

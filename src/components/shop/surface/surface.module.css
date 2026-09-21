@@ -7,7 +7,7 @@
 
 /* PC 다이얼로그 */
 /* 크기는 종류와 무관하게 동일(delta §6). 등장·퇴장은 translateY + opacity 만 — scale 금지(delta §8). */
-.panel { height: min(620px, 86svh); background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0); opacity: 1; }
+.panel { height: min(620px, 86svh); /* 종류마다 다른 크기는 인라인(Surface.tsx) */ background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0); opacity: 1; }
 .panelHidden { transform: translateY(10px); opacity: 0; }
 /* 모바일 하단 시트 */
 .panelM { width: 100%; height: auto; max-height: 85%; background: #fff; border-top: 1px solid #e7ded4; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; overflow: hidden; }
@@ -131,3 +131,15 @@
 .vsChip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1.5px solid #f0e9e1; border-radius: 9px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .vsChipOn { border-color: #ec86ac; background: #fce9f1; }
 .vsChipSprite { width: calc(100% - 8px); height: calc(100% - 8px); display: flex; align-items: center; justify-content: center; }
+
+/* 염색 다이얼로그 안에서 화면만 바뀌는 슬라이드(색 조절 ↔ 염색표) — 서피스 본문 슬라이드와 같은 곡선·시간. */
+.innerSlide { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
+/* 고른 두 색 표시 + '염색표 보기'(헤어·성형만) */
+.tableRow { flex: 0 0 auto; display: flex; }
+.tableBtn { height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #ddd4ca; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 500; color: #5c534b; cursor: pointer; }
+.tableDots { display: inline-flex; align-items: center; gap: 3px; }
+/* 색상 A · 색상 B 줄(헤어·성형) — 코디 정보 염색 탭과 같은 배치, 다이얼로그라 조금 크다. */
+.swRow { display: flex; align-items: center; gap: 10px; }
+.swLabel { flex: 0 0 42px; font-size: 11.5px; font-weight: 600; color: #a89e93; }
+/* 색 동그라미는 줄 전체에 고르게 편다(색 계열 줄 .famRow 와 같은 배치). gap 은 좁은 폭에서의 최소 간격. */
+.swList { flex: 1 1 0; min-width: 0; display: flex; justify-content: space-between; gap: 6px; flex-wrap: nowrap; }

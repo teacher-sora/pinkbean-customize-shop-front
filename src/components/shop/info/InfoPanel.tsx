@@ -254,6 +254,8 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
                     onBlur={() => clearRaw('ratio')}
                     onStep={(d) => { clearRaw('ratio'); setPal((cur) => ({ ...cur, ratio: Math.max(0, Math.min(100, cur.ratio + d)) })) }}
                     decOff={pal.ratio <= 0} incOff={pal.ratio >= 100} />} />
+                {/* 헤어·성형은 여기까지다 — 색 A·B 와 그 사이 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다
+                    (2026-09-21 사용자 지시: 한때 얹었던 커스텀 HSB 를 걷어냈다). */}
                 <div className={styles.acts}>
                   <button type="button" onClick={() => s.openDye(it)} title="발색표 보기" className={clsx('pb-ghost', styles.btn)}>염색표 보기</button>
                   {offBtn}

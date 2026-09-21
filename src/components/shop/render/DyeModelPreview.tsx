@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
-import { applyHsb, buildOverrides, skinLineHsb, type HsbParams } from '@/lib/core/dye'
+import { applyHsb, buildOverrides, skinLineHsb, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { canvasBitmap, computeModelPlacement, fitCanvas, zoomStepScale } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { canvasToSquareBlob } from '@/lib/canvasExport'
@@ -22,7 +22,9 @@ const DIALOG_FRACTION = 0.33
 const fractionFor = (h: number) => (h < 300 ? 0.5 : DIALOG_FRACTION)
 const DIALOG_ZOOM: Record<number, number> = { 1: 0.6, 2: 1.0, 3: 1.6 }
 
-export default function DyeModelPreview({ item, hsb, zoom, box }: { item: ListItem; hsb: HsbParams; zoom: number; box: { w: number; h: number } }) {
+// palette = 헤어·성형(발색표) 선택. 있으면 그 색을 바탕으로 깔고 그 위에 커스텀 HSB 를 입힌다
+// (lib/core/dye.buildOverrides 와 같은 순서 — 미리보기와 실제 모델이 같은 색이어야 한다, 2026-09-21).
+export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { item: ListItem; hsb: HsbParams; palette?: PaletteParams; zoom: number; box: { w: number; h: number } }) {
   const s = useShop()
   const ref = useRef<HTMLCanvasElement>(null)
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
@@ -82,7 +84,7 @@ export default function DyeModelPreview({ item, hsb, zoom, box }: { item: ListIt
       if (dyed) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), skinLineHsb(hsb), p.png)) } catch (_) {} }
     } else {
       if (!itemMeta) return
-      ov = await buildOverrides([itemMeta], { palette: {}, hsb: { [itemMeta.slot]: hsb } }, THUMB_VIEW)
+      ov = await buildOverrides([itemMeta], { palette: palette ? { [itemMeta.slot]: palette } : {}, hsb: { [itemMeta.slot]: hsb } }, THUMB_VIEW)
       // 이펙트도 같은 HSB 로 염색해서 보여준다.
       if (dyed) for (const ed of effs) { try { ov.set(ed.png, applyHsb(await loadImage(ed.png, true), hsb, ed.png)) } catch (_) {} }
     }
@@ -92,7 +94,7 @@ export default function DyeModelPreview({ item, hsb, zoom, box }: { item: ListIt
     const { bw, bh } = canvasBitmap(pl)
     fitCanvas(canvas, canvas.parentElement, bw, bh, box.w, box.h, dpr)
     await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov, effects: effs })
-  }, [placed, itemMeta, hsb, effs, zoom, item.slot, box.w, box.h])
+  }, [placed, itemMeta, hsb, palette, effs, zoom, item.slot, box.w, box.h])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩.
   useEffect(() => {

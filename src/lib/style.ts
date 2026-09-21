@@ -1,5 +1,5 @@
 // 인라인 스타일 유틸.
-// v2 셸은 CSS Module 로 옮겼고, 현행 유지 요소(LookDialog · ShareReceiveSheet)와 실험 페이지만 이 css() 를 쓴다.
+// v2 셸은 CSS Module 로 옮겼고, 현행 유지 요소(LookDialog)와 실험 페이지만 이 css() 를 쓴다.
 
 function toCamel(prop: string): string {
   if (prop.startsWith('--')) return prop // CSS custom property: 그대로
