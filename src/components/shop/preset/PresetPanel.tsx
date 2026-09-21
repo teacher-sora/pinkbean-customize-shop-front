@@ -93,7 +93,11 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
             <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임 또는 공유 링크" className={clsx('pb-input', styles.importInput)} />
           </div>
           <button type="button" onClick={s.importFetch} title="닉네임 또는 공유 링크로 코디 불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtn, s.importing && styles.busy)}>
-            {s.importing ? '불러오는 중' : '불러오기'}
+            {/* 두 문구를 한 칸에 겹쳐 두어 폭 = 긴 쪽('불러오는 중') — 상태가 바뀌어도 버튼·입력칸이 밀리지 않는다. */}
+            <span className={styles.loadLabel}>
+              <span aria-hidden={s.importing || undefined} style={s.importing ? { visibility: 'hidden' } : undefined}>불러오기</span>
+              <span aria-hidden={!s.importing || undefined} style={s.importing ? undefined : { visibility: 'hidden' }}>불러오는 중</span>
+            </span>
           </button>
         </div>
       </div>

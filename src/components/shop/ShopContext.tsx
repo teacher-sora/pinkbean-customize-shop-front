@@ -24,7 +24,7 @@ import { plazaSnapshot } from '@/lib/plazaLook'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 import { confirmTwice } from '@/lib/confirmTwice'
-import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
+import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, type PresetOver, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
@@ -376,7 +376,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 실행취소/다시실행: 코디 상태(equipped/tone/dye/hidden) 스냅샷 히스토리 + 현재 위치.
   // 히스토리 엔트리 = 코디 스냅샷 + 그때 선택돼 있던 프리셋. 되돌리기 시 코디뿐 아니라 "선택 프리셋"도
   // 함께 복원한다 → 프리셋 전환도 되돌리기 대상(1번→2번 후 되돌리기 = 다시 1번 선택 + 그때 코디).
-  const histRef = useRef<{ stack: { snap: Snapshot; sel: string | null }[]; idx: number }>({ stack: [], idx: -1 })
+  // 다른 프리셋을 덮어쓴 기록(공유 코디·광장 가져오기)은 over 에 그 프리셋의 전후 내용·이름을 함께 남긴다(uiState.PresetOver).
+  const histRef = useRef<{ stack: { snap: Snapshot; sel: string | null; over?: PresetOver<Snapshot> }[]; idx: number }>({ stack: [], idx: -1 })
+  const histOver = useRef<PresetOver<Snapshot> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
   const histLast = useRef<string | null>(null)      // 마지막으로 기록한 상태키(중복 방지) = {코디 스냅샷 + 선택 프리셋}
   const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
@@ -1189,6 +1191,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 공유받은 코디를 사용자가 고른 프리셋 슬롯에 적용 — 개인 프리셋 하나를 명시적으로 덮어씀 + 선택 + 라이브(되돌리기 가능).
   const applySharedToPreset = (snap: Snapshot, targetId: string) => {
+    // 덮어쓰기 전 그 프리셋(선택돼 있으면 지금 코디)과 이름을 기록에 함께 남긴다 → 되돌리기로 원래 코디·이름까지 돌아온다.
+    const prevName = presets.find((p) => p.id === targetId)?.name ?? ''
+    histOver.current = {
+      id: targetId,
+      prev: targetId === selectedPreset ? snapshot() : (presetData[targetId] ?? defaultSnapshot()), prevName,
+      next: snap, nextName: snap.name || prevName,
+    }
     if (selectedPreset && selectedPreset !== targetId) setPresetData((d) => ({ ...d, [selectedPreset]: snapshot() }))
     setPresetData((d) => ({ ...d, [targetId]: snap }))
     if (snap.name) setPresets((ps) => ps.map((p) => (p.id === targetId ? { ...p, name: snap.name! } : p))) // 공유된 이름까지 그대로
@@ -1343,8 +1352,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const val = nickInput.trim()
     if (!val) { notify('닉네임이나 공유 링크를 입력해 주세요'); return }
     // 공유 링크/코드 입력 → 링크로 접속했을 때와 동일하게 '코디 받기' 시트를 띄워 어느 프리셋에 넣을지 고르게 한다.
-    const shared = await extractSharedSnap(val)
+    // 공유 링크·코드면 닉네임으로 넘기지 않는다(못 풀면 '없는 캐릭터'가 아니라 공유 코디 안내). 푸는 동안도 '불러오는 중'.
+    const isShare = /[#?&]c=|^PB/.test(val)
+    if (isShare) setImporting(true)
+    const shared = await extractSharedSnap(val).finally(() => { if (isShare) setImporting(false) })
     if (shared) { setSharedIncoming(shared); setNickInput(''); return }
+    if (isShare) { notify('공유 코디를 찾지 못했어요. 링크를 다시 확인해 주세요'); return }
     if (!selectedPreset) { notify('덮어쓸 프리셋을 먼저 골라 주세요'); return }
     setImporting(true)
     try {
@@ -1453,11 +1466,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const snap = snapshot()
     const j = JSON.stringify({ s: snap, p: selectedPreset })
     if (j === histExpect.current) { histExpect.current = null; histLast.current = j; return }
-    if (j === histLast.current) return
+    const over = histOver.current
+    if (j === histLast.current && !over) return // 덮어쓰기는 코디가 같아도(이름·다른 프리셋이 바뀜) 기록한다
+    histOver.current = null
     histLast.current = j
     const h = histRef.current
     h.stack = h.stack.slice(0, h.idx + 1)
-    h.stack.push({ snap, sel: selectedPreset })
+    h.stack.push({ snap, sel: selectedPreset, ...(over ? { over } : {}) })
     if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
     h.idx = h.stack.length - 1
     setHistVer((v) => v + 1)
@@ -1483,8 +1498,28 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   void histVer // 재렌더 트리거(canUndo/canRedo 재계산)
   const canUndo = histRef.current.idx > 0
   const canRedo = histRef.current.idx < histRef.current.stack.length - 1
-  const undo = () => { const h = histRef.current; if (h.idx <= 0) { notify('되돌릴 변경이 없어요'); return } h.idx -= 1; applyHistory(h.stack[h.idx]) }
-  const redo = () => { const h = histRef.current; if (h.idx >= h.stack.length - 1) { notify('다시 실행할 변경이 없어요'); return } h.idx += 1; applyHistory(h.stack[h.idx]) }
+  // 덮어쓴 프리셋을 되살린다(내용 + 이름). 선택 프리셋이면 이어지는 applyHistory 의 자동저장이 같은 값을 쓴다.
+  const restoreOver = (o: PresetOver<Snapshot>, back: boolean) => {
+    const snap = back ? o.prev : o.next, name = back ? o.prevName : o.nextName
+    setPresetData((d) => ({ ...d, [o.id]: snap }))
+    if (name) setPresets((ps) => ps.map((p) => (p.id === o.id ? { ...p, name } : p)))
+  }
+  const undo = () => {
+    const h = histRef.current
+    if (h.idx <= 0) { notify('되돌릴 변경이 없어요'); return }
+    const from = h.stack[h.idx]
+    h.idx -= 1
+    if (from.over) restoreOver(from.over, true)
+    applyHistory(h.stack[h.idx])
+  }
+  const redo = () => {
+    const h = histRef.current
+    if (h.idx >= h.stack.length - 1) { notify('다시 실행할 변경이 없어요'); return }
+    h.idx += 1
+    const to = h.stack[h.idx]
+    if (to.over) restoreOver(to.over, false)
+    applyHistory(to)
+  }
 
   // 영속: 프리셋 데이터/이름/선택을 localStorage 에 저장(디바운스). 서버 없이 새로고침/재실행에도 유지.
   useEffect(() => {
