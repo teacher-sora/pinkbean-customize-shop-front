@@ -76,6 +76,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   const fadeOn = (side: boolean) => !plaza && side
   const pickTab = (t: { id: string; label: string }) => {
     if (READY.has(t.id)) { s.setPrimary(t.id); return }
+    if (t.id === 'notice') { s.openNotice(); return } // 공지 및 건의함은 탭 화면 없이 서피스로 연다(간이)
     s.notify(`${t.label}은 아직 준비 중이에요!`)
   }
 

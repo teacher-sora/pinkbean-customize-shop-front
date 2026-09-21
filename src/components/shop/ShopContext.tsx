@@ -18,7 +18,7 @@ import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
-import { createPlazaPost, deletePlazaPost, loadPlaza, plazaConfigured, plazaView, togglePlazaLike,
+import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, plazaConfigured, plazaView, togglePlazaLike,
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
@@ -49,7 +49,7 @@ export type Snapshot = { equipped: Record<string, string>; tone: number; dyePale
 // part = 부위 염색(착용 부위 고르기 → 같은 다이얼로그 안에서 염색/점 위치로 슬라이드), vs = 북마크 코디 비교(PC).
 // fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다(delta §3·§8).
 // plaza = 코디 광장 글 상세(가져오기는 공유 받기 다이얼로그를 그대로 쓴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza' | 'notice'
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴(delta 값)
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
@@ -178,6 +178,7 @@ export interface ShopCtx {
   plazaUpload: boolean; setPlazaUpload: Dispatch<boolean>
   plazaCols: number; plazaRows: number
   openPlazaPost: (post: PlazaPost) => void
+  openNotice: () => void
   plazaTakeDirect: (post: PlazaPost) => void
   resolveSnapItems: (snap: Snapshot) => Promise<Record<string, ListItem | null>>
   plazaLike: (post: PlazaPost) => void
@@ -966,6 +967,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (primary !== 'share') setPlazaUpload(false) }, [primary])
 
   const openPlazaPost = (post: PlazaPost) => openSurface({ kind: 'plaza', item: null, post })
+  // 공지 및 건의함 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
+  const openNotice = () => openSurface({ kind: 'notice', item: null })
   // 가져오기는 공유 링크로 받을 때와 **같은 다이얼로그**(ShareReceiveSheet)를 쓴다(사용자 지시).
   // 칸을 고르면 그대로 applySharedToPreset 으로 들어가므로 덮어쓰기·되돌리기 동작이 완전히 같다.
   const plazaTakeDirect = (post: PlazaPost) => {
@@ -980,15 +983,53 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [takeReturn])
+  const likePending = useRef<Set<string>>(new Set())
   const plazaLike = (post: PlazaPost) => {
-    // 먼저 화면부터 바꾸고(하트는 자주 눌린다) 서버에 반영, 실패하면 되돌린다.
+    // 먼저 화면부터 바꾸고(하트는 자주 눌린다) 서버에 반영한다. 서버가 돌려준 실제 상태·수로 다시 맞춘다 —
+    // 기기 기준이라 다른 창에서 이미 누른 하트였다면 이번 누름은 '취소'가 된다(supabase/0011).
     const next = !post.liked
+    likePending.current.add(post.id)
     setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: next, likes: Math.max(0, p.likes + (next ? 1 : -1)) } : p)))
-    togglePlazaLike(post).catch(() => {
-      setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: post.liked, likes: post.likes } : p)))
-      notify('좋아요를 저장하지 못했어요')
-    })
+    togglePlazaLike(post)
+      .then((r) => setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: r.liked, likes: r.likes } : p))))
+      .catch((e) => {
+        setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: post.liked, likes: post.likes } : p)))
+        const msg = e instanceof Error ? e.message : ''
+        notify(/마감|내려간/.test(msg) ? msg : '좋아요를 저장하지 못했어요')
+      })
+      .finally(() => likePending.current.delete(post.id))
   }
+  // 남이 누른 좋아요를 몇 초 안에 보이게 — 광장 탭이 보일 때 **화면에 있는 카드(앞뒤 한 쪽 포함) + 열린 상세**만
+  // 6초마다 좋아요 수를 새로 받는다(목록 캐시는 3분). 창이 가려져 있으면 쉰다. 18~54개 id 라 응답이 작다.
+  const likeWatch = useRef<string[]>([])
+  {
+    const ids = new Set<string>()
+    if (primary === 'share') for (const p of plazaList.slice(Math.max(0, curIdx - 1) * perPage, (curIdx + 2) * perPage)) ids.add(p.id)
+    if (surface?.kind === 'plaza' && surface.post) ids.add(surface.post.id)
+    likeWatch.current = Array.from(ids)
+  }
+  const watching = primary === 'share' || surface?.kind === 'plaza'
+  useEffect(() => {
+    if (!watching || !plazaConfigured()) return
+    let alive = true
+    const tick = async () => {
+      if (document.hidden || !likeWatch.current.length) return
+      const counts = await loadLikeCounts(likeWatch.current)
+      if (!alive || !counts.size) return
+      setPlazaPosts((list) => {
+        let changed = false
+        const out = list.map((p) => {
+          const n = counts.get(p.id)
+          if (n == null || n === p.likes || likePending.current.has(p.id)) return p
+          changed = true
+          return { ...p, likes: n }
+        })
+        return changed ? out : list
+      })
+    }
+    const t = window.setInterval(() => { void tick() }, 6000)
+    return () => { alive = false; window.clearInterval(t) }
+  }, [watching])
   const plazaRemove = (post: PlazaPost) => {
     // 3초 안에, 다른 상호작용 없이 연속으로 두 번 눌러야 내린다(lib/confirmTwice).
     if (confirmTwice(`plaza:${post.id}`)) {
@@ -1035,7 +1076,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const msg = e instanceof Error ? e.message : ''
       // 같은 조합 선점(0007): 트리거 문구 또는 동시 등록 경쟁에서 유일 인덱스가 낸 오류를 같은 안내로 바꾼다.
       const dup = /같은 조합|plaza_posts_contest_look_uq/.test(msg)
-      notify(dup ? '같은 조합이 이미 대회에 출품돼 있어요' : /기기당|대회에는/.test(msg) ? msg : '등록하지 못했어요. 잠시 후 다시 시도해 주세요')
+      notify(dup ? '같은 조합이 이미 대회에 출품돼 있어요' : /기기당|대회에는|마감|이메일|기기 정보/.test(msg) ? msg : '등록하지 못했어요. 잠시 후 다시 시도해 주세요')
       return false
     } finally { setPlazaSubmitting(false) }
   }
@@ -1561,7 +1602,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
-    openPlazaPost, plazaTakeDirect, resolveSnapItems: resolveEquipped,
+    openPlazaPost, openNotice, plazaTakeDirect, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,

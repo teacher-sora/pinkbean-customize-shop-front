@@ -11,6 +11,7 @@
 // 첫 화면은 칸 크기와 무관한 값(RefView: 칸 가운데에 올 그림 위 점 + 정사각형 cover 대비 배율)으로 저장한다.
 
 import clsx from 'clsx'
+import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RefView } from '@/lib/plaza'
 import styles from './plaza.module.css'
@@ -170,11 +171,20 @@ export default function PlazaRefViewer({ src, initial, edit, onChange }: {
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
       onDoubleClick={reset}
       title={edit ? '끌어서 옮기고, 휠·두 손가락으로 확대해요' : '휠·두 손가락으로 확대, 끌어서 이동 · 두 번 누르면 처음 화면'}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="참조 이미지" draggable={false}
-        onLoad={(e) => setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-        className={styles.refViewImg}
-        style={ready ? { width: dw, height: dh, transform: `translate(calc(-50% + ${v.x}px), calc(-50% + ${v.y}px))` } : { opacity: 0 }} />
+      {/* next/image 로 보낸다(보기) — 원본 대신 지금 크기에 맞는 WebP/AVIF. 확대하면 sizes 가 커져 더 큰 그림으로 바꿔 받는다
+          (256px 단위로 올려 휠 한 칸마다 새로 받지 않게). 편집기는 아직 올리지 않은 로컬 파일(blob:)이라 그대로 쓴다.
+          배율 계산은 가로세로 비만 쓰므로, 줄인 그림의 크기(naturalWidth)로 재도 결과가 같다. */}
+      <div className={styles.refViewImg}
+        style={ready ? { width: dw, height: dh, transform: `translate(calc(-50% + ${v.x}px), calc(-50% + ${v.y}px))` } : { width: box.w, height: box.h, opacity: 0, transform: 'translate(-50%, -50%)' }}>
+        <Image src={src} alt="참조 이미지" draggable={false} fill priority unoptimized={!!edit} quality={85}
+          sizes={`${Math.max(256, Math.ceil((ready ? Math.max(dw, dh) : Math.max(box.w, box.h)) / 256) * 256)}px`}
+          onLoad={(e) => {
+            // 확대로 더 큰 그림이 새로 들어와도 비가 같으면 그대로 둔다(nat 이 바뀌면 보던 자리가 처음으로 돌아간다).
+            const im = e.currentTarget, w = im.naturalWidth, h = im.naturalHeight
+            if (w) setNat((n) => (n && Math.abs(n.w / n.h - w / h) < 0.01 ? n : { w, h }))
+          }}
+          style={{ objectFit: 'fill' }} />
+      </div>
       {guide > 0 && <div className={styles.refGuide} style={{ width: guide, height: guide }} aria-hidden />}
       <button type="button" onClick={reset} onPointerDown={(e) => e.stopPropagation()} aria-label="처음 화면으로" title="처음 화면으로"
         className={clsx(styles.refReset, moved && styles.refResetOn)}>원래대로</button>

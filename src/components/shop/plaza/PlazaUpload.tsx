@@ -8,7 +8,8 @@ import clsx from 'clsx'
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import bg from '@/assets/pinkbean-bg.png'
-import { contestCandidates, PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX, type RefView } from '@/lib/plaza'
+import { contestCandidates, plazaContestClosed, plazaMe, PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX, type RefView } from '@/lib/plaza'
+import { shrinkPlazaImage } from '@/lib/plazaImage'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { lookItems, normLook } from '@/lib/plazaLook'
@@ -41,6 +42,15 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     setImageUrl(u)
     return () => URL.revokeObjectURL(u)
   }, [image])
+  // 고르자마자 줄인다(lib/plazaImage — 5MB 제한, 큰 사진은 긴 변 2048px·WebP). 편집기는 줄인 그림으로 보여 준다.
+  const [shrinking, setShrinking] = useState(false)
+  const pickImage = async (f: File) => {
+    setShrinking(true)
+    try { const out = await shrinkPlazaImage(f); setImage(out); setImageView(null) } catch (e) {
+      s.notify(e instanceof Error && e.message ? e.message : '이미지를 읽지 못했어요')
+      if (fileRef.current) fileRef.current.value = ''
+    } finally { setShrinking(false) }
+  }
   const clearImage = () => { setImage(null); setImageView(null); if (fileRef.current) fileRef.current.value = '' }
   const [scope, setScope] = useState<'all' | 'contest' | null>(null)
   const [scopeOpen, setScopeOpen] = useState(false)
@@ -62,9 +72,17 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const current = options.find((p) => p.id === presetId) || options[0] || null
   const snap = current ? snapOf(current.id) : null
   const finalName = (name || current?.name || '').trim()
-  // 대회는 기기(익명 세션)당 3개까지. 여기 셈은 안내용이고, 실제로 막는 건 DB 트리거다(supabase/0006).
-  const myContest = s.plazaPosts.filter((p) => p.mine && p.contest).length
+  // 대회는 **기기**당 3개까지(브라우저·시크릿 창과 무관 — supabase/0011). 여기 셈은 안내용이고 실제로 막는 건 DB 다.
+  // 이 기기가 올린 수는 서버가 센다(plaza_me). 목록이 바뀌면(등록·내리기) 다시 묻는다.
+  const [myContest, setMyContest] = useState(0)
+  const mineCount = s.plazaPosts.filter((p) => p.mine && p.contest).length
+  useEffect(() => {
+    let alive = true
+    plazaMe().then((m) => { if (alive) setMyContest(m ? m.contest : mineCount) }).catch(() => undefined)
+    return () => { alive = false }
+  }, [mineCount, s.plazaPosts.length])
   const contestLeft = Math.max(0, PLAZA_CONTEST_MAX - myContest)
+  const contestClosed = contest && plazaContestClosed() // 마감(10월 1일 오후 11시 59분) 뒤에는 출품을 받지 않는다
   const contestFull = contest && contestLeft === 0
   // 대회는 **같은 조합을 한 번만** 받는다(선점). 착용·피부가 같은 출품작만 DB 에서 받아(contestCandidates — 수만 개여도 몇 개)
   // 결과 픽셀을 비교해(lib/plazaLookPixels) 미리 막고 알린다. 등록 직전에 한 번 더 확인한다. DB 트리거(0009)는 좁은 안전망.
@@ -107,7 +125,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     return () => { alive = false; clearTimeout(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contest, lookSig, contestSig, findTaken])
-  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !taken && !checking && !s.plazaSubmitting
+  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !contestClosed && !taken && !checking && !s.plazaSubmitting && !shrinking
 
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
@@ -127,6 +145,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     setTags([...tags, v]); setTagDraft('')
   }
   const submit = async () => {
+    if (contestClosed) { s.notify('대회 출품이 마감됐어요'); return }
     if (contestFull) { s.notify(`${PLAZA_CONTEST}에는 이 기기에서 ${PLAZA_CONTEST_MAX}개까지 올릴 수 있어요`); return }
     if (taken) { s.notify('같은 조합이 이미 대회에 출품돼 있어요'); return }
     if (!canSubmit || !snap) { s.notify(contest ? '이메일을 확인해 주세요' : '프리셋과 이름을 확인해 주세요'); return }
@@ -227,7 +246,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
       {/* 이미지 */}
       <div>
         <div className={styles.label}>이미지</div>
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; if (f) { setImage(f); setImageView(null) } }} />
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; if (f) void pickImage(f) }} />
         {/* 칸은 고르기 전부터 편집기 크기 그대로 잡아 둔다 — 이미지를 넣어도 아래 요소가 밀리지 않는다(2026-09-21).
             이미지를 고르면 끌고 확대해 **처음 보일 부분**을 가운데 정사각형 점선에 맞춘다(원본은 자르지 않는다).
             아래 줄도 늘 자리를 차지하고, 이미지가 없을 땐 보이지만 않는다. */}
@@ -268,8 +287,9 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
               </div>
             </div>
           </div>
-          <div className={clsx(styles.scopeHint, (contestFull || taken) && styles.scopeHintWarn)}>
+          <div className={clsx(styles.scopeHint, (contestFull || contestClosed || taken) && styles.scopeHintWarn)}>
             {!contest ? '누구나 볼 수 있게 공개로 등록해요.'
+              : contestClosed ? '대회 출품이 마감됐어요.'
               : contestFull ? `이 기기에서는 이미 ${PLAZA_CONTEST_MAX}개를 올렸어요.`
               : taken ? `[${taken.name}] 똑같은 조합이 이미 있어요! 같은 조합으로는 못 올려요.`
               : checking ? '같은 조합이 있는지 확인하고 있어요.'

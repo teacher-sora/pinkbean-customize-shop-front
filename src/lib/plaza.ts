@@ -9,6 +9,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Snapshot } from '@/components/shop/ShopContext'
 import { plazaSnapshot } from '@/lib/plazaLook'
+import { plazaDeviceFp } from '@/lib/plazaDevice'
 
 export type PlazaSort = 'popular' | 'recent'
 export type PlazaFilter = 'all' | 'contest' | 'mine' | 'liked'
@@ -21,6 +22,10 @@ export const PLAZA_OPEN = '자유 코디'
 export const PLAZA_CONTEST_MAX = 3
 // 대회 기간 — 광장 목록 아래 안내 줄에 그대로 쓴다(대회 필터일 때). 정해지면 '2026.10.01 ~ 10.31' 처럼 적는다.
 export const PLAZA_CONTEST_PERIOD: string | null = '10월 1일 오후 11시 59분까지'
+// 마감 시각 — 이 순간부터 대회 출품 · 대회 출품작 좋아요가 막힌다. **DB 가 진짜 방어선**(supabase/0011 plaza_contest_deadline)이고
+// 여기 값은 화면 안내용이다. 바꿀 땐 둘 다 바꾼다.
+export const PLAZA_CONTEST_DEADLINE = Date.parse('2026-10-02T00:00:00+09:00')
+export const plazaContestClosed = () => Date.now() >= PLAZA_CONTEST_DEADLINE
 export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
   { id: 'all', label: PLAZA_OPEN },
   { id: 'contest', label: '블아 대회' },
@@ -29,7 +34,7 @@ export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
 ]
 export const PLAZA_TAG_MAX = 10 // DB 체크도 10(supabase/0007)
 export const PLAZA_COMMENT_MAX = 200
-const POST_LIMIT = 300
+const PAGE_ROWS = 1000 // Supabase 한 번 응답 최대 행 수(max_rows) — 목록은 이 단위로 끝까지 받는다
 const COMMENT_LIMIT = 200
 
 // 참고 이미지를 처음 열었을 때 보일 자리(올린 사람이 등록 때 고른다, supabase/0008). 원본은 자르지 않는다.
@@ -149,7 +154,7 @@ const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
 })
 
 // 목록 = ISR 캐시(/api/plaza) + 내 좋아요(실시간, 사용자마다 다름). 정렬·검색·필터는 화면에서.
-//  좋아요 수는 캐시된 값이라 남이 방금 누른 좋아요는 바로 보이지 않는다(의도 — 가장 잦은 변화).
+//  목록의 좋아요 수는 캐시값(최대 3분)이라, 화면에 보이는 카드·열린 상세만 몇 초마다 따로 새로 받는다(loadLikeCounts).
 //  새 글·내린 글은 쓰기 직후 캐시를 비워(bumpPlazaCache) 다음에 들어오는 사람에게 바로 보인다.
 
 // 쓰기 직후 30초 동안은 이 브라우저만 캐시를 비켜 읽는다.
@@ -171,13 +176,24 @@ async function bumpPlazaCache(): Promise<void> {
   } catch { /* noop */ }
 }
 
+// 전부 받는다: 첫 쪽이 전체 개수를 알려 주면 나머지 쪽(500개씩)을 한꺼번에 받는다(app/api/plaza/shared.ts).
+// 쪽 사이에 새 글이 끼면 경계의 글이 두 쪽에 겹칠 수 있어 id 로 한 번 거른다.
 async function loadRows(): Promise<Row[] | null> {
   try {
     const base = `/api/plaza/${targetName()}`
-    const r = await fetch(freshNow() ? `${base}/fresh` : base, { cache: 'no-store' })
-    if (!r.ok) return null
-    const j = await r.json()
-    return Array.isArray(j?.posts) ? (j.posts as Row[]) : null
+    const fresh = freshNow()
+    const url = (p: number) => (fresh ? `${base}/fresh?p=${p}` : p ? `${base}/${p}` : base)
+    const get = async (p: number) => {
+      const r = await fetch(url(p), { cache: 'no-store' })
+      if (!r.ok) throw new Error('page')
+      return (await r.json()) as { posts: Row[]; total: number; pageSize: number }
+    }
+    const first = await get(0)
+    if (!Array.isArray(first?.posts)) return null
+    const pages = Math.ceil((first.total || 0) / (first.pageSize || 500))
+    const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, i) => get(i + 1)))
+    const seen = new Set<string>()
+    return [first, ...rest].flatMap((j) => j.posts).filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
   } catch { return null }
 }
 
@@ -188,19 +204,43 @@ export async function loadPlaza(): Promise<PlazaPost[]> {
   // 광장 탭만 유독 늦게 뜬다 — 둘을 동시에 시작한다(2026-09-20).
   const rowsP = loadRows()
   const uid = await plazaAuth()
-  const [cached, likesRes] = await Promise.all([
-    rowsP,
-    uid ? c.from('plaza_likes').select('post_id').eq('owner', uid) : Promise.resolve({ data: [], error: null } as never),
-  ])
-  const liked0 = new Set<string>(((likesRes as { data: { post_id: string }[] | null }).data || []).map((l) => l.post_id))
+  const [cached, me] = await Promise.all([rowsP, uid ? plazaMe() : Promise.resolve(null)])
+  const liked0 = new Set<string>(me?.liked || [])
   if (cached) return cached.map((r) => toPost(r, uid, liked0))
   // ISR 라우트가 없거나 실패하면 예전처럼 직접 읽는다(로컬·장애 대비).
-  const postsRes = await c.from('plaza_posts').select('*').order('created_at', { ascending: false }).limit(POST_LIMIT)
-  if (postsRes.error) throw postsRes.error
-  const liked = new Set<string>(((likesRes as { data: { post_id: string }[] | null }).data || []).map((l) => l.post_id))
-  return (postsRes.data as Row[]).map((r) => toPost(r, uid, liked))
+  const rows: Row[] = []
+  for (let from = 0; ; from += PAGE_ROWS) {
+    const res = await c.from('plaza_posts').select('*').order('created_at', { ascending: false }).order('id').range(from, from + PAGE_ROWS - 1)
+    if (res.error) throw res.error
+    rows.push(...(res.data as Row[]))
+    if ((res.data || []).length < PAGE_ROWS) break
+  }
+  return rows.map((r) => toPost(r, uid, liked0))
 }
 
+// 이 기기의 상태 — 좋아요한 글(이 기기 또는 이 브라우저가 누른 것), 이 기기가 올린 대회 출품 수(supabase/0011 plaza_me).
+// 기기 기준이라 시크릿 창에서 들어와도 이미 누른 하트가 켜져 보이고, 대회 남은 개수도 같다.
+let meCache: { liked: string[]; contest: number } | null = null
+export async function plazaMe(): Promise<{ liked: string[]; contest: number } | null> {
+  const c = sb()
+  if (!c || !(await plazaAuth())) return null
+  const { data, error } = await c.rpc('plaza_me', { fp: plazaDeviceFp() })
+  if (error) return meCache
+  meCache = data as { liked: string[]; contest: number }
+  return meCache
+}
+export const plazaMyContest = () => meCache?.contest ?? 0
+// 보이는 글들의 좋아요 수만 새로 받는다(목록 캐시와 별개 — 남이 누른 좋아요를 몇 초 안에 보이게).
+// 화면에 있는 카드·열린 상세만 묻기 때문에 응답이 작다(18개 ≈ 1KB).
+export async function loadLikeCounts(ids: string[]): Promise<Map<string, number>> {
+  const c = sb()
+  const out = new Map<string, number>()
+  if (!c || !ids.length) return out
+  const { data, error } = await c.from('plaza_posts').select('id,like_count').in('id', ids)
+  if (error) return out
+  for (const r of (data || []) as { id: string; like_count: number }[]) out.set(r.id, r.like_count)
+  return out
+}
 // 이 스냅샷과 착용·피부가 같은 대회 출품작만(‘같은 조합’ 확인용 — supabase/0010). 착용이 다르면 어차피 다른 조합이라,
 // DB 가 지문 색인(look_key)으로 골라 준다 — 출품작이 수만 개여도 몇 개만 받는다(5만 행 실측 0.05ms).
 // 목록 캐시(ISR·최근 300개)를 거치지 않아 방금 올라온 출품작도 빠지지 않는다.
@@ -225,11 +265,16 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
     if (up.error) throw up.error
     imagePath = path
   }
-  const ins = await c.from('plaza_posts').insert({
-    owner: uid, name: d.name, description: d.description, tags: d.tags,
-    snapshot: d.snapshot, share_code: d.shareCode, image_path: imagePath, contest: d.contest,
-    image_view: imagePath ? d.imageView : null,
-  }).select('*').single()
+  // 등록은 RPC 한 번(supabase/0011) — 좋아요 수·작성 시각·순번은 서버가 정하고, 대회 출품은 이메일과 한 트랜잭션이다
+  // (이메일 저장이 따로 실패해 이메일 없는 출품작이 생기던 틈을 막는다). 기기 제한·마감도 여기서 걸린다.
+  const ins = await c.rpc('plaza_submit', {
+    p: {
+      name: d.name, description: d.description, tags: d.tags, snapshot: d.snapshot, share_code: d.shareCode,
+      image_path: imagePath, image_view: imagePath ? d.imageView : null, contest: d.contest,
+    },
+    email: d.contest ? d.email : null,
+    fp: plazaDeviceFp(),
+  }).single()
   if (ins.error) {
     // 대회 제한처럼 사용자가 알아야 하는 사유는 그대로 올려보낸다.
     // 글이 안 만들어졌으니 방금 올린 이미지는 주인 없는 파일이 된다 — 같이 치운다.
@@ -237,23 +282,23 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
     throw new Error(ins.error.message || '등록에 실패했어요')
   }
   const row = ins.data as Row
-  if (d.contest && d.email) await c.from('plaza_contest_entries').insert({ post_id: row.id, email: d.email })
+  if (d.contest && meCache) meCache = { ...meCache, contest: meCache.contest + 1 }
   await bumpPlazaCache()
   return toPost(row, uid, new Set())
 }
 
-export async function togglePlazaLike(post: PlazaPost): Promise<void> {
+// 좋아요 누르기/취소 — 서버가 기기 기준으로 판정한다(이 기기가 이미 눌렀으면 어느 창에서든 취소가 된다).
+// 돌려받은 실제 상태·수로 화면을 맞춘다. 마감 뒤 대회 출품작이면 사유가 담긴 오류.
+export async function togglePlazaLike(post: PlazaPost): Promise<{ liked: boolean; likes: number }> {
   const c = sb()
   if (!c) throw new Error('supabase not configured')
   const uid = await plazaAuth()
   if (!uid) throw new Error('auth failed')
-  if (post.liked) {
-    const { error } = await c.from('plaza_likes').delete().eq('post_id', post.id).eq('owner', uid)
-    if (error) throw error
-  } else {
-    const { error } = await c.from('plaza_likes').insert({ post_id: post.id, owner: uid })
-    if (error) throw error
-  }
+  const { data, error } = await c.rpc('plaza_toggle_like', { pid: post.id, fp: plazaDeviceFp() })
+  if (error) throw new Error(error.message)
+  const r = data as { liked: boolean; likes: number }
+  if (meCache) meCache = { ...meCache, liked: r.liked ? [...meCache.liked, post.id] : meCache.liked.filter((x) => x !== post.id) }
+  return r
 }
 
 export async function deletePlazaPost(post: PlazaPost): Promise<void> {
@@ -261,6 +306,7 @@ export async function deletePlazaPost(post: PlazaPost): Promise<void> {
   if (!c) throw new Error('supabase not configured')
   const { error } = await c.from('plaza_posts').delete().eq('id', post.id)
   if (error) throw error
+  if (post.contest && meCache) meCache = { ...meCache, contest: Math.max(0, meCache.contest - 1) }
   await bumpPlazaCache()
   // 첨부 이미지도 같이 지운다(글만 지우면 버킷에 주인 없는 파일이 쌓인다).
   // 글은 이미 사라졌으니 이미지 삭제가 실패해도 화면 흐름은 막지 않는다.
@@ -391,4 +437,62 @@ export function plazaWhen(iso: string): string {
   if (d < 7) return `${d}일 전`
   const dt = new Date(t)
   return `${dt.getMonth() + 1}월 ${dt.getDate()}일`
+}
+
+// ── 공지 및 건의함(간이, supabase/0011) ──
+// 공지는 운영자가 Supabase 대시보드(Table Editor → plaza_notices)에서 쓴다 — 앱에는 쓰기 화면이 없다.
+// 댓글로 신고·건의를 받는다. 한 쪽에 20개, 최신이 위. 운영자 uid(plaza_admins)의 댓글은 '운영자'로 보인다.
+export type PlazaNotice = { id: string; createdAt: string; title: string; body: string; pinned: boolean }
+export type NoticeComment = { id: string; owner: string; body: string; createdAt: string; mine: boolean; admin: boolean }
+export const NOTICE_PAGE = 20
+export async function loadNotices(): Promise<PlazaNotice[]> {
+  const c = sb()
+  if (!c) return []
+  const { data, error } = await c.from('plaza_notices').select('id,created_at,title,body,pinned')
+    .order('pinned', { ascending: false }).order('created_at', { ascending: false })
+  if (error) throw error
+  return ((data || []) as { id: string; created_at: string; title: string; body: string; pinned: boolean }[])
+    .map((r) => ({ id: r.id, createdAt: r.created_at, title: r.title, body: r.body || '', pinned: r.pinned }))
+}
+let adminsP: Promise<Set<string>> | null = null
+const loadAdmins = () => {
+  const c = sb()
+  if (!c) return Promise.resolve(new Set<string>())
+  if (!adminsP) {
+    adminsP = Promise.resolve(c.from('plaza_admins').select('uid'))
+      .then(({ data }) => new Set(((data || []) as { uid: string }[]).map((r) => r.uid)))
+      .catch(() => { adminsP = null; return new Set<string>() })
+  }
+  return adminsP
+}
+export async function loadNoticeComments(noticeId: string, page: number): Promise<{ list: NoticeComment[]; total: number }> {
+  const c = sb()
+  if (!c) return { list: [], total: 0 }
+  const [uid, admins] = await Promise.all([plazaAuth(), loadAdmins()])
+  const { data, error, count } = await c.from('plaza_notice_comments').select('id,owner,body,created_at', { count: 'exact' })
+    .eq('notice_id', noticeId).order('created_at', { ascending: false }).order('id')
+    .range(page * NOTICE_PAGE, page * NOTICE_PAGE + NOTICE_PAGE - 1)
+  if (error) throw error
+  return {
+    total: count ?? 0,
+    list: ((data || []) as { id: string; owner: string; body: string; created_at: string }[]).map((r) => ({
+      id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, mine: !!uid && r.owner === uid, admin: admins.has(r.owner),
+    })),
+  }
+}
+export async function addNoticeComment(noticeId: string, body: string): Promise<void> {
+  const c = sb()
+  if (!c) throw new Error('supabase not configured')
+  const uid = await plazaAuth()
+  if (!uid) throw new Error('auth failed')
+  const text = body.trim().slice(0, PLAZA_COMMENT_MAX)
+  if (!text) throw new Error('empty')
+  const { error } = await c.from('plaza_notice_comments').insert({ notice_id: noticeId, owner: uid, body: text })
+  if (error) throw error
+}
+export async function deleteNoticeComment(id: string): Promise<void> {
+  const c = sb()
+  if (!c) throw new Error('supabase not configured')
+  const { error } = await c.from('plaza_notice_comments').delete().eq('id', id)
+  if (error) throw error
 }

@@ -22,6 +22,7 @@ import { BookmarkSheetBody, PvSheetBody } from '../preview/PreviewParts'
 import { BM_SHEET_H, SHEET_EASE } from './sheetMotion'
 import PartPickBody from './PartPickBody'
 import PlazaDetailBody from '../plaza/PlazaDetailBody'
+import NoticeBody from '../plaza/NoticeBody'
 import { plazaWhen } from '@/lib/plaza'
 import VsBody from './VsBody'
 import { IconClose } from '../ui/Icons'
@@ -166,8 +167,8 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
   const k = sf.kind
   const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'vs' ? '코디 비교'
-    : k === 'plaza' ? (sf.post?.name || '코디') : (sf.item?.name || sf.item?.id || '')
-  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' ? ''
+    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'notice' ? '공지 및 건의함' : (sf.item?.name || sf.item?.id || '')
+  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' ? '' : k === 'notice' ? '신고 · 건의는 댓글로 남겨 주세요'
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '')
         : k === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
 
@@ -208,6 +209,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
             {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다(사용자 지시). */}
             {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
+            {k === 'notice' && <><NoticeBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
             {k === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}
           </div>
