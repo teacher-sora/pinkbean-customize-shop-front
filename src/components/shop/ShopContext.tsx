@@ -39,7 +39,8 @@ export const isMultiCat = (cat: string) => cat === 'all' || cat === 'new' || cat
 const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김. (공유 코드/영속에 이 형태 그대로 저장)
 // 프리셋에 저장하는 연출설정 일부(형상변이·귀·무기모션·이펙트토글·배율). 시선/액션/표정은 "보는 순간의 상태"라 저장 안 함.
-export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; zoom: number }
+// zoom(배율)은 광장에 올릴 때 빠진다(lib/plazaLook.plazaSnapshot) → 없을 수 있다. 없으면 지금 배율을 유지한다.
+export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; zoom?: number }
 export const PV_SNAP_DEFAULT: PvSnap = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, zoom: 2 }
 // 점(애교점) 위치 오프셋: 레이어이름(accessoryEye/accessoryEye2) → 월드 오프셋. 사소한 변경점/쩜 전용.
 export type DotOffsets = Record<string, Vec>
@@ -1198,9 +1199,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, zoom: pv.zoom } }
   }
   // 스냅샷의 연출설정(pv 일부)을 라이브 pv 에 반영(없으면 기본값). 시선/액션/표정/fps 는 건드리지 않는다.
+  // 배율(zoom)도 스냅샷에 없으면 지금 값을 유지한다 — 광장에서 가져온 코디가 내 미리보기 크기를 바꾸지 않는다.
   const applyPvSnap = (v?: PvSnap) => {
     const s = v ?? PV_SNAP_DEFAULT
-    setPvState((prev) => ({ ...prev, form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, zoom: s.zoom }))
+    setPvState((prev) => ({ ...prev, form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, zoom: s.zoom ?? prev.zoom }))
   }
   // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
   const loadSlotFolded = async (slot: string): Promise<ListItem[]> => {

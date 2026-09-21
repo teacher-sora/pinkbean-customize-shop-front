@@ -43,7 +43,8 @@ function minPv(pv?: PvSnap): Partial<PvSnap> | undefined {
   if (!pv) return undefined
   const out: Partial<PvSnap> = {}
   for (const k of Object.keys(PV_SNAP_DEFAULT) as (keyof PvSnap)[]) {
-    if (pv[k] !== PV_SNAP_DEFAULT[k]) (out as Record<string, unknown>)[k] = pv[k]
+    // 값이 없는 필드(광장 스냅샷의 배율)는 코드에도 넣지 않는다 → 링크로 받은 쪽도 자기 배율을 지킨다.
+    if (pv[k] !== undefined && pv[k] !== PV_SNAP_DEFAULT[k]) (out as Record<string, unknown>)[k] = pv[k]
   }
   return Object.keys(out).length ? out : undefined
 }
