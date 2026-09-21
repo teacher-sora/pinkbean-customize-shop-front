@@ -60,7 +60,8 @@ export type Snapshot = { equipped: Record<string, string>; tone: number; dyePale
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(2026-09-21 사용자 지시:
 //   예전엔 상세가 닫히고 공유 받기 다이얼로그가 새로 떠서 화면이 한 번 끊겼다).
 export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza' | 'ptake' | 'notice'
-export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean }
+// take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴(delta 값)
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
@@ -261,9 +262,7 @@ export interface ShopCtx {
   lookPick: { nick: string; options: LookOption[] } | null
   chooseLook: (lookKey: string, presetKey: string) => void; closeLookPick: () => void
   shareCurrentLink: () => void
-  sharedIncoming: Snapshot | null
   applySharedToPreset: (snap: Snapshot, targetId: string) => void
-  dismissShared: () => void
   rateCodi: () => void
   rateResult: { bubbles: string[]; nonce: number } | null
   // toast
@@ -315,7 +314,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 공유 링크 수신: ?n=<이름>&c=<짧은 코드 PB-…|긴 코드>(신규) 또는 #c=<code>(레거시)로 접속하면 디코드해 '코디 받기' 시트를 띄운다.
   //  · 쿼리(?c=)를 쓰는 이유: 모바일 카톡 등 일부 링크파서가 '#' 이후를 하이퍼링크로 인식하지 못한다.
   //  · 창/탭 조율(포커스·자동닫기)은 일부 환경(카톡·모바일 다중탭)에서 불가·불일치라 의도적으로 넣지 않음 — 그냥 이 탭에서 처리.
-  const [sharedIncoming, setSharedIncoming] = useState<Snapshot | null>(null)
   useEffect(() => {
     let code: string | null = null
     try {
@@ -325,14 +323,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!code) return
     try { history.replaceState(null, '', location.pathname) } catch {} // URL 청소: 새로고침 재적용 방지
     let cancelled = false
-    resolveShareCode(code).then((snap) => { if (!cancelled && snap) setSharedIncoming(snap) }).catch(() => {})
+    resolveShareCode(code).then((snap) => { if (!cancelled && snap) openShared(snap) }).catch(() => {})
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  // 광장 상세에서 '가져오기'로 연 경우, 가져오기 시트를 닫으면(고르든 안 고르든) 보던 상세로 돌아간다.
-  const takeFrom = useRef<PlazaPost | null>(null)
-  const [takeReturn, setTakeReturn] = useState<PlazaPost | null>(null)
-  const endTake = () => { if (takeFrom.current) { setTakeReturn(takeFrom.current); takeFrom.current = null } }
-  const dismissShared = useCallback(() => { setSharedIncoming(null); endTake() }, [])
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=기본 캐릭터(코디는 모델이 기본)
   const [search, setSearch] = useState('')
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
@@ -1013,28 +1007,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const openPlazaPost = (post: PlazaPost) => openSurface({ kind: 'plaza', item: null, post })
   // 공지 및 건의함 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
   const openNotice = () => openSurface({ kind: 'notice', item: null })
-  // 가져오기는 공유 링크로 받을 때와 **같은 다이얼로그**(ShareReceiveSheet)를 쓴다(사용자 지시).
-  // 칸을 고르면 그대로 applySharedToPreset 으로 들어가므로 덮어쓰기·되돌리기 동작이 완전히 같다.
+  // 공유받은 코디를 프리셋 칸에 저장하는 화면(서피스 ptake) — 공유 링크·코드로 받았을 때도 이 화면이다
+  // (2026-09-21 사용자 지시: 저장 다이얼로그는 하나로 통일). 칸을 고르면 applySharedToPreset 으로 들어간다.
+  const openShared = (snap: Snapshot) => openSurface({ kind: 'ptake', item: null, take: snap })
   const plazaTakeDirect = (post: PlazaPost) => {
+    const take: Snapshot = { ...post.snapshot, name: post.name }
     // 상세가 열려 있으면 같은 다이얼로그 안에서 슬라이드로 넘어간다(닫았다 다시 뜨지 않는다).
-    // 목록 카드에서 바로 누른 경우는 열린 다이얼로그가 없으므로 예전처럼 공유 받기 다이얼로그를 쓴다.
-    if (surfaceRef.current?.kind === 'plaza') { slideTo(1, { kind: 'ptake', item: null, post, fromDetail: true }); return }
-    closeSurface()
-    takeFrom.current = post
-    setSharedIncoming({ ...post.snapshot, name: post.name })
+    if (surfaceRef.current?.kind === 'plaza') { slideTo(1, { kind: 'ptake', item: null, post, take, fromDetail: true }); return }
+    openSurface({ kind: 'ptake', item: null, post, take }) // 목록 카드에서 바로 — '이전'을 누르면 그 글의 상세로 간다
   }
   // 'ptake' 에서 '이전' — 보던 상세로 되돌아간다(역방향 슬라이드).
   const plazaTakeBack = () => {
     const sf = surfaceRef.current
     if (sf?.kind === 'ptake' && sf.post) slideTo(-1, { kind: 'plaza', item: null, post: sf.post })
   }
-  // 가져오기 시트가 닫히는 전환(320ms)을 끝까지 보여준 뒤 상세를 다시 연다.
-  useEffect(() => {
-    if (!takeReturn) return
-    const t = setTimeout(() => { openSurface({ kind: 'plaza', item: null, post: takeReturn }); setTakeReturn(null) }, 330)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [takeReturn])
   const likePending = useRef<Set<string>>(new Set())
   const plazaLike = (post: PlazaPost) => {
     // 먼저 화면부터 바꾸고(하트는 자주 눌린다) 서버에 반영한다. 서버가 돌려준 실제 상태·수로 다시 맞춘다 —
@@ -1351,11 +1337,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       applyPvSnap(snap.pv)
       setDyeTarget(null); setSelectedPreset(targetId)
     }).catch(() => {})
-    setSharedIncoming(null)
-    endTake()
-    // 같은 다이얼로그 안에서 고른 경우(광장 상세 → 가져오기)는 보던 상세로 되돌아간다 — 다이얼로그를 닫지 않는다.
+    // 광장 글을 가져온 경우(post 가 함께 있음)는 그 글의 상세로 되돌아간다 — 다이얼로그를 닫지 않는다.
+    // 공유 링크·코드로 받은 경우는 돌아갈 상세가 없으니 그대로 닫는다.
     const sf = surfaceRef.current
-    if (sf?.kind === 'ptake' && sf.post) slideTo(-1, { kind: 'plaza', item: null, post: sf.post })
+    if (sf?.kind === 'ptake') { if (sf.post) slideTo(-1, { kind: 'plaza', item: null, post: sf.post }); else closeSurface() }
     const nm = snap.name || presets.find((p) => p.id === targetId)?.name
     notify(nm ? `공유받은 코디를 '${nm}'에 저장했어요` : '공유받은 코디를 프리셋에 불러왔어요')
   }
@@ -1500,7 +1485,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const isShare = /[#?&]c=|^PB/.test(val)
     if (isShare) setImporting(true)
     const shared = await extractSharedSnap(val).finally(() => { if (isShare) setImporting(false) })
-    if (shared) { setSharedIncoming(shared); setNickInput(''); return }
+    if (shared) { openShared(shared); setNickInput(''); return }
     if (isShare) { notify('공유 코디를 찾지 못했어요. 링크를 다시 확인해 주세요'); return }
     if (!selectedPreset) { notify('덮어쓸 프리셋을 먼저 골라 주세요'); return }
     setImporting(true)
@@ -1534,7 +1519,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 현재 코디 스냅샷 + 선택된 프리셋 이름(공유 시 이름까지 그대로 전달된다).
   const curSnapNamed = (): Snapshot => ({ ...snapshot(), name: presets.find((p) => p.id === selectedPreset)?.name })
-  // 헤더 "프리셋 복사": 현재 코디를 ?c=<code> 로 담은 URL 을 복사. 접속하면 '코디 받기' 시트가 뜬다(위 sharedIncoming).
+  // 헤더 "프리셋 복사": 현재 코디를 ?c=<code> 로 담은 URL 을 복사. 접속하면 '공유받은 코디' 다이얼로그가 뜬다(위 openShared).
   const shareCurrentLink = () => {
     copyShareLink(curSnapNamed())
   }
@@ -1720,7 +1705,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     dotPos, setDot, resetDot,
     pv, setPv,
     presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, snapshot,
-    nickInput, setNickInput, importFetch, importing, shareCurrentLink, sharedIncoming, applySharedToPreset, dismissShared, rateCodi, rateResult,
+    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rateResult,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText, notify,
   }

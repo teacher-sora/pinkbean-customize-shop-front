@@ -174,13 +174,10 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
         : k === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
 
   // 패널 폭(앱 영역 기준)·등장/닫힘 위치는 즉시 반영 값이라 인라인(드래그 중 오프셋은 위 터치 핸들러가 DOM 직접).
-  // PC 패널 크기는 종류마다 다르다. 가져오기는 상세보다 좁고 낮아서, 슬라이드와 함께 **크기도 함께 바뀐다**
-  // (2026-09-21 사용자 지시 — 다이얼로그가 닫혔다 다시 뜨지 않고 그대로 모습만 바뀌도록).
-  const wide = sf.kind === 'ptake' ? 720 : 900
-  const tallPx = sf.kind === 'ptake' ? 560 : 620
+  // PC 패널 크기는 **모든 종류가 같다**(2026-09-21 사용자 지시 — 가져오기만 작게 뜨던 것을 일반 다이얼로그와 맞춤).
   const panelStyle: React.CSSProperties = mobile
     ? { transform: `translateY(${hidden ? '100%' : '0px'})`, transition: EASE, ...(bmH ? { height: bmH } : {}) }
-    : { width: `min(${wide}px, ${Math.max(320, frameW - 40)}px)`, height: `min(${tallPx}px, 86svh)` }
+    : { width: `min(900px, ${Math.max(320, frameW - 40)}px)`, height: 'min(620px, 86svh)' }
   // 본문 가로 슬라이드(부위 염색 전환) — 즉시 값이라 인라인.
   const slideStyle: React.CSSProperties = { transform: `translateX(${s.partSlide}px)`, opacity: s.partSlide ? 0 : 1 }
 
@@ -193,7 +190,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
         <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
           ref={panelRef}
           onPointerDown={(e) => e.stopPropagation()}
-          className={clsx(mobile ? styles.panelM : styles.panel, mobile && tall && styles.panelMTall, !mobile && hidden && styles.panelHidden, !mobile && !hidden && styles.panelSized)}
+          className={clsx(mobile ? styles.panelM : styles.panel, mobile && tall && styles.panelMTall, !mobile && hidden && styles.panelHidden)}
           style={panelStyle}>
           {mobile && (
             <div title="아래로 끌어 닫기" data-sheet-handle className={styles.handle}>
@@ -214,7 +211,8 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
             {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다(사용자 지시). */}
             {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
-            {k === 'ptake' && sf.post && <><PlazaTakeBody post={sf.post} mobile={mobile} /><SurfaceFooter onBack={s.plazaTakeBack} /></>}
+            {/* 공유받은 코디 — 광장 상세를 거쳐 왔으면(post 있음) '이전'으로 상세로 되돌아가고, 링크·코드로 받은 경우는 '닫기'. */}
+            {k === 'ptake' && sf.take && <><PlazaTakeBody snap={sf.take} mobile={mobile} /><SurfaceFooter onBack={sf.post ? s.plazaTakeBack : undefined} /></>}
             {k === 'notice' && <><NoticeBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
             {k === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}

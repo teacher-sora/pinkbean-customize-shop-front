@@ -82,13 +82,8 @@ export function normLook(s: LookSnap): NormLook {
   for (const [slot, id] of Object.entries(s.equipped || {})) {
     if (!id || slot === 'skin' || s.hidden?.[slot]) continue
     const off = !!s.dyeOff?.[slot]
-    if (MIX_SLOTS.has(slot)) {
-      // 헤어·성형도 커스텀 염색(HSB)을 받는다(2026-09-21) → 발색표 색 + 그 위의 HSB 가 함께 조합을 이룬다.
-      // ⚠️ HSB 가 없을 땐 **키를 아예 넣지 않는다** — 넣으면 정규화 JSON 모양이 바뀌어 예전에 저장된
-      //    look_key 와 달라진다(대회 중복 색인이 어긋난다). 커스텀을 쓴 글만 모양이 늘어난다.
-      const h = off ? null : normHsb(s.dyeHsb?.[slot])
-      slots[slot] = { id, pal: palDist(off ? undefined : s.dyePalette?.[slot], colorOf(Number(id), slot)), ...(h ? { hsb: h } : {}) }
-    } else slots[slot] = { id, hsb: off ? null : normHsb(s.dyeHsb?.[slot]) }
+    if (MIX_SLOTS.has(slot)) slots[slot] = { id, pal: palDist(off ? undefined : s.dyePalette?.[slot], colorOf(Number(id), slot)) }
+    else slots[slot] = { id, hsb: off ? null : normHsb(s.dyeHsb?.[slot]) }
   }
   return { tone: s.tone ?? 0, skin: s.dyeOff?.skin ? null : normHsb(s.dyeHsb?.skin), slots }
 }
@@ -111,9 +106,8 @@ export function paramSame(a: NormLook, b: NormLook): boolean {
   if (!hsbParamSame(a.skin, b.skin)) return false
   for (const k of Object.keys(a.slots)) {
     const x = a.slots[k], y = b.slots[k]
-    // 헤어·성형은 발색표 색(pal)과 커스텀(hsb)을 **둘 다** 본다. 그 외는 hsb 만.
-    if (x.pal && palGap(x.pal, y.pal || {}) > PARAM_TOL.pal) return false
-    if (!hsbParamSame(x.hsb, y.hsb)) return false
+    if (x.pal) { if (palGap(x.pal, y.pal || {}) > PARAM_TOL.pal) return false }
+    else if (!hsbParamSame(x.hsb, y.hsb)) return false
   }
   return true
 }

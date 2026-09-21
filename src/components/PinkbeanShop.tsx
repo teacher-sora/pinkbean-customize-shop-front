@@ -20,7 +20,6 @@ import PreviewColumn, { MobileHero } from './shop/preview/PreviewColumn'
 import { useRidingGuards } from './shop/preview/pvControls'
 import Surface from './shop/surface/Surface'
 import LookDialog from './shop/LookDialog'
-import ShareReceiveSheet from './shop/ShareReceiveSheet'
 import Toast from './shop/ui/Toast'
 import styles from './shop/frame/frame.module.css'
 
@@ -79,7 +78,6 @@ function Shell() {
       )}
       <Surface />
       <LookDialog />
-      <ShareReceiveSheet />
       <Toast />
     </>
   )

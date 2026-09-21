@@ -254,22 +254,8 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
                     onBlur={() => clearRaw('ratio')}
                     onStep={(d) => { clearRaw('ratio'); setPal((cur) => ({ ...cur, ratio: Math.max(0, Math.min(100, cur.ratio + d)) })) }}
                     decOff={pal.ratio <= 0} incOff={pal.ratio >= 100} />} />
-                <div className={styles.groupHr} />
-              </div>
-              {/* 헤어·성형도 커스텀 염색을 받는다(2026-09-21 사용자 지시) — 발색표에서 고른 색 **위에** 얹는 보정이다. */}
-              <div className={styles.group}>
-                <div className={styles.famRow}>
-                  <FamilyDots size="sm" value={hsb.t ?? 0} onPick={(t) => s.setDyeHsb((p) => ({ ...p, [target]: { ...(p[target] || defHsb()), t } }))} />
-                </div>
-                {([['색조', 'h', 'h', 0, 359], ['채도', 's', 's', -99, 99], ['명도', 'b', 'v', -99, 99]] as const).map(([label, f, track, lo, hi]) => (
-                  <DyeRow key={f} label={label} track={track} min={lo} max={hi} value={hsb[f]} onDragStart={beginDrag}
-                    onRange={(v) => { clearRaw(f); setHsbF(f, () => v) }}
-                    stepper={<Stepper label={label} size="sm" valueStr={raw[f] ?? String(hsb[f])}
-                      onNum={(v) => { if (!/^-?\d*$/.test(v)) return; setRaw((r) => ({ ...r, [f]: v })); setHsbF(f, () => (v === '' || v === '-' ? 0 : parseInt(v, 10))) }}
-                      onBlur={() => clearRaw(f)}
-                      onStep={(d) => { clearRaw(f); setHsbF(f, (cur) => cur + d) }}
-                      decOff={hsb[f] <= lo} incOff={hsb[f] >= hi} />} />
-                ))}
+                {/* 헤어·성형은 여기까지다 — 색 A·B 와 그 사이 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다
+                    (2026-09-21 사용자 지시: 한때 얹었던 커스텀 HSB 를 걷어냈다). */}
                 <div className={styles.acts}>
                   <button type="button" onClick={() => s.openDye(it)} title="발색표 보기" className={clsx('pb-ghost', styles.btn)}>염색표 보기</button>
                   {offBtn}

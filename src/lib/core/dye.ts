@@ -103,8 +103,7 @@ const clampN = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi
 
 // Recolor one sprite exactly like the game. UI passes h(0..359), s/b(-99..+99), t(0..6);
 // game space is saturation/brightness 1..199 (100 = neutral).
-// img 는 캔버스도 받는다 — 헤어·성형은 **팔레트로 만든 캔버스 위에** 커스텀 HSB 를 한 번 더 입힌다(2026-09-21).
-export function applyHsb(img: HTMLImageElement | HTMLCanvasElement, p: HsbParams, key: string): HTMLCanvasElement {
+export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTMLCanvasElement {
   const hue = (((p.h | 0) % 360) + 360) % 360
   const saturation = 100 + p.s, brightness = 100 + p.b, type = p.t ?? 0
   const ck = `prism|${key}|${type}|${hue}|${saturation}|${brightness}`
@@ -211,9 +210,6 @@ export async function renderDyedSprite(
   zmap: string[],
   size = 60,
   frac?: number, // 채움 비율(지정 시 분수-맞춤: 원본이 커도 넘치지 않게 축소). 미지정=기존(발색표) 동작.
-  // 커스텀 염색(헤어·성형) — 팔레트 결과 위에 한 번 더 입힌다. buildOverrides 와 **같은 순서**여야
-  // 아이콘·정보 탭 미리보기와 실제 모델이 같은 색으로 보인다(2026-09-21).
-  hsb?: HsbParams,
 ): Promise<void> {
   if (meta.colorGroup == null) return
   const layers = getFrameLayers(meta, view)
@@ -224,7 +220,6 @@ export async function renderDyedSprite(
   type P = { src: CanvasImageSource; x: number; y: number; w: number; h: number; z: string }
   // 모든 레이어(및 믹스의 base/mix)를 병렬 로드 → 순차 fetch 지연 제거(발색이 즉시 보임).
   //  - 단색: 비-CORS(리스트가 받아둔 캐시 재사용). 블렌드: CORS(픽셀리드).
-  const hsbOn = !!hsb && (hsb.h !== 0 || hsb.s !== 0 || hsb.b !== 0)
   const placed: P[] = (await Promise.all(layers.map(async (l): Promise<P | null> => {
     try {
       let src: CanvasImageSource
@@ -233,14 +228,9 @@ export async function renderDyedSprite(
           loadImage(swapId(l.png, meta.id, baseId), true),
           loadImage(swapId(l.png, meta.id, mixId), true),
         ])
-        const key = `${l.png}:${baseId}:${mixId}`
-        src = blendPalette(baseImg, mixImg, ratio, key)
-        if (hsbOn) src = applyHsb(src as HTMLCanvasElement, hsb!, key)
+        src = blendPalette(baseImg, mixImg, ratio, `${l.png}:${baseId}:${mixId}`)
       } else {
-        const png = swapId(l.png, meta.id, baseId)
-        // 커스텀 염색이 있으면 픽셀을 읽어야 하므로 CORS 로 받는다(없으면 예전대로 캐시 재사용).
-        src = await loadImage(png, hsbOn)
-        if (hsbOn) src = applyHsb(src as HTMLImageElement, hsb!, png)
+        src = await loadImage(swapId(l.png, meta.id, baseId), false)
       }
       const w = (src as HTMLImageElement).width, h = (src as HTMLImageElement).height
       const bx = l.map.brow?.x ?? 0, by = l.map.brow?.y ?? 0
@@ -317,19 +307,12 @@ export async function buildOverrides(
     const layers = viewLayers(meta, view, allFrames)
     if (meta.dyeMode === 'palette') {
       const p = dye.palette[meta.slot]
-      // 헤어·성형도 커스텀 염색(HSB)을 받는다(2026-09-21 사용자 지시) — **염색표로 고른 색 위에** 한 번 더 입힌다.
-      //  · 팔레트만 있으면 예전과 똑같다. HSB 만 있으면 착용한 색 그대로에 HSB 만 입힌다.
-      //  · 그래서 "염색표에서 고른 색이 바탕, 커스텀은 그 위의 보정"이라는 순서가 화면·카드·공유 어디서나 같다.
-      const h = dye.hsb[meta.slot]
-      const hsbOn = !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0)
-      if ((!p || meta.colorGroup == null) && !hsbOn) return
-      const tint = (c: HTMLCanvasElement, key: string) => (hsbOn ? applyHsb(c, h!, key) : c)
-      // 팔레트가 없거나 색 그룹이 없는 아이템(= 색 변이가 없는 헤어·성형)은 착용 스프라이트 자체가 바탕이다.
-      const baseId = p && meta.colorGroup != null ? variantId(meta.colorGroup, p.baseColor, meta.slot) : meta.id
-      const mixId = p && meta.colorGroup != null && p.mixColor != null ? variantId(meta.colorGroup, p.mixColor, meta.slot) : null
-      const useMix = mixId != null && (p?.ratio ?? 0) > 0
+      if (!p || meta.colorGroup == null) return
+      const baseId = variantId(meta.colorGroup, p.baseColor, meta.slot)
+      const mixId = p.mixColor != null ? variantId(meta.colorGroup, p.mixColor, meta.slot) : null
+      const useMix = mixId != null && p.ratio > 0
       const sameAsEquipped = baseId === meta.id && !useMix
-      if (sameAsEquipped && !hsbOn) return
+      if (sameAsEquipped) return
       // 레이어(및 믹스의 base/mix 두 스프라이트)를 모두 병렬 로드 → 순차 fetch 지연 제거(헤어/성형도 즉시 발색).
       // 단색은 비-CORS(캐시 재사용), 블렌드는 CORS(픽셀리드 필요).
       await Promise.all(layers.map(async (l) => {
@@ -339,16 +322,14 @@ export async function buildOverrides(
               loadImage(swapId(l.png, meta.id, baseId), true),
               loadImage(swapId(l.png, meta.id, mixId!), true),
             ])
-            const key = `${l.png}:${baseId}:${mixId}`
-            out.set(l.png, tint(blendPalette(baseImg, mixImg, p!.ratio, key), key))
+            out.set(l.png, blendPalette(baseImg, mixImg, p.ratio, `${l.png}:${baseId}:${mixId}`))
           } else {
             // ⚠️ 반드시 CORS(cors=true) 로 로드한다. cors=false 로 로드한 이미지를 toCanvas 로 그리면
             //    override 캔버스가 taint 되고, 그게 렌더 캔버스에 합성되면 우클릭 "이미지 복사"의 toBlob 이
             //    null 을 반환해 복사가 실패한다(색 입힌 헤어/성형/아이템이 있을 때만 재현되던 버그).
             //    loadImage(true) 는 ?cors=1 별도 캐시키를 써서 일반 렌더 캐시를 오염시키지 않는다.
-            const png = swapId(l.png, meta.id, baseId)
-            const baseImg = await loadImage(png, true)
-            out.set(l.png, tint(toCanvas(baseImg, baseImg.width, baseImg.height), png))
+            const baseImg = await loadImage(swapId(l.png, meta.id, baseId), true)
+            out.set(l.png, toCanvas(baseImg, baseImg.width, baseImg.height))
           }
         } catch (_) {}
       }))
