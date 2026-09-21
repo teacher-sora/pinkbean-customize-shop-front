@@ -19,7 +19,7 @@ import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
 import { CARD_FRACTION, CARD_MARGIN, thumbView } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
-import { DyeSprite, INFO_FRAC_HAIR } from './render/DyeSprite'
+import { CARD_FRAC_HAIR, DyeSprite } from './render/DyeSprite'
 
 // 모델/내모델 썸네일: computeModelPlacement 로 셀(div) 크기·dpr 에 맞춰 캔버스를 셀보다 크게(디바이스
 // 픽셀 해상도) 만들고, 마네킹을 셀 중앙에 고정 비율로 그린다. 캔버스는 셀 위에 절대배치 중앙정렬 →
@@ -51,8 +51,12 @@ function Sprite({ item }: { item: ListItem }) {
     const nw = img.naturalWidth, nh = img.naturalHeight
     const target = TARGET_FRAC * Math.min(cw, ch)          // 큰 변을 이 크기에 맞춤(정규화 목표)
     const fitK = Math.min(cw / nw, ch / nh)                // 셀에 들어가는 최대 배율
-    let k = Math.round(target / Math.max(nw, nh))          // 목표에 가장 가까운 정수 배율
-    k = Math.max(1, Math.min(k, Math.floor(fitK) || 1))    // 셀 초과 방지(원본이 셀보다 크면 1배)
+    // 배율 단계(2026-09-21 사용자 지시 — 카드마다 크기가 널뛰었다). 정수만 쓰면 1배↔2배 계단이 그대로 크기
+    // 차이가 된다(칸의 50% vs 96%). 화면 픽셀이 촘촘한 기기(DPR≥2)에서는 **0.5 단계**까지 쓴다 —
+    // 디바이스 픽셀로는 여전히 정수(1.5×2=3)라 도트가 깨지지 않으면서 크기가 고르게 모인다.
+    const q = dpr >= 2 ? 2 : 1
+    let k = Math.round((target / Math.max(nw, nh)) * q) / q  // 목표에 가장 가까운 배율 단계
+    k = Math.max(1 / q, Math.min(k, Math.floor(fitK * q) / q || 1 / q)) // 셀 초과 방지(원본이 셀보다 크면 최소 단계)
     img.style.width = (nw * k) / dpr + 'px'
     img.style.height = (nh * k) / dpr + 'px'
   }
@@ -79,7 +83,7 @@ function Sprite({ item }: { item: ListItem }) {
 function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
   return (
     <div className="pb-hairsprite">
-      <div className="pb-hairsprite-box"><DyeSprite id={item.id} mix zmap={zmap} frac={INFO_FRAC_HAIR} /></div>
+      <div className="pb-hairsprite-box"><DyeSprite id={item.id} mix zmap={zmap} frac={CARD_FRAC_HAIR} /></div>
     </div>
   )
 }
