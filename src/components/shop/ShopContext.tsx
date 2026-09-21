@@ -1014,7 +1014,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const take: Snapshot = { ...post.snapshot, name: post.name }
     // 상세가 열려 있으면 같은 다이얼로그 안에서 슬라이드로 넘어간다(닫았다 다시 뜨지 않는다).
     if (surfaceRef.current?.kind === 'plaza') { slideTo(1, { kind: 'ptake', item: null, post, take, fromDetail: true }); return }
-    openSurface({ kind: 'ptake', item: null, post, take }) // 목록 카드에서 바로 — '이전'을 누르면 그 글의 상세로 간다
+    // 목록 카드의 가져오기로 바로 연 경우는 돌아갈 상세가 없다 → post 를 넘기지 않아 푸터가 '닫기'가 된다
+    // (2026-09-21 사용자 지시). 저장해도 상세로 넘어가지 않고 그대로 닫힌다.
+    openSurface({ kind: 'ptake', item: null, take })
   }
   // 'ptake' 에서 '이전' — 보던 상세로 되돌아간다(역방향 슬라이드).
   const plazaTakeBack = () => {
