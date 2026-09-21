@@ -77,12 +77,22 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
 //  · 같은 키를 여러 장이 동시에 부르면 한 번만 계산하고 나눠 쓴다(같은 코디를 올린 사람이 여럿일 때).
 //  · 중간에 취소된 카드의 작업도 캐시에 남으므로 헛일이 되지 않는다.
 // 담기는 건 배치 정보(작은 객체)와 염색 캔버스 **참조**(실물은 dye.ts 의 캐시가 이미 쥐고 있다)라 가볍다.
-// 160 칸 = 광장 전체(현재 96장) + 프리셋 30칸 + 여유. 오래된 것부터 밀려난다.
-const composeCache = new LRU<SnapComposite | null>(160)
+// 120 칸 = 광장 전체(현재 96장) + 여유. 오래된 것부터 밀려난다 — 밀려나도 다시 합성하면 되는 값이라 안전하고,
+// 염색 캔버스를 참조로 붙들고 있으므로 무한정 키우지 않는다(모바일 메모리).
+const composeCache = new LRU<SnapComposite | null>(120)
 const composeFlight = new Map<string, Promise<SnapComposite | null>>()
 
 export const snapKey = (snap: Snapshot): string => JSON.stringify(snap)
-const cacheKey = (key: string, index: Index, animaRaces: AnimaRace[]) => `${key}|${index.base.tones.length}|${animaRaces.length}`
+// 카탈로그(index)는 loadIndex 를 부를 때마다 **새 객체**다(공유 카드 만들기 등에서 따로 받는다). 내용이 달라지면
+// 결과도 달라지므로 객체마다 번호를 붙여 캐시를 나눈다 — 길이 같은 걸로 퉁치면 패치 직후 옛 결과가 섞일 수 있다.
+const indexIds = new WeakMap<Index, number>()
+let nextIndexId = 0
+const indexId = (index: Index) => {
+  let id = indexIds.get(index)
+  if (id === undefined) { id = ++nextIndexId; indexIds.set(index, id) }
+  return id
+}
+const cacheKey = (key: string, index: Index, animaRaces: AnimaRace[]) => `${key}|${indexId(index)}|${animaRaces.length}`
 
 // 이미 합성해 둔 코디인지 **동기로** 본다 → 맞으면 줄(thumbQueue)을 서지 않고 그 자리에서 바로 그린다.
 export function composePeek(key: string, index: Index, animaRaces: AnimaRace[]): SnapComposite | null | undefined {
