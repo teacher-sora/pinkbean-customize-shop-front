@@ -202,6 +202,23 @@ async function loadRows(onFirst?: (rows: Row[]) => void): Promise<Row[] | null> 
   } catch { return null }
 }
 
+// 광장을 **열어 둔 사이에** 남이 올리거나 내린 글을 몇 초 안에 보여 준다(2026-09-21 사용자 제보 — 남의 새 글이 안 보였다).
+// 목록 전체를 다시 받지 않고 **첫 쪽(최신 500개)만** 본다. 엣지 캐시(s-maxage 10)에 걸려 대개 DB 까지 가지 않는다.
+// covers = 첫 쪽이 전체를 담고 있는가 — 담고 있으면 이 응답만으로 '내려간 글'도 가려낼 수 있다.
+export async function loadPlazaHead(): Promise<{ posts: PlazaPost[]; covers: boolean } | null> {
+  if (!sb()) return null
+  try {
+    const base = `/api/plaza/${targetName()}`
+    const r = await fetch(freshNow() ? `${base}/fresh?p=0` : base, { cache: 'no-store' })
+    if (!r.ok) return null
+    const j = (await r.json()) as { posts: Row[]; total: number; pageSize: number }
+    if (!Array.isArray(j?.posts)) return null
+    const uid = await plazaAuth()          // 캐시된 세션 — 첫 로그인 뒤로는 왕복이 없다
+    const liked = new Set<string>(meCache?.liked || [])
+    return { posts: j.posts.map((row) => toPost(row, uid, liked)), covers: (j.total || 0) <= j.posts.length }
+  } catch { return null }
+}
+
 // onFirst: 글이 500개를 넘을 때, 첫 쪽(최신 500개)이 오자마자 먼저 부른다 — 나머지를 기다리지 않고 화면을 채운다.
 export async function loadPlaza(onFirst?: (posts: PlazaPost[]) => void): Promise<PlazaPost[]> {
   const c = sb()

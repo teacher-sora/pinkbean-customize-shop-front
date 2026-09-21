@@ -12,9 +12,9 @@
 // 어느 쪽을 부를지는 브라우저가 호스트를 보고 정한다(lib/plaza.ts — 쓰기 경로와 같은 규칙).
 
 import { NextResponse } from 'next/server'
-import { PLAZA_TARGETS, PLAZA_TTL, fetchPage, isTarget, plazaTag, schemaOf } from '../shared'
+import { PLAZA_HEAD_TTL, PLAZA_TARGETS, fetchPage, isTarget, plazaTag, schemaOf } from '../shared'
 
-export const revalidate = 180          // = PLAZA_TTL (여기는 리터럴만 허용된다)
+export const revalidate = 10           // = PLAZA_HEAD_TTL (여기는 리터럴만 허용된다)
 export const dynamicParams = false     // prod·dev 말고는 404
 
 export function generateStaticParams() {
@@ -25,8 +25,8 @@ export function generateStaticParams() {
 export async function GET(_req: Request, { params }: { params: { target: string } }) {
   if (!isTarget(params.target)) return NextResponse.json({ error: 'bad target' }, { status: 404 })
   const schema = schemaOf(params.target)
-  const r = await fetchPage(0, schema, { next: { revalidate: PLAZA_TTL, tags: [plazaTag(schema)] } })
+  const r = await fetchPage(0, schema, { next: { revalidate: PLAZA_HEAD_TTL, tags: [plazaTag(schema)] } })
   if (r.status !== 200) return NextResponse.json({ error: r.status === 503 ? 'not configured' : 'upstream' }, { status: r.status })
   // cache-control 을 직접 쓰지 않는다 — 쓰는 순간 엣지 항목이 Next 의 무효화와 끊어진다.
-  return NextResponse.json({ ...r.body, revalidate: PLAZA_TTL })
+  return NextResponse.json({ ...r.body, revalidate: PLAZA_HEAD_TTL })
 }

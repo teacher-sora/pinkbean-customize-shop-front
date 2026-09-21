@@ -30,16 +30,17 @@ export type NormLook = { tone: number; skin: HsbN | null; slots: Record<string, 
 // 광장에 올리는 스냅샷 — 숨긴 부위는 **없는 아이템**으로 지운다(2026-09-21 사용자 지시).
 // 광장(자유·대회 모두)에서만 그렇다: 등록 · 상세의 착용 아이템 · 링크 복사 · 가져오기가 모두 이 스냅샷을 쓴다.
 // 프리셋 · 공유 링크 · 코디 화면에서는 여전히 '착용했지만 숨긴' 아이템이다.
-// 배율(pv.zoom)은 **보는 사람의 설정**이지 코디가 아니다 — 광장에 올리지도, 가져올 때 바꾸지도 않는다
-// (2026-09-21 사용자 지시: 시선·액션·표정·배율을 뺀 나머지 연출 설정은 그대로 올라가야 한다).
-// 시선·액션·표정은 애초에 스냅샷에 담기지 않는다(ShopContext.snapshot).
-const dropZoom = <P extends { zoom?: number }>(pv: P | undefined): P | undefined => {
-  if (!pv || pv.zoom === undefined) return pv
-  const o = { ...pv }; delete o.zoom; return o
+// 시선·액션·표정·배율은 **보는 사람의 설정**이지 코디가 아니다 — 광장에 올리지도, 가져올 때 바꾸지도 않는다
+// (2026-09-21 사용자 지시). 프리셋에는 그대로 담겨(ShopContext.snapshot) 프리셋을 쓸 때 화면이 되살아난다.
+type PvView = { gaze?: string; action?: string; expr?: string; zoom?: number }
+const VIEW_KEYS: (keyof PvView)[] = ['gaze', 'action', 'expr', 'zoom']
+const dropView = <P extends PvView>(pv: P | undefined): P | undefined => {
+  if (!pv || !VIEW_KEYS.some((k) => pv[k] !== undefined)) return pv
+  const o = { ...pv }; for (const k of VIEW_KEYS) delete o[k]; return o
 }
 
-export function plazaSnapshot<T extends LookSnap & { dotPos?: Record<string, unknown>; pv?: { zoom?: number } }>(s: T): T {
-  const pv = dropZoom(s.pv)
+export function plazaSnapshot<T extends LookSnap & { dotPos?: Record<string, unknown>; pv?: PvView }>(s: T): T {
+  const pv = dropView(s.pv)
   const hid = Object.keys(s.hidden || {}).filter((k) => s.hidden![k] && s.equipped?.[k])
   if (!hid.length) return pv === s.pv ? s : { ...s, pv }
   const drop = <V,>(m: Record<string, V> | undefined, keys: string[]) => { if (!m) return m; const o = { ...m }; for (const k of keys) delete o[k]; return o }

@@ -129,11 +129,18 @@ const url = (rel: string) => {
   return out
 }
 
+// 목록·카탈로그 JSON 은 **새로고침하면 반드시 최신**이어야 한다(2026-09-21 사용자 지시).
+// CDN 은 `max-age=60, stale-while-revalidate=86400` 이라, 60초가 지나면 브라우저가 **옛 사본을 그대로 쓰고**
+// 갱신은 뒤에서 한다 → 패치나 신규 아이템이 새로고침 한 번으로는 안 나오고 그 다음 번에야 나왔다.
+// `no-cache` 는 "캐시는 두되 매번 서버에 물어본다"라서, 안 바뀌었으면 304(본문 없음)로 끝난다 — 크기가 아니라
+// 왕복 한 번만 더 드는 값이다. 스프라이트(png)와 아이템별 meta 는 그대로 둔다(개수가 많고 id 가 바뀌면 경로도 바뀐다).
+const FRESH: RequestInit = { cache: 'no-cache' }
+
 // 최근 패치 신규 아이템 id(파서 stringwz-merge 가 패치마다 catalog/new.json 을 교체). 없거나 실패하면 빈 집합.
 let newItemsPromise: Promise<Set<string>> | null = null
 export function loadNewItems(): Promise<Set<string>> {
   if (!newItemsPromise) {
-    newItemsPromise = fetch(url('catalog/new.json'))
+    newItemsPromise = fetch(url('catalog/new.json'), FRESH)
       .then((r) => (r.ok ? r.json() : { ids: [] }))
       .then((j: { ids?: string[] }) => new Set(j.ids || []))
       .catch(() => new Set<string>())
@@ -142,7 +149,7 @@ export function loadNewItems(): Promise<Set<string>> {
 }
 
 export async function loadIndex(): Promise<Index> {
-  const r = await fetch(url('index.json'))
+  const r = await fetch(url('index.json'), FRESH)
   if (!r.ok) throw new Error(`index.json ${r.status}`)
   return r.json()
 }
@@ -152,7 +159,7 @@ const slotCache = new Map<string, Promise<ListItem[]>>()
 export function loadSlot(file: string): Promise<ListItem[]> {
   let p = slotCache.get(file)
   if (!p) {
-    p = fetch(url(file)).then((r) => r.json()).then((items: ListItem[]) => {
+    p = fetch(url(file), FRESH).then((r) => r.json()).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
       return items
     })
@@ -172,7 +179,7 @@ let effectIndexPromise: Promise<Set<string>> | null = null
 // Set of item ids (non-padded, as stored in ItemEff) that have an extracted effect.
 export function loadEffectIndex(): Promise<Set<string>> {
   if (!effectIndexPromise) {
-    effectIndexPromise = fetch(url('effects/index.json'))
+    effectIndexPromise = fetch(url('effects/index.json'), FRESH)
       .then((r) => (r.ok ? r.json() : []))
       .then((ids: string[]) => new Set(ids))
       .catch(() => new Set<string>())
@@ -196,7 +203,7 @@ export interface AnimaPart { name: string; png: string; origin: Vec; map: Record
 export interface AnimaRace { node: string; name: string; parts: AnimaPart[] }
 let animaPromise: Promise<AnimaRace[]> | null = null
 export function loadAnima(): Promise<AnimaRace[]> {
-  if (!animaPromise) animaPromise = fetch(url('anima.json')).then((r) => (r.ok ? r.json() : [])).catch(() => [] as AnimaRace[])
+  if (!animaPromise) animaPromise = fetch(url('anima.json'), FRESH).then((r) => (r.ok ? r.json() : [])).catch(() => [] as AnimaRace[])
   return animaPromise
 }
 

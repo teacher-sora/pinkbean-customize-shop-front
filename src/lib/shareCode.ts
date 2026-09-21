@@ -4,7 +4,7 @@
 //  - 코드 안에 아이템 id·톤·염색·숨김·연출설정이 들어가므로 서버 조회가 필요 없다.
 //  - 링크는 해시(#c=)가 아니라 쿼리(?c=)에 담는다 — 모바일 카톡 등 일부 링크파서가 '#' 이후를 링크로 인식하지 못해서다.
 import type { Snapshot, PvSnap } from '@/components/shop/ShopContext'
-import { PV_SNAP_DEFAULT } from '@/components/shop/ShopContext'
+import { PV_LOOK_DEFAULT, PV_SNAP_DEFAULT } from '@/components/shop/ShopContext'
 import { DATA_BASE } from '@/lib/core/data'
 import { renderShareImage } from '@/lib/shareImage'
 
@@ -75,7 +75,9 @@ function reviveMin(m: Record<string, unknown>): Snapshot | null {
     dotPos: (m.d as Snapshot['dotPos']) || {},
     ...(m.o && typeof m.o === 'object' ? { dyeOff: m.o as Record<string, boolean> } : {}),
     // PB2 는 부분 pv, 레거시 PB1 은 전체 pv — 둘 다 기본값 위에 얹으면 정확히 복원된다.
-    pv: v ? { ...PV_SNAP_DEFAULT, ...v } : undefined,
+    // 다만 보기 설정(시선·액션·표정·배율)은 **코드에 담겨 있을 때만** 살린다(광장 코디는 아예 빼고 올린다).
+    // 기본값으로 채워 버리면 남의 코디를 받을 때마다 내 화면 설정이 초기화된다.
+    pv: v ? { ...PV_LOOK_DEFAULT, ...v } : undefined,
     name: typeof m.n === 'string' ? m.n : undefined,
   }
 }
