@@ -6,12 +6,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
-import { applyHsb, buildOverrides, skinLineHsb, type HsbParams, type PaletteParams } from '@/lib/core/dye'
+import { applyHsb, buildOverrides, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { canvasBitmap, computeModelPlacement, fitCanvas, zoomStepScale } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { canvasToSquareBlob } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
-import { THUMB_VIEW } from '@/lib/shopData'
+import { THUMB_VIEW, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { useLiveRedraw } from '../useLiveRedraw'
 
@@ -81,7 +81,7 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { ite
     if (item.slot === 'skin') {
       // 피부: 그려진 모든 레이어(body/arm/head/ear…)를 HSB 로 리컬러 → 라인만 시각적으로 변한다.
       ov = new Map()
-      if (dyed) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), skinLineHsb(hsb), p.png)) } catch (_) {} }
+      if (dyed) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), skinHsbFor(hsb, skinDyeFamily(item.name) ?? 5), p.png)) } catch (_) {} }
     } else {
       if (!itemMeta) return
       ov = await buildOverrides([itemMeta], { palette: palette ? { [itemMeta.slot]: palette } : {}, hsb: { [itemMeta.slot]: hsb } }, THUMB_VIEW)

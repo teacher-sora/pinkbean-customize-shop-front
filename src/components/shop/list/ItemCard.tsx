@@ -2,7 +2,7 @@
 
 import clsx from 'clsx'
 import { badgeUrl, type ListItem } from '@/lib/core/data'
-import { DOT_MOVER_IDS, SLOT_TO_CAT, isColorLineSkin } from '@/lib/shopData'
+import { DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 import { IconStar } from '../ui/Icons'
@@ -22,7 +22,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const pinned = s.isBookmarked(item.id)
   const isSkinItem = item.slot === 'skin'
   // 피부는 원칙적으로 염색 불가지만, "컬러라인" 커스텀 피부는 라인만 HSB 로 염색 가능.
-  const dyeable = isSkinItem ? isColorLineSkin(item.name) : item.dyeMode !== 'none'
+  const dyeable = isSkinItem ? isDyeableSkin(item.name) : item.dyeMode !== 'none'
   const isDot = DOT_MOVER_IDS.has(item.id)
   const badgeKind: 'master' | 'special' | 'cash' | null =
     item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null

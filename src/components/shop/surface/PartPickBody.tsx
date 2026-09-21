@@ -8,7 +8,7 @@
 import clsx from 'clsx'
 import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
-import { CAT_TO_SLOT, DOT_MOVER_IDS, isColorLineSkin } from '@/lib/shopData'
+import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { useSkinItem } from '../info/InfoPanel'
 import { SlotSprite, useSlotDyed } from '../info/SlotSprite'
@@ -24,7 +24,7 @@ export default function PartPickBody({ mobile }: { mobile: boolean }) {
     const slot = CAT_TO_SLOT[c.id]
     const item = c.id === 'skin' ? skinItem : s.equipped[slot] || null
     if (!item) continue
-    const ok = c.id === 'skin' ? isColorLineSkin(item.name) : DOT_MOVER_IDS.has(item.id) || item.dyeMode !== 'none'
+    const ok = c.id === 'skin' ? isDyeableSkin(item.name) : DOT_MOVER_IDS.has(item.id) || item.dyeMode !== 'none'
     if (ok) chips.push({ label: c.label, slot, item })
   }
 

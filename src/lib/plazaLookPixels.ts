@@ -10,7 +10,7 @@
 
 import { getFrameLayers } from './core/assemble'
 import { loadMeta, type ItemMeta } from './core/data'
-import { applyHsb, buildOverrides, skinLineHsb, type HsbParams, type PaletteParams } from './core/dye'
+import { applyHsb, buildOverrides, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from './core/dye'
 import { loadImage } from './core/render'
 import { hsbParamSame, lookItems, normLook, palGap, paramSame, type HsbN, type LookSnap } from './plazaLook'
 import { THUMB_VIEW } from './shopData'
@@ -27,7 +27,7 @@ import { THUMB_VIEW } from './shopData'
 //    실측: 초록→보라는 전 아이템 다름 / 색조 15 → 채색이 많은 모자·한벌옷은 다름, 검은 옷·망토는 같음 / 색조 30 이상 어두운 옷도 채도가 있으면 다름.
 export const PIX = { de: 15, share: 0.1, dh: 10, hueShare: 0.08 }
 
-export type SkinInfo = { body: string; head: string; colorLine: boolean } | null
+export type SkinInfo = { body: string; head: string; family: number | null } | null // family = 염색되는 색 계열(없으면 염색 불가)
 
 // sRGB(0~255) → CIE Lab(D65)
 const lin = (c: number) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 }
@@ -109,7 +109,7 @@ async function renderSkin0(skin: NonNullable<SkinInfo>, hsb: HsbN | null): Promi
     await Promise.all(getFrameLayers(meta, THUMB_VIEW).map(async (l) => {
       try {
         const img = await loadImage(l.png, true)
-        out.set(l.png, dataOf(hsb ? applyHsb(img, skinLineHsb(hsb as HsbParams), l.png) : img))
+        out.set(l.png, dataOf(hsb ? applyHsb(img, skinHsbFor(hsb as HsbParams, skin.family ?? 5), l.png) : img))
       } catch { /* noop */ }
     }))
   }
@@ -129,7 +129,7 @@ export async function sameLookDeep(a: LookSnap, b: LookSnap, skinOf: (tone: numb
   if (paramSame(na, nb)) return true
   if (!hsbParamSame(na.skin, nb.skin)) {
     const sk = skinOf(na.tone)
-    if (sk?.colorLine && differs(await renderSkin(sk, na.skin), await renderSkin(sk, nb.skin)).differ) return false
+    if (sk?.family != null && differs(await renderSkin(sk, na.skin), await renderSkin(sk, nb.skin)).differ) return false
   }
   for (const k of Object.keys(na.slots)) {
     const x = na.slots[k], y = nb.slots[k]

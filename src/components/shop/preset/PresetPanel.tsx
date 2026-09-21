@@ -35,7 +35,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <span className={styles.chipLabel}>프리셋</span>
       <span className={styles.chipNum}>{s.presetUsed}</span>
       <span className={styles.chipSlash}>/</span>
-      <span className={styles.chipLabel}>20</span>
+      {/* 칸 수는 **실제 프리셋 목록**에서 센다 — 20 이 박혀 있어 30칸으로 늘린 뒤에도 '/ 20' 이었다(2026-09-22 사용자 제보). */}
+      <span className={styles.chipLabel}>{s.presets.length}</span>
     </div>
   )
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') s.importFetch() }

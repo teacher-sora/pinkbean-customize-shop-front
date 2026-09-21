@@ -102,7 +102,26 @@ export const forceMyModel = (mode: string, it: ListItem): boolean => mode === 'm
 
 // "컬러라인" 커스텀 피부(커스텀 뽀송/홍조 라벤더 컬러라인)만 염색 가능. 피부 부분은 무채색이고 라인만 채도색
 // 이라, 표준 HSB 를 통째로 적용해도 시각적으로 라인만 변한다(실제 메이플 방식과 동일 — 마스크 불필요). 이름 식별.
-export const isColorLineSkin = (name?: string): boolean => !!name && name.includes('컬러라인')
+// 염색되는 피부와 그 **기본 색 계열**(색상 계열을 고르지 않았을 때 적용할 계열).
+// 인게임처럼 '커스텀' 피부만 염색되고, 염색은 그 피부가 가진 포인트 색에만 걸린다. 계열을 직접 고르면 그 계열로 걸린다.
+// 근거 — 피부별 머리 스프라이트의 색 분포 실측(2026-09-21, 불투명 1474px 기준, 색 계열 구간은 dye.checkColorType 과 동일):
+//   · 뽀송·홍조 라벤더 컬러라인: 순청 (0,0,255) 252px = 파랑 17%(라인)              → 파랑(5)
+//   · 블루 팬더: (0,51,119) 등 파랑 16%(무늬)                                       → 파랑(5)
+//   · 비비드 컬러: 전부 파랑 100%                                                   → 파랑(5)
+//   · 좀비: (141,217,207) 등 청록 81%(피부 전체)                                    → 청록(4)
+//   · 삼색 냥이: (255,187,51) 등 노랑 42%(무늬)                                     → 노랑(2)
+//   · 홍조 피치: 빨강 29% 뿐 — 기본 피부(엘프 빨강 39%)와 같은 구조라 포인트 색이 없다 → 빨강(1, 피부 음영)
+// 사용자 확인(메애기 드레스룸): 비비드·블루 팬더·컬러라인 2종이 명도에 따라 변한다 = 실측대로 모두 파랑 계열이다.
+const SKIN_DYE_FAMILY: [RegExp, number][] = [
+  [/컬러라인/, 5], [/비비드/, 5], [/블루\s*팬더/, 5],
+  [/좀비/, 4], [/삼색\s*냥이/, 2], [/홍조\s*피치/, 1],
+]
+export const skinDyeFamily = (name?: string): number | null => {
+  if (!name || !name.includes('커스텀')) return null // 기본 피부(크림·태닝·엘프…)는 인게임에서도 염색되지 않는다
+  for (const [re, t] of SKIN_DYE_FAMILY) if (re.test(name)) return t
+  return 5 // 아직 표에 없는 커스텀 피부 — 지금까지의 기본값(파랑)
+}
+export const isDyeableSkin = (name?: string): boolean => skinDyeFamily(name) !== null
 
 // 초기 진입 시 기본 착용(빈 모델 방지). 슬롯 리스트를 미로드해도 되도록 최소 ListItem 으로 하드코딩.
 // 헤어/성형은 검정 대표(color 0) id. 실제 부위 리스트를 열면 folded 대표와 id가 일치해 선택 표시됨.
