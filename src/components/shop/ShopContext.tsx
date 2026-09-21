@@ -175,6 +175,7 @@ export interface ShopCtx {
   genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용(v2)
   // primary/screen
   primary: string; setPrimary: Dispatch<string>
+  goHome: () => void // 로고 — 첫 진입 화면(코디 탭 · 전체 · 1페이지)으로
   // AI 코디 검색 — 결과는 하단 부위 바(activeCat)·성별로 필터(결과 집합은 perPage 와 무관)
   aiQ: string; setAiQ: Dispatch<string>
   searchQuery: string | null; runSearch: (q: string) => void; searchResults: ListItem[]; searchLoading: boolean
@@ -1180,6 +1181,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (surfT.current) clearTimeout(surfT.current)
     surfT.current = setTimeout(() => { surfT.current = null; setSurface(null); setSurfaceClosing(false); setPartSlide(0); setVsOn(false); setVsPicks([]) }, SURFACE_UNMOUNT_MS)
   }
+  // 로고 = 처음 화면으로(2026-09-22 사용자 지시). 진짜 새로고침은 쓰지 않는다 — 보던 자리를 되살리는
+  // sessionStorage 때문에 되레 그 자리로 돌아오고(위 '보던 자리 기억'), 카탈로그를 다시 받느라 느리다.
+  // 대신 첫 진입과 같은 값으로 되돌린다: 코디 탭 · 전체 · 1페이지 · 검색어 없음. 저장은 아래 effect 가 따라 쓴다.
+  // 코디·프리셋·북마크·즐겨찾기는 건드리지 않는다(진짜 새로고침도 그것들은 그대로다).
+  const goHome = () => {
+    closeSurface()
+    setPrimary('codi')
+    setActiveCat('all')
+    setSearch('')
+    setGenderFilter('all')
+    setAiQ(''); setSearchQuery(null); setSearchResults([])
+    setPlazaFilter('all'); setPlazaQState('')
+    setPageByCat({}) // 부위별로 따로 기억하던 페이지까지 전부 1페이지로
+  }
   const openSheet = (kind: 'pv' | 'bm' | 'part') => {
     if (surface?.kind === kind && !surfaceClosing) { closeSurface(); return }
     openSurface({ kind, item: null })
@@ -1708,7 +1723,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const value: ShopCtx = {
     index, catLoading, activeList, search, setSearch,
     genderFilter, setGenderFilter,
-    primary, setPrimary,
+    primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
