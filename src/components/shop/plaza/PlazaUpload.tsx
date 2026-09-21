@@ -145,7 +145,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
       <div>
         <div className={styles.label}>이름 <span className={styles.star}>*</span></div>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={current?.name || '코디 이름'} maxLength={40}
-          aria-label="코디 이름" className={clsx('pb-input', styles.field, mobile && styles.fieldM)} />
+          aria-label="코디 이름" className={clsx('pb-input', styles.field, styles.nameField, mobile && styles.fieldM)} />
       </div>
 
       {/* 설명 */}

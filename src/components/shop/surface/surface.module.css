@@ -3,7 +3,7 @@
 .layer { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
 .overlay { position: absolute; inset: 0; pointer-events: auto; background: rgba(42,37,33,0.40); display: flex; align-items: center; justify-content: center; padding: 28px; transition: opacity .24s ease; opacity: 1; }
 .overlayM { align-items: flex-end; padding: 0; overflow: hidden; }
-.overlayHidden { opacity: 0; }
+.overlayHidden { opacity: 0; pointer-events: none; } /* 닫히는 동안 투명한 마스크가 터치를 가로채지 않게 — 뒤 버튼으로 바로 다시 열 수 있다(2026-09-21) */
 
 /* PC 다이얼로그 */
 /* 크기는 종류와 무관하게 동일(delta §6). 등장·퇴장은 translateY + opacity 만 — scale 금지(delta §8). */

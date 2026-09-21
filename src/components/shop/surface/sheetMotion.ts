@@ -18,15 +18,22 @@ export const VS_WRAP_H = 248
 
 type Els = { body: HTMLElement; list: HTMLElement; panel: HTMLElement; foot: HTMLElement }
 const topOf = (el: Element) => el.getBoundingClientRect().top
+// 지금 화면에 그려진 translateY(전환 도중이면 중간값).
+const tyOf = (el: Element) => { const t = getComputedStyle(el).transform; return !t || t === 'none' ? 0 : new DOMMatrixReadOnly(t).m42 }
 
+// 2026-09-21: 전환 도중에도 다시 누를 수 있다(사용자 지시 — 한 동작이 끝나야 다음 동작을 받던 busy 잠금 제거).
+// 모든 움직임은 CSS transition 이라, 목표만 바꾸면 **지금 위치에서** 새 목표로 이어 간다.
+//  - 접는 중(vsOn 은 아직 true) 다시 누름 → 커밋 타이머 취소, 셋 다 0 으로(펼친 모습으로 되돌아감).
+//  - 펼치는 중 다시 누름 → 접힘 목표를 **레이아웃 위치**(지금 걸린 transform 을 뺀 값) 기준으로 계산해 그리로.
 export function useVsFlip() {
   const s = useShop()
   const bodyRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const pend = useRef<{ p: number; l: number; f: number } | null>(null)
-  const busy = useRef(false)
+  const phase = useRef<'idle' | 'opening' | 'closing'>('idle')
   const prevOn = useRef(s.vsOn)
-  const timers = useRef<number[]>([])
+  const timer = useRef(0)
+  const raf = useRef(0)
   const closing = useRef(s.surfaceClosing)
   closing.current = s.surfaceClosing
 
@@ -40,44 +47,55 @@ export function useVsFlip() {
     el.style.transition = animate ? SHEET_EASE : 'none'
     el.style.transform = `translateY(${y}px)`
   }
+  const stop = () => { clearTimeout(timer.current); cancelAnimationFrame(raf.current) }
   // 전환 흔적 정리. 패널 transform·transition 은 React 인라인 값과 같게 되돌린다(닫히는 중이면 건드리지 않음).
   const settle = (e: Els) => {
+    stop()
     for (const el of [e.list, e.foot]) { el.style.transition = 'none'; el.style.transform = '' }
     if (!closing.current) { e.panel.style.transition = 'none'; e.panel.style.transform = 'translateY(0px)' }
     e.panel.getBoundingClientRect()
     e.panel.style.transition = SHEET_EASE // 닫히는 중이면 React 가 넣은 translateY(100%) 를 이 곡선으로 마저 내려간다
     for (const el of [e.list, e.foot]) el.style.transition = ''
-    busy.current = false
+    phase.current = 'idle'
   }
-  const play = (e: Els, from: number[], to: number[], done: () => void) => {
-    busy.current = true
-    put(e.panel, from[0], false); put(e.list, from[1], false); put(e.foot, from[2], false)
-    e.panel.getBoundingClientRect()
-    requestAnimationFrame(() => {
-      if (closing.current) { settle(e); return }
-      put(e.panel, to[0], true); put(e.list, to[1], true); put(e.foot, to[2], true)
-      timers.current.push(window.setTimeout(done, SHEET_MS + 30))
-    })
+  // 목표로 transition(출발점은 지금 그려진 위치). done 은 도착 뒤.
+  const glide = (e: Els, to: number[], done: () => void) => {
+    stop()
+    put(e.panel, to[0], true); put(e.list, to[1], true); put(e.foot, to[2], true)
+    timer.current = window.setTimeout(done, SHEET_MS + 30)
+  }
+
+  const collapse = (e: Els) => {
+    // 접힌 뒤 위치를 미리 계산(시트는 오버레이 바닥에 붙는다, 높이 = min(376, 오버레이 85%)).
+    // 위치는 **레이아웃 기준** — 펼치는 도중이면 걸려 있는 transform 을 빼야 목표가 틀어지지 않는다.
+    const overlay = e.panel.parentElement as HTMLElement
+    const ob = overlay.getBoundingClientRect().bottom
+    const pr = e.panel.getBoundingClientRect()
+    const pty = tyOf(e.panel)
+    const hc = Math.min(BM_SHEET_H.base, overlay.clientHeight * 0.85)
+    const d = pr.height - hc
+    const lTo = ob - hc + (topOf(e.body) - pr.top) - 1 // 목록 = 본문 맨 위(margin-top -1px)
+    const fTo = ob - e.foot.offsetHeight
+    const lTop = topOf(e.list) - tyOf(e.list) - pty, fTop = topOf(e.foot) - tyOf(e.foot) - pty
+    phase.current = 'closing'
+    glide(e, [d, lTo - lTop - d, fTo - fTop - d], () => s.toggleVs())
   }
 
   const toggle = () => {
-    if (busy.current) return
     const e = els()
+    if (phase.current === 'closing') { // 접는 중 → 되돌려 펼친 모습으로
+      if (!e) return
+      phase.current = 'opening'
+      glide(e, [0, 0, 0], () => settle(e))
+      return
+    }
     if (!s.vsOn) {
       if (e && s.bookmarks.length) pend.current = { p: topOf(e.panel), l: topOf(e.list), f: topOf(e.foot) }
       s.toggleVs()
       return
     }
     if (!e) { s.toggleVs(); return }
-    // 접힌 뒤 위치를 미리 계산(시트는 오버레이 바닥에 붙는다, 높이 = min(376, 오버레이 85%)).
-    const overlay = e.panel.parentElement as HTMLElement
-    const ob = overlay.getBoundingClientRect().bottom
-    const pr = e.panel.getBoundingClientRect()
-    const hc = Math.min(BM_SHEET_H.base, overlay.clientHeight * 0.85)
-    const d = pr.height - hc
-    const lTo = ob - hc + (topOf(e.body) - pr.top) - 1 // 목록 = 본문 맨 위(margin-top -1px)
-    const fTo = ob - e.foot.offsetHeight
-    play(e, [0, 0, 0], [d, lTo - topOf(e.list) - d, fTo - topOf(e.foot) - d], () => s.toggleVs())
+    collapse(e) // 펼친 상태 또는 펼치는 중
   }
 
   // vsOn 이 바뀐 커밋 직후(페인트 전). 첫 마운트(시트 등장 전환 중)는 건드리지 않는다.
@@ -90,12 +108,20 @@ export function useVsFlip() {
     const f0 = pend.current
     pend.current = null
     if (s.vsOn && f0) {
+      // 펼침: 패널·목록·푸터를 "전" 위치에 놓고 다음 프레임에 0 으로.
+      stop()
       const dp = f0.p - topOf(e.panel)
-      play(e, [dp, f0.l - topOf(e.list) - dp, f0.f - topOf(e.foot) - dp], [0, 0, 0], () => settle(e))
+      put(e.panel, dp, false); put(e.list, f0.l - topOf(e.list) - dp, false); put(e.foot, f0.f - topOf(e.foot) - dp, false)
+      e.panel.getBoundingClientRect()
+      phase.current = 'opening'
+      raf.current = requestAnimationFrame(() => {
+        if (closing.current) { settle(e); return }
+        glide(e, [0, 0, 0], () => settle(e))
+      })
     } else settle(e)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.vsOn])
-  useEffect(() => () => { timers.current.forEach(clearTimeout) }, [])
+  useEffect(() => () => stop(), [])
 
   return { bodyRef, listRef, toggle }
 }

@@ -116,7 +116,8 @@ type Worn = { slot: string; label: string; item: ListItem | null; name: string; 
 // 착용 아이템 아코디언. 펼침·접힘은 높이 전환이 아니라 FLIP — 레이아웃은 한 번에 바꾸고,
 // 칩 묶음은 overflow:hidden 창 안에서, 그 아래 구역(모바일 댓글)은 같은 거리만큼 translateY 로 움직인다.
 //  · 펼침: 커밋(칩 등장) → 칩·아래 구역을 칩 높이만큼 위로 되돌려 놓고 0 으로.
-//  · 접힘: 먼저 transform 으로 접힌 자리까지 옮긴 뒤 커밋 + 즉시 정리(먼저 커밋하면 칩이 툭 사라진다).
+//  · 접힘: 먼저 transform 으로 접힌 자리까지 옮긴 뒤 칩을 뺀다(먼저 빼면 칩이 툭 사라진다).
+//  · 창의 윗변은 막대 hover 면(아래로 6px 튀어나옴)의 **아래**에 둔다 — 칩이 막대 면 위로 올라와 잘려 보이지 않게.
 function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; mobile: boolean }) {
   const s = useShop()
   // 이름·아이콘 경로는 부위 리스트를 읽어야 알 수 있어 비동기로 채운다(리스트 JSON 이라 가볍다 — 스프라이트는 펼칠 때 받는다).
@@ -146,13 +147,17 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId])
 
-  const [open, setOpen] = useState(false)
+  // want = 누른 결과(목표) — 화살표·aria 는 누르는 즉시 이걸 따른다. mounted = 칩이 레이아웃에 있는가(접힘이 끝나야 빠진다).
+  // 움직임은 CSS transition 이라 도중에 다시 누르면 **지금 위치에서** 반대 목표로 돌아간다(2026-09-21 사용자 지시 — 끝날 때까지 막지 않는다).
+  const [want, setWant] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const wantRef = useRef(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const moving = useRef<HTMLElement[]>([])
-  const busy = useRef(false)
   const timer = useRef(0)
-  useEffect(() => () => clearTimeout(timer.current), [])
+  const raf = useRef(0)
+  useEffect(() => () => { clearTimeout(timer.current); cancelAnimationFrame(raf.current) }, [])
 
   const followers = () => {
     const out: HTMLElement[] = []
@@ -160,36 +165,38 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
     return out
   }
   const put = (els: HTMLElement[], y: number, animate: boolean) => {
-    for (const el of els) { el.style.transition = animate ? SHEET_EASE : 'none'; el.style.transform = y ? `translateY(${y}px)` : '' }
+    for (const el of els) { el.style.transition = animate ? SHEET_EASE : 'none'; el.style.transform = `translateY(${y}px)` }
   }
-  const clear = () => { put(moving.current, 0, false); for (const el of moving.current) el.style.transition = ''; moving.current = []; busy.current = false }
-
-  const toggle = () => {
-    if (busy.current) return
-    if (!open) { setOpen(true); return }
-    const inner = innerRef.current
-    if (!inner) { setOpen(false); return }
-    busy.current = true
-    const h = inner.offsetHeight
-    moving.current = [inner, ...followers()]
-    put(moving.current, -h, true)
-    timer.current = window.setTimeout(() => setOpen(false), SHEET_MS + 20)
-  }
-  useLayoutEffect(() => {
-    if (!open) { clear(); return }
+  const clear = () => { for (const el of moving.current) { el.style.transition = 'none'; el.style.transform = ''; el.getBoundingClientRect(); el.style.transition = '' } moving.current = [] }
+  // 목표로 transition. 접힘 목표는 칩 높이만큼 위(창 밖), 펼침 목표는 0. 끝나면 접힘은 칩을 빼고, 펼침은 흔적을 지운다.
+  const go = (open: boolean) => {
     const inner = innerRef.current
     if (!inner) return
-    busy.current = true
-    const h = inner.offsetHeight
+    clearTimeout(timer.current); cancelAnimationFrame(raf.current)
     moving.current = [inner, ...followers()]
-    put(moving.current, -h, false)
+    put(moving.current, open ? 0 : -inner.offsetHeight, true)
+    timer.current = window.setTimeout(() => { if (open) clear(); else setMounted(false) }, SHEET_MS + 20)
+  }
+
+  const toggle = () => {
+    const next = !wantRef.current
+    wantRef.current = next
+    setWant(next)
+    if (next && !mounted) { setMounted(true); return } // 칩을 넣고 아래 layout effect 에서 출발
+    go(next) // 도중이면 지금 위치에서 방향만 바꾼다
+  }
+  useLayoutEffect(() => {
+    if (!mounted) { clear(); return }
+    const inner = innerRef.current
+    if (!inner) return
+    // 칩이 막 들어온 레이아웃: 칩·아래 구역을 칩 높이만큼 위(접힌 자리)에 두고 다음 프레임에 목표로.
+    moving.current = [inner, ...followers()]
+    put(moving.current, -inner.offsetHeight, false)
     inner.getBoundingClientRect()
-    requestAnimationFrame(() => {
-      put(moving.current, 0, true)
-      timer.current = window.setTimeout(clear, SHEET_MS + 20)
-    })
+    raf.current = requestAnimationFrame(() => go(wantRef.current))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [mounted])
+  const open = want
 
   return (
     <div ref={wrapRef} className={styles.worn}>
@@ -200,7 +207,7 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
         <IconCaretDown size={11} className={clsx(styles.wornCaret, open && styles.wornCaretOn)} />
       </button>
       <div id={`worn-${postId}`} className={styles.wornWin}>
-        {open && (
+        {mounted && (
           <div ref={innerRef} className={styles.wornInner}>
             {!items ? (
               <div className={clsx(surf.partGrid, mobile && surf.partGridM)}>

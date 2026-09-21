@@ -117,8 +117,8 @@
 .wornCount { font-size: 11px; font-weight: 700; color: #d76d9a; font-variant-numeric: tabular-nums; }
 .wornCaret { margin-left: auto; color: #a89e93; transition: transform .3s cubic-bezier(.45,0,.55,1), color .2s ease; }
 .wornCaretOn { transform: rotate(180deg); }
-.wornWin { overflow: hidden; }
-.wornInner { padding-top: 12px; }
+.wornWin { margin-top: 6px; overflow: hidden; } /* 막대의 아래쪽 음수 여백(6px)만큼 내려 hover 면 아래에서 칩이 나온다 */
+.wornInner { padding-top: 6px; } /* 창 6 + 6 = 막대와 칩 사이 12 (그대로) */
 .wornChip { cursor: default; }
 .wornSkel { height: 52px; border-radius: 11px; }
 .descBlock { display: flex; flex-direction: column; gap: 8px; }
@@ -146,6 +146,8 @@
 /* 모바일 입력 글자는 다른 탭(코디 검색·프리셋 불러오기)과 같은 13px. 뷰포트가 maximum-scale=1 이라
    iOS 사파리도 포커스 때 화면을 확대하지 않는다(16px 은 그 확대를 막으려던 값). */
 .fieldM { font-size: 13px; }
+/* 이름 placeholder = 고른 프리셋 이름 — 비워 두면 이 이름으로 등록된다는 뜻이라 다른 칸(흐림 #b7ada2)보다 한 단계 진하게(보조 #8a8075). */
+.nameField::placeholder { color: #8a8075; }
 .textarea { width: 100%; padding: 8px 11px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; resize: none; outline: none; }
 .textareaM { font-size: 13px; }
 .pickWrap { position: relative; }

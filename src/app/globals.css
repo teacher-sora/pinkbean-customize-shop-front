@@ -24,7 +24,8 @@ a { color: #ec86ac; text-decoration: none; }
 @media (hover: hover) and (pointer: fine) { a:hover { color: #d76d9a; } }
 input, select, button { font-family: inherit; color: #2a2521; }
 input, textarea, select, button { -webkit-text-fill-color: currentColor; } /* iOS 가 폼 글자색을 덮어쓰는 것 방지 */
-input::placeholder { color: #b7ada2; opacity: 1; }
+/* textarea 도 포함 — 빠져 있어 설명·댓글 칸만 브라우저 기본(진한 회색)으로 보였다(2026-09-21). */
+input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 :root { color-scheme: light; }
 
 .pb-bg { position: fixed; inset: -24px; z-index: 0; filter: blur(4px) saturate(0.88); }
