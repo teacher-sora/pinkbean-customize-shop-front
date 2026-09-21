@@ -170,13 +170,15 @@
 .cmtCol { flex: 0 0 252px; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding-left: 6px; border-left: 1px solid #f0e9e1; }
 .cmtColM { flex: 0 0 auto; padding-left: 0; border-left: none; }
 /* 스크롤 자리(gutter)만큼 머리·입력칸에도 같은 여백을 줘서 글머리가 한 줄로 맞게 한다. 모바일은 스크롤이 없어 뗀다. */
-.cmtHead, .cmtForm { padding: 0 8px; }
+/* 목록은 양쪽 거터(9px) + 안쪽 5px 라 글자가 14px 에서 시작한다 — 제목도 거기에 맞춘다. */
+.cmtHead { padding: 0 14px; }
+.cmtForm { padding: 0 8px; }
 .cmtColM .cmtHead, .cmtColM .cmtForm { padding: 0; }
 .cmtHead { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
 .cmtCount { font-size: 11px; font-weight: 700; color: #ec86ac; }
 /* 스크롤 막대가 생겨도 글이 밀리지 않게 양쪽에 자리를 미리 비워 둔다(both-edges).
    그만큼 안쪽 여백을 줄여 실제 글 폭은 그대로 유지한다. */
-.cmtList { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 14px; padding: 0; }
+.cmtList { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 14px; padding: 0 5px; } /* 스크롤바와 댓글 사이를 띄운다 */
 .cmtListM { flex: 0 0 auto; min-height: 0; overflow: visible; scrollbar-gutter: auto; padding: 0; }
 .cmtSkel { display: flex; flex-direction: column; gap: 7px; }
 .cmtSkel span { display: block; height: 11px; border-radius: 5px; }
@@ -205,7 +207,7 @@
 .cmtForm { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .cmtFormReply { margin-top: 2px; }
 /* 긴 글자를 넣어도 칸을 넘지 않게 끊고, 스크롤 자리도 미리 비워 둔다. */
-.cmtInput { width: 100%; height: 58px; padding: 8px 4px 8px 10px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; resize: none; outline: none; overflow-wrap: anywhere; word-break: break-word; scrollbar-gutter: stable both-edges; }
+.cmtInput { width: 100%; height: 58px; padding: 8px 1px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; resize: none; outline: none; overflow-wrap: anywhere; word-break: break-word; scrollbar-gutter: stable both-edges; } /* 거터가 양쪽 9px 라 패딩은 1px 만 — 글자가 테두리에서 11px */
 .cmtInputM { height: 64px; font-size: 16px; }  /* iOS 확대 방지 */
 .cmtFormFoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cmtLen { font-size: 10.5px; color: #b7ada2; }
