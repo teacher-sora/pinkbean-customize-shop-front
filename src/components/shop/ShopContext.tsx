@@ -78,8 +78,10 @@ function copyAsyncText(make: () => Promise<string>): Promise<void> {
   return make().then((t) => navigator.clipboard?.writeText(t)).then(() => {}).catch(() => {})
 }
 
-// ── 프리셋: 20개, 초깃값은 코디 기본(밤의 레아 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
-const PRESET_COUNT = 20
+// ── 프리셋: 30칸, 초깃값은 코디 기본(밤의 레아 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
+// 20 → 30 (2026-09-21 사용자 지시 — 쓰는 사람이 늘었다). 칸 id 는 'd0'…'d29' 로 **앞의 20칸이 그대로**이고,
+// 복원은 저장소에 있는 칸만 읽어 오므로(아래 PRESET_IDS.forEach) 기존 코디·이름은 손대지 않는다. 새 10칸만 기본값으로 생긴다.
+const PRESET_COUNT = 30
 const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
 const defaultPresetName = (i: number) => `코디 ${i + 1}`
 // 연출 설정 기본값 — 첫 상태이자 '프리셋 초기화'가 되돌릴 값이다(한곳에서 관리).
@@ -403,7 +405,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const swipe = useRef({ on: false, id: -1, x0: 0, y0: 0, mode: null as 'x' | 'y' | null, lx: 0, lt: 0, vx: 0, w: 1 })
   const swipeClickUntil = useRef(0)
 
-  // ── 초기 로드: index → 저장된 프리셋(또는 기본 20개) 복원 → 선택된 프리셋을 라이브 모델에 적용 ──
+  // ── 초기 로드: index → 저장된 프리셋(없는 칸은 기본값) 복원 → 선택된 프리셋을 라이브 모델에 적용 ──
   useEffect(() => {
     let alive = true
     // 연출 옵션 데이터(형상변이/이펙트 인덱스)를 미리 캐시 → 선택 시 즉시 적용.
@@ -412,7 +414,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     loadIndex().then(async (idx) => {
       if (!alive) return
       indexRef.current = idx // resolveEquipped/loadSlotFolded 는 상태가 아닌 이 ref 를 쓰므로 setIndex 전에 사용 가능
-      // localStorage 에서 프리셋 복원(없으면 20개 모두 코디 기본값). 첫 접속 시 d0 자동 선택.
+      // localStorage 에서 프리셋 복원(저장된 칸은 그대로, 없는 칸만 코디 기본값). 첫 접속 시 d0 자동 선택.
       const store = loadPresetStore()
       const data: Record<string, Snapshot> = {}
       const migrate = !store || (store.v ?? 1) < PRESET_STORE_V
@@ -1547,16 +1549,29 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setRateResult({ bubbles: ['뀨…? 지금은 딴청 부리는 중이야!'], nonce: ++rateNonce.current })
     } finally { setRating(false) }
   }
-  // 프리셋 삭제 = 코디 기본값 + 기본 이름으로 되돌림(20칸 고정). 선택된 프리셋이면 라이브 모델도 즉시 적용.
+  // 프리셋 삭제 = 코디 기본값 + 기본 이름으로 되돌림(칸 수는 고정). 선택된 프리셋이면 라이브 모델도 즉시 적용.
   const resetPreset = (id: string) => {
     const snap = defaultSnapshot()
-    setPresetData((d) => ({ ...d, [id]: snap }))
     const i = PRESET_IDS.indexOf(id)
+    // 지우기 전 내용·이름을 기록에 함께 남긴다 → 되돌리기로 그 칸의 코디·이름이 돌아온다(2026-09-21 사용자 지시).
+    // 보고 있지 않은 칸을 지우면 라이브 코디가 그대로여서 예전에는 기록 자체가 남지 않았다.
+    const over: PresetOver<Snapshot> = {
+      id,
+      prev: id === selectedPreset ? snapshot() : (presetData[id] ?? defaultSnapshot()),
+      prevName: presets.find((p) => p.id === id)?.name ?? '',
+      next: snap, nextName: i >= 0 ? defaultPresetName(i) : '',
+    }
+    setPresetData((d) => ({ ...d, [id]: snap }))
     if (i >= 0) setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name: defaultPresetName(i) } : p)))
     // 연출 설정(형상변이·귀·무기모션·이펙트·배율뿐 아니라 시선·액션·표정·fps 까지)도 이 프리셋에 각인돼 있다
     // → 보고 있는 프리셋을 초기화하면 화면의 연출도 전부 기본으로 되돌린다(2026-09-21 사용자 지시).
     // applySnapshot 은 코디에 속하는 연출만 되돌리므로, 나머지는 여기서 함께 맞춘다.
-    if (id === selectedPreset) { setPvState(PV_DEFAULT); applySnapshot(snap).catch(() => {}) }
+    if (id === selectedPreset) {
+      histOver.current = over // 라이브가 바뀌므로 아래 기록 effect 가 이 over 를 집어간다
+      setPvState(PV_DEFAULT); applySnapshot(snap).catch(() => {})
+    } else {
+      pushHistory(over) // 라이브는 그대로 → 그 자리에서 직접 기록한다
+    }
     notify('프리셋을 삭제했어요')
   }
   // 프리셋 이름(카드의 인라인 입력). 비운 채로 두면 기본 이름으로 되돌린다(blur 시 호출부가 처리).
@@ -1597,21 +1612,28 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 실행취소 히스토리: 코디 상태가 바뀔 때마다 "즉시" 스냅샷 기록(부위 빠르게 눌러도 전부 남음).
   // 예외: 발색 슬라이더 드래그 중(dyeInteracting)은 보류 → 릴리즈 시 최종 상태 1개만 기록(스택 폭주 방지).
   // undo/redo 로 적용된 변경(histExpect 일치)은 기록하지 않아 스택이 오염되지 않는다. 최근 50개 유지.
-  useEffect(() => {
-    if (!initedRef.current || dyeInteracting) return // 초기 로드 완료 전엔 기록 안 함 → 첫 기록 = 초기 프리셋(baseline)
+  // 기록 한 건. 보통은 아래 effect 가 라이브 코디 변화를 보고 부르지만, **라이브가 그대로인 변경**
+  // (선택하지 않은 프리셋을 초기화 — 2026-09-21 사용자 지시)은 그 자리에서 직접 부른다.
+  // 그런 기록은 코디·선택 프리셋이 직전과 같고 over 만 다르다 → undo 가 over 로 그 칸을 되살린다.
+  const pushHistory = (over?: PresetOver<Snapshot> | null) => {
+    if (!initedRef.current) return
     const snap = snapshot()
     const j = JSON.stringify({ s: snap, p: selectedPreset })
     if (j === histExpect.current) { histExpect.current = null; histLast.current = j; return }
-    const over = histOver.current
-    if (j === histLast.current && !over) return // 덮어쓰기는 코디가 같아도(이름·다른 프리셋이 바뀜) 기록한다
+    const ov = over ?? histOver.current
+    if (j === histLast.current && !ov) return // 덮어쓰기는 코디가 같아도(이름·다른 프리셋이 바뀜) 기록한다
     histOver.current = null
     histLast.current = j
     const h = histRef.current
     h.stack = h.stack.slice(0, h.idx + 1)
-    h.stack.push({ snap, sel: selectedPreset, ...(over ? { over } : {}) })
+    h.stack.push({ snap, sel: selectedPreset, ...(ov ? { over: ov } : {}) })
     if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
     h.idx = h.stack.length - 1
     setHistVer((v) => v + 1)
+  }
+  useEffect(() => {
+    if (!initedRef.current || dyeInteracting) return // 초기 로드 완료 전엔 기록 안 함 → 첫 기록 = 초기 프리셋(baseline)
+    pushHistory()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, dyeInteracting])
 
