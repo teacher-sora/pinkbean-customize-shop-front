@@ -8,6 +8,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import type { Snapshot } from '@/components/shop/ShopContext'
+import { nameMatcher } from '@/lib/nameSearch'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { plazaDeviceFp } from '@/lib/plazaDevice'
 
@@ -444,8 +445,13 @@ export function plazaView(posts: PlazaPost[], filter: PlazaFilter, query: string
   else if (filter === 'contest') out = out.filter((p) => p.contest)
   else if (filter === 'mine') out = out.filter((p) => p.mine)
   else if (filter === 'liked') out = out.filter((p) => p.liked)
+  // 이름·설명·태그를 코디 탭과 **같은 매처**로 찾는다(2026-09-21 사용자 지시) — lib/nameSearch:
+  //  · 공백 무시("시로 코" ↔ "시로코")
+  //  · 한/영 자판 무관: 영문 자판으로 친 "tlfhzh" 가 "시로코" 에 걸린다(en2ko).
+  //  · 조합 중인 마지막 글자도 걸린다("시로ㅋ" → "시로코") → 타이핑 도중에도 결과가 끊기지 않는다.
   const q = query.trim().replace(/^#/, '')
-  if (q) out = out.filter((p) => p.name.includes(q) || p.description.includes(q) || p.tags.some((t) => t.includes(q)))
+  const match = nameMatcher(q)
+  if (match) out = out.filter((p) => match(p.name) || match(p.description) || p.tags.some((t) => match(t)))
   const by = sort === 'recent'
     ? (a: PlazaPost, b: PlazaPost) => b.createdAt.localeCompare(a.createdAt)
     : (a: PlazaPost, b: PlazaPost) => b.likes - a.likes || b.createdAt.localeCompare(a.createdAt)
