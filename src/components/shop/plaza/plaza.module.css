@@ -300,6 +300,8 @@
 .cmtSendOff { background: #f0c9d9; cursor: default; }
 .descNone { color: #a89e93; }
 .scopeHintWarn { color: #d1735f; }
+/* 자유 코디로 둔 사람에게 '대회는 따로 골라야 한다'고 알리는 줄(2026-09-22) — 안내(회색)보다 눈에 들어와야 해서 핑크. */
+.scopeNudge { margin-top: 4px; font-size: 10.5px; font-weight: 600; color: #d76d9a; }
 
 /* ── 공지 및 건의함(NoticeBody) — 광장 상세·댓글 부품을 그대로 쓰고 모자란 것만 ── */
 .ntBody { padding: 16px 22px; gap: 12px; }
