@@ -79,9 +79,17 @@ function copyAsyncText(make: () => Promise<string>): Promise<void> {
 const PRESET_COUNT = 20
 const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
 const defaultPresetName = (i: number) => `코디 ${i + 1}`
+// 연출 설정 기본값 — 첫 상태이자 '프리셋 초기화'가 되돌릴 값이다(한곳에서 관리).
+// 시선·액션·표정·fps 는 스냅샷에 담기지 않지만, 초기화는 **이것까지 전부** 되돌린다(2026-09-21 사용자 지시).
+const PV_DEFAULT: Pv = {
+  action: 'basic', weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
+  gaze: 'left', wEffect: true, cEffect: true, capEffect: true, fps: 12, zoom: 2,
+}
 const defaultSnapshot = (): Snapshot => ({
   equipped: Object.fromEntries(Object.entries(DEFAULT_EQUIP).map(([slot, it]) => [slot, it.id])),
   tone: DEFAULT_TONE, dyePalette: {}, dyeHsb: {}, hidden: {}, dotPos: {},
+  // 연출 설정도 프리셋마다 따로 각인된다 → 기본 프리셋은 '기본 연출'을 명시해 둔다(빈 값이면 카드마다 해석이 갈린다).
+  pv: { form: PV_DEFAULT.form, ear: PV_DEFAULT.ear, weapon: PV_DEFAULT.weapon, wEffect: PV_DEFAULT.wEffect, cEffect: PV_DEFAULT.cEffect, capEffect: PV_DEFAULT.capEffect, zoom: PV_DEFAULT.zoom },
 })
 // 키 순서와 무관한 비교용 직렬화(프리셋이 기본값 그대로인지 판별 — "프리셋 n / 20" 카운트).
 const canon = (v: unknown): string => {
@@ -361,10 +369,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const trackRef = useRef<HTMLDivElement | null>(null)
   const [pageEditing, setPageEditing] = useState(false)
   const [pageInput, setPageInput] = useState('')
-  const [pv, setPvState] = useState<Pv>({
-    action: 'basic', weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
-    gaze: 'left', wEffect: true, cEffect: true, capEffect: true, fps: 12, zoom: 2,
-  })
+  const [pv, setPvState] = useState<Pv>(PV_DEFAULT)
   const [presets, setPresets] = useState<Preset[]>(() => PRESET_IDS.map((id, i) => ({ id, name: defaultPresetName(i) })))
   const [presetData, setPresetData] = useState<Record<string, Snapshot>>(() => Object.fromEntries(PRESET_IDS.map((id) => [id, defaultSnapshot()])))
   // 처음엔 **아무것도 선택하지 않는다**. 'd0' 으로 시작하면 저장소를 읽기 전 잠깐 1번 칸에
@@ -1546,7 +1551,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPresetData((d) => ({ ...d, [id]: snap }))
     const i = PRESET_IDS.indexOf(id)
     if (i >= 0) setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name: defaultPresetName(i) } : p)))
-    if (id === selectedPreset) applySnapshot(snap).catch(() => {})
+    // 연출 설정(형상변이·귀·무기모션·이펙트·배율뿐 아니라 시선·액션·표정·fps 까지)도 이 프리셋에 각인돼 있다
+    // → 보고 있는 프리셋을 초기화하면 화면의 연출도 전부 기본으로 되돌린다(2026-09-21 사용자 지시).
+    // applySnapshot 은 코디에 속하는 연출만 되돌리므로, 나머지는 여기서 함께 맞춘다.
+    if (id === selectedPreset) { setPvState(PV_DEFAULT); applySnapshot(snap).catch(() => {}) }
     notify('프리셋을 삭제했어요')
   }
   // 프리셋 이름(카드의 인라인 입력). 비운 채로 두면 기본 이름으로 되돌린다(blur 시 호출부가 처리).
