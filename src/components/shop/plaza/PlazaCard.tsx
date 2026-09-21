@@ -19,7 +19,7 @@ const CARD_FRACTION = 0.38 // 프리셋 카드와 같은 마네킹 비율
 //    DPR 2 까지 올리면(0.57) 3배 = 96px 라 머리가 오른쪽 아이콘 레일에 닿았다 — 그래서 한 단계 아래에서 멈춘다.
 const CARD_FRACTION_M = 0.54
 
-export default function PlazaCard({ post, mobile }: { post: PlazaPost; mobile: boolean }) {
+export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaPost; mobile: boolean; priority?: number }) {
   const s = useShop()
   const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn() }
   const name = post.name || '이름 없는 코디'
@@ -40,7 +40,7 @@ export default function PlazaCard({ post, mobile }: { post: PlazaPost; mobile: b
           </div>
         )}
         <div className={styles.thumb}>
-          <SnapThumb snap={post.snapshot} fraction={mobile ? CARD_FRACTION_M : CARD_FRACTION} />
+          <SnapThumb snap={post.snapshot} fraction={mobile ? CARD_FRACTION_M : CARD_FRACTION} priority={priority} />
           {/* 대회 출품 날짜(간략히 M.D) — 순번(#n)은 중간 글이 내려가면 비어 보여 날짜로 바꿨다(2026-09-21 사용자 지시). */}
           {post.contest && (
             <span className={clsx(styles.contestNo, mobile && styles.contestNoM)} title={`${fullDate(post.createdAt)} 출품`}>{shortDate(post.createdAt)}</span>

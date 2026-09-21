@@ -178,7 +178,7 @@ async function bumpPlazaCache(): Promise<void> {
 
 // 전부 받는다: 첫 쪽이 전체 개수를 알려 주면 나머지 쪽(500개씩)을 한꺼번에 받는다(app/api/plaza/shared.ts).
 // 쪽 사이에 새 글이 끼면 경계의 글이 두 쪽에 겹칠 수 있어 id 로 한 번 거른다.
-async function loadRows(): Promise<Row[] | null> {
+async function loadRows(onFirst?: (rows: Row[]) => void): Promise<Row[] | null> {
   try {
     const base = `/api/plaza/${targetName()}`
     const fresh = freshNow()
@@ -191,20 +191,27 @@ async function loadRows(): Promise<Row[] | null> {
     const first = await get(0)
     if (!Array.isArray(first?.posts)) return null
     const pages = Math.ceil((first.total || 0) / (first.pageSize || 500))
+    if (pages > 1) onFirst?.(first.posts) // 최신 500개를 먼저 보여 주고 나머지는 뒤에서 받는다
     const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, i) => get(i + 1)))
     const seen = new Set<string>()
     return [first, ...rest].flatMap((j) => j.posts).filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
   } catch { return null }
 }
 
-export async function loadPlaza(): Promise<PlazaPost[]> {
+// onFirst: 글이 500개를 넘을 때, 첫 쪽(최신 500개)이 오자마자 먼저 부른다 — 나머지를 기다리지 않고 화면을 채운다.
+export async function loadPlaza(onFirst?: (posts: PlazaPost[]) => void): Promise<PlazaPost[]> {
   const c = sb()
   if (!c) return []
   // 목록은 로그인과 **무관**하다(공개 읽기). 익명 세션을 기다렸다가 받기 시작하면 왕복이 한 번 더 늘어
   // 광장 탭만 유독 늦게 뜬다 — 둘을 동시에 시작한다(2026-09-20).
-  const rowsP = loadRows()
+  const meP = plazaAuth().then((u) => (u ? plazaMe() : null)).catch(() => null)
+  const rowsP = loadRows(onFirst && ((rows) => {
+    // 좋아요 표시는 내 상태가 오면 채운다(먼저 온 쪽을 붙잡지 않는다 — 대개 이미 와 있다).
+    void Promise.race([meP, new Promise<null>((r) => setTimeout(() => r(null), 300))])
+      .then((me) => onFirst(rows.map((r) => toPost(r, null, new Set(me?.liked || [])))))
+  }))
   const uid = await plazaAuth()
-  const [cached, me] = await Promise.all([rowsP, uid ? plazaMe() : Promise.resolve(null)])
+  const [cached, me] = await Promise.all([rowsP, meP])
   const liked0 = new Set<string>(me?.liked || [])
   if (cached) return cached.map((r) => toPost(r, uid, liked0))
   // ISR 라우트가 없거나 실패하면 예전처럼 직접 읽는다(로컬·장애 대비).

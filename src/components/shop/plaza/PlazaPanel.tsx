@@ -153,7 +153,8 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
             <div key={pi} className={clsx('pb-page', mobile ? styles.pageM : styles.page)} style={{ left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
               {(!s.snapping || pi === s.curIdx || Math.abs(pi - s.snapFrom) <= 1) && (
                 <div className={styles.grid} style={gridStyle}>
-                  {items.map((post) => <PlazaCard key={post.id} post={post} mobile={mobile} />)}
+                  {/* 보이는 쪽을 먼저 그리고 앞뒤 쪽은 그다음(lib/thumbQueue) */}
+                  {items.map((post) => <PlazaCard key={post.id} post={post} mobile={mobile} priority={pi === s.curIdx ? 0 : 1} />)}
                 </div>
               )}
             </div>

@@ -927,7 +927,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (plazaInFlight.current) return plazaInFlight.current
     const run = (async () => {
       try {
-        const list = await loadPlaza()
+        const merge = (list: PlazaPost[]) => {
+          const ids = new Set(list.map((p) => p.id))
+          return [...myAdded.current.filter((p) => !ids.has(p.id)), ...list].filter((p) => !myRemoved.current.has(p.id))
+        }
+        // 글이 많으면 최신 500개가 먼저 온다 → 바로 보여 주고 뼈대를 걷는다(나머지는 뒤이어 합친다).
+        let full = false // 전체가 먼저 도착했으면 늦게 온 첫 쪽으로 덮어쓰지 않는다
+        const list = await loadPlaza((first) => {
+          if (full) return
+          setPlazaPosts(merge(first)); setPlazaGen((g) => g + 1); setPlazaLoaded(true)
+        })
+        full = true
         const ids = new Set(list.map((p) => p.id))
         myAdded.current = myAdded.current.filter((p) => !ids.has(p.id)) // 캐시에 나타났으면 보정 해제
         for (const id of Array.from(myRemoved.current)) if (!ids.has(id)) myRemoved.current.delete(id)

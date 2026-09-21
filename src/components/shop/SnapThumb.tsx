@@ -9,6 +9,7 @@ import { composeSnapshot } from '@/lib/core/snapRender'
 import { canvasToSquareBlob } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { CARD_FRACTION, CARD_MARGIN } from '@/lib/shopData'
+import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop, type Snapshot } from './ShopContext'
 
 // 스냅샷(착용+톤+염색)을 실제 모델로 합성해 부모 div 중앙에 그린다.
@@ -16,8 +17,9 @@ import { useShop, type Snapshot } from './ShopContext'
 // 정지 프레임(stand1) + 염색 + 이펙트(망토 등) 반영 → 이펙트만 있는 망토도 구분된다.
 // 프리셋 카드와 닉네임 코디 선택 다이얼로그가 함께 쓴다(같은 그림이어야 하므로 공용).
 // 부모는 position:relative + 크기가 있어야 한다(이 컴포넌트는 inset:0 으로 채운다).
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN }: {
-  snap: Snapshot; fraction?: number; margin?: number
+// priority: 0 = 보이는 것(곧바로), 1 이상 = 화면 밖 미리 그리기(보이는 것이 다 끝난 뒤) — lib/thumbQueue.
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0 }: {
+  snap: Snapshot; fraction?: number; margin?: number; priority?: number
 }) {
   const { index } = useShop()
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
@@ -30,16 +32,21 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
   const key = useMemo(() => JSON.stringify(snap) + `|${animaRaces.length}`, [snap, animaRaces.length])
 
+  const prioRef = useRef(priority)
+  prioRef.current = priority
+  const jobRef = useRef<ReturnType<typeof enqueueThumb> | null>(null)
   useEffect(() => {
     if (!index) return
     let alive = true
     setPlaced(null)
-    composeSnapshot(snap, index, animaRaces).then((r) => {
+    const job = enqueueThumb(prioRef.current, () => composeSnapshot(snap, index, animaRaces).then((r) => {
       if (alive && r) { setPlaced(r.placed); setOv(r.overrides); setEffects(r.effects) }
-    }).catch(() => {})
-    return () => { alive = false }
+    }))
+    jobRef.current = job
+    return () => { alive = false; job.cancel() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, index, animaRaces])
+  useEffect(() => { jobRef.current?.setPrio(priority) }, [priority])
 
   useEffect(() => {
     const el = wrapRef.current
