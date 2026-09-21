@@ -18,6 +18,8 @@ const hsbActive = (h?: HsbParams) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0
 // 채움 비율(스프라이트가 칸에서 차지할 큰-변 비율). 원본이 커도 넘치지 않게 맞추고, 확대는 정수배만
 // (하드 도트), 축소(<1배)만 부드럽게. 헤어도 bbox 기준으로 맞추므로 같은 채움 비율을 쓴다
 // (예전 0.55 는 배율 상한이 있던 시절 보정이라 모바일에서 헤어가 캔버스에 비해 너무 작게 보였다).
+// 헤어·성형 합성 스프라이트는 2배 해상도로 그리고 화면엔 절반으로 보여 준다(0.5 단계 배율 — 아래 useLiveRedraw 주석).
+const OVERSAMPLE = 2
 export const INFO_FRAC = 0.82
 export const INFO_FRAC_HAIR = 0.82
 // 피부는 모델(body+head)로 렌더해 중앙 정렬 — fraction 으로 크기 조절(아이콘=작게, 미리보기=크게).
@@ -73,10 +75,16 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
     const el = ref.current; if (!el) return
     const dpr = window.devicePixelRatio || 1
     const boxW = box.w || 48, boxH = box.h || box.w || 48 // CSS 픽셀(칸)
+    let over = 1
     if (mix) {
       if (!meta) return
       const base = palette?.baseColor ?? 0, mixC = palette?.mixColor ?? base, ratio = palette?.ratio ?? 0
-      await renderDyedSprite(el, meta, base, mixC, base === mixC ? 0 : ratio, THUMB_VIEW, zmap, Math.round(Math.min(boxW, boxH) * dpr), frac)
+      // 0.5 단계 배율(2026-09-21 사용자 지시 — 카드마다 헤어 크기가 두 배씩 널뛰었다).
+      // 정수 배율만 쓰면 칸에 맞는 배율이 1.6배여도 1배로 내려가 칸의 절반만 찼다. 그래서
+      // **2배 해상도로 정수 배율로 그린 뒤 화면에는 정확히 절반으로** 보여 준다(2:1 축소라 도트는 그대로).
+      // 결과적으로 쓸 수 있는 배율이 0.5·1·1.5·2… 로 촘촘해져 크기가 고르게 모인다.
+      over = OVERSAMPLE
+      await renderDyedSprite(el, meta, base, mixC, base === mixC ? 0 : ratio, THUMB_VIEW, zmap, Math.round(Math.min(boxW, boxH) * dpr) * over, frac)
     } else {
       const rel = thumb || `sprites/${id}/icon.png` // 아이템 스프라이트(모델 베이크 아님)
       const active = hsbActive(hsb)
@@ -84,7 +92,7 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
       const src: CanvasImageSource = active ? applyHsb(img, hsb!, rel) : img
       drawSprite(el, src, (src as HTMLCanvasElement).width, (src as HTMLCanvasElement).height, boxW, boxH, frac, dpr)
     }
-    fitCanvas(el, boxRef.current, el.width, el.height, boxW, boxH, dpr)
+    fitCanvas(el, boxRef.current, el.width / over, el.height / over, boxW, boxH, dpr)
   }, [meta, id, thumb, mix, palette, hsb, zmap, frac, box.w, box.h])
   // 바깥 span = 칸(크기 측정 기준), 캔버스 = 그린 그림 크기로 화면 픽셀 격자에 맞춰 가운데(fitCanvas).
   return (
