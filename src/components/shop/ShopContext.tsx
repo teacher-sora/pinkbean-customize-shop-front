@@ -21,6 +21,7 @@ import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, plazaConfigured, plazaView, togglePlazaLike,
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
+import { safeBubbles } from '@/lib/safeText'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 import { confirmTwice } from '@/lib/confirmTwice'
@@ -1530,9 +1531,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const items = Object.entries(equipped).filter(([, it]) => it).map(([slot, it]) => ({ slot, id: it!.id, name: it!.name || it!.id }))
       const res = await fetch(`${SEARCH_API}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone, history: rateHistory.current }) })
       const data = await res.json()
-      const bubbles: string[] = (data.bubbles || []).filter(Boolean)
-      if (bubbles.length) rateHistory.current = [...bubbles, ...rateHistory.current].slice(0, 6) // 최근 6개만 기억
-      setRateResult({ bubbles: bubbles.length ? bubbles : ['뀨…? 지금은 좀 부끄러운걸!'], nonce: ++rateNonce.current })
+      // 말은 모델이 짓는다 → 성적·폭력적 표현이 섞여 나오는 경우를 화면에 붙이기 직전에 버린다(lib/safeText).
+      // 서버에서도 같은 규칙으로 거르지만 백엔드는 따로 배포되므로, 여기서 한 번 더 본다.
+      const bubbles = safeBubbles(data.bubbles)
+      rateHistory.current = [...bubbles, ...rateHistory.current].slice(0, 6) // 최근 6개만 기억(거른 뒤 것만)
+      setRateResult({ bubbles, nonce: ++rateNonce.current })
     } catch {
       setRateResult({ bubbles: ['뀨…? 지금은 딴청 부리는 중이야!'], nonce: ++rateNonce.current })
     } finally { setRating(false) }
