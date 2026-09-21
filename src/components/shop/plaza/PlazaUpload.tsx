@@ -90,6 +90,9 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const contestLeft = Math.max(0, PLAZA_CONTEST_MAX - myContest)
   const contestClosed = contest && plazaContestClosed() // 마감(10월 1일 오후 11시 59분) 뒤에는 출품을 받지 않는다
   const contestFull = contest && contestLeft === 0
+  // 자유 코디로 둔 채 대회에 나간 줄 아는 사람이 있다(2026-09-22 사용자 지시). 대회 기간에만,
+  // 아직 올릴 칸이 남았을 때만 '대회로 바꿔야 한다'고 한 줄 덧붙인다(마감 뒤·3개 다 쓴 뒤엔 오히려 헷갈린다).
+  const nudgeContest = !contest && !plazaContestClosed() && contestLeft > 0
   // 대회는 **같은 조합을 한 번만** 받는다(선점). 착용·피부가 같은 출품작만 DB 에서 받아(contestCandidates — 수만 개여도 몇 개)
   // 결과 픽셀을 비교해(lib/plazaLookPixels) 미리 막고 알린다. 등록 직전에 한 번 더 확인한다. DB 트리거(0009)는 좁은 안전망.
   const skinOf = useCallback((tone: number): SkinInfo => {
@@ -301,6 +304,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
               : checking ? '같은 조합이 있는지 확인하고 있어요.'
               : `대회 출품으로 등록해요. 이메일이 필요하고, ${contestLeft}개 더 올릴 수 있어요.`}
           </div>
+          {nudgeContest && <div className={styles.scopeNudge}>{PLAZA_CONTEST}에 참여하려면 등록할 곳을 대회로 바꿔 주세요.</div>}
         </div>
         {contest && (
           <div>
