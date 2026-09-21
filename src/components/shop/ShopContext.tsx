@@ -175,6 +175,7 @@ export interface ShopCtx {
   genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용(v2)
   // primary/screen
   primary: string; setPrimary: Dispatch<string>
+  goHome: () => void // 로고 — 첫 진입 화면(코디 탭 · 전체 · 1페이지)으로
   // AI 코디 검색 — 결과는 하단 부위 바(activeCat)·성별로 필터(결과 집합은 perPage 와 무관)
   aiQ: string; setAiQ: Dispatch<string>
   searchQuery: string | null; runSearch: (q: string) => void; searchResults: ListItem[]; searchLoading: boolean
@@ -267,6 +268,7 @@ export interface ShopCtx {
   applySharedToPreset: (snap: Snapshot, targetId: string) => void
   rateCodi: () => void
   rateResult: { bubbles: string[]; nonce: number } | null
+  takeRate: () => string[] | null // 아직 안 띄운 평가만 한 번 내준다(두 번째부터는 null)
   // toast
   toast: boolean; toastText: string
   notify: (msg: string) => void
@@ -562,6 +564,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [uiReady, primary, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
   useEffect(() => { if (uiReady) writeUiPref({ plazaSort }) }, [uiReady, plazaSort])
   const [rateResult, setRateResult] = useState<{ bubbles: string[]; nonce: number } | null>(null) // 코디 평가 말풍선
+  // 말풍선은 **평가를 눌러 받은 그 한 번만** 뜬다(2026-09-22 사용자 제보 — 광장처럼 미리보기가 없는 탭에
+  // 갔다 오면 지난 평가가 계속 다시 떴다). 원인은 RateBubbles 가 미리보기와 함께 언마운트됐다가 다시 붙으면서
+  // 남아 있던 rateResult 로 effect 가 또 도는 것이었다. 그래서 '띄웠다'는 표시를 **컴포넌트 밖**(여기)에 둔다.
+  const rateSeen = useRef(0)
+  const rateLive = useRef<{ bubbles: string[]; nonce: number } | null>(null)
+  rateLive.current = rateResult
+  const takeRate = useCallback((): string[] | null => {
+    const r = rateLive.current
+    if (!r || r.nonce <= rateSeen.current) return null
+    rateSeen.current = r.nonce
+    return r.bubbles
+  }, [])
   const [rating, setRating] = useState(false)
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
   const loadSlotRaw = useCallback(async (slot: string): Promise<ListItem[]> => {
@@ -1180,6 +1194,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (surfT.current) clearTimeout(surfT.current)
     surfT.current = setTimeout(() => { surfT.current = null; setSurface(null); setSurfaceClosing(false); setPartSlide(0); setVsOn(false); setVsPicks([]) }, SURFACE_UNMOUNT_MS)
   }
+  // 로고 = 처음 화면으로(2026-09-22 사용자 지시). 진짜 새로고침은 쓰지 않는다 — 보던 자리를 되살리는
+  // sessionStorage 때문에 되레 그 자리로 돌아오고(위 '보던 자리 기억'), 카탈로그를 다시 받느라 느리다.
+  // 대신 첫 진입과 같은 값으로 되돌린다: 코디 탭 · 전체 · 1페이지 · 검색어 없음. 저장은 아래 effect 가 따라 쓴다.
+  // 코디·프리셋·북마크·즐겨찾기는 건드리지 않는다(진짜 새로고침도 그것들은 그대로다).
+  const goHome = () => {
+    closeSurface()
+    setPrimary('codi')
+    setActiveCat('all')
+    setSearch('')
+    setGenderFilter('all')
+    setAiQ(''); setSearchQuery(null); setSearchResults([])
+    setPlazaFilter('all'); setPlazaQState('')
+    setPageByCat({}) // 부위별로 따로 기억하던 페이지까지 전부 1페이지로
+  }
   const openSheet = (kind: 'pv' | 'bm' | 'part') => {
     if (surface?.kind === kind && !surfaceClosing) { closeSurface(); return }
     openSurface({ kind, item: null })
@@ -1708,7 +1736,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const value: ShopCtx = {
     index, catLoading, activeList, search, setSearch,
     genderFilter, setGenderFilter,
-    primary, setPrimary,
+    primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
@@ -1729,7 +1757,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     dotPos, setDot, resetDot,
     pv, setPv,
     presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, snapshot,
-    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rateResult,
+    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rateResult, takeRate,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText, notify,
   }
