@@ -19,7 +19,7 @@ import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
 import { CARD_FRACTION, CARD_MARGIN, thumbView } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
-import { DyeSprite, INFO_FRAC_HAIR } from './render/DyeSprite'
+import { CARD_FRAC_HAIR, DyeSprite } from './render/DyeSprite'
 
 // 모델/내모델 썸네일: computeModelPlacement 로 셀(div) 크기·dpr 에 맞춰 캔버스를 셀보다 크게(디바이스
 // 픽셀 해상도) 만들고, 마네킹을 셀 중앙에 고정 비율로 그린다. 캔버스는 셀 위에 절대배치 중앙정렬 →
@@ -83,7 +83,7 @@ function Sprite({ item }: { item: ListItem }) {
 function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
   return (
     <div className="pb-hairsprite">
-      <div className="pb-hairsprite-box"><DyeSprite id={item.id} mix zmap={zmap} frac={INFO_FRAC_HAIR} /></div>
+      <div className="pb-hairsprite-box"><DyeSprite id={item.id} mix zmap={zmap} frac={CARD_FRAC_HAIR} /></div>
     </div>
   )
 }

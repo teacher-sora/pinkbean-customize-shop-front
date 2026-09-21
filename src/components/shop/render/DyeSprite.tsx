@@ -18,10 +18,14 @@ const hsbActive = (h?: HsbParams) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0
 // 채움 비율(스프라이트가 칸에서 차지할 큰-변 비율). 원본이 커도 넘치지 않게 맞추고, 확대는 정수배만
 // (하드 도트), 축소(<1배)만 부드럽게. 헤어도 bbox 기준으로 맞추므로 같은 채움 비율을 쓴다
 // (예전 0.55 는 배율 상한이 있던 시절 보정이라 모바일에서 헤어가 캔버스에 비해 너무 작게 보였다).
-// 헤어·성형 합성 스프라이트는 2배 해상도로 그리고 화면엔 절반으로 보여 준다(0.5 단계 배율 — 아래 useLiveRedraw 주석).
-const OVERSAMPLE = 2
 export const INFO_FRAC = 0.82
 export const INFO_FRAC_HAIR = 0.82
+// 리스트 카드의 헤어·성형(합성 스프라이트)이 칸에서 차지할 큰-변 비율. 코디 정보 탭(INFO_FRAC_HAIR)보다
+// 작다 — 카드에서는 "큐링 헤어 정도"가 적당하다는 사용자 판단(2026-09-21).
+export const CARD_FRAC_HAIR = 0.68
+// 헤어·성형은 화면 픽셀보다 촘촘하게 그린 뒤 그만큼 줄여서 보여 준다(아래 useLiveRedraw 주석).
+// 어느 기기에서나 캔버스 해상도가 칸의 4배가 되도록 DPR 로 나눈다(DPR1=4배·DPR2=2배·DPR4=1배).
+const oversampleFor = (dpr: number) => Math.max(1, Math.round(4 / dpr))
 // 피부는 모델(body+head)로 렌더해 중앙 정렬 — fraction 으로 크기 조절(아이콘=작게, 미리보기=크게).
 export const SKIN_ICON_FRACTION = 0.72
 export const SKIN_PREVIEW_FRACTION = 0.52
@@ -79,11 +83,11 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
     if (mix) {
       if (!meta) return
       const base = palette?.baseColor ?? 0, mixC = palette?.mixColor ?? base, ratio = palette?.ratio ?? 0
-      // 0.5 단계 배율(2026-09-21 사용자 지시 — 카드마다 헤어 크기가 두 배씩 널뛰었다).
-      // 정수 배율만 쓰면 칸에 맞는 배율이 1.6배여도 1배로 내려가 칸의 절반만 찼다. 그래서
-      // **2배 해상도로 정수 배율로 그린 뒤 화면에는 정확히 절반으로** 보여 준다(2:1 축소라 도트는 그대로).
-      // 결과적으로 쓸 수 있는 배율이 0.5·1·1.5·2… 로 촘촘해져 크기가 고르게 모인다.
-      over = OVERSAMPLE
+      // 0.25 단계 배율(2026-09-21 사용자 지시 — 카드마다 헤어 크기가 널뛰었다).
+      // 정수 배율만 쓰면 칸에 맞는 배율이 1.6배여도 1배로 내려가(2배는 칸을 넘친다) 칸의 절반만 찼다.
+      // 그래서 **칸의 4배 해상도로 정수 배율로 그린 뒤 화면에는 정확히 1/4 로** 보여 준다(정수배 축소라
+      // 도트가 뭉개지지 않는다). 쓸 수 있는 배율이 0.25·0.5·0.75… 로 촘촘해져 크기가 고르게 모인다.
+      over = oversampleFor(dpr)
       await renderDyedSprite(el, meta, base, mixC, base === mixC ? 0 : ratio, THUMB_VIEW, zmap, Math.round(Math.min(boxW, boxH) * dpr) * over, frac)
     } else {
       const rel = thumb || `sprites/${id}/icon.png` // 아이템 스프라이트(모델 베이크 아님)
