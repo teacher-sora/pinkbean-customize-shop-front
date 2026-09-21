@@ -22,6 +22,7 @@ import { BookmarkSheetBody, PvSheetBody } from '../preview/PreviewParts'
 import { BM_SHEET_H, SHEET_EASE } from './sheetMotion'
 import PartPickBody from './PartPickBody'
 import PlazaDetailBody from '../plaza/PlazaDetailBody'
+import PlazaTakeBody from '../plaza/PlazaTakeBody'
 import NoticeBody from '../plaza/NoticeBody'
 import { plazaWhen } from '@/lib/plaza'
 import VsBody from './VsBody'
@@ -167,15 +168,19 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
   const k = sf.kind
   const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'vs' ? '코디 비교'
-    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'notice' ? '공지 및 건의함' : (sf.item?.name || sf.item?.id || '')
+    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? '공유받은 코디' : k === 'notice' ? '공지 및 건의함' : (sf.item?.name || sf.item?.id || '')
   const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' ? '' : k === 'notice' ? '신고 · 건의는 댓글로 남겨 주세요'
-    : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '')
+    : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
 
   // 패널 폭(앱 영역 기준)·등장/닫힘 위치는 즉시 반영 값이라 인라인(드래그 중 오프셋은 위 터치 핸들러가 DOM 직접).
+  // PC 패널 크기는 종류마다 다르다. 가져오기는 상세보다 좁고 낮아서, 슬라이드와 함께 **크기도 함께 바뀐다**
+  // (2026-09-21 사용자 지시 — 다이얼로그가 닫혔다 다시 뜨지 않고 그대로 모습만 바뀌도록).
+  const wide = sf.kind === 'ptake' ? 720 : 900
+  const tallPx = sf.kind === 'ptake' ? 560 : 620
   const panelStyle: React.CSSProperties = mobile
     ? { transform: `translateY(${hidden ? '100%' : '0px'})`, transition: EASE, ...(bmH ? { height: bmH } : {}) }
-    : { width: `min(900px, ${Math.max(320, frameW - 40)}px)` }
+    : { width: `min(${wide}px, ${Math.max(320, frameW - 40)}px)`, height: `min(${tallPx}px, 86svh)` }
   // 본문 가로 슬라이드(부위 염색 전환) — 즉시 값이라 인라인.
   const slideStyle: React.CSSProperties = { transform: `translateX(${s.partSlide}px)`, opacity: s.partSlide ? 0 : 1 }
 
@@ -209,6 +214,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
             {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다(사용자 지시). */}
             {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
+            {k === 'ptake' && sf.post && <><PlazaTakeBody post={sf.post} mobile={mobile} /><SurfaceFooter onBack={s.plazaTakeBack} /></>}
             {k === 'notice' && <><NoticeBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
             {k === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}
@@ -221,13 +227,14 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
 // 공용 푸터. 적용은 염색·점 위치만. 부위 염색을 거쳐 들어온 염색·점 위치는 '이전'(부위 고르기로 슬라이드 복귀), 그 외는 '닫기'(즉시 종료).
 // 모바일은 얇고 긴 34px(버튼 하나면 전체 폭, 닫기+적용이면 반씩).
-export function SurfaceFooter({ onApply, applyLabel = '적용' }: { onApply?: () => void; applyLabel?: string }) {
+// onBack: 본문 안에서 화면만 바뀐 경우(염색표 보기 등) 그 화면이 직접 넘겨주는 '이전'. 서피스 종류를 바꾸지 않는다.
+export function SurfaceFooter({ onApply, applyLabel = '적용', onBack }: { onApply?: () => void; applyLabel?: string; onBack?: () => void }) {
   const s = useShop()
   const mobile = s.bp === 'mobile'
   const sf = s.surface
   // '이전' = 부위 염색을 거쳐 들어온 염색·점 위치, 그리고 광장 상세를 거쳐 들어온 프리셋 칸 고르기.
-  const back = !!sf?.fromPart && (sf.kind === 'dye' || sf.kind === 'dot')
-  const goBack = s.partBack
+  const back = !!onBack || (!!sf?.fromPart && (sf.kind === 'dye' || sf.kind === 'dot'))
+  const goBack = onBack ?? s.partBack
   return (
     <div data-sheet-foot className={mobile ? styles.footM : styles.foot}>
       <button type="button" onClick={back ? goBack : s.closeSurface} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>{back ? '이전' : '닫기'}</button>

@@ -76,7 +76,8 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
     if (mix) {
       if (!meta) return
       const base = palette?.baseColor ?? 0, mixC = palette?.mixColor ?? base, ratio = palette?.ratio ?? 0
-      await renderDyedSprite(el, meta, base, mixC, base === mixC ? 0 : ratio, THUMB_VIEW, zmap, Math.round(Math.min(boxW, boxH) * dpr), frac)
+      // 헤어·성형도 커스텀 염색(HSB)을 받는다 — 팔레트 결과 위에 입힌다(lib/core/dye 와 같은 순서).
+      await renderDyedSprite(el, meta, base, mixC, base === mixC ? 0 : ratio, THUMB_VIEW, zmap, Math.round(Math.min(boxW, boxH) * dpr), frac, hsb)
     } else {
       const rel = thumb || `sprites/${id}/icon.png` // 아이템 스프라이트(모델 베이크 아님)
       const active = hsbActive(hsb)

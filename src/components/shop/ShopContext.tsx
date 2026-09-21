@@ -56,8 +56,10 @@ export type Snapshot = { equipped: Record<string, string>; tone: number; dyePale
 // 단일 서피스(시트·다이얼로그): 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 하나를 쓴다(v2 §10.4).
 // part = 부위 염색(착용 부위 고르기 → 같은 다이얼로그 안에서 염색/점 위치로 슬라이드), vs = 북마크 코디 비교(PC).
 // fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다(delta §3·§8).
-// plaza = 코디 광장 글 상세(가져오기는 공유 받기 다이얼로그를 그대로 쓴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza' | 'notice'
+// plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
+//   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(2026-09-21 사용자 지시:
+//   예전엔 상세가 닫히고 공유 받기 다이얼로그가 새로 떠서 화면이 한 번 끊겼다).
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza' | 'ptake' | 'notice'
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴(delta 값)
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
@@ -196,6 +198,7 @@ export interface ShopCtx {
   openPlazaPost: (post: PlazaPost) => void
   openNotice: () => void
   plazaTakeDirect: (post: PlazaPost) => void
+  plazaTakeBack: () => void
   resolveSnapItems: (snap: Snapshot) => Promise<Record<string, ListItem | null>>
   plazaLike: (post: PlazaPost) => void
   plazaRemove: (post: PlazaPost) => void
@@ -344,6 +347,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const renderHsb = useMemo(() => { const o: Record<string, HsbParams> = {}; for (const [k, v] of Object.entries(dyeHsb)) if (!dyeOff[k]) o[k] = v; return o }, [dyeHsb, dyeOff])
   const [dyeInteracting, setDyeInteracting] = useState(false)
   const [surface, setSurface] = useState<Surface | null>(null)
+  const surfaceRef = useRef<Surface | null>(null); surfaceRef.current = surface // 콜백에서 지금 열린 서피스를 본다
   const [surfaceClosing, setSurfaceClosing] = useState(false)
   const [partSlide, setPartSlide] = useState(0)
   const [vsOn, setVsOn] = useState(false)
@@ -1012,9 +1016,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 가져오기는 공유 링크로 받을 때와 **같은 다이얼로그**(ShareReceiveSheet)를 쓴다(사용자 지시).
   // 칸을 고르면 그대로 applySharedToPreset 으로 들어가므로 덮어쓰기·되돌리기 동작이 완전히 같다.
   const plazaTakeDirect = (post: PlazaPost) => {
+    // 상세가 열려 있으면 같은 다이얼로그 안에서 슬라이드로 넘어간다(닫았다 다시 뜨지 않는다).
+    // 목록 카드에서 바로 누른 경우는 열린 다이얼로그가 없으므로 예전처럼 공유 받기 다이얼로그를 쓴다.
+    if (surfaceRef.current?.kind === 'plaza') { slideTo(1, { kind: 'ptake', item: null, post, fromDetail: true }); return }
     closeSurface()
     takeFrom.current = post
     setSharedIncoming({ ...post.snapshot, name: post.name })
+  }
+  // 'ptake' 에서 '이전' — 보던 상세로 되돌아간다(역방향 슬라이드).
+  const plazaTakeBack = () => {
+    const sf = surfaceRef.current
+    if (sf?.kind === 'ptake' && sf.post) slideTo(-1, { kind: 'plaza', item: null, post: sf.post })
   }
   // 가져오기 시트가 닫히는 전환(320ms)을 끝까지 보여준 뒤 상세를 다시 연다.
   useEffect(() => {
@@ -1341,6 +1353,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {})
     setSharedIncoming(null)
     endTake()
+    // 같은 다이얼로그 안에서 고른 경우(광장 상세 → 가져오기)는 보던 상세로 되돌아간다 — 다이얼로그를 닫지 않는다.
+    const sf = surfaceRef.current
+    if (sf?.kind === 'ptake' && sf.post) slideTo(-1, { kind: 'plaza', item: null, post: sf.post })
     const nm = snap.name || presets.find((p) => p.id === targetId)?.name
     notify(nm ? `공유받은 코디를 '${nm}'에 저장했어요` : '공유받은 코디를 프리셋에 불러왔어요')
   }
@@ -1695,7 +1710,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
-    openPlazaPost, openNotice, plazaTakeDirect, resolveSnapItems: resolveEquipped,
+    openPlazaPost, openNotice, plazaTakeDirect, plazaTakeBack, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,
