@@ -153,19 +153,33 @@ export async function loadIndex(): Promise<Index> {
   if (!r.ok) throw new Error(`index.json ${r.status}`)
   return r.json()
 }
-// 원본 WZ 의 자리 코드(islot·vslot)가 잘못 들어간 무기 보정 — 리스트·단건 어디로 들어와도 같은 값이 되도록
-// 여기 한 곳에서 고친다(islot = 인벤 충돌로 옷을 **벗기고**, vslot = 가림으로 옷을 **숨긴다** — 둘 다 걸린다).
-//  · 계기: 2026-09-21 건의함 "쿨썸머 보드 << 장착하면 한벌옷이 사라집니다".
-//  · 실측: weapon 3942개 중 자리 코드가 Wp 계열이 아닌 건 MaPn(한벌옷) 5개뿐 — 쿨썸머 보드(01702849) ·
-//    파스텔 로즈 · 비치발리볼 · 생선의 지배자 · 애교 폭발 멍뭉이. 전부 손에 드는 캐시 무기(아이콘 확인)라
-//    몸을 덮지 않는다. 나머지는 Wp(3197) · WpSi(673, 양손) · Si(67) 로 정상이다.
-//  · 그래서 무기의 자리 코드는 Wp 계열만 인정하고, 그 밖의 값은 Wp 로 본다.
-const WEAPON_SLOT_CODES = new Set(['Wp', 'WpSi', 'Si'])
-function fixWeaponSlotCodes<T extends { slot?: string; islot?: string | null; vslot?: string | null }>(it: T): T {
-  if (it.slot !== 'weapon') return it
-  const bad = (c?: string | null) => !!c && !WEAPON_SLOT_CODES.has(c)
-  if (!bad(it.islot) && !bad(it.vslot)) return it
-  return { ...it, islot: bad(it.islot) ? 'Wp' : it.islot, vslot: bad(it.vslot) ? 'Wp' : it.vslot }
+// 원본 WZ 의 자리 코드(islot·vslot)가 **남의 부위로** 들어간 아이템 보정. 리스트·단건 어디로 들어와도 같은
+// 값이 되도록 여기 한 곳에서 고친다(islot = 인벤 충돌로 다른 부위를 **벗기고**, vslot = 가림으로 **숨긴다**).
+//  · 계기: 2026-09-21 건의함 "쿨썸머 보드 << 장착하면 한벌옷이 사라집니다"(무기인데 islot·vslot 이 MaPn).
+//  · 전수 조사(14슬롯 32,693개, 2026-09-22): 같은 꼴이 21개 더 있었다 —
+//      신발 '투명 신발'·장갑 '투명 장갑'·망토 '투명 망토'/'숟가락X포크 망토'/'메이플 갤럭시 망토' = Cp(모자),
+//      신발 '유피테르 슈즈' 등 5개 = MaPn, 한벌옷 '커플/솔로부대 전투복' 등 6개 = Sr(망토), 무기 5개 = MaPn.
+//    이들은 하나같이 **islot 과 vslot 이 똑같이 남의 코드**다(원본이 통째로 잘못 들어간 꼴).
+//  · 반대로 '정당한 가림'은 islot 이 제 부위이고 vslot 만 남을 가린다 — 모자 vslot=CpH1H5(헤어 가림),
+//    얼굴장식 '오만의 원죄' vslot=CpH1H5, 장갑 vslot=GlGw(장갑 레이어), 헤어 vslot=H1H2…(앞/뒷머리).
+//    그래서 **islot 이 제 부위일 때는 vslot 을 건드리지 않는다**.
+//  · 겸용도 정당하다: 양손무기 WpSi, 포스실드류 무기 Si(방패 칸 장착), 전신 인형탈 모자 HrCp,
+//    상하의를 함께 차지하는 상의·하의 MaPn.
+const OK_ISLOT: Record<string, string[]> = {
+  hair: ['Hr'], face: ['Fc'], cap: ['Cp', 'HrCp'], faceAcc: ['Af'], eyeAcc: ['Ay'], earring: ['Ae'],
+  coat: ['Ma', 'MaPn'], longcoat: ['MaPn'], pants: ['Pn', 'MaPn'], shoes: ['So'], glove: ['Gv'],
+  cape: ['Sr'], weapon: ['Wp', 'WpSi', 'Si'], shield: ['Si'],
+}
+const BASE_ISLOT: Record<string, string> = {
+  hair: 'Hr', face: 'Fc', cap: 'Cp', faceAcc: 'Af', eyeAcc: 'Ay', earring: 'Ae',
+  coat: 'Ma', longcoat: 'MaPn', pants: 'Pn', shoes: 'So', glove: 'Gv', cape: 'Sr', weapon: 'Wp', shield: 'Si',
+}
+function fixSlotCodes<T extends { slot?: string; islot?: string | null; vslot?: string | null }>(it: T): T {
+  const slot = it.slot || ''
+  const ok = OK_ISLOT[slot]
+  if (!ok || !it.islot || ok.includes(it.islot)) return it
+  const base = BASE_ISLOT[slot]
+  return { ...it, islot: base, vslot: base } // islot 이 통째로 남의 코드 = vslot 도 같은 값이라 함께 되돌린다
 }
 
 // 라이딩(dev 로컬) 아이템의 meta 경로를 id→url 로 등록. 슬롯 로드 시 채워지고 loadMeta 가 이걸 우선 쓴다.
@@ -176,7 +190,7 @@ export function loadSlot(file: string): Promise<ListItem[]> {
   if (!p) {
     p = fetch(url(file), FRESH).then((r) => r.json()).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
-      return items.map(fixWeaponSlotCodes)
+      return items.map(fixSlotCodes)
     })
     slotCache.set(file, p)
   }
@@ -185,7 +199,7 @@ export function loadSlot(file: string): Promise<ListItem[]> {
 const metaCache = new Map<string, Promise<ItemMeta>>()
 export function loadMeta(id: string): Promise<ItemMeta> {
   let p = metaCache.get(id)
-  if (!p) { p = fetch(url(ridingMetaUrl.get(id) ?? `meta/${id}.json`)).then((r) => r.json()).then(fixWeaponSlotCodes); metaCache.set(id, p) }
+  if (!p) { p = fetch(url(ridingMetaUrl.get(id) ?? `meta/${id}.json`)).then((r) => r.json()).then(fixSlotCodes); metaCache.set(id, p) }
   return p
 }
 
