@@ -110,7 +110,7 @@
 .refResetOn { opacity: 1; pointer-events: auto; }
 /* 착용 아이템 — 닫힌 아코디언(2026-09-21). 칩은 부위 염색 칩(surface .partChip)과 같은 모양이되 누르는 요소가 아니라 읽는 칩이다.
    막대는 라벨 위치가 다른 구역 라벨과 맞도록 음수 여백(6px — 상세 본문 패딩과 같게, 넘치면 스크롤 칸에 잘린다)으로 hover 면만 넓힌다. 창(overflow:hidden) 안에서 칩이 translateY 로 드러난다. */
-.worn { flex: 0 0 auto; display: flex; flex-direction: column; }
+.worn { flex: 0 0 auto; display: flex; flex-direction: column; margin-bottom: -6px; } /* 창의 윗 여백 6px 을 되돌려 닫힘 때 위·아래 간격을 같게(18/18) */
 .wornBar { display: flex; align-items: center; gap: 6px; height: 28px; margin: -6px -6px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .2s ease; }
 /* 모바일: hover 가 없으니 hover 면을 넓힐 이유도 없다 — 음수 여백을 없애 막대가 본문(패딩 안) 밖으로 나가지 않게. */
 .wornBarM { margin: -6px 0; padding: 0; border-radius: 0; }
@@ -118,7 +118,7 @@
 .wornCaret { margin-left: auto; color: #a89e93; transition: transform .3s cubic-bezier(.45,0,.55,1), color .2s ease; }
 .wornCaretOn { transform: rotate(180deg); }
 .wornWin { margin-top: 6px; overflow: hidden; } /* 막대의 아래쪽 음수 여백(6px)만큼 내려 hover 면 아래에서 칩이 나온다 */
-.wornInner { padding-top: 6px; } /* 창 6 + 6 = 막대와 칩 사이 12 (그대로) */
+.wornInner { padding: 6px 0; } /* 위: 창 6 + 6 = 막대와 칩 사이 12 / 아래 6: .worn 의 -6px 을 채워 펼침 때 칩 아래 간격 유지 */
 .wornChip { cursor: default; }
 .wornSkel { height: 52px; border-radius: 11px; }
 .descBlock { display: flex; flex-direction: column; gap: 8px; }
