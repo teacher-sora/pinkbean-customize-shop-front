@@ -141,14 +141,14 @@ function localLong(id: string): string | null {
 }
 
 // 짧은 코드 → 긴 코드. 이 기기에서 만든 것 → CDN(캐시·빠름) → API(R2 직접). 다른 기기에서 복사 직후 붙여 넣으면 저장이
-// 아직 진행 중일 수 있어 API 를 잠깐(최대 ~2.4초) 다시 본다. CDN 은 브라우저 캐시를 거치지 않는다(아직 없던 때의 응답을 굳히지 않게).
+// 아직 진행 중일 수 있어 API 를 잠깐(최대 ~6초) 다시 본다 — dev 실측: 첫 저장 응답이 콜드 스타트로 ~2초. CDN 은 브라우저 캐시를 거치지 않는다(아직 없던 때의 응답을 굳히지 않게).
 async function expandShortCode(id: string): Promise<string | null> {
   const mine = localLong(id)
   if (mine) return mine
   // dev 는 저장 경로가 다르다(`share-dev/`) — api/share · app/share/page.tsx 와 규칙이 같아야 한다.
   const prefix = typeof window !== 'undefined' && /^(www\.)?pinkbean-customize\.com$/.test(location.hostname) ? 'share' : 'share-dev'
   const api = `/api/share?id=${encodeURIComponent(id)}`
-  for (const wait of [0, 600, 800, 1000]) {
+  for (const wait of [0, 600, 800, 1000, 1500, 2000]) {
     if (wait) await new Promise((res) => setTimeout(res, wait))
     for (const url of wait ? [api] : [`${DATA_BASE}/${prefix}/${id}`, api]) {
       try {
