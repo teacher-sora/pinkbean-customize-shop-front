@@ -8,7 +8,7 @@ import clsx from 'clsx'
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import bg from '@/assets/pinkbean-bg.png'
-import { loadContestLooks, PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX, type RefView } from '@/lib/plaza'
+import { contestCandidates, PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX, type RefView } from '@/lib/plaza'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { lookItems, normLook } from '@/lib/plazaLook'
@@ -66,8 +66,8 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const myContest = s.plazaPosts.filter((p) => p.mine && p.contest).length
   const contestLeft = Math.max(0, PLAZA_CONTEST_MAX - myContest)
   const contestFull = contest && contestLeft === 0
-  // 대회는 **같은 조합을 한 번만** 받는다(선점). 착용이 같은 출품작과 결과 픽셀을 비교해(lib/plazaLookPixels) 미리 막고 알린다.
-  // 고르는 동안은 불러온 목록으로 안내하고, 등록 직전에 DB 의 출품작 전부와 다시 확인한다. DB(0009)는 좁은 안전망.
+  // 대회는 **같은 조합을 한 번만** 받는다(선점). 착용·피부가 같은 출품작만 DB 에서 받아(contestCandidates — 수만 개여도 몇 개)
+  // 결과 픽셀을 비교해(lib/plazaLookPixels) 미리 막고 알린다. 등록 직전에 한 번 더 확인한다. DB 트리거(0009)는 좁은 안전망.
   const skinOf = useCallback((tone: number): SkinInfo => {
     const te = s.index?.base.tones.find((t) => t.tone === tone)
     return te ? { body: te.body, head: te.head, colorLine: isColorLineSkin(te.name) } : null
@@ -87,17 +87,24 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const snapRef = useRef(snap)
   snapRef.current = snap
   const lookSig = snap ? JSON.stringify(normLook(snap)) : ''
-  const contestSig = s.plazaPosts.filter((p) => p.contest).map((p) => p.id).join(',')
+  const contestSig = s.plazaPosts.filter((p) => p.contest).map((p) => p.id).join(',') // 누가 새로 올리면 다시 확인
+  // 비교 대상: DB 가 골라 준 같은 착용의 출품작. DB 를 못 쓰면(설정 없음·오류) 불러온 목록에서 거른다.
+  const candidates = useCallback(async (sn: Snapshot) => {
+    try { return await contestCandidates(sn) } catch { return s.plazaPosts.filter((p) => p.contest) }
+  }, [s.plazaPosts])
   useEffect(() => {
     const sn = snapRef.current
     if (!contest || !sn) { setTaken(null); setChecking(false); return }
     let alive = true
     setChecking(true)
-    findTaken(sn, s.plazaPosts.filter((p) => p.contest))
-      .then((t) => { if (alive) setTaken(t) })
-      .catch(() => { if (alive) setTaken(null) })
-      .finally(() => { if (alive) setChecking(false) })
-    return () => { alive = false }
+    // 프리셋을 빠르게 넘겨 볼 때 요청이 몰리지 않게 잠깐 기다린다.
+    const t = setTimeout(() => {
+      candidates(sn).then((list) => findTaken(sn, list))
+        .then((r) => { if (alive) setTaken(r) })
+        .catch(() => { if (alive) setTaken(null) })
+        .finally(() => { if (alive) setChecking(false) })
+    }, 200)
+    return () => { alive = false; clearTimeout(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contest, lookSig, contestSig, findTaken])
   const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !taken && !checking && !s.plazaSubmitting
@@ -124,10 +131,10 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     if (taken) { s.notify('같은 조합이 이미 대회에 출품돼 있어요'); return }
     if (!canSubmit || !snap) { s.notify(contest ? '이메일을 확인해 주세요' : '프리셋과 이름을 확인해 주세요'); return }
     if (contest) {
-      // 등록 직전: 지금 DB 에 있는 출품작 전부와 다시 확인(그사이 누가 올렸을 수 있다).
+      // 등록 직전: 지금 DB 에서 다시 받아 확인(그사이 누가 올렸을 수 있다).
       setChecking(true)
       try {
-        const t = await findTaken(snap, await loadContestLooks())
+        const t = await findTaken(snap, await candidates(snap))
         if (t) { setTaken(t); s.notify('같은 조합이 이미 대회에 출품돼 있어요'); return }
       } catch { /* 확인이 실패하면 DB 안전망에 맡긴다 */ } finally { setChecking(false) }
     }

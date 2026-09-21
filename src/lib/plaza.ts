@@ -8,6 +8,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import type { Snapshot } from '@/components/shop/ShopContext'
+import { plazaSnapshot } from '@/lib/plazaLook'
 
 export type PlazaSort = 'popular' | 'recent'
 export type PlazaFilter = 'all' | 'contest' | 'mine' | 'liked'
@@ -135,7 +136,7 @@ const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
   name: r.name,
   description: r.description || '',
   tags: r.tags || [],
-  snapshot: r.snapshot,
+  snapshot: plazaSnapshot(r.snapshot), // 숨김 규칙 이전에 올라온 글도 숨긴 부위는 없는 것으로
   shareCode: r.share_code,
   imageUrl: publicUrl(r.image_path),
   imagePath: r.image_path,
@@ -200,12 +201,13 @@ export async function loadPlaza(): Promise<PlazaPost[]> {
   return (postsRes.data as Row[]).map((r) => toPost(r, uid, liked))
 }
 
-// 대회 출품작의 조합만(등록 직전 '같은 조합' 확인용). 목록 캐시(ISR·최근 300개)를 거치지 않고 **지금** DB 에서 읽는다
-// — 방금 올라온 출품작이나 오래돼 목록 밖으로 밀린 출품작도 빠짐없이 비교한다.
-export async function loadContestLooks(): Promise<{ id: string; name: string; snapshot: Snapshot }[]> {
+// 이 스냅샷과 착용·피부가 같은 대회 출품작만(‘같은 조합’ 확인용 — supabase/0010). 착용이 다르면 어차피 다른 조합이라,
+// DB 가 지문 색인(look_key)으로 골라 준다 — 출품작이 수만 개여도 몇 개만 받는다(5만 행 실측 0.05ms).
+// 목록 캐시(ISR·최근 300개)를 거치지 않아 방금 올라온 출품작도 빠지지 않는다.
+export async function contestCandidates(snap: Snapshot): Promise<{ id: string; name: string; snapshot: Snapshot }[]> {
   const c = sb()
   if (!c) return []
-  const { data, error } = await c.from('plaza_posts').select('id,name,snapshot').eq('contest', true).limit(5000)
+  const { data, error } = await c.rpc('plaza_contest_candidates', { s: snap })
   if (error) throw error
   return (data || []) as { id: string; name: string; snapshot: Snapshot }[]
 }

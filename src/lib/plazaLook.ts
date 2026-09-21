@@ -2,7 +2,7 @@
 //
 // 판정은 두 겹이다.
 //  A. 정규화(여기, 순수 함수) — 화면에 보이는 결과가 같은 스냅샷을 같은 모양으로 만든다.
-//     · 숨긴 부위 = 착용하지 않은 것, 염색을 끈 부위 = 염색 없음(화면에서 그렇게 보인다).
+//     · 숨긴 부위 = 착용하지 않은 것(광장 등록 때 아예 지운다 — plazaSnapshot), 염색을 끈 부위 = 염색 없음.
 //     · 팔레트(헤어·성형) = 결과 색의 **비율 분포** { 색: 비율 }. A=B 면 한 색 100%, 비율 0 이면 A 100%, 비율 100 이면 B 100%,
 //       (A,B,r) 과 (B,A,100−r) 은 같은 분포. 염색하지 않았으면 착용 아이템 자신의 색 100%.
 //     · HSB = 색조 0~359 · 채도 · 명도 · 색 계열 t. 셋 다 0 이면 염색 없음(t 무시).
@@ -26,6 +26,22 @@ export type LookSnap = {
 export type HsbN = { h: number; s: number; b: number; t: number }
 export type NormSlot = { id: string; pal?: Record<number, number>; hsb?: HsbN | null }
 export type NormLook = { tone: number; skin: HsbN | null; slots: Record<string, NormSlot> }
+
+// 광장에 올리는 스냅샷 — 숨긴 부위는 **없는 아이템**으로 지운다(2026-09-21 사용자 지시).
+// 광장(자유·대회 모두)에서만 그렇다: 등록 · 상세의 착용 아이템 · 링크 복사 · 가져오기가 모두 이 스냅샷을 쓴다.
+// 프리셋 · 공유 링크 · 코디 화면에서는 여전히 '착용했지만 숨긴' 아이템이다.
+export function plazaSnapshot<T extends LookSnap & { dotPos?: Record<string, unknown> }>(s: T): T {
+  const hid = Object.keys(s.hidden || {}).filter((k) => s.hidden![k] && s.equipped?.[k])
+  if (!hid.length) return s
+  const drop = <V,>(m: Record<string, V> | undefined, keys: string[]) => { if (!m) return m; const o = { ...m }; for (const k of keys) delete o[k]; return o }
+  const ids = hid.map((k) => s.equipped![k])
+  return {
+    ...s,
+    equipped: drop(s.equipped, hid), hidden: drop(s.hidden, hid),
+    dyePalette: drop(s.dyePalette, hid), dyeHsb: drop(s.dyeHsb, hid), dyeOff: drop(s.dyeOff, hid),
+    ...(s.dotPos ? { dotPos: drop(s.dotPos, ids) } : {}),
+  }
+}
 
 export const MIX_SLOTS = new Set(['hair', 'face'])
 export const PARAM_TOL = { pal: 0.1, h: 2, s: 2, b: 2 } // DB 안전망(좁게)

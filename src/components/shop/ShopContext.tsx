@@ -20,6 +20,7 @@ import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { createPlazaPost, deletePlazaPost, loadPlaza, plazaConfigured, plazaView, togglePlazaLike,
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
+import { plazaSnapshot } from '@/lib/plazaLook'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 import { confirmTwice } from '@/lib/confirmTwice'
@@ -1016,9 +1017,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPlazaSubmitting(true)
     try {
       // 공유 코드도 함께 만들어 둔다 — '링크 복사'와 카톡 카드가 기존 공유 기능을 그대로 쓴다.
-      const named = { ...draft.snapshot, name: draft.name }
+      // 숨긴 부위는 광장에서는 없는 아이템이다 — 저장·공유 링크(가져오기·링크 복사) 모두 지운 스냅샷으로.
+      const clean = plazaSnapshot(draft.snapshot)
+      const named = { ...clean, name: draft.name }
       const prep = await prepareShare(location.origin, named).catch(() => null)
-      const post = await createPlazaPost({ ...draft, shareCode: prep?.id ?? null })
+      const post = await createPlazaPost({ ...draft, snapshot: clean, shareCode: prep?.id ?? null })
       if (prep) void uploadShare(prep, named)
       myAdded.current = [post, ...myAdded.current]
       setPlazaPosts((list) => [post, ...list])
