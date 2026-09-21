@@ -79,18 +79,32 @@
 .likeOn { border-color: #f4cfdf; background: #fce9f1; color: #ec86ac; }
 
 /* ── 상세(서피스 본문) ── */
-.detail { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.detail { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 16px; }
 /* PC 는 댓글 열이 오른쪽에 붙는다 — 스테이지를 280 → 250 으로 줄여 두 칸이 나란히 남게 한다(사용자 지시). */
 .detailPc { flex: 1 1 auto; min-height: 0; padding: 12px; display: flex; align-items: stretch; }
-.detailMain { flex: 1 1 0; min-width: 0; padding-right: 12px; overflow: hidden auto; display: flex; flex-direction: column; gap: 12px; }
+.detailMain { flex: 1 1 0; min-width: 0; padding-right: 12px; overflow: hidden auto; display: flex; flex-direction: column; gap: 16px; }
 .stages { flex: 0 0 auto; height: 240px; display: flex; gap: 10px; }
 .stagesM { height: 220px; }
 .stage { position: relative; flex: 1 1 0; min-width: 0; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .stageImg { object-fit: cover; object-position: center 78%; }
 .stageTone { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.45)); }
 .stageRef { border: 1px dashed #e4dcd2; background: #fbf8f4; }
-.refImg { object-fit: contain; }
-.detailHr { height: 1px; background: #f0e9e1; }
+.stageRef { cursor: default; }
+/* 구역 사이 끊긴 구분선 — 양 끝을 비워 '닫힌 상자'가 아니라 흐름 속 쉼표로 읽힌다(사용자 지시 2026-09-21). */
+.secHr { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f0e9e1; }
+/* 참고 이미지 확대·이동(PlazaRefViewer) */
+.refView { position: absolute; inset: 0; overflow: hidden; cursor: zoom-in; user-select: none; -webkit-user-select: none; }
+.refViewPan { cursor: grab; }
+.refViewDrag { cursor: grabbing; }
+.refViewImg { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; transition: opacity .22s ease; }
+.refReset { position: absolute; right: 8px; bottom: 8px; z-index: 2; height: 26px; padding: 0 10px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fff; font-family: inherit; font-size: 11px; font-weight: 600; color: #d76d9a; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); opacity: 0; pointer-events: none; transition: opacity .22s ease, background-color .22s ease, border-color .22s ease; }
+.refResetOn { opacity: 1; pointer-events: auto; }
+/* 착용 아이템 — 누르는 요소가 아니라 읽는 칩이다(흰 바탕, hover 없음). */
+.itemRow { display: flex; flex-wrap: wrap; gap: 6px; }
+.itemChip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 26px; padding: 0 10px; border: 1px solid #f0e9e1; border-radius: 20px; background: #fff; font-size: 11.5px; font-weight: 500; color: #5c534b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itemSlot { flex: 0 0 auto; font-size: 10.5px; font-weight: 600; color: #a89e93; }
+.itemDyed { flex: 0 0 auto; font-size: 10px; font-weight: 700; color: #d76d9a; }
+.itemSkel { display: inline-block; height: 26px; border-radius: 20px; }
 .descBlock { display: flex; flex-direction: column; gap: 8px; }
 .descLabel { font-size: 11px; font-weight: 700; color: #a89e93; }
 .descText { margin: 0; font-size: 12.5px; line-height: 1.6; color: #5c534b; word-break: keep-all; }
@@ -129,12 +143,22 @@
 .pickPanelUp.panelOn { transform: translateY(0) scale(1); }
 .pickContest { border-color: #f4cfdf; background: #fce9f1; }
 .pickList { display: flex; flex-direction: column; gap: 2px; max-height: 196px; overflow: hidden auto; }
+.pickGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: 268px; overflow: hidden auto; }
+.pickGridM { max-height: 236px; }
+.pickCell { display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid #eee6dc; border-radius: 9px; background: #fff; overflow: hidden; font-family: inherit; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
+.pickCellOn { border-color: #ec86ac; background: #fdf4f8; }
+.pickThumb { position: relative; display: block; flex: 0 0 auto; height: 72px; background: #f7f2ec; }
+.pickName { display: block; padding: 4px 6px 6px; font-size: 11.5px; font-weight: 600; color: #5c534b; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pickCellOn .pickName { color: #d76d9a; }
+.pickEmpty { grid-column: 1 / -1; margin: 0; padding: 12px 4px; font-size: 12px; color: #a89e93; text-align: center; }
 .pickListM { max-height: 168px; }
 .pickOpt { width: 100%; height: 32px; padding: 0 10px; display: flex; align-items: center; border: none; border-radius: 7px; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 500; color: #5c534b; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: background-color .18s ease, color .18s ease; }
 .pickOptOn { background: #fce9f1; font-weight: 700; color: #d76d9a; }
 .upStage { position: relative; flex: 0 0 auto; height: 164px; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .tagChips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
-.tagDel { flex: 0 0 auto; height: 24px; padding: 0 9px; display: flex; align-items: center; gap: 4px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fce9f1; font-family: inherit; font-size: 11px; font-weight: 600; color: #d76d9a; cursor: pointer; }
+.tagDel { flex: 0 0 auto; padding: 0; border: none; background: transparent; font-family: inherit; cursor: pointer; } /* 자리(hover 판정)는 고정 */
+.tagDelPill { display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fce9f1; font-size: 11px; font-weight: 600; color: #d76d9a; transition: transform .2s ease, border-color .22s ease, background-color .24s ease, color .22s ease; }
+.tagDelX { font-size: 10px; }
 .imgBtn { width: 100%; height: 56px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; border-radius: 9px; background: #fbf8f4; font-family: inherit; font-size: 12px; font-weight: 600; color: #a89e93; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
 .imgBtnOn { border: 1px solid #f4cfdf; background: #fce9f1; color: #d76d9a; }
 .scopeGroup { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }
@@ -149,11 +173,24 @@
 
 @media (hover: hover) and (pointer: fine) {
   .railBtn:hover { border-color: #f0d3e0; background: #fff; color: #d76d9a; }
-  .delBtn:hover { border-color: #e8b6ac; color: #c14a32; }
+  .delBtn:hover { border-color: #eeb2ce; background: #fce9f1; color: #e0533e; } /* 내리기: 연한 핑크로 채우고 아이콘은 위험색 */
   .likeBtn:hover { border-color: #f4cfdf; color: #ec86ac; }
   .upBtn:hover { background: #fdf4f8; }
   .tagChip:hover { border-color: #f4cfdf; background: #fdf4f8; color: #d76d9a; }
   .pickOpt:hover { background: #fdf1f6; color: #d76d9a; }
+  .pickCell:hover { border-color: #eeb2ce; background: #fdf4f8; }
+  /* 태그 지우기: 바깥 자리는 그대로, 알약만 줄며 위험색 — '누르면 사라진다' */
+  .tagDel:hover .tagDelPill { transform: scale(.92); border-color: #e0533e; background: #fdf0f5; color: #e0533e; }
+  .refReset:hover { border-color: #ec86ac; background: #fdf4f8; }
+  /* 상세 행동 줄 — 누른 결과를 미리 보여 준다 */
+  .actLike:hover { border-color: #ec86ac; color: #ec86ac; }                  /* 하트가 켜질 색 */
+  .actLike.actBtnOn:hover { border-color: #f4cfdf; background: #fff; color: #a89e93; } /* 취소하면 꺼진다 */
+  .actLink:hover { border-color: #ec86ac; color: #d76d9a; }
+  .actTake:hover { background: #de6fa0; }
+  /* 댓글 */
+  .cmtDel:hover { border-color: #e0533e; background: #fdf0f5; color: #e0533e; }
+  .cmtReplyBtn:hover { background: #fbe0ec; color: #d76d9a; }
+  .cmtSend:not(.cmtSendOff):hover { background: #de6fa0; }
   .imgBtn:hover { border-color: #f4cfdf; color: #d76d9a; }
   .arrowOn:hover { background: #fce9f1; color: #d76d9a; }
 }
@@ -164,7 +201,7 @@
 /* 좋아요 수 — 자릿수만큼 **고정 폭**(ch)으로 잡아 같은 자릿수 안에서는 숫자가 바뀌어도 버튼이 움직이지 않는다.
    tabular-nums 를 지원하지 않는 글꼴이거나 숫자가 뚱뚱해도 폭은 그대로다(가운데 정렬, 넘치면 넘친 채로). */
 .actNum { display: inline-block; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.actBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #f0d3e0; border-radius: 8px; background: #fff; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #8a8075; cursor: pointer; }
+.actBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #f0d3e0; border-radius: 8px; background: #fff; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #8a8075; cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
 .actBtnOn { border-color: #f4cfdf; background: #fce9f1; color: #d76d9a; }
 .actTake { margin-left: auto; border-color: transparent; background: #ec86ac; color: #fff; }
 
@@ -183,17 +220,17 @@
 .cmtCount { font-size: 11px; font-weight: 700; color: #ec86ac; }
 /* 스크롤 막대가 생겨도 글이 밀리지 않게 양쪽에 자리를 미리 비워 둔다(both-edges).
    그만큼 안쪽 여백을 줄여 실제 글 폭은 그대로 유지한다. */
-.cmtList { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 20px; padding: 0 4px 0 0; } /* 스크롤바와 댓글 사이만 띄운다 */
+.cmtList { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 24px; padding: 0 4px 0 0; } /* 스크롤바와 댓글 사이만 띄운다 */
 .cmtListM { flex: 0 0 auto; min-height: 0; overflow: visible; scrollbar-gutter: auto; padding: 0; }
 .cmtSkel { display: flex; flex-direction: column; gap: 7px; }
 .cmtSkel span { display: block; height: 11px; border-radius: 5px; }
 .cmtEmpty { margin: 0; font-size: 12px; line-height: 1.5; color: #a89e93; }
 
-.cmtThread { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cmtThread { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .cmtItem { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .cmtItemReply { gap: 2px; }
 /* 답글은 들여쓰고 왼쪽에 선을 둔다 — 원댓글과 한눈에 구분되게(유튜브와 같은 단서). */
-.cmtReplies { display: flex; flex-direction: column; gap: 13px; min-width: 0; margin-left: 5px; padding-left: 10px; border-left: 2px solid #f0e9e1; }
+.cmtReplies { display: flex; flex-direction: column; gap: 12px; min-width: 0; margin-left: 5px; padding-left: 10px; border-left: 2px solid #f0e9e1; }
 .cmtMeta { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .cmtWho { flex: 0 1 auto; min-width: 0; font-size: 11px; font-weight: 600; color: #8a8075; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cmtWhoAuthor { color: #d76d9a; }
@@ -202,11 +239,12 @@
 .cmtChipMine { background: #f2ebe3; color: #8a8075; }
 .cmtTime { flex: 1 1 auto; min-width: 0; font-size: 10.5px; color: #b7ada2; white-space: nowrap; overflow: hidden; }
 /* 지우기는 숨기지 않는다 — 있는 줄 몰라서 못 지우는 쪽이 더 나쁘다. 첫 번째 누름은 토스트로만 안내한다(버튼 모양은 그대로). */
-.cmtDel { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid #f2d7d2; border-radius: 6px; background: #fff; font-family: inherit; font-size: 10px; font-weight: 700; color: #d1735f; cursor: pointer; }
+.cmtDel { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid #f2d7d2; border-radius: 6px; background: #fff; font-family: inherit; font-size: 10px; font-weight: 700; color: #d1735f; cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
 /* 줄바꿈은 살리고, 띄어쓰기 없이 길게 쓴 글도 열을 밀지 않게 끊는다. */
 .cmtAt { font-weight: 700; color: #d76d9a; } /* 답글의 답글 앞 @이름 */
 .cmtBody { margin: 0; min-width: 0; font-size: 12px; line-height: 1.55; color: #3d372f; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
-.cmtReplyBtn { align-self: flex-start; height: 18px; padding: 0; border: none; background: none; font-family: inherit; font-size: 10.5px; font-weight: 700; color: #a89e93; cursor: pointer; }
+/* 글자에 딱 붙는 hover 상자가 되지 않게 좌우 6px 을 주고, 그만큼 왼쪽으로 당겨 글자 선을 맞춘다. */
+.cmtReplyBtn { align-self: flex-start; height: 20px; margin-left: -6px; padding: 0 6px; border: none; border-radius: 6px; background: transparent; transition: background-color .24s ease, color .22s ease; font-family: inherit; font-size: 10.5px; font-weight: 700; color: #a89e93; cursor: pointer; }
 
 .cmtForm { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .cmtFormReply { margin-top: 2px; }
@@ -215,7 +253,7 @@
 .cmtInputM { height: 64px; font-size: 16px; }  /* iOS 확대 방지 */
 .cmtFormFoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cmtLen { font-size: 10.5px; color: #b7ada2; }
-.cmtSend { flex: 0 0 auto; height: 28px; padding: 0 14px; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; }
+.cmtSend { flex: 0 0 auto; height: 28px; padding: 0 14px; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; transition: background-color .24s ease; }
 .cmtSendOff { background: #f0c9d9; cursor: default; }
 .descNone { color: #a89e93; }
 .scopeHintWarn { color: #d1735f; }

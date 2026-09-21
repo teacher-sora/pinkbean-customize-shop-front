@@ -1,7 +1,7 @@
 'use client'
 
 // 내 코디 등록 — PC·절반·태블릿은 오른쪽 컬럼에 상주, 모바일은 목록 자리에서 바뀐다(핸드오프 §3).
-// 순서: 올릴 프리셋(3열 팝오버) → 미리보기 → 이름* → 설명 → 태그(최대 5) → 이미지(선택) → 등록할 곳*(위로 펼침) → (대회) 이메일 → 등록.
+// 순서: 올릴 프리셋(3열 팝오버) → 미리보기 → 이름* → 설명 → 태그(최대 10) → 이미지(선택) → 등록할 곳*(위로 펼침) → (대회) 이메일 → 등록.
 // 필수값이 비면 등록 버튼은 비활성(연한 핑크). `*` 는 라벨에만 붙이고 placeholder 에는 넣지 않는다.
 
 import clsx from 'clsx'
@@ -11,7 +11,7 @@ import bg from '@/assets/pinkbean-bg.png'
 import { PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX } from '@/lib/plaza'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
-import { useShop, type Snapshot } from '../ShopContext'
+import { isCustomSnapshot, lookKey, useShop, type Snapshot } from '../ShopContext'
 import { IconCaretDown } from '../ui/Icons'
 import styles from './plaza.module.css'
 
@@ -22,6 +22,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const narrow = isNarrow(s.bp)
   const [presetId, setPresetId] = useState(s.selectedPreset ?? s.presets[0]?.id ?? '')
   const [pickOpen, setPickOpen] = useState(false)
+  const [pickSeen, setPickSeen] = useState(false) // 썸네일은 처음 열 때 한 번만 그리기 시작한다(닫혀 있는 동안 캔버스 20장을 굽지 않게)
   const [name, setName] = useState('')
   const [desc, setDesc] = useState('')
   const [tags, setTags] = useState<string[]>([])
@@ -36,11 +37,13 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
 
   // 하단 필터를 대회로 두면 등록할 곳도 대회를 따라간다(사용자가 직접 고르면 그 선택 유지).
   const contest = (scope ?? (s.plazaFilter === 'contest' ? 'contest' : 'all')) === 'contest'
-  // 올릴 수 있는 칸만 보여준다(지금 보고 있는 코디 + 저장해 둔 프리셋). 빈 칸은 올릴 게 없어 뺀다.
+  // **직접 꾸민 프리셋만** 보여준다(기본 코디 그대로인 칸은 올릴 게 없다 — 사용자 지시 2026-09-21).
+  // 선택된 칸은 자동저장 전이라도 지금 화면의 코디로 판단한다.
   const snapOf = (id: string): Snapshot | null => (id === s.selectedPreset ? s.snapshot() : s.presetData[id] ?? null)
   const options = useMemo(
-    () => s.presets.filter((p) => p.id === s.selectedPreset || !!s.presetData[p.id]),
-    [s.presets, s.presetData, s.selectedPreset],
+    () => s.presets.filter((p) => { const sn = snapOf(p.id); return !!sn && isCustomSnapshot(sn) }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [s.presets, s.presetData, s.selectedPreset, s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos],
   )
   const current = options.find((p) => p.id === presetId) || options[0] || null
   const snap = current ? snapOf(current.id) : null
@@ -49,7 +52,14 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const myContest = s.plazaPosts.filter((p) => p.mine && p.contest).length
   const contestLeft = Math.max(0, PLAZA_CONTEST_MAX - myContest)
   const contestFull = contest && contestLeft === 0
-  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !s.plazaSubmitting
+  // 대회는 **같은 조합을 한 번만** 받는다(선점). 이미 올라온 출품작과 지문이 같으면 미리 막고 알린다.
+  // 여기는 지금 불러온 목록 기준 안내이고, 실제로 막는 건 DB(0007 — 유일 인덱스 + 트리거)다.
+  const taken = useMemo(() => {
+    if (!contest || !snap) return null
+    const k = lookKey(snap)
+    return s.plazaPosts.find((p) => p.contest && lookKey(p.snapshot) === k) || null
+  }, [contest, snap, s.plazaPosts])
+  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !taken && !s.plazaSubmitting
 
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
@@ -70,6 +80,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   }
   const submit = async () => {
     if (contestFull) { s.notify(`${PLAZA_CONTEST}에는 이 기기에서 ${PLAZA_CONTEST_MAX}개까지 올릴 수 있어요`); return }
+    if (taken) { s.notify('같은 조합이 이미 대회에 출품돼 있어요'); return }
     if (!canSubmit || !snap) { s.notify(contest ? '이메일을 확인해 주세요' : '프리셋과 이름을 확인해 주세요'); return }
     const ok = await s.plazaSubmit({ name: finalName, description: desc.trim(), tags, snapshot: snap, contest, email: contest ? email.trim() : '', image })
     if (ok) { setName(''); setDesc(''); setTags([]); setTagDraft(''); setImage(null); if (fileRef.current) fileRef.current.value = '' }
@@ -87,19 +98,25 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
       <div>
         <div className={clsx(styles.label, styles.labelWide)}>올릴 프리셋</div>
         <div ref={pickRef} className={styles.pickWrap}>
-          <button type="button" onClick={() => setPickOpen((v) => !v)} title="등록할 프리셋 선택" aria-expanded={pickOpen}
+          <button type="button" onClick={() => { setPickOpen((v) => !v); setPickSeen(true) }} title="등록할 프리셋 선택" aria-expanded={pickOpen}
             className={clsx('pb-ddbtn', styles.pickBtn, pickOpen && styles.pickOpen)}>
-            <span className={styles.pickText}>{current ? current.name : '프리셋을 골라주세요'}</span>
+            <span className={styles.pickText}>{current ? current.name : '꾸민 프리셋이 없어요'}</span>
             <IconCaretDown size={13} className={clsx(styles.pickCaret, pickOpen && styles.caretOpen)} />
           </button>
           <div className={clsx(styles.pickPanel, pickOpen && styles.panelOn)}>
-            <div className={clsx('pb-scroll', 'pb-scroll-thin', styles.pickList, mobile && styles.pickListM)}>
-              {options.map((p) => (
-                <button key={p.id} type="button" onClick={() => { setPresetId(p.id); setPickOpen(false) }} title={p.name}
-                  className={clsx(styles.pickOpt, current?.id === p.id && styles.pickOptOn)}>
-                  {p.name}
-                </button>
-              ))}
+            {/* 3열 격자 — 꾸민 프리셋이 한눈에 들어오게. 썸네일 + 이름(좁으면 이름은 한 줄 말줄임). */}
+            <div className={clsx('pb-scroll', 'pb-scroll-thin', styles.pickGrid, mobile && styles.pickGridM)}>
+              {options.length === 0 && <p className={styles.pickEmpty}>프리셋 탭에서 코디를 꾸미면 여기에 나와요.</p>}
+              {options.map((p) => {
+                const sn = snapOf(p.id)
+                return (
+                  <button key={p.id} type="button" onClick={() => { setPresetId(p.id); setPickOpen(false) }} title={p.name}
+                    className={clsx(styles.pickCell, current?.id === p.id && styles.pickCellOn)}>
+                    <span className={styles.pickThumb}>{pickSeen && sn && <SnapThumb snap={sn} fraction={0.5} />}</span>
+                    <span className={styles.pickName}>{p.name}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -134,7 +151,10 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
         {tags.length > 0 && (
           <div className={styles.tagChips}>
             {tags.map((t) => (
-              <button key={t} type="button" onClick={() => setTags(tags.filter((x) => x !== t))} title="태그 삭제" className={styles.tagDel}>#{t} ✕</button>
+              // 바깥 버튼은 자리만 잡고(hover 판정 고정), 안쪽 알약만 살짝 줄어 '누르면 사라진다'를 암시한다.
+              <button key={t} type="button" onClick={() => setTags(tags.filter((x) => x !== t))} title="태그 삭제" className={styles.tagDel}>
+                <span className={styles.tagDelPill}>#{t}<span className={styles.tagDelX} aria-hidden>✕</span></span>
+              </button>
             ))}
           </div>
         )}
@@ -172,9 +192,10 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
               </div>
             </div>
           </div>
-          <div className={clsx(styles.scopeHint, contestFull && styles.scopeHintWarn)}>
+          <div className={clsx(styles.scopeHint, (contestFull || taken) && styles.scopeHintWarn)}>
             {!contest ? '누구나 볼 수 있게 공개로 등록해요.'
               : contestFull ? `이 기기에서는 이미 ${PLAZA_CONTEST_MAX}개를 올렸어요.`
+              : taken ? `같은 조합이 먼저 출품됐어요('${taken.name}'). 다른 조합으로 올려주세요.`
               : `대회 출품으로 등록해요. 이메일이 필요하고, ${contestLeft}개 더 올릴 수 있어요.`}
           </div>
         </div>

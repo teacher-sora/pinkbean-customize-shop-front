@@ -24,7 +24,7 @@ export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
   { id: 'mine', label: '내 등록' },
   { id: 'liked', label: '찜한 코디' },
 ]
-export const PLAZA_TAG_MAX = 5
+export const PLAZA_TAG_MAX = 10 // DB 체크도 10(supabase/0007)
 export const PLAZA_COMMENT_MAX = 200
 const POST_LIMIT = 300
 const COMMENT_LIMIT = 200

@@ -29,7 +29,7 @@ export default function ShareReceiveSheet() {
         <div style={css('flex:0 0 auto; padding:15px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #f0e9e1;')}>
           <span style={css('font-size:15px; font-weight:700; color:#2a2521; flex:0 0 auto;')}>공유받은 코디</span>
           <span style={css('flex:1 1 0; min-width:0; font-size:12px; color:#a89e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>{mob ? '저장할 프리셋을 골라주세요' : '저장할 프리셋을 고르면 바로 적용돼요 · 되돌리기 가능'}</span>
-          <button onClick={s.dismissShared} title="닫기" aria-label="닫기" style={css('flex:0 0 auto; width:28px; height:28px; border:none; border-radius:8px; background:#f4ecf3; color:#8a8075; font-size:17px; line-height:1; cursor:pointer;')}>×</button>
+          <button onClick={s.dismissShared} title="닫기" aria-label="닫기" className="pb-icon" style={css('flex:0 0 auto; width:28px; height:28px; border:none; border-radius:8px; background:#f4ecf3; color:#8a8075; font-size:17px; line-height:1; cursor:pointer;')}>×</button>
         </div>
 
         <div className="pb-scroll pb-scroll-thin" style={css('flex:1 1 auto; min-height:0; overflow:hidden auto; padding:18px 20px 20px;')}>
