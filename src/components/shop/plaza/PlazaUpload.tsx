@@ -6,12 +6,14 @@
 
 import clsx from 'clsx'
 import Image from 'next/image'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import bg from '@/assets/pinkbean-bg.png'
-import { PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX, type RefView } from '@/lib/plaza'
+import { loadContestLooks, PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX, type RefView } from '@/lib/plaza'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
-import { sameLook } from '@/lib/plazaLook'
+import { lookItems, normLook } from '@/lib/plazaLook'
+import { sameLookDeep, type SkinInfo } from '@/lib/plazaLookPixels'
+import { isColorLineSkin } from '@/lib/shopData'
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { IconCaretDown } from '../ui/Icons'
 import PlazaRefViewer from './PlazaRefViewer'
@@ -64,13 +66,41 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const myContest = s.plazaPosts.filter((p) => p.mine && p.contest).length
   const contestLeft = Math.max(0, PLAZA_CONTEST_MAX - myContest)
   const contestFull = contest && contestLeft === 0
-  // 대회는 **같은 조합을 한 번만** 받는다(선점). 이미 올라온 출품작과 지문이 같으면 미리 막고 알린다.
-  // 여기는 지금 불러온 목록 기준 안내이고, 실제로 막는 건 DB(0007 — 유일 인덱스 + 트리거)다.
-  const taken = useMemo(() => {
-    if (!contest || !snap) return null
-    return s.plazaPosts.find((p) => p.contest && sameLook(p.snapshot, snap)) || null
-  }, [contest, snap, s.plazaPosts])
-  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !taken && !s.plazaSubmitting
+  // 대회는 **같은 조합을 한 번만** 받는다(선점). 착용이 같은 출품작과 결과 픽셀을 비교해(lib/plazaLookPixels) 미리 막고 알린다.
+  // 고르는 동안은 불러온 목록으로 안내하고, 등록 직전에 DB 의 출품작 전부와 다시 확인한다. DB(0009)는 좁은 안전망.
+  const skinOf = useCallback((tone: number): SkinInfo => {
+    const te = s.index?.base.tones.find((t) => t.tone === tone)
+    return te ? { body: te.body, head: te.head, colorLine: isColorLineSkin(te.name) } : null
+  }, [s.index])
+  const findTaken = useCallback(async (sn: Snapshot, list: { name: string; snapshot: Snapshot }[]) => {
+    const key = lookItems(normLook(sn))
+    for (const p of list) {
+      if (lookItems(normLook(p.snapshot)) !== key) continue // 착용이 다르면 다른 조합 — 픽셀을 볼 필요도 없다
+      if (await sameLookDeep(p.snapshot, sn, skinOf)) return p
+    }
+    return null
+  }, [skinOf])
+  const [taken, setTaken] = useState<{ name: string } | null>(null)
+  const [checking, setChecking] = useState(false)
+  // ⚠️ 지금 고른 프리셋은 snapOf 가 렌더마다 **새 객체**(s.snapshot())를 만든다 → snap 을 그대로 의존하면
+  //    확인이 끝나 상태가 바뀔 때마다 다시 확인이 돌아 화면이 멈췄다(2026-09-21). 조합이 실제로 바뀔 때만(정규화 문자열) 다시 본다.
+  const snapRef = useRef(snap)
+  snapRef.current = snap
+  const lookSig = snap ? JSON.stringify(normLook(snap)) : ''
+  const contestSig = s.plazaPosts.filter((p) => p.contest).map((p) => p.id).join(',')
+  useEffect(() => {
+    const sn = snapRef.current
+    if (!contest || !sn) { setTaken(null); setChecking(false); return }
+    let alive = true
+    setChecking(true)
+    findTaken(sn, s.plazaPosts.filter((p) => p.contest))
+      .then((t) => { if (alive) setTaken(t) })
+      .catch(() => { if (alive) setTaken(null) })
+      .finally(() => { if (alive) setChecking(false) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contest, lookSig, contestSig, findTaken])
+  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !taken && !checking && !s.plazaSubmitting
 
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
@@ -93,6 +123,14 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     if (contestFull) { s.notify(`${PLAZA_CONTEST}에는 이 기기에서 ${PLAZA_CONTEST_MAX}개까지 올릴 수 있어요`); return }
     if (taken) { s.notify('같은 조합이 이미 대회에 출품돼 있어요'); return }
     if (!canSubmit || !snap) { s.notify(contest ? '이메일을 확인해 주세요' : '프리셋과 이름을 확인해 주세요'); return }
+    if (contest) {
+      // 등록 직전: 지금 DB 에 있는 출품작 전부와 다시 확인(그사이 누가 올렸을 수 있다).
+      setChecking(true)
+      try {
+        const t = await findTaken(snap, await loadContestLooks())
+        if (t) { setTaken(t); s.notify('같은 조합이 이미 대회에 출품돼 있어요'); return }
+      } catch { /* 확인이 실패하면 DB 안전망에 맡긴다 */ } finally { setChecking(false) }
+    }
     const ok = await s.plazaSubmit({ name: finalName, description: desc.trim(), tags, snapshot: snap, contest, email: contest ? email.trim() : '', image, imageView })
     if (ok) { setName(''); setDesc(''); setTags([]); setTagDraft(''); clearImage() }
   }
@@ -227,6 +265,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
             {!contest ? '누구나 볼 수 있게 공개로 등록해요.'
               : contestFull ? `이 기기에서는 이미 ${PLAZA_CONTEST_MAX}개를 올렸어요.`
               : taken ? `[${taken.name}] 똑같은 조합이 이미 있어요! 같은 조합으로는 못 올려요.`
+              : checking ? '같은 조합이 있는지 확인하고 있어요.'
               : `대회 출품으로 등록해요. 이메일이 필요하고, ${contestLeft}개 더 올릴 수 있어요.`}
           </div>
         </div>

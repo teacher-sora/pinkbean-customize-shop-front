@@ -84,7 +84,7 @@ const snapCoreKey = (s: Snapshot) => canon({ e: s.equipped, t: s.tone, p: s.dyeP
 const DEFAULT_CORE_KEY = snapCoreKey(defaultSnapshot())
 // 사용자가 한 번이라도 꾸민 스냅샷인가(기본 코디 그대로면 false) — 광장 등록에서 올릴 프리셋만 추리는 데 쓴다.
 export const isCustomSnapshot = (s: Snapshot) => snapCoreKey(s) !== DEFAULT_CORE_KEY
-// 대회 '같은 조합' 판정은 lib/plazaLook.ts(염색 허용 오차 포함) — DB 0008 과 같은 규칙.
+// 대회 '같은 조합' 판정은 lib/plazaLook.ts(정규화·DB 안전망 규칙) + lib/plazaLookPixels.ts(결과 픽셀 비교) — DB 는 0009.
 // 이전 기본 헤어(녹셀 헤어 (여) 00071400) 그대로 손대지 않은 저장 프리셋 → 새 기본값(밤의 레아 헤어)으로 이관.
 // 조금이라도 바꾼 프리셋(다른 착용·염색·숨김·점 위치)은 사용자 코디라 건드리지 않는다. (2026-09-17)
 // ★ 이관은 **저장소당 한 번만**(v < PRESET_STORE_V 일 때). 예전엔 매 로드마다 돌아, 기본 코디에 녹셀 헤어만 입힌

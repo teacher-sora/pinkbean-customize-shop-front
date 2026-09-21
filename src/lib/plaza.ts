@@ -200,6 +200,16 @@ export async function loadPlaza(): Promise<PlazaPost[]> {
   return (postsRes.data as Row[]).map((r) => toPost(r, uid, liked))
 }
 
+// 대회 출품작의 조합만(등록 직전 '같은 조합' 확인용). 목록 캐시(ISR·최근 300개)를 거치지 않고 **지금** DB 에서 읽는다
+// — 방금 올라온 출품작이나 오래돼 목록 밖으로 밀린 출품작도 빠짐없이 비교한다.
+export async function loadContestLooks(): Promise<{ id: string; name: string; snapshot: Snapshot }[]> {
+  const c = sb()
+  if (!c) return []
+  const { data, error } = await c.from('plaza_posts').select('id,name,snapshot').eq('contest', true).limit(5000)
+  if (error) throw error
+  return (data || []) as { id: string; name: string; snapshot: Snapshot }[]
+}
+
 export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
   const c = sb()
   if (!c) throw new Error('supabase not configured')
