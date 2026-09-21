@@ -87,6 +87,8 @@ export const isCustomSnapshot = (s: Snapshot) => snapCoreKey(s) !== DEFAULT_CORE
 // 대회 '같은 조합' 판정은 lib/plazaLook.ts(염색 허용 오차 포함) — DB 0008 과 같은 규칙.
 // 이전 기본 헤어(녹셀 헤어 (여) 00071400) 그대로 손대지 않은 저장 프리셋 → 새 기본값(밤의 레아 헤어)으로 이관.
 // 조금이라도 바꾼 프리셋(다른 착용·염색·숨김·점 위치)은 사용자 코디라 건드리지 않는다. (2026-09-17)
+// ★ 이관은 **저장소당 한 번만**(v < PRESET_STORE_V 일 때). 예전엔 매 로드마다 돌아, 기본 코디에 녹셀 헤어만 입힌
+//   코디(이제는 정당한 사용자 코디)가 새로고침할 때마다 레아 헤어로 되돌아갔다(2026-09-21 사용자 제보).
 const LEGACY_DEFAULT_CORE_KEY = (() => { const d = defaultSnapshot(); return snapCoreKey({ ...d, equipped: { ...d.equipped, hair: '00071400' } }) })()
 const migrateLegacyDefault = (s: Snapshot): Snapshot => (snapCoreKey(s) === LEGACY_DEFAULT_CORE_KEY ? { ...s, equipped: defaultSnapshot().equipped } : s)
 const PRESET_KEY = 'pb_presets_v1'
@@ -99,7 +101,8 @@ const PV_KEY = 'pb_pv_v1'
 const loadPv = (): Partial<Pv> | null => {
   try { const raw = localStorage.getItem(PV_KEY); if (!raw) return null; const v = JSON.parse(raw); return v && typeof v === 'object' ? v as Partial<Pv> : null } catch { return null }
 }
-type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null }
+type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null; v?: number }
+const PRESET_STORE_V = 2 // 2 = 녹셀→레아 기본 헤어 이관을 마친 저장소
 const loadPresetStore = (): PresetStore | null => {
   try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
 }
@@ -397,7 +400,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // localStorage 에서 프리셋 복원(없으면 20개 모두 코디 기본값). 첫 접속 시 d0 자동 선택.
       const store = loadPresetStore()
       const data: Record<string, Snapshot> = {}
-      PRESET_IDS.forEach((id) => { const st = store?.data[id]; data[id] = st ? migrateLegacyDefault(st) : defaultSnapshot() })
+      const migrate = !store || (store.v ?? 1) < PRESET_STORE_V
+      PRESET_IDS.forEach((id) => { const st = store?.data[id]; data[id] = st ? (migrate ? migrateLegacyDefault(st) : st) : defaultSnapshot() })
+      // 이관 끝을 바로 기록한다 — 다음 저장을 기다리면 그 전 새로고침에서 또 돈다.
+      if (store && migrate) { try { localStorage.setItem(PRESET_KEY, JSON.stringify({ ...store, data: { ...store.data, ...Object.fromEntries(PRESET_IDS.filter((id) => store.data[id]).map((id) => [id, data[id]])) }, v: PRESET_STORE_V } as PresetStore)) } catch {} }
       const sel = (store?.sel && PRESET_IDS.includes(store.sel)) ? store.sel : 'd0'
       // 선택된 프리셋을 라이브 모델로 해석(필요한 슬롯 리스트 로드). 그 뒤 index/프리셋/모델을 한 배치로 세팅
       // → 적용으로 인한 변경은 자동저장 1회만 발생하고 applyingRef 로 스킵된다.
@@ -1418,7 +1424,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         const next = { ...d, [selectedPreset]: snap }
         try {
           const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
-          localStorage.setItem(PRESET_KEY, JSON.stringify({ data: next, names, sel: selectedPreset } as PresetStore))
+          localStorage.setItem(PRESET_KEY, JSON.stringify({ data: next, names, sel: selectedPreset, v: PRESET_STORE_V } as PresetStore))
         } catch {}
         return next
       })
@@ -1483,7 +1489,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const t = setTimeout(() => {
       try {
         const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
-        localStorage.setItem(PRESET_KEY, JSON.stringify({ data: presetData, names, sel: selectedPreset } as PresetStore))
+        localStorage.setItem(PRESET_KEY, JSON.stringify({ data: presetData, names, sel: selectedPreset, v: PRESET_STORE_V } as PresetStore))
       } catch {}
     }, 100)
     return () => clearTimeout(t)

@@ -45,7 +45,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
 
   const main = (
     <>
-      <div className={clsx(styles.stages, mobile && styles.stagesM)}>
+      <div className={clsx(styles.stages, mobile && styles.stagesM, mobile && post.imageUrl && styles.stagesPairM)}>
         <div className={styles.stage}>
           <Image src={bg} alt="" fill sizes="300px" className={styles.stageImg} />
           <div className={styles.stageTone} />

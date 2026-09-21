@@ -19,7 +19,7 @@ export const PLAZA_OPEN = '자유 코디'
 // 대회 출품은 기기(익명 세션)당 3개까지. 진짜 방어선은 DB 트리거다(supabase/0006) — 여기 값은 화면 안내용.
 export const PLAZA_CONTEST_MAX = 3
 // 대회 기간 — 광장 목록 아래 안내 줄에 그대로 쓴다(대회 필터일 때). 정해지면 '2026.10.01 ~ 10.31' 처럼 적는다.
-export const PLAZA_CONTEST_PERIOD: string | null = null
+export const PLAZA_CONTEST_PERIOD: string | null = '10월 1일 오후 11시 59분까지'
 export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
   { id: 'all', label: PLAZA_OPEN },
   { id: 'contest', label: '블아 대회' },

@@ -4,10 +4,11 @@
 //  · 보기(상세): 올린 사람이 고른 **첫 화면(initial)** 에서 시작한다. 없으면 가로형은 높이, 세로형은 너비에 맞춘다.
 //    PC 는 휠로 확대·축소(커서 지점 기준), 끌어서 이동 / 모바일은 두 손가락 확대, 한 손가락 이동.
 //    축소는 그림 전체가 보이는 크기(contain)까지. 두 번 누르거나 '원래대로' 로 첫 화면에 돌아간다.
-//  · 편집(등록 폼, edit): 같은 조작으로 첫 화면을 고른다. 칸은 PC 상세 칸 비율이고, 점선은 모바일 상세 칸에 보일 범위다.
+//  · 편집(등록 폼, edit): 같은 조작으로 첫 화면을 고른다. 칸 가운데의 **정사각형 점선**이 상세에서 처음 보일 범위다.
+//    상세의 참고 이미지 칸은 PC·모바일 모두 정사각형이라 이 범위가 그대로 보인다(2026-09-21 사용자 지시).
+//    점선 안은 항상 그림으로 채워진다(그보다 작게 줄이거나 밖으로 밀 수 없다).
 //    원본은 자르지 않는다 — 고른 건 '처음 보일 자리'일 뿐, 보는 사람은 여전히 확대·이동할 수 있다.
-// 첫 화면은 칸 크기와 무관한 값(RefView: 칸 가운데에 올 그림 위 점 + cover 대비 배율)으로 저장해
-// PC·모바일처럼 칸 비율이 달라도 같은 부분을 가운데에 보여 준다.
+// 첫 화면은 칸 크기와 무관한 값(RefView: 칸 가운데에 올 그림 위 점 + 정사각형 cover 대비 배율)으로 저장한다.
 
 import clsx from 'clsx'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -15,8 +16,7 @@ import type { RefView } from '@/lib/plaza'
 import styles from './plaza.module.css'
 
 const MAX_ZOOM = 5 // 기본 배율 대비
-// 모바일 상세 칸(폭 390 기준 약 178×218). 편집기의 점선 범위 계산에만 쓴다.
-const MOBILE_STAGE = { w: 178, h: 218 }
+const GUIDE_FRAC = 0.72 // 편집기 점선 정사각형 = 칸 짧은 변의 이 비율
 
 type View = { z: number; x: number; y: number } // z = 기본 배율 대비, x·y = 칸 중심에서 그림 중심까지(px)
 
@@ -39,19 +39,22 @@ export default function PlazaRefViewer({ src, initial, edit, onChange }: {
   useEffect(() => { setNat(null) }, [src])
 
   const ready = !!nat && box.w > 0 && box.h > 0
-  // 기본 배율: 가로형 → 높이 맞춤, 세로형 → 너비 맞춤. cover = 칸을 꽉 채우는 배율, fit = 전체가 보이는 배율.
-  const base = ready ? (nat!.w >= nat!.h ? box.h / nat!.h : box.w / nat!.w) : 1
-  const cover = ready ? Math.max(box.w / nat!.w, box.h / nat!.h) : 1
+  // 편집: 기준 틀 = 점선 정사각형(G). 기본 배율 = 틀을 꽉 채우는 배율이고, 그보다 줄이지 않는다.
+  // 보기: 기준 틀 = 칸. 기본 배율은 가로형 → 높이 맞춤, 세로형 → 너비 맞춤. cover = 칸을 꽉 채우는 배율, fit = 전체가 보이는 배율.
+  const G = edit ? Math.round(Math.min(box.w, box.h) * GUIDE_FRAC) : 0
+  const frame = edit ? { w: G, h: G } : box
+  const cover = ready ? Math.max(frame.w / nat!.w, frame.h / nat!.h) : 1
+  const base = !ready ? 1 : edit ? cover : (nat!.w >= nat!.h ? box.h / nat!.h : box.w / nat!.w)
   const fit = ready ? Math.min(box.w / nat!.w, box.h / nat!.h) : 1
-  const minZ = Math.min(1, fit / base)
+  const minZ = edit ? 1 : Math.min(1, fit / base)
 
   const clamp = useCallback((n: View): View => {
     if (!nat) return n
     const z = Math.max(minZ, Math.min(MAX_ZOOM, n.z))
     const dw = nat.w * base * z, dh = nat.h * base * z
-    const mx = Math.max(0, (dw - box.w) / 2), my = Math.max(0, (dh - box.h) / 2)
+    const mx = Math.max(0, (dw - frame.w) / 2), my = Math.max(0, (dh - frame.h) / 2)
     return { z, x: Math.max(-mx, Math.min(mx, n.x)), y: Math.max(-my, Math.min(my, n.y)) }
-  }, [nat, base, minZ, box.w, box.h])
+  }, [nat, base, minZ, frame.w, frame.h])
 
   // RefView ↔ View
   const toView = useCallback((r: RefView | null | undefined): View => {
@@ -157,9 +160,7 @@ export default function PlazaRefViewer({ src, initial, edit, onChange }: {
   const h0 = home()
   const moved = ready && (Math.abs(v.z - h0.z) > 0.001 || Math.abs(v.x - h0.x) > 0.5 || Math.abs(v.y - h0.y) > 0.5)
 
-  // 편집기의 모바일 범위: 모바일 칸에 보이는 그림 영역을 이 칸의 배율로 옮긴 크기(확대 배율과 무관하게 일정).
-  const mCover = nat ? Math.max(MOBILE_STAGE.w / nat.w, MOBILE_STAGE.h / nat.h) : 1
-  const guide = edit && ready ? { w: Math.min(box.w, MOBILE_STAGE.w * cover / mCover), h: Math.min(box.h, MOBILE_STAGE.h * cover / mCover) } : null
+  const guide = edit && ready ? G : 0
 
   return (
     <div ref={boxRef}
@@ -174,11 +175,7 @@ export default function PlazaRefViewer({ src, initial, edit, onChange }: {
         onLoad={(e) => setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
         className={styles.refViewImg}
         style={ready ? { width: dw, height: dh, transform: `translate(calc(-50% + ${v.x}px), calc(-50% + ${v.y}px))` } : { opacity: 0 }} />
-      {guide && (
-        <div className={styles.refGuide} style={{ width: guide.w, height: guide.h }} aria-hidden>
-          <span className={styles.refGuideTag}>모바일</span>
-        </div>
-      )}
+      {guide > 0 && <div className={styles.refGuide} style={{ width: guide, height: guide }} aria-hidden />}
       <button type="button" onClick={reset} onPointerDown={(e) => e.stopPropagation()} aria-label="처음 화면으로" title="처음 화면으로"
         className={clsx(styles.refReset, moved && styles.refResetOn)}>원래대로</button>
     </div>

@@ -176,23 +176,22 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
       <div>
         <div className={styles.label}>이미지</div>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; if (f) { setImage(f); setImageView(null) } }} />
-        {/* 이미지를 고르면 상세 칸 비율의 편집기가 뜬다. 끌고 확대해 **처음 보일 부분**을 맞춘다(원본은 자르지 않는다).
-            점선 = 모바일 상세 칸에 보이는 범위. */}
+        {/* 칸은 고르기 전부터 편집기 크기 그대로 잡아 둔다 — 이미지를 넣어도 아래 요소가 밀리지 않는다(2026-09-21).
+            이미지를 고르면 끌고 확대해 **처음 보일 부분**을 가운데 정사각형 점선에 맞춘다(원본은 자르지 않는다).
+            아래 줄도 늘 자리를 차지하고, 이미지가 없을 땐 보이지만 않는다. */}
         {imageUrl ? (
-          <>
-            <div className={styles.upRefBox}><PlazaRefViewer src={imageUrl} edit onChange={setImageView} /></div>
-            <div className={styles.upRefFoot}>
-              <span className={styles.upRefHint}>처음 보일 부분을 맞춰 주세요 · 점선은 모바일</span>
-              <button type="button" onClick={() => fileRef.current?.click()} className={styles.upRefBtn}>바꾸기</button>
-              <button type="button" onClick={clearImage} className={clsx(styles.upRefBtn, styles.upRefDel)}>지우기</button>
-            </div>
-          </>
+          <div className={styles.upRefBox}><PlazaRefViewer src={imageUrl} edit onChange={setImageView} /></div>
         ) : (
-          <button type="button" onClick={() => fileRef.current?.click()} className={styles.imgBtn}>
+          <button type="button" onClick={() => fileRef.current?.click()} className={clsx(styles.upRefBox, styles.imgBtn)}>
             <span className={styles.imgBtnMain}>이미지 추가</span>
             <span className={styles.imgBtnSub}>코스프레 원본처럼 나란히 비교할 그림</span>
           </button>
         )}
+        <div className={clsx(styles.upRefFoot, !imageUrl && styles.upRefFootOff)} aria-hidden={!imageUrl}>
+          <span className={styles.upRefHint}>처음 보일 부분을 맞춰 주세요</span>
+          <button type="button" tabIndex={imageUrl ? 0 : -1} onClick={() => fileRef.current?.click()} className={styles.upRefBtn}>변경</button>
+          <button type="button" tabIndex={imageUrl ? 0 : -1} onClick={clearImage} className={clsx(styles.upRefBtn, styles.upRefDel)}>제거</button>
+        </div>
       </div>
 
       {/* 등록할 곳 */}

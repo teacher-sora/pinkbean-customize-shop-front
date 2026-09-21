@@ -73,7 +73,7 @@
 .delBtn { border-color: #f2d7d2; color: #d1735f; }
 .likeWrap { position: absolute; right: 6px; bottom: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .likeWrapM { right: 5px; bottom: 5px; }
-/* 대회 등록 순번(선착) — 썸네일 왼쪽 아래. 하트는 오른쪽 아래라 겹치지 않는다. */
+/* 대회 출품 날짜(M.D) — 썸네일 왼쪽 아래. 하트는 오른쪽 아래라 겹치지 않는다. */
 .contestNo { position: absolute; left: 6px; bottom: 6px; z-index: 4; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid #f4cfdf; border-radius: 20px; background: #fff; font-size: 10.5px; font-weight: 700; color: #d76d9a; font-variant-numeric: tabular-nums; }
 .contestNoM { left: 5px; bottom: 5px; }
 .likeCount { font-size: 10px; font-weight: 700; color: #8a8075; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -84,8 +84,9 @@
 /* ── 상세(서피스 본문) ── */
 .detail { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 16px; }
 /* PC 는 댓글 열이 오른쪽에 붙는다 — 스테이지를 280 → 250 으로 줄여 두 칸이 나란히 남게 한다(사용자 지시). */
-.detailPc { flex: 1 1 auto; min-height: 0; padding: 12px; display: flex; align-items: stretch; }
-.detailMain { flex: 1 1 0; min-width: 0; padding-right: 12px; overflow: hidden auto; display: flex; flex-direction: column; gap: 16px; }
+/* 왼쪽 여백은 상세 본문의 거터(9px)+패딩(6px)이 맡는다 — 착용 아이템 막대의 hover 면(-6px)이 스크롤 칸 안에 들어오게(2026-09-21). */
+.detailPc { flex: 1 1 auto; min-height: 0; padding: 12px 12px 12px 0; display: flex; align-items: stretch; }
+.detailMain { flex: 1 1 0; min-width: 0; padding: 0 6px; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 16px; }
 .stages { flex: 0 0 auto; height: 240px; display: flex; gap: 10px; }
 .stagesM { height: 220px; }
 .stage { position: relative; flex: 1 1 0; min-width: 0; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
@@ -93,6 +94,11 @@
 .stageTone { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.45)); }
 .stageRef { border: 1px dashed #e4dcd2; background: #fbf8f4; }
 .stageRef { cursor: default; }
+/* 참고 이미지 칸은 PC·모바일 모두 정사각형 — 올린 사람이 편집기의 정사각형 점선으로 고른 범위가 그대로 보인다(2026-09-21).
+   PC: 높이 240 정사각형 + 코디 칸이 남은 폭. 모바일: 두 칸 모두 정사각형(폭 반씩). */
+.stageRef { flex: 0 0 auto; height: 100%; aspect-ratio: 1 / 1; }
+.stagesPairM { height: auto; }
+.stagesPairM .stage { flex: 1 1 0; height: auto; aspect-ratio: 1 / 1; }
 /* 구역 사이 끊긴 구분선 — 양 끝을 비워 '닫힌 상자'가 아니라 흐름 속 쉼표로 읽힌다(사용자 지시 2026-09-21). */
 .secHr { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f0e9e1; }
 /* 참고 이미지 확대·이동(PlazaRefViewer) */
@@ -103,9 +109,9 @@
 .refReset { position: absolute; right: 8px; bottom: 8px; z-index: 2; height: 26px; padding: 0 10px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fff; font-family: inherit; font-size: 11px; font-weight: 600; color: #d76d9a; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); opacity: 0; pointer-events: none; transition: opacity .22s ease, background-color .22s ease, border-color .22s ease; }
 .refResetOn { opacity: 1; pointer-events: auto; }
 /* 착용 아이템 — 닫힌 아코디언(2026-09-21). 칩은 부위 염색 칩(surface .partChip)과 같은 모양이되 누르는 요소가 아니라 읽는 칩이다.
-   막대는 라벨 위치가 다른 구역 라벨과 맞도록 음수 여백으로 hover 면만 넓힌다. 창(overflow:hidden) 안에서 칩이 translateY 로 드러난다. */
+   막대는 라벨 위치가 다른 구역 라벨과 맞도록 음수 여백(6px — 상세 본문 패딩과 같게, 넘치면 스크롤 칸에 잘린다)으로 hover 면만 넓힌다. 창(overflow:hidden) 안에서 칩이 translateY 로 드러난다. */
 .worn { flex: 0 0 auto; display: flex; flex-direction: column; }
-.wornBar { display: flex; align-items: center; gap: 6px; height: 28px; margin: -6px -8px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .2s ease; }
+.wornBar { display: flex; align-items: center; gap: 6px; height: 28px; margin: -6px -6px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .2s ease; }
 .wornCount { font-size: 11px; font-weight: 700; color: #d76d9a; font-variant-numeric: tabular-nums; }
 .wornCaret { margin-left: auto; color: #a89e93; transition: transform .3s cubic-bezier(.45,0,.55,1), color .2s ease; }
 .wornCaretOn { transform: rotate(180deg); }
@@ -170,16 +176,16 @@
 .tagDelPill { display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fce9f1; font-size: 11px; font-weight: 600; color: #d76d9a; transition: transform .2s ease, border-color .22s ease, background-color .24s ease, color .22s ease; }
 .tagDelX { font-size: 10px; }
 /* 이미지 칸(2026-09-21 키움): 비었을 땐 넉넉한 추가 버튼, 고르면 상세 칸 비율의 편집기. */
-.imgBtn { width: 100%; height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px dashed #e4dcd2; border-radius: 11px; background: #fbf8f4; font-family: inherit; color: #a89e93; cursor: pointer; transition: background-color .24s ease, border-color .22s ease, color .22s ease; }
+.imgBtn { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px dashed #e4dcd2; border-radius: 11px; background: #fbf8f4; font-family: inherit; color: #a89e93; cursor: pointer; transition: background-color .24s ease, border-color .22s ease, color .22s ease; }
 .imgBtnMain { font-size: 12.5px; font-weight: 600; }
 .imgBtnSub { font-size: 11px; font-weight: 500; color: #b7ada2; }
-.upRefBox { position: relative; width: 100%; aspect-ratio: 6 / 5; border: 1px dashed #e4dcd2; border-radius: 11px; background: #fbf8f4; overflow: hidden; }
-.upRefFoot { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.upRefBox { position: relative; width: 100%; aspect-ratio: 1 / 1; border: 1px dashed #e4dcd2; border-radius: 11px; background: #fbf8f4; overflow: hidden; }
+.upRefFoot { display: flex; align-items: center; gap: 6px; margin-top: 8px; transition: opacity .2s ease, visibility .2s; }
+.upRefFootOff { opacity: 0; visibility: hidden; }
 .upRefHint { flex: 1 1 auto; min-width: 0; font-size: 10.5px; color: #a89e93; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .upRefBtn { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid #e7ded4; border-radius: 7px; background: #fff; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #8a8075; cursor: pointer; transition: background-color .24s ease, border-color .22s ease, color .22s ease; }
 /* 편집기의 모바일 범위 점선 */
-.refGuide { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 1.5px dashed #ec86ac; border-radius: 8px; pointer-events: none; }
-.refGuideTag { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); height: 18px; padding: 0 6px; display: flex; align-items: center; border-radius: 20px; background: #fff; font-size: 10px; font-weight: 700; color: #d76d9a; }
+.refGuide { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px dashed #d5578e; border-radius: 8px; pointer-events: none; }
 .scopeGroup { display: flex; flex-direction: column; gap: 16px; padding-top: 2px; } /* 등록할 곳 ↔ 이메일(8 → 16, 붙어 보였다) */
 .scopeHint { margin-top: 6px; font-size: 10.5px; color: #a89e93; }
 .emailHint { margin-top: 5px; font-size: 10.5px; color: #b7ada2; }

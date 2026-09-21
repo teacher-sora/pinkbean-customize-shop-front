@@ -41,9 +41,9 @@ export default function PlazaCard({ post, mobile }: { post: PlazaPost; mobile: b
         )}
         <div className={styles.thumb}>
           <SnapThumb snap={post.snapshot} fraction={mobile ? CARD_FRACTION_M : CARD_FRACTION} />
-          {/* 대회 등록 순번 — 누가 먼저 올렸는지(선착) 보이게 */}
-          {post.contest && post.contestNo != null && (
-            <span className={clsx(styles.contestNo, mobile && styles.contestNoM)} title={`대회 ${post.contestNo}번째 출품`}>#{post.contestNo}</span>
+          {/* 대회 출품 날짜(간략히 M.D) — 순번(#n)은 중간 글이 내려가면 비어 보여 날짜로 바꿨다(2026-09-21 사용자 지시). */}
+          {post.contest && (
+            <span className={clsx(styles.contestNo, mobile && styles.contestNoM)} title={`${fullDate(post.createdAt)} 출품`}>{shortDate(post.createdAt)}</span>
           )}
           <div className={clsx(styles.likeWrap, mobile && styles.likeWrapM)}>
             <span className={styles.likeCount}>{post.likes > 999 ? '999+' : post.likes}</span>
@@ -58,3 +58,6 @@ export default function PlazaCard({ post, mobile }: { post: PlazaPost; mobile: b
     </div>
   )
 }
+
+const shortDate = (iso: string) => { const d = new Date(iso); return `${d.getMonth() + 1}.${d.getDate()}` }
+const fullDate = (iso: string) => new Date(iso).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
