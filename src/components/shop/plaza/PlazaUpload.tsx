@@ -26,6 +26,12 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const narrow = isNarrow(s.bp)
   const [presetId, setPresetId] = useState(s.selectedPreset ?? s.presets[0]?.id ?? '')
+  // 새로고침하면 저장된 '보던 프리셋'이 복원되기 **전에** 이 폼이 먼저 뜬다 → 첫 프리셋이 잡혀 있었다(2026-09-21 사용자 제보).
+  // 아직 직접 고르지 않았다면 복원된 선택을 따라간다. 한 번이라도 고르면 그 선택을 지킨다.
+  const chose = useRef(false)
+  useEffect(() => {
+    if (!chose.current && s.selectedPreset) setPresetId(s.selectedPreset)
+  }, [s.selectedPreset])
   const [pickOpen, setPickOpen] = useState(false)
   const [pickSeen, setPickSeen] = useState(false) // 썸네일은 처음 열 때 한 번만 그리기 시작한다(닫혀 있는 동안 캔버스 20장을 굽지 않게)
   const [name, setName] = useState('')
@@ -185,7 +191,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
               {options.map((p) => {
                 const sn = snapOf(p.id)
                 return (
-                  <button key={p.id} type="button" onClick={() => { setPresetId(p.id); setPickOpen(false) }} title={p.name}
+                  <button key={p.id} type="button" onClick={() => { chose.current = true; setPresetId(p.id); setPickOpen(false) }} title={p.name}
                     className={clsx(styles.pickCell, current?.id === p.id && styles.pickCellOn)}>
                     {/* 칸 88px · 0.62 → DPR 1·2·3 모두 인물 64px(정수 배율). 머리·발이 잘리지 않는다. */}
                     <span className={styles.pickThumb}>{pickSeen && sn && <SnapThumb snap={sn} fraction={0.62} />}</span>
