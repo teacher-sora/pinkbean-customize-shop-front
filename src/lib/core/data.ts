@@ -153,6 +153,21 @@ export async function loadIndex(): Promise<Index> {
   if (!r.ok) throw new Error(`index.json ${r.status}`)
   return r.json()
 }
+// 원본 WZ 의 자리 코드(islot·vslot)가 잘못 들어간 무기 보정 — 리스트·단건 어디로 들어와도 같은 값이 되도록
+// 여기 한 곳에서 고친다(islot = 인벤 충돌로 옷을 **벗기고**, vslot = 가림으로 옷을 **숨긴다** — 둘 다 걸린다).
+//  · 계기: 2026-09-21 건의함 "쿨썸머 보드 << 장착하면 한벌옷이 사라집니다".
+//  · 실측: weapon 3942개 중 자리 코드가 Wp 계열이 아닌 건 MaPn(한벌옷) 5개뿐 — 쿨썸머 보드(01702849) ·
+//    파스텔 로즈 · 비치발리볼 · 생선의 지배자 · 애교 폭발 멍뭉이. 전부 손에 드는 캐시 무기(아이콘 확인)라
+//    몸을 덮지 않는다. 나머지는 Wp(3197) · WpSi(673, 양손) · Si(67) 로 정상이다.
+//  · 그래서 무기의 자리 코드는 Wp 계열만 인정하고, 그 밖의 값은 Wp 로 본다.
+const WEAPON_SLOT_CODES = new Set(['Wp', 'WpSi', 'Si'])
+function fixWeaponSlotCodes<T extends { slot?: string; islot?: string | null; vslot?: string | null }>(it: T): T {
+  if (it.slot !== 'weapon') return it
+  const bad = (c?: string | null) => !!c && !WEAPON_SLOT_CODES.has(c)
+  if (!bad(it.islot) && !bad(it.vslot)) return it
+  return { ...it, islot: bad(it.islot) ? 'Wp' : it.islot, vslot: bad(it.vslot) ? 'Wp' : it.vslot }
+}
+
 // 라이딩(dev 로컬) 아이템의 meta 경로를 id→url 로 등록. 슬롯 로드 시 채워지고 loadMeta 가 이걸 우선 쓴다.
 const ridingMetaUrl = new Map<string, string>()
 const slotCache = new Map<string, Promise<ListItem[]>>()
@@ -161,7 +176,7 @@ export function loadSlot(file: string): Promise<ListItem[]> {
   if (!p) {
     p = fetch(url(file), FRESH).then((r) => r.json()).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
-      return items
+      return items.map(fixWeaponSlotCodes)
     })
     slotCache.set(file, p)
   }
@@ -170,7 +185,7 @@ export function loadSlot(file: string): Promise<ListItem[]> {
 const metaCache = new Map<string, Promise<ItemMeta>>()
 export function loadMeta(id: string): Promise<ItemMeta> {
   let p = metaCache.get(id)
-  if (!p) { p = fetch(url(ridingMetaUrl.get(id) ?? `meta/${id}.json`)).then((r) => r.json()); metaCache.set(id, p) }
+  if (!p) { p = fetch(url(ridingMetaUrl.get(id) ?? `meta/${id}.json`)).then((r) => r.json()).then(fixWeaponSlotCodes); metaCache.set(id, p) }
   return p
 }
 
