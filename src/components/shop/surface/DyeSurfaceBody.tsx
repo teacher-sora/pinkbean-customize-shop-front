@@ -9,7 +9,7 @@
 // 적용 = 보던 아이템 착용 + 염색 커밋(v2 dlgApply). 카드의 염색 버튼 자체는 착용을 바꾸지 않는다.
 
 import clsx from 'clsx'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MIX_PALETTE, paletteFor } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
@@ -31,16 +31,25 @@ const DEF_PAL = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 
 const SLIDE_PX = 34, SWAP_MS = 90, IN_MS = 110
 
 // 표시 영역 크기 측정(미리보기 캔버스 박스).
+// ⚠️ **콜백 ref** 여야 한다(2026-09-21 사용자 제보 — 염색표에 갔다 오면 미리보기가 빈 칸이 됐다).
+//  · 화면이 바뀌면(염색표 ↔ 색 조절) 상자 DOM 자체가 갈린다. useEffect([]) 로 한 번만 붙이면
+//    ① 상자가 빠질 때 ResizeObserver 가 **크기 0** 을 보고해 box 가 0 이 되고,
+//    ② 돌아와 새 상자가 생겨도 다시 재지 않아 0 인 채로 굳는다 → DyeModelPreview 가 그리기를 멈춘다.
+//  · 노드가 바뀔 때마다 다시 재고 다시 관찰한다. 상자가 없어진 순간(el=null)은 마지막 크기를 그대로 둔다.
 function useBox() {
-  const ref = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState({ w: 0, h: 0 })
-  useEffect(() => {
-    const el = ref.current; if (!el) return
-    const m = () => setBox((b) => (b.w === el.clientWidth && b.h === el.clientHeight ? b : { w: el.clientWidth, h: el.clientHeight }))
+  const roRef = useRef<ResizeObserver | null>(null)
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    roRef.current?.disconnect()
+    roRef.current = null
+    if (!el) return
+    const m = () => {
+      const w = el.clientWidth, h = el.clientHeight
+      if (!w || !h) return // 떼어지는 중의 0 은 무시(그릴 수 없는 크기다)
+      setBox((b) => (b.w === w && b.h === h ? b : { w, h }))
+    }
     m()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
-    ro?.observe(el)
-    return () => ro?.disconnect()
+    if (typeof ResizeObserver !== 'undefined') { const ro = new ResizeObserver(m); ro.observe(el); roRef.current = ro }
   }, [])
   return { ref, box }
 }
@@ -136,13 +145,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   )
   const tableBtn = (
     <button type="button" onClick={() => go('table', 1)} title="염색표에서 두 색 고르기"
-      className={clsx('pb-ghost', styles.tableBtn)}>
-      <span className={styles.tableDots}>
-        <span className={styles.cellDot} style={{ ['--c' as string]: PAL[pal.baseColor].hex }} />
-        {bIdx !== pal.baseColor && <span className={styles.cellDot} style={{ ['--c' as string]: PAL[bIdx].hex }} />}
-      </span>
-      염색표 보기
-    </button>
+      className={clsx('pb-ghost', styles.tableBtn)}>염색표 보기</button>
   )
   const preview = <DyeModelPreview item={item} hsb={NO_HSB} palette={commit} zoom={zoom} box={box} />
 
