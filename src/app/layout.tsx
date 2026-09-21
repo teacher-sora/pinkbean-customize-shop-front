@@ -81,8 +81,10 @@ export const viewport: Viewport = {
   userScalable: false,
   colorScheme: 'light',
   themeColor: '#ec86ac',
-  // 가상 키보드가 뜰 때 100dvh 를 줄여 레이아웃을 다시 맞춘다(입력창 포커스 시 하단이 가려지지 않게).
-  interactiveWidget: 'resizes-content',
+  // 가상 키보드가 떠도 레이아웃 높이를 줄이지 않는다(키보드는 화면 위에 겹쳐 보이는 영역만 줄이고, 브라우저가 입력칸이 보이게 이동시킨다).
+  // 2026-09-21 resizes-content → resizes-visual: 높이가 줄면 문서가 화면보다 길어져 입력 포커스가 마스크 뒤 문서를 스크롤했고,
+  // 키보드가 닫힐 때마다 레이아웃이 다시 계산되며 하단 빈 공간·터치 어긋남이 생겼다(사용자 제보·지시). iOS 는 원래 이 방식이다.
+  interactiveWidget: 'resizes-visual',
 }
 
 // 검색엔진 리치 결과용 구조화 데이터(schema.org) — WebSite/Organization/WebApplication 그래프.
