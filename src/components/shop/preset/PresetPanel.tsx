@@ -1,6 +1,6 @@
 'use client'
 
-// 프리셋 20칸. 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog 는 현행 유지) · 복사/삭제 띠지 · 인라인 이름.
+// 프리셋 30칸. 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog 는 현행 유지) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
 import { useMemo } from 'react'
