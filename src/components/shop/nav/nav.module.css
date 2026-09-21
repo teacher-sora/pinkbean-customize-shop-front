@@ -22,6 +22,8 @@
 .partNavM { flex: 0 0 auto; position: relative; height: 42px; border-top: 1px solid #f0e9e1; background: #fff; }
 .railM { height: 100%; padding: 0 10px; display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
 .partM { flex: 0 0 auto; height: 28px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; color: #7a7066; background: transparent; }
+/* 코디 광장 분류는 4개뿐이라 폭을 나눠 채운다(핸드오프 §1) */
+.partWideM { flex: 1 1 0; min-width: 0; padding: 0 4px; }
 :global(html:not([data-pb-csr])) .partM.partOn { font-weight: 600; color: #fff; background: #ec86ac; }
 .fadeM { width: 44px; }
 .tabNavM { flex: 0 0 auto; height: 56px; padding: 0 4px; display: flex; align-items: stretch; border-top: 1px solid #f0e9e1; background: #fff; }

@@ -121,14 +121,41 @@ async function shortIdOf(long: string): Promise<string | null> {
   } catch { return null }
 }
 
-// 짧은 코드 → 긴 코드. CDN(캐시·빠름)을 먼저, 안 되면 API(R2 직접) 폴백.
+// 이 기기에서 만든 짧은 코드 → 긴 코드(2026-09-21). 복사 직후 같은 기기의 불러오기 칸에 붙여 넣으면 서버 저장보다 먼저 올 수 있다
+// (사용자 제보: '없는 코디'). 내가 만든 코드는 서버를 거치지 않고 바로 푼다. 최근 30개만 localStorage 에 둔다.
+const LOCAL_KEY = 'pb_share_local'
+const localCodes = new Map<string, string>()
+function rememberLocal(id: string, long: string) {
+  localCodes.set(id, long)
+  try {
+    const m = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}') as Record<string, string>
+    delete m[id]; m[id] = long
+    const keys = Object.keys(m); for (const k of keys.slice(0, Math.max(0, keys.length - 30))) delete m[k]
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(m))
+  } catch { /* 저장 불가 — 메모리만 */ }
+}
+function localLong(id: string): string | null {
+  const hit = localCodes.get(id)
+  if (hit) return hit
+  try { const v = (JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}') as Record<string, string>)[id]; return typeof v === 'string' ? v : null } catch { return null }
+}
+
+// 짧은 코드 → 긴 코드. 이 기기에서 만든 것 → CDN(캐시·빠름) → API(R2 직접). 다른 기기에서 복사 직후 붙여 넣으면 저장이
+// 아직 진행 중일 수 있어 API 를 잠깐(최대 ~6초) 다시 본다 — dev 실측: 첫 저장 응답이 콜드 스타트로 ~2초. CDN 은 브라우저 캐시를 거치지 않는다(아직 없던 때의 응답을 굳히지 않게).
 async function expandShortCode(id: string): Promise<string | null> {
-  const tries = [`${DATA_BASE}/share/${id}`, `/api/share?id=${encodeURIComponent(id)}`]
-  for (const url of tries) {
-    try {
-      const r = await fetch(url)
-      if (r.ok) { const t = (await r.text()).trim(); if (t.startsWith('PB')) return t }
-    } catch { /* 다음 경로 */ }
+  const mine = localLong(id)
+  if (mine) return mine
+  // dev 는 저장 경로가 다르다(`share-dev/`) — api/share · app/share/page.tsx 와 규칙이 같아야 한다.
+  const prefix = typeof window !== 'undefined' && /^(www\.)?pinkbean-customize\.com$/.test(location.hostname) ? 'share' : 'share-dev'
+  const api = `/api/share?id=${encodeURIComponent(id)}`
+  for (const wait of [0, 600, 800, 1000, 1500, 2000]) {
+    if (wait) await new Promise((res) => setTimeout(res, wait))
+    for (const url of wait ? [api] : [`${DATA_BASE}/${prefix}/${id}`, api]) {
+      try {
+        const r = await fetch(url, { cache: 'no-store' })
+        if (r.ok) { const t = (await r.text()).trim(); if (t.startsWith('PB')) return t }
+      } catch { /* 다음 경로 */ }
+    }
   }
   return null
 }
@@ -154,6 +181,7 @@ export async function prepareShare(origin: string, snap: Snapshot): Promise<Shar
   const long = await encodeShareCode(snap)
   const id = await shortIdOf(long)
   const code = id || long
+  if (id) rememberLocal(id, long)
   const name = snap.name?.trim()
   const n = name ? `&n=${name.replace(/[&#%+?]/g, (ch) => encodeURIComponent(ch)).replace(/\s+/g, '+')}` : ''
   const tail = !n && /[-_]$/.test(code) ? '&e=1' : ''
@@ -162,16 +190,26 @@ export async function prepareShare(origin: string, snap: Snapshot): Promise<Shar
 
 // 백그라운드 저장: 카드 이미지(프리셋 캐릭터)를 그려 긴 코드와 함께 올린다. 서버가 돌려준 id 가 로컬 계산과 다르면
 // (해시 충돌로 더 긴 id 발급 — 사실상 없음) 복사된 링크가 틀리므로 false.
-export async function uploadShare(prep: SharePrep, snap: Snapshot): Promise<boolean> {
-  if (!prep.id) return true // 긴 코드 링크는 저장할 게 없다
-  const image = await renderShareImage(snap)
+// 저장은 두 번이다(2026-09-21). ① 코드만 **곧바로** — 링크·불러오기는 이것만 있으면 된다.
+// ② 카드 이미지는 렌더(수백 ms~수 초)가 끝나는 대로 따로 — 서버는 코드가 이미 있으면 이미지만 붙인다(없을 때만 저장).
+// 예전엔 ①이 이미지 렌더를 기다려, 복사 직후 붙여 넣으면 '없는 코디'가 떴다. 카톡 카드 쪽은 공유 페이지 메타가 이미지를 최대 5초 기다린다.
+async function postShare(long: string, image?: string | null): Promise<string | null | false> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const r = await fetch('/api/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: prep.long, ...(image ? { image } : {}) }) })
-      if (r.ok) return (await r.json())?.id === prep.id
+      const r = await fetch('/api/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: long, ...(image ? { image } : {}) }) })
+      if (r.ok) return (await r.json())?.id ?? null
       if (r.status === 400) return false
     } catch { /* 재시도 */ }
     await new Promise((res) => setTimeout(res, 600 * (attempt + 1)))
   }
-  return false
+  return null
+}
+export async function uploadShare(prep: SharePrep, snap: Snapshot): Promise<boolean> {
+  if (!prep.id) return true // 긴 코드 링크는 저장할 게 없다
+  const image = renderShareImage(snap).catch(() => null) // 코드 저장과 동시에 그리기 시작
+  const id = await postShare(prep.long)
+  if (id !== prep.id) return false
+  const img = await image
+  if (img) void postShare(prep.long, img)
+  return true
 }

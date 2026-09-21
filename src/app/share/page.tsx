@@ -3,6 +3,7 @@
 //   og:title = 프리셋 이름 · og:description = 받아가기 안내 · og:image = 복사 시 올린 캐릭터 카드(share/<id>.jpg)
 // 홈(/)은 정적 페이지로 남기기 위해 동적 메타를 여기로 분리했다.
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { inflateRawSync } from 'zlib'
 import ShopHome from '@/components/ShopHome'
 import { r2, r2Configured } from '@/lib/server/r2'
@@ -28,6 +29,12 @@ function nameOf(long: string): string | null {
 type Props = { searchParams: Record<string, string | string[] | undefined> }
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() || ''
 
+// dev 는 공유 저장 경로가 다르다(`share-dev/`) — api/share · lib/shareCode.ts 와 규칙이 같아야 한다.
+const sharePrefix = () => {
+  const host = (headers().get('host') || '').split(':')[0]
+  return /^(www\.)?pinkbean-customize\.com$/.test(host) ? 'share' : 'share-dev'
+}
+
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const c = one(searchParams.c)
   let name: string | null = null
@@ -35,18 +42,20 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   if (SHORT_RE.test(c)) {
     // R2 를 직접 읽는다(CDN 은 방금 생긴 객체의 404 를 캐시할 수 있고, Next fetch 캐시도 실패를 굳힌다).
     // 복사 직후 바로 보내면 백그라운드 업로드(카드 렌더 + 저장, 수 초)보다 스크래핑이 먼저 온다 — 실측: 카톡이 이미지 저장 0.5초 전에
-    // 긁어가 기본 카드로 굳음(카톡은 URL 별로 카드를 캐시). 서버는 이미지→코드 순으로 저장하므로 **이미지** 등장을 최대 ~5초 기다린다.
+    // 긁어가 기본 카드로 굳음(카톡은 URL 별로 카드를 캐시). 그래서 **이미지** 등장을 최대 ~5초 기다린다.
+    // (2026-09-20: 서버 저장 순서를 코드→이미지로 바꿨다. 링크는 즉시 열려야 하고, 기다림은 여기 메타 쪽만 진다.)
+    const prefix = sharePrefix()
     const deadline = Date.now() + 5000
     let hasImage = false
     while (r2Configured()) {
-      const r = await r2('HEAD', `share/${c}.jpg`).catch(() => null)
+      const r = await r2('HEAD', `${prefix}/${c}.jpg`).catch(() => null)
       if (r?.ok) { hasImage = true; break }
       if ((r && r.status !== 404) || Date.now() + 350 > deadline) break
       await new Promise((res) => setTimeout(res, 350))
     }
-    if (hasImage) image = `${CDN}/share/${c}.jpg`
-    // 이름은 코드 안의 것을 우선(이미지가 먼저 저장되므로 코드는 곧 따라온다 — 없으면 링크의 n 으로)
-    const got = r2Configured() ? await r2('GET', `share/${c}`).catch(() => null) : null
+    if (hasImage) image = `${CDN}/${prefix}/${c}.jpg`
+    // 이름은 코드 안의 것을 우선(코드가 먼저 저장된다 — 없으면 링크의 n 으로)
+    const got = r2Configured() ? await r2('GET', `${prefix}/${c}`).catch(() => null) : null
     name = got?.ok ? nameOf((await got.text()).trim()) : null
   } else if (c) name = nameOf(c)
   const title = (name || one(searchParams.n) || DEFAULT_TITLE).slice(0, 60)

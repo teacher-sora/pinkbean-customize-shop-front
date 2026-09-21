@@ -21,6 +21,9 @@ import { useShop, type Surface as SurfaceState } from '../ShopContext'
 import { BookmarkSheetBody, PvSheetBody } from '../preview/PreviewParts'
 import { BM_SHEET_H, SHEET_EASE } from './sheetMotion'
 import PartPickBody from './PartPickBody'
+import PlazaDetailBody from '../plaza/PlazaDetailBody'
+import NoticeBody from '../plaza/NoticeBody'
+import { plazaWhen } from '@/lib/plaza'
 import VsBody from './VsBody'
 import { IconClose } from '../ui/Icons'
 import { useMaskClose } from '../ui/useMaskClose'
@@ -74,12 +77,18 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  // 모바일은 문서 스크롤이 열려 있어, 시트가 떠 있는 동안 뒤 페이지가 함께 밀리지 않게 잠근다.
+  // 모바일은 문서 스크롤이 열려 있어, 시트가 떠 있는 동안 뒤 페이지를 **제자리에 고정**한다.
+  // overflow:hidden 만으로는 부족했다(2026-09-21 사용자 제보): 가상 키보드가 뜨면서 입력칸을 보이게 하려는
+  // 브라우저의 스크롤은 막지 못해, 키보드가 닫힌 뒤 뒤 페이지가 엉뚱한 위치(빈 공간)에 남고 터치 위치도 어긋났다.
+  // body 를 현재 스크롤 위치 그대로 position:fixed 로 세워 두면 문서가 움직일 수 없고, 닫을 때 그 위치로 되돌린다.
+  // 터치 기기(태블릿 포함)는 모두 문서 스크롤이 열려 있어(globals.css pointer:coarse) 같은 잠금이 필요하다.
   useEffect(() => {
-    if (!mobile) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
+    if (!mobile && !window.matchMedia('(pointer: coarse)').matches) return
+    const y = window.scrollY
+    const b = document.body.style
+    const prev = { position: b.position, top: b.top, left: b.left, right: b.right, width: b.width, overflow: b.overflow }
+    Object.assign(b, { position: 'fixed', top: `-${y}px`, left: '0', right: '0', width: '100%', overflow: 'hidden' })
+    return () => { Object.assign(b, prev); window.scrollTo({ top: y, behavior: 'instant' as ScrollBehavior }) }
   }, [mobile])
 
   // 모바일 끌어내리기(터치 — 마우스 에뮬레이션은 넣지 않는다).
@@ -157,8 +166,11 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   })
 
   const k = sf.kind
-  const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'vs' ? '코디 비교' : (sf.item?.name || sf.item?.id || '')
-  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' ? '' : k === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
+  const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'vs' ? '코디 비교'
+    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'notice' ? '공지 및 건의함' : (sf.item?.name || sf.item?.id || '')
+  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' ? '' : k === 'notice' ? '신고 · 건의는 댓글로 남겨 주세요'
+    : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '')
+        : k === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
 
   // 패널 폭(앱 영역 기준)·등장/닫힘 위치는 즉시 반영 값이라 인라인(드래그 중 오프셋은 위 터치 핸들러가 DOM 직접).
   const panelStyle: React.CSSProperties = mobile
@@ -195,6 +207,9 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'bm' && <><BookmarkSheetBody /><SurfaceFooter /></>}
             {k === 'part' && <><PartPickBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
+            {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다(사용자 지시). */}
+            {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
+            {k === 'notice' && <><NoticeBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
             {k === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}
           </div>
@@ -206,14 +221,17 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
 // 공용 푸터. 적용은 염색·점 위치만. 부위 염색을 거쳐 들어온 염색·점 위치는 '이전'(부위 고르기로 슬라이드 복귀), 그 외는 '닫기'(즉시 종료).
 // 모바일은 얇고 긴 34px(버튼 하나면 전체 폭, 닫기+적용이면 반씩).
-export function SurfaceFooter({ onApply }: { onApply?: () => void }) {
+export function SurfaceFooter({ onApply, applyLabel = '적용' }: { onApply?: () => void; applyLabel?: string }) {
   const s = useShop()
   const mobile = s.bp === 'mobile'
-  const back = !!s.surface?.fromPart && (s.surface.kind === 'dye' || s.surface.kind === 'dot')
+  const sf = s.surface
+  // '이전' = 부위 염색을 거쳐 들어온 염색·점 위치, 그리고 광장 상세를 거쳐 들어온 프리셋 칸 고르기.
+  const back = !!sf?.fromPart && (sf.kind === 'dye' || sf.kind === 'dot')
+  const goBack = s.partBack
   return (
     <div data-sheet-foot className={mobile ? styles.footM : styles.foot}>
-      <button type="button" onClick={back ? s.partBack : s.closeSurface} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>{back ? '이전' : '닫기'}</button>
-      {onApply && <button type="button" onClick={onApply} className={clsx('pb-solid', mobile ? styles.btnApplyM : styles.btnApply)}>적용</button>}
+      <button type="button" onClick={back ? goBack : s.closeSurface} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>{back ? '이전' : '닫기'}</button>
+      {onApply && <button type="button" onClick={onApply} className={clsx('pb-solid', mobile ? styles.btnApplyM : styles.btnApply)}>{applyLabel}</button>}
     </div>
   )
 }

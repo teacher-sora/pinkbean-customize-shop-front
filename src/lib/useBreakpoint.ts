@@ -16,7 +16,14 @@ export function bpOf(w: number, touch: boolean): Breakpoint {
   if (w >= 1200) return 'pc'
   return touch && w > 860 ? 'tablet' : 'half'
 }
-const isTouchDevice = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches
+const isTouchDevice = () => {
+  if (typeof window === 'undefined') return false
+  // 개발 뷰어(/viewer)가 iframe 에 pbtouch=1 을 붙여 태블릿(터치) 모드를 재현한다.
+  // iframe 은 폭만 바꿀 수 있고 pointer:coarse 를 만들 수 없어서, 이 한 가지만 쿼리로 강제한다.
+  // 뷰어는 dev 전용이므로 운영 도메인에서는 이 쿼리를 무시한다(파일은 병합돼도 동작하지 않게).
+  if (window.location.search.includes('pbtouch=1') && !/^(www\.)?pinkbean-customize\.com$/.test(location.hostname)) return true
+  return !!window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches
+}
 
 export function useBreakpoint(): Breakpoint {
   // SSR=pc(하이드레이션 mismatch 없음). 클라이언트에서 페인트 전 실제 폭으로 보정 + 모바일 사파리 지연 대비 rAF/load 재보정.

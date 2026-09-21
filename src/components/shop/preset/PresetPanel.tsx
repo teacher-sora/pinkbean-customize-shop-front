@@ -3,10 +3,11 @@
 // 프리셋 20칸. 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog 는 현행 유지) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import type { Preset } from '@/lib/catalog'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
+import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게 — 사용자 지시 2026-09-17)
 const PRESET_FRACTION = 0.38
@@ -23,18 +24,9 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const liveSnap: Snapshot = useMemo(() => s.snapshot(), [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos, s.pv])
 
-  // 삭제는 2단계 확인: 3초 안에 한 번 더 누르면 삭제.
-  const armRef = useRef<{ id: string | null; t: ReturnType<typeof setTimeout> | null }>({ id: null, t: null })
+  // 삭제는 2단계 확인: 3초 안에, 다른 상호작용 없이 연속으로 한 번 더 누르면 삭제(lib/confirmTwice).
   const remove = (p: Preset) => {
-    const a = armRef.current
-    if (a.id === p.id) {
-      if (a.t) clearTimeout(a.t)
-      armRef.current = { id: null, t: null }
-      s.resetPreset(p.id)
-      return
-    }
-    if (a.t) clearTimeout(a.t)
-    armRef.current = { id: p.id, t: setTimeout(() => { armRef.current = { id: null, t: null } }, 3000) }
+    if (confirmTwice(`preset:${p.id}`)) { s.resetPreset(p.id); return }
     s.notify(`한 번 더 누르면 '${p.name}' 프리셋을 삭제해요`)
   }
 
@@ -70,7 +62,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
                 </span>
               </div>
               <button type="button" onClick={(e) => { e.stopPropagation(); s.sharePreset(p) }} title="프리셋 복사" aria-label="프리셋 복사" className={clsx('pb-presetacts', styles.share, mobile && styles.shareM)}><IconShare /></button>
-              <button type="button" onClick={(e) => { e.stopPropagation(); remove(p) }} title="프리셋 삭제" aria-label="삭제" className={clsx('pb-presetacts', styles.del, mobile && styles.delM)}><IconTrash /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); remove(p) }} {...{ [CONFIRM_ATTR]: `preset:${p.id}` }} title="프리셋 삭제" aria-label="삭제" className={clsx('pb-presetacts', styles.del, mobile && styles.delM)}><IconTrash /></button>
             </div>
           </div>
         )
@@ -101,7 +93,11 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
             <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임 또는 공유 링크" className={clsx('pb-input', styles.importInput)} />
           </div>
           <button type="button" onClick={s.importFetch} title="닉네임 또는 공유 링크로 코디 불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtn, s.importing && styles.busy)}>
-            {s.importing ? '불러오는 중' : '불러오기'}
+            {/* 두 문구를 한 칸에 겹쳐 두어 폭 = 긴 쪽('불러오는 중') — 상태가 바뀌어도 버튼·입력칸이 밀리지 않는다. */}
+            <span className={styles.loadLabel}>
+              <span aria-hidden={s.importing || undefined} style={s.importing ? { visibility: 'hidden' } : undefined}>불러오기</span>
+              <span aria-hidden={!s.importing || undefined} style={s.importing ? undefined : { visibility: 'hidden' }}>불러오는 중</span>
+            </span>
           </button>
         </div>
       </div>

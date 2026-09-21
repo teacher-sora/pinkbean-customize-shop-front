@@ -5,7 +5,8 @@
 
 * { box-sizing: border-box; word-break: keep-all; }
 /* 더블탭 확대 제거(단일 탭/스크롤/스와이프는 그대로). 핀치는 viewport + NoNativeZoom 이 막는다. */
-html { touch-action: manipulation; }
+/* 탭 하이라이트 끔 — 모바일 브라우저가 누르는 순간 요소 박스에 칠하는 회색·검은 막. 터치에는 hover 류 반응을 두지 않는다(2026-09-21 사용자 지시). */
+html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 /* PC = 100svh 고정·문서 스크롤 없음. 모바일(사용자 지시 2026-09-17) = 페이지 높이 max(100vh, 리스트 최소 높이) +
    **페이지(문서) 스크롤 허용** → 스크롤하면 브라우저 하단 툴바가 접힌다. 리스트 안의 세로 스크롤은 만들지 않는다. */
@@ -23,7 +24,8 @@ a { color: #ec86ac; text-decoration: none; }
 @media (hover: hover) and (pointer: fine) { a:hover { color: #d76d9a; } }
 input, select, button { font-family: inherit; color: #2a2521; }
 input, textarea, select, button { -webkit-text-fill-color: currentColor; } /* iOS 가 폼 글자색을 덮어쓰는 것 방지 */
-input::placeholder { color: #b7ada2; opacity: 1; }
+/* textarea 도 포함 — 빠져 있어 설명·댓글 칸만 브라우저 기본(진한 회색)으로 보였다(2026-09-21). */
+input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 :root { color-scheme: light; }
 
 .pb-bg { position: fixed; inset: -24px; z-index: 0; filter: blur(4px) saturate(0.88); }
@@ -195,15 +197,16 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
 /* ── 현행 유지 다이얼로그(LookDialog · ShareReceiveSheet)가 쓰는 클래스 ── */
 @keyframes pbSpin { to { transform: rotate(360deg); } }
 .pb-spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; border-radius: 50%; animation: pbSpin .7s linear infinite; }
-@keyframes pbOverlayIn { from { opacity: 0; } to { opacity: 1; } }
-/* 다이얼로그 등장·퇴장은 translateY + opacity 만(scale 금지 — delta §8) */
-@keyframes pbPanelIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pbOverlayOut { from { opacity: 1; } to { opacity: 0; } }
-@keyframes pbPanelOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(10px); } }
-.pb-overlay { animation: pbOverlayIn .22s ease both; }
-.pb-panel { animation: pbPanelIn .28s cubic-bezier(.22,.61,.36,1) both; }
-.pb-overlay-out { animation: pbOverlayOut .2s ease both; }
-.pb-panel-out { animation: pbPanelOut .2s cubic-bezier(.4,0,.7,.4) both; }
+/* 다이얼로그 등장·퇴장 — 서피스(surface.module.css)와 **같은 값·같은 대칭 곡선**을 쓴다.
+   등장 전용 @keyframes 대신 transition + 클래스 토글(DESIGN_RULES §10.3): 들어올 때와 나갈 때가 같은 곡선이라
+   한쪽만 튀지 않는다. scale 은 쓰지 않는다(내용 캔버스가 움찔한다 — delta §8). */
+.pb-dlg-mask { transition: opacity .24s ease; opacity: 1; }
+.pb-dlg-panel { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0); opacity: 1; }
+.pb-dlg-hidden.pb-dlg-mask { opacity: 0; }
+.pb-dlg-hidden.pb-dlg-panel { transform: translateY(10px); opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .pb-dlg-panel, .pb-dlg-hidden.pb-dlg-panel { transform: none; }
+}
 
 /* 화면엔 안 보이지만 크롤러·스크린리더는 읽는 콘텐츠(접근성/SEO). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

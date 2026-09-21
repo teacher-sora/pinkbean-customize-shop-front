@@ -1,11 +1,12 @@
 'use client'
 
 import clsx from 'clsx'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { css } from '@/lib/style'
 import { isStacked } from '@/lib/useBreakpoint'
 import SnapThumb from './SnapThumb'
 import { useShop } from './ShopContext'
+import { useDialogFade } from './ui/useDialogFade'
 import { useMaskClose } from './ui/useMaskClose'
 
 // 닉네임으로 불러올 때 "어느 코디의 · 어느 프리셋을 가져올지" 고르는 다이얼로그(현행 요소 유지).
@@ -13,14 +14,13 @@ import { useMaskClose } from './ui/useMaskClose'
 
 export default function LookDialog() {
   const s = useShop()
-  const lp = s.lookPick
+  // 닫힐 때도 전환이 보이도록 값이 사라진 뒤에도 잠깐 더 그린다(서피스·공유 받기와 같은 방식).
+  const { shown: lp, hidden } = useDialogFade(s.lookPick)
   const stacked = isStacked(s.bp)
   const cols = stacked ? 2 : 3
 
   const [hover, setHover] = useState<string | null>(null)
   const [lookKey, setLookKey] = useState<string | null>(null)
-  const [closing, setClosing] = useState(false)
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 코디 탭 기본 선택(제로/엔버).
   useEffect(() => {
@@ -32,15 +32,7 @@ export default function LookDialog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lp])
 
-  const close = (after?: () => void) => {
-    if (closeTimer.current) return
-    setClosing(true)
-    closeTimer.current = setTimeout(() => {
-      closeTimer.current = null; setClosing(false)
-      if (after) after(); else s.closeLookPick()
-    }, 200)
-  }
-  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current) }, [])
+  const close = (after?: () => void) => { if (after) after(); else s.closeLookPick() }
 
   const mask = useMaskClose(() => close()) // 마스크에서 누르고 마스크에서 뗐을 때만 닫힘
 
@@ -73,9 +65,9 @@ export default function LookDialog() {
   )
 
   return (
-    <div {...mask} className={clsx(closing ? 'pb-overlay-out' : 'pb-overlay')}
+    <div {...mask} className={clsx('pb-dlg-mask', hidden && 'pb-dlg-hidden')}
       style={css(`position:fixed; inset:0; z-index:60; background:rgba(42,37,33,0.42); display:flex; align-items:center; justify-content:center; padding:${stacked ? 14 : 32}px;`)}>
-      <div onClick={(e) => e.stopPropagation()} className={clsx(closing ? 'pb-panel-out' : 'pb-panel')}
+      <div onClick={(e) => e.stopPropagation()} className={clsx('pb-dlg-panel', hidden && 'pb-dlg-hidden')}
         style={css('width:100%; max-width:560px; height:min(620px, 88svh); background:#fff; border-radius:18px; display:flex; flex-direction:column; overflow:hidden;')}>
         <div style={css('display:flex; flex-direction:column; min-height:0; flex:1 1 auto;')}>
           <div style={css('flex:0 0 auto; padding:18px 22px 0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;')}>

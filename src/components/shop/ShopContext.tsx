@@ -18,9 +18,13 @@ import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
+import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, plazaConfigured, plazaView, togglePlazaLike,
+  PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
+import { plazaSnapshot } from '@/lib/plazaLook'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
-import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, readUiHistory, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiSession } from '@/lib/uiState'
+import { confirmTwice } from '@/lib/confirmTwice'
+import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, type PresetOver, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
@@ -44,8 +48,9 @@ export type Snapshot = { equipped: Record<string, string>; tone: number; dyePale
 // 단일 서피스(시트·다이얼로그): 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 하나를 쓴다(v2 §10.4).
 // part = 부위 염색(착용 부위 고르기 → 같은 다이얼로그 안에서 염색/점 위치로 슬라이드), vs = 북마크 코디 비교(PC).
 // fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다(delta §3·§8).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs'
-export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean }
+// plaza = 코디 광장 글 상세(가져오기는 공유 받기 다이얼로그를 그대로 쓴다).
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza' | 'notice'
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴(delta 값)
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
@@ -78,8 +83,13 @@ const canon = (v: unknown): string => {
 }
 const snapCoreKey = (s: Snapshot) => canon({ e: s.equipped, t: s.tone, p: s.dyePalette || {}, h: s.dyeHsb || {}, x: s.hidden || {}, d: s.dotPos || {}, o: s.dyeOff || {} })
 const DEFAULT_CORE_KEY = snapCoreKey(defaultSnapshot())
+// 사용자가 한 번이라도 꾸민 스냅샷인가(기본 코디 그대로면 false) — 광장 등록에서 올릴 프리셋만 추리는 데 쓴다.
+export const isCustomSnapshot = (s: Snapshot) => snapCoreKey(s) !== DEFAULT_CORE_KEY
+// 대회 '같은 조합' 판정은 lib/plazaLook.ts(정규화·DB 안전망 규칙) + lib/plazaLookPixels.ts(결과 픽셀 비교) — DB 는 0009.
 // 이전 기본 헤어(녹셀 헤어 (여) 00071400) 그대로 손대지 않은 저장 프리셋 → 새 기본값(밤의 레아 헤어)으로 이관.
 // 조금이라도 바꾼 프리셋(다른 착용·염색·숨김·점 위치)은 사용자 코디라 건드리지 않는다. (2026-09-17)
+// ★ 이관은 **저장소당 한 번만**(v < PRESET_STORE_V 일 때). 예전엔 매 로드마다 돌아, 기본 코디에 녹셀 헤어만 입힌
+//   코디(이제는 정당한 사용자 코디)가 새로고침할 때마다 레아 헤어로 되돌아갔다(2026-09-21 사용자 제보).
 const LEGACY_DEFAULT_CORE_KEY = (() => { const d = defaultSnapshot(); return snapCoreKey({ ...d, equipped: { ...d.equipped, hair: '00071400' } }) })()
 const migrateLegacyDefault = (s: Snapshot): Snapshot => (snapCoreKey(s) === LEGACY_DEFAULT_CORE_KEY ? { ...s, equipped: defaultSnapshot().equipped } : s)
 const PRESET_KEY = 'pb_presets_v1'
@@ -92,7 +102,8 @@ const PV_KEY = 'pb_pv_v1'
 const loadPv = (): Partial<Pv> | null => {
   try { const raw = localStorage.getItem(PV_KEY); if (!raw) return null; const v = JSON.parse(raw); return v && typeof v === 'object' ? v as Partial<Pv> : null } catch { return null }
 }
-type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null }
+type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null; v?: number }
+const PRESET_STORE_V = 2 // 2 = 녹셀→레아 기본 헤어 이관을 마친 저장소
 const loadPresetStore = (): PresetStore | null => {
   try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
 }
@@ -159,6 +170,22 @@ export interface ShopCtx {
   consumeSwipeClick: () => boolean // 스와이프 직후의 카드 클릭은 착용으로 처리하지 않는다
   curIdx: number; pageCount: number
   bp: Breakpoint; cols: number; rows: number; itemsPerPage: number
+  // ── 코디 광장 ──
+  plazaPosts: PlazaPost[]; plazaList: PlazaPost[]; plazaLoading: boolean; plazaReady: boolean
+  plazaFilter: PlazaFilter; setPlazaFilter: Dispatch<PlazaFilter>
+  plazaSort: PlazaSort; setPlazaSort: Dispatch<PlazaSort>
+  plazaQ: string; setPlazaQ: (v: string) => void
+  plazaUpload: boolean; setPlazaUpload: Dispatch<boolean>
+  plazaCols: number; plazaRows: number
+  openPlazaPost: (post: PlazaPost) => void
+  openNotice: () => void
+  plazaTakeDirect: (post: PlazaPost) => void
+  resolveSnapItems: (snap: Snapshot) => Promise<Record<string, ListItem | null>>
+  plazaLike: (post: PlazaPost) => void
+  plazaRemove: (post: PlazaPost) => void
+  plazaCopyLink: (post: PlazaPost) => void
+  plazaSubmit: (draft: Omit<PlazaDraft, 'shareCode'>) => Promise<boolean>
+  plazaSubmitting: boolean
   snapping: boolean
   setIdx: (i: number, snap?: boolean) => void; step: (dir: number) => void
   pageEditing: boolean; pageInput: string
@@ -282,7 +309,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     resolveShareCode(code).then((snap) => { if (!cancelled && snap) setSharedIncoming(snap) }).catch(() => {})
     return () => { cancelled = true }
   }, [])
-  const dismissShared = useCallback(() => setSharedIncoming(null), [])
+  // 광장 상세에서 '가져오기'로 연 경우, 가져오기 시트를 닫으면(고르든 안 고르든) 보던 상세로 돌아간다.
+  const takeFrom = useRef<PlazaPost | null>(null)
+  const [takeReturn, setTakeReturn] = useState<PlazaPost | null>(null)
+  const endTake = () => { if (takeFrom.current) { setTakeReturn(takeFrom.current); takeFrom.current = null } }
+  const dismissShared = useCallback(() => { setSharedIncoming(null); endTake() }, [])
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=기본 캐릭터(코디는 모델이 기본)
   const [search, setSearch] = useState('')
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
@@ -301,6 +332,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [partSlide, setPartSlide] = useState(0)
   const [vsOn, setVsOn] = useState(false)
   const [vsPicks, setVsPicks] = useState<string[]>([])
+  // 코디 광장: 목록은 한 번 받아 두고 거르기·정렬은 화면에서(검색이 즉시 반응).
+  const [plazaPosts, setPlazaPosts] = useState<PlazaPost[]>([])
+  const [plazaLoaded, setPlazaLoaded] = useState(false) // 첫 로드가 끝났는지(스켈레톤은 이 전에만)
+  const [plazaFilter, setPlazaFilter] = useState<PlazaFilter>('all')
+  // 기본은 **최신순**(2026-09-21). 인기순은 '좋아요 → 같으면 최신' 이라 초기에는 결과가 최신순과 같으면서,
+  // 먼저 좋아요를 받은 글이 1페이지를 계속 차지해 새 글이 묻히는 고착만 만든다.
+  // 정렬이 진입 시 한 번 고정이고 좋아요 수는 최대 3분 캐시라 그 고착이 더 오래간다.
+  const [plazaSort, setPlazaSort] = useState<PlazaSort>('recent')
+  const [plazaGen, setPlazaGen] = useState(0) // 목록을 새로 받아온 횟수 — 정렬을 다시 잡는 기준
+  const [plazaQ, setPlazaQState] = useState('')
+  const [plazaUpload, setPlazaUpload] = useState(false)
+  const [plazaSubmitting, setPlazaSubmitting] = useState(false)
+  const [plazaGrid, setPlazaGrid] = useState<{ cols: number; rows: number }>({ cols: 6, rows: 3 })
   const partT = useRef<ReturnType<typeof setTimeout>[]>([])
   const [dotPos, setDotPos] = useState<Record<string, DotOffsets>>({}) // 아이템ID → 점 레이어별 위치 오프셋
   const [pageByCat, setPageByCat] = useState<Record<string, number>>({})
@@ -333,7 +377,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 실행취소/다시실행: 코디 상태(equipped/tone/dye/hidden) 스냅샷 히스토리 + 현재 위치.
   // 히스토리 엔트리 = 코디 스냅샷 + 그때 선택돼 있던 프리셋. 되돌리기 시 코디뿐 아니라 "선택 프리셋"도
   // 함께 복원한다 → 프리셋 전환도 되돌리기 대상(1번→2번 후 되돌리기 = 다시 1번 선택 + 그때 코디).
-  const histRef = useRef<{ stack: { snap: Snapshot; sel: string | null }[]; idx: number }>({ stack: [], idx: -1 })
+  // 다른 프리셋을 덮어쓴 기록(공유 코디·광장 가져오기)은 over 에 그 프리셋의 전후 내용·이름을 함께 남긴다(uiState.PresetOver).
+  const histRef = useRef<{ stack: { snap: Snapshot; sel: string | null; over?: PresetOver<Snapshot> }[]; idx: number }>({ stack: [], idx: -1 })
+  const histOver = useRef<PresetOver<Snapshot> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
   const histLast = useRef<string | null>(null)      // 마지막으로 기록한 상태키(중복 방지) = {코디 스냅샷 + 선택 프리셋}
   const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
@@ -358,7 +404,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // localStorage 에서 프리셋 복원(없으면 20개 모두 코디 기본값). 첫 접속 시 d0 자동 선택.
       const store = loadPresetStore()
       const data: Record<string, Snapshot> = {}
-      PRESET_IDS.forEach((id) => { const st = store?.data[id]; data[id] = st ? migrateLegacyDefault(st) : defaultSnapshot() })
+      const migrate = !store || (store.v ?? 1) < PRESET_STORE_V
+      PRESET_IDS.forEach((id) => { const st = store?.data[id]; data[id] = st ? (migrate ? migrateLegacyDefault(st) : st) : defaultSnapshot() })
+      // 이관 끝을 바로 기록한다 — 다음 저장을 기다리면 그 전 새로고침에서 또 돈다.
+      if (store && migrate) { try { localStorage.setItem(PRESET_KEY, JSON.stringify({ ...store, data: { ...store.data, ...Object.fromEntries(PRESET_IDS.filter((id) => store.data[id]).map((id) => [id, data[id]])) }, v: PRESET_STORE_V } as PresetStore)) } catch {} }
       const sel = (store?.sel && PRESET_IDS.includes(store.sel)) ? store.sel : 'd0'
       // 선택된 프리셋을 라이브 모델로 해석(필요한 슬롯 리스트 로드). 그 뒤 index/프리셋/모델을 한 배치로 세팅
       // → 적용으로 인한 변경은 자동저장 1회만 발생하고 applyingRef 로 스킵된다.
@@ -481,6 +530,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (typeof u.aiQ === 'string') setAiQ(u.aiQ)
     if (typeof u.searchQuery === 'string') setSearchQuery(u.searchQuery)
     if (Array.isArray(u.searchResults)) setSearchResults(u.searchResults)
+    if (u.plazaFilter && PLAZA_FILTERS.some((f: { id: string }) => f.id === u.plazaFilter)) setPlazaFilter(u.plazaFilter as PlazaFilter)
+    if (typeof u.plazaQ === 'string') setPlazaQState(u.plazaQ)
+    // 광장 정렬만 **영구**다(취향에 가까운 값 — 사용자 지시). 나머지는 전부 새로고침까지만.
+    const pref = readUiPref()
+    if (pref.plazaSort === 'popular' || pref.plazaSort === 'recent') setPlazaSort(pref.plazaSort)
     setUiReady(true)
   }, [])
   // 뼈대를 거두는 건 **되살린 화면이 실제로 커밋된 뒤**다(uiReady 가 켜진 다음 렌더).
@@ -489,10 +543,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!uiReady) return
     writeUiSession({
-      primary, activeCat, search, pageByCat,
+      primary, activeCat, search, pageByCat, plazaFilter, plazaQ,
       aiQ, searchQuery, searchResults: searchResults.slice(0, SEARCH_KEEP),
     })
-  }, [uiReady, primary, activeCat, search, pageByCat, aiQ, searchQuery, searchResults])
+  }, [uiReady, primary, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
+  useEffect(() => { if (uiReady) writeUiPref({ plazaSort }) }, [uiReady, plazaSort])
   const [rateResult, setRateResult] = useState<{ bubbles: string[]; nonce: number } | null>(null) // 코디 평가 말풍선
   const [rating, setRating] = useState(false)
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
@@ -527,12 +582,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const bp = useBreakpoint()
   const bpRef = useRef(bp)
   bpRef.current = bp
+  const primaryRef = useRef(primary)
+  primaryRef.current = primary
   const [grid, setGrid] = useState<{ cols: number; rows: number }>({ cols: 6, rows: 3 })
   const measure = useCallback(() => {
     const el = vpElRef.current
     if (!el || !el.clientWidth || !el.clientHeight) return
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
+    // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄(핸드오프 perPage).
+    if (primaryRef.current === 'share') {
+      const mob = vp === 'mobile'
+      const pcols = mob ? 2 : (vp === 'half' || vp === 'tablet') ? 3 : 6
+      const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10
+      const avail = el.clientHeight - 20
+      const prows = Math.max(1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx))))
+      setPlazaGrid((g) => (g.cols === pcols && g.rows === prows ? g : { cols: pcols, rows: prows }))
+      return
+    }
     if (vp === 'mobile') { apply(3, 2); return }
     const gap = 10, pad = 20
     const TARGET = 1.34, MINW = 78, MINH = 96
@@ -564,7 +631,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (best.rows > fitRows) best = { ...best, rows: fitRows }
     apply(best.cols, best.rows)
   }, [])
-  useEffect(() => { measure() }, [bp, measure])
+  useEffect(() => { measure() }, [bp, primary, measure])
   const { cols, rows } = grid
   const itemsPerPage = cols * rows
 
@@ -576,19 +643,37 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     else if (activeCat !== 'all') out = out.filter((it) => it.slot === CAT_TO_SLOT[activeCat])
     return byGender(out, genderFilter)
   }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter])
+  // 정렬은 **화면에 들어올 때 한 번만** 확정한다(사용자 지시) — 좋아요를 누를 때마다 카드가 자리를 바꾸면 보던 곳을 잃는다.
+  // 같은 (분류·검색어·정렬·목록 세대) 안에서는 처음 잡은 순서를 그대로 쓰고, 그 사이 새로 생긴 글(내 등록)만 맨 앞에 붙는다.
+  const plazaOrder = useRef<{ key: string; ids: string[] }>({ key: '', ids: [] })
+  const plazaList = useMemo(() => {
+    const view = plazaView(plazaPosts, plazaFilter, plazaQ, plazaSort)
+    const key = `${plazaFilter}|${plazaQ}|${plazaSort}|${plazaGen}`
+    if (plazaOrder.current.key !== key) {
+      plazaOrder.current = { key, ids: view.map((p) => p.id) }
+      return view
+    }
+    const rank = new Map(plazaOrder.current.ids.map((id, i) => [id, i] as const))
+    const out = view.slice().sort((a, b) => (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1))
+    // 새로 들어온 글(내 등록)까지 포함해 다시 고정한다 — 안 그러면 그 글만 좋아요 때마다 자리를 옮긴다.
+    plazaOrder.current = { key, ids: out.map((p) => p.id) }
+    return out
+  }, [plazaPosts, plazaFilter, plazaQ, plazaSort, plazaGen])
   const pagedList = primary === 'search' ? searchResultsView : activeList
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
   //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다
   //   (setIdx 를 거치지 않으니 스냅 전환·스크롤 애니메이션 없이 리스트가 그대로 유지되는 인상).
-  const pageKey = primary === 'search' ? 'search:' + activeCat : activeCat
+  const pageKey = primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : activeCat
 
-  // ── 페이지네이션 ──
-  const pageCount = Math.max(1, Math.ceil(pagedList.length / itemsPerPage))
+  // ── 페이지네이션 ── (광장은 자기 그리드·목록 길이를 쓴다)
+  const isPlazaTab = primary === 'share'
+  const perPage = isPlazaTab ? plazaGrid.cols * plazaGrid.rows : itemsPerPage
+  const pageCount = Math.max(1, Math.ceil((isPlazaTab ? plazaList.length : pagedList.length) / perPage))
   const maxIndex = pageCount - 1
-  const curIdx = Math.max(0, Math.min(maxIndex, Math.floor((pageByCat[pageKey] || 0) / itemsPerPage)))
+  const curIdx = Math.max(0, Math.min(maxIndex, Math.floor((pageByCat[pageKey] || 0) / perPage)))
 
-  const live = useRef({ pageKey, maxIndex, curIdx, itemsPerPage })
-  live.current = { pageKey, maxIndex, curIdx, itemsPerPage }
+  const live = useRef({ pageKey, maxIndex, curIdx, itemsPerPage: perPage })
+  live.current = { pageKey, maxIndex, curIdx, itemsPerPage: perPage }
 
   const setIdx = useCallback((i: number, snap = true) => {
     const cat = live.current.pageKey
@@ -822,6 +907,207 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     notify('북마크를 비웠어요')
   }
 
+  // ── 코디 광장 ──
+  const notifyLive = useRef(notify)
+  notifyLive.current = notify
+  const setPlazaQ = (v: string) => { setPlazaQState(v); setIdx(0, false) }
+  // 스켈레톤은 **첫 로드 전에만** 보여준다.
+  // 전에는 '보여줄 글이 있는지'로 판단했는데, 글이 0개면 그 조건이 영원히 거짓이라
+  // 들를 때마다 다시 깔려 깜빡였다(사용자 제보 2026-09-21, PC·모바일 모두).
+  // 성공이든 실패든 한 번 끝나면 다시는 깔지 않는다 — 빈 목록에는 빈 상태 문구만 남는다.
+  const loadedOnce = useRef(false)
+  const lastPlazaLoad = useRef(0)
+  // 미리 받기와 탭 진입이 겹칠 수 있다. 두 번 받으면 로딩 플래그가 엇갈려 또 깜빡인다 → 한 번만 받는다.
+  const plazaInFlight = useRef<Promise<void> | null>(null)
+  // 목록은 ISR 캐시라 내가 방금 올리거나 내린 글이 아직 안 담겨 있다 → 내 것만 화면에서 보정한다.
+  const myAdded = useRef<PlazaPost[]>([])
+  const myRemoved = useRef<Set<string>>(new Set())
+  // 방금 누른 좋아요는 목록을 새로 받아도 유지한다 — 누르기 전에 출발한 목록 요청(미리 받기·탭 진입)이 늦게 도착하면
+  // 옛 상태로 덮어써 하트가 꺼져 보였다(2026-09-21 실측: 새로고침 직후 누름). 1분 동안은 내가 누른 결과를 믿는다.
+  const likeLocal = useRef<Map<string, { liked: boolean; likes: number; at: number }>>(new Map())
+  const keepLikes = (list: PlazaPost[]) => {
+    const now = Date.now()
+    return list.map((p) => {
+      const l = likeLocal.current.get(p.id)
+      if (!l) return p
+      if (now - l.at > 60000) { likeLocal.current.delete(p.id); return p }
+      return { ...p, liked: l.liked, likes: l.likes }
+    })
+  }
+  const refreshPlaza = useCallback(async (): Promise<void> => {
+    if (!plazaConfigured()) return
+    if (plazaInFlight.current) return plazaInFlight.current
+    const run = (async () => {
+      try {
+        const merge = (list: PlazaPost[]) => {
+          const ids = new Set(list.map((p) => p.id))
+          return keepLikes([...myAdded.current.filter((p) => !ids.has(p.id)), ...list].filter((p) => !myRemoved.current.has(p.id)))
+        }
+        // 글이 많으면 최신 500개가 먼저 온다 → 바로 보여 주고 뼈대를 걷는다(나머지는 뒤이어 합친다).
+        let full = false // 전체가 먼저 도착했으면 늦게 온 첫 쪽으로 덮어쓰지 않는다
+        const list = await loadPlaza((first) => {
+          if (full) return
+          setPlazaPosts(merge(first)); setPlazaGen((g) => g + 1); setPlazaLoaded(true)
+        })
+        full = true
+        const ids = new Set(list.map((p) => p.id))
+        myAdded.current = myAdded.current.filter((p) => !ids.has(p.id)) // 캐시에 나타났으면 보정 해제
+        for (const id of Array.from(myRemoved.current)) if (!ids.has(id)) myRemoved.current.delete(id)
+        const merged = keepLikes([...myAdded.current, ...list].filter((p) => !myRemoved.current.has(p.id)))
+        setPlazaPosts(merged)
+        setPlazaGen((g) => g + 1) // 새로 받아온 목록 = 정렬을 다시 잡는 시점
+        lastPlazaLoad.current = Date.now()
+      } catch {
+        notifyLive.current('광장을 불러오지 못했어요')
+        // 실패했으면 다음 진입 때 다시 받는다(아래 20초 건너뛰기는 lastPlazaLoad 를 보므로 걸리지 않는다).
+      } finally {
+        loadedOnce.current = true
+        setPlazaLoaded(true)
+      }
+    })()
+    plazaInFlight.current = run
+    try { await run } finally { plazaInFlight.current = null }
+  }, [])
+  // 탭에 들어올 때 한 번 받아온다(등록·좋아요 뒤에는 그 자리에서 갱신).
+  // 탭을 누른 **뒤에** 처음 받기 시작하면 광장만 유독 늦게 뜬다(코디 탭은 이미 받아 둔 카탈로그를 쓴다).
+  // 첫 화면이 자리를 잡은 뒤 한가할 때 미리 받아 둔다 — 목록 한 건이라 비용이 거의 없다.
+  useEffect(() => {
+    if (!plazaConfigured()) return
+    type Ric = (cb: () => void, o?: { timeout: number }) => number
+    const ric: Ric | undefined = (window as unknown as { requestIdleCallback?: Ric }).requestIdleCallback
+    let t = 0
+    const run = () => { void refreshPlaza() }
+    if (ric) { t = ric(run, { timeout: 4000 }) } else { t = window.setTimeout(run, 1500) }
+    return () => { if (ric) (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(t); else window.clearTimeout(t) }
+  }, [refreshPlaza])
+  // 탭에 들어올 때 새로 읽는다. 다만 방금 받아 둔 게 있으면 건너뛴다(미리 받기와 겹치지 않게).
+  useEffect(() => {
+    if (primary !== 'share') return
+    if (loadedOnce.current && Date.now() - lastPlazaLoad.current < 20000) return
+    void refreshPlaza()
+  }, [primary, refreshPlaza])
+  useEffect(() => { if (primary !== 'share') setPlazaUpload(false) }, [primary])
+
+  const openPlazaPost = (post: PlazaPost) => openSurface({ kind: 'plaza', item: null, post })
+  // 공지 및 건의함 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
+  const openNotice = () => openSurface({ kind: 'notice', item: null })
+  // 가져오기는 공유 링크로 받을 때와 **같은 다이얼로그**(ShareReceiveSheet)를 쓴다(사용자 지시).
+  // 칸을 고르면 그대로 applySharedToPreset 으로 들어가므로 덮어쓰기·되돌리기 동작이 완전히 같다.
+  const plazaTakeDirect = (post: PlazaPost) => {
+    closeSurface()
+    takeFrom.current = post
+    setSharedIncoming({ ...post.snapshot, name: post.name })
+  }
+  // 가져오기 시트가 닫히는 전환(320ms)을 끝까지 보여준 뒤 상세를 다시 연다.
+  useEffect(() => {
+    if (!takeReturn) return
+    const t = setTimeout(() => { openSurface({ kind: 'plaza', item: null, post: takeReturn }); setTakeReturn(null) }, 330)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [takeReturn])
+  const likePending = useRef<Set<string>>(new Set())
+  const plazaLike = (post: PlazaPost) => {
+    // 먼저 화면부터 바꾸고(하트는 자주 눌린다) 서버에 반영한다. 서버가 돌려준 실제 상태·수로 다시 맞춘다 —
+    // 기기 기준이라 다른 창에서 이미 누른 하트였다면 이번 누름은 '취소'가 된다(supabase/0011).
+    const next = !post.liked
+    likePending.current.add(post.id)
+    likeLocal.current.set(post.id, { liked: next, likes: Math.max(0, post.likes + (next ? 1 : -1)), at: Date.now() })
+    setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: next, likes: Math.max(0, p.likes + (next ? 1 : -1)) } : p)))
+    togglePlazaLike(post)
+      .then((r) => {
+        likeLocal.current.set(post.id, { liked: r.liked, likes: r.likes, at: Date.now() })
+        setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: r.liked, likes: r.likes } : p)))
+      })
+      .catch((e) => {
+        likeLocal.current.delete(post.id)
+        setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: post.liked, likes: post.likes } : p)))
+        const msg = e instanceof Error ? e.message : ''
+        notify(/마감|내려간/.test(msg) ? msg : '좋아요를 저장하지 못했어요')
+      })
+      .finally(() => likePending.current.delete(post.id))
+  }
+  // 남이 누른 좋아요를 몇 초 안에 보이게 — 광장 탭이 보일 때 **화면에 있는 카드(앞뒤 한 쪽 포함) + 열린 상세**만
+  // 6초마다 좋아요 수를 새로 받는다(목록 캐시는 3분). 창이 가려져 있으면 쉰다. 18~54개 id 라 응답이 작다.
+  const likeWatch = useRef<string[]>([])
+  {
+    const ids = new Set<string>()
+    if (primary === 'share') for (const p of plazaList.slice(Math.max(0, curIdx - 1) * perPage, (curIdx + 2) * perPage)) ids.add(p.id)
+    if (surface?.kind === 'plaza' && surface.post) ids.add(surface.post.id)
+    likeWatch.current = Array.from(ids)
+  }
+  const watching = primary === 'share' || surface?.kind === 'plaza'
+  useEffect(() => {
+    if (!watching || !plazaConfigured()) return
+    let alive = true
+    const tick = async () => {
+      if (document.hidden || !likeWatch.current.length) return
+      const counts = await loadLikeCounts(likeWatch.current)
+      if (!alive || !counts.size) return
+      setPlazaPosts((list) => {
+        let changed = false
+        const out = list.map((p) => {
+          const n = counts.get(p.id)
+          if (n == null || n === p.likes || likePending.current.has(p.id)) return p
+          changed = true
+          return { ...p, likes: n }
+        })
+        return changed ? out : list
+      })
+    }
+    const t = window.setInterval(() => { void tick() }, 6000)
+    return () => { alive = false; window.clearInterval(t) }
+  }, [watching])
+  const plazaRemove = (post: PlazaPost) => {
+    // 3초 안에, 다른 상호작용 없이 연속으로 두 번 눌러야 내린다(lib/confirmTwice).
+    if (confirmTwice(`plaza:${post.id}`)) {
+      deletePlazaPost(post)
+        .then(() => {
+          myRemoved.current.add(post.id)
+          myAdded.current = myAdded.current.filter((p) => p.id !== post.id)
+          setPlazaPosts((list) => list.filter((p) => p.id !== post.id))
+          notify('등록한 코디를 내렸어요')
+        })
+        .catch(() => notify('내리지 못했어요. 다시 시도해 주세요'))
+      return
+    }
+    notify('한 번 더 누르면 광장에서 내려요')
+  }
+  const plazaCopyLink = (post: PlazaPost) => {
+    if (post.shareCode) {
+      const name = post.name ? `&n=${encodeURIComponent(post.name)}` : ''
+      const url = `${location.origin}/?c=${post.shareCode}${name}`
+      void copyAsyncText(async () => url)
+      notify('공유 링크를 복사했어요')
+      return
+    }
+    copyShareLink({ ...post.snapshot, name: post.name })
+  }
+  const plazaSubmit = async (draft: Omit<PlazaDraft, 'shareCode'>): Promise<boolean> => {
+    if (plazaSubmitting) return false
+    setPlazaSubmitting(true)
+    try {
+      // 공유 코드도 함께 만들어 둔다 — '링크 복사'와 카톡 카드가 기존 공유 기능을 그대로 쓴다.
+      // 숨긴 부위는 광장에서는 없는 아이템이다 — 저장·공유 링크(가져오기·링크 복사) 모두 지운 스냅샷으로.
+      const clean = plazaSnapshot(draft.snapshot)
+      const named = { ...clean, name: draft.name }
+      const prep = await prepareShare(location.origin, named).catch(() => null)
+      const post = await createPlazaPost({ ...draft, snapshot: clean, shareCode: prep?.id ?? null })
+      if (prep) void uploadShare(prep, named)
+      myAdded.current = [post, ...myAdded.current]
+      setPlazaPosts((list) => [post, ...list])
+      setPlazaUpload(false)
+      notify(draft.contest ? `'${draft.name}' 코디를 ${PLAZA_CONTEST}에 등록했어요` : `'${draft.name}' 코디를 광장에 등록했어요`)
+      return true
+    } catch (e) {
+      // DB 가 막은 사유(대회 3개 제한 등)는 그대로 보여준다 — '잠시 후 다시'는 거짓말이 된다.
+      const msg = e instanceof Error ? e.message : ''
+      // 같은 조합(DB 안전망 0009 트리거 문구)은 같은 안내로.
+      const dup = /같은 조합/.test(msg)
+      notify(dup ? '같은 조합이 이미 대회에 출품돼 있어요' : /기기당|대회에는|마감|이메일|기기 정보/.test(msg) ? msg : '등록하지 못했어요. 잠시 후 다시 시도해 주세요')
+      return false
+    } finally { setPlazaSubmitting(false) }
+  }
+
   // ── 단일 서피스 ── 열 때 다른 서피스를 대체, 같은 시트를 다시 누르면 닫는다. 닫힘은 320ms 뒤 언마운트.
   const openSurface = (next: Surface) => {
     if (surfT.current) { clearTimeout(surfT.current); surfT.current = null }
@@ -973,6 +1259,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 공유받은 코디를 사용자가 고른 프리셋 슬롯에 적용 — 개인 프리셋 하나를 명시적으로 덮어씀 + 선택 + 라이브(되돌리기 가능).
   const applySharedToPreset = (snap: Snapshot, targetId: string) => {
+    // 덮어쓰기 전 그 프리셋(선택돼 있으면 지금 코디)과 이름을 기록에 함께 남긴다 → 되돌리기로 원래 코디·이름까지 돌아온다.
+    const prevName = presets.find((p) => p.id === targetId)?.name ?? ''
+    histOver.current = {
+      id: targetId,
+      prev: targetId === selectedPreset ? snapshot() : (presetData[targetId] ?? defaultSnapshot()), prevName,
+      next: snap, nextName: snap.name || prevName,
+    }
     if (selectedPreset && selectedPreset !== targetId) setPresetData((d) => ({ ...d, [selectedPreset]: snapshot() }))
     setPresetData((d) => ({ ...d, [targetId]: snap }))
     if (snap.name) setPresets((ps) => ps.map((p) => (p.id === targetId ? { ...p, name: snap.name! } : p))) // 공유된 이름까지 그대로
@@ -986,6 +1279,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setDyeTarget(null); setSelectedPreset(targetId)
     }).catch(() => {})
     setSharedIncoming(null)
+    endTake()
     const nm = snap.name || presets.find((p) => p.id === targetId)?.name
     notify(nm ? `공유받은 코디를 '${nm}'에 저장했어요` : '공유받은 코디를 프리셋에 불러왔어요')
   }
@@ -1126,8 +1420,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const val = nickInput.trim()
     if (!val) { notify('닉네임이나 공유 링크를 입력해 주세요'); return }
     // 공유 링크/코드 입력 → 링크로 접속했을 때와 동일하게 '코디 받기' 시트를 띄워 어느 프리셋에 넣을지 고르게 한다.
-    const shared = await extractSharedSnap(val)
+    // 공유 링크·코드면 닉네임으로 넘기지 않는다(못 풀면 '없는 캐릭터'가 아니라 공유 코디 안내). 푸는 동안도 '불러오는 중'.
+    const isShare = /[#?&]c=|^PB/.test(val)
+    if (isShare) setImporting(true)
+    const shared = await extractSharedSnap(val).finally(() => { if (isShare) setImporting(false) })
     if (shared) { setSharedIncoming(shared); setNickInput(''); return }
+    if (isShare) { notify('공유 코디를 찾지 못했어요. 링크를 다시 확인해 주세요'); return }
     if (!selectedPreset) { notify('덮어쓸 프리셋을 먼저 골라 주세요'); return }
     setImporting(true)
     try {
@@ -1210,7 +1508,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         const next = { ...d, [selectedPreset]: snap }
         try {
           const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
-          localStorage.setItem(PRESET_KEY, JSON.stringify({ data: next, names, sel: selectedPreset } as PresetStore))
+          localStorage.setItem(PRESET_KEY, JSON.stringify({ data: next, names, sel: selectedPreset, v: PRESET_STORE_V } as PresetStore))
         } catch {}
         return next
       })
@@ -1236,11 +1534,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const snap = snapshot()
     const j = JSON.stringify({ s: snap, p: selectedPreset })
     if (j === histExpect.current) { histExpect.current = null; histLast.current = j; return }
-    if (j === histLast.current) return
+    const over = histOver.current
+    if (j === histLast.current && !over) return // 덮어쓰기는 코디가 같아도(이름·다른 프리셋이 바뀜) 기록한다
+    histOver.current = null
     histLast.current = j
     const h = histRef.current
     h.stack = h.stack.slice(0, h.idx + 1)
-    h.stack.push({ snap, sel: selectedPreset })
+    h.stack.push({ snap, sel: selectedPreset, ...(over ? { over } : {}) })
     if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
     h.idx = h.stack.length - 1
     setHistVer((v) => v + 1)
@@ -1266,8 +1566,28 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   void histVer // 재렌더 트리거(canUndo/canRedo 재계산)
   const canUndo = histRef.current.idx > 0
   const canRedo = histRef.current.idx < histRef.current.stack.length - 1
-  const undo = () => { const h = histRef.current; if (h.idx <= 0) { notify('되돌릴 변경이 없어요'); return } h.idx -= 1; applyHistory(h.stack[h.idx]) }
-  const redo = () => { const h = histRef.current; if (h.idx >= h.stack.length - 1) { notify('다시 실행할 변경이 없어요'); return } h.idx += 1; applyHistory(h.stack[h.idx]) }
+  // 덮어쓴 프리셋을 되살린다(내용 + 이름). 선택 프리셋이면 이어지는 applyHistory 의 자동저장이 같은 값을 쓴다.
+  const restoreOver = (o: PresetOver<Snapshot>, back: boolean) => {
+    const snap = back ? o.prev : o.next, name = back ? o.prevName : o.nextName
+    setPresetData((d) => ({ ...d, [o.id]: snap }))
+    if (name) setPresets((ps) => ps.map((p) => (p.id === o.id ? { ...p, name } : p)))
+  }
+  const undo = () => {
+    const h = histRef.current
+    if (h.idx <= 0) { notify('되돌릴 변경이 없어요'); return }
+    const from = h.stack[h.idx]
+    h.idx -= 1
+    if (from.over) restoreOver(from.over, true)
+    applyHistory(h.stack[h.idx])
+  }
+  const redo = () => {
+    const h = histRef.current
+    if (h.idx >= h.stack.length - 1) { notify('다시 실행할 변경이 없어요'); return }
+    h.idx += 1
+    const to = h.stack[h.idx]
+    if (to.over) restoreOver(to.over, false)
+    applyHistory(to)
+  }
 
   // 영속: 프리셋 데이터/이름/선택을 localStorage 에 저장(디바운스). 서버 없이 새로고침/재실행에도 유지.
   useEffect(() => {
@@ -1275,7 +1595,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const t = setTimeout(() => {
       try {
         const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
-        localStorage.setItem(PRESET_KEY, JSON.stringify({ data: presetData, names, sel: selectedPreset } as PresetStore))
+        localStorage.setItem(PRESET_KEY, JSON.stringify({ data: presetData, names, sel: selectedPreset, v: PRESET_STORE_V } as PresetStore))
       } catch {}
     }, 100)
     return () => clearTimeout(t)
@@ -1306,6 +1626,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     warmForPreview, listMode, setListMode, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,
     bp, cols, rows, itemsPerPage,
+    plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
+    plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
+    plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
+    openPlazaPost, openNotice, plazaTakeDirect, resolveSnapItems: resolveEquipped,
+    plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, dyeInteracting, setDyeInteracting, isMixSlot,
