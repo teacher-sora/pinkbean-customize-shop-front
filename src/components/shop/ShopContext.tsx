@@ -922,6 +922,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 목록은 ISR 캐시라 내가 방금 올리거나 내린 글이 아직 안 담겨 있다 → 내 것만 화면에서 보정한다.
   const myAdded = useRef<PlazaPost[]>([])
   const myRemoved = useRef<Set<string>>(new Set())
+  // 방금 누른 좋아요는 목록을 새로 받아도 유지한다 — 누르기 전에 출발한 목록 요청(미리 받기·탭 진입)이 늦게 도착하면
+  // 옛 상태로 덮어써 하트가 꺼져 보였다(2026-09-21 실측: 새로고침 직후 누름). 1분 동안은 내가 누른 결과를 믿는다.
+  const likeLocal = useRef<Map<string, { liked: boolean; likes: number; at: number }>>(new Map())
+  const keepLikes = (list: PlazaPost[]) => {
+    const now = Date.now()
+    return list.map((p) => {
+      const l = likeLocal.current.get(p.id)
+      if (!l) return p
+      if (now - l.at > 60000) { likeLocal.current.delete(p.id); return p }
+      return { ...p, liked: l.liked, likes: l.likes }
+    })
+  }
   const refreshPlaza = useCallback(async (): Promise<void> => {
     if (!plazaConfigured()) return
     if (plazaInFlight.current) return plazaInFlight.current
@@ -929,7 +941,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       try {
         const merge = (list: PlazaPost[]) => {
           const ids = new Set(list.map((p) => p.id))
-          return [...myAdded.current.filter((p) => !ids.has(p.id)), ...list].filter((p) => !myRemoved.current.has(p.id))
+          return keepLikes([...myAdded.current.filter((p) => !ids.has(p.id)), ...list].filter((p) => !myRemoved.current.has(p.id)))
         }
         // 글이 많으면 최신 500개가 먼저 온다 → 바로 보여 주고 뼈대를 걷는다(나머지는 뒤이어 합친다).
         let full = false // 전체가 먼저 도착했으면 늦게 온 첫 쪽으로 덮어쓰지 않는다
@@ -941,7 +953,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         const ids = new Set(list.map((p) => p.id))
         myAdded.current = myAdded.current.filter((p) => !ids.has(p.id)) // 캐시에 나타났으면 보정 해제
         for (const id of Array.from(myRemoved.current)) if (!ids.has(id)) myRemoved.current.delete(id)
-        const merged = [...myAdded.current, ...list].filter((p) => !myRemoved.current.has(p.id))
+        const merged = keepLikes([...myAdded.current, ...list].filter((p) => !myRemoved.current.has(p.id)))
         setPlazaPosts(merged)
         setPlazaGen((g) => g + 1) // 새로 받아온 목록 = 정렬을 다시 잡는 시점
         lastPlazaLoad.current = Date.now()
@@ -999,10 +1011,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 기기 기준이라 다른 창에서 이미 누른 하트였다면 이번 누름은 '취소'가 된다(supabase/0011).
     const next = !post.liked
     likePending.current.add(post.id)
+    likeLocal.current.set(post.id, { liked: next, likes: Math.max(0, post.likes + (next ? 1 : -1)), at: Date.now() })
     setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: next, likes: Math.max(0, p.likes + (next ? 1 : -1)) } : p)))
     togglePlazaLike(post)
-      .then((r) => setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: r.liked, likes: r.likes } : p))))
+      .then((r) => {
+        likeLocal.current.set(post.id, { liked: r.liked, likes: r.likes, at: Date.now() })
+        setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: r.liked, likes: r.likes } : p)))
+      })
       .catch((e) => {
+        likeLocal.current.delete(post.id)
         setPlazaPosts((list) => list.map((p) => (p.id === post.id ? { ...p, liked: post.liked, likes: post.likes } : p)))
         const msg = e instanceof Error ? e.message : ''
         notify(/마감|내려간/.test(msg) ? msg : '좋아요를 저장하지 못했어요')
