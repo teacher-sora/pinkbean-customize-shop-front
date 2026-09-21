@@ -21,7 +21,7 @@
 .sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; height: 34px; padding: 0 8px 0 10px; font-size: 12px; }
 .searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; color: #b7ada2; pointer-events: none; }
-.searchInputM { width: 100%; min-width: 0; height: 34px; padding: 0 10px 0 31px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-size: 16px; color: #3d372f; outline: none; }
+.searchInputM { width: 100%; min-width: 0; height: 34px; padding: 0 10px 0 31px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-size: 13px; color: #3d372f; outline: none; }
 .upBtn { flex: 0 0 auto; height: 32px; padding: 0 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #f4cfdf; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 
 /* ── 페이지 칩 ── */
@@ -73,6 +73,9 @@
 .delBtn { border-color: #f2d7d2; color: #d1735f; }
 .likeWrap { position: absolute; right: 6px; bottom: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .likeWrapM { right: 5px; bottom: 5px; }
+/* 대회 등록 순번(선착) — 썸네일 왼쪽 아래. 하트는 오른쪽 아래라 겹치지 않는다. */
+.contestNo { position: absolute; left: 6px; bottom: 6px; z-index: 4; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid #f4cfdf; border-radius: 20px; background: #fff; font-size: 10.5px; font-weight: 700; color: #d76d9a; font-variant-numeric: tabular-nums; }
+.contestNoM { left: 5px; bottom: 5px; }
 .likeCount { font-size: 10px; font-weight: 700; color: #8a8075; line-height: 1; font-variant-numeric: tabular-nums; }
 .likeBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #efe8e0; border-radius: 50%; background: rgba(255,255,255,0.94); color: #a89e93; cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
 .likeBtnM { width: 26px; height: 26px; }
@@ -127,9 +130,11 @@
 .labelWide { margin-bottom: 7px; }
 .star { color: #ec86ac; }
 .field { width: 100%; height: 34px; padding: 0 11px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-size: 13px; color: #3d372f; outline: none; }
-.fieldM { font-size: 16px; }
+/* 모바일 입력 글자는 다른 탭(코디 검색·프리셋 불러오기)과 같은 13px. 뷰포트가 maximum-scale=1 이라
+   iOS 사파리도 포커스 때 화면을 확대하지 않는다(16px 은 그 확대를 막으려던 값). */
+.fieldM { font-size: 13px; }
 .textarea { width: 100%; padding: 8px 11px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; resize: none; outline: none; }
-.textareaM { font-size: 16px; }
+.textareaM { font-size: 13px; }
 .pickWrap { position: relative; }
 .pickBtn { width: 100%; height: 34px; padding: 0 9px 0 11px; display: flex; align-items: center; gap: 7px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
 .pickOpen { border-color: #eeb2ce; background: #fdf4f8; }
@@ -143,11 +148,11 @@
 .pickPanelUp.panelOn { transform: translateY(0) scale(1); }
 .pickContest { border-color: #f4cfdf; background: #fce9f1; }
 .pickList { display: flex; flex-direction: column; gap: 2px; max-height: 196px; overflow: hidden auto; }
-.pickGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: 268px; overflow: hidden auto; }
-.pickGridM { max-height: 236px; }
+.pickGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: 296px; overflow: hidden auto; }
+.pickGridM { max-height: 256px; }
 .pickCell { display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid #eee6dc; border-radius: 9px; background: #fff; overflow: hidden; font-family: inherit; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
 .pickCellOn { border-color: #ec86ac; background: #fdf4f8; }
-.pickThumb { position: relative; display: block; flex: 0 0 auto; height: 72px; background: #f7f2ec; }
+.pickThumb { position: relative; display: block; flex: 0 0 auto; height: 88px; background: #f7f2ec; }
 .pickName { display: block; padding: 4px 6px 6px; font-size: 11.5px; font-weight: 600; color: #5c534b; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pickCellOn .pickName { color: #d76d9a; }
 .pickEmpty { grid-column: 1 / -1; margin: 0; padding: 12px 4px; font-size: 12px; color: #a89e93; text-align: center; }
@@ -159,9 +164,18 @@
 .tagDel { flex: 0 0 auto; padding: 0; border: none; background: transparent; font-family: inherit; cursor: pointer; } /* 자리(hover 판정)는 고정 */
 .tagDelPill { display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fce9f1; font-size: 11px; font-weight: 600; color: #d76d9a; transition: transform .2s ease, border-color .22s ease, background-color .24s ease, color .22s ease; }
 .tagDelX { font-size: 10px; }
-.imgBtn { width: 100%; height: 56px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; border-radius: 9px; background: #fbf8f4; font-family: inherit; font-size: 12px; font-weight: 600; color: #a89e93; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
-.imgBtnOn { border: 1px solid #f4cfdf; background: #fce9f1; color: #d76d9a; }
-.scopeGroup { display: flex; flex-direction: column; gap: 8px; padding-top: 2px; }
+/* 이미지 칸(2026-09-21 키움): 비었을 땐 넉넉한 추가 버튼, 고르면 상세 칸 비율의 편집기. */
+.imgBtn { width: 100%; height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px dashed #e4dcd2; border-radius: 11px; background: #fbf8f4; font-family: inherit; color: #a89e93; cursor: pointer; transition: background-color .24s ease, border-color .22s ease, color .22s ease; }
+.imgBtnMain { font-size: 12.5px; font-weight: 600; }
+.imgBtnSub { font-size: 11px; font-weight: 500; color: #b7ada2; }
+.upRefBox { position: relative; width: 100%; aspect-ratio: 6 / 5; border: 1px dashed #e4dcd2; border-radius: 11px; background: #fbf8f4; overflow: hidden; }
+.upRefFoot { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.upRefHint { flex: 1 1 auto; min-width: 0; font-size: 10.5px; color: #a89e93; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.upRefBtn { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid #e7ded4; border-radius: 7px; background: #fff; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #8a8075; cursor: pointer; transition: background-color .24s ease, border-color .22s ease, color .22s ease; }
+/* 편집기의 모바일 범위 점선 */
+.refGuide { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 1.5px dashed #ec86ac; border-radius: 8px; pointer-events: none; }
+.refGuideTag { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); height: 18px; padding: 0 6px; display: flex; align-items: center; border-radius: 20px; background: #fff; font-size: 10px; font-weight: 700; color: #d76d9a; }
+.scopeGroup { display: flex; flex-direction: column; gap: 16px; padding-top: 2px; } /* 등록할 곳 ↔ 이메일(8 → 16, 붙어 보였다) */
 .scopeHint { margin-top: 6px; font-size: 10.5px; color: #a89e93; }
 .emailHint { margin-top: 5px; font-size: 10.5px; color: #b7ada2; }
 .submit { width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; line-height: 1; border: none; border-radius: 9px; background: #ec86ac; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; transition: background-color .2s ease; }
@@ -172,27 +186,30 @@
 .upSubmitM { flex: 1 1 0; min-width: 0; } /* 닫기 : 등록 = 1 : 1 */
 
 @media (hover: hover) and (pointer: fine) {
-  .railBtn:hover { border-color: #f0d3e0; background: #fff; color: #d76d9a; }
-  .delBtn:hover { border-color: #eeb2ce; background: #fce9f1; color: #e0533e; } /* 내리기: 연한 핑크로 채우고 아이콘은 위험색 */
-  .likeBtn:hover { border-color: #f4cfdf; color: #ec86ac; }
-  .upBtn:hover { background: #fdf4f8; }
-  .tagChip:hover { border-color: #f4cfdf; background: #fdf4f8; color: #d76d9a; }
-  .pickOpt:hover { background: #fdf1f6; color: #d76d9a; }
-  .pickCell:hover { border-color: #eeb2ce; background: #fdf4f8; }
-  /* 태그 지우기: 바깥 자리는 그대로, 알약만 줄며 위험색 — '누르면 사라진다' */
-  .tagDel:hover .tagDelPill { transform: scale(.92); border-color: #e0533e; background: #fdf0f5; color: #e0533e; }
-  .refReset:hover { border-color: #ec86ac; background: #fdf4f8; }
-  /* 상세 행동 줄 — 누른 결과를 미리 보여 준다 */
-  .actLike:hover { border-color: #ec86ac; color: #ec86ac; }                  /* 하트가 켜질 색 */
-  .actLike.actBtnOn:hover { border-color: #f4cfdf; background: #fff; color: #a89e93; } /* 취소하면 꺼진다 */
-  .actLink:hover { border-color: #ec86ac; color: #d76d9a; }
-  .actTake:hover { background: #de6fa0; }
-  /* 댓글 */
-  .cmtDel:hover { border-color: #e0533e; background: #fdf0f5; color: #e0533e; }
-  .cmtReplyBtn:hover { background: #fbe0ec; color: #d76d9a; }
-  .cmtSend:not(.cmtSendOff):hover { background: #de6fa0; }
-  .imgBtn:hover { border-color: #f4cfdf; color: #d76d9a; }
+  /* 2026-09-21: 연했던 hover 를 코디 탭 띠지 수준으로 진하게 — 핑크 배경 #fce9f1 + 보더 #ec86ac, 솔리드는 #d5578e(pb-solid 와 같게). */
+  .railBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
+  .delBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #e0533e; } /* 내리기: 핑크로 채우고 아이콘은 위험색 */
+  .likeBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #ec86ac; }
+  .upBtn:hover { border-color: #ec86ac; background: #fce9f1; }
+  .tagChip:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
+  .pickOpt:hover { background: #fce9f1; color: #d76d9a; }
+  .imgBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
   .arrowOn:hover { background: #fce9f1; color: #d76d9a; }
+  .pickCell:hover { border-color: #ec86ac; background: #fce9f1; }
+  /* 태그 지우기: 바깥 자리는 그대로, 알약만 줄며 위험색 — '누르면 사라진다' */
+  .tagDel:hover .tagDelPill { transform: scale(.92); border-color: #e0533e; background: #fce9f1; color: #e0533e; }
+  .refReset:hover { border-color: #ec86ac; background: #fce9f1; }
+  .upRefBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
+  .upRefDel:hover { border-color: #e0533e; background: #fce9f1; color: #e0533e; }
+  /* 상세 행동 줄 — 누른 결과를 미리 보여 준다 */
+  .actLike:hover { border-color: #ec86ac; background: #fce9f1; color: #ec86ac; }   /* 하트가 켜질 색 */
+  .actLike.actBtnOn:hover { border-color: #e7ded4; background: #fff; color: #a89e93; } /* 취소하면 꺼진다 */
+  .actLink:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
+  .actTake:hover { background: #d5578e; }
+  /* 댓글 */
+  .cmtDel:hover { border-color: #e0533e; background: #fce9f1; color: #e0533e; }
+  .cmtReplyBtn:hover { background: #fce9f1; color: #c85d8a; }
+  .cmtSend:not(.cmtSendOff):hover { background: #d5578e; }
 }
 
 /* ── 상세 액션 줄(하트 · 링크 복사 · 가져오기) ── */
@@ -250,7 +267,8 @@
 .cmtFormReply { margin-top: 2px; }
 /* 긴 글자를 넣어도 칸을 넘지 않게 끊고, 스크롤 자리도 미리 비워 둔다. */
 .cmtInput { width: 100%; height: 58px; padding: 8px 1px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; resize: none; outline: none; overflow-wrap: anywhere; word-break: break-word; scrollbar-gutter: stable both-edges; } /* 거터가 양쪽 9px 라 패딩은 1px 만 — 글자가 테두리에서 11px */
-.cmtInputM { height: 64px; font-size: 16px; }  /* iOS 확대 방지 */
+/* 모바일은 스크롤바가 떠 있는 방식이라 거터가 0 이 된다 → 좌우 1px 만 남아 글자가 테두리에 붙었다. 안쪽 여백을 직접 준다. */
+.cmtInputM { height: 64px; padding: 8px 10px; font-size: 13px; scrollbar-gutter: auto; }
 .cmtFormFoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cmtLen { font-size: 10.5px; color: #b7ada2; }
 .cmtSend { flex: 0 0 auto; height: 28px; padding: 0 14px; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; transition: background-color .24s ease; }

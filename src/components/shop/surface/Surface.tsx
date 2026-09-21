@@ -162,7 +162,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'vs' ? '코디 비교'
     : k === 'plaza' ? (sf.post?.name || '코디') : (sf.item?.name || sf.item?.id || '')
   const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' ? ''
-    : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '')
+    : k === 'plaza' ? (sf.post ? `${sf.post.contest && sf.post.contestNo != null ? `대회 #${sf.post.contestNo} · ` : ''}${plazaWhen(sf.post.createdAt)}` : '')
         : k === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
 
   // 패널 폭(앱 영역 기준)·등장/닫힘 위치는 즉시 반영 값이라 인라인(드래그 중 오프셋은 위 터치 핸들러가 DOM 직접).

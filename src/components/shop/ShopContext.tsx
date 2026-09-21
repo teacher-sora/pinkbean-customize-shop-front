@@ -84,10 +84,7 @@ const snapCoreKey = (s: Snapshot) => canon({ e: s.equipped, t: s.tone, p: s.dyeP
 const DEFAULT_CORE_KEY = snapCoreKey(defaultSnapshot())
 // 사용자가 한 번이라도 꾸민 스냅샷인가(기본 코디 그대로면 false) — 광장 등록에서 올릴 프리셋만 추리는 데 쓴다.
 export const isCustomSnapshot = (s: Snapshot) => snapCoreKey(s) !== DEFAULT_CORE_KEY
-// 대회 '같은 조합' 판정용 지문 — 착용 · 피부 · 염색 · 숨김만 본다(점 위치·연출은 제외).
-// ⚠️ DB 의 public.plaza_look_key(supabase/0007) 와 같은 규칙이어야 한다. 여기 값은 **안내용**이고 막는 건 DB 다.
-const onlyTrue = (m?: Record<string, boolean>) => Object.fromEntries(Object.entries(m || {}).filter(([, v]) => v === true))
-export const lookKey = (s: Snapshot) => canon({ e: s.equipped || {}, t: s.tone ?? null, p: s.dyePalette || {}, h: s.dyeHsb || {}, o: onlyTrue(s.dyeOff), x: onlyTrue(s.hidden) })
+// 대회 '같은 조합' 판정은 lib/plazaLook.ts(염색 허용 오차 포함) — DB 0008 과 같은 규칙.
 // 이전 기본 헤어(녹셀 헤어 (여) 00071400) 그대로 손대지 않은 저장 프리셋 → 새 기본값(밤의 레아 헤어)으로 이관.
 // 조금이라도 바꾼 프리셋(다른 착용·염색·숨김·점 위치)은 사용자 코디라 건드리지 않는다. (2026-09-17)
 const LEGACY_DEFAULT_CORE_KEY = (() => { const d = defaultSnapshot(); return snapCoreKey({ ...d, equipped: { ...d.equipped, hair: '00071400' } }) })()

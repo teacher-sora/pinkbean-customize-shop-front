@@ -8,11 +8,13 @@ import clsx from 'clsx'
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import bg from '@/assets/pinkbean-bg.png'
-import { PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX } from '@/lib/plaza'
+import { PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX, type RefView } from '@/lib/plaza'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
-import { isCustomSnapshot, lookKey, useShop, type Snapshot } from '../ShopContext'
+import { sameLook } from '@/lib/plazaLook'
+import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { IconCaretDown } from '../ui/Icons'
+import PlazaRefViewer from './PlazaRefViewer'
 import styles from './plaza.module.css'
 
 const STAGE_FRACTION = 0.46
@@ -28,6 +30,16 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const [tags, setTags] = useState<string[]>([])
   const [tagDraft, setTagDraft] = useState('')
   const [image, setImage] = useState<File | null>(null)
+  const [imageView, setImageView] = useState<RefView | null>(null) // 상세를 처음 열었을 때 보일 자리
+  // 고른 파일을 편집기에 보여 줄 주소(바꾸거나 지우면 이전 주소는 해제한다)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!image) { setImageUrl(null); return }
+    const u = URL.createObjectURL(image)
+    setImageUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [image])
+  const clearImage = () => { setImage(null); setImageView(null); if (fileRef.current) fileRef.current.value = '' }
   const [scope, setScope] = useState<'all' | 'contest' | null>(null)
   const [scopeOpen, setScopeOpen] = useState(false)
   const [email, setEmail] = useState('')
@@ -56,8 +68,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   // 여기는 지금 불러온 목록 기준 안내이고, 실제로 막는 건 DB(0007 — 유일 인덱스 + 트리거)다.
   const taken = useMemo(() => {
     if (!contest || !snap) return null
-    const k = lookKey(snap)
-    return s.plazaPosts.find((p) => p.contest && lookKey(p.snapshot) === k) || null
+    return s.plazaPosts.find((p) => p.contest && sameLook(p.snapshot, snap)) || null
   }, [contest, snap, s.plazaPosts])
   const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !taken && !s.plazaSubmitting
 
@@ -82,8 +93,8 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     if (contestFull) { s.notify(`${PLAZA_CONTEST}에는 이 기기에서 ${PLAZA_CONTEST_MAX}개까지 올릴 수 있어요`); return }
     if (taken) { s.notify('같은 조합이 이미 대회에 출품돼 있어요'); return }
     if (!canSubmit || !snap) { s.notify(contest ? '이메일을 확인해 주세요' : '프리셋과 이름을 확인해 주세요'); return }
-    const ok = await s.plazaSubmit({ name: finalName, description: desc.trim(), tags, snapshot: snap, contest, email: contest ? email.trim() : '', image })
-    if (ok) { setName(''); setDesc(''); setTags([]); setTagDraft(''); setImage(null); if (fileRef.current) fileRef.current.value = '' }
+    const ok = await s.plazaSubmit({ name: finalName, description: desc.trim(), tags, snapshot: snap, contest, email: contest ? email.trim() : '', image, imageView })
+    if (ok) { setName(''); setDesc(''); setTags([]); setTagDraft(''); clearImage() }
   }
 
   const submitBtn = (
@@ -112,7 +123,8 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
                 return (
                   <button key={p.id} type="button" onClick={() => { setPresetId(p.id); setPickOpen(false) }} title={p.name}
                     className={clsx(styles.pickCell, current?.id === p.id && styles.pickCellOn)}>
-                    <span className={styles.pickThumb}>{pickSeen && sn && <SnapThumb snap={sn} fraction={0.5} />}</span>
+                    {/* 칸 88px · 0.62 → DPR 1·2·3 모두 인물 64px(정수 배율). 머리·발이 잘리지 않는다. */}
+                    <span className={styles.pickThumb}>{pickSeen && sn && <SnapThumb snap={sn} fraction={0.62} />}</span>
                     <span className={styles.pickName}>{p.name}</span>
                   </button>
                 )
@@ -163,11 +175,24 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
       {/* 이미지 */}
       <div>
         <div className={styles.label}>이미지</div>
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => setImage(e.target.files?.[0] ?? null)} />
-        <button type="button" onClick={() => { if (image) { setImage(null); if (fileRef.current) fileRef.current.value = '' } else fileRef.current?.click() }}
-          className={clsx(styles.imgBtn, image && styles.imgBtnOn)}>
-          {image ? '이미지 1장 첨부됨 — 지우기' : '이미지 추가'}
-        </button>
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; if (f) { setImage(f); setImageView(null) } }} />
+        {/* 이미지를 고르면 상세 칸 비율의 편집기가 뜬다. 끌고 확대해 **처음 보일 부분**을 맞춘다(원본은 자르지 않는다).
+            점선 = 모바일 상세 칸에 보이는 범위. */}
+        {imageUrl ? (
+          <>
+            <div className={styles.upRefBox}><PlazaRefViewer src={imageUrl} edit onChange={setImageView} /></div>
+            <div className={styles.upRefFoot}>
+              <span className={styles.upRefHint}>처음 보일 부분을 맞춰 주세요 · 점선은 모바일</span>
+              <button type="button" onClick={() => fileRef.current?.click()} className={styles.upRefBtn}>바꾸기</button>
+              <button type="button" onClick={clearImage} className={clsx(styles.upRefBtn, styles.upRefDel)}>지우기</button>
+            </div>
+          </>
+        ) : (
+          <button type="button" onClick={() => fileRef.current?.click()} className={styles.imgBtn}>
+            <span className={styles.imgBtnMain}>이미지 추가</span>
+            <span className={styles.imgBtnSub}>코스프레 원본처럼 나란히 비교할 그림</span>
+          </button>
+        )}
       </div>
 
       {/* 등록할 곳 */}
@@ -195,7 +220,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
           <div className={clsx(styles.scopeHint, (contestFull || taken) && styles.scopeHintWarn)}>
             {!contest ? '누구나 볼 수 있게 공개로 등록해요.'
               : contestFull ? `이 기기에서는 이미 ${PLAZA_CONTEST_MAX}개를 올렸어요.`
-              : taken ? `같은 조합이 먼저 출품됐어요('${taken.name}'). 다른 조합으로 올려주세요.`
+              : taken ? `[${taken.name}] 똑같은 조합이 이미 있어요! 같은 조합으로는 못 올려요.`
               : `대회 출품으로 등록해요. 이메일이 필요하고, ${contestLeft}개 더 올릴 수 있어요.`}
           </div>
         </div>

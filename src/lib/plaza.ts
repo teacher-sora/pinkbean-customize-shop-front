@@ -18,6 +18,8 @@ export const PLAZA_CONTEST = '블아 코디 대회'
 export const PLAZA_OPEN = '자유 코디'
 // 대회 출품은 기기(익명 세션)당 3개까지. 진짜 방어선은 DB 트리거다(supabase/0006) — 여기 값은 화면 안내용.
 export const PLAZA_CONTEST_MAX = 3
+// 대회 기간 — 광장 목록 아래 안내 줄에 그대로 쓴다(대회 필터일 때). 정해지면 '2026.10.01 ~ 10.31' 처럼 적는다.
+export const PLAZA_CONTEST_PERIOD: string | null = null
 export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
   { id: 'all', label: PLAZA_OPEN },
   { id: 'contest', label: '블아 대회' },
@@ -28,6 +30,10 @@ export const PLAZA_TAG_MAX = 10 // DB 체크도 10(supabase/0007)
 export const PLAZA_COMMENT_MAX = 200
 const POST_LIMIT = 300
 const COMMENT_LIMIT = 200
+
+// 참고 이미지를 처음 열었을 때 보일 자리(올린 사람이 등록 때 고른다, supabase/0008). 원본은 자르지 않는다.
+//  fx·fy = 그림에서 칸 가운데에 올 점(0~1) · zc = 칸을 꽉 채우는 배율(cover) 대비 배율.
+export type RefView = { fx: number; fy: number; zc: number }
 
 export type PlazaPost = {
   id: string
@@ -41,6 +47,8 @@ export type PlazaPost = {
   imageUrl: string | null
   imagePath: string | null   // 글을 내릴 때 이미지도 같이 지우려면 경로가 필요하다
   contest: boolean
+  contestNo: number | null  // 대회 등록 순번(선착 표시)
+  imageView: RefView | null
   likes: number
   liked: boolean
   mine: boolean
@@ -55,6 +63,7 @@ export type PlazaDraft = {
   contest: boolean
   email: string
   image: File | null
+  imageView: RefView | null
 }
 
 const URL_ENV = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -110,7 +119,7 @@ export function plazaAuth(): Promise<string | null> {
 type Row = {
   id: string; created_at: string; owner: string; name: string; description: string
   tags: string[] | null; snapshot: Snapshot; share_code: string | null; image_path: string | null
-  contest: boolean; like_count: number
+  contest: boolean; like_count: number; contest_no?: number | null; image_view?: RefView | null
 }
 
 const publicUrl = (path: string | null) => {
@@ -131,6 +140,8 @@ const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
   imageUrl: publicUrl(r.image_path),
   imagePath: r.image_path,
   contest: r.contest,
+  contestNo: r.contest_no ?? null,
+  imageView: r.image_view ?? null,
   likes: r.like_count,
   liked: liked.has(r.id),
   mine: !!uid && r.owner === uid,
@@ -205,6 +216,7 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
   const ins = await c.from('plaza_posts').insert({
     owner: uid, name: d.name, description: d.description, tags: d.tags,
     snapshot: d.snapshot, share_code: d.shareCode, image_path: imagePath, contest: d.contest,
+    image_view: imagePath ? d.imageView : null,
   }).select('*').single()
   if (ins.error) {
     // 대회 제한처럼 사용자가 알아야 하는 사유는 그대로 올려보낸다.

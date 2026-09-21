@@ -8,7 +8,7 @@
 import clsx from 'clsx'
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { isNarrow } from '@/lib/useBreakpoint'
-import { PLAZA_CONTEST, PLAZA_OPEN, type PlazaSort } from '@/lib/plaza'
+import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, type PlazaSort } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
 import { IconChevronLeft, IconChevronRight, IconCloseSmall, IconPlus, IconSearch } from '../ui/Icons'
@@ -195,7 +195,10 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
       <div className={styles.hr} />
       {viewport}
       <div className={clsx('pb-hintbar', styles.hintBar)}>
-        <span className={styles.hintText}>스크롤 · 스와이프 · ← → 로 페이지를 넘겨요</span>
+        {/* 대회 필터에서는 조작 안내 대신 대회 기간을 알린다(사용자 지시 — 규칙 안내는 기간이면 충분). */}
+        <span className={styles.hintText}>{s.plazaFilter === 'contest'
+          ? `${PLAZA_CONTEST} · ${PLAZA_CONTEST_PERIOD ?? '기간은 곧 안내돼요'}`
+          : '스크롤 · 스와이프 · ← → 로 페이지를 넘겨요'}</span>
       </div>
     </section>
   )

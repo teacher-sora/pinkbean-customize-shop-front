@@ -202,7 +202,7 @@ function Composer({ post, mobile, parentId, onAdded, autoFocus, initial = '' }: 
         onChange={(e) => setText(e.target.value)}
         // PC 는 Enter 로 보내고 Shift+Enter 로 줄을 바꾼다. 모바일 키보드의 Enter 는 줄바꿈 그대로 둔다.
         onKeyDown={(e) => { if (!mobile && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() } }}
-        placeholder={parentId ? '답글 남기기' : '이 코디에 남길 한마디'}
+        placeholder={parentId ? '답글 작성' : '댓글 작성'}
         aria-label={parentId ? '답글 입력' : '댓글 입력'}
         className={clsx('pb-input', 'pb-scroll', styles.cmtInput, mobile && styles.cmtInputM)} />
       <div className={styles.cmtFormFoot}>

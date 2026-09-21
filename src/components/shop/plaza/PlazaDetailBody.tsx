@@ -75,7 +75,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
         {post.imageUrl && (
           <div className={clsx(styles.stage, styles.stageRef)}>
             {/* 참조 이미지 — 확대·이동으로 살펴본다(원본 그대로, Supabase 도메인이라 next/image 대신 img). */}
-            <PlazaRefViewer src={post.imageUrl} />
+            <PlazaRefViewer src={post.imageUrl} initial={post.imageView} />
           </div>
         )}
       </div>
@@ -100,7 +100,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
         <span className={styles.descLabel}>설명</span>
         {/* 등록 뒤에는 고칠 수 없으므로 '아직 적지 않았다'가 아니라 끝난 사실로 적는다(사용자 지시). */}
         <p className={clsx(styles.descText, !post.description && styles.descNone)}>
-          {post.description || '설명 없이 올라온 코디예요.'}
+          {post.description || '작성된 설명이 없어요 :)'}
         </p>
         {post.tags.length > 0 && (
           <div className={styles.tagRow}>

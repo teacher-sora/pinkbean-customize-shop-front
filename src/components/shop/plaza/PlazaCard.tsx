@@ -41,6 +41,10 @@ export default function PlazaCard({ post, mobile }: { post: PlazaPost; mobile: b
         )}
         <div className={styles.thumb}>
           <SnapThumb snap={post.snapshot} fraction={mobile ? CARD_FRACTION_M : CARD_FRACTION} />
+          {/* 대회 등록 순번 — 누가 먼저 올렸는지(선착) 보이게 */}
+          {post.contest && post.contestNo != null && (
+            <span className={clsx(styles.contestNo, mobile && styles.contestNoM)} title={`대회 ${post.contestNo}번째 출품`}>#{post.contestNo}</span>
+          )}
           <div className={clsx(styles.likeWrap, mobile && styles.likeWrapM)}>
             <span className={styles.likeCount}>{post.likes > 999 ? '999+' : post.likes}</span>
             <button type="button" onClick={stop(() => s.plazaLike(post))} title={post.liked ? '좋아요 취소' : '좋아요'} aria-label="좋아요" aria-pressed={post.liked}
