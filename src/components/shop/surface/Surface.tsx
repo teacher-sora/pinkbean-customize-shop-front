@@ -193,7 +193,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
         <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
           ref={panelRef}
           onPointerDown={(e) => e.stopPropagation()}
-          className={clsx(mobile ? styles.panelM : styles.panel, mobile && tall && styles.panelMTall, !mobile && hidden && styles.panelHidden)}
+          className={clsx(mobile ? styles.panelM : styles.panel, mobile && tall && styles.panelMTall, !mobile && hidden && styles.panelHidden, !mobile && !hidden && styles.panelSized)}
           style={panelStyle}>
           {mobile && (
             <div title="아래로 끌어 닫기" data-sheet-handle className={styles.handle}>

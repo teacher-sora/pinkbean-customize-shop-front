@@ -7,7 +7,7 @@
 
 /* PC 다이얼로그 */
 /* 크기는 종류와 무관하게 동일(delta §6). 등장·퇴장은 translateY + opacity 만 — scale 금지(delta §8). */
-.panel { height: min(620px, 86svh); /* 종류마다 다른 크기는 인라인(Surface.tsx) — 전환은 아래 transition 이 맡는다 */ background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease, width .26s cubic-bezier(.45,0,.55,1), height .26s cubic-bezier(.45,0,.55,1); transform: translateY(0); opacity: 1; }
+.panel { height: min(620px, 86svh); /* 종류마다 다른 크기는 인라인(Surface.tsx) */ background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0); opacity: 1; }
 .panelHidden { transform: translateY(10px); opacity: 0; }
 /* 모바일 하단 시트 */
 .panelM { width: 100%; height: auto; max-height: 85%; background: #fff; border-top: 1px solid #e7ded4; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; overflow: hidden; }
@@ -138,3 +138,8 @@
 .tableRow { flex: 0 0 auto; display: flex; }
 .tableBtn { height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #ddd4ca; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 500; color: #5c534b; cursor: pointer; }
 .tableDots { display: inline-flex; align-items: center; gap: 3px; }
+
+/* 다이얼로그가 **다 뜬 뒤에만** 크기를 따라 움직인다(광장 상세 ↔ 가져오기).
+   .panel 에 바로 걸면 등장 애니메이션까지 '펼쳐지는' 모양으로 바뀐다(2026-09-21 사용자 지적) —
+   열림·닫힘은 예전대로 translateY + opacity 뿐이어야 한다. */
+.panelSized { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease, width .26s cubic-bezier(.45,0,.55,1), height .26s cubic-bezier(.45,0,.55,1); }
