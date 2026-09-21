@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { type PlacedLayer } from '@/lib/core/assemble'
-import { loadAnima, type AnimaRace } from '@/lib/core/data'
+import { type AnimaRace } from '@/lib/core/data'
 import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
-import { composeSnapshot } from '@/lib/core/snapRender'
+import { animaNow, animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { canvasToSquareBlob } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { CARD_FRACTION, CARD_MARGIN } from '@/lib/shopData'
@@ -26,22 +26,29 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const [ov, setOv] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effects, setEffects] = useState<EffectDraw[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
-  const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
+  // 형상변이 목록은 **이미 받아 뒀으면 그 값으로 시작**한다. 빈 배열로 한 번 그린 뒤 목록이 도착해 다시 그리면
+  // 카드마다 합성이 두 번 돌았다(2026-09-22 — 광장 필터를 오갈 때 느려진 원인 중 하나).
+  const [animaRaces, setAnimaRaces] = useState<AnimaRace[] | null>(animaNow)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
-  const key = useMemo(() => JSON.stringify(snap) + `|${animaRaces.length}`, [snap, animaRaces.length])
+  useEffect(() => { if (!animaRaces) animaOnce().then(setAnimaRaces).catch(() => {}) }, [animaRaces])
+  const key = useMemo(() => snapKey(snap), [snap])
 
   const prioRef = useRef(priority)
   prioRef.current = priority
   const jobRef = useRef<ReturnType<typeof enqueueThumb> | null>(null)
   useEffect(() => {
-    if (!index) return
+    if (!index || !animaRaces) return
     let alive = true
-    setPlaced(null)
-    const job = enqueueThumb(prioRef.current, () => composeSnapshot(snap, index, animaRaces).then((r) => {
+    const done = (r: { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[] } | null) => {
       if (alive && r) { setPlaced(r.placed); setOv(r.overrides); setEffects(r.effects) }
-    }))
+    }
+    // 이미 합성해 둔 코디면 줄(thumbQueue)을 서지 않고 그 자리에서 그린다 — 필터를 오가도 계산이 0 이고
+    // 뼈대(스켈레톤)가 한 번 깜빡이지도 않는다.
+    const hit = composePeek(key, index, animaRaces)
+    if (hit !== undefined) { done(hit); return () => { alive = false } }
+    setPlaced(null)
+    const job = enqueueThumb(prioRef.current, () => composeSnapshotCached(key, snap, index, animaRaces).then(done))
     jobRef.current = job
     return () => { alive = false; job.cancel() }
     // eslint-disable-next-line react-hooks/exhaustive-deps

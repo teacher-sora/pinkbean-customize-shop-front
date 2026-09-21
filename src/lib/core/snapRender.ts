@@ -1,7 +1,8 @@
 // 스냅샷(착용+톤+염색+점 위치+연출설정 일부) → 합성 결과(placed·염색 override·이펙트). 렌더 캔버스와 무관한 순수 조립.
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from './assemble'
-import { loadMeta, type AnimaRace, type Index, type ItemMeta } from './data'
+import { loadMeta, loadAnima, type AnimaRace, type Index, type ItemMeta } from './data'
+import { LRU } from './lru'
 import { applyHsb, buildOverrides, skinHsb as skinHsbFor } from './dye'
 import { effectDraws, loadImage, type EffectDraw } from './render'
 import { collectWornEffects } from './thumbEffects'
@@ -65,4 +66,47 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
   const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, TV.action, { foot, brow }, 0))
   return { placed, overrides, effects }
+}
+
+// ── 합성 결과 캐시 ─────────────────────────────────────────────────────────────
+// 2026-09-22 사용자 제보: 광장에서 자유 코디 ↔ 블아 대회 필터를 여러 번 오가면 점점 느려지다 끊겼다.
+// 필터를 바꾸면 카드 키(post.id)가 전부 바뀌어 18~54장이 통째로 언마운트→재마운트되는데, 합성 결과를
+// 아무도 기억하지 않아 **돌아올 때마다 처음부터 다시** 조립·염색했다. 게다가 시작된 합성은 중간에 멈출 수
+// 없어서(네트워크·픽셀 작업의 연쇄 await) 빨리 오갈수록 버려질 작업이 메인 스레드에 쌓였다.
+//  · 같은 코디(스냅샷)면 결과를 그대로 재사용한다 → 되돌아온 필터는 계산 0.
+//  · 같은 키를 여러 장이 동시에 부르면 한 번만 계산하고 나눠 쓴다(같은 코디를 올린 사람이 여럿일 때).
+//  · 중간에 취소된 카드의 작업도 캐시에 남으므로 헛일이 되지 않는다.
+// 담기는 건 배치 정보(작은 객체)와 염색 캔버스 **참조**(실물은 dye.ts 의 캐시가 이미 쥐고 있다)라 가볍다.
+// 160 칸 = 광장 전체(현재 96장) + 프리셋 30칸 + 여유. 오래된 것부터 밀려난다.
+const composeCache = new LRU<SnapComposite | null>(160)
+const composeFlight = new Map<string, Promise<SnapComposite | null>>()
+
+export const snapKey = (snap: Snapshot): string => JSON.stringify(snap)
+const cacheKey = (key: string, index: Index, animaRaces: AnimaRace[]) => `${key}|${index.base.tones.length}|${animaRaces.length}`
+
+// 이미 합성해 둔 코디인지 **동기로** 본다 → 맞으면 줄(thumbQueue)을 서지 않고 그 자리에서 바로 그린다.
+export function composePeek(key: string, index: Index, animaRaces: AnimaRace[]): SnapComposite | null | undefined {
+  const k = cacheKey(key, index, animaRaces)
+  return composeCache.has(k) ? (composeCache.get(k) ?? null) : undefined
+}
+
+export function composeSnapshotCached(key: string, snap: Snapshot, index: Index, animaRaces: AnimaRace[]): Promise<SnapComposite | null> {
+  const k = cacheKey(key, index, animaRaces)
+  if (composeCache.has(k)) return Promise.resolve(composeCache.get(k) ?? null)
+  let p = composeFlight.get(k)
+  if (!p) {
+    p = composeSnapshot(snap, index, animaRaces)
+      .then((r) => { composeCache.set(k, r); return r })
+      .finally(() => { composeFlight.delete(k) })
+    composeFlight.set(k, p)
+  }
+  return p
+}
+
+// 형상변이 목록은 세션에 한 번만 받는다. ⚠️ **동기로 꺼낼 수 있어야** 한다 —
+// 카드가 빈 배열로 한 번 그리고 목록이 도착한 뒤 또 그리면 카드마다 합성이 두 번씩 돌았다(같은 제보).
+let animaReady: AnimaRace[] | null = null
+export const animaNow = (): AnimaRace[] | null => animaReady
+export function animaOnce(): Promise<AnimaRace[]> {
+  return loadAnima().then((r) => { animaReady = r; return r })
 }
