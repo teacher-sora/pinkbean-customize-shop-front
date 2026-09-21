@@ -932,13 +932,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 방금 누른 좋아요는 목록을 새로 받아도 유지한다 — 누르기 전에 출발한 목록 요청(미리 받기·탭 진입)이 늦게 도착하면
   // 옛 상태로 덮어써 하트가 꺼져 보였다(2026-09-21 실측: 새로고침 직후 누름). 1분 동안은 내가 누른 결과를 믿는다.
   const likeLocal = useRef<Map<string, { liked: boolean; likes: number; at: number }>>(new Map())
+  // 하트(켜짐/꺼짐)는 1분, **수는 8초**만 내 값을 믿는다(2026-09-21).
+  //  · 하트는 목록이 아니라 '내 좋아요'(plaza_me)에서 오므로, 늦게 도착한 옛 응답에 꺼지지 않게 넉넉히 잡는다.
+  //  · 수는 남들이 계속 누른다. 1분을 붙들고 있으면 그동안 남이 누른 4~5개가 내 화면에만 안 보인다
+  //    → 서버 값(직접 조회 6초 · 목록 첫 쪽 10초)이 더 정확해지는 8초 뒤부터는 서버를 따른다.
+  const LIKE_HOLD = { flag: 60000, count: 8000 }
   const keepLikes = (list: PlazaPost[]) => {
     const now = Date.now()
     return list.map((p) => {
       const l = likeLocal.current.get(p.id)
       if (!l) return p
-      if (now - l.at > 60000) { likeLocal.current.delete(p.id); return p }
-      return { ...p, liked: l.liked, likes: l.likes }
+      if (now - l.at > LIKE_HOLD.flag) { likeLocal.current.delete(p.id); return p }
+      return { ...p, liked: l.liked, ...(now - l.at <= LIKE_HOLD.count ? { likes: l.likes } : {}) }
     })
   }
   const refreshPlaza = useCallback(async (): Promise<void> => {
@@ -1082,8 +1087,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         // 첫 쪽이 전체를 담고 있을 때만 '사라진 글'을 지운다. 내가 방금 올린 글은 캐시에 늦게 담기므로 남긴다.
         const live = head.covers ? new Set(head.posts.map((p) => p.id)) : null
         const kept = live ? list.filter((p) => live.has(p.id) || myAdded.current.some((m) => m.id === p.id)) : list
-        if (!add.length && kept.length === list.length) return list
-        return keepLikes([...add, ...kept])
+        // 이미 받아 온 응답이니 좋아요 수도 함께 맞춘다 — 화면 밖 카드까지 10초 안에 따라온다(보이는 카드는 6초 직접 조회).
+        const counts = new Map(head.posts.map((p) => [p.id, p.likes] as const))
+        let moved = false
+        const synced = kept.map((p) => {
+          const n = counts.get(p.id)
+          if (n == null || n === p.likes || likePending.current.has(p.id)) return p
+          moved = true
+          return { ...p, likes: n }
+        })
+        if (!add.length && !moved && synced.length === list.length) return list
+        return keepLikes([...add, ...synced])
       })
     }
     const t = window.setInterval(() => { void tick() }, 6000)
