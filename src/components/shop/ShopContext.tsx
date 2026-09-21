@@ -268,6 +268,7 @@ export interface ShopCtx {
   applySharedToPreset: (snap: Snapshot, targetId: string) => void
   rateCodi: () => void
   rateResult: { bubbles: string[]; nonce: number } | null
+  takeRate: () => string[] | null // 아직 안 띄운 평가만 한 번 내준다(두 번째부터는 null)
   // toast
   toast: boolean; toastText: string
   notify: (msg: string) => void
@@ -563,6 +564,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [uiReady, primary, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
   useEffect(() => { if (uiReady) writeUiPref({ plazaSort }) }, [uiReady, plazaSort])
   const [rateResult, setRateResult] = useState<{ bubbles: string[]; nonce: number } | null>(null) // 코디 평가 말풍선
+  // 말풍선은 **평가를 눌러 받은 그 한 번만** 뜬다(2026-09-22 사용자 제보 — 광장처럼 미리보기가 없는 탭에
+  // 갔다 오면 지난 평가가 계속 다시 떴다). 원인은 RateBubbles 가 미리보기와 함께 언마운트됐다가 다시 붙으면서
+  // 남아 있던 rateResult 로 effect 가 또 도는 것이었다. 그래서 '띄웠다'는 표시를 **컴포넌트 밖**(여기)에 둔다.
+  const rateSeen = useRef(0)
+  const rateLive = useRef<{ bubbles: string[]; nonce: number } | null>(null)
+  rateLive.current = rateResult
+  const takeRate = useCallback((): string[] | null => {
+    const r = rateLive.current
+    if (!r || r.nonce <= rateSeen.current) return null
+    rateSeen.current = r.nonce
+    return r.bubbles
+  }, [])
   const [rating, setRating] = useState(false)
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
   const loadSlotRaw = useCallback(async (slot: string): Promise<ListItem[]> => {
@@ -1744,7 +1757,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     dotPos, setDot, resetDot,
     pv, setPv,
     presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, snapshot,
-    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rateResult,
+    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rateResult, takeRate,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText, notify,
   }

@@ -21,10 +21,11 @@ export function RateBubbles() {
   const [bubbles, setBubbles] = useState<{ id: number; text: string; top: number; left: number; delay: number }[]>([])
   const bubbleId = useRef(0)
   useEffect(() => {
-    const r = s.rateResult
-    if (!r || !r.bubbles.length) return
+    // takeRate 는 아직 안 띄운 평가만 내준다 → 탭을 옮겼다 와서 이 컴포넌트가 다시 붙어도 지난 평가가 되풀이되지 않는다.
+    const got = s.takeRate()
+    if (!got || !got.length) return
     // 캐릭터(미리보기 중앙)를 피해 "반지(링) 모양"으로 배치 — 인덱스별로 원주에 분산.
-    const arr = r.bubbles.slice(0, 3)
+    const arr = got.slice(0, 3)
     const base = Math.random() * Math.PI * 2
     const spawned = arr.map((text, i) => {
       const angle = base + (i / arr.length) * Math.PI * 2 + (Math.random() - 0.5) * 0.7
@@ -37,7 +38,7 @@ export function RateBubbles() {
     const ids = new Set(spawned.map((x) => x.id))
     const t = setTimeout(() => setBubbles((b) => b.filter((x) => !ids.has(x.id))), 3600 + (spawned.length - 1) * 1300 + 300)
     return () => clearTimeout(t)
-  }, [s.rateResult])
+  }, [s.rateResult, s.takeRate])
   return (
     <>
       {bubbles.map((b) => (
