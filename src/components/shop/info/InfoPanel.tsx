@@ -8,7 +8,7 @@ import { CATS, paletteFor } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import type { ListItem } from '@/lib/core/data'
 import type { HsbParams, PaletteParams } from '@/lib/core/dye'
-import { CAT_TO_SLOT, DOT_MOVER_IDS, isColorLineSkin } from '@/lib/shopData'
+import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
@@ -59,7 +59,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
     const on = isSkin ? !!skinItem : !!item
     const hidden = !isSkin && !!s.hidden[slot]
     let dyed = false
-    if (isSkin) dyed = isColorLineSkin(toneName) && hsbActive(s.dyeHsb.skin)
+    if (isSkin) dyed = isDyeableSkin(toneName) && hsbActive(s.dyeHsb.skin)
     else if (isMix) { const p = s.dyePalette[slot]; dyed = !!p && (p.baseColor !== 0 || (p.mixColor != null && p.ratio > 0)) }
     else dyed = hsbActive(s.dyeHsb[slot])
     return { c, slot, isSkin, isMix, item, on, hidden, dyed, dyeOff: !!s.dyeOff[slot], sel: s.dyeTarget === slot }
@@ -70,7 +70,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
     if (!r.on || !r.item) return
     s.setDyeTarget(r.slot)
     if (!mobile) return
-    if (r.isSkin && !isColorLineSkin(toneName)) { s.notify('이 피부는 염색할 수 없어요'); return }
+    if (r.isSkin && !isDyeableSkin(toneName)) { s.notify('이 피부는 염색할 수 없어요'); return }
     if (DOT_MOVER_IDS.has(r.item.id)) s.openDot(r.item); else s.openDye(r.item)
   }
 
@@ -180,7 +180,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
       </div>
     )
   }
-  if (isSkin && !isColorLineSkin(toneName)) {
+  if (isSkin && !isDyeableSkin(toneName)) {
     return (
       <div className={areaCls}>
         <div className={styles.dyeOff}>
@@ -223,7 +223,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
         <div className={clsx(styles.pvCol, compact && styles.pvColCompact)}>
           <div className={clsx(styles.pvBox, compact && styles.pvBoxCompact)}>
             {isSkin
-              ? <SkinModel key={target} bodyId={it.id} headId={it.headId!} hsb={off ? defHsb() : hsb} dyeable zmap={zmap} smap={smap} box={box} fraction={SKIN_PREVIEW_FRACTION} />
+              ? <SkinModel key={target} bodyId={it.id} headId={it.headId!} hsb={off ? defHsb() : hsb} dyeable family={skinDyeFamily(toneName)} zmap={zmap} smap={smap} box={box} fraction={SKIN_PREVIEW_FRACTION} />
               : <DyeSprite key={target} id={it.id} thumb={it.icon || `sprites/${it.id}/icon.png`} mix={mix} palette={off ? undefined : pal} hsb={off ? undefined : hsb} zmap={zmap} frac={INFO_FRAC} />}
           </div>
           <div className={styles.pvText}>

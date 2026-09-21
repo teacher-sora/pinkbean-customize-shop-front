@@ -14,7 +14,7 @@ import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { lookItems, normLook } from '@/lib/plazaLook'
 import { sameLookDeep, type SkinInfo } from '@/lib/plazaLookPixels'
-import { isColorLineSkin } from '@/lib/shopData'
+import { skinDyeFamily } from '@/lib/shopData'
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { IconCaretDown } from '../ui/Icons'
 import PlazaRefViewer from './PlazaRefViewer'
@@ -94,7 +94,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   // 결과 픽셀을 비교해(lib/plazaLookPixels) 미리 막고 알린다. 등록 직전에 한 번 더 확인한다. DB 트리거(0009)는 좁은 안전망.
   const skinOf = useCallback((tone: number): SkinInfo => {
     const te = s.index?.base.tones.find((t) => t.tone === tone)
-    return te ? { body: te.body, head: te.head, colorLine: isColorLineSkin(te.name) } : null
+    return te ? { body: te.body, head: te.head, family: skinDyeFamily(te.name) } : null
   }, [s.index])
   const findTaken = useCallback(async (sn: Snapshot, list: { name: string; snapshot: Snapshot }[]) => {
     const key = lookItems(normLook(sn))

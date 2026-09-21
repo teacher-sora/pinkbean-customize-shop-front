@@ -2,10 +2,10 @@
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from './assemble'
 import { loadMeta, type AnimaRace, type Index, type ItemMeta } from './data'
-import { applyHsb, buildOverrides, skinLineHsb } from './dye'
+import { applyHsb, buildOverrides, skinHsb as skinHsbFor } from './dye'
 import { effectDraws, loadImage, type EffectDraw } from './render'
 import { collectWornEffects } from './thumbEffects'
-import { animaLayers, isColorLineSkin, thumbView } from '@/lib/shopData'
+import { animaLayers, skinDyeFamily, thumbView } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 
 export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[] }
@@ -51,9 +51,10 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const snapPal = onlyOn(snap.dyePalette), snapHsb = onlyOn(snap.dyeHsb)
   const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snapPal, hsb: snapHsb }, TV)
   const skinHsb = snapHsb['skin']
-  if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && isColorLineSkin(te.name)) {
+  const skinFam = skinDyeFamily(te.name)
+  if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && skinFam != null) {
     for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, TV)) {
-      try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinLineHsb(skinHsb), l.png)) } catch (_) {}
+      try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinHsbFor(skinHsb, skinFam), l.png)) } catch (_) {}
     }
   }
   // 이펙트(망토 등 ItemEff): 착용 아이템의 이펙트를 정지 프레임0으로 합성.

@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta } from '@/lib/core/data'
-import { applyHsb, renderDyedSprite, skinLineHsb, type HsbParams, type PaletteParams } from '@/lib/core/dye'
+import { applyHsb, renderDyedSprite, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { THUMB_VIEW } from '@/lib/shopData'
@@ -109,8 +109,8 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
 // 피부 모델: 코디 탭과 동일한 computeModelPlacement 로 body+head(피부 자체)를 마네킹 중심 기준 중앙에 배치해
 // 렌더(드로우 bbox 중앙이 아니라 마네킹 중심 → 오른쪽 치우침 없이 제대로 중앙 정렬). 라인만 HSB 로 염색.
 // box(표시 정사각 크기)/fraction(마네킹 높이 비율)로 아이콘(작게)·미리보기(크게) 공용.
-export function SkinModel({ bodyId, headId, hsb, dyeable, zmap, smap, box, fraction }: {
-  bodyId: string; headId: string; hsb: HsbParams; dyeable: boolean; zmap: string[]; smap: Record<string, string>; box: number; fraction: number
+export function SkinModel({ bodyId, headId, hsb, dyeable, family, zmap, smap, box, fraction }: {
+  bodyId: string; headId: string; hsb: HsbParams; dyeable: boolean; family?: number | null; zmap: string[]; smap: Record<string, string>; box: number; fraction: number
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLSpanElement>(null)
@@ -133,13 +133,13 @@ export function SkinModel({ bodyId, headId, hsb, dyeable, zmap, smap, box, fract
     const canvas = ref.current; if (!canvas || !placed) return
     const ov = new Map<string, HTMLCanvasElement>()
     const active = dyeable && hsbActive(hsb)
-    if (active) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), skinLineHsb(hsb!), p.png)) } catch (_) {} }
+    if (active) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), skinHsbFor(hsb!, family ?? 5), p.png)) } catch (_) {} }
     const dpr = window.devicePixelRatio || 1
     const pl = computeModelPlacement({ divW: box, divH: box, dpr, margin: 1, fraction, snap: true })
     await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov })
     const { bw, bh } = canvasBitmap(pl)
     fitCanvas(canvas, wrapRef.current, bw, bh, box, box, dpr)
-  }, [placed, hsb, dyeable, box, fraction])
+  }, [placed, hsb, dyeable, family, box, fraction])
   if (!placed) return <div className="pb-skel" style={{ width: '60%', height: '60%', borderRadius: 10 }} />
   return (
     <span ref={wrapRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%' }}>

@@ -22,7 +22,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
-import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
+import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 import { confirmTwice } from '@/lib/confirmTwice'
 import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, type PresetOver, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
@@ -1409,7 +1409,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (te) {
         tone = te.tone; matched++
         // 컬러라인(커스텀) 피부는 HSB 염색까지 반영 — 안 하면 기본 컬러라인 색으로 들어와 "피부 색이 안 들어온다".
-        if (look.skin.prism && isColorLineSkin(te.name)) dyeHsb.skin = prismToHsb(look.skin.prism)
+        if (look.skin.prism && isDyeableSkin(te.name)) dyeHsb.skin = prismToHsb(look.skin.prism)
       }
     }
     // 캐시 아이템(옷·모자·무기 등) + 그 아이템에 걸린 컬러 프리즘 염색

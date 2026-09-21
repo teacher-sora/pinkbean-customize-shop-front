@@ -7,7 +7,7 @@
 
 import type { ListItem } from '@/lib/core/data'
 import type { HsbParams, PaletteParams } from '@/lib/core/dye'
-import { isColorLineSkin } from '@/lib/shopData'
+import { isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, INFO_FRAC_HAIR, SKIN_ICON_FRACTION, SkinModel } from '../render/DyeSprite'
 
@@ -24,7 +24,7 @@ export function LookSprite({ slot, item, tone, palette, hsb, grayscale }: {
   const smap = s.index?.smap || {}
   if (slot === 'skin') {
     const te = s.index?.base.tones.find((t) => t.tone === tone)
-    return te ? <SkinModel bodyId={te.body} headId={te.head} hsb={hsb || defHsb()} dyeable={isColorLineSkin(te.name)} zmap={zmap} smap={smap} box={34} fraction={SKIN_ICON_FRACTION} /> : null
+    return te ? <SkinModel bodyId={te.body} headId={te.head} hsb={hsb || defHsb()} dyeable={isDyeableSkin(te.name)} family={skinDyeFamily(te.name)} zmap={zmap} smap={smap} box={34} fraction={SKIN_ICON_FRACTION} /> : null
   }
   if (!item) return null
   if (isMix(slot)) return <DyeSprite id={item.id} mix palette={palette} zmap={zmap} grayscale={grayscale} frac={slot === 'hair' ? INFO_FRAC_HAIR : INFO_FRAC} />
@@ -41,7 +41,7 @@ export function SlotSprite({ slot, item, grayscale }: { slot: string; item: List
 // 부위에 염색 수치가 걸려 있는지(비활성화 여부와 무관 — 표시 점은 비활성화면 무채색).
 // 염색 불가 아이템은 수치가 남아 있어도 '염색됨'이 아니다(실제로 칠해지지 않는다).
 export function lookDyed(slot: string, item: ListItem | null, toneName: string | undefined, palette?: PaletteParams, hsb?: HsbParams): boolean {
-  if (slot === 'skin') return isColorLineSkin(toneName) && hsbActive(hsb)
+  if (slot === 'skin') return isDyeableSkin(toneName) && hsbActive(hsb)
   if (isMix(slot)) return !!palette && (palette.baseColor !== 0 || (palette.mixColor != null && palette.ratio > 0))
   if (item?.dyeMode === 'none') return false
   return hsbActive(hsb)

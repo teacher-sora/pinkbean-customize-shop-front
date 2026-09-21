@@ -14,13 +14,13 @@ import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
-import { applyHsb, buildOverrides, skinLineHsb } from '@/lib/core/dye'
+import { applyHsb, buildOverrides, skinHsb as skinHsb2 } from '@/lib/core/dye'
 import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { isStacked } from '@/lib/useBreakpoint'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, isColorLineSkin, resolveAction } from '@/lib/shopData'
+import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
@@ -259,7 +259,8 @@ export default function PreviewModel() {
       }
       // 피부(컬러라인 커스텀) 라인 염색: body+head 프레임 png 를 HSB 로 리컬러(피부는 무채색이라 라인만 변한다).
       const skinHsb = dyeHsb['skin']
-      if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && isColorLineSkin(toneEntry?.name) && bodyMeta && headMeta) {
+      const skinFam = skinDyeFamily(toneEntry?.name)
+      if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && skinFam != null && bodyMeta && headMeta) {
         const pngs: string[] = []
         const seen = new Set<string>()
         for (const meta of [bodyMeta, headMeta]) {
@@ -271,7 +272,7 @@ export default function PreviewModel() {
         const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
         for (const e of loaded) {
-          if (e) { try { ov.set(e[0], applyHsb(e[1], skinLineHsb(skinHsb), e[0])) } catch (_) {} }
+          if (e) { try { ov.set(e[0], applyHsb(e[1], skinHsb2(skinHsb, skinFam), e[0])) } catch (_) {} }
           if (++n % 6 === 0) await new Promise((r) => setTimeout(r, 0))
         }
       }
@@ -286,7 +287,7 @@ export default function PreviewModel() {
       // 이펙트뿐 아니라 "염색된 착용 아이템" 자체도 이제 2단계로 칠해지므로(위 buildOverrides allFrames) 함께 본다.
       const willDyeFrames =
         Object.entries(equipped).some(([slot, it]) => { const h = dyeHsb[slot]; return !!it && !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0) }) ||
-        (() => { const sh = dyeHsb['skin']; return !!sh && (sh.h !== 0 || sh.s !== 0 || sh.b !== 0) && isColorLineSkin(toneEntry?.name) })()
+        (() => { const sh = dyeHsb['skin']; return !!sh && (sh.h !== 0 || sh.s !== 0 || sh.b !== 0) && skinDyeFamily(toneEntry?.name) != null })()
       if (willDyeFrames) setDyeSettling(true)
       // 아이템(착용 장비)의 나머지 프레임을 여기서 이어 칠한다 — 이게 없으면 액션 애니메이션 2번째 프레임부터
       // override 가 없어 염색이 풀린 원본색으로 보였다(이펙트/피부는 dyeExtras 가 이미 전 프레임을 칠하고 있었다).

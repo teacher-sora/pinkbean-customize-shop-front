@@ -13,10 +13,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta, type ListItem, type Vec } from '@/lib/core/data'
-import { applyHsb, buildOverrides, skinLineHsb, type HsbParams } from '@/lib/core/dye'
+import { applyHsb, buildOverrides, skinHsb as skinHsbFor, type HsbParams } from '@/lib/core/dye'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { clampDye } from '@/lib/color'
-import { isColorLineSkin, THUMB_VIEW } from '@/lib/shopData'
+import { skinDyeFamily, THUMB_VIEW } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 
 const PAD = 8                 // 얼굴 bbox 여백(월드 px)
@@ -179,7 +179,8 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
     let alive = true
     const others = parts.dyeMetas.filter((m) => m.id !== parts.itemMeta.id) // 편집 아이템 제외(그건 eyeOv 가 담당)
     const skinHsb = s.renderHsb['skin']
-    const skinDye = !!skinHsb && (skinHsb.h !== 0 || skinHsb.s !== 0 || skinHsb.b !== 0) && isColorLineSkin(parts.toneName)
+    const skinFam = skinDyeFamily(parts.toneName)
+    const skinDye = !!skinHsb && (skinHsb.h !== 0 || skinHsb.s !== 0 || skinHsb.b !== 0) && skinFam != null
     ;(async () => {
       try {
         const ov = await buildOverrides(others, { palette: s.renderPalette, hsb: s.renderHsb }, THUMB_VIEW)
@@ -189,7 +190,7 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
             for (const l of getFrameLayers(meta, THUMB_VIEW)) { if (!seen.has(l.png)) { seen.add(l.png); pngs.push(l.png) } }
           }
           const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
-          for (const e of loaded) { if (e) { try { ov.set(e[0], applyHsb(e[1], skinLineHsb(skinHsb!), e[0])) } catch { /* noop */ } } }
+          for (const e of loaded) { if (e) { try { ov.set(e[0], applyHsb(e[1], skinHsbFor(skinHsb!, skinFam!), e[0])) } catch { /* noop */ } } }
         }
         if (alive) setBaseOv(ov)
       } catch { /* noop */ }
