@@ -1,5 +1,5 @@
 -- 코디 광장(handoff_v2_plaza) — 2026-09-20 임시 구축용 스키마.
--- 목업 검증이 끝나면 0002_plaza_drop.sql 로 레코드·테이블·정책을 한 번에 지운다.
+-- (옛 정리용 0002_plaza_drop.sql 은 2026-09-21 운영 준비로 지웠다 — 대회 데이터를 통째로 날릴 수 있는 파일이라.)
 -- 사용자 구분 = Supabase 익명 로그인(auth.uid()). 계정 없이도 '내 등록'·좋아요·내리기 권한을 RLS 로 막는다.
 
 create table if not exists public.plaza_posts (

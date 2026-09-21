@@ -32,12 +32,12 @@ export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
   { id: 'mine', label: '내 등록' },
   { id: 'liked', label: '찜한 코디' },
 ]
-export const PLAZA_TAG_MAX = 10 // DB 체크도 10(supabase/0007)
+export const PLAZA_TAG_MAX = 10 // DB 체크도 10(supabase/0009)
 export const PLAZA_COMMENT_MAX = 200
 const PAGE_ROWS = 1000 // Supabase 한 번 응답 최대 행 수(max_rows) — 목록은 이 단위로 끝까지 받는다
 const COMMENT_LIMIT = 200
 
-// 참고 이미지를 처음 열었을 때 보일 자리(올린 사람이 등록 때 고른다, supabase/0008). 원본은 자르지 않는다.
+// 참고 이미지를 처음 열었을 때 보일 자리(올린 사람이 등록 때 고른다, image_view 열). 원본은 자르지 않는다.
 //  fx·fy = 그림에서 칸 가운데에 올 점(0~1) · zc = 칸을 꽉 채우는 배율(cover) 대비 배율.
 export type RefView = { fx: number; fy: number; zc: number }
 

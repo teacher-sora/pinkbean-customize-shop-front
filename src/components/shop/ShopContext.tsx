@@ -1074,8 +1074,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       // DB 가 막은 사유(대회 3개 제한 등)는 그대로 보여준다 — '잠시 후 다시'는 거짓말이 된다.
       const msg = e instanceof Error ? e.message : ''
-      // 같은 조합 선점(0007): 트리거 문구 또는 동시 등록 경쟁에서 유일 인덱스가 낸 오류를 같은 안내로 바꾼다.
-      const dup = /같은 조합|plaza_posts_contest_look_uq/.test(msg)
+      // 같은 조합(DB 안전망 0009 트리거 문구)은 같은 안내로.
+      const dup = /같은 조합/.test(msg)
       notify(dup ? '같은 조합이 이미 대회에 출품돼 있어요' : /기기당|대회에는|마감|이메일|기기 정보/.test(msg) ? msg : '등록하지 못했어요. 잠시 후 다시 시도해 주세요')
       return false
     } finally { setPlazaSubmitting(false) }

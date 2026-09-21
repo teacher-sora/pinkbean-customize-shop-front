@@ -15,6 +15,14 @@
 -- 검사 시점: 0008 까지는 UPDATE 마다(좋아요 수 갱신 포함) 돌았다 → 새 등록 · 조합 변경 · 대회로 옮길 때만.
 -- look_key = 정규화된 '착용·피부'(md5) — 비교 대상을 거르는 색인 용도로만 쓴다.
 
+-- 이 파일이 쓰는 열·제약·트리거(원래 0007·0008 에서 만들었다 — 두 파일은 2026-09-21 레거시로 지웠고 필요한 것만 여기로 옮겼다).
+alter table public.plaza_posts add column if not exists look_key text, add column if not exists contest_no int, add column if not exists image_view jsonb;
+alter table plaza_dev.plaza_posts add column if not exists look_key text, add column if not exists contest_no int, add column if not exists image_view jsonb;
+alter table public.plaza_posts drop constraint if exists plaza_posts_tags_check;
+alter table public.plaza_posts add constraint plaza_posts_tags_check check (coalesce(array_length(tags, 1), 0) <= 10);
+alter table plaza_dev.plaza_posts drop constraint if exists plaza_posts_tags_check;
+alter table plaza_dev.plaza_posts add constraint plaza_posts_tags_check check (coalesce(array_length(tags, 1), 0) <= 10);
+
 create or replace function public.plaza_hsb_norm(h jsonb) returns jsonb
 language plpgsql immutable as $$
 declare hh int; s int; b int;
@@ -132,6 +140,8 @@ begin
   return new;
 end $$;
 update public.plaza_posts set look_key = public.plaza_look_items(public.plaza_look_norm(snapshot));
+create or replace trigger plaza_posts_look_key before insert or update of snapshot, contest on public.plaza_posts
+  for each row execute function public.plaza_set_look_key();
 
 -- ── plaza_dev ──
 create or replace function plaza_dev.plaza_set_look_key() returns trigger
@@ -157,7 +167,9 @@ begin
   return new;
 end $$;
 update plaza_dev.plaza_posts set look_key = public.plaza_look_items(public.plaza_look_norm(snapshot));
+create or replace trigger plaza_posts_look_key before insert or update of snapshot, contest on plaza_dev.plaza_posts
+  for each row execute function plaza_dev.plaza_set_look_key();
 
--- 0008 의 허용 오차 규칙은 더 쓰지 않는다.
+-- 옛 허용 오차 규칙(0007·0008)은 더 쓰지 않는다.
 drop function if exists public.plaza_look_similar(jsonb, jsonb);
 drop function if exists public.plaza_look_key(jsonb);
