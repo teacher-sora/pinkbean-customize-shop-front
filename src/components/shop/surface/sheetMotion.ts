@@ -77,6 +77,11 @@ export function useVsFlip() {
     const lTo = ob - hc + (topOf(e.body) - pr.top) - 1 // 목록 = 본문 맨 위(margin-top -1px)
     const fTo = ob - e.foot.offsetHeight
     const lTop = topOf(e.list) - tyOf(e.list) - pty, fTop = topOf(e.foot) - tyOf(e.foot) - pty
+    // 출발 값을 셋 다 같은 표기(translateY(0px))로 맞춘다. 브라우저는 '출발 값으로 되돌아가는' 전환을 걸린 시간만큼만
+    // 짧게 돌리는데, 목록·푸터는 출발 값이 빈 값('')이라 이 규칙을 못 받아 접는 도중 되돌릴 때 패널보다 늦게 돌아와
+    // 목록이 70px 떠올랐다(2026-09-21 실측). 패널은 React 가 늘 translateY(0px) 로 둔다.
+    for (const el of [e.list, e.foot]) if (!el.style.transform) { el.style.transition = 'none'; el.style.transform = 'translateY(0px)' }
+    e.list.getBoundingClientRect()
     phase.current = 'closing'
     glide(e, [d, lTo - lTop - d, fTo - fTop - d], () => s.toggleVs())
   }
@@ -110,8 +115,10 @@ export function useVsFlip() {
     if (s.vsOn && f0) {
       // 펼침: 패널·목록·푸터를 "전" 위치에 놓고 다음 프레임에 0 으로.
       stop()
-      const dp = f0.p - topOf(e.panel)
-      put(e.panel, dp, false); put(e.list, f0.l - topOf(e.list) - dp, false); put(e.foot, f0.f - topOf(e.foot) - dp, false)
+      // ⚠️ 세 값을 **모두 잰 다음** 옮긴다 — 패널을 먼저 옮기고 목록·푸터를 재면 패널 이동분이 섞여
+      //    목록·푸터가 첫 프레임에 튀고 패널을 따라 요동친다(2026-09-21 이 순서를 바꿨다가 모바일 VS 가 깨졌다).
+      const dp = f0.p - topOf(e.panel), dl = f0.l - topOf(e.list) - dp, df = f0.f - topOf(e.foot) - dp
+      put(e.panel, dp, false); put(e.list, dl, false); put(e.foot, df, false)
       e.panel.getBoundingClientRect()
       phase.current = 'opening'
       raf.current = requestAnimationFrame(() => {
