@@ -83,7 +83,7 @@
 /* PC 는 댓글 열이 오른쪽에 붙는다 — 스테이지를 280 → 250 으로 줄여 두 칸이 나란히 남게 한다(사용자 지시). */
 .detailPc { flex: 1 1 auto; min-height: 0; padding: 12px; display: flex; align-items: stretch; }
 .detailMain { flex: 1 1 0; min-width: 0; padding-right: 12px; overflow: hidden auto; display: flex; flex-direction: column; gap: 12px; }
-.stages { flex: 0 0 auto; height: 250px; display: flex; gap: 10px; }
+.stages { flex: 0 0 auto; height: 240px; display: flex; gap: 10px; }
 .stagesM { height: 220px; }
 .stage { position: relative; flex: 1 1 0; min-width: 0; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .stageImg { object-fit: cover; object-position: center 78%; }
@@ -143,9 +143,9 @@
 .submit { width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; line-height: 1; border: none; border-radius: 9px; background: #ec86ac; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; transition: background-color .2s ease; }
 .submitOff { background: #f0c9d9; cursor: default; }
 /* 모바일 등록 폼 푸터 — 닫기 + 등록. 본문 맨 아래에 있던 등록 버튼을 여기로 옮겼다. */
-.upFootM { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px 12px 10px; border-top: 1px solid #f0e9e1; }
-.upCloseM { flex: 0 0 84px; height: 40px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 9px; background: #f4ecf3; font-family: inherit; font-size: 13px; font-weight: 600; color: #8a8075; cursor: pointer; }
-.upSubmitM { flex: 1 1 auto; min-width: 0; }
+.upFootM { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid #f0e9e1; } /* 위아래 같게 */
+.upCloseM { flex: 1 1 0; min-width: 0; height: 40px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 9px; background: #f4ecf3; font-family: inherit; font-size: 13px; font-weight: 600; color: #8a8075; cursor: pointer; }
+.upSubmitM { flex: 1 1 0; min-width: 0; } /* 닫기 : 등록 = 1 : 1 */
 
 @media (hover: hover) and (pointer: fine) {
   .railBtn:hover { border-color: #f0d3e0; background: #fff; color: #d76d9a; }
@@ -161,34 +161,39 @@
 /* ── 상세 액션 줄(하트 · 링크 복사 · 가져오기) ── */
 .actBar { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
 .actBarM { gap: 6px; }
+/* 좋아요 수 — 자릿수만큼 **고정 폭**(ch)으로 잡아 같은 자릿수 안에서는 숫자가 바뀌어도 버튼이 움직이지 않는다.
+   tabular-nums 를 지원하지 않는 글꼴이거나 숫자가 뚱뚱해도 폭은 그대로다(가운데 정렬, 넘치면 넘친 채로). */
+.actNum { display: inline-block; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .actBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #f0d3e0; border-radius: 8px; background: #fff; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #8a8075; cursor: pointer; }
 .actBtnOn { border-color: #f4cfdf; background: #fce9f1; color: #d76d9a; }
 .actTake { margin-left: auto; border-color: transparent; background: #ec86ac; color: #fff; }
 
 /* ── 댓글(상세 오른쪽 열 / 모바일은 설명 아래) ── */
 /* 폭 252px + 여백 14 + 구분선 1 = 267. 900px 다이얼로그에서 왼쪽에 607px 이 남아 스테이지 두 칸이 292px 씩 된다. */
-.cmtCol { flex: 0 0 252px; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding-left: 6px; border-left: 1px solid #f0e9e1; }
+/* 2026-09-21: 252 → 272px. 대신 미리보기 칸 높이를 250 → 240px 로 줄여 가로세로 비율을 거의 그대로 둔다. */
+.cmtCol { flex: 0 0 272px; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding-left: 4px; border-left: 1px solid #f0e9e1; }
 .cmtColM { flex: 0 0 auto; padding-left: 0; border-left: none; }
 /* 스크롤 자리(gutter)만큼 머리·입력칸에도 같은 여백을 줘서 글머리가 한 줄로 맞게 한다. 모바일은 스크롤이 없어 뗀다. */
-/* 목록은 양쪽 거터(9px) + 안쪽 5px 라 글자가 14px 에서 시작한다 — 제목도 거기에 맞춘다. */
-.cmtHead { padding: 0 14px; }
-.cmtForm { padding: 0 8px; }
+/* 목록 글자는 왼쪽 거터(9px)에서 바로 시작하고(안쪽 여백 0), 오른쪽만 4px 띄워 스크롤바와 떨어뜨린다.
+   제목도 같은 9px 선에 맞춘다. 입력칸 상자는 목록 상자 가장자리에서 4px. */
+.cmtHead { padding: 0 9px; }
+.cmtForm { padding: 0 4px; }
 .cmtColM .cmtHead, .cmtColM .cmtForm { padding: 0; }
 .cmtHead { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
 .cmtCount { font-size: 11px; font-weight: 700; color: #ec86ac; }
 /* 스크롤 막대가 생겨도 글이 밀리지 않게 양쪽에 자리를 미리 비워 둔다(both-edges).
    그만큼 안쪽 여백을 줄여 실제 글 폭은 그대로 유지한다. */
-.cmtList { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 14px; padding: 0 5px; } /* 스크롤바와 댓글 사이를 띄운다 */
+.cmtList { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 20px; padding: 0 4px 0 0; } /* 스크롤바와 댓글 사이만 띄운다 */
 .cmtListM { flex: 0 0 auto; min-height: 0; overflow: visible; scrollbar-gutter: auto; padding: 0; }
 .cmtSkel { display: flex; flex-direction: column; gap: 7px; }
 .cmtSkel span { display: block; height: 11px; border-radius: 5px; }
 .cmtEmpty { margin: 0; font-size: 12px; line-height: 1.5; color: #a89e93; }
 
-.cmtThread { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cmtThread { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .cmtItem { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .cmtItemReply { gap: 2px; }
 /* 답글은 들여쓰고 왼쪽에 선을 둔다 — 원댓글과 한눈에 구분되게(유튜브와 같은 단서). */
-.cmtReplies { display: flex; flex-direction: column; gap: 9px; min-width: 0; margin-left: 5px; padding-left: 10px; border-left: 2px solid #f0e9e1; }
+.cmtReplies { display: flex; flex-direction: column; gap: 13px; min-width: 0; margin-left: 5px; padding-left: 10px; border-left: 2px solid #f0e9e1; }
 .cmtMeta { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .cmtWho { flex: 0 1 auto; min-width: 0; font-size: 11px; font-weight: 600; color: #8a8075; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cmtWhoAuthor { color: #d76d9a; }
@@ -196,11 +201,10 @@
 .cmtChip { flex: 0 0 auto; height: 16px; padding: 0 5px; display: flex; align-items: center; border-radius: 5px; background: #fce9f1; font-size: 9.5px; font-weight: 700; color: #d76d9a; }
 .cmtChipMine { background: #f2ebe3; color: #8a8075; }
 .cmtTime { flex: 1 1 auto; min-width: 0; font-size: 10.5px; color: #b7ada2; white-space: nowrap; overflow: hidden; }
-/* 지우기는 숨기지 않는다 — 있는 줄 몰라서 못 지우는 쪽이 더 나쁘다. 한 번 누르면 '한 번 더'로 펼쳐진다. */
+/* 지우기는 숨기지 않는다 — 있는 줄 몰라서 못 지우는 쪽이 더 나쁘다. 첫 번째 누름은 토스트로만 안내한다(버튼 모양은 그대로). */
 .cmtDel { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid #f2d7d2; border-radius: 6px; background: #fff; font-family: inherit; font-size: 10px; font-weight: 700; color: #d1735f; cursor: pointer; }
-.cmtDelArmed { border-color: #e8b6ac; background: #f2d7d2; color: #c14a32; }
-.cmtDelText { white-space: nowrap; }
 /* 줄바꿈은 살리고, 띄어쓰기 없이 길게 쓴 글도 열을 밀지 않게 끊는다. */
+.cmtAt { font-weight: 700; color: #d76d9a; } /* 답글의 답글 앞 @이름 */
 .cmtBody { margin: 0; min-width: 0; font-size: 12px; line-height: 1.55; color: #3d372f; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 .cmtReplyBtn { align-self: flex-start; height: 18px; padding: 0; border: none; background: none; font-family: inherit; font-size: 10.5px; font-weight: 700; color: #a89e93; cursor: pointer; }
 

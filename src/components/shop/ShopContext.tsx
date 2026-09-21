@@ -22,6 +22,7 @@ import { createPlazaPost, deletePlazaPost, loadPlaza, plazaConfigured, plazaView
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isColorLineSkin } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
+import { confirmTwice } from '@/lib/confirmTwice'
 import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
@@ -331,7 +332,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [plazaUpload, setPlazaUpload] = useState(false)
   const [plazaSubmitting, setPlazaSubmitting] = useState(false)
   const [plazaGrid, setPlazaGrid] = useState<{ cols: number; rows: number }>({ cols: 6, rows: 3 })
-  const plazaDel = useRef<{ id: string; at: number }>({ id: '', at: 0 })
   const partT = useRef<ReturnType<typeof setTimeout>[]>([])
   const [dotPos, setDotPos] = useState<Record<string, DotOffsets>>({}) // 아이템ID → 점 레이어별 위치 오프셋
   const [pageByCat, setPageByCat] = useState<Record<string, number>>({})
@@ -965,9 +965,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     })
   }
   const plazaRemove = (post: PlazaPost) => {
-    const d = plazaDel.current
-    if (d.id === post.id && Date.now() - d.at < 3000) {
-      plazaDel.current = { id: '', at: 0 }
+    // 3초 안에, 다른 상호작용 없이 연속으로 두 번 눌러야 내린다(lib/confirmTwice).
+    if (confirmTwice(`plaza:${post.id}`)) {
       deletePlazaPost(post)
         .then(() => {
           myRemoved.current.add(post.id)
@@ -978,7 +977,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         .catch(() => notify('내리지 못했어요. 다시 시도해 주세요'))
       return
     }
-    plazaDel.current = { id: post.id, at: Date.now() }
     notify('한 번 더 누르면 광장에서 내려요')
   }
   const plazaCopyLink = (post: PlazaPost) => {

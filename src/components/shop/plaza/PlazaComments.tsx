@@ -3,9 +3,11 @@
 // 코디 광장 댓글 — PC 는 상세 오른쪽 열, 모바일은 설명 아래.
 //  · 로그인을 받지 않으므로 **모두 익명**이다. 번호('익명 1') 대신 uid 를 해시해 고정 이름을 뽑는다(lib/plaza.ts).
 //    같은 사람은 어느 글에서나 같은 이름 → 대화를 따라갈 수 있다. 드물게 겹칠 때만 짧은 꼬리표를 붙인다.
-//  · 답글은 **1단까지**(유튜브와 같게). 더 깊어지면 좁은 열에서 읽을 수 없고, DB 트리거도 막는다.
+//  · 답글은 **1단까지** 접는다(유튜브와 같게). 답글에 다시 답글을 달면 같은 스레드 끝에 붙고 앞에
+//    '@이름' 이 들어간다 — 들여쓰기가 깊어지면 좁은 열에서 읽을 수 없고, DB 트리거도 2단을 막는다.
 //  · 목록과 달리 캐시하지 않는다. 내가 쓴 댓글이 바로 안 보이면 고장으로 느껴진다.
-//  · 지우기는 글 내리기와 같은 **두 번 누르기(3초)**. 버튼은 숨기지 않는다 — 있는 줄 몰라서 못 지우는 게 더 나쁘다.
+//  · 지우기는 글 내리기와 같은 **두 번 누르기**(3초 안에, 다른 상호작용 없이 연속으로 — lib/confirmTwice).
+//    버튼은 숨기지 않는다 — 있는 줄 몰라서 못 지우는 게 더 나쁘다. 첫 번째 누름의 안내는 토스트로만 한다.
 
 import clsx from 'clsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -13,24 +15,25 @@ import {
   PLAZA_COMMENT_MAX, addComment, deleteComment, loadComments, plazaAlias, plazaAliasTag, plazaWhen,
   type PlazaComment, type PlazaPost,
 } from '@/lib/plaza'
+import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { useShop } from '../ShopContext'
 import { IconTrashSolid } from '../ui/Icons'
 import styles from './plaza.module.css'
 
 type Thread = { top: PlazaComment; replies: PlazaComment[] }
+// 답글 입력칸의 위치(root = 스레드 원댓글)와 누른 댓글(at). 답글을 눌렀으면 at 이 그 답글이다.
+type ReplyTo = { root: string; at: string } | null
 
 export default function PlazaComments({ post, mobile }: { post: PlazaPost; mobile: boolean }) {
   const s = useShop()
   const [list, setList] = useState<PlazaComment[] | null>(null)
   const [failed, setFailed] = useState(false)
-  const [replyTo, setReplyTo] = useState<string | null>(null)
-  const [armed, setArmed] = useState('')          // 두 번 누르기를 기다리는 댓글(화면에도 표시한다)
-  const del = useRef<{ id: string; at: number }>({ id: '', at: 0 })
+  const [replyTo, setReplyTo] = useState<ReplyTo>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let alive = true
-    setList(null); setFailed(false); setReplyTo(null); setArmed('')
+    setList(null); setFailed(false); setReplyTo(null)
     loadComments(post)
       .then((r) => { if (alive) setList(r) })
       .catch(() => { if (alive) { setList([]); setFailed(true) } })
@@ -71,10 +74,7 @@ export default function PlazaComments({ post, mobile }: { post: PlazaPost; mobil
   const onAdded = (c: PlazaComment) => { setList((l) => [...(l || []), c]); setReplyTo(null); scrollToEnd() }
 
   const remove = (c: PlazaComment) => {
-    const d = del.current
-    if (d.id === c.id && Date.now() - d.at < 3000) {
-      del.current = { id: '', at: 0 }
-      setArmed('')
+    if (confirmTwice(`cmt:${c.id}`)) {
       // 원댓글을 지우면 딸린 답글도 함께 사라진다(DB 도 cascade).
       setList((l) => (l || []).filter((x) => x.id !== c.id && x.parentId !== c.id))
       deleteComment(c).catch(() => {
@@ -83,35 +83,44 @@ export default function PlazaComments({ post, mobile }: { post: PlazaPost; mobil
       })
       return
     }
-    del.current = { id: c.id, at: Date.now() }
-    setArmed(c.id)
-    window.setTimeout(() => setArmed((a) => (a === c.id ? '' : a)), 3000)
     s.notify('한 번 더 누르면 댓글을 지워요')
+  }
+
+  const nameOf = (c: PlazaComment) => names.get(c.owner) || plazaAlias(c.owner)
+  // 본문 앞의 '@이름' 을 알아본다(지금 목록에 있는 이름만 — 아무 '@' 나 칠하지 않는다). 긴 이름부터 맞춘다.
+  const known = useMemo(() => Array.from(new Set(names.values())).sort((a, b) => b.length - a.length), [names])
+  const body = (text: string) => {
+    if (text.startsWith('@')) {
+      const hit = known.find((nm) => text.startsWith(`@${nm} `) || text === `@${nm}`)
+      if (hit) return <><span className={styles.cmtAt}>@{hit}</span>{text.slice(hit.length + 1)}</>
+    }
+    return text
+  }
+  const toggleReply = (c: PlazaComment) => {
+    const root = c.parentId || c.id
+    setReplyTo((r) => (r && r.at === c.id ? null : { root, at: c.id }))
   }
 
   const row = (c: PlazaComment, reply: boolean) => (
     <div key={c.id} className={clsx(styles.cmtItem, reply && styles.cmtItemReply)}>
       <div className={styles.cmtMeta}>
         <span className={clsx(styles.cmtWho, c.author && styles.cmtWhoAuthor, c.mine && styles.cmtWhoMine)}>
-          {names.get(c.owner) || plazaAlias(c.owner)}
+          {nameOf(c)}
         </span>
         {c.author && <span className={styles.cmtChip}>글쓴이</span>}
         {c.mine && !c.author && <span className={clsx(styles.cmtChip, styles.cmtChipMine)}>나</span>}
         <span className={styles.cmtTime}>{plazaWhen(c.createdAt)}</span>
         {c.canDelete && (
-          <button type="button" onClick={() => remove(c)}
-            title="댓글 지우기 (두 번 누르기)" aria-label="댓글 지우기"
-            className={clsx(styles.cmtDel, armed === c.id && styles.cmtDelArmed)}>
-            <IconTrashSolid />{armed === c.id && <span className={styles.cmtDelText}>한 번 더</span>}
+          <button type="button" onClick={() => remove(c)} {...{ [CONFIRM_ATTR]: `cmt:${c.id}` }}
+            title="댓글 지우기 (두 번 누르기)" aria-label="댓글 지우기" className={styles.cmtDel}>
+            <IconTrashSolid />
           </button>
         )}
       </div>
-      <p className={styles.cmtBody}>{c.body}</p>
-      {!reply && (
-        <button type="button" onClick={() => setReplyTo((r) => (r === c.id ? null : c.id))} className={styles.cmtReplyBtn}>
-          {replyTo === c.id ? '답글 취소' : '답글'}
-        </button>
-      )}
+      <p className={styles.cmtBody}>{reply ? body(c.body) : c.body}</p>
+      <button type="button" onClick={() => toggleReply(c)} className={styles.cmtReplyBtn}>
+        {replyTo?.at === c.id ? '답글 취소' : '답글'}
+      </button>
     </div>
   )
 
@@ -137,12 +146,15 @@ export default function PlazaComments({ post, mobile }: { post: PlazaPost; mobil
         {threads.map((t) => (
           <div key={t.top.id} className={styles.cmtThread}>
             {row(t.top, false)}
-            {(t.replies.length > 0 || replyTo === t.top.id) && (
+            {(t.replies.length > 0 || replyTo?.root === t.top.id) && (
               <div className={styles.cmtReplies}>
                 {t.replies.map((r) => row(r, true))}
-                {replyTo === t.top.id && (
-                  <Composer post={post} mobile={mobile} parentId={t.top.id} onAdded={onAdded} autoFocus />
-                )}
+                {replyTo?.root === t.top.id && (() => {
+                  // 답글에 답글을 달 때만 '@이름 ' 으로 시작한다(자기 답글이면 붙이지 않는다).
+                  const at = t.replies.find((r) => r.id === replyTo.at)
+                  const prefix = at && !at.mine ? `@${nameOf(at)} ` : ''
+                  return <Composer key={replyTo.at} post={post} mobile={mobile} parentId={t.top.id} onAdded={onAdded} autoFocus initial={prefix} />
+                })()}
               </div>
             )}
           </div>
@@ -155,18 +167,24 @@ export default function PlazaComments({ post, mobile }: { post: PlazaPost; mobil
 }
 
 // 입력칸. 원댓글과 답글이 같은 것을 쓴다(답글은 스레드 안에 끼워 넣는다).
-function Composer({ post, mobile, parentId, onAdded, autoFocus }: {
+function Composer({ post, mobile, parentId, onAdded, autoFocus, initial = '' }: {
   post: PlazaPost; mobile: boolean; parentId: string | null
-  onAdded: (c: PlazaComment) => void; autoFocus?: boolean
+  onAdded: (c: PlazaComment) => void; autoFocus?: boolean; initial?: string
 }) {
   const s = useShop()
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initial)
   const [busy, setBusy] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
-  useEffect(() => { if (autoFocus) ref.current?.focus() }, [autoFocus])
+  useEffect(() => {
+    const el = ref.current
+    if (!autoFocus || !el) return
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length) // '@이름 ' 뒤에서 바로 이어 쓰게
+  }, [autoFocus])
 
   const text0 = text.trim()
-  const canSend = !!text0 && !busy
+  // '@이름' 만 있고 내용이 없으면 보내지 않는다.
+  const canSend = !!text0 && text0 !== initial.trim() && !busy
   const submit = () => {
     if (!canSend) return
     setBusy(true)

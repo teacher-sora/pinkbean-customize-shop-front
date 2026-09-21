@@ -51,7 +51,8 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
         <button type="button" onClick={() => s.plazaLike(live)} aria-pressed={live.liked}
           title={live.liked ? '좋아요 취소' : '좋아요'}
           className={clsx(styles.actBtn, live.liked && styles.actBtnOn)}>
-          <IconHeart filled={live.liked} size={13} />{live.likes}
+          <IconHeart filled={live.liked} size={13} />
+          <span className={styles.actNum} style={{ width: `calc(${String(live.likes).length}ch + 2px)` }}>{live.likes}</span>
         </button>
         <button type="button" onClick={() => s.plazaCopyLink(post)} title="공유 링크 복사" className={styles.actBtn}>
           <IconLinkCopy size={13} />링크 복사

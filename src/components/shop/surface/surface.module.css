@@ -25,7 +25,8 @@
 /* 본문 슬라이드 래퍼(부위 염색 ↔ 염색/점 위치) */
 .slide { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
 /* 모바일 푸터: 얇고 긴 34px */
-.footM { flex: 0 0 auto; position: relative; z-index: 1; background: #fff; padding: 8px 12px 12px; border-top: 1px solid #f0e9e1; display: flex; align-items: stretch; gap: 8px; }
+/* 위아래 여백을 같게(2026-09-21 사용자 지시 — 아래가 4px 더 넓어 보였다). */
+.footM { flex: 0 0 auto; position: relative; z-index: 1; background: #fff; padding: 10px 12px; border-top: 1px solid #f0e9e1; display: flex; align-items: stretch; gap: 8px; }
 .btnCloseM { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; background: #f4ecf3; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; cursor: pointer; }
 .btnApplyM { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; }
 .btnApply { height: 38px; padding: 0 22px; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; color: #fff; cursor: pointer; }
