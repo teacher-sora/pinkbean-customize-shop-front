@@ -477,7 +477,9 @@ export function plazaWhen(iso: string): string {
 // 공지는 운영자가 Supabase 대시보드(Table Editor → plaza_notices)에서 쓴다 — 앱에는 쓰기 화면이 없다.
 // 댓글로 신고·건의를 받는다. 한 쪽에 20개, 최신이 위. 운영자 uid(plaza_admins)의 댓글은 '운영자'로 보인다.
 export type PlazaNotice = { id: string; createdAt: string; title: string; body: string; pinned: boolean }
-export type NoticeComment = { id: string; owner: string; body: string; createdAt: string; mine: boolean; admin: boolean }
+// replies = 그 건의글에 달린 **운영자 답변**. 앱에서는 아무도 달 수 없고(supabase/0013 정책) 운영자가
+// DB 에서 직접 남긴다 — 그래서 답변은 곧 운영자 글이다(따로 권한 표를 두지 않는다, 2026-09-22 사용자 판단).
+export type NoticeComment = { id: string; owner: string; body: string; createdAt: string; mine: boolean; admin: boolean; replies?: NoticeComment[] }
 export const NOTICE_PAGE = 20
 export async function loadNotices(): Promise<PlazaNotice[]> {
   const c = sb()
@@ -503,15 +505,32 @@ export async function loadNoticeComments(noticeId: string, page: number): Promis
   const c = sb()
   if (!c) return { list: [], total: 0 }
   const [uid, admins] = await Promise.all([plazaAuth(), loadAdmins()])
+  // 쪽 넘김은 **건의글(답변이 아닌 것)** 기준이다 — 답변은 그 글에 딸려 붙는다.
   const { data, error, count } = await c.from('plaza_notice_comments').select('id,owner,body,created_at', { count: 'exact' })
-    .eq('notice_id', noticeId).order('created_at', { ascending: false }).order('id')
+    .eq('notice_id', noticeId).is('parent_id', null).order('created_at', { ascending: false }).order('id')
     .range(page * NOTICE_PAGE, page * NOTICE_PAGE + NOTICE_PAGE - 1)
   if (error) throw error
+  type Row = { id: string; owner: string; body: string; created_at: string }
+  const rows = (data || []) as Row[]
+  const mk = (r: Row, admin: boolean): NoticeComment =>
+    ({ id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, mine: !!uid && r.owner === uid, admin })
+  // 이 쪽에 보이는 글들의 답변만 한 번에 받아 붙인다(오래된 순 — 대화 순서대로 읽힌다).
+  const byParent = new Map<string, NoticeComment[]>()
+  if (rows.length) {
+    const { data: rd } = await c.from('plaza_notice_comments').select('id,owner,body,created_at,parent_id')
+      .in('parent_id', rows.map((r) => r.id)).order('created_at', { ascending: true })
+    for (const r of (rd || []) as (Row & { parent_id: string })[]) {
+      const arr = byParent.get(r.parent_id) || []
+      arr.push(mk(r, true)) // 답변 = 운영자 글
+      byParent.set(r.parent_id, arr)
+    }
+  }
   return {
     total: count ?? 0,
-    list: ((data || []) as { id: string; owner: string; body: string; created_at: string }[]).map((r) => ({
-      id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, mine: !!uid && r.owner === uid, admin: admins.has(r.owner),
-    })),
+    list: rows.map((r) => {
+      const rep = byParent.get(r.id)
+      return { ...mk(r, admins.has(r.owner)), ...(rep && rep.length ? { replies: rep } : {}) }
+    }),
   }
 }
 export async function addNoticeComment(noticeId: string, body: string): Promise<void> {

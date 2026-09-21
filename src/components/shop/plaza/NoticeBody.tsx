@@ -4,7 +4,7 @@
 //  · 공지는 운영자가 Supabase 대시보드(plaza_notices)에서 쓴다. 앱에는 쓰기 화면이 없다(계정이 없어 운영자를 가릴 수 없다).
 //  · 공지가 하나면 바로 그 공지를, 여럿이면 목록부터(고정 → 최신 순).
 //  · 댓글로 신고·건의를 받는다. 한 쪽에 20개, 최신이 위, 쪽 넘김. 이름은 광장 댓글과 같은 익명 이름(같은 사람 = 같은 이름).
-//    운영자 uid(plaza_admins)의 댓글은 '운영자'. 지우기는 본인 것만(두 번 누르기).
+//    지우기는 본인 것만(두 번 누르기). 운영자 답변은 건의글 아래에 붙어 보인다(DB 에서 직접 남긴다 — supabase/0013).
 // 탭 전체 화면 대신 서피스로 둔 이유: 4개 폭의 새 레이아웃 없이 기존 상세·댓글 부품을 그대로 쓴다('간이').
 
 import clsx from 'clsx'
@@ -155,6 +155,16 @@ function NoticeComments({ notice, mobile, notify }: { notice: PlazaNotice; mobil
               )}
             </div>
             <p className={styles.cmtBody}>{c.body}</p>
+            {/* 운영자 답변 — 건의글 바로 아래에 붙는다(읽기 전용, 앱에서는 달 수 없다). */}
+            {c.replies?.map((r) => (
+              <div key={r.id} className={styles.ntReply}>
+                <div className={styles.cmtMeta}>
+                  <span className={clsx(styles.cmtWho, styles.cmtWhoAuthor)}>운영자</span>
+                  <span className={styles.cmtTime}>{plazaWhen(r.createdAt)}</span>
+                </div>
+                <p className={styles.cmtBody}>{r.body}</p>
+              </div>
+            ))}
           </div>
         ))}
       </div>

@@ -277,6 +277,8 @@
 .cmtWhoMine { color: #3d372f; }
 .cmtChip { flex: 0 0 auto; height: 16px; padding: 0 5px; display: flex; align-items: center; border-radius: 5px; background: #fce9f1; font-size: 9.5px; font-weight: 700; color: #d76d9a; }
 .cmtChipMine { background: #f2ebe3; color: #8a8075; }
+/* 건의글에 붙는 운영자 답변 — 들여쓰기 + 왼쪽 선으로 딸린 글임을 보인다. */
+.ntReply { margin: 8px 0 0 10px; padding-left: 10px; border-left: 2px solid #f0e9e1; display: flex; flex-direction: column; gap: 4px; }
 .cmtTime { flex: 1 1 auto; min-width: 0; font-size: 10.5px; color: #b7ada2; white-space: nowrap; overflow: hidden; }
 /* 지우기는 숨기지 않는다 — 있는 줄 몰라서 못 지우는 쪽이 더 나쁘다. 첫 번째 누름은 토스트로만 안내한다(버튼 모양은 그대로). */
 .cmtDel { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid #f2d7d2; border-radius: 6px; background: #fff; font-family: inherit; font-size: 10px; font-weight: 700; color: #d1735f; cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
