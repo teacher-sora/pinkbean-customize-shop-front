@@ -56,25 +56,20 @@ export function computeModelPlacement(a: {
   const box = { w: canvasDevW / scale, h: canvasDevH / scale }
   // navel 을 (박스중앙 - centerDx, 박스중앙 - centerDy)에 → 마네킹 시각중심이 박스 정중앙에 온다.
   const anchor = { x: box.w / 2 - cx, y: box.h / 2 - cy }
-  if (a.drop) anchor.y += modelDrop(a.divH * a.dpr, scale)
+  if (a.drop) anchor.y += MODEL_DROP
   return { box, scale, anchor, canvasCssW, canvasCssH }
 }
 
 // ── 캐릭터를 살짝 아래로 ──(2026-09-22 사용자 지시)
 // 맨 마네킹은 몸통이 정중앙인 게 맞지만, 헤어·모자를 씌우면 머리 쪽만 위로 길어져 **위로 치우친** 느낌이 난다.
-// 카카오톡 공유 카드(lib/shareImage)는 이미 '발 아래 빈 공간의 절반'만큼 내려 그려 자연스러웠다 → 같은 모양을 모든
-// 모델 캔버스에. 다만 칸마다 캐릭터 비율(fraction)이 달라 '빈 공간의 절반'을 그대로 쓰면 작은 카드일수록 훨씬 많이
-// 내려간다(프리셋 카드 0.38 이면 칸의 15%). 머리가 길어지는 양은 **캐릭터 크기에 비례**하므로, 공유 카드에서의
-// 내림 폭을 캐릭터 키 기준으로 옮겨 쓴다: 마네킹 키의 1/6(공유 카드 fraction 0.6 에서 '빈 공간 절반'과 같은 값).
-//  · 발이 칸 밖으로 나가지 않게 '발 아래 빈 공간의 절반'을 넘지 않는다(연출 배율 3배처럼 꽉 찬 경우엔 0).
-//  · 디바이스 픽셀 정수로 반올림 — 레이어마다 반올림이 갈려 도트가 한 줄 어긋나는 일이 없게.
-export const MODEL_DROP = 1 / 6
-function modelDrop(divDevH: number, scale: number): number {
-  const bodyDev = MODEL_REF.bodyRefH * scale
-  const gapDev = (divDevH - bodyDev) / 2
-  const dev = Math.round(Math.max(0, Math.min(bodyDev * MODEL_DROP, gapDev / 2)))
-  return dev / scale
-}
+// 그래서 몸통 기준 정중앙(위 anchor — 모든 캔버스가 같은 자리)에서 **고정 길이**만큼만 내린다.
+//  · 길이 = 베이스 모델(몸통+머리, 아무것도 안 입힘) 높이의 1/8. 실측 64 게임 픽셀(피부 0~2 동일, stand1 프레임0
+//    불투명 bbox y −43..21 · 중심 −11 = MODEL_REF 와 일치) → **8 게임 픽셀**.
+//  · 게임 픽셀 단위라 캔버스 배율을 따라 커지고 작아질 뿐, 캐릭터 대비 내려간 양은 어느 캔버스든 똑같다.
+//    배율이 정수라 디바이스 픽셀로도 정수 → 도트가 어긋나지 않는다.
+//  ⚠️ 처음엔 '마네킹 키의 1/6 + 발 아래 빈 공간 절반 상한'으로 넣었다가 **너무 내려가고 칸마다 달랐다**(상한이
+//     칸 크기에 따라 달리 걸림 — 사용자 지적). 상한 없이 고정값 하나로 바꿨다.
+export const MODEL_DROP = MODEL_REF.bodyRefH / 8
 
 // 캔버스 비트맵 크기(디바이스 px) — renderCharacter 가 잡는 크기와 같은 식.
 export const canvasBitmap = (pl: ModelPlacement) => ({ bw: Math.round(pl.box.w * pl.scale), bh: Math.round(pl.box.h * pl.scale) })
