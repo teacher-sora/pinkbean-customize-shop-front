@@ -36,6 +36,7 @@ export function computeModelPlacement(a: {
   centerDy?: number   // navel→중심 세로 오프셋(기본 MODEL_REF.centerDy)
   snap?: boolean      // 배율을 가장 가까운 정수로 스냅(도트 완전 선명; 크기는 살짝 이산적)
   scale?: number      // 디바이스 배율을 직접 지정(연출 배율 단계별 정수 — zoomStepScale). 주면 fraction/zoom/snap 무시
+  drop?: boolean      // 캐릭터를 살짝 아래로(아래 MODEL_DROP 설명). 화면에 보여 주는 모델 캔버스만 켠다.
 }): ModelPlacement {
   const zoom = a.zoomMult ?? 1
   const cx = a.centerDx ?? MODEL_REF.centerDx
@@ -55,8 +56,22 @@ export function computeModelPlacement(a: {
   const box = { w: canvasDevW / scale, h: canvasDevH / scale }
   // navel 을 (박스중앙 - centerDx, 박스중앙 - centerDy)에 → 마네킹 시각중심이 박스 정중앙에 온다.
   const anchor = { x: box.w / 2 - cx, y: box.h / 2 - cy }
+  if (a.drop) anchor.y += MODEL_DROP
   return { box, scale, anchor, canvasCssW, canvasCssH }
 }
+
+// ── 캐릭터를 살짝 아래로 ──(2026-09-22 사용자 지시)
+// 맨 마네킹은 몸통이 정중앙인 게 맞지만, 헤어·모자를 씌우면 머리 쪽만 위로 길어져 **위로 치우친** 느낌이 난다.
+// 그래서 몸통 기준 정중앙(위 anchor — 모든 캔버스가 같은 자리)에서 **고정 길이**만큼만 내린다.
+//  · 길이 = 베이스 모델(몸통+머리, 아무것도 안 입힘) 높이의 1/10. 실측 64 게임 픽셀(피부 0~2 동일, stand1 프레임0
+//    불투명 bbox y −43..21 · 중심 −11 = MODEL_REF 와 일치) → **6.4 게임 픽셀**.
+//    1/8(8px)은 리스트 카드 모델이 아주 살짝 아래로 치우쳐 보였고, 1/9 도 오묘했다(2026-09-22 사용자 판단) → 1/10.
+//    정수가 아니어도 괜찮다 — 배율이 정수라 모든 레이어가 같은 소수부를 가져 반올림이 함께 움직인다(레이어끼리 안 어긋남).
+//  · 게임 픽셀 단위라 캔버스 배율을 따라 커지고 작아질 뿐, 캐릭터 대비 내려간 양은 어느 캔버스든 똑같다.
+//    배율이 정수라 디바이스 픽셀로도 정수 → 도트가 어긋나지 않는다.
+//  ⚠️ 처음엔 '마네킹 키의 1/6 + 발 아래 빈 공간 절반 상한'으로 넣었다가 **너무 내려가고 칸마다 달랐다**(상한이
+//     칸 크기에 따라 달리 걸림 — 사용자 지적). 상한 없이 고정값 하나로 바꿨다.
+export const MODEL_DROP = MODEL_REF.bodyRefH / 10
 
 // 캔버스 비트맵 크기(디바이스 px) — renderCharacter 가 잡는 크기와 같은 식.
 export const canvasBitmap = (pl: ModelPlacement) => ({ bw: Math.round(pl.box.w * pl.scale), bh: Math.round(pl.box.h * pl.scale) })

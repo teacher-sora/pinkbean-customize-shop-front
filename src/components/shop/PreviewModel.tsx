@@ -359,7 +359,7 @@ export default function PreviewModel() {
     // 뒷쪽 시선(rope 첫프레임)이 previewBack* 로 중앙에 오는 것과 동일하게, 비라이딩 사다리/밧줄도 previewBack* 사용.
     const climbCenter = back || (!riding && (pv.action === 'ladder' || pv.action === 'rope'))
     // snap:true — 정수 배율로 렌더해 도트(애교점 등)가 픽셀에 딱 맞고 선명하다(카드 썸네일·내보내기와 동일 규칙).
-    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: pv.zoom, mults: ZOOM_WORLD }), centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true })
+    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: pv.zoom, mults: ZOOM_WORLD }), centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true, drop: true })
     // 캔버스를 화면 픽셀 격자에 정확히 맞춘다: CSS 크기 = 비트맵 ÷ dpr, 위치는 translate(-50%) 대신 디바이스 픽셀 단위로
     // 반올림한 left/top(+ wrap 자신의 소수 px 위치 보정). 소수 px 크기·위치면 재샘플링돼 세로줄이 찢겨 보였다.
     const bw = Math.round(pl.box.w * pl.scale), bh = Math.round(pl.box.h * pl.scale)

@@ -90,7 +90,7 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { ite
     }
     // 우측 미리보기/카드와 동일 공식: 마네킹 중앙 고정 + 정수 스냅(선명). 배율은 fraction 에 곱.
     const dpr = window.devicePixelRatio || 1
-    const pl = computeModelPlacement({ divW: box.w, divH: box.h, dpr, margin: 1, fraction: fractionFor(box.h), scale: zoomStepScale({ fraction: fractionFor(box.h), divH: box.h, dpr, level: zoom, mults: DIALOG_ZOOM }), snap: true })
+    const pl = computeModelPlacement({ divW: box.w, divH: box.h, dpr, margin: 1, fraction: fractionFor(box.h), scale: zoomStepScale({ fraction: fractionFor(box.h), divH: box.h, dpr, level: zoom, mults: DIALOG_ZOOM }), snap: true, drop: true })
     const { bw, bh } = canvasBitmap(pl)
     fitCanvas(canvas, canvas.parentElement, bw, bh, box.w, box.h, dpr)
     await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov, effects: effs })

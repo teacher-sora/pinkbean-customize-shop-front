@@ -217,7 +217,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     let cancelled = false
     const back = gaze === 'back'
     // snap: 배율을 정수로 스냅해 카드 도트가 항상 완전히 선명(모든 카드 동일, 화면 크기별로만 살짝 다름).
-    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: CARD_FRACTION, snap: true, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy })
+    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: CARD_FRACTION, snap: true, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy, drop: true })
     // 캔버스를 화면 픽셀 격자에 맞춰 가운데(미리보기와 같은 규칙 — translate(-50%) 는 소수 px 라 도트가 뭉갠다).
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
