@@ -72,7 +72,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     const canvas = canvasRef.current
     if (!canvas || !placed || !dims.w || !dims.h) return
     let cancelled = false
-    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, snap: true })
+    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, snap: true, drop: true })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
     renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, override: ov, effects, shouldCancel: () => cancelled }).catch(() => {})

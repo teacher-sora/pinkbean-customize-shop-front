@@ -36,6 +36,7 @@ export function computeModelPlacement(a: {
   centerDy?: number   // navel→중심 세로 오프셋(기본 MODEL_REF.centerDy)
   snap?: boolean      // 배율을 가장 가까운 정수로 스냅(도트 완전 선명; 크기는 살짝 이산적)
   scale?: number      // 디바이스 배율을 직접 지정(연출 배율 단계별 정수 — zoomStepScale). 주면 fraction/zoom/snap 무시
+  drop?: boolean      // 캐릭터를 살짝 아래로(아래 MODEL_DROP 설명). 화면에 보여 주는 모델 캔버스만 켠다.
 }): ModelPlacement {
   const zoom = a.zoomMult ?? 1
   const cx = a.centerDx ?? MODEL_REF.centerDx
@@ -55,7 +56,24 @@ export function computeModelPlacement(a: {
   const box = { w: canvasDevW / scale, h: canvasDevH / scale }
   // navel 을 (박스중앙 - centerDx, 박스중앙 - centerDy)에 → 마네킹 시각중심이 박스 정중앙에 온다.
   const anchor = { x: box.w / 2 - cx, y: box.h / 2 - cy }
+  if (a.drop) anchor.y += modelDrop(a.divH * a.dpr, scale)
   return { box, scale, anchor, canvasCssW, canvasCssH }
+}
+
+// ── 캐릭터를 살짝 아래로 ──(2026-09-22 사용자 지시)
+// 맨 마네킹은 몸통이 정중앙인 게 맞지만, 헤어·모자를 씌우면 머리 쪽만 위로 길어져 **위로 치우친** 느낌이 난다.
+// 카카오톡 공유 카드(lib/shareImage)는 이미 '발 아래 빈 공간의 절반'만큼 내려 그려 자연스러웠다 → 같은 모양을 모든
+// 모델 캔버스에. 다만 칸마다 캐릭터 비율(fraction)이 달라 '빈 공간의 절반'을 그대로 쓰면 작은 카드일수록 훨씬 많이
+// 내려간다(프리셋 카드 0.38 이면 칸의 15%). 머리가 길어지는 양은 **캐릭터 크기에 비례**하므로, 공유 카드에서의
+// 내림 폭을 캐릭터 키 기준으로 옮겨 쓴다: 마네킹 키의 1/6(공유 카드 fraction 0.6 에서 '빈 공간 절반'과 같은 값).
+//  · 발이 칸 밖으로 나가지 않게 '발 아래 빈 공간의 절반'을 넘지 않는다(연출 배율 3배처럼 꽉 찬 경우엔 0).
+//  · 디바이스 픽셀 정수로 반올림 — 레이어마다 반올림이 갈려 도트가 한 줄 어긋나는 일이 없게.
+export const MODEL_DROP = 1 / 6
+function modelDrop(divDevH: number, scale: number): number {
+  const bodyDev = MODEL_REF.bodyRefH * scale
+  const gapDev = (divDevH - bodyDev) / 2
+  const dev = Math.round(Math.max(0, Math.min(bodyDev * MODEL_DROP, gapDev / 2)))
+  return dev / scale
 }
 
 // 캔버스 비트맵 크기(디바이스 px) — renderCharacter 가 잡는 크기와 같은 식.
