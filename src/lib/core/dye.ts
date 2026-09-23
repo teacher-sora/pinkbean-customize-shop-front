@@ -6,7 +6,11 @@
 
 // Game dye params (faithful to MapleStory). h = 색조 0..359, s = 채도, b = 명도 (both -99..+99,
 // 0 = neutral), t = 색상 계열 type 0..6 (0 전체/1 빨강/2 노랑/3 초록/4 청록/5 파랑/6 자주).
-export interface HsbParams { h: number; s: number; b: number; t?: number }
+// edge = 테두리(순수 검정) 포함(2026-09-22 사용자 지시). 게임 로직상 검정은 채도가 0이라 색조·채도가 수학적으로
+// 무효라서 **명도로만, 회색으로만** 바뀐다(실측: 명도 +50 → 119 회색, +99 → 238). 색을 띠지는 않는다.
+// 또 검정은 색조 0·채도 0 이라 '전체'가 아닌 색상 계열 필터에 전부 걸린다 → 테두리는 계열을 건너뛰게 한다
+// (안 그러면 계열을 고른 순간 토글이 아무 일도 안 해 고장으로 보인다).
+export interface HsbParams { h: number; s: number; b: number; t?: number; edge?: boolean }
 export interface PaletteParams { baseColor: number; mixColor: number | null; ratio: number } // ratio 0..100
 
 import { LRU } from './lru'
@@ -106,7 +110,8 @@ const clampN = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi
 export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTMLCanvasElement {
   const hue = (((p.h | 0) % 360) + 360) % 360
   const saturation = 100 + p.s, brightness = 100 + p.b, type = p.t ?? 0
-  const ck = `prism|${key}|${type}|${hue}|${saturation}|${brightness}`
+  const edge = !!p.edge
+  const ck = `prism|${key}|${type}|${hue}|${saturation}|${brightness}|${edge ? 'e' : ''}`
   const hit = cache.get(ck); if (hit) return hit
   const c = toCanvas(img, img.width, img.height)
   const ctx = c.getContext('2d')!
@@ -120,8 +125,11 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
     const rgb: Rgb = { r: a[i], g: a[i + 1], b: a[i + 2], gap: 0, min: 0, max: 0, gray: false }
     const hsv: Hsv = { h: 0, s: 0, v: 0 }
     setHsvFromRgb(rgb, hsv)
-    let convert = checkColorType(type, hsv)
-    if ((a[i] === 0 && a[i + 1] === 0 && a[i + 2] === 0) || (a[i] === 255 && a[i + 1] === 255 && a[i + 2] === 255) || alpha === 0) convert = false
+    const black = a[i] === 0 && a[i + 1] === 0 && a[i + 2] === 0
+    const white = a[i] === 255 && a[i + 1] === 255 && a[i + 2] === 255
+    // 테두리 포함이면 검정만 계열 필터를 건너뛴다. 흰색은 어떤 값에도 결과가 같아(계산상 무변화) 늘 제외한다.
+    let convert = edge && black ? true : checkColorType(type, hsv)
+    if ((black && !edge) || white || alpha === 0) convert = false
     if (convert) {
       const not16 = a[i] % 17 !== 0 || a[i + 1] % 17 !== 0 || a[i + 2] % 17 !== 0
       if (hue > 0) { hsv.h = (hsv.h + hue) % 360; setRgbFromHsv(rgb, hsv, not16) }

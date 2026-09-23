@@ -335,7 +335,8 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
     setHsb((h) => ({ ...h, [f]: v }))
     setRaw((r) => ({ ...r, [f]: String(v) }))
   }
-  const resetHsb = () => { setHsb((h) => ({ h: 0, s: 0, b: 0, t: h.t ?? 0 })); setRaw({ h: '0', s: '0', b: '0' }) }
+  // 수치만 되돌린다(계열·테두리 포함은 유지) — 염색 다이얼로그의 '염색 초기화'와 같은 규칙.
+  const resetHsb = () => { setHsb((h) => ({ h: 0, s: 0, b: 0, t: h.t ?? 0, edge: h.edge })); setRaw({ h: '0', s: '0', b: '0' }) }
   const setFamily = (t: number) => setHsb((h) => ({ ...h, t }))
 
   return {

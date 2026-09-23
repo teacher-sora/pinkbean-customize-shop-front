@@ -221,7 +221,8 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
 
   const setF = (f: F, fn: (v: number) => number) => setHsb((h) => ({ ...h, [f]: clampDye(f, fn(h[f] ?? 0)) }))
   const clearRaw = (f: F) => setRaw((r) => { if (!(f in r)) return r; const n = { ...r }; delete n[f]; return n })
-  const reset = () => { setHsb((h) => ({ h: 0, s: 0, b: 0, t: h.t ?? 0 })); setRaw({}) }
+  // 수치만 되돌린다 — 색상 계열과 '테두리 포함'은 설정이라 유지한다.
+  const reset = () => { setHsb((h) => ({ h: 0, s: 0, b: 0, t: h.t ?? 0, edge: h.edge })); setRaw({}) }
   const apply = () => {
     s.equipItem(item)
     s.setDyeHsb((prev) => ({ ...prev, [slot]: hsb }))
@@ -249,6 +250,14 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
       className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), off && styles.offOn)}>염색 비활성화</button>
   )
   const families = <FamilyDots size="lgMin" value={hsb.t ?? 0} onPick={(t) => setHsb((h) => ({ ...h, t }))} />
+  // 테두리(순수 검정) 포함 — 명도로만, 회색으로만 바뀐다(lib/core/dye 설명). 그래서 명도가 0 이하면 눌러도
+  // 보이는 변화가 없어, 그때만 이유를 알려 준다(버튼은 그대로 눌린다 — 값은 저장돼야 하므로).
+  const edgeOn = !!hsb.edge
+  const edgeBtn = (
+    <button type="button" onClick={() => setHsb((h) => ({ ...h, edge: !h.edge }))} aria-pressed={edgeOn}
+      title={hsb.b > 0 ? '검정 테두리도 함께 밝아져요' : '테두리는 명도를 올려야 밝아져요'}
+      className={clsx('pb-ghost', styles.tableBtn, edgeOn && styles.offOn)}>테두리 포함</button>
+  )
 
   if (mobile) {
     return (
@@ -258,6 +267,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
             <div ref={ref} className={styles.pvBoxM}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} box={box} /></div>
             <div className={styles.zoomCol}>{pills}</div>
           </div>
+          <div className={styles.tableRow}>{edgeBtn}</div>
           <div className={styles.famRow}>{families}</div>
           <div className={styles.hr} />
           <div className={clsx('pb-dyecol', styles.rowsCol)}>{rows()}</div>
@@ -278,6 +288,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
           <div className={styles.zoomRow}>{pills}</div>
         </div>
         <div className={clsx('pb-scroll', styles.hsvRight)}>
+          <div className={styles.tableRow}>{edgeBtn}</div>
           <div className={styles.famRow}>{families}</div>
           <div className={styles.hr} />
           <div className={styles.rows}>{rows()}</div>
