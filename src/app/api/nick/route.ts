@@ -116,11 +116,19 @@ function mergeItems(data: Cash, prefix: string, presetNo: number) {
 // '클래식 백금슈트'), 아바타에 보이는 일반 장비도 함께 넘겨 캐시 아이템의 "베이스 레이어"로 쓴다.
 interface NexonRegItem { item_equipment_part?: string; item_equipment_slot?: string; item_name?: string }
 type LookItem = ReturnType<typeof mergeItems>[number]
+// 일반 장비는 두 이름이 서로 다른 뜻이다(2026-09-23 실측 — 사용자 제보 "칼리의 옷이 안 불러와진다").
+//   item_equipment_part = 아이템 분류(한벌옷 · 차크람 · 헥스시커)
+//   item_equipment_slot = 착용 칸(상의 · 무기 · 보조무기)
+// 칼리의 옷은 part=한벌옷 · slot=상의 로 온다. slot 을 먼저 보면 한벌옷을 '상의'에서 찾게 돼 매칭이 실패하고
+// (우리 카탈로그에서 칼리의 옷은 한벌옷), 한벌옷↔상하의 배타 처리(mergeLayers)도 어긋난다.
+// 그래서 **옷 계열은 분류(part)를, 그 밖은 착용 칸(slot)을** 쓴다 — 무기는 분류가 '차크람'처럼 제각각이라 칸이 맞다.
+const WEAR_PARTS = new Set(['한벌옷', '상의', '하의', '모자', '얼굴장식', '눈장식', '귀고리', '망토', '장갑', '신발'])
 function regularVisible(idata: Cash | null): LookItem[] {
   const arr = (idata?.item_equipment as NexonRegItem[]) || []
   const out: LookItem[] = []
   for (const it of arr) {
-    const part = it.item_equipment_slot || it.item_equipment_part
+    const p = it.item_equipment_part || '', s = it.item_equipment_slot || ''
+    const part = WEAR_PARTS.has(p) ? p : (s || p)
     if (!part || !it.item_name) continue // 파트명(한벌옷/상의/무기 등)은 프론트 NEXON_PART_SLOT 이 화이트리스트로 걸러낸다
     out.push({ part, slot: part, name: it.item_name, gender: null, prism: null, customOrigin: null })
   }
