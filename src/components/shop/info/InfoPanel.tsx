@@ -13,7 +13,7 @@ import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
 import { DyeRow, FamilyDots, Stepper, Swatch } from '../ui/controls'
-import { IconEye } from '../ui/Icons'
+import { IconCheck, IconEye } from '../ui/Icons'
 import { SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
 
@@ -217,7 +217,9 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
     <button type="button" aria-pressed={edgeOn}
       onClick={() => s.setDyeHsb((p) => ({ ...p, [target]: { ...(p[target] || defHsb()), edge: !p[target]?.edge } }))}
       title={(s.dyeHsb[target]?.b ?? 0) > 0 ? '검정 테두리도 함께 밝아져요' : '테두리는 명도를 올려야 밝아져요'}
-      className={clsx('pb-ghost', styles.btn, edgeOn && styles.btnOn)}>테두리 포함</button>
+      className={clsx('pb-ghost', styles.btn, styles.tickBtn, edgeOn && styles.btnOn)}>
+      <span className={clsx(styles.tick, edgeOn && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>테두리 포함
+    </button>
   )
   const box = compact ? 72 : 88
 

@@ -18,7 +18,7 @@ import { useShop } from '../ShopContext'
 import DyeCellCanvas from '../render/DyeCellCanvas'
 import DyeModelPreview from '../render/DyeModelPreview'
 import { DyeRow, FamilyDots, Stepper, Swatch } from '../ui/controls'
-import { IconReset } from '../ui/Icons'
+import { IconCheck, IconReset } from '../ui/Icons'
 import { SurfaceFooter } from './Surface'
 import styles from './surface.module.css'
 
@@ -256,7 +256,9 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   const edgeBtn = (
     <button type="button" onClick={() => setHsb((h) => ({ ...h, edge: !h.edge }))} aria-pressed={edgeOn}
       title={hsb.b > 0 ? '검정 테두리도 함께 밝아져요' : '테두리는 명도를 올려야 밝아져요'}
-      className={clsx('pb-ghost', styles.tableBtn, edgeOn && styles.offOn)}>테두리 포함</button>
+      className={clsx('pb-ghost', styles.tableBtn, styles.tickBtn, edgeOn && styles.offOn)}>
+      <span className={clsx(styles.tick, edgeOn && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>테두리 포함
+    </button>
   )
 
   if (mobile) {
