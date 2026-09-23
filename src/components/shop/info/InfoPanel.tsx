@@ -13,7 +13,7 @@ import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
 import { DyeRow, FamilyDots, Stepper, Swatch } from '../ui/controls'
-import { IconEye } from '../ui/Icons'
+import { IconCheck, IconEye } from '../ui/Icons'
 import { SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
 
@@ -208,7 +208,21 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
   // 염색 비활성화 토글 — 문구는 고정, 눌림 상태(aria-pressed + 강조 스타일)로만 구분. 수치는 유지된다.
   const offBtn = (
     <button type="button" onClick={() => s.toggleDyeOff(target)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
-      className={clsx('pb-ghost', styles.btn, off && styles.btnOn)}>염색 비활성화</button>
+      className={clsx('pb-ghost', styles.btn, styles.tickBtn, off && styles.btnOn)}>
+      <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>비활성화
+    </button>
+  )
+  // 테두리(순수 검정) 포함 — 염색 다이얼로그와 같은 값(dyeHsb.edge)을 여기서도 켜고 끈다.
+  // 검정은 채도가 0이라 색조·채도는 수학적으로 무효고 **명도로만 회색으로** 밝아진다(lib/core/dye).
+  // ⚠️ **커스텀 피부는 제외**한다(2026-09-23 사용자 지시 — 피부에는 이 테두리가 있어선 안 된다).
+  const edgeOn = !!s.dyeHsb[target]?.edge
+  const edgeBtn = (
+    <button type="button" aria-pressed={edgeOn}
+      onClick={() => s.setDyeHsb((p) => ({ ...p, [target]: { ...(p[target] || defHsb()), edge: !p[target]?.edge } }))}
+      title={(s.dyeHsb[target]?.b ?? 0) > 0 ? '검정 테두리도 함께 밝아져요' : '테두리는 명도를 올려야 밝아져요'}
+      className={clsx('pb-ghost', styles.btn, styles.tickBtn, edgeOn && styles.btnOn)}>
+      <span className={clsx(styles.tick, edgeOn && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>테두리 포함
+    </button>
   )
   const box = compact ? 72 : 88
 
@@ -283,6 +297,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
                 ))}
                 <div className={styles.acts}>
                   {isDot && <button type="button" onClick={() => s.openDot(it)} title="점 위치 조절" className={clsx('pb-ghost', styles.btn)}>점 위치</button>}
+                  {!isSkin && edgeBtn}
                   {offBtn}
                   <button type="button" onClick={resetDye} title="이 아이템 염색 초기화" className={clsx('pb-ghost', styles.btn)}>수치 초기화</button>
                 </div>
