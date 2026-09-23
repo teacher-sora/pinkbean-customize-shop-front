@@ -110,7 +110,10 @@
 
 /* ── 연출 설정 고르기(PvPicker): 3열 격자 + 작은 미리보기 ─────────────────────
    버튼 위치를 재서 fixed 로 띄운다(Dropdown 과 같은 규칙). 폭은 3열 고정이라 버튼보다 넓다. */
-.pvPanel { position: fixed; z-index: 120; padding: 8px; border: 1px solid #f0dde7; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(42,37,33,.12); overflow: hidden auto; }
+/* 미리보기 한가운데에 깔리는 작은 다이얼로그. 등장·퇴장 같은 곡선으로 짧게(.2s / .16s). */
+.pvPanel { position: fixed; z-index: 120; padding: 8px; border: 1px solid #f0dde7; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(42,37,33,.12); overflow: hidden auto; overscroll-behavior: contain;
+  transform: translate(-50%, -50%) scale(.97); opacity: 0; transition: opacity .16s ease, transform .16s cubic-bezier(.45,0,.55,1); }
+.pvPanelOn { transform: translate(-50%, -50%) scale(1); opacity: 1; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); }
 .pvGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 /* 그룹(액션 3묶음)은 격자 흐름을 끊지 않게 contents 로 편다 — 제목만 한 줄 차지한다. */
 .pvGroup { display: contents; }

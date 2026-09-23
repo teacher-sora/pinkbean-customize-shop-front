@@ -9,7 +9,8 @@
 //    것보다 훨씬 가볍고 작게 봐도 표정이 또렷하다. 짝이 없는 '기본'·'눈깜빡'은 이름만 보여 준다.
 //
 // 펼치는 방식은 폭에 따라 다르다.
-//  · PC·태블릿 = 버튼 옆 팝오버(3열 × 2줄 + 다음 줄 살짝 — 스크롤이 있다는 신호). 미리보기를 적당히만 가린다.
+//  · PC·태블릿 = **미리보기 위에 깔리는 작은 다이얼로그**(3열 × 2줄 + 다음 줄 살짝 — 스크롤이 있다는 신호).
+//    버튼에 매달리지 않고 미리보기 영역 한가운데 뜬다 → 좁은 폭에서도 미리보기 밖으로 비어져 나가지 않는다.
 //  · 모바일 = 시트를 **가로로 슬라이드**해 시트 안의 다음 화면으로 간다(부위 염색 → 염색과 같은 몸짓, PvSheetBody).
 //    좁은 화면에서 시트 위에 팝오버를 또 띄우면 층이 겹쳐 보여, 이미 쓰고 있는 전환을 그대로 쓴다.
 
@@ -23,11 +24,13 @@ import SnapThumb from '../SnapThumb'
 import ui from '../ui/ui.module.css'
 import styles from './preview.module.css'
 
-type Pos = { left: number; maxH: number; top: number | null; bottom: number | null }
+type Pos = { cx: number; cy: number; w: number; maxH: number }
 type Group = { group: string; items: Opt[] }
 
-const PANEL_W = 292 // 3열 × 88px + 간격 6 × 2 + 패딩 8 × 2
-const EDGE = 8      // 화면 가장자리 여백
+const PANEL_W = 292   // 3열 × 88px + 간격 6 × 2 + 패딩 8 × 2
+const PANEL_H = 250   // 3열 × 2줄 + 다음 줄 살짝(스크롤이 있다는 신호)
+const INSET = 10      // 미리보기 안쪽 여백 — 이만큼은 늘 미리보기 테두리와 떨어진다
+const OUT_MS = 160    // 닫힘 전환이 끝난 뒤 떼어낸다(등장 .2s · 퇴장 .16s — 양방향 대칭)
 
 export type PvField = 'action' | 'weapon' | 'expr'
 type GridProps = {
@@ -119,31 +122,47 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
   onOpenPage?: () => void // 주면 팝오버 대신 시트 안 화면으로 넘긴다(모바일)
 }) {
   const [pos, setPos] = useState<Pos | null>(null)
+  const [shown, setShown] = useState(false) // 등장/퇴장 전환용(마운트 후 한 프레임 뒤에 켠다)
   const btnRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const open = !!pos
   const current = (options.find((o) => o.v === value) || options[0] || { l: '' }).l
 
+  const close = () => {
+    setShown(false)
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => setPos(null), OUT_MS)
+  }
+  // 버튼에 매달린 '팝 박스'가 아니라 **미리보기 위에 깔리는 작은 다이얼로그**다(2026-09-24 사용자 지시).
+  // 자리는 미리보기 영역(data-pv-stage) 한가운데 — 좁은 폭에서도 미리보기 밖으로 비어져 나가지 않는다.
   const toggle = () => {
     if (onOpenPage) { onOpenPage(); return }
-    if (open) { setPos(null); return }
-    const el = btnRef.current; if (!el) return
-    const r = el.getBoundingClientRect(), GAP = 6, CAP = 250 // 3열 × 2줄 + 다음 줄 살짝(스크롤이 있다는 신호)
-    const below = window.innerHeight - r.bottom - GAP, above = r.top - GAP
-    const up = below < Math.min(CAP, above)
-    const maxH = Math.max(150, Math.min(CAP, (up ? above : below) - EDGE))
-    const left = Math.max(EDGE, Math.min(Math.round(r.left), window.innerWidth - PANEL_W - EDGE))
-    setPos({ left, maxH: Math.round(maxH), top: up ? null : Math.round(r.bottom + GAP), bottom: up ? Math.round(window.innerHeight - r.top + GAP) : null })
+    if (open) { close(); return }
+    if (timer.current) clearTimeout(timer.current)
+    const stage = document.querySelector('[data-pv-stage]')?.getBoundingClientRect()
+    const box = stage ?? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+    const w = Math.max(200, Math.min(PANEL_W, Math.round(box.width) - INSET * 2))
+    const maxH = Math.max(150, Math.min(PANEL_H, Math.round(box.height) - INSET * 2))
+    setPos({ cx: Math.round(box.left + box.width / 2), cy: Math.round(box.top + box.height / 2), w, maxH })
   }
+  // 등장 전환이 보이도록 마운트 후 한 프레임 뒤에 켠다.
+  useEffect(() => {
+    if (!pos) return
+    let r2 = 0
+    const r1 = requestAnimationFrame(() => { r2 = requestAnimationFrame(() => setShown(true)) })
+    return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2) }
+  }, [pos])
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
 
   useEffect(() => {
     if (!open) return
     const onDown = (e: PointerEvent) => {
       const t = e.target as Node
       if (btnRef.current?.contains(t) || panelRef.current?.contains(t)) return
-      setPos(null)
+      close()
     }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); setPos(null) } }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); close() } }
     window.addEventListener('pointerdown', onDown, true)
     window.addEventListener('keydown', onKey, true)
     return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey, true) }
@@ -164,10 +183,10 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
         <span className={clsx(ui.caret, open && ui.caretOpen)}>▾</span>
       </button>
       {open && typeof document !== 'undefined' && createPortal(
-        <div ref={panelRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-scroll-thin', styles.pvPanel)}
-          style={{ left: pos!.left, width: PANEL_W, maxHeight: pos!.maxH, top: pos!.top ?? undefined, bottom: pos!.bottom ?? undefined }}>
+        <div ref={panelRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-scroll-thin', styles.pvPanel, shown && styles.pvPanelOn)}
+          style={{ left: pos!.cx, top: pos!.cy, width: pos!.w, maxHeight: pos!.maxH }}>
           <PvGrid field={field} options={options} groups={groups} value={value} disabledValues={disabledValues} disabledTitle={disabledTitle}
-            onChange={(v) => { onChange(v); setPos(null) }} />
+            onChange={(v) => { onChange(v); close() }} />
         </div>,
         document.body,
       )}
