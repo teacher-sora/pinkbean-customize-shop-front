@@ -104,16 +104,26 @@ export const PV_ACTIONS_FLAT: Opt[] = PV_ACTION_GROUPS.flatMap((g) => g.items)
 // 'basic'(기본)만 정지 프레임 — 나머지는 애니메이션(fps 슬라이더 노출 대상).
 export const isAnimatedAction = (v: string) => v !== 'basic'
 
-// 표정 = Face.wz 표정 키 전수(30종).
+// 표정 — 이름은 **표정 얼굴장식 25종의 아이템 이름 그대로** 쓴다(2026-09-23 사용자 지시).
+// 예전엔 임의로 지은 이름이 섞여 있어(미소/화남/멍함…) 아이템과 짝이 안 맞았고, '게슴츠레'(blink/2)·'감은눈'(blink/1)은
+// 아예 빠져 있었다. 또 데이터에 없는 키 6종(cheer·pers·wound·hate·rage·sad)이 남아 있어 골라도 기본 표정이 나왔다.
+// 근거(실측 2026-09-23): 성형 메타의 표정 프레임 키는 아래 27종이 표준이다(성형 40종 중 39종이 정확히 일치).
+//   각 이름은 그 표정을 고정하는 얼굴장식(info.fixedEmotion)에서 가져왔다. 'blink'(눈깜빡)만 짝이 되는 아이템이 없다.
+// ⚠️ 순서는 **가나다순**이고 '기본'이 맨 위다(사용자 지시 — 빠르게 찾으려고). 아래 sort 가 그 규칙을 지킨다.
+const EXPRS_NAMED: Opt[] = [
+  { v: 'blink/1', l: '감은눈' }, { v: 'blink/2', l: '게슴츠레' }, { v: 'stunned', l: '곤란' },
+  { v: 'cheers', l: '꺄오' }, { v: 'bowing', l: '꾸벅꾸벅' }, { v: 'troubled', l: '난처' },
+  { v: 'blink', l: '눈깜빡' }, { v: 'pain', l: '눈물찍' }, { v: 'bewildered', l: '당황' },
+  { v: 'dam', l: '메롱' }, { v: 'shine', l: '반짝반짝' }, { v: 'angry', l: '분노' },
+  { v: 'chu', l: '뽀뽀' }, { v: 'love', l: '뿅' }, { v: 'hot', l: '앗뜨거' },
+  { v: 'vomit', l: '울렁울렁' }, { v: 'cry', l: '울음' }, { v: 'smile', l: '웃음' },
+  { v: 'wink', l: '윙크' }, { v: 'qBlue', l: '창백' }, { v: 'glitter', l: '초롱초롱' },
+  { v: 'hit', l: '피격' }, { v: 'oops', l: '허걱허걱' }, { v: 'blaze', l: '활활' },
+  { v: 'despair', l: '후하후하' }, { v: 'hum', l: '흐음' },
+]
 export const PV_EXPRS: Opt[] = [
-  { v: 'default', l: '기본' }, { v: 'blink', l: '눈깜빡' }, { v: 'hit', l: '피격' }, { v: 'wink', l: '윙크' },
-  { v: 'glitter', l: '초롱초롱' }, { v: 'smile', l: '미소' }, { v: 'troubled', l: '난처' }, { v: 'cry', l: '울음' },
-  { v: 'angry', l: '화남' }, { v: 'bewildered', l: '당황' }, { v: 'stunned', l: '멍함' }, { v: 'vomit', l: '구역질' },
-  { v: 'oops', l: '앗차' }, { v: 'cheers', l: '건배' }, { v: 'cheer', l: '환호' }, { v: 'chu', l: '뽀뽀' },
-  { v: 'pain', l: '고통' }, { v: 'despair', l: '절망' }, { v: 'love', l: '하트' }, { v: 'shine', l: '반짝' },
-  { v: 'blaze', l: '이글이글' }, { v: 'hum', l: '흥얼' }, { v: 'bowing', l: '인사' }, { v: 'hot', l: '더위' },
-  { v: 'dam', l: '피해' }, { v: 'qBlue', l: '우울' }, { v: 'pers', l: '집중' }, { v: 'wound', l: '상처' },
-  { v: 'hate', l: '싫음' }, { v: 'rage', l: '분노' }, { v: 'sad', l: '슬픔' },
+  { v: 'default', l: '기본' },
+  ...[...EXPRS_NAMED].sort((a, b) => a.l.localeCompare(b.l, 'ko')),
 ]
 
 // 귀 = Character.wz 4종. 키: humanEar/ear/lefEar/highlefEar.
