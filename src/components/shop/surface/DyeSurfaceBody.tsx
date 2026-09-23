@@ -252,11 +252,12 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   const families = <FamilyDots size="lgMin" value={hsb.t ?? 0} onPick={(t) => setHsb((h) => ({ ...h, t }))} />
   // 테두리(순수 검정) 포함 — 명도로만, 회색으로만 바뀐다(lib/core/dye 설명). 그래서 명도가 0 이하면 눌러도
   // 보이는 변화가 없어, 그때만 이유를 알려 준다(버튼은 그대로 눌린다 — 값은 저장돼야 하므로).
+  // 자리는 '염색 비활성화 · 염색 초기화'와 **같은 줄**이다(2026-09-23 사용자 지시 — 염색 설정 버튼은 한 줄에 모은다).
   const edgeOn = !!hsb.edge
-  const edgeBtn = (
+  const edgeBtn = (big: boolean) => (
     <button type="button" onClick={() => setHsb((h) => ({ ...h, edge: !h.edge }))} aria-pressed={edgeOn}
       title={hsb.b > 0 ? '검정 테두리도 함께 밝아져요' : '테두리는 명도를 올려야 밝아져요'}
-      className={clsx('pb-ghost', styles.tableBtn, styles.tickBtn, edgeOn && styles.offOn)}>
+      className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), styles.tickBtn, edgeOn && styles.offOn)}>
       <span className={clsx(styles.tick, edgeOn && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>테두리 포함
     </button>
   )
@@ -269,11 +270,11 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
             <div ref={ref} className={styles.pvBoxM}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} box={box} /></div>
             <div className={styles.zoomCol}>{pills}</div>
           </div>
-          <div className={styles.tableRow}>{edgeBtn}</div>
           <div className={styles.famRow}>{families}</div>
           <div className={styles.hr} />
           <div className={clsx('pb-dyecol', styles.rowsCol)}>{rows()}</div>
           <div className={styles.resetRow}>
+            {edgeBtn(true)}
             {offBtn(true)}
             <button type="button" onClick={reset} title="수치 초기화" aria-label="수치 초기화" className={styles.resetIcon}><IconReset />초기화</button>
           </div>
@@ -290,11 +291,11 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
           <div className={styles.zoomRow}>{pills}</div>
         </div>
         <div className={clsx('pb-scroll', styles.hsvRight)}>
-          <div className={styles.tableRow}>{edgeBtn}</div>
           <div className={styles.famRow}>{families}</div>
           <div className={styles.hr} />
           <div className={styles.rows}>{rows()}</div>
           <div className={styles.resetRow}>
+            {edgeBtn(false)}
             {offBtn(false)}
             <button type="button" onClick={reset} className={clsx('pb-ghost', styles.resetBtn)}>염색 초기화</button>
           </div>

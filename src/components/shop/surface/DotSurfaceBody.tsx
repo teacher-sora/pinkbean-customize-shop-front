@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { useShop } from '../ShopContext'
 import { useDotEditor, ZMAX, ZMIN } from '../render/useDotEditor'
+import { IconCheck } from '../ui/Icons'
 import { DyeRow, FamilyDots, Stepper } from '../ui/controls'
 import { SurfaceFooter } from './Surface'
 import styles from './surface.module.css'
@@ -88,6 +89,12 @@ export default function DotSurfaceBody({ item, mobile }: { item: ListItem; mobil
             })}
           </div>
           <div className={styles.resetRow}>
+            {/* 테두리(순수 검정) 포함 — 염색 다이얼로그와 같은 값·같은 줄(2026-09-23 사용자 지시). */}
+            <button type="button" onClick={ed.toggleEdge} aria-pressed={!!ed.hsb.edge}
+              title={ed.hsb.b > 0 ? '검정 테두리도 함께 밝아져요' : '테두리는 명도를 올려야 밝아져요'}
+              className={clsx(styles.resetBtn, styles.tickBtn, ed.hsb.edge && styles.offOn)}>
+              <span className={clsx(styles.tick, ed.hsb.edge && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>테두리 포함
+            </button>
             <button type="button" onClick={() => setOff((v) => !v)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
               className={clsx(styles.resetBtn, off && styles.offOn)}>염색 비활성화</button>
             <button type="button" onClick={ed.resetHsb} title="염색 초기화" className={styles.resetBtn}>염색 초기화</button>
