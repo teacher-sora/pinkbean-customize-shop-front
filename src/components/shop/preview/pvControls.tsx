@@ -6,10 +6,11 @@
 
 import clsx from 'clsx'
 import { useEffect } from 'react'
-import { PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, type Opt, type Pv } from '@/lib/catalog'
+import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, type Opt, type Pv } from '@/lib/catalog'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
 import { Switch } from '../ui/controls'
+import PvPicker, { type PvField } from './PvPicker'
 import styles from './preview.module.css'
 
 const ZOOMS: Opt[] = [{ v: '1', l: '1배' }, { v: '2', l: '2배' }, { v: '3', l: '3배' }]
@@ -41,24 +42,42 @@ function useRiding() {
   return { riding, disabledActions }
 }
 
-// 상시 4필드: 기본값이면 설정 이름, 바꾸면 값을 표시.
-export function PvInlineFields({ mobile, narrow }: { mobile: boolean; narrow: boolean }) {
+// 상시 4필드 정의(배율 · 액션 · 무기 모션 · 표정) — 인라인 필드와 모바일 고르기 화면이 함께 쓴다.
+export type PvFieldDef = { key: keyof Pv; title: string; short: string; def: string; hint: string; options: Opt[]; value: string; set: (v: string) => void; disabled?: Set<string> }
+export function usePvFields(): PvFieldDef[] {
   const s = useShop()
   const { disabledActions } = useRiding()
   const pv = s.pv
-  const variant = mobile ? 'fieldM' : 'field'
-  const fields: { key: keyof Pv; title: string; short: string; def: string; hint: string; options: Opt[]; value: string; set: (v: string) => void }[] = [
+  return [
     { key: 'zoom', title: '배율', short: '배율', def: '2', hint: '미리보기 캐릭터 크기', options: ZOOMS, value: String(pv.zoom), set: (v) => s.setPv('zoom', Number(v)) },
-    { key: 'action', title: '액션', short: '액션', def: 'basic', hint: '캐릭터 동작 (서기·걷기·점프 등)', options: PV_ACTIONS_FLAT, value: pv.action, set: (v) => s.setPv('action', v) },
+    { key: 'action', title: '액션', short: '액션', def: 'basic', hint: '캐릭터 동작 (서기·걷기·점프 등)', options: PV_ACTIONS_FLAT, value: pv.action, set: (v) => s.setPv('action', v), disabled: disabledActions },
     { key: 'weapon', title: '무기 모션', short: '모션', def: 'basic', hint: '무기를 든 자세 (스윙·찌르기·사격 등)', options: PV_WEAPONS, value: pv.weapon, set: (v) => s.setPv('weapon', v) },
     { key: 'expr', title: '표정', short: '표정', def: 'default', hint: '얼굴 표정', options: PV_EXPRS, value: pv.expr, set: (v) => s.setPv('expr', v) },
   ]
+}
+export const pvFieldOf = (f: PvFieldDef): PvField => (f.key === 'weapon' ? 'weapon' : f.key === 'expr' ? 'expr' : 'action')
+export const pvGroupsOf = (f: PvFieldDef) => (f.key === 'action' ? PV_ACTION_GROUPS : undefined)
+
+// 상시 4필드: 기본값이면 설정 이름, 바꾸면 값을 표시.
+// onPick 을 주면(모바일 시트) 격자는 팝오버가 아니라 **시트 안 화면**으로 열린다.
+export function PvInlineFields({ mobile, narrow, onPick }: { mobile: boolean; narrow: boolean; onPick?: (key: 'action' | 'weapon' | 'expr') => void }) {
+  const variant = mobile ? 'fieldM' : 'field'
+  const fields = usePvFields()
+  // 액션·무기 모션·표정은 **격자 미리보기**로 고른다(PvPicker). 배율만 값 목록(Dropdown)이다 — 그림이 필요 없다.
   return (
     <>
-      {fields.map((f) => (
-        <Dropdown key={f.key} variant={variant} narrow={narrow} options={f.options} value={f.value} onChange={f.set}
-          title={`${f.title} — ${f.hint}`} ariaLabel={f.title} shortLabel={f.short} isDefault={f.value === f.def}
-          disabledValues={f.key === 'action' ? disabledActions : undefined} disabledTitle="라이딩 중에는 사용할 수 없어요" />
+      {fields.map((f) => (f.key === 'zoom'
+        ? (
+          <Dropdown key={f.key} variant={variant} narrow={narrow} options={f.options} value={f.value} onChange={f.set}
+            title={`${f.title} — ${f.hint}`} ariaLabel={f.title} shortLabel={f.short} isDefault={f.value === f.def} />
+        ) : (
+          <PvPicker key={f.key} field={pvFieldOf(f)}
+            variant={variant} narrow={narrow} options={f.options} groups={pvGroupsOf(f)}
+            value={f.value} onChange={f.set}
+            title={`${f.title} — ${f.hint}`} ariaLabel={f.title} shortLabel={f.short} isDefault={f.value === f.def}
+            disabledValues={f.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요"
+            onOpenPage={onPick ? () => onPick(pvFieldOf(f)) : undefined} />
+        )
       ))}
     </>
   )

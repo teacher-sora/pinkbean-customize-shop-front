@@ -3,14 +3,19 @@
 // 미리보기 영역 부품: 평가 말풍선 · 북마크 스프라이트 · 북마크 박스(PC) · 북마크 시트 본문(모바일) · 연출 설정 시트 본문(모바일).
 
 import clsx from 'clsx'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { SLOT_TO_CAT } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { DyeSprite } from '../render/DyeSprite'
+import { glideTo, place, release } from '../surface/glide'
+import { useInnerSlide, SWAP_MS } from '../surface/innerSlide'
+import { SHEET_EASE, SHEET_MS } from '../surface/sheetMotion'
+import { SurfaceFooter } from '../surface/Surface'
 import { VsPanes } from '../surface/VsBody'
 import { useVsFlip, VS_WRAP_H } from '../surface/sheetMotion'
-import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
+import { PvGroups, PvInlineFields, pvFieldOf, pvGroupsOf, usePvFields, type PvGroup } from './pvControls'
+import { PvGrid, type PvField } from './PvPicker'
 import styles from './preview.module.css'
 
 const BOOKMARK_FRAC = 0.9
@@ -151,14 +156,137 @@ export function BookmarkSheetBody() {
 }
 
 // 모바일: 연출 설정 시트 본문. 닫기는 공용 푸터가 맡는다(자체 '연출 설정 닫기' 버튼 제거, delta §6).
+// 액션 · 무기 모션 · 표정을 누르면 **시트 안에서 가로로 슬라이드**해 3열 격자 고르기 화면으로 간다
+// (부위 염색 → 염색과 같은 몸짓 — 좁은 화면에 시트 위 팝오버를 겹치지 않으려고, 2026-09-24).
+// 푸터는 고르는 중에는 '이전'이라 한 단계만 돌아온다.
 export function PvSheetBody() {
   const [group, setGroup] = useState<PvGroup>('char')
+  const [pick, setPick] = useState<PvField | null>(null)
+  const { view, go, style } = useInnerSlide<'main' | 'pick'>('main')
+  const fields = usePvFields()
+  const picked = pick ? fields.find((f) => pvFieldOf(f) === pick && f.key !== 'zoom') : undefined
+  // 격자는 **시트가 다 오른 뒤에** 붙인다(움직임이 끝나고 조금 더 뒤). 움직이는 도중에 칸 31개를 마운트하면
+  //  · 메인 스레드가 붙들려 끊겨 보이고,
+  //  · 마운트가 컨텍스트를 건드려 리액트가 시트 패널을 다시 그리면서 **진행 중이던 transform 을 0 으로 덮어써**
+  //    시트가 목표 위치로 툭 튀었다(2026-09-24 실측: 359 → 261 한 프레임, 그동안 푸터만 따로 미끄러짐).
+  const [gridOn, setGridOn] = useState(false)
+  const gridTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (gridTimer.current) clearTimeout(gridTimer.current) }, [])
+  const open = (k: PvField) => {
+    setPick(k); go('pick', 1)
+    setGridOn(false)
+    if (gridTimer.current) clearTimeout(gridTimer.current)
+    gridTimer.current = setTimeout(() => setGridOn(true), SHEET_MS + 40)
+  }
+  const back = () => {
+    go('main', -1)
+    setGridOn(false)
+    if (gridTimer.current) clearTimeout(gridTimer.current)
+    setTimeout(() => setPick(null), SWAP_MS)
+  }
+
+  // 화면(설정 ↔ 고르기)이 바뀌면 시트 높이도 바뀐다.
+  //  · 설정 화면 = **내용 높이 그대로**. 내용 블록(mainRef)을 직접 재는 게 핵심이다 — 스크롤 상자를 재면
+  //    `scrollHeight` 가 상자 높이보다 작아지지 않아 고르기(460px)에서 돌아와도 460 으로 굳었고(되돌아가지 않음),
+  //    애니메이션 중 다시 재는 되먹임이 생겨 높이가 매 프레임 재시작돼 툭툭 끊겼다(2026-09-24 사용자 제보).
+  //  · 고르기 화면 = 화면의 62%(최대 460px) — 격자는 그 안에서 스크롤한다.
+  // 움직임은 **높이 전환이 아니라 VS 와 같은 FLIP**이다: 높이는 한 번에 바꾸고(레이아웃 1회), 보이는 움직임은
+  // 패널·푸터의 translateY 로만 한다(합성 단계라 매끄럽고, 도중에 다시 눌러도 glide 가 지금 위치·속도를 이어받는다).
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLDivElement>(null)
+  const [mainH, setMainH] = useState<number | null>(null)
+  useEffect(() => {
+    const el = mainRef.current
+    if (!el || view !== 'main') return
+    const m = () => { const h = Math.round(el.getBoundingClientRect().height); if (h) setMainH((p) => (p === h ? p : h)) }
+    m()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
+    ro?.observe(el)
+    return () => ro?.disconnect()
+  }, [view, group])
+  // ⚠️ 고르기 높이는 **열기 전에 이미 정해져 있어야** 한다. 열고 나서 효과에서 고치면 높이가 두 번 커밋되고
+  //    두 번째 FLIP 이 첫 번째 움직임을 끊어 먹어 '툭' 뛰어 보였다(2026-09-24 실측: 447 → 301 한 프레임).
+  const pickOf = () => Math.round(Math.min(460, (typeof window === 'undefined' ? 700 : window.innerHeight) * 0.62))
+  const [pickH, setPickH] = useState(pickOf)
+  useEffect(() => {
+    const m = () => setPickH(pickOf())
+    window.addEventListener('resize', m)
+    return () => window.removeEventListener('resize', m)
+  }, [])
+  const want = view === 'pick' ? pickH : mainH
+  // 실제로 시트에 걸리는 높이. **늘 때와 줄 때 순서가 다르다**(VS 펼침/접힘과 같은 규칙).
+  //  · 늘 때  = 레이아웃 먼저 바꾸고 → 예전 모습으로 되돌려 놓은 뒤 0 으로 미끄러진다.
+  //  · 줄 때  = 큰 레이아웃 그대로 두고 먼저 미끄러진 뒤 → 다 내려간 자리에서 레이아웃을 줄인다.
+  //    (먼저 줄이면 패널 아랫변이 화면 안으로 들어와 푸터가 붕 뜨고 아래에 빈 칸이 생긴다 — 2026-09-24 사용자 제보.)
+  const [appliedH, setAppliedH] = useState<number | null>(null)
+  const shrinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const els = () => {
+    const panel = wrapRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null
+    const foot = panel?.querySelector<HTMLElement>('[data-sheet-foot]') ?? null
+    return panel && foot ? { panel, foot } : null
+  }
+  // 전환 흔적 정리 — 패널은 **전환 없이** 제자리로 되돌린 뒤 원래 곡선을 다시 물린다
+  // (그냥 되돌리면 시트가 한 번 더 미끄러진다: 실측 632 → 447 로 0.3초 더 움직였다).
+  const settle = (panel: HTMLElement, foot: HTMLElement) => {
+    release([foot])
+    panel.style.transition = 'none'
+    panel.style.transform = 'translateY(0px)'
+    panel.getBoundingClientRect()
+    panel.style.transition = SHEET_EASE
+  }
+  useLayoutEffect(() => {
+    if (want == null) return
+    const from = appliedH
+    if (from == null) { setAppliedH(want); return } // 첫 값은 그냥 앉힌다
+    if (from === want) return
+    const e = els(); const wrap = wrapRef.current
+    if (!e || !wrap) { setAppliedH(want); return }
+    if (shrinkTimer.current) clearTimeout(shrinkTimer.current)
+    if (want > from) {
+      // 늘 때: 높이를 **같은 프레임에** 바꾸고(리액트 상태도 곧 같은 값) 예전 모습으로 되돌린 뒤 0 으로 미끄러진다.
+      wrap.style.height = `${want}px`
+      const d = want - from
+      place([[e.panel, d], [e.foot, -d]])
+      const ms = glideTo([[e.panel, 0], [e.foot, 0]])
+      setAppliedH(want)
+      shrinkTimer.current = setTimeout(() => settle(e.panel, e.foot), ms + 20)
+    } else {
+      // 줄 때: 큰 레이아웃 그대로 패널을 |d| 만큼 내리고(윗변이 새 자리로) 푸터는 제자리에 붙들어 둔다.
+      const d = from - want
+      const ms = glideTo([[e.panel, d], [e.foot, -d]])
+      shrinkTimer.current = setTimeout(() => { wrap.style.height = `${want}px`; setAppliedH(want); settle(e.panel, e.foot) }, ms)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [want])
+  useEffect(() => () => { if (shrinkTimer.current) clearTimeout(shrinkTimer.current) }, [])
+  const h = appliedH
+
   return (
-    <div className={clsx('pb-scroll', styles.sheetBody)}>
-      <PvGroups group={group} onGroup={setGroup} mobile />
-      <div className={styles.gridM}>
-        <PvInlineFields mobile narrow={false} />
+    <>
+      <div ref={wrapRef} className={styles.sheetWrap} style={h ? { height: h } : undefined}>
+      <div className={clsx('pb-scroll', styles.sheetBody, styles.sheetSlide)} style={style}>
+        {view === 'pick' && picked ? (
+          <div className={styles.pickPage}>
+            <div className={styles.pickHead}>{picked.title}<span className={styles.pickHint}>{picked.hint}</span></div>
+            <div className={clsx('pb-scroll', 'pb-scroll-thin', styles.pickScroll)}>
+              {gridOn && (
+                <PvGrid field={pvFieldOf(picked)} options={picked.options} groups={pvGroupsOf(picked)} value={picked.value}
+                  disabledValues={picked.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요"
+                  onChange={(v) => { picked.set(v); back() }} />
+              )}
+            </div>
+          </div>
+        ) : (
+          <div ref={mainRef}>
+            <PvGroups group={group} onGroup={setGroup} mobile />
+            <div className={styles.gridM}>
+              <PvInlineFields mobile narrow={false} onPick={open} />
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+      </div>
+      <SurfaceFooter onBack={view === 'pick' ? back : undefined} />
+    </>
   )
 }

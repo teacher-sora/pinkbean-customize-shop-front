@@ -49,7 +49,8 @@ export default function PreviewColumn() {
           </div>
         </div>
 
-        <div className={styles.stage}>
+        {/* data-pv-stage: 연출 설정 고르기(PvPicker)가 이 영역 안 가운데에 뜬다 — 미리보기 밖으로 나가지 않게. */}
+        <div data-pv-stage className={styles.stage}>
           <Image src={bg} alt="" fill priority sizes="360px" className={styles.stageImg} />
           <div className={styles.stageTone} />
           <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} title="점 위치 변경" tabIndex={dotItem ? 0 : -1}

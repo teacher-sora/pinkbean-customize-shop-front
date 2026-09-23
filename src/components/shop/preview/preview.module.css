@@ -107,3 +107,44 @@
 .fabOn { border-color: #ec86ac; background: #fce9f1; }
 .partFab { border-radius: 9px; }
 .fabCount { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; display: flex; align-items: center; justify-content: center; border-radius: 20px; background: #fff; border: 1px solid #f4cfdf; color: #d76d9a; font-size: 9.5px; font-weight: 700; }
+
+/* ── 연출 설정 고르기(PvPicker): 3열 격자 + 작은 미리보기 ─────────────────────
+   버튼 위치를 재서 fixed 로 띄운다(Dropdown 과 같은 규칙). 폭은 3열 고정이라 버튼보다 넓다. */
+/* 미리보기 아래쪽에서 올라오는 작은 다이얼로그. 등장·퇴장 같은 곡선으로 짧게(.22s / .18s). */
+.pvPanel { position: fixed; z-index: 120; padding: 8px; border: 1px solid #f0dde7; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(42,37,33,.12); overflow: hidden auto; overscroll-behavior: contain;
+  transform: translateY(16px); opacity: 0; transition: opacity .18s ease, transform .18s cubic-bezier(.45,0,.55,1); }
+.pvPanelOn { transform: translateY(0); opacity: 1; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
+.pvGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+/* 그룹(액션 3묶음)은 격자 흐름을 끊지 않게 contents 로 편다 — 제목만 한 줄 차지한다. */
+.pvGroup { display: contents; }
+.pvGroupName { grid-column: 1 / -1; padding: 6px 2px 0; font-size: 11px; font-weight: 600; color: #a89e93; }
+.pvGroup:first-child .pvGroupName { padding-top: 0; }
+.pvCell { display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid #eee6dc; border-radius: 9px; background: #fff; overflow: hidden; font-family: inherit; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
+.pvCellOn { border-color: #ec86ac; background: #fdf4f8; }
+.pvCellOff { opacity: .4; cursor: not-allowed; }
+/* 칸 88px · fraction .62 → DPR 1·2·3 모두 정수 배율(프리셋 고르기와 같은 값). */
+.pvCellArt { position: relative; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; height: 76px; background: #f7f2ec; }
+.pvCellIcon { display: block; image-rendering: pixelated; } /* 아이콘 23×29 를 정확히 2배로 */
+.pvCellName { display: block; padding: 4px 6px 6px; font-size: 11.5px; font-weight: 600; color: #5c534b; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pvCellOn .pvCellName { color: #d76d9a; }
+/* 그림이 없는 칸(기본·눈깜빡)은 빈 상자를 두지 않고 이름을 칸 가운데 둔다. */
+.pvCellPlain { flex: 1 1 auto; min-height: 76px; display: flex; align-items: center; justify-content: center; padding: 4px 6px; font-size: 12px; font-weight: 600; color: #8a8075; }
+.pvCellOn .pvCellPlain { color: #d76d9a; }
+@media (hover: hover) and (pointer: fine) {
+  .pvCell:hover { border-color: #ec86ac; }
+  .pvCellOff:hover { border-color: #eee6dc; }
+}
+
+/* 모바일 시트: 화면(설정 ↔ 고르기)이 바뀌면 높이도 바뀐다. 높이 자체는 **전환하지 않는다**(레이아웃을 매 프레임
+   다시 계산해 끊긴다) — 한 번에 바꾸고 보이는 움직임은 패널·푸터의 translateY 로만 한다(PvSheetBody, VS 와 같은 방식). */
+.sheetWrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+/* 내용 가로 슬라이드 + 페이드(염색 다이얼로그의 innerSlide 와 같은 값). */
+.sheetSlide { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
+
+/* 모바일 시트 안 '고르기' 화면(액션 · 무기 모션 · 표정) — 시트 본문을 가득 채우고 격자만 스크롤한다. */
+.pickPage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.pickHead { flex: 0 0 auto; display: flex; align-items: baseline; gap: 8px; padding: 12px 16px 8px; font-size: 13px; font-weight: 700; color: #2a2521; }
+.pickHint { font-size: 11.5px; font-weight: 500; color: #a89e93; }
+.pickScroll { flex: 1 1 auto; min-height: 0; padding: 0 16px 14px; overflow: hidden auto; overscroll-behavior: contain; }
+/* 시트 화면은 칸이 넓으니 그림 자리도 그만큼 키운다(팝오버는 88×76 그대로). */
+.pickScroll .pvCellArt { height: 96px; }
