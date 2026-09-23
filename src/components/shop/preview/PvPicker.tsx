@@ -30,6 +30,7 @@ type Group = { group: string; items: Opt[] }
 const PANEL_H = 250   // 3열 × 2줄 + 다음 줄 살짝(스크롤이 있다는 신호)
 const INSET = 10      // 미리보기 안쪽 여백 — 이만큼은 늘 미리보기 테두리와 떨어진다
 const OUT_MS = 180    // 닫힘 전환이 끝난 뒤 떼어낸다(등장 .22s · 퇴장 .18s — 양방향 대칭)
+const MODEL_FRACTION = 0.55 // 칸 안 모델 크기. 0.62 는 위아래가 칸에 닿아 답답했다(2026-09-24 사용자 지시)
 
 export type PvField = 'action' | 'weapon' | 'expr'
 type GridProps = {
@@ -81,7 +82,7 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
             <span className={styles.pvCellArt}>
               {icon
                 ? <img src={icon} alt="" width={46} height={58} className={styles.pvCellIcon} />
-                : <SnapThumb snap={snap!} fraction={0.62} priority={from + i < eager ? 0 : 1} view />}
+                : <SnapThumb snap={snap!} fraction={MODEL_FRACTION} priority={from + i < eager ? 0 : 1} view />}
             </span>
             <span className={styles.pvCellName}>{o.l}</span>
           </>

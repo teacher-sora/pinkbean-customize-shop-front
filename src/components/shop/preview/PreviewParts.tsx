@@ -3,12 +3,14 @@
 // 미리보기 영역 부품: 평가 말풍선 · 북마크 스프라이트 · 북마크 박스(PC) · 북마크 시트 본문(모바일) · 연출 설정 시트 본문(모바일).
 
 import clsx from 'clsx'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { SLOT_TO_CAT } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { DyeSprite } from '../render/DyeSprite'
+import { glideTo, place, release } from '../surface/glide'
 import { useInnerSlide, SWAP_MS } from '../surface/innerSlide'
+import { SHEET_EASE, SHEET_MS } from '../surface/sheetMotion'
 import { SurfaceFooter } from '../surface/Surface'
 import { VsPanes } from '../surface/VsBody'
 import { useVsFlip, VS_WRAP_H } from '../surface/sheetMotion'
@@ -163,54 +165,96 @@ export function PvSheetBody() {
   const { view, go, style } = useInnerSlide<'main' | 'pick'>('main')
   const fields = usePvFields()
   const picked = pick ? fields.find((f) => pvFieldOf(f) === pick && f.key !== 'zoom') : undefined
-  const open = (k: PvField) => { setPick(k); go('pick', 1) }
-  const back = () => { go('main', -1); setTimeout(() => setPick(null), SWAP_MS) }
+  // 격자는 **시트가 다 오른 뒤** 붙인다. 칸 31개를 움직이는 도중에 마운트하면 그 사이 메인 스레드가 붙들려
+  // 오르내림이 끊겨 보였다(2026-09-24 사용자 제보 — '툭툭 끊기며 올라간다'). 자리는 미리 잡아 둬 튀지 않는다.
+  const [gridOn, setGridOn] = useState(false)
+  const gridTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (gridTimer.current) clearTimeout(gridTimer.current) }, [])
+  const open = (k: PvField) => {
+    setPick(k); go('pick', 1)
+    setGridOn(false)
+    if (gridTimer.current) clearTimeout(gridTimer.current)
+    gridTimer.current = setTimeout(() => setGridOn(true), SHEET_MS - 40)
+  }
+  const back = () => {
+    go('main', -1)
+    setGridOn(false)
+    if (gridTimer.current) clearTimeout(gridTimer.current)
+    setTimeout(() => setPick(null), SWAP_MS)
+  }
 
-  // 시트 높이도 **전환**으로 바뀐다(2026-09-24 사용자 지시 — 화면이 바뀔 때 높이가 툭 뛰었다).
-  //  · 설정 화면 = 내용 높이를 재서 그대로(내용이 바뀌면 ResizeObserver 가 다시 잰다).
+  // 화면(설정 ↔ 고르기)이 바뀌면 시트 높이도 바뀐다.
+  //  · 설정 화면 = **내용 높이 그대로**. 내용 블록(mainRef)을 직접 재는 게 핵심이다 — 스크롤 상자를 재면
+  //    `scrollHeight` 가 상자 높이보다 작아지지 않아 고르기(460px)에서 돌아와도 460 으로 굳었고(되돌아가지 않음),
+  //    애니메이션 중 다시 재는 되먹임이 생겨 높이가 매 프레임 재시작돼 툭툭 끊겼다(2026-09-24 사용자 제보).
   //  · 고르기 화면 = 화면의 62%(최대 460px) — 격자는 그 안에서 스크롤한다.
-  //  CSS transition 이라 도중에 다시 눌러도 지금 높이에서 새 목표로 이어 간다.
-  const innerRef = useRef<HTMLDivElement>(null)
+  // 움직임은 **높이 전환이 아니라 VS 와 같은 FLIP**이다: 높이는 한 번에 바꾸고(레이아웃 1회), 보이는 움직임은
+  // 패널·푸터의 translateY 로만 한다(합성 단계라 매끄럽고, 도중에 다시 눌러도 glide 가 지금 위치·속도를 이어받는다).
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLDivElement>(null)
   const [mainH, setMainH] = useState<number | null>(null)
   useEffect(() => {
-    const el = innerRef.current
+    const el = mainRef.current
     if (!el || view !== 'main') return
-    const m = () => { const h = el.scrollHeight; if (h) setMainH((p) => (p === h ? p : h)) }
+    const m = () => { const h = Math.round(el.getBoundingClientRect().height); if (h) setMainH((p) => (p === h ? p : h)) }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
     ro?.observe(el)
     return () => ro?.disconnect()
   }, [view, group])
-  const [pickH, setPickH] = useState(420)
+  // ⚠️ 고르기 높이는 **열기 전에 이미 정해져 있어야** 한다. 열고 나서 효과에서 고치면 높이가 두 번 커밋되고
+  //    두 번째 FLIP 이 첫 번째 움직임을 끊어 먹어 '툭' 뛰어 보였다(2026-09-24 실측: 447 → 301 한 프레임).
+  const pickOf = () => Math.round(Math.min(460, (typeof window === 'undefined' ? 700 : window.innerHeight) * 0.62))
+  const [pickH, setPickH] = useState(pickOf)
   useEffect(() => {
-    if (view !== 'pick') return
-    const m = () => setPickH(Math.round(Math.min(460, window.innerHeight * 0.62)))
-    m()
+    const m = () => setPickH(pickOf())
     window.addEventListener('resize', m)
     return () => window.removeEventListener('resize', m)
-  }, [view])
+  }, [])
   const h = view === 'pick' ? pickH : mainH
+  // 높이가 바뀐 **직후**(레이아웃은 이미 새 값) 예전 모습으로 되돌려 놓고 0 으로 미끄러진다.
+  const prevH = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    if (h == null) return
+    const from = prevH.current
+    prevH.current = h
+    if (from == null || from === h) return
+    const panel = wrapRef.current?.closest<HTMLElement>('[role="dialog"]')
+    const foot = panel?.querySelector<HTMLElement>('[data-sheet-foot]')
+    if (!panel || !foot) return
+    const d = h - from // 커졌으면 + : 패널 윗변이 그만큼 올라갔다
+    place([[panel, d], [foot, -d]])
+    const ms = glideTo([[panel, 0], [foot, 0]])
+    const t = setTimeout(() => {
+      release([foot])
+      panel.style.transition = SHEET_EASE
+      panel.style.transform = 'translateY(0px)'
+    }, ms + 20)
+    return () => clearTimeout(t)
+  }, [h])
 
   return (
     <>
-      <div className={styles.sheetWrap} style={h ? { height: h } : undefined}>
-      <div ref={innerRef} className={clsx('pb-scroll', styles.sheetBody, styles.sheetSlide)} style={style}>
+      <div ref={wrapRef} className={styles.sheetWrap} style={h ? { height: h } : undefined}>
+      <div className={clsx('pb-scroll', styles.sheetBody, styles.sheetSlide)} style={style}>
         {view === 'pick' && picked ? (
           <div className={styles.pickPage}>
             <div className={styles.pickHead}>{picked.title}<span className={styles.pickHint}>{picked.hint}</span></div>
             <div className={clsx('pb-scroll', 'pb-scroll-thin', styles.pickScroll)}>
-              <PvGrid field={pvFieldOf(picked)} options={picked.options} groups={pvGroupsOf(picked)} value={picked.value}
-                disabledValues={picked.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요"
-                onChange={(v) => { picked.set(v); back() }} />
+              {gridOn && (
+                <PvGrid field={pvFieldOf(picked)} options={picked.options} groups={pvGroupsOf(picked)} value={picked.value}
+                  disabledValues={picked.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요"
+                  onChange={(v) => { picked.set(v); back() }} />
+              )}
             </div>
           </div>
         ) : (
-          <>
+          <div ref={mainRef}>
             <PvGroups group={group} onGroup={setGroup} mobile />
             <div className={styles.gridM}>
               <PvInlineFields mobile narrow={false} onPick={open} />
             </div>
-          </>
+          </div>
         )}
       </div>
       </div>

@@ -135,9 +135,9 @@
   .pvCellOff:hover { border-color: #eee6dc; }
 }
 
-/* 모바일 시트: 화면(설정 ↔ 고르기)이 바뀌면 **높이도 전환**한다. 창(overflow hidden) 안에서 내용이 가로로 미끄러지고,
-   창의 높이만 같은 곡선으로 늘었다 줄었다 한다 — 전환 도중에 다시 눌러도 지금 높이에서 이어 간다. */
-.sheetWrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; transition: height .26s cubic-bezier(.45,0,.55,1); }
+/* 모바일 시트: 화면(설정 ↔ 고르기)이 바뀌면 높이도 바뀐다. 높이 자체는 **전환하지 않는다**(레이아웃을 매 프레임
+   다시 계산해 끊긴다) — 한 번에 바꾸고 보이는 움직임은 패널·푸터의 translateY 로만 한다(PvSheetBody, VS 와 같은 방식). */
+.sheetWrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 /* 내용 가로 슬라이드 + 페이드(염색 다이얼로그의 innerSlide 와 같은 값). */
 .sheetSlide { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
 
