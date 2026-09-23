@@ -64,8 +64,8 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
     const id = PV_EXPR_ICONS[v]
     return id ? spriteUrl(`sprites/${id}/icon.png`) : undefined
   }
-  // 고른 값이 스크롤 아래에 있으면 열자마자 보이게 한다.
-  const onCurrentCell = (el: HTMLButtonElement | null) => { if (el) el.scrollIntoView({ block: 'nearest' }) }
+  // 고른 값이 **가운데**에 오도록 열자마자 스크롤한다(2026-09-24 사용자 지시 — 끝에 걸쳐 보이면 찾기 어렵다).
+  const onCurrentCell = (el: HTMLButtonElement | null) => { if (el) el.scrollIntoView({ block: 'center', inline: 'nearest' }) }
 
   const cells = (list: Opt[], from: number) => list.map((o, i) => {
     const on = o.v === value

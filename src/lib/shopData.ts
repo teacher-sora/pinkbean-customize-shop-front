@@ -132,8 +132,12 @@ export const DEFAULT_EQUIP: Record<string, ListItem> = {
   longcoat: { id: '01051917', slot: 'longcoat', isCash: true, grade: 'cash', islot: 'MaPn', vslot: null, dyeMode: 'none', name: '금단의 계약 (여)', actions: [] },
 }
 
-// 이동/자세 액션(핑퐁 재생 대상).
-export const MOVE_POSTURE_ACTIONS = new Set(['basic', 'stand', 'walk', 'alert', 'proneStab', 'sit', 'jump', 'fly', 'ladder', 'rope'])
+// 이동/자세 액션 중 **핑퐁(왕복) 재생** 대상. 서기·전투 대기처럼 '숨 쉬는' 동작은 0→…→N-1→…→0 으로 오가야
+// 자연스럽다(끝에서 처음으로 튀지 않는다).
+// ⚠️ **걷기는 뺀다**(2026-09-24 사용자 제보 — "특정 구간에서 프레임이 부자연스럽게 반복된다").
+//    walk1/walk2 는 네 프레임(각 180ms)이 **한 바퀴 도는 걸음**이라 왕복시키면 가운데 두 프레임이 한 주기에
+//    두 번 나오고 다리가 앞뒤로 되돌아가 절뚝이는 걸음이 된다. 게임처럼 0→1→2→3→0 으로 **반복**한다.
+export const MOVE_POSTURE_ACTIONS = new Set(['basic', 'stand', 'alert', 'proneStab', 'sit', 'jump', 'fly', 'ladder', 'rope'])
 
 // 액션 카테고리 + 무기모션 → 실제 base body 프레임 키.
 export function resolveAction(a: string, w: string): string {

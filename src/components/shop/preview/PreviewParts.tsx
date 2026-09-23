@@ -165,8 +165,10 @@ export function PvSheetBody() {
   const { view, go, style } = useInnerSlide<'main' | 'pick'>('main')
   const fields = usePvFields()
   const picked = pick ? fields.find((f) => pvFieldOf(f) === pick && f.key !== 'zoom') : undefined
-  // 격자는 **시트가 다 오른 뒤** 붙인다. 칸 31개를 움직이는 도중에 마운트하면 그 사이 메인 스레드가 붙들려
-  // 오르내림이 끊겨 보였다(2026-09-24 사용자 제보 — '툭툭 끊기며 올라간다'). 자리는 미리 잡아 둬 튀지 않는다.
+  // 격자는 **시트가 다 오른 뒤에** 붙인다(움직임이 끝나고 조금 더 뒤). 움직이는 도중에 칸 31개를 마운트하면
+  //  · 메인 스레드가 붙들려 끊겨 보이고,
+  //  · 마운트가 컨텍스트를 건드려 리액트가 시트 패널을 다시 그리면서 **진행 중이던 transform 을 0 으로 덮어써**
+  //    시트가 목표 위치로 툭 튀었다(2026-09-24 실측: 359 → 261 한 프레임, 그동안 푸터만 따로 미끄러짐).
   const [gridOn, setGridOn] = useState(false)
   const gridTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (gridTimer.current) clearTimeout(gridTimer.current) }, [])
@@ -174,7 +176,7 @@ export function PvSheetBody() {
     setPick(k); go('pick', 1)
     setGridOn(false)
     if (gridTimer.current) clearTimeout(gridTimer.current)
-    gridTimer.current = setTimeout(() => setGridOn(true), SHEET_MS - 40)
+    gridTimer.current = setTimeout(() => setGridOn(true), SHEET_MS + 40)
   }
   const back = () => {
     go('main', -1)
@@ -211,27 +213,53 @@ export function PvSheetBody() {
     window.addEventListener('resize', m)
     return () => window.removeEventListener('resize', m)
   }, [])
-  const h = view === 'pick' ? pickH : mainH
-  // 높이가 바뀐 **직후**(레이아웃은 이미 새 값) 예전 모습으로 되돌려 놓고 0 으로 미끄러진다.
-  const prevH = useRef<number | null>(null)
+  const want = view === 'pick' ? pickH : mainH
+  // 실제로 시트에 걸리는 높이. **늘 때와 줄 때 순서가 다르다**(VS 펼침/접힘과 같은 규칙).
+  //  · 늘 때  = 레이아웃 먼저 바꾸고 → 예전 모습으로 되돌려 놓은 뒤 0 으로 미끄러진다.
+  //  · 줄 때  = 큰 레이아웃 그대로 두고 먼저 미끄러진 뒤 → 다 내려간 자리에서 레이아웃을 줄인다.
+  //    (먼저 줄이면 패널 아랫변이 화면 안으로 들어와 푸터가 붕 뜨고 아래에 빈 칸이 생긴다 — 2026-09-24 사용자 제보.)
+  const [appliedH, setAppliedH] = useState<number | null>(null)
+  const shrinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const els = () => {
+    const panel = wrapRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null
+    const foot = panel?.querySelector<HTMLElement>('[data-sheet-foot]') ?? null
+    return panel && foot ? { panel, foot } : null
+  }
+  // 전환 흔적 정리 — 패널은 **전환 없이** 제자리로 되돌린 뒤 원래 곡선을 다시 물린다
+  // (그냥 되돌리면 시트가 한 번 더 미끄러진다: 실측 632 → 447 로 0.3초 더 움직였다).
+  const settle = (panel: HTMLElement, foot: HTMLElement) => {
+    release([foot])
+    panel.style.transition = 'none'
+    panel.style.transform = 'translateY(0px)'
+    panel.getBoundingClientRect()
+    panel.style.transition = SHEET_EASE
+  }
   useLayoutEffect(() => {
-    if (h == null) return
-    const from = prevH.current
-    prevH.current = h
-    if (from == null || from === h) return
-    const panel = wrapRef.current?.closest<HTMLElement>('[role="dialog"]')
-    const foot = panel?.querySelector<HTMLElement>('[data-sheet-foot]')
-    if (!panel || !foot) return
-    const d = h - from // 커졌으면 + : 패널 윗변이 그만큼 올라갔다
-    place([[panel, d], [foot, -d]])
-    const ms = glideTo([[panel, 0], [foot, 0]])
-    const t = setTimeout(() => {
-      release([foot])
-      panel.style.transition = SHEET_EASE
-      panel.style.transform = 'translateY(0px)'
-    }, ms + 20)
-    return () => clearTimeout(t)
-  }, [h])
+    if (want == null) return
+    const from = appliedH
+    if (from == null) { setAppliedH(want); return } // 첫 값은 그냥 앉힌다
+    if (from === want) return
+    const e = els(); const wrap = wrapRef.current
+    if (!e || !wrap) { setAppliedH(want); return }
+    if (shrinkTimer.current) clearTimeout(shrinkTimer.current)
+    if (want > from) {
+      // 늘 때: 높이를 **같은 프레임에** 바꾸고(리액트 상태도 곧 같은 값) 예전 모습으로 되돌린 뒤 0 으로 미끄러진다.
+      wrap.style.height = `${want}px`
+      const d = want - from
+      place([[e.panel, d], [e.foot, -d]])
+      const ms = glideTo([[e.panel, 0], [e.foot, 0]])
+      setAppliedH(want)
+      shrinkTimer.current = setTimeout(() => settle(e.panel, e.foot), ms + 20)
+    } else {
+      // 줄 때: 큰 레이아웃 그대로 패널을 |d| 만큼 내리고(윗변이 새 자리로) 푸터는 제자리에 붙들어 둔다.
+      const d = from - want
+      const ms = glideTo([[e.panel, d], [e.foot, -d]])
+      shrinkTimer.current = setTimeout(() => { wrap.style.height = `${want}px`; setAppliedH(want); settle(e.panel, e.foot) }, ms)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [want])
+  useEffect(() => () => { if (shrinkTimer.current) clearTimeout(shrinkTimer.current) }, [])
+  const h = appliedH
 
   return (
     <>
