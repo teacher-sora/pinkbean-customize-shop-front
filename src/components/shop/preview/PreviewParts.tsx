@@ -8,9 +8,12 @@ import type { ListItem } from '@/lib/core/data'
 import { SLOT_TO_CAT } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { DyeSprite } from '../render/DyeSprite'
+import { useInnerSlide, SWAP_MS } from '../surface/innerSlide'
+import { SurfaceFooter } from '../surface/Surface'
 import { VsPanes } from '../surface/VsBody'
 import { useVsFlip, VS_WRAP_H } from '../surface/sheetMotion'
-import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
+import { PvGroups, PvInlineFields, pvFieldOf, pvGroupsOf, usePvFields, type PvGroup } from './pvControls'
+import { PvGrid, type PvField } from './PvPicker'
 import styles from './preview.module.css'
 
 const BOOKMARK_FRAC = 0.9
@@ -151,14 +154,39 @@ export function BookmarkSheetBody() {
 }
 
 // 모바일: 연출 설정 시트 본문. 닫기는 공용 푸터가 맡는다(자체 '연출 설정 닫기' 버튼 제거, delta §6).
+// 액션 · 무기 모션 · 표정을 누르면 **시트 안에서 가로로 슬라이드**해 3열 격자 고르기 화면으로 간다
+// (부위 염색 → 염색과 같은 몸짓 — 좁은 화면에 시트 위 팝오버를 겹치지 않으려고, 2026-09-24).
+// 푸터는 고르는 중에는 '이전'이라 한 단계만 돌아온다.
 export function PvSheetBody() {
   const [group, setGroup] = useState<PvGroup>('char')
+  const [pick, setPick] = useState<PvField | null>(null)
+  const { view, go, style } = useInnerSlide<'main' | 'pick'>('main')
+  const fields = usePvFields()
+  const picked = pick ? fields.find((f) => pvFieldOf(f) === pick && f.key !== 'zoom') : undefined
+  const open = (k: PvField) => { setPick(k); go('pick', 1) }
+  const back = () => { go('main', -1); setTimeout(() => setPick(null), SWAP_MS) }
   return (
-    <div className={clsx('pb-scroll', styles.sheetBody)}>
-      <PvGroups group={group} onGroup={setGroup} mobile />
-      <div className={styles.gridM}>
-        <PvInlineFields mobile narrow={false} />
+    <>
+      <div className={clsx('pb-scroll', styles.sheetBody)} style={style}>
+        {view === 'pick' && picked ? (
+          <div className={styles.pickPage}>
+            <div className={styles.pickHead}>{picked.title}<span className={styles.pickHint}>{picked.hint}</span></div>
+            <div className={clsx('pb-scroll', 'pb-scroll-thin', styles.pickScroll)}>
+              <PvGrid field={pvFieldOf(picked)} options={picked.options} groups={pvGroupsOf(picked)} value={picked.value}
+                disabledValues={picked.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요"
+                onChange={(v) => { picked.set(v); back() }} />
+            </div>
+          </div>
+        ) : (
+          <>
+            <PvGroups group={group} onGroup={setGroup} mobile />
+            <div className={styles.gridM}>
+              <PvInlineFields mobile narrow={false} onPick={open} />
+            </div>
+          </>
+        )}
       </div>
-    </div>
+      <SurfaceFooter onBack={view === 'pick' ? back : undefined} />
+    </>
   )
 }

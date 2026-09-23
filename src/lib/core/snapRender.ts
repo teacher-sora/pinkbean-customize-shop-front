@@ -6,12 +6,14 @@ import { LRU } from './lru'
 import { applyHsb, buildOverrides, skinHsb as skinHsbFor } from './dye'
 import { effectDraws, loadImage, type EffectDraw } from './render'
 import { collectWornEffects } from './thumbEffects'
-import { animaLayers, skinDyeFamily, thumbView } from '@/lib/shopData'
+import { animaLayers, resolveAction, skinDyeFamily, thumbView, THUMB_VIEW } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 
 export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[] }
 
-export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: AnimaRace[]): Promise<SnapComposite | null> {
+// view=true 면 카드 고정 뷰 대신 **스냅샷에 담긴 연출 설정(액션·표정)** 으로 그린다.
+// 연출 설정 고르기(PvPicker)의 작은 미리보기 전용 — 프리셋·광장 카드는 종전대로 정지 서기 자세다.
+export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: AnimaRace[], view = false): Promise<SnapComposite | null> {
   // 프리셋은 "저장된 연출설정(snap.pv)"을 쓴다(형상변이·귀·무기모션·이펙트토글). 시선은 적용 안 함(왼쪽 고정).
   const spv = snap.pv ?? PV_SNAP_DEFAULT
   const te = index.base.tones.find((t) => t.tone === snap.tone) || index.base.tones[0]
@@ -29,7 +31,9 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   // 시선=왼쪽 고정(gaze='left' → flip 없음) + 저장된 귀/무기모션 반영.
   // stance=true: 무기 모션은 **자세까지** 바꾼다(두손 → stand2). 미리보기와 같은 규칙으로 맞춘다
   //   (2026-09-21 — 카드는 늘 stand1 이라 '두손'으로 둔 코디가 광장에서 다른 자세로 보였다).
-  const TV = thumbView('left', snapExpr, spv.ear, spv.weapon, true).view
+  const TV = view
+    ? { ...THUMB_VIEW, action: resolveAction(spv.action || 'basic', spv.weapon || 'basic'), expression: snapExpr || spv.expr || THUMB_VIEW.expression, ear: spv.ear || THUMB_VIEW.ear, weaponMotion: spv.weapon || THUMB_VIEW.weaponMotion }
+    : thumbView('left', snapExpr, spv.ear, spv.weapon, true).view
   // 무기 이펙트를 끄면 **무기 자신의 'effect' 레이어**도 뺀다 — 미리보기(PreviewModel)와 같은 규칙.
   //   이펙트는 ItemEff(별도 png)뿐 아니라 무기 프레임 안에 레이어로 박혀 있기도 해서(예 01703646: effect 90장),
   //   ItemEff 만 걸러서는 꺼지지 않았다(2026-09-21 사용자 제보 — 광장에 연출 설정이 반영 안 됨).
@@ -92,20 +96,20 @@ const indexId = (index: Index) => {
   if (id === undefined) { id = ++nextIndexId; indexIds.set(index, id) }
   return id
 }
-const cacheKey = (key: string, index: Index, animaRaces: AnimaRace[]) => `${key}|${indexId(index)}|${animaRaces.length}`
+const cacheKey = (key: string, index: Index, animaRaces: AnimaRace[], view?: boolean) => `${key}|${indexId(index)}|${animaRaces.length}${view ? '|v' : ''}`
 
 // 이미 합성해 둔 코디인지 **동기로** 본다 → 맞으면 줄(thumbQueue)을 서지 않고 그 자리에서 바로 그린다.
-export function composePeek(key: string, index: Index, animaRaces: AnimaRace[]): SnapComposite | null | undefined {
-  const k = cacheKey(key, index, animaRaces)
+export function composePeek(key: string, index: Index, animaRaces: AnimaRace[], view?: boolean): SnapComposite | null | undefined {
+  const k = cacheKey(key, index, animaRaces, view)
   return composeCache.has(k) ? (composeCache.get(k) ?? null) : undefined
 }
 
-export function composeSnapshotCached(key: string, snap: Snapshot, index: Index, animaRaces: AnimaRace[]): Promise<SnapComposite | null> {
-  const k = cacheKey(key, index, animaRaces)
+export function composeSnapshotCached(key: string, snap: Snapshot, index: Index, animaRaces: AnimaRace[], view?: boolean): Promise<SnapComposite | null> {
+  const k = cacheKey(key, index, animaRaces, view)
   if (composeCache.has(k)) return Promise.resolve(composeCache.get(k) ?? null)
   let p = composeFlight.get(k)
   if (!p) {
-    p = composeSnapshot(snap, index, animaRaces)
+    p = composeSnapshot(snap, index, animaRaces, view)
       .then((r) => { composeCache.set(k, r); return r })
       .finally(() => { composeFlight.delete(k) })
     composeFlight.set(k, p)

@@ -126,6 +126,18 @@ export const PV_EXPRS: Opt[] = [
   ...[...EXPRS_NAMED].sort((a, b) => a.l.localeCompare(b.l, 'ko')),
 ]
 
+// 표정 → 그 표정을 고정하는 얼굴장식 아이템 id(01012877~01012901 25종).
+// 연출 설정에서 표정을 **아이콘으로 고르기** 위한 것이다 — 아이템 그림은 투명이지만(shopData §표정 얼굴장식)
+// **아이콘은 표정마다 다른 얼굴 그림**이라 그대로 쓸 수 있다(2026-09-24 25개 아이콘 해시 전수 대조: 모두 다름).
+// '기본'과 '눈깜빡'은 짝이 되는 아이템이 없어 빠져 있다(그 두 칸은 이름만 보여 준다).
+export const PV_EXPR_ICONS: Record<string, string> = {
+  'blink/1': '01012899', 'blink/2': '01012900', stunned: '01012882', cheers: '01012885', bowing: '01012895',
+  troubled: '01012878', pain: '01012888', bewildered: '01012881', dam: '01012897', shine: '01012891',
+  angry: '01012880', chu: '01012886', love: '01012892', hot: '01012896', vomit: '01012883',
+  cry: '01012879', smile: '01012877', wink: '01012887', qBlue: '01012898', glitter: '01012889',
+  hit: '01012901', oops: '01012884', blaze: '01012890', despair: '01012893', hum: '01012894',
+}
+
 // 귀 = Character.wz 4종. 키: humanEar/ear/lefEar/highlefEar.
 export const PV_EARS: Opt[] = [
   { v: 'humanEar', l: '기본' },

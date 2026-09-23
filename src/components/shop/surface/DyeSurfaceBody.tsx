@@ -19,6 +19,7 @@ import DyeCellCanvas from '../render/DyeCellCanvas'
 import DyeModelPreview from '../render/DyeModelPreview'
 import { DyeRow, FamilyDots, Stepper, Swatch } from '../ui/controls'
 import { IconCheck, IconReset } from '../ui/Icons'
+import { useInnerSlide } from './innerSlide'
 import { SurfaceFooter } from './Surface'
 import styles from './surface.module.css'
 
@@ -27,8 +28,6 @@ const TRACK: Record<F, 'h' | 's' | 'v'> = { h: 'h', s: 's', b: 'v' }
 const RANGE: Record<F, [number, number]> = { h: [0, 359], s: [-99, 99], b: [-99, 99] }
 const NO_HSB: HsbParams = { h: 0, s: 0, b: 0, t: 0 } // 헤어·성형은 HSB 를 쓰지 않는다
 const DEF_PAL = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 }) // 코디 정보 탭과 같은 기본값
-// 본문 가로 슬라이드 — 서피스의 부위 염색 전환과 **같은 값**(ShopContext PART_SLIDE_*)이라 몸짓이 하나로 읽힌다.
-const SLIDE_PX = 34, SWAP_MS = 90, IN_MS = 110
 
 // 표시 영역 크기 측정(미리보기 캔버스 박스).
 // ⚠️ **콜백 ref** 여야 한다(2026-09-21 사용자 제보 — 염색표에 갔다 오면 미리보기가 빈 칸이 됐다).
@@ -52,24 +51,6 @@ function useBox() {
     if (typeof ResizeObserver !== 'undefined') { const ro = new ResizeObserver(m); ro.observe(el); roRef.current = ro }
   }, [])
   return { ref, box }
-}
-
-// 같은 다이얼로그 안에서 화면만 바꾸는 슬라이드(색 조절 ↔ 염색표).
-function useInnerSlide<T>(initial: T) {
-  const [view, setView] = useState<T>(initial)
-  const [slide, setSlide] = useState(0)
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
-  useEffect(() => () => { for (const t of timers.current) clearTimeout(t) }, [])
-  const go = (next: T, dir: 1 | -1) => {
-    for (const t of timers.current) clearTimeout(t)
-    setSlide(-SLIDE_PX * dir)
-    timers.current = [
-      setTimeout(() => { setView(next); setSlide(SLIDE_PX * dir) }, SWAP_MS),
-      setTimeout(() => setSlide(0), IN_MS),
-    ]
-  }
-  const style: React.CSSProperties = { transform: `translateX(${slide}px)`, opacity: slide ? 0 : 1 }
-  return { view, go, style }
 }
 
 // 배율 알약(1x·2x·3x) — 두 본문이 함께 쓴다.
