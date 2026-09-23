@@ -1,6 +1,6 @@
 // 스냅샷(착용+톤+염색+점 위치+연출설정 일부) → 합성 결과(placed·염색 override·이펙트). 렌더 캔버스와 무관한 순수 조립.
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
-import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from './assemble'
+import { assemble, getFrameLayers, isBackFrame, type AssembleInput, type PlacedLayer } from './assemble'
 import { loadMeta, loadAnima, type AnimaRace, type Index, type ItemMeta } from './data'
 import { LRU } from './lru'
 import { applyHsb, buildOverrides, skinHsb as skinHsbFor } from './dye'
@@ -34,16 +34,19 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const TV = view
     ? { ...THUMB_VIEW, action: resolveAction(spv.action || 'basic', spv.weapon || 'basic'), expression: snapExpr || spv.expr || THUMB_VIEW.expression, ear: spv.ear || THUMB_VIEW.ear, weaponMotion: spv.weapon || THUMB_VIEW.weaponMotion }
     : thumbView('left', snapExpr, spv.ear, spv.weapon, true).view
+  // 정지 프레임(0번)이 하필 뒷모습인 액션이 있다 — 두손 스윙(마무리) 0번. 미리보기와 같은 규칙으로 판단한다
+  // (안 하면 긴 헤어가 backBody 를 덮어 카드가 '머리만' 나온다 — assemble.isBackFrame 주석 참고).
+  const backFrame = isBackFrame(bodyMeta, TV)
   // 무기 이펙트를 끄면 **무기 자신의 'effect' 레이어**도 뺀다 — 미리보기(PreviewModel)와 같은 규칙.
   //   이펙트는 ItemEff(별도 png)뿐 아니라 무기 프레임 안에 레이어로 박혀 있기도 해서(예 01703646: effect 90장),
   //   ItemEff 만 걸러서는 꺼지지 않았다(2026-09-21 사용자 제보 — 광장에 연출 설정이 반영 안 됨).
   const wornLayers = (slot: string, meta: ItemMeta) => {
-    const ls = getFrameLayers(meta, TV)
+    const ls = getFrameLayers(meta, TV, 0, backFrame)
     return slot === 'weapon' && !spv.wEffect ? ls.filter((l) => l.name !== 'effect') : ls
   }
   const items: AssembleInput[] = [
     { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, TV) },
-    { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, TV) },
+    { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, TV, 0, backFrame) },
     // name 은 투명 아이템 판별에 쓰인다 — 없으면 투명 모자/장식이 헤어·얼굴을 가려 구멍이 생긴다.
     ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: wornLayers(slot, meta), invisibleFace: meta.invisibleFace, name: meta.name, dotOffsets: snap.dotPos?.[meta.id] })),
     ...animaLayers(spv.form, animaRaces), // 형상변이 — 프리셋에 저장된 값
@@ -54,11 +57,11 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const off = snap.dyeOff || {}
   const onlyOn = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
   const snapPal = onlyOn(snap.dyePalette), snapHsb = onlyOn(snap.dyeHsb)
-  const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snapPal, hsb: snapHsb }, TV)
+  const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snapPal, hsb: snapHsb }, TV, false, backFrame)
   const skinHsb = snapHsb['skin']
   const skinFam = skinDyeFamily(te.name)
   if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && skinFam != null) {
-    for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, TV)) {
+    for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, TV, 0, backFrame)) {
       try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinHsbFor(skinHsb, skinFam), l.png)) } catch (_) {}
     }
   }

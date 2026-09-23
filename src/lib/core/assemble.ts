@@ -72,12 +72,32 @@ function normFrames(v: any): Frame[] {
   return v[0].layers ? (v as Frame[]) : [{ delay: 120, layers: v as Layer[] }]
 }
 
+// ── 뒷모습은 액션 단위가 아니라 **프레임 단위**도 있다 ──(2026-09-24 사용자 제보
+// "두손 스윙 마무리에 몸이 사라지는 프레임이 있다")
+// 두손 스윙(마무리) 0번과 한손 스윙(마무리) 1번은 한 프레임만 뒤를 보는 포즈다. 근거(실측):
+//  · 베이스 몸의 그 프레임 z 가 `backBody`(zmap 140) — 사다리·밧줄 프레임과 **같은** 값이다.
+//  · 한벌옷(금단의 계약)도 그 프레임만 `mail` 이 `backPants` — 역시 사다리·밧줄과 같다.
+//    원본 데이터가 "이 프레임은 뒷모습"이라고 말하고 있는 셈이다.
+// 그런데 머리·헤어는 **액션 이름만** 보고 앞모습 프레임을 썼다 → 긴 헤어의 `hairBelowBody`(103)가
+// `backBody`(140)보다 앞이라 **몸·다리·옷이 통째로 가려져** 머리만 떠 있었다.
+// 사다리·밧줄은 액션 전체가 뒷모습이라 BACK_ACTIONS 로 이미 처리되고 있었고, 이 두 프레임만 빠져 있었다.
+// 판단은 **베이스 몸의 그 프레임 z** 하나로만 한다 — 액션 이름 목록을 따로 두면 패치로 액션이 늘 때 또 빠진다.
+const isBackBody = (fr: Frame | undefined) => !!fr?.layers.some((l) => l.name === 'body' && l.z.startsWith('back'))
+export function isBackFrame(bodyMeta: ItemMeta, opts: ViewOpts, i = 0): boolean {
+  const seq = getFrameSeq(bodyMeta, opts)
+  return isBackBody(seq[Math.min(i, seq.length - 1)])
+}
+// 이 뷰의 프레임 중 **하나라도** 뒷모습이면 true. 염색 override 를 만들 때 쓴다 — 그 프레임에서만 쓰이는
+// '뒷' 스프라이트까지 미리 칠해 둬야 한 프레임만 원본색으로 번쩍이지 않는다.
+export const hasBackFrame = (bodyMeta: ItemMeta, opts: ViewOpts): boolean => getFrameSeq(bodyMeta, opts).some(isBackBody)
+
 // Resolve the animation frame SEQUENCE for one item in the current view (key selection +
 // head ear-filter + face/back hide). Returns [] when the item shows nothing (e.g. face on back).
-export function getFrameSeq(meta: ItemMeta, opts: ViewOpts): Frame[] {
+// backFrame: 이 프레임만 뒷모습(isBackFrame) — 액션 이름은 앞모습이어도 뒤로 취급한다.
+export function getFrameSeq(meta: ItemMeta, opts: ViewOpts, backFrame = false): Frame[] {
   const f = meta.frames as Record<string, any>
   const keys = Object.keys(f)
-  const back = BACK_ACTIONS.has(opts.action)
+  const back = BACK_ACTIONS.has(opts.action) || backFrame
   // Weapon: pick the stance for 무기모션, then the action within it, with graceful fallback.
   if (meta.slot === 'weapon' && meta.stances?.length) {
     const s = pickWeaponStance(meta.stances, opts.weaponMotion)
@@ -138,8 +158,8 @@ function fillMissingMap(meta: ItemMeta, layers: Layer[]): Layer[] {
   })
 }
 
-export function getFrameLayers(meta: ItemMeta, opts: ViewOpts, i = 0): Layer[] {
-  const seq = getFrameSeq(meta, opts)
+export function getFrameLayers(meta: ItemMeta, opts: ViewOpts, i = 0, backFrame = false): Layer[] {
+  const seq = getFrameSeq(meta, opts, backFrame)
   if (!seq.length) return []
   return fillMissingMap(meta, seq[Math.min(i, seq.length - 1)].layers)
 }

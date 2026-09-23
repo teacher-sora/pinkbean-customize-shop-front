@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
-import { assemble, frameDelays, getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
+import { assemble, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, buildOverrides, skinHsb as skinHsb2 } from '@/lib/core/dye'
 import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
@@ -151,10 +151,13 @@ export default function PreviewModel() {
     // 형상변이(정적 파츠) — 프레임 공통. 공용 헬퍼(리스트 카드와 동일 로직).
     const animaParts = animaLayers(pv.form, animaRaces)
     const frames = Array.from({ length: N }, (_, fi) => {
+      // 이 프레임만 뒷모습인가(두손/한손 스윙 마무리) — 맞으면 머리·헤어도 뒷프레임을 쓰고 얼굴은 숨긴다.
+      // (사다리·밧줄은 액션 자체가 뒷모습이라 이 판단 없이도 같은 결과가 나온다.)
+      const backFrame = isBackFrame(bodyMeta, charV, fi)
       const items: AssembleInput[] = [
         // 몸통/머리/코스튬은 charV(앉는 액션이면 sit, 아니면 선택 액션). 탈것만 V(자기 액션으로 애니메이션).
         { itemId: bodyId, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, charV, fi) },
-        { itemId: headId, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, charV, fi) },
+        { itemId: headId, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, charV, fi, backFrame) },
       ]
       for (const [slot, it] of Object.entries(equipped)) {
         if (!it || hidden[slot]) continue
@@ -162,7 +165,8 @@ export default function PreviewModel() {
         if (seated && slot === 'weapon') continue  // 앉은 채(기본/서기/걷기)에선 무기 미출력
         const m = metas.get(it.id); if (!m) continue
         const itemV = slot === 'riding' ? jagV : charV // 탈것은 자기(매핑된) 액션, 나머지는 캐릭터 포즈(sit/선택)를 따른다
-        let layers = getFrameLayers(m, itemV, fi)
+        // 탈것(riding)은 자기 액션을 도는 별도 모델이라 캐릭터의 뒷프레임 판단을 붙이지 않는다.
+        let layers = getFrameLayers(m, itemV, fi, slot === 'riding' ? false : backFrame)
         if (slot === 'weapon' && !pv.wEffect) layers = layers.filter((l) => l.name !== 'effect')
         items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace, name: m.name, dotOffsets: dotPos[m.id] })
       }
@@ -231,10 +235,12 @@ export default function PreviewModel() {
     const dyeBackOk = pv.gaze !== 'back' || !!dyeRidingIt?.ridingBackSit
     const dyeSeated = !!dyeRidingIt && !hidden['riding'] && dyeBackOk && dyeSeatedSet.has(pv.action)
     const dyeV = dyeSeated ? { ...V, action: 'sit' } : V
+    // 이 액션에 뒷모습 프레임이 섞여 있으면(두손/한손 스윙 마무리) 그 프레임의 '뒷' 스프라이트도 칠한다.
+    const dyeBack = !!bodyMeta && hasBackFrame(bodyMeta, dyeV)
     // ⚠️ 1단계는 반드시 allFrames=false — 보이는 프레임만 칠해 즉시 반영한다(기존과 동일한 비용/체감속도).
     //    전 프레임은 아래 2단계에서 백그라운드로 이어 칠한다. 여기서 전 프레임을 칠하면 장착/드래그가 눈에 띄게 느려진다.
     // 실패해도 키는 반드시 갱신돼야 미리보기가 보류 상태로 멈추지 않는다 → 1단계는 예외를 삼킨다.
-    const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, false).catch(() => new Map<string, HTMLCanvasElement>())
+    const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, false, dyeBack).catch(() => new Map<string, HTMLCanvasElement>())
     // 이펙트/피부 프레임 염색을 override(ov)에 추가. allFrames=false 면 프레임0만, true 면 전 프레임.
     // ⚠️ 프레임 png 는 반드시 "병렬 로드"(Promise.all)로 받는다 — 순차 fetch(프레임마다 await)면 큰 이펙트(망토)
     //    처럼 프레임이 많을 때 fetch 가 줄줄이 늘어져 매우 느리고 점멸한다. 병렬로 한 번에 받아 즉시 리컬러.
@@ -268,6 +274,8 @@ export default function PreviewModel() {
           for (let fi = 0; fi < nf; fi++) {
             for (const l of getFrameLayers(meta, dyeV, fi)) { if (!seen.has(l.png)) { seen.add(l.png); pngs.push(l.png) } }
           }
+          // 뒷모습 프레임이 섞인 액션이면 뒷머리 png 도 함께(안 그러면 그 프레임만 피부 라인이 원본색).
+          if (dyeBack) for (const l of getFrameLayers(meta, dyeV, 0, true)) { if (!seen.has(l.png)) { seen.add(l.png); pngs.push(l.png) } }
         }
         const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
@@ -291,7 +299,7 @@ export default function PreviewModel() {
       if (willDyeFrames) setDyeSettling(true)
       // 아이템(착용 장비)의 나머지 프레임을 여기서 이어 칠한다 — 이게 없으면 액션 애니메이션 2번째 프레임부터
       // override 가 없어 염색이 풀린 원본색으로 보였다(이펙트/피부는 dyeExtras 가 이미 전 프레임을 칠하고 있었다).
-      const full = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, true)
+      const full = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, true, dyeBack)
       for (const [k, v] of full) ov.set(k, v)
       await dyeExtras(true)
       setDyeOverrides(new Map(ov))
