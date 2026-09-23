@@ -212,6 +212,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
   )
   // 테두리(순수 검정) 포함 — 염색 다이얼로그와 같은 값(dyeHsb.edge)을 여기서도 켜고 끈다.
   // 검정은 채도가 0이라 색조·채도는 수학적으로 무효고 **명도로만 회색으로** 밝아진다(lib/core/dye).
+  // ⚠️ **커스텀 피부는 제외**한다(2026-09-23 사용자 지시 — 피부에는 이 테두리가 있어선 안 된다).
   const edgeOn = !!s.dyeHsb[target]?.edge
   const edgeBtn = (
     <button type="button" aria-pressed={edgeOn}
@@ -294,7 +295,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
                 ))}
                 <div className={styles.acts}>
                   {isDot && <button type="button" onClick={() => s.openDot(it)} title="점 위치 조절" className={clsx('pb-ghost', styles.btn)}>점 위치</button>}
-                  {edgeBtn}
+                  {!isSkin && edgeBtn}
                   {offBtn}
                   <button type="button" onClick={resetDye} title="이 아이템 염색 초기화" className={clsx('pb-ghost', styles.btn)}>수치 초기화</button>
                 </div>

@@ -156,7 +156,9 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
 // 피부 음영까지 색조·채도가 돌아 회색(238,238,238)으로 뭉개진다(2026-09-17 사용자 제보: 인게임은 라인만 바뀜).
 // → 계열을 고르지 않았으면 그 피부의 **포인트 색 계열**로 적용한다(shopData.skinDyeFamily 가 실측으로 정한다).
 //   컬러라인·비비드·블루 팬더는 파랑, 좀비는 청록, 삼색 냥이는 노랑. 계열을 직접 고르면 그대로 쓴다.
-export const skinHsb = (h: HsbParams, family = 5): HsbParams => (h.t ? h : { ...h, t: family })
+// ⚠️ 커스텀 피부는 **테두리 포함을 쓰지 않는다**(2026-09-23 사용자 지시 — "커스텀 피부 시리즈에 이런 테두리가 있어선 안 돼").
+// 버튼을 감추는 것만으로는 예전에 저장된 값이 남아 그려질 수 있어, 피부로 가는 유일한 길목인 여기서 끈다.
+export const skinHsb = (h: HsbParams, family = 5): HsbParams => ({ ...h, t: h.t ? h.t : family, edge: false })
 
 // Blend base sprite toward mix sprite by ratio% (per-pixel lerp on RGB; alpha from base).
 export function blendPalette(base: HTMLImageElement, mix: HTMLImageElement, ratio: number, key: string): HTMLCanvasElement {
