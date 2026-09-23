@@ -162,7 +162,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
         className={big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn)}>염색표 보기</button>
       <button type="button" onClick={() => setOff((v) => !v)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
         className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), styles.tickBtn, off && styles.offOn)}>
-        <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>염색 비활성화
+        <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>비활성화
       </button>
       {big
         ? <button type="button" onClick={reset} title="염색 초기화" aria-label="염색 초기화" className={styles.resetIcon}><IconReset />초기화</button>
@@ -269,7 +269,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   const offBtn = (big: boolean) => (
     <button type="button" onClick={() => setOff((v) => !v)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
       className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), styles.tickBtn, off && styles.offOn)}>
-      <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>염색 비활성화
+      <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>비활성화
     </button>
   )
   const families = <FamilyDots size="lgMin" value={hsb.t ?? 0} onPick={(t) => setHsb((h) => ({ ...h, t }))} />

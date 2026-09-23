@@ -209,7 +209,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
   const offBtn = (
     <button type="button" onClick={() => s.toggleDyeOff(target)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
       className={clsx('pb-ghost', styles.btn, styles.tickBtn, off && styles.btnOn)}>
-      <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>염색 비활성화
+      <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>비활성화
     </button>
   )
   // 테두리(순수 검정) 포함 — 염색 다이얼로그와 같은 값(dyeHsb.edge)을 여기서도 켜고 끈다.

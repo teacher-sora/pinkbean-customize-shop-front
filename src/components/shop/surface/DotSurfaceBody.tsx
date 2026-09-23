@@ -97,7 +97,7 @@ export default function DotSurfaceBody({ item, mobile }: { item: ListItem; mobil
             </button>
             <button type="button" onClick={() => setOff((v) => !v)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
               className={clsx(styles.resetBtn, styles.tickBtn, off && styles.offOn)}>
-              <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>염색 비활성화
+              <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>비활성화
             </button>
             <button type="button" onClick={ed.resetHsb} title="염색 초기화" className={styles.resetBtn}>염색 초기화</button>
           </div>
