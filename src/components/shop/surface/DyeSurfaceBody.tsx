@@ -161,7 +161,9 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
       <button type="button" onClick={() => go('table', 1)} title="염색표에서 두 색 고르기"
         className={big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn)}>염색표 보기</button>
       <button type="button" onClick={() => setOff((v) => !v)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
-        className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), off && styles.offOn)}>염색 비활성화</button>
+        className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), styles.tickBtn, off && styles.offOn)}>
+        <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>염색 비활성화
+      </button>
       {big
         ? <button type="button" onClick={reset} title="염색 초기화" aria-label="염색 초기화" className={styles.resetIcon}><IconReset />초기화</button>
         : <button type="button" onClick={reset} className={clsx('pb-ghost', styles.resetBtn)}>염색 초기화</button>}
@@ -263,9 +265,12 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
     )
   })
   const pvHsb = off ? { h: 0, s: 0, b: 0, t: hsb.t ?? 0 } : hsb
+  // '테두리 포함'과 같은 체크 네모를 단다 — 켜짐/꺼짐이 한눈에 읽히도록(2026-09-23 사용자 지시).
   const offBtn = (big: boolean) => (
     <button type="button" onClick={() => setOff((v) => !v)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
-      className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), off && styles.offOn)}>염색 비활성화</button>
+      className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), styles.tickBtn, off && styles.offOn)}>
+      <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>염색 비활성화
+    </button>
   )
   const families = <FamilyDots size="lgMin" value={hsb.t ?? 0} onPick={(t) => setHsb((h) => ({ ...h, t }))} />
   // 테두리(순수 검정) 포함 — 명도로만, 회색으로만 바뀐다(lib/core/dye 설명). 그래서 명도가 0 이하면 눌러도
