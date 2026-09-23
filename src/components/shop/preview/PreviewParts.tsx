@@ -165,9 +165,36 @@ export function PvSheetBody() {
   const picked = pick ? fields.find((f) => pvFieldOf(f) === pick && f.key !== 'zoom') : undefined
   const open = (k: PvField) => { setPick(k); go('pick', 1) }
   const back = () => { go('main', -1); setTimeout(() => setPick(null), SWAP_MS) }
+
+  // 시트 높이도 **전환**으로 바뀐다(2026-09-24 사용자 지시 — 화면이 바뀔 때 높이가 툭 뛰었다).
+  //  · 설정 화면 = 내용 높이를 재서 그대로(내용이 바뀌면 ResizeObserver 가 다시 잰다).
+  //  · 고르기 화면 = 화면의 62%(최대 460px) — 격자는 그 안에서 스크롤한다.
+  //  CSS transition 이라 도중에 다시 눌러도 지금 높이에서 새 목표로 이어 간다.
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [mainH, setMainH] = useState<number | null>(null)
+  useEffect(() => {
+    const el = innerRef.current
+    if (!el || view !== 'main') return
+    const m = () => { const h = el.scrollHeight; if (h) setMainH((p) => (p === h ? p : h)) }
+    m()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
+    ro?.observe(el)
+    return () => ro?.disconnect()
+  }, [view, group])
+  const [pickH, setPickH] = useState(420)
+  useEffect(() => {
+    if (view !== 'pick') return
+    const m = () => setPickH(Math.round(Math.min(460, window.innerHeight * 0.62)))
+    m()
+    window.addEventListener('resize', m)
+    return () => window.removeEventListener('resize', m)
+  }, [view])
+  const h = view === 'pick' ? pickH : mainH
+
   return (
     <>
-      <div className={clsx('pb-scroll', styles.sheetBody)} style={style}>
+      <div className={styles.sheetWrap} style={h ? { height: h } : undefined}>
+      <div ref={innerRef} className={clsx('pb-scroll', styles.sheetBody, styles.sheetSlide)} style={style}>
         {view === 'pick' && picked ? (
           <div className={styles.pickPage}>
             <div className={styles.pickHead}>{picked.title}<span className={styles.pickHint}>{picked.hint}</span></div>
@@ -185,6 +212,7 @@ export function PvSheetBody() {
             </div>
           </>
         )}
+      </div>
       </div>
       <SurfaceFooter onBack={view === 'pick' ? back : undefined} />
     </>

@@ -9,8 +9,8 @@
 //    것보다 훨씬 가볍고 작게 봐도 표정이 또렷하다. 짝이 없는 '기본'·'눈깜빡'은 이름만 보여 준다.
 //
 // 펼치는 방식은 폭에 따라 다르다.
-//  · PC·태블릿 = **미리보기 위에 깔리는 작은 다이얼로그**(3열 × 2줄 + 다음 줄 살짝 — 스크롤이 있다는 신호).
-//    버튼에 매달리지 않고 미리보기 영역 한가운데 뜬다 → 좁은 폭에서도 미리보기 밖으로 비어져 나가지 않는다.
+//  · PC·태블릿 = **미리보기 아래쪽에서 올라오는 작은 다이얼로그**. 버튼에 매달리지 않고 미리보기 영역(가로 가득,
+//    아래 붙음)에 자리 잡아 밖으로 비어져 나가지 않는다. 뜨고 질 때 같은 곡선으로 살짝 올라오고 내려간다.
 //  · 모바일 = 시트를 **가로로 슬라이드**해 시트 안의 다음 화면으로 간다(부위 염색 → 염색과 같은 몸짓, PvSheetBody).
 //    좁은 화면에서 시트 위에 팝오버를 또 띄우면 층이 겹쳐 보여, 이미 쓰고 있는 전환을 그대로 쓴다.
 
@@ -24,13 +24,12 @@ import SnapThumb from '../SnapThumb'
 import ui from '../ui/ui.module.css'
 import styles from './preview.module.css'
 
-type Pos = { cx: number; cy: number; w: number; maxH: number }
+type Pos = { left: number; bottom: number; w: number; maxH: number }
 type Group = { group: string; items: Opt[] }
 
-const PANEL_W = 292   // 3열 × 88px + 간격 6 × 2 + 패딩 8 × 2
 const PANEL_H = 250   // 3열 × 2줄 + 다음 줄 살짝(스크롤이 있다는 신호)
 const INSET = 10      // 미리보기 안쪽 여백 — 이만큼은 늘 미리보기 테두리와 떨어진다
-const OUT_MS = 160    // 닫힘 전환이 끝난 뒤 떼어낸다(등장 .2s · 퇴장 .16s — 양방향 대칭)
+const OUT_MS = 180    // 닫힘 전환이 끝난 뒤 떼어낸다(등장 .22s · 퇴장 .18s — 양방향 대칭)
 
 export type PvField = 'action' | 'weapon' | 'expr'
 type GridProps = {
@@ -134,17 +133,17 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => setPos(null), OUT_MS)
   }
-  // 버튼에 매달린 '팝 박스'가 아니라 **미리보기 위에 깔리는 작은 다이얼로그**다(2026-09-24 사용자 지시).
-  // 자리는 미리보기 영역(data-pv-stage) 한가운데 — 좁은 폭에서도 미리보기 밖으로 비어져 나가지 않는다.
+  // 버튼에 매달린 '팝 박스'가 아니라 **미리보기 아래쪽에서 올라오는 작은 다이얼로그**다(2026-09-24 사용자 지시).
+  // 자리는 미리보기 영역(data-pv-stage) 안쪽 아래 — 가로로 가득 차고, 밖으로 비어져 나가지 않는다.
   const toggle = () => {
     if (onOpenPage) { onOpenPage(); return }
     if (open) { close(); return }
     if (timer.current) clearTimeout(timer.current)
     const stage = document.querySelector('[data-pv-stage]')?.getBoundingClientRect()
-    const box = stage ?? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
-    const w = Math.max(200, Math.min(PANEL_W, Math.round(box.width) - INSET * 2))
+    const box = stage ?? { left: 0, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight }
+    const w = Math.max(200, Math.round(box.width) - INSET * 2)
     const maxH = Math.max(150, Math.min(PANEL_H, Math.round(box.height) - INSET * 2))
-    setPos({ cx: Math.round(box.left + box.width / 2), cy: Math.round(box.top + box.height / 2), w, maxH })
+    setPos({ left: Math.round(box.left) + INSET, bottom: Math.round(window.innerHeight - box.bottom) + INSET, w, maxH })
   }
   // 등장 전환이 보이도록 마운트 후 한 프레임 뒤에 켠다.
   useEffect(() => {
@@ -184,7 +183,7 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
       </button>
       {open && typeof document !== 'undefined' && createPortal(
         <div ref={panelRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-scroll-thin', styles.pvPanel, shown && styles.pvPanelOn)}
-          style={{ left: pos!.cx, top: pos!.cy, width: pos!.w, maxHeight: pos!.maxH }}>
+          style={{ left: pos!.left, bottom: pos!.bottom, width: pos!.w, maxHeight: pos!.maxH }}>
           <PvGrid field={field} options={options} groups={groups} value={value} disabledValues={disabledValues} disabledTitle={disabledTitle}
             onChange={(v) => { onChange(v); close() }} />
         </div>,

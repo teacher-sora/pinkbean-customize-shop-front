@@ -110,10 +110,10 @@
 
 /* ── 연출 설정 고르기(PvPicker): 3열 격자 + 작은 미리보기 ─────────────────────
    버튼 위치를 재서 fixed 로 띄운다(Dropdown 과 같은 규칙). 폭은 3열 고정이라 버튼보다 넓다. */
-/* 미리보기 한가운데에 깔리는 작은 다이얼로그. 등장·퇴장 같은 곡선으로 짧게(.2s / .16s). */
+/* 미리보기 아래쪽에서 올라오는 작은 다이얼로그. 등장·퇴장 같은 곡선으로 짧게(.22s / .18s). */
 .pvPanel { position: fixed; z-index: 120; padding: 8px; border: 1px solid #f0dde7; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(42,37,33,.12); overflow: hidden auto; overscroll-behavior: contain;
-  transform: translate(-50%, -50%) scale(.97); opacity: 0; transition: opacity .16s ease, transform .16s cubic-bezier(.45,0,.55,1); }
-.pvPanelOn { transform: translate(-50%, -50%) scale(1); opacity: 1; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); }
+  transform: translateY(16px); opacity: 0; transition: opacity .18s ease, transform .18s cubic-bezier(.45,0,.55,1); }
+.pvPanelOn { transform: translateY(0); opacity: 1; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
 .pvGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 /* 그룹(액션 3묶음)은 격자 흐름을 끊지 않게 contents 로 편다 — 제목만 한 줄 차지한다. */
 .pvGroup { display: contents; }
@@ -134,6 +134,12 @@
   .pvCell:hover { border-color: #ec86ac; }
   .pvCellOff:hover { border-color: #eee6dc; }
 }
+
+/* 모바일 시트: 화면(설정 ↔ 고르기)이 바뀌면 **높이도 전환**한다. 창(overflow hidden) 안에서 내용이 가로로 미끄러지고,
+   창의 높이만 같은 곡선으로 늘었다 줄었다 한다 — 전환 도중에 다시 눌러도 지금 높이에서 이어 간다. */
+.sheetWrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; transition: height .26s cubic-bezier(.45,0,.55,1); }
+/* 내용 가로 슬라이드 + 페이드(염색 다이얼로그의 innerSlide 와 같은 값). */
+.sheetSlide { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
 
 /* 모바일 시트 안 '고르기' 화면(액션 · 무기 모션 · 표정) — 시트 본문을 가득 채우고 격자만 스크롤한다. */
 .pickPage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
