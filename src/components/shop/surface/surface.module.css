@@ -54,7 +54,7 @@
 .hr { flex: 0 0 auto; height: 1px; background: #f2ebe3; }
 .rows { display: flex; flex-direction: column; gap: 10px; }
 .rowsCol { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.resetRow { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: 6px; }
+.resetRow { flex: 0 0 auto; display: flex; justify-content: space-between; gap: 6px; }
 .resetBtn { height: 30px; padding: 0 10px; white-space: nowrap; border: 1px solid #e7ded4; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; cursor: pointer; }
 .hsvM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
 .topM { flex: 1 1 auto; min-height: 150px; display: flex; align-items: stretch; gap: 10px; }
