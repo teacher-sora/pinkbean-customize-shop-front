@@ -291,14 +291,17 @@ export async function renderDyedSprite(
 // ⚠️ 예전엔 getFrameLayers(meta, view) 만 불러 i 가 기본값 0 이었다 → 프레임 0 의 png 만 override 에 들어가고,
 // 액션 애니메이션의 2번째 프레임부터는 png 가 달라 override 가 없어 원본색으로 그려졌다(염색이 풀려 보임).
 // 이펙트/피부는 PreviewModel 이 따로 전 프레임을 칠하고 있어 멀쩡했던 것 — 아이템만 빠져 있었다.
-function viewLayers(meta: ItemMeta, view: ViewOpts, allFrames: boolean): Layer[] {
-  if (!allFrames) return getFrameLayers(meta, view)
+// backFrame: 이 뷰에 **한 프레임만 뒷모습**인 게 섞여 있다(두손/한손 스윙 마무리 — assemble.isBackFrame).
+// 그 프레임에선 머리 부착물이 '뒷' 스프라이트로 바뀌므로 그 png 도 함께 칠해 둬야 그 프레임에서만
+// 염색이 풀려 보이지 않는다. 뒷 프레임이 없는 아이템은 빈 배열이라 비용이 없다.
+function viewLayers(meta: ItemMeta, view: ViewOpts, allFrames: boolean, backFrame = false): Layer[] {
+  if (!allFrames && !backFrame) return getFrameLayers(meta, view)
   const seen = new Set<string>()
   const out: Layer[] = []
-  const n = Math.max(1, frameCount(meta, view))
-  for (let i = 0; i < n; i++) {
-    for (const l of getFrameLayers(meta, view, i)) { if (!seen.has(l.png)) { seen.add(l.png); out.push(l) } }
-  }
+  const push = (ls: Layer[]) => { for (const l of ls) if (!seen.has(l.png)) { seen.add(l.png); out.push(l) } }
+  const n = allFrames ? Math.max(1, frameCount(meta, view)) : 1
+  for (let i = 0; i < n; i++) push(getFrameLayers(meta, view, i))
+  if (backFrame) push(getFrameLayers(meta, view, 0, true))
   return out
 }
 
@@ -311,11 +314,13 @@ export async function buildOverrides(
   // 그런데 stand1 도 프레임이 여러 개(호흡)라, 기본을 true 로 두면 한 화면 18장 카드가 쓰지도 않을
   // 프레임까지 전부 리컬러하게 된다 → 순수 낭비. 전 프레임이 정말 필요한 곳(PreviewModel 2단계)만 true 를 넘긴다.
   allFrames = false,
+  // 이 뷰에 뒷모습 프레임이 섞여 있으면 true — 그 프레임의 '뒷' 스프라이트도 함께 칠한다(viewLayers 주석).
+  backFrame = false,
 ): Promise<Map<string, HTMLCanvasElement>> {
   const out = new Map<string, HTMLCanvasElement>()
   // 아이템(meta) 간에도 병렬 처리 → 여러 팔레트/HSB 아이템이 서로를 기다리지 않는다.
   await Promise.all(metas.map(async (meta) => {
-    const layers = viewLayers(meta, view, allFrames)
+    const layers = viewLayers(meta, view, allFrames, backFrame)
     if (meta.dyeMode === 'palette') {
       const p = dye.palette[meta.slot]
       if (!p || meta.colorGroup == null) return
