@@ -4,6 +4,7 @@
 // 홈(/)은 정적 페이지로 남기기 위해 동적 메타를 여기로 분리했다.
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+import { permanentRedirect } from 'next/navigation'
 import { inflateRawSync } from 'zlib'
 import ShopHome from '@/components/ShopHome'
 import { r2, r2Configured } from '@/lib/server/r2'
@@ -72,6 +73,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   }
 }
 
-export default function SharePage() {
+// `/share` 는 middleware 가 `/?c=…` 를 넘겨줄 때만 쓰는 **내부 경로**다. 코드 없이 직접 열면
+// 홈과 똑같은 내용을 noindex 로 한 벌 더 내보내는 꼴이라(실측 2026-09-24: 200 + `noindex, follow`),
+// 구글이 이 주소를 주우면 "NOINDEX 태그에 의해 제외됨"으로 잡힌다. 코드가 없으면 홈으로 보낸다.
+// (rewrite 로 들어온 요청은 `c` 를 그대로 들고 오므로 카톡 카드 경로는 영향이 없다.)
+export default function SharePage({ searchParams }: Props) {
+  if (!one(searchParams.c)) permanentRedirect('/') // 308 — 공개 주소가 아니다
   return <ShopHome />
 }
