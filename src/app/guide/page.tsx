@@ -4,8 +4,8 @@ import { SEO_PAGES } from '@/lib/seoPages'
 // /guide — 콘텐츠 페이지 인덱스(크롤러 허브). 앱 UI 에서 링크하지 않고 sitemap 에만 게재한다.
 export const metadata: Metadata = {
   title: '메이플 커마·코디 가이드 — 핑크빈 커마샵',
-  description: '메이플 커마, 메이플 코디, 메이플스토리 드레스룸 등 캐릭터 외형 미리보기 관련 가이드 모음.',
-  keywords: ['메이플 커마', '메이플 코디', '메이플스토리', '커마샵 가이드'],
+  description: '메이플 커마, 메이플 코디, 메이플스토리 드레스룸 등 캐릭터 외형 미리보기 관련 가이드 모음. 웹에서 무료로 커마·코디를 미리 맞춰 보는 방법을 안내합니다.',
+  keywords: ['메이플 커마', '메이플 코디', '메이플스토리', '커마샵 가이드', '메이플 외형 미리보기'],
   alternates: { canonical: '/guide' },
 }
 

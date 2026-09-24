@@ -3,9 +3,8 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 import NoNativeZoom from './NoNativeZoom'
+import { SITE_URL } from '@/lib/siteUrl'
 
-// 배포 도메인(Vercel 연결 예정). 다른 도메인/프리뷰면 NEXT_PUBLIC_SITE_URL 로 덮어씀.
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pinkbean-customize.com'
 const SITE_NAME = '핑크빈 커마샵'
 const TITLE = '핑크빈 커마샵'
 // 사이트/OG 설명 — 네이버 검색 노출용으로 80자 이내. 웹 코디 + AI 코디 검색을 알리고 키워드(메이플 커마·코디)를 자연스럽게 포함.

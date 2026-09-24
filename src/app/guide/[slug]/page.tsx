@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { SEO_PAGES, getSeoPage, seoSlugs } from '@/lib/seoPages'
+import { SITE_URL } from '@/lib/siteUrl'
 
 // SEO/AEO 콘텐츠 페이지. 앱 UI 에서 링크하지 않고 sitemap 에만 게재 → 크롤러 전용 진입점.
 // 정적 생성(SSG): 빌드 시 모든 slug 를 프리렌더한다.
@@ -8,8 +9,6 @@ export const dynamicParams = false
 export function generateStaticParams() {
   return seoSlugs().map((slug) => ({ slug }))
 }
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pinkbean-customize.com'
 
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const p = getSeoPage(params.slug)
