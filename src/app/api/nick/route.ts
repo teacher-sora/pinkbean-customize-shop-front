@@ -114,7 +114,7 @@ function mergeItems(data: Cash, prefix: string, presetNo: number) {
 
 // 일반(비캐시) 장비 = 넥슨 item-equipment. 코디는 캐시뿐 아니라 일반 아이템도 취급하므로(예: 일반 한벌옷
 // '클래식 백금슈트'), 아바타에 보이는 일반 장비도 함께 넘겨 캐시 아이템의 "베이스 레이어"로 쓴다.
-interface NexonRegItem { item_equipment_part?: string; item_equipment_slot?: string; item_name?: string }
+interface NexonRegItem { item_equipment_part?: string; item_equipment_slot?: string; item_name?: string; item_shape_name?: string | null }
 type LookItem = ReturnType<typeof mergeItems>[number]
 // 일반 장비는 두 이름이 서로 다른 뜻이다(2026-09-23 실측 — 사용자 제보 "칼리의 옷이 안 불러와진다").
 //   item_equipment_part = 아이템 분류(한벌옷 · 차크람 · 헥스시커)
@@ -129,8 +129,13 @@ function regularVisible(idata: Cash | null): LookItem[] {
   for (const it of arr) {
     const p = it.item_equipment_part || '', s = it.item_equipment_slot || ''
     const part = WEAR_PARTS.has(p) ? p : (s || p)
-    if (!part || !it.item_name) continue // 파트명(한벌옷/상의/무기 등)은 프론트 NEXON_PART_SLOT 이 화이트리스트로 걸러낸다
-    out.push({ part, slot: part, name: it.item_name, gender: null, prism: null, customOrigin: null })
+    // 모루(외형 덮어쓰기)를 쓴 장비는 **보이는 게 `item_shape_name`** 이다(2026-09-24 사용자 제보 —
+    // '소라사키히나'의 모자가 에테르넬 나이트헬름으로 불러와졌지만 게임에선 브옐 데빌스 혼으로 보인다).
+    // 실측(그 캐릭터 장비 25종): 모루를 안 쓴 장비는 shape 가 이름과 **같게** 오고, 모루를 쓴 모자만 달랐다.
+    // 우리는 외형만 그리므로 shape 를 먼저 쓴다. 부위(part)는 모루가 같은 분류끼리만 되므로 그대로 둔다.
+    const name = it.item_shape_name || it.item_name
+    if (!part || !name) continue // 파트명(한벌옷/상의/무기 등)은 프론트 NEXON_PART_SLOT 이 화이트리스트로 걸러낸다
+    out.push({ part, slot: part, name, gender: null, prism: null, customOrigin: null })
   }
   return out
 }
