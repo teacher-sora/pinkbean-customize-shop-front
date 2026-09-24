@@ -276,9 +276,6 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
           <button type="button" tabIndex={imageUrl ? 0 : -1} onClick={() => fileRef.current?.click()} className={styles.upRefBtn}>변경</button>
           <button type="button" tabIndex={imageUrl ? 0 : -1} onClick={clearImage} className={clsx(styles.upRefBtn, styles.upRefDel)}>제거</button>
         </div>
-        {/* 대회는 원본 그림이 있어야 무엇을 따라 한 코디인지 알 수 있다(2026-09-24 광장 댓글 — "기존 캐릭터도
-            같이 띄워주세요 / 안 하는 사람은 뭔지 모르겠어요"). 그래서 대회 출품에만 필수로 받는다. */}
-        {contest && !imageUrl && <div className={styles.scopeNudge}>어떤 캐릭터인지 알 수 있게 원본 그림을 올려 주세요.</div>}
       </div>
 
       {/* 등록할 곳 */}
