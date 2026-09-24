@@ -1,7 +1,7 @@
 'use client'
 
 // 내 코디 등록 — PC·절반·태블릿은 오른쪽 컬럼에 상주, 모바일은 목록 자리에서 바뀐다(핸드오프 §3).
-// 순서: 올릴 프리셋(3열 팝오버) → 미리보기 → 이름* → 설명 → 태그(최대 10) → 이미지(선택) → 등록할 곳*(위로 펼침) → (대회) 이메일 → 등록.
+// 순서: 올릴 프리셋(3열 팝오버) → 미리보기 → 이름* → 설명 → 태그(최대 10) → 이미지(자유=선택 · 대회=필수*) → 등록할 곳*(위로 펼침) → (대회) 이메일 → 등록.
 // 필수값이 비면 등록 버튼은 비활성(연한 핑크). `*` 는 라벨에만 붙이고 placeholder 에는 넣지 않는다.
 
 import clsx from 'clsx'
@@ -134,7 +134,10 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     return () => { alive = false; clearTimeout(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contest, lookSig, contestSig, findTaken])
-  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !contestFull && !contestClosed && !taken && !checking && !s.plazaSubmitting && !shrinking
+  // 대회 출품은 **원본 그림이 필수**다(2026-09-24 사용자 지시 — 무엇을 따라 한 코디인지 알 수 없다는 댓글).
+  // 자유 코디는 종전대로 선택. 이미 올라간 출품작에는 소급하지 않는다.
+  const needImage = contest && !image
+  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !needImage && !contestFull && !contestClosed && !taken && !checking && !s.plazaSubmitting && !shrinking
 
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
@@ -157,6 +160,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     if (contestClosed) { s.notify('대회 출품이 마감됐어요'); return }
     if (contestFull) { s.notify(`${PLAZA_CONTEST}에는 이 기기에서 ${PLAZA_CONTEST_MAX}개까지 올릴 수 있어요`); return }
     if (taken) { s.notify('같은 조합이 이미 대회에 출품돼 있어요'); return }
+    if (needImage) { s.notify(`${PLAZA_CONTEST}는 따라 한 캐릭터의 원본 그림이 필요해요`); return }
     if (!canSubmit || !snap) { s.notify(contest ? '이메일을 확인해 주세요' : '프리셋과 이름을 확인해 주세요'); return }
     if (contest) {
       // 등록 직전: 지금 DB 에서 다시 받아 확인(그사이 누가 올렸을 수 있다).
@@ -252,9 +256,9 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
         )}
       </div>
 
-      {/* 이미지 */}
+      {/* 이미지 — 자유 코디는 선택, 대회는 필수 */}
       <div>
-        <div className={styles.label}>이미지</div>
+        <div className={styles.label}>이미지 {contest && <span className={styles.star}>*</span>}</div>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; if (f) void pickImage(f) }} />
         {/* 칸은 고르기 전부터 편집기 크기 그대로 잡아 둔다 — 이미지를 넣어도 아래 요소가 밀리지 않는다(2026-09-21).
             이미지를 고르면 끌고 확대해 **처음 보일 부분**을 가운데 정사각형 점선에 맞춘다(원본은 자르지 않는다).
@@ -264,7 +268,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
         ) : (
           <button type="button" onClick={() => fileRef.current?.click()} className={clsx(styles.upRefBox, styles.imgBtn)}>
             <span className={styles.imgBtnMain}>이미지 추가</span>
-            <span className={styles.imgBtnSub}>코스프레 원본처럼 나란히 비교할 그림</span>
+            <span className={styles.imgBtnSub}>{contest ? '따라 한 캐릭터의 원본 그림' : '코스프레 원본처럼 나란히 비교할 그림'}</span>
           </button>
         )}
         <div className={clsx(styles.upRefFoot, !imageUrl && styles.upRefFootOff)} aria-hidden={!imageUrl}>
@@ -272,6 +276,9 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
           <button type="button" tabIndex={imageUrl ? 0 : -1} onClick={() => fileRef.current?.click()} className={styles.upRefBtn}>변경</button>
           <button type="button" tabIndex={imageUrl ? 0 : -1} onClick={clearImage} className={clsx(styles.upRefBtn, styles.upRefDel)}>제거</button>
         </div>
+        {/* 대회는 원본 그림이 있어야 무엇을 따라 한 코디인지 알 수 있다(2026-09-24 광장 댓글 — "기존 캐릭터도
+            같이 띄워주세요 / 안 하는 사람은 뭔지 모르겠어요"). 그래서 대회 출품에만 필수로 받는다. */}
+        {contest && !imageUrl && <div className={styles.scopeNudge}>어떤 캐릭터인지 알 수 있게 원본 그림을 올려 주세요.</div>}
       </div>
 
       {/* 등록할 곳 */}
@@ -302,7 +309,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
               : contestFull ? `이 기기에서는 이미 ${PLAZA_CONTEST_MAX}개를 올렸어요.`
               : taken ? `[${taken.name}] 똑같은 조합이 이미 있어요! 같은 조합으로는 못 올려요.`
               : checking ? '같은 조합이 있는지 확인하고 있어요.'
-              : `대회 출품으로 등록해요. 이메일이 필요하고, ${contestLeft}개 더 올릴 수 있어요.`}
+              : `대회 출품으로 등록해요. 원본 그림과 이메일이 필요하고, ${contestLeft}개 더 올릴 수 있어요.`}
           </div>
           {nudgeContest && <div className={styles.scopeNudge}>{PLAZA_CONTEST}에 참여하려면 등록할 곳을 대회로 바꿔 주세요.</div>}
         </div>

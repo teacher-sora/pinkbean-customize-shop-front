@@ -149,9 +149,12 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
 
   // want = 누른 결과(목표) — 화살표·aria 는 누르는 즉시 이걸 따른다. mounted = 칩이 레이아웃에 있는가(접힘이 끝나야 빠진다).
   // 움직임은 CSS transition 이라 도중에 다시 누르면 **지금 위치에서** 반대 목표로 돌아간다(2026-09-21 사용자 지시 — 끝날 때까지 막지 않는다).
-  const [want, setWant] = useState(false)
-  const [mounted, setMounted] = useState(false)
-  const wantRef = useRef(false)
+  // **기본은 펼침**(2026-09-24 사용자 지시 — "현재 착용 아이템을 못 보냐"는 댓글이 달렸다. 접혀 있으면
+  // 막대가 있는 줄도 모르고 지나친다). 보기 싫은 사람이 접는 쪽으로 뒤집었다.
+  const [want, setWant] = useState(true)
+  const [mounted, setMounted] = useState(true)
+  const wantRef = useRef(true)
+  const first = useRef(true) // 처음 뜰 때는 펼침 애니메이션 없이 그냥 펼쳐진 채로(다이얼로그가 이미 등장 중이다)
   const wrapRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const moving = useRef<HTMLElement[]>([])
@@ -187,6 +190,7 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
     if (!mounted) { clear(); return }
     const inner = innerRef.current
     if (!inner) return
+    if (first.current) { first.current = false; clear(); return } // 기본 펼침 — 처음엔 움직이지 않는다
     // 칩이 막 들어온 레이아웃: 칩·아래 구역을 칩 높이만큼 위(접힌 자리)에 두고 다음 프레임에 목표로.
     moving.current = [inner, ...followers()]
     place(moving.current.map((el) => [el, -inner.offsetHeight] as [HTMLElement, number]))
