@@ -22,7 +22,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
-import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin } from '@/lib/shopData'
+import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 import { confirmTwice } from '@/lib/confirmTwice'
 import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, type PresetOver, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
@@ -52,6 +52,11 @@ export const PV_SNAP_DEFAULT: PvSnap = { ...PV_LOOK_DEFAULT, ...PV_VIEW_DEFAULT 
 // 점(애교점) 위치 오프셋: 레이어이름(accessoryEye/accessoryEye2) → 월드 오프셋. 사소한 변경점/쩜 전용.
 export type DotOffsets = Record<string, Vec>
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; dotPos?: Record<string, DotOffsets>; dyeOff?: Record<string, boolean>; pv?: PvSnap; name?: string }
+// 공유·광장에서 받은 코디는 메타 정보(연출·시선·액션·표정·배율)를 **전부 그 코디의 값**으로 가져온다.
+// 담겨 있지 않은 칸은 기본값이다 — 공유 코드는 기본값과 같은 칸을 아예 빼고 싣고(shareCode.minPv), 옛 광장 글엔
+// 보기 설정이 없다. 예전엔 빠진 칸을 '보던 화면의 값'으로 뒀다 → 3배로 보던 중에 가져오면 저장한 빈 칸의 코디까지
+// 3배가 돼 프리셋마다 크기가 제멋대로였다(2026-09-29 사용자 제보·지시: 가져오면 메타 정보가 모두 따라와야 한다).
+const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAULT, ...Object.fromEntries(Object.entries(s.pv || {}).filter(([, v]) => v !== undefined)) } as PvSnap })
 
 // 단일 서피스(시트·다이얼로그): 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 하나를 쓴다(v2 §10.4).
 // part = 부위 염색(착용 부위 고르기 → 같은 다이얼로그 안에서 염색/점 위치로 슬라이드), vs = 북마크 코디 비교(PC).
@@ -84,6 +89,9 @@ function copyAsyncText(make: () => Promise<string>): Promise<void> {
 const PRESET_COUNT = 30
 const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
 const defaultPresetName = (i: number) => `코디 ${i + 1}`
+// 되돌리기 기록용: 프리셋 이름 전체(id → 이름)와, 기록 한 건을 가르는 상태키(코디 + 선택 프리셋 + 이름).
+const namesOf = (ps: Preset[]): Record<string, string> => Object.fromEntries(ps.map((p) => [p.id, p.name]))
+const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, string>) => JSON.stringify({ s: snap, p: sel, n: names })
 // 연출 설정 기본값 — 첫 상태이자 '프리셋 초기화'가 되돌릴 값이다(한곳에서 관리).
 // 시선·액션·표정·fps 는 스냅샷에 담기지 않지만, 초기화는 **이것까지 전부** 되돌린다(2026-09-21 사용자 지시).
 const PV_DEFAULT: Pv = {
@@ -258,6 +266,7 @@ export interface ShopCtx {
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
+  commitPresetName: (id: string, fallback: string) => void // 이름 입력 확정 = 되돌리기 기록 한 건
   nickInput: string; setNickInput: Dispatch<string>
   importFetch: () => void
   importing: boolean
@@ -393,7 +402,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 히스토리 엔트리 = 코디 스냅샷 + 그때 선택돼 있던 프리셋. 되돌리기 시 코디뿐 아니라 "선택 프리셋"도
   // 함께 복원한다 → 프리셋 전환도 되돌리기 대상(1번→2번 후 되돌리기 = 다시 1번 선택 + 그때 코디).
   // 다른 프리셋을 덮어쓴 기록(공유 코디·광장 가져오기)은 over 에 그 프리셋의 전후 내용·이름을 함께 남긴다(uiState.PresetOver).
-  const histRef = useRef<{ stack: { snap: Snapshot; sel: string | null; over?: PresetOver<Snapshot> }[]; idx: number }>({ stack: [], idx: -1 })
+  // 엔트리마다 그때의 프리셋 이름 전체(names)도 담는다 — 되돌리기는 코디·연출(시선·배율 등)·선택 프리셋·**이름**을
+  // 함께 되살린다. 예전엔 이름이 over(다른 칸 덮어쓰기)에만 있어, 가져오기로 바뀐 이름이 되돌아오지 않는 경우가 있었고
+  // 이름을 고친 것 자체는 기록되지 않았다(2026-09-29 사용자 지시: 이름 변경도 기록 한 건).
+  const histRef = useRef<{ stack: { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot> }[]; idx: number }>({ stack: [], idx: -1 })
   const histOver = useRef<PresetOver<Snapshot> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
   const histLast = useRef<string | null>(null)      // 마지막으로 기록한 상태키(중복 방지) = {코디 스냅샷 + 선택 프리셋}
@@ -448,7 +460,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (savedHist) {
         histRef.current = savedHist
         const cur = savedHist.stack[savedHist.idx]
-        histLast.current = JSON.stringify({ s: cur.snap, p: cur.sel })
+        histLast.current = histKey(cur.snap, cur.sel, cur.names ?? Object.fromEntries(PRESET_IDS.map((id, i) => [id, store?.names[id] || defaultPresetName(i)])))
         setHistVer((v) => v + 1)
       }
       initedRef.current = true
@@ -463,9 +475,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const ensureSlot = useCallback((slot: string) => {
     if (!index || slot === 'skin') return
     if (lists[slot] !== undefined || loadingSlots.current.has(slot)) return
-    const summary = index.slots.find((s) => s.slot === slot)
-    // [dev] 라이딩은 CDN index 에 없고 프론트 로컬 public 에서 서빙(절대경로 → data.ts url() 패스스루).
-    const file = slot === 'riding' ? '/riding/riding.json' : summary?.file
+    // [dev] 라이딩은 CDN index 에 없고 프론트 로컬 public 에서 서빙(절대경로 → data.ts url() 패스스루) — shopData.slotFile.
+    const file = slotFile(slot, index)
     if (!file) { setLists((m) => ({ ...m, [slot]: [] })); return }
     loadingSlots.current.add(slot)
     loadSlot(file)
@@ -580,9 +591,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
   const loadSlotRaw = useCallback(async (slot: string): Promise<ListItem[]> => {
     if (searchRaw.current[slot]) return searchRaw.current[slot]
-    const summary = indexRef.current?.slots.find((x) => x.slot === slot)
-    if (!summary) return []
-    try { const r = await loadSlot(summary.file); searchRaw.current[slot] = r; return r } catch { return [] }
+    // ⚠️ 라이딩도 여기서 해석된다(shopData.slotFile). 예전엔 CDN index 만 뒤져 빈 목록을 돌려줬고,
+    //    스냅샷 복원(resolveEquipped)이 이걸 쓰는 탓에 프리셋을 다시 고르면 탈것이 사라졌다(2026-09-29).
+    const file = slotFile(slot, indexRef.current)
+    if (!file) return []
+    try { const r = await loadSlot(file); searchRaw.current[slot] = r; return r } catch { return [] }
   }, [])
   const activeCatRef = useRef(activeCat)
   activeCatRef.current = activeCat
@@ -1349,7 +1362,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {})
   }
   // 공유받은 코디를 사용자가 고른 프리셋 슬롯에 적용 — 개인 프리셋 하나를 명시적으로 덮어씀 + 선택 + 라이브(되돌리기 가능).
-  const applySharedToPreset = (snap: Snapshot, targetId: string) => {
+  const applySharedToPreset = (taken: Snapshot, targetId: string) => {
+    const snap = withTakenView(taken) // 메타 정보는 받은 코디의 값으로(없는 칸은 기본) — 보던 화면 값을 물려받지 않는다
     // 덮어쓰기 전 그 프리셋(선택돼 있으면 지금 코디)과 이름을 기록에 함께 남긴다 → 되돌리기로 원래 코디·이름까지 돌아온다.
     const prevName = presets.find((p) => p.id === targetId)?.name ?? ''
     histOver.current = {
@@ -1598,12 +1612,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       histOver.current = over // 라이브가 바뀌므로 아래 기록 effect 가 이 over 를 집어간다
       setPvState(PV_DEFAULT); applySnapshot(snap).catch(() => {})
     } else {
-      pushHistory(over) // 라이브는 그대로 → 그 자리에서 직접 기록한다
+      // 라이브는 그대로 → 그 자리에서 직접 기록한다. 바뀐 이름은 아직 상태에 안 들어왔으니 직접 넘긴다.
+      pushHistory(over, i >= 0 ? { ...namesOf(presets), [id]: defaultPresetName(i) } : undefined)
     }
     notify('프리셋을 삭제했어요')
   }
   // 프리셋 이름(카드의 인라인 입력). 비운 채로 두면 기본 이름으로 되돌린다(blur 시 호출부가 처리).
   const renamePreset = (id: string, name: string) => setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name } : p)))
+  // 이름 입력을 마쳤을 때(입력창을 벗어날 때) — 비었으면 기본 이름으로 되돌리고, 바뀐 이름을 되돌리기 기록 한 건으로 남긴다.
+  // 글자마다 기록하면 되돌리기가 한 글자씩 지워지므로 확정 시점에만 남긴다(2026-09-29 사용자 지시).
+  const commitPresetName = (id: string, fallback: string) => {
+    const cur = presets.find((p) => p.id === id)
+    if (!cur) return
+    const name = cur.name.trim() ? cur.name : fallback
+    if (name !== cur.name) renamePreset(id, name)
+    pushHistory(null, { ...namesOf(presets), [id]: name })
+  }
   const presetUsed = presets.filter((p) => presetData[p.id] && snapCoreKey(presetData[p.id]) !== DEFAULT_CORE_KEY).length
 
   // 자동 저장: 라이브 모델이 바뀔 때마다 선택된 프리셋에 저장(100ms 디바운스). 프리셋 적용으로 인한
@@ -1643,10 +1667,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 기록 한 건. 보통은 아래 effect 가 라이브 코디 변화를 보고 부르지만, **라이브가 그대로인 변경**
   // (선택하지 않은 프리셋을 초기화 — 2026-09-21 사용자 지시)은 그 자리에서 직접 부른다.
   // 그런 기록은 코디·선택 프리셋이 직전과 같고 over 만 다르다 → undo 가 over 로 그 칸을 되살린다.
-  const pushHistory = (over?: PresetOver<Snapshot> | null) => {
+  // names: 방금 바꿔 아직 상태에 반영되지 않은 이름을 넘길 때(이름 확정 — commitPresetName). 없으면 지금 이름.
+  const pushHistory = (over?: PresetOver<Snapshot> | null, namesNow?: Record<string, string>) => {
     if (!initedRef.current) return
     const snap = snapshot()
-    const j = JSON.stringify({ s: snap, p: selectedPreset })
+    const names = namesNow ?? namesOf(presets)
+    const j = histKey(snap, selectedPreset, names)
     if (j === histExpect.current) { histExpect.current = null; histLast.current = j; return }
     const ov = over ?? histOver.current
     if (j === histLast.current && !ov) return // 덮어쓰기는 코디가 같아도(이름·다른 프리셋이 바뀜) 기록한다
@@ -1654,7 +1680,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     histLast.current = j
     const h = histRef.current
     h.stack = h.stack.slice(0, h.idx + 1)
-    h.stack.push({ snap, sel: selectedPreset, ...(ov ? { over: ov } : {}) })
+    h.stack.push({ snap, sel: selectedPreset, names, ...(ov ? { over: ov } : {}) })
     if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
     h.idx = h.stack.length - 1
     setHistVer((v) => v + 1)
@@ -1674,9 +1700,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => { if (histSaveT.current) clearTimeout(histSaveT.current) }
   }, [histVer])
 
-  const applyHistory = (e: { snap: Snapshot; sel: string | null }) => {
-    const j = JSON.stringify({ s: e.snap, p: e.sel })
+  const applyHistory = (e: { snap: Snapshot; sel: string | null; names?: Record<string, string> }) => {
+    // 이름 전체도 그 시점으로(옛 기록엔 없으면 지금 이름 유지). 코디가 같아도 이름만 바뀌는 기록이 있다.
+    const names = e.names ?? namesOf(presets)
+    if (e.names) setPresets((ps) => ps.map((p) => (e.names![p.id] != null ? { ...p, name: e.names![p.id] } : p)))
+    const j = histKey(e.snap, e.sel, names)
     histExpect.current = j; histLast.current = j
+    // 코디·선택 프리셋이 그대로면(이름·연출만 되돌림) 기록 effect 가 돌지 않는다 → 기대값을 남겨 두지 않는다
+    // (남아 있으면 나중에 같은 상태로 돌아온 진짜 변경을 기록하지 않고 삼킨다).
+    if (e.sel === selectedPreset && snapCoreKey(e.snap) === snapCoreKey(snapshot())) histExpect.current = null
     // 코디 + 선택 프리셋을 함께 복원. skipAutosave=false → 되돌린 코디가 그 프리셋에 저장된다.
     applySnapshot(e.snap, false, true, e.sel).catch(() => {})
     setHistVer((v) => v + 1)
@@ -1756,7 +1788,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openPartItem, partBack, partSlide, openVs, toggleVs, vsOn, vsPicks, toggleVsPick, swapSnapshot,
     dotPos, setDot, resetDot,
     pv, setPv,
-    presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, snapshot,
+    presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, commitPresetName, snapshot,
     nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rateResult, takeRate,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText, notify,

@@ -85,7 +85,8 @@ export function writeUiSession(v: UiSession): void {
 // over = 그 기록이 **다른 프리셋을 덮어쓴** 기록일 때(공유 코디·광장 가져오기) 덮어쓰기 전후의 그 프리셋 내용·이름.
 //        되돌리면 prev 로, 다시 실행하면 next 로 그 프리셋을 되살린다(선택 프리셋 코디만 되돌리면 덮어쓴 프리셋은 그대로 남았다).
 export type PresetOver<S> = { id: string; prev: S; prevName: string; next: S; nextName: string }
-export type UiHistory<S> = { stack: { snap: S; sel: string | null; over?: PresetOver<S> }[]; idx: number }
+// names = 그때의 **프리셋 이름 전체**(id → 이름). 되돌리기가 이름까지 되살린다(2026-09-29). 옛 기록엔 없을 수 있다.
+export type UiHistory<S> = { stack: { snap: S; sel: string | null; names?: Record<string, string>; over?: PresetOver<S> }[]; idx: number }
 export function readUiHistory<S>(): UiHistory<S> | null {
   const h = read<UiHistory<S>>('sessionStorage', HIST_KEY)
   if (!Array.isArray(h.stack) || !h.stack.length || typeof h.idx !== 'number') return null

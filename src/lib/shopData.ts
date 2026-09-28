@@ -2,7 +2,7 @@
 // 미리보기 고정 박스. 코어(src/lib/core)의 assemble/render/data 위에서 동작한다.
 
 import type { AssembleInput, ViewOpts } from '@/lib/core/assemble'
-import type { AnimaRace, ListItem } from '@/lib/core/data'
+import type { AnimaRace, ListItem, SlotSummary } from '@/lib/core/data'
 
 // 시각적 중복 폴딩(HANDOFF.md / 프로토타입 규칙):
 //  - 헤어/성형(colorGroup 있음): 그룹당 1개, 대표 = 그룹 내 최저 id(= 검정 color 0). 나머지 색은
@@ -43,6 +43,25 @@ export const EQUIP_SLOTS = [
   'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape', 'weapon', 'shield',
   'riding', // [dev] 탑승 — 마운트/모프 레이어를 코디처럼 합성
 ] as const
+
+/* ── [dev] 라이딩(탑승) 공통 규칙 ───────────────────────────────────────────────
+ * 라이딩만 **두 가지가 다르다**. 그 둘을 각자 알아서 처리하다 2026-09-29 제보로 두 번 어긋났다.
+ *  1) 목록·메타가 CDN 카탈로그(index.slots) 밖, 프론트 public 에 있다 → 슬롯 파일을 따로 골라야 한다.
+ *     예전엔 **부위 탭(ensureSlot)만** 이 규칙을 알고 스냅샷 복원(loadSlotRaw)은 몰랐다. 그래서 프리셋을
+ *     다시 고르거나 광장 코디를 가져오면 라이딩만 빈 목록에서 조회돼 조용히 사라졌다(그 상태가 자동저장까지 됐다).
+ *  2) 캐릭터가 **앉는다**. 앉는 액션·정렬 기준은 아이템마다 다르다(riding.json).
+ *     예전엔 미리보기(PreviewModel)와 부위 카드(ItemThumb)만 알고, 스냅샷 합성기(core/snapRender)는 몰랐다.
+ *     그래서 프리셋·광장 카드만 선 채로 탑승한 그림이 나왔다.
+ *  → 두 규칙을 여기 한곳에 둔다. 라이딩을 그리는 곳은 반드시 이 헬퍼를 쓴다. */
+export const RIDING_FILE = '/riding/riding.json'
+export const RIDING_ACTIONS_DEFAULT = new Set(['basic', 'walk', 'jump', 'ladder', 'rope', 'shoot2']) // 재규어 기준
+export const RIDING_SEATED_DEFAULT = new Set(['basic', 'walk']) // 캐릭터가 앉는(sit) 액션
+type RidingOpts = { ridingActions?: string[]; ridingSeated?: string[] } | null | undefined
+export const ridingActionSet = (it: RidingOpts) => (it?.ridingActions?.length ? new Set(it.ridingActions) : RIDING_ACTIONS_DEFAULT)
+export const ridingSeatedSet = (it: RidingOpts) => (it?.ridingSeated?.length ? new Set(it.ridingSeated) : RIDING_SEATED_DEFAULT)
+// 슬롯 → 목록 파일. 라이딩만 CDN 밖이라 갈라지는 지점이 **여기 하나**다.
+export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null): string | undefined =>
+  (slot === 'riding' ? RIDING_FILE : index?.slots.find((s) => s.slot === slot)?.file)
 
 // 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아
 // 스프라이트는 div overflow 로만 잘린다. 모델(마네킹) 높이 = fraction × divH 로 장비·카드크기 무관 일정.

@@ -30,24 +30,17 @@ export type NormLook = { tone: number; skin: HsbN | null; slots: Record<string, 
 // 광장에 올리는 스냅샷 — 숨긴 부위는 **없는 아이템**으로 지운다(2026-09-21 사용자 지시).
 // 광장(자유·대회 모두)에서만 그렇다: 등록 · 상세의 착용 아이템 · 링크 복사 · 가져오기가 모두 이 스냅샷을 쓴다.
 // 프리셋 · 공유 링크 · 코디 화면에서는 여전히 '착용했지만 숨긴' 아이템이다.
-// 시선·액션·표정·배율은 **보는 사람의 설정**이지 코디가 아니다 — 광장에 올리지도, 가져올 때 바꾸지도 않는다
-// (2026-09-21 사용자 지시). 프리셋에는 그대로 담겨(ShopContext.snapshot) 프리셋을 쓸 때 화면이 되살아난다.
-type PvView = { gaze?: string; action?: string; expr?: string; zoom?: number }
-const VIEW_KEYS: (keyof PvView)[] = ['gaze', 'action', 'expr', 'zoom']
-const dropView = <P extends PvView>(pv: P | undefined): P | undefined => {
-  if (!pv || !VIEW_KEYS.some((k) => pv[k] !== undefined)) return pv
-  const o = { ...pv }; for (const k of VIEW_KEYS) delete o[k]; return o
-}
-
-export function plazaSnapshot<T extends LookSnap & { dotPos?: Record<string, unknown>; pv?: PvView }>(s: T): T {
-  const pv = dropView(s.pv)
+// 연출 설정(시선·액션·표정·배율 포함)은 **프리셋에 담긴 그대로 올린다**(2026-09-29 사용자 지시 — 프리셋과 광장 코디는
+// 보이는 코디 외에 이런 메타 정보를 모두 갖고 있고, 가져오면 전부 따라와야 한다). 예전(2026-09-21)엔 '보는 사람의 설정'이라며
+// 빼고 올렸는데, 그러자 가져온 코디가 받는 쪽이 보던 배율을 물려받아 프리셋마다 크기가 꼬였다.
+// 목록·상세 카드는 이 값을 쓰지 않는다(core/snapRender = 왼쪽 시선·정지 서기·카드 고정 크기) → 카드 모양은 그대로다.
+export function plazaSnapshot<T extends LookSnap & { dotPos?: Record<string, unknown> }>(s: T): T {
   const hid = Object.keys(s.hidden || {}).filter((k) => s.hidden![k] && s.equipped?.[k])
-  if (!hid.length) return pv === s.pv ? s : { ...s, pv }
+  if (!hid.length) return s
   const drop = <V,>(m: Record<string, V> | undefined, keys: string[]) => { if (!m) return m; const o = { ...m }; for (const k of keys) delete o[k]; return o }
   const ids = hid.map((k) => s.equipped![k])
   return {
     ...s,
-    ...(pv === s.pv ? {} : { pv }),
     equipped: drop(s.equipped, hid), hidden: drop(s.hidden, hid),
     dyePalette: drop(s.dyePalette, hid), dyeHsb: drop(s.dyeHsb, hid), dyeOff: drop(s.dyeOff, hid),
     ...(s.dotPos ? { dotPos: drop(s.dotPos, ids) } : {}),

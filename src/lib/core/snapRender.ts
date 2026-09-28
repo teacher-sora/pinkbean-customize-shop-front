@@ -1,15 +1,16 @@
 // 스냅샷(착용+톤+염색+점 위치+연출설정 일부) → 합성 결과(placed·염색 override·이펙트). 렌더 캔버스와 무관한 순수 조립.
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
 import { assemble, getFrameLayers, isBackFrame, type AssembleInput, type PlacedLayer } from './assemble'
-import { loadMeta, loadAnima, type AnimaRace, type Index, type ItemMeta } from './data'
+import { loadMeta, loadAnima, loadSlot, type AnimaRace, type Index, type ItemMeta, type ListItem } from './data'
 import { LRU } from './lru'
 import { applyHsb, buildOverrides, skinHsb as skinHsbFor } from './dye'
 import { effectDraws, loadImage, type EffectDraw } from './render'
 import { collectWornEffects } from './thumbEffects'
-import { animaLayers, resolveAction, skinDyeFamily, thumbView, THUMB_VIEW } from '@/lib/shopData'
+import { RIDING_FILE, animaLayers, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 
-export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[] }
+// center = 라이딩일 때의 가로 정렬 기준(미리보기·부위 카드와 같은 규칙). 'x' = 캐릭터 navel, 'mount' = 메카 bbox.
+export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[]; center?: 'x' | 'mount' }
 
 // view=true 면 카드 고정 뷰 대신 **스냅샷에 담긴 연출 설정(액션·표정)** 으로 그린다.
 // 연출 설정 고르기(PvPicker)의 작은 미리보기 전용 — 프리셋·광장 카드는 종전대로 정지 서기 자세다.
@@ -18,6 +19,13 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const spv = snap.pv ?? PV_SNAP_DEFAULT
   const te = index.base.tones.find((t) => t.tone === snap.tone) || index.base.tones[0]
   if (!te) return null
+  // [dev] 라이딩(탑승)이 들어 있으면 **목록부터** 받는다. 라이딩 meta 는 CDN 이 아니라 프론트 public 에 있어,
+  // 목록이 그 경로(metaUrl)를 등록해 줘야 loadMeta 가 찾는다 — 등록 전엔 CDN 404 라 카드에서 탈것만 조용히 빠졌다.
+  // 목록에는 이 아이템이 "앉는 액션"인지, 정렬을 메카 기준으로 할지(메탈아머)도 함께 들어 있다.
+  const rideId = snap.hidden?.riding ? undefined : snap.equipped.riding
+  const rideItem: ListItem | null = rideId
+    ? await loadSlot(RIDING_FILE).then((l) => l.find((x) => x.id === rideId) ?? null).catch(() => null)
+    : null
   const [bodyMeta, headMeta] = await Promise.all([loadMeta(te.body), loadMeta(te.head)])
   const equipMetas: { slot: string; meta: ItemMeta }[] = []
   for (const [slot, id] of Object.entries(snap.equipped)) {
@@ -34,21 +42,31 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const TV = view
     ? { ...THUMB_VIEW, action: resolveAction(spv.action || 'basic', spv.weapon || 'basic'), expression: snapExpr || spv.expr || THUMB_VIEW.expression, ear: spv.ear || THUMB_VIEW.ear, weaponMotion: spv.weapon || THUMB_VIEW.weaponMotion }
     : thumbView('left', snapExpr, spv.ear, spv.weapon, true).view
+  // [dev] 탑승 중이면 캐릭터는 **앉는다**(미리보기·부위 카드와 같은 규칙, shopData.ridingSeatedSet).
+  //   · 탈것은 자기 액션(TV)으로, 캐릭터·옷은 sit 으로 그린다.
+  //   · 방패는 탑승 중 숨김(직업 불일치), 무기는 앉은 채에선 미출력.
+  //   카드의 액션은 정지 서기('basic')다. 연출 고르기 미리보기(view)만 스냅샷의 액션을 쓴다(일어서는 액션도 있다).
+  const uiAction = view ? (spv.action || 'basic') : 'basic'
+  const seated = !!rideId && ridingSeatedSet(rideItem).has(uiAction)
+  const charTV = seated ? { ...TV, action: 'sit' } : TV
+  const rideTV = TV.action === 'proneStab' ? { ...TV, action: 'prone' } : TV // 탈것 프레임 키 매핑(엎드리기)
+  const shown = equipMetas.filter(({ slot }) => !(rideId && slot === 'shield') && !(seated && slot === 'weapon'))
   // 정지 프레임(0번)이 하필 뒷모습인 액션이 있다 — 두손 스윙(마무리) 0번. 미리보기와 같은 규칙으로 판단한다
   // (안 하면 긴 헤어가 backBody 를 덮어 카드가 '머리만' 나온다 — assemble.isBackFrame 주석 참고).
-  const backFrame = isBackFrame(bodyMeta, TV)
+  const backFrame = isBackFrame(bodyMeta, charTV)
   // 무기 이펙트를 끄면 **무기 자신의 'effect' 레이어**도 뺀다 — 미리보기(PreviewModel)와 같은 규칙.
   //   이펙트는 ItemEff(별도 png)뿐 아니라 무기 프레임 안에 레이어로 박혀 있기도 해서(예 01703646: effect 90장),
   //   ItemEff 만 걸러서는 꺼지지 않았다(2026-09-21 사용자 제보 — 광장에 연출 설정이 반영 안 됨).
   const wornLayers = (slot: string, meta: ItemMeta) => {
-    const ls = getFrameLayers(meta, TV, 0, backFrame)
+    // 탈것만 자기 액션(TV)을 돈다 — 캐릭터의 뒷프레임 판단도 붙이지 않는다(별도 모델).
+    const ls = slot === 'riding' ? getFrameLayers(meta, rideTV) : getFrameLayers(meta, charTV, 0, backFrame)
     return slot === 'weapon' && !spv.wEffect ? ls.filter((l) => l.name !== 'effect') : ls
   }
   const items: AssembleInput[] = [
-    { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, TV) },
-    { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, TV, 0, backFrame) },
+    { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, charTV) },
+    { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, charTV, 0, backFrame) },
     // name 은 투명 아이템 판별에 쓰인다 — 없으면 투명 모자/장식이 헤어·얼굴을 가려 구멍이 생긴다.
-    ...equipMetas.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: wornLayers(slot, meta), invisibleFace: meta.invisibleFace, name: meta.name, dotOffsets: snap.dotPos?.[meta.id] })),
+    ...shown.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: wornLayers(slot, meta), invisibleFace: meta.invisibleFace, name: meta.name, dotOffsets: snap.dotPos?.[meta.id] })),
     ...animaLayers(spv.form, animaRaces), // 형상변이 — 프리셋에 저장된 값
   ]
   const { placed, anchors } = assemble(items, index.zmap, index.smap)
@@ -57,11 +75,11 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const off = snap.dyeOff || {}
   const onlyOn = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
   const snapPal = onlyOn(snap.dyePalette), snapHsb = onlyOn(snap.dyeHsb)
-  const overrides = await buildOverrides(equipMetas.map((e) => e.meta), { palette: snapPal, hsb: snapHsb }, TV, false, backFrame)
+  const overrides = await buildOverrides(shown.map((e) => e.meta), { palette: snapPal, hsb: snapHsb }, charTV, false, backFrame)
   const skinHsb = snapHsb['skin']
   const skinFam = skinDyeFamily(te.name)
   if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && skinFam != null) {
-    for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, TV, 0, backFrame)) {
+    for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, charTV, 0, backFrame)) {
       try { overrides.set(l.png, applyHsb(await loadImage(l.png, true), skinHsbFor(skinHsb, skinFam), l.png)) } catch (_) {}
     }
   }
@@ -70,9 +88,11 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const bnav = curBody?.map?.navel
   const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
   const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
-  const worn = await collectWornEffects(equipMetas.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
-  const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, TV.action, { foot, brow }, 0))
-  return { placed, overrides, effects }
+  const worn = await collectWornEffects(shown.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
+  const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, charTV.action, { foot, brow }, 0))
+  // 탑승 중엔 가로 정렬 기준이 다르다(포즈마다 폭이 달라진다) — 메탈아머는 메카(mount) bbox, 그 외는 캐릭터 navel.
+  const center = rideId ? (rideItem?.ridingCenterMount ? 'mount' : 'x') : undefined
+  return { placed, overrides, effects, ...(center ? { center } : {}) }
 }
 
 // ── 합성 결과 캐시 ─────────────────────────────────────────────────────────────

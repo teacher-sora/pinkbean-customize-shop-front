@@ -37,7 +37,8 @@ export async function renderShareImage(snap: Snapshot): Promise<string | null> {
     // 캐릭터: 카드 전체 크기 캔버스에 정수 배율로 렌더 후 그대로 얹는다.
     const p = computeModelPlacement({ divW: SHARE_IMG_W, divH: SHARE_IMG_H, dpr: 1, margin: 1, fraction: FRACTION, snap: true })
     const ch = document.createElement('canvas')
-    await renderCharacter(ch, comp.placed, { scale: p.scale, box: p.box, anchor: p.anchor, override: comp.overrides, effects: comp.effects })
+    // 라이딩(탑승)은 가로 정렬 기준이 다르다 — 합성기가 알려 준 기준을 그대로 쓴다(카드·미리보기와 동일).
+    await renderCharacter(ch, comp.placed, { scale: p.scale, box: p.box, anchor: p.anchor, centerX: comp.center === 'x', centerMount: comp.center === 'mount', override: comp.overrides, effects: comp.effects })
     ctx.imageSmoothingEnabled = false
     // 미리보기와 같은 규칙: computeModelPlacement 가 몸통(navel)을 MODEL_REF 기준으로 박스 정중앙에 고정한다.
     // (그려진 픽셀 전체 bbox 로 맞추면 총·가방이 긴 코디는 몸통이 한쪽으로 밀려 보였다 — 사용자 피드백으로 되돌림)
