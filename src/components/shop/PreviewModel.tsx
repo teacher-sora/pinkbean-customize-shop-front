@@ -20,14 +20,13 @@ import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { isStacked } from '@/lib/useBreakpoint'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, skinDyeFamily } from '@/lib/shopData'
+import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
 
-// [dev] 라이딩 중 "앉은 채" 나오는 액션(캐릭터=sit, 재규어가 대신 움직임). 나머지(점프·사다리·밧줄·
-// 석궁사격)는 캐릭터가 일어서서 해당 모션을 한다. 메카닉 메탈아머도 동일 규칙.
-const RIDING_SEATED = new Set(['basic', 'walk'])
+// [dev] 라이딩 중 "앉은 채" 나오는 액션(캐릭터=sit, 재규어가 대신 움직임)은 shopData.ridingSeatedSet 하나로 정한다 —
+// 미리보기·부위 카드·프리셋/광장 카드가 같은 답을 내야 한다(2026-09-29: 카드만 선 채로 나왔다).
 
 // 우클릭 복사 이미지: 정사각형 캔버스 한 변(CSS px, ×margin 이 실제 비트맵) · 여백 배수 · 마네킹 높이 비율.
 // COPY_FRACTION 이 미리보기(0.25)보다 커서 모델이 더 크게 담긴다. 값이 클수록 모델↑(너무 크면 긴 머리 잘림).
@@ -135,7 +134,7 @@ export default function PreviewModel() {
     // 뒤 시선(back)은 buildView 가 action='rope' 정지로 만든다 → 캐릭터도 재규어도 줄타기 뒷모습으로. 그래서
     // 뒤 시선일 땐 sit 로 덮지 않는다(안 그러면 캐릭터가 앞/옆 sit 로 나온다).
     // 아이템별 "앉는 액션"(riding.json ridingSeated). 없으면 기본 재규어 세트. 메탈아머는 조종사가 항상 앉음(전부).
-    const seatedSet = ridingItem?.ridingSeated?.length ? new Set(ridingItem.ridingSeated) : RIDING_SEATED
+    const seatedSet = ridingSeatedSet(ridingItem)
     // 뒷쪽 시선은 보통 sit 로 안 덮지만(캐릭터 등반 뒷모습), ridingBackSit(탱크)면 뒤에서도 sit 강제.
     const backOk = pv.gaze !== 'back' || !!ridingItem?.ridingBackSit
     const seated = riding && backOk && seatedSet.has(pv.action) // 앉은 채(캐릭터 sit)
@@ -231,7 +230,7 @@ export default function PreviewModel() {
     //   png 가 칠해진다(안 그러면 선택 액션 png 만 칠해져 sit 옷이 원본색으로 보인다). ⚠️ seated 판정은 spec 과
     //   똑같이 "아이템별 ridingSeated"를 써야 한다(메탈아머는 prone/ladder/rope 도 seated라 상수만 보면 안 칠해짐).
     const dyeRidingIt = equipped['riding']
-    const dyeSeatedSet = dyeRidingIt?.ridingSeated?.length ? new Set(dyeRidingIt.ridingSeated) : RIDING_SEATED
+    const dyeSeatedSet = ridingSeatedSet(dyeRidingIt)
     const dyeBackOk = pv.gaze !== 'back' || !!dyeRidingIt?.ridingBackSit
     const dyeSeated = !!dyeRidingIt && !hidden['riding'] && dyeBackOk && dyeSeatedSet.has(pv.action)
     const dyeV = dyeSeated ? { ...V, action: 'sit' } : V

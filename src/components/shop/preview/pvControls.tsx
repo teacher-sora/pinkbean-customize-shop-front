@@ -7,6 +7,7 @@
 import clsx from 'clsx'
 import { useEffect } from 'react'
 import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT, PV_EARS, PV_EXPRS, PV_FORMS, PV_GAZES, PV_WEAPONS, type Opt, type Pv } from '@/lib/catalog'
+import { ridingActionSet } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
 import { Switch } from '../ui/controls'
@@ -14,8 +15,6 @@ import PvPicker, { type PvField } from './PvPicker'
 import styles from './preview.module.css'
 
 const ZOOMS: Opt[] = [{ v: '1', l: '1배' }, { v: '2', l: '2배' }, { v: '3', l: '3배' }]
-// [dev] 재규어 라이딩 중 "가능한" 액션(UI 값 기준). 나머지는 목록에서 지우지 않고 비활성으로 표시한다.
-const RIDING_ACTIONS = new Set(['basic', 'walk', 'jump', 'ladder', 'rope', 'shoot2'])
 const lb = (arr: Opt[], v: string) => (arr.find((x) => x.v === v) || arr[0]).l
 
 // 라이딩 중: 불가 액션·형상 변이를 안전한 기본값으로 되돌린다(셸에서 한 번만 마운트).
@@ -25,7 +24,7 @@ export function useRidingGuards() {
   const riding = !!ridingItem
   useEffect(() => {
     if (!riding) return
-    const allow = ridingItem?.ridingActions ? new Set(ridingItem.ridingActions) : RIDING_ACTIONS
+    const allow = ridingActionSet(ridingItem)
     if (!allow.has(s.pv.action)) s.setPv('action', 'basic')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riding, ridingItem, s.pv.action])
@@ -33,11 +32,12 @@ export function useRidingGuards() {
   useEffect(() => { if (riding && s.pv.form !== 'none') s.setPv('form', 'none') }, [riding, s.pv.form])
 }
 
+// [dev] 라이딩 중 "가능한" 액션은 아이템별(riding.json, 없으면 재규어 기준) — 나머지는 목록에서 지우지 않고 비활성으로 표시한다.
 function useRiding() {
   const s = useShop()
   const ridingItem = s.equipped?.riding
   const riding = !!ridingItem
-  const allowed = ridingItem?.ridingActions ? new Set(ridingItem.ridingActions) : RIDING_ACTIONS
+  const allowed = ridingActionSet(ridingItem)
   const disabledActions = riding ? new Set(PV_ACTIONS_FLAT.filter((a) => !allowed.has(a.v)).map((a) => a.v)) : undefined
   return { riding, disabledActions }
 }

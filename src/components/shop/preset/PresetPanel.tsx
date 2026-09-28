@@ -57,7 +57,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
                     onChange={(e) => s.renamePreset(p.id, e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                    onBlur={(e) => { if (!e.target.value.trim()) s.renamePreset(p.id, `코디 ${i + 1}`) }}
+                    onBlur={() => s.commitPresetName(p.id, `코디 ${i + 1}`)}
                     className={clsx('pb-input', 'pb-presetname', styles.nameInput)} />
                   <IconPencil className={styles.pencil} />
                 </span>

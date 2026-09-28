@@ -5,7 +5,7 @@ import { type PlacedLayer } from '@/lib/core/assemble'
 import { type AnimaRace } from '@/lib/core/data'
 import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
-import { animaNow, animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
+import { animaNow, animaOnce, composePeek, composeSnapshotCached, snapKey, type SnapComposite } from '@/lib/core/snapRender'
 import { canvasToSquareBlob } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { CARD_FRACTION, CARD_MARGIN } from '@/lib/shopData'
@@ -26,6 +26,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [ov, setOv] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effects, setEffects] = useState<EffectDraw[]>([])
+  // [dev] 라이딩 카드의 가로 정렬 기준(합성기가 정해 준다) — 부위 카드(ItemThumb)·미리보기와 같은 규칙.
+  const [center, setCenter] = useState<'x' | 'mount' | undefined>(undefined)
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   // 형상변이 목록은 **이미 받아 뒀으면 그 값으로 시작**한다. 빈 배열로 한 번 그린 뒤 목록이 도착해 다시 그리면
   // 카드마다 합성이 두 번 돌았다(2026-09-22 — 광장 필터를 오갈 때 느려진 원인 중 하나).
@@ -41,8 +43,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   useEffect(() => {
     if (!index || !animaRaces) return
     let alive = true
-    const done = (r: { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[] } | null) => {
-      if (alive && r) { setPlaced(r.placed); setOv(r.overrides); setEffects(r.effects) }
+    const done = (r: SnapComposite | null) => {
+      if (alive && r) { setPlaced(r.placed); setOv(r.overrides); setEffects(r.effects); setCenter(r.center) }
     }
     // 이미 합성해 둔 코디면 줄(thumbQueue)을 서지 않고 그 자리에서 그린다 — 필터를 오가도 계산이 0 이고
     // 뼈대(스켈레톤)가 한 번 깜빡이지도 않는다.
@@ -76,9 +78,9 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, snap: true, drop: true })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, override: ov, effects, shouldCancel: () => cancelled }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, shouldCancel: () => cancelled }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, ov, effects, dims, fraction, margin])
+  }, [placed, ov, effects, center, dims, fraction, margin])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재).
   useEffect(() => {

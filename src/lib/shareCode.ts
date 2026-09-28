@@ -43,7 +43,7 @@ function minPv(pv?: PvSnap): Partial<PvSnap> | undefined {
   if (!pv) return undefined
   const out: Partial<PvSnap> = {}
   for (const k of Object.keys(PV_SNAP_DEFAULT) as (keyof PvSnap)[]) {
-    // 값이 없는 필드(광장 스냅샷의 배율)는 코드에도 넣지 않는다 → 링크로 받은 쪽도 자기 배율을 지킨다.
+    // 기본값과 같은 칸은 빼고 싣는다 — 받는 쪽(ShopContext.withTakenView)이 빠진 칸을 기본값으로 채워 정확히 되살린다.
     if (pv[k] !== undefined && pv[k] !== PV_SNAP_DEFAULT[k]) (out as Record<string, unknown>)[k] = pv[k]
   }
   return Object.keys(out).length ? out : undefined
@@ -75,8 +75,7 @@ function reviveMin(m: Record<string, unknown>): Snapshot | null {
     dotPos: (m.d as Snapshot['dotPos']) || {},
     ...(m.o && typeof m.o === 'object' ? { dyeOff: m.o as Record<string, boolean> } : {}),
     // PB2 는 부분 pv, 레거시 PB1 은 전체 pv — 둘 다 기본값 위에 얹으면 정확히 복원된다.
-    // 다만 보기 설정(시선·액션·표정·배율)은 **코드에 담겨 있을 때만** 살린다(광장 코디는 아예 빼고 올린다).
-    // 기본값으로 채워 버리면 남의 코디를 받을 때마다 내 화면 설정이 초기화된다.
+    // 보기 설정(시선·액션·표정·배율)이 빠진 칸은 가져올 때 기본값으로 채운다(ShopContext.withTakenView, 2026-09-29).
     pv: v ? { ...PV_LOOK_DEFAULT, ...v } : undefined,
     name: typeof m.n === 'string' ? m.n : undefined,
   }
