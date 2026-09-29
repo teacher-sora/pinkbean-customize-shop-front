@@ -88,7 +88,9 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
   .pb-presetacts:hover,
   .pb-ribbon:hover { filter: brightness(0.8) saturate(1.15) !important; transform: translateY(1px) !important; }
 }
-.pb-presetwrap { display: grid; min-width: 0; padding-top: 3px; }
+/* 단일 칸 그리드 — 칸 폭을 minmax(0,1fr) 로 묶는다. auto 면 줄바꿈 없는 긴 이름 폭만큼 칸이 늘어나 말줄임이 안 걸리고
+   옆 카드를 덮었다(2026-09-29 사용자 제보 — 광장 카드 이름). */
+.pb-presetwrap { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; padding-top: 3px; }
 .pb-presetwrap > .pb-preset { border: 1.5px solid #eee6dc; border-radius: 12px; overflow: visible; background: #fff; display: flex; flex-direction: column; position: relative; transition: transform .18s ease, border-color .22s ease, background-color .24s ease; }
 @media (hover: hover) and (pointer: fine) {
   .pb-presetwrap:hover > .pb-preset { transform: translateY(-4px); border-color: #ec86ac; }
