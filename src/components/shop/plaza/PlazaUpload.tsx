@@ -2,6 +2,7 @@
 
 // 내 코디 등록 — PC·절반·태블릿은 오른쪽 컬럼에 상주, 모바일은 목록 자리에서 바뀐다(핸드오프 §3).
 // 순서: 올릴 프리셋(3열 팝오버) → 미리보기 → 이름* → 설명 → 태그(최대 10) → 이미지(자유=선택 · 대회=필수*) → 등록할 곳*(위로 펼침) → (대회) 이메일 → 등록.
+// 대회는 **열려 있는 동안에만** 등록할 곳에 나온다(2026-10-02 사용자 지시 — 마감 뒤에는 선택지에서 뺀다). 다음 대회를 열면 다시 나온다.
 // 필수값이 비면 등록 버튼은 비활성(연한 핑크). `*` 는 라벨에만 붙이고 placeholder 에는 넣지 않는다.
 
 import clsx from 'clsx'
@@ -66,7 +67,9 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const scopeRef = useRef<HTMLDivElement>(null)
 
   // 하단 필터를 대회로 두면 등록할 곳도 대회를 따라간다(사용자가 직접 고르면 그 선택 유지).
-  const contest = (scope ?? (s.plazaFilter === 'contest' ? 'contest' : 'all')) === 'contest'
+  // 마감 뒤에는 대회로 올릴 길이 없다 — 대회 칸을 보고 있어도 자유 코디로 올라간다.
+  const contestOpen = !plazaContestClosed()
+  const contest = contestOpen && (scope ?? (s.plazaFilter === 'contest' ? 'contest' : 'all')) === 'contest'
   // **직접 꾸민 프리셋만** 보여준다(기본 코디 그대로인 칸은 올릴 게 없다 — 사용자 지시 2026-09-21).
   // 선택된 칸은 자동저장 전이라도 지금 화면의 코디로 판단한다.
   const snapOf = (id: string): Snapshot | null => (id === s.selectedPreset ? s.snapshot() : s.presetData[id] ?? null)
@@ -88,11 +91,10 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     return () => { alive = false }
   }, [mineCount, s.plazaPosts.length])
   const contestLeft = Math.max(0, PLAZA_CONTEST_MAX - myContest)
-  const contestClosed = contest && plazaContestClosed() // 마감(10월 1일 오후 11시 59분) 뒤에는 출품을 받지 않는다
   const contestFull = contest && contestLeft === 0
   // 자유 코디로 둔 채 대회에 나간 줄 아는 사람이 있다(2026-09-22 사용자 지시). 대회 기간에만,
   // 아직 올릴 칸이 남았을 때만 '대회로 바꿔야 한다'고 한 줄 덧붙인다(마감 뒤·3개 다 쓴 뒤엔 오히려 헷갈린다).
-  const nudgeContest = !contest && !plazaContestClosed() && contestLeft > 0
+  const nudgeContest = !contest && contestOpen && contestLeft > 0
   // 대회는 **같은 조합을 한 번만** 받는다(선점). 착용·피부가 같은 출품작만 DB 에서 받아(contestCandidates — 수만 개여도 몇 개)
   // 결과 픽셀을 비교해(lib/plazaLookPixels) 미리 막고 알린다. 등록 직전에 한 번 더 확인한다. DB 트리거(0009)는 좁은 안전망.
   const skinOf = useCallback((tone: number): SkinInfo => {
@@ -137,7 +139,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   // 대회 출품은 **원본 그림이 필수**다(2026-09-24 사용자 지시 — 무엇을 따라 한 코디인지 알 수 없다는 댓글).
   // 자유 코디는 종전대로 선택. 이미 올라간 출품작에는 소급하지 않는다.
   const needImage = contest && !image
-  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !needImage && !contestFull && !contestClosed && !taken && !checking && !s.plazaSubmitting && !shrinking
+  const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !needImage && !contestFull && !taken && !checking && !s.plazaSubmitting && !shrinking
 
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
@@ -157,7 +159,6 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     setTags([...tags, v]); setTagDraft('')
   }
   const submit = async () => {
-    if (contestClosed) { s.notify('대회 출품이 마감됐어요'); return }
     if (contestFull) { s.notify(`${PLAZA_CONTEST}에는 이 기기에서 ${PLAZA_CONTEST_MAX}개까지 올릴 수 있어요`); return }
     if (taken) { s.notify('같은 조합이 이미 대회에 출품돼 있어요'); return }
     if (needImage) { s.notify(`${PLAZA_CONTEST}는 따라 한 캐릭터의 원본 그림이 필요해요`); return }
@@ -291,7 +292,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
             {/* 폼 맨 아래에 있는 항목이라 위(빈 공간이 많은 쪽)로 펼친다. */}
             <div className={clsx(styles.pickPanel, styles.pickPanelUp, scopeOpen && styles.panelOn)}>
               <div className={styles.pickList}>
-                {([{ v: 'all', label: PLAZA_OPEN }, { v: 'contest', label: PLAZA_CONTEST }] as const).map((o) => (
+                {([{ v: 'all', label: PLAZA_OPEN }, { v: 'contest', label: PLAZA_CONTEST }] as const).filter((o) => o.v !== 'contest' || contestOpen).map((o) => (
                   <button key={o.v} type="button" onClick={() => { setScope(o.v); setScopeOpen(false) }}
                     className={clsx(styles.pickOpt, (o.v === 'contest') === contest && styles.pickOptOn)}>
                     {o.label}
@@ -300,9 +301,8 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
               </div>
             </div>
           </div>
-          <div className={clsx(styles.scopeHint, (contestFull || contestClosed || taken) && styles.scopeHintWarn)}>
+          <div className={clsx(styles.scopeHint, (contestFull || taken) && styles.scopeHintWarn)}>
             {!contest ? '누구나 볼 수 있게 공개로 등록해요.'
-              : contestClosed ? '대회 출품이 마감됐어요.'
               : contestFull ? `이 기기에서는 이미 ${PLAZA_CONTEST_MAX}개를 올렸어요.`
               : taken ? `[${taken.name}] 똑같은 조합이 이미 있어요! 같은 조합으로는 못 올려요.`
               : checking ? '같은 조합이 있는지 확인하고 있어요.'
