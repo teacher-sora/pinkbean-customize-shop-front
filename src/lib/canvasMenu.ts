@@ -19,7 +19,7 @@ export function flashToast (msg: string): void {
   if (!toastEl) {
     toastEl = document.createElement('div')
     Object.assign(toastEl.style, {
-      position: 'fixed', bottom: '32px', left: '50%', zIndex: '9998',
+      position: 'fixed', bottom: '32px', left: '50%', zIndex: '10000',
       padding: '12px 22px', background: 'linear-gradient(100deg,#ec86ac,#b57bdb)', color: '#fff',
       borderRadius: '999px', font: '600 13px system-ui, "Malgun Gothic", sans-serif',
       boxShadow: '0 10px 28px rgba(180,123,219,.38)', pointerEvents: 'none',
