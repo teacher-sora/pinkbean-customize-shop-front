@@ -37,10 +37,10 @@ export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
 //  seq = 대회 칸 맨 앞에 놓이는 순서(1위 · 2위 · 3위 · 픽 · 픽 · 추첨). 배지 글자는 여기 한 곳에서만 정한다.
 export type PlazaAwardKind = 'rank1' | 'rank2' | 'rank3' | 'pick' | 'lucky'
 export type PlazaAward = { kind: PlazaAwardKind; seq: number }
-export const PLAZA_AWARD_LABEL: Record<PlazaAwardKind, string> = { rank1: '1위', rank2: '2위', rank3: '3위', pick: '픽', lucky: '추첨' }
+export const PLAZA_AWARD_LABEL: Record<PlazaAwardKind, string> = { rank1: '1위', rank2: '2위', rank3: '3위', pick: '마음에 쏙', lucky: '추첨' }
 export const PLAZA_AWARD_TITLE: Record<PlazaAwardKind, string> = {
   rank1: `${PLAZA_CONTEST} 1위`, rank2: `${PLAZA_CONTEST} 2위`, rank3: `${PLAZA_CONTEST} 3위`,
-  pick: '주최자가 인상 깊게 본 코디', lucky: '참여자 추첨 당첨',
+  pick: '주최자가 인상 깊어서 고른 코디', lucky: '참여자 추첨 당첨',
 }
 export const PLAZA_TAG_MAX = 10 // DB 체크도 10(supabase/0009)
 export const PLAZA_COMMENT_MAX = 200
