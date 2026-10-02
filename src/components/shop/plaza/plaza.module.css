@@ -68,6 +68,12 @@
 .railM { right: 5px; top: 5px; gap: 3px; }
 .railLeft { position: absolute; left: 6px; top: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .railLeft.railM { left: 5px; right: auto; top: 5px; }
+/* 대회 수상 배지 — 좌상단. 날짜 칩(.contestNo)과 같은 높이·글자, 내리기 버튼이 있으면 그 위에 온다(왼쪽 맞춤). */
+.railLeftAward { align-items: flex-start; }
+.award { flex: 0 0 auto; height: 20px; padding: 0 8px; display: flex; align-items: center; border: 1px solid #f4cfdf; border-radius: 20px; background: #fff; font-size: 10.5px; font-weight: 700; color: #d76d9a; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.awardRank { border-color: #ec86ac; background: #ec86ac; color: #fff; }
+.awardPick { background: #fce9f1; }
+.awardLucky { background: #fff; }
 .railBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #efe8e0; border-radius: 50%; background: rgba(255,255,255,0.94); color: #a89e93; cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
 .railBtnM { width: 26px; height: 26px; }
 .delBtn { border-color: #f2d7d2; color: #d1735f; }

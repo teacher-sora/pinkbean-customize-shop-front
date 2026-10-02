@@ -33,6 +33,15 @@ export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
   { id: 'mine', label: '내 등록' },
   { id: 'liked', label: '찜한 코디' },
 ]
+// 대회 수상(supabase/0014 plaza_awards) — 누가 받았는지는 운영자가 DB 에 직접 넣는다. 앱에는 쓰는 화면도 권한도 없다.
+//  seq = 대회 칸 맨 앞에 놓이는 순서(1위 · 2위 · 3위 · 픽 · 픽 · 추첨). 배지 글자는 여기 한 곳에서만 정한다.
+export type PlazaAwardKind = 'rank1' | 'rank2' | 'rank3' | 'pick' | 'lucky'
+export type PlazaAward = { kind: PlazaAwardKind; seq: number }
+export const PLAZA_AWARD_LABEL: Record<PlazaAwardKind, string> = { rank1: '1위', rank2: '2위', rank3: '3위', pick: '픽', lucky: '추첨' }
+export const PLAZA_AWARD_TITLE: Record<PlazaAwardKind, string> = {
+  rank1: `${PLAZA_CONTEST} 1위`, rank2: `${PLAZA_CONTEST} 2위`, rank3: `${PLAZA_CONTEST} 3위`,
+  pick: '주최자가 인상 깊게 본 코디', lucky: '참여자 추첨 당첨',
+}
 export const PLAZA_TAG_MAX = 10 // DB 체크도 10(supabase/0009)
 export const PLAZA_COMMENT_MAX = 200
 const PAGE_ROWS = 1000 // Supabase 한 번 응답 최대 행 수(max_rows) — 목록은 이 단위로 끝까지 받는다
@@ -55,6 +64,7 @@ export type PlazaPost = {
   imagePath: string | null   // 글을 내릴 때 이미지도 같이 지우려면 경로가 필요하다
   contest: boolean
   contestNo: number | null  // 대회 등록 순번(선착 표시)
+  award: PlazaAward | null  // 대회 수상(없으면 null)
   imageView: RefView | null
   likes: number
   liked: boolean
@@ -131,6 +141,11 @@ type Row = {
   id: string; created_at: string; owner: string; name: string; description: string
   tags: string[] | null; snapshot: Snapshot; share_code: string | null; image_path: string | null
   contest: boolean; like_count: number; contest_no?: number | null; image_view?: RefView | null
+  plaza_awards?: PlazaAward | PlazaAward[] | null // 1:1 이라 객체로 오지만, 관계를 못 읽은 서버는 배열로 준다
+}
+const toAward = (v: Row['plaza_awards']): PlazaAward | null => {
+  const a = Array.isArray(v) ? v[0] : v
+  return a && a.kind in PLAZA_AWARD_LABEL ? { kind: a.kind, seq: a.seq } : null
 }
 
 const publicUrl = (path: string | null) => {
@@ -152,6 +167,7 @@ const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
   imagePath: r.image_path,
   contest: r.contest,
   contestNo: r.contest_no ?? null,
+  award: toAward(r.plaza_awards),
   imageView: r.image_view ?? null,
   likes: r.like_count,
   liked: liked.has(r.id),
@@ -239,7 +255,7 @@ export async function loadPlaza(onFirst?: (posts: PlazaPost[]) => void): Promise
   // ISR 라우트가 없거나 실패하면 예전처럼 직접 읽는다(로컬·장애 대비).
   const rows: Row[] = []
   for (let from = 0; ; from += PAGE_ROWS) {
-    const res = await c.from('plaza_posts').select('*').order('created_at', { ascending: false }).order('id').range(from, from + PAGE_ROWS - 1)
+    const res = await c.from('plaza_posts').select('*,plaza_awards(kind,seq)').order('created_at', { ascending: false }).order('id').range(from, from + PAGE_ROWS - 1)
     if (res.error) throw res.error
     rows.push(...(res.data as Row[]))
     if ((res.data || []).length < PAGE_ROWS) break
@@ -455,7 +471,14 @@ export function plazaView(posts: PlazaPost[], filter: PlazaFilter, query: string
   const by = sort === 'recent'
     ? (a: PlazaPost, b: PlazaPost) => b.createdAt.localeCompare(a.createdAt)
     : (a: PlazaPost, b: PlazaPost) => b.likes - a.likes || b.createdAt.localeCompare(a.createdAt)
-  return out.slice().sort(by)
+  return plazaPin(out.slice().sort(by), filter)
+}
+// 대회 칸에서는 수상작이 **어떤 정렬·검색에서도** 맨 앞에 수상 순서대로 온다(2026-10-02 사용자 지시). 나머지는 받은 순서 그대로.
+// 다른 칸(내 등록·찜한 코디)은 건드리지 않는다 — 배지만 보인다.
+export function plazaPin(list: PlazaPost[], filter: PlazaFilter): PlazaPost[] {
+  if (filter !== 'contest' || !list.some((p) => p.award)) return list
+  const won = list.filter((p) => p.award).sort((a, b) => a.award!.seq - b.award!.seq)
+  return [...won, ...list.filter((p) => !p.award)]
 }
 
 // 등록 시점(상세 부제) — '방금', 'n분 전', 'n시간 전', 'n일 전', 그 이상은 날짜.
