@@ -96,6 +96,13 @@
 .stages { flex: 0 0 auto; height: 240px; display: flex; gap: 10px; }
 .stagesM { height: 220px; }
 .stage { position: relative; flex: 1 1 0; min-width: 0; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+/* 상세의 수상 띠지 — 코디 칸 왼쪽 위에서 내려온다. 카드 띠지(코디·프리셋 25×32)와 같은 모양(아래 V 홈)·같은 비율이고 그중 가장 크다.
+   순위 = 기본 핑크, 주최자 픽·추첨 = 한 단계 진한 핑크. 글자는 V 홈 위쪽(72%)에 놓이게 아래 여백을 준다. */
+.ribbon { position: absolute; left: 12px; top: 0; z-index: 2; width: 48px; height: 62px; padding: 0 0 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ec86ac; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); font-size: 15px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; color: #fff; text-align: center; white-space: nowrap; }
+.ribbonSub { background: #d76d9a; }
+.ribbonTwo { font-size: 11px; }
+.ribbonM { left: 8px; width: 42px; height: 54px; font-size: 13px; }
+.ribbonM.ribbonTwo { font-size: 10.5px; }
 .stageImg { object-fit: cover; object-position: center 78%; }
 .stageTone { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.45)); }
 .stageRef { border: 1px dashed #e4dcd2; background: #fbf8f4; }
