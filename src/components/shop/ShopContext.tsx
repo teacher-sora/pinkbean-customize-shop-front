@@ -18,7 +18,7 @@ import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
-import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, plazaConfigured, plazaView, togglePlazaLike,
+import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
@@ -694,7 +694,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       return view
     }
     const rank = new Map(plazaOrder.current.ids.map((id, i) => [id, i] as const))
-    const out = view.slice().sort((a, b) => (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1))
+    // 새 글이 맨 앞에 붙어도 대회 수상작보다 앞설 수는 없다(plazaPin).
+    const out = plazaPin(view.slice().sort((a, b) => (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1)), plazaFilter)
     // 새로 들어온 글(내 등록)까지 포함해 다시 고정한다 — 안 그러면 그 글만 좋아요 때마다 자리를 옮긴다.
     plazaOrder.current = { key, ids: out.map((p) => p.id) }
     return out

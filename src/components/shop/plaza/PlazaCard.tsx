@@ -1,14 +1,14 @@
 'use client'
 
 // 코디 광장 카드 — 썸네일(실제 코디) + 이름 한 줄. 프리셋 카드와 같은 테두리·hover(-4px)를 쓴다.
-// 우상단 세로 레일 = 가져오기 · 링크 복사 · (내 글이면) 내리기, 썸네일 우하단 = 좋아요 수 + 하트.
+// 우상단 세로 레일 = 가져오기 · 링크 복사, 좌상단 = (수상작이면) 배지 · (내 글이면) 내리기, 썸네일 우하단 = 좋아요 수 + 하트.
 // 카드를 누르면 상세, 아이콘은 stopPropagation 으로 카드 클릭을 막는다(핸드오프 §1).
 
 import { CONFIRM_ATTR } from '@/lib/confirmTwice'
 import clsx from 'clsx'
 import SnapThumb from '../SnapThumb'
 import { useShop } from '../ShopContext'
-import type { PlazaPost } from '@/lib/plaza'
+import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
 import { IconHeart, IconLinkCopy, IconTakeDown, IconTrashSolid } from '../ui/Icons'
 import styles from './plaza.module.css'
 
@@ -33,10 +33,12 @@ export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaP
             className={clsx(styles.railBtn, mobile && styles.railBtnM)}><IconLinkCopy /></button>
         </div>
         {/* 내리기는 반대쪽(좌상단)에 둔다 — 가져오기·링크 복사와 나란히 두면 잘못 누르기 쉽다(사용자 지시) */}
-        {post.mine && (
-          <div className={clsx(styles.railLeft, mobile && styles.railM)}>
-            <button type="button" onClick={stop(() => s.plazaRemove(post))} {...{ [CONFIRM_ATTR]: `plaza:${post.id}` }} title="광장에서 내리기 (두 번 누르기)" aria-label="내리기"
-              className={clsx(styles.railBtn, styles.delBtn, mobile && styles.railBtnM)}><IconTrashSolid /></button>
+        {/* 대회 수상 배지도 좌상단이다(2026-10-02 사용자 지시). 내 글이면 배지 아래로 내리기가 온다 — 겹치지 않는다. */}
+        {(post.award || post.mine) && (
+          <div className={clsx(styles.railLeft, mobile && styles.railM, post.award && styles.railLeftAward)}>
+            {post.award && <span className={clsx(styles.award, AWARD_CLASS[post.award.kind])} title={PLAZA_AWARD_TITLE[post.award.kind]}>{PLAZA_AWARD_LABEL[post.award.kind]}</span>}
+            {post.mine && <button type="button" onClick={stop(() => s.plazaRemove(post))} {...{ [CONFIRM_ATTR]: `plaza:${post.id}` }} title="광장에서 내리기 (두 번 누르기)" aria-label="내리기"
+              className={clsx(styles.railBtn, styles.delBtn, mobile && styles.railBtnM)}><IconTrashSolid /></button>}
           </div>
         )}
         <div className={styles.thumb}>
@@ -58,6 +60,9 @@ export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaP
     </div>
   )
 }
+
+// 순위 = 솔리드 핑크 · 픽 = 핑크 배경 · 추첨 = 흰 바탕 외곽선. 세 단계 모두 기존 핑크 값만 쓴다.
+const AWARD_CLASS = { rank1: styles.awardRank, rank2: styles.awardRank, rank3: styles.awardRank, pick: styles.awardPick, lucky: styles.awardLucky }
 
 const shortDate = (iso: string) => { const d = new Date(iso); return `${d.getMonth() + 1}.${d.getDate()}` }
 const fullDate = (iso: string) => new Date(iso).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })

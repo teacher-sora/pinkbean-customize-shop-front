@@ -11,7 +11,8 @@ export const PLAZA_TTL = 180 // 초
 // 한 응답에 다 담으면 Vercel 함수 응답 한도(4.5MB)·데이터 캐시 항목 한도(2MB)에 걸리므로 500개씩 나눠 따로 캐시한다
 // (카드 한 장 ≈ 1~1.5KB → 한 쪽 ≈ 0.75MB). 첫 쪽이 전체 개수를 알려 주면 브라우저가 나머지 쪽을 한꺼번에 받는다.
 export const PAGE_SIZE = 500
-const COLS = 'id,created_at,owner,name,description,tags,snapshot,share_code,image_path,contest,like_count,contest_no,image_view'
+// plaza_awards(kind,seq) = 대회 수상(supabase/0014). post_id 가 기본키라 글마다 객체 하나(없으면 null)로 딸려 온다.
+const COLS = 'id,created_at,owner,name,description,tags,snapshot,share_code,image_path,contest,like_count,contest_no,image_view,plaza_awards(kind,seq)'
 
 // 운영과 dev 는 스키마가 다르다. **경로**로 고른다 — 호스트로 고르면 빌드 시점에 굳어 버린다(아래 주석 참고).
 export type PlazaTarget = 'prod' | 'dev'
