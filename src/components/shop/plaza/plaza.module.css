@@ -92,14 +92,20 @@
 /* PC 는 댓글 열이 오른쪽에 붙는다 — 스테이지를 280 → 250 으로 줄여 두 칸이 나란히 남게 한다(사용자 지시). */
 /* 왼쪽 여백은 상세 본문의 거터(9px)+패딩(6px)이 맡는다 — 착용 아이템 막대의 hover 면(-6px)이 스크롤 칸 안에 들어오게(2026-09-21). */
 .detailPc { flex: 1 1 auto; min-height: 0; padding: 12px 12px 12px 0; display: flex; align-items: stretch; }
-.detailMain { flex: 1 1 0; min-width: 0; padding: 0 6px; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 16px; }
-.stages { flex: 0 0 auto; height: 240px; display: flex; gap: 10px; }
+/* 위 4px: 수상 띠지가 칸 위로 걸치는 자리(스크롤 칸은 안쪽 여백 밖을 자른다). 음수 여백으로 그만큼 올려 내용 위치는 그대로다. */
+.detailMain { flex: 1 1 0; min-width: 0; margin-top: -4px; padding: 4px 6px 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 16px; }
+.stages { position: relative; flex: 0 0 auto; height: 240px; display: flex; gap: 10px; } /* relative: 수상 띠지(.ribbon)의 기준 */
 .stagesM { height: 220px; }
 .stage { position: relative; flex: 1 1 0; min-width: 0; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 /* 상세의 수상 띠지 — 코디 칸 왼쪽 위에서 내려온다. 카드 띠지(코디·프리셋 25×32)와 같은 모양(아래 V 홈)·같은 비율이고 그중 가장 크다.
-   순위 = 기본 핑크, 주최자 픽·추첨 = 한 단계 진한 핑크. 글자는 V 홈 위쪽(72%)에 놓이게 아래 여백을 준다. */
-.ribbon { position: absolute; left: 12px; top: 0; z-index: 2; width: 48px; height: 62px; padding: 0 0 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ec86ac; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); font-size: 15px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; color: #fff; text-align: center; white-space: nowrap; }
-.ribbonSub { background: #d76d9a; }
+   카드 띠지처럼 칸 위로 3px 걸친다(top:-3px). 글자는 V 홈 위쪽(72%)에 놓이게 아래 여백을 준다.
+   색은 카드 배지(.award)와 같다: 순위 = 솔리드 핑크 · 주최자 픽 = 핑크 배경 + 테두리 · 추첨 = 흰 바탕 + 테두리.
+   clip-path 로 자른 모양에는 border 가 안 먹으므로 두 겹으로 그린다 — 바깥(본체) = 테두리 색, 안쪽(::before, 1px 안) = 바탕 색.
+   안쪽 V 홈은 빗변에서도 테두리가 1px 로 보이게 수직으로 조금 더 올린다(빗변 기울기 ≈ 35° → 1px ÷ cos). */
+.ribbon { --rb-line: #ec86ac; --rb-bg: #ec86ac; position: absolute; left: 12px; top: -3px; z-index: 2; width: 48px; height: 62px; padding: 0 0 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--rb-line); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); font-size: 15px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; color: #fff; text-align: center; white-space: nowrap; }
+.ribbon::before { content: ''; position: absolute; inset: 1px 1px 0; z-index: -1; background: var(--rb-bg); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 1.9px), 50% calc(72% - 1.5px), 0 calc(100% - 1.9px)); }
+.ribbonPick { --rb-line: #f4cfdf; --rb-bg: #fce9f1; color: #d76d9a; }
+.ribbonLucky { --rb-line: #f4cfdf; --rb-bg: #fff; color: #d76d9a; }
 .ribbonTwo { font-size: 11px; }
 .ribbonM { left: 8px; width: 42px; height: 54px; font-size: 13px; }
 .ribbonM.ribbonTwo { font-size: 10.5px; }
