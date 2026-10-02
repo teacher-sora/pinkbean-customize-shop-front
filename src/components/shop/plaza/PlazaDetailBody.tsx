@@ -20,7 +20,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import bg from '@/assets/pinkbean-bg.png'
 import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
-import type { PlazaPost } from '@/lib/plaza'
+import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
 import { CAT_TO_SLOT } from '@/lib/shopData'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
@@ -50,6 +50,14 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
           <Image src={bg} alt="" fill sizes="300px" className={styles.stageImg} />
           <div className={styles.stageTone} />
           <SnapThumb snap={post.snapshot} fraction={DETAIL_FRACTION} />
+          {/* 대회 수상은 상세에서 **띠지**로 보인다(2026-10-02 사용자 지시 — 카드의 작은 배지 대신, 앱에서 가장 큰 띠지).
+              글자는 카드 배지와 같은 낱말이고, 두 낱말이면('주최자 픽') 두 줄로 쌓는다. */}
+          {post.award && (
+            <span title={PLAZA_AWARD_TITLE[post.award.kind]}
+              className={clsx(styles.ribbon, mobile && styles.ribbonM, !post.award.kind.startsWith('rank') && styles.ribbonSub, PLAZA_AWARD_LABEL[post.award.kind].includes(' ') && styles.ribbonTwo)}>
+              {PLAZA_AWARD_LABEL[post.award.kind].split(' ').map((w) => <span key={w}>{w}</span>)}
+            </span>
+          )}
         </div>
         {post.imageUrl && (
           <div className={clsx(styles.stage, styles.stageRef)}>
