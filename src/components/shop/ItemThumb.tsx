@@ -14,7 +14,7 @@ import { loadEffect, loadEffectIndex, loadMeta, spriteUrl, type ItemMeta, type L
 import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
-import { canvasToSquareBlob } from '@/lib/canvasExport'
+import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
 import { CARD_FRACTION, CARD_MARGIN, thumbView } from '@/lib/shopData'
@@ -109,6 +109,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const shotRef = useRef<ModelShot | null>(null)
   // 표정 얼굴장식이면 이 카드만 그 표정으로 본다(연출 설정·다른 카드에는 영향 없음).
   const cardExpr = item.fixedEmotion || ctxExpr
   const { view, flip } = thumbView(gaze, cardExpr, ear, weapon, stance) // 시선(왼/오/뒷) + 표정 + 귀/무기 반영
@@ -224,6 +225,8 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     // 마네킹 중심을 셀 중앙에 고정(anchor 보정). flip=오른쪽 시선. 분수 scale=디바이스 해상도.
     const cm = item.slot === 'riding' && !!item.ridingCenterMount // 메탈아머는 메카(마운트) 중앙정렬
     renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, shouldCancel: () => cancelled }).catch(() => {})
+    // 우클릭 복사용 입력 — 화면과 같은 값(중심 오프셋·반전·라이딩 정렬)으로 다시 그린다(lib/canvasExport.modelShotBlob).
+    shotRef.current = { placed, override: ovr ?? undefined, effects: effs, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
     return () => { cancelled = true }
   }, [placed, effs, flip, dims, gaze, ovr])
 
@@ -231,14 +234,14 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return
-    return bindImageMenu(el, () => canvasToSquareBlob(el), `pinkbean-${item.name || item.id}`)
+    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
   }, [item.name, item.id])
 
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
       {!placed && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '62%', height: '62%', borderRadius: 8 }} />}
       {/* 셀보다 큰 캔버스를 절대배치 중앙정렬 → 셀 overflow:hidden 으로만 잘린다. */}
-      {/* 우클릭/롱프레스 → 복사/저장 메뉴(bindImageMenu, 아래 effect). 렌더된 픽셀을 그 시점에만 재가공. */}
+      {/* 우클릭/롱프레스 → 복사/저장 메뉴(bindImageMenu, 위 effect). 그 시점에만 같은 입력으로 다시 그린다. */}
       <canvas ref={canvasRef} style={{ position: 'absolute', transform: 'translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
     </div>
   )

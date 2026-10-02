@@ -9,7 +9,7 @@ import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta, type ListItem } f
 import { applyHsb, buildOverrides, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { canvasBitmap, computeModelPlacement, fitCanvas, zoomStepScale } from '@/lib/core/modelPlacement'
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
-import { canvasToSquareBlob } from '@/lib/canvasExport'
+import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { THUMB_VIEW, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
@@ -27,6 +27,7 @@ const DIALOG_ZOOM: Record<number, number> = { 1: 0.6, 2: 1.0, 3: 1.6 }
 export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { item: ListItem; hsb: HsbParams; palette?: PaletteParams; zoom: number; box: { w: number; h: number } }) {
   const s = useShop()
   const ref = useRef<HTMLCanvasElement>(null)
+  const shotRef = useRef<ModelShot | null>(null)
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [itemMeta, setItemMeta] = useState<ItemMeta | null>(null)
   const [effs, setEffs] = useState<EffectDraw[]>([]) // 이 아이템의 이펙트(정적 대표 프레임)
@@ -94,13 +95,14 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { ite
     const { bw, bh } = canvasBitmap(pl)
     fitCanvas(canvas, canvas.parentElement, bw, bh, box.w, box.h, dpr)
     await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov, effects: effs })
+    shotRef.current = { placed, override: ov, effects: effs } // 우클릭 복사용 입력(지금 그린 염색 그대로)
   }, [placed, itemMeta, hsb, palette, effs, zoom, item.slot, box.w, box.h])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩.
   useEffect(() => {
     const el = ref.current
     if (!el || !placed) return
-    return bindImageMenu(el, () => canvasToSquareBlob(el), `pinkbean-${item.name || item.id}`)
+    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
   }, [placed, item.name, item.id])
 
   if (!placed) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 12 }} />

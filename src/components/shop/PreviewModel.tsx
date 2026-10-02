@@ -18,6 +18,7 @@ import { applyHsb, buildOverrides, skinHsb as skinHsb2 } from '@/lib/core/dye'
 import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
+import { modelShotBlob } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { isStacked } from '@/lib/useBreakpoint'
 import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
@@ -28,10 +29,6 @@ import styles from './PreviewModel.module.css'
 // [dev] 라이딩 중 "앉은 채" 나오는 액션(캐릭터=sit, 재규어가 대신 움직임)은 shopData.ridingSeatedSet 하나로 정한다 —
 // 미리보기·부위 카드·프리셋/광장 카드가 같은 답을 내야 한다(2026-09-29: 카드만 선 채로 나왔다).
 
-// 우클릭 복사 이미지: 정사각형 캔버스 한 변(CSS px, ×margin 이 실제 비트맵) · 여백 배수 · 마네킹 높이 비율.
-// COPY_FRACTION 이 미리보기(0.25)보다 커서 모델이 더 크게 담긴다. 값이 클수록 모델↑(너무 크면 긴 머리 잘림).
-// 실제 출력 비트맵 = COPY_SIZE × COPY_MARGIN 정사각형(여기선 630²). 정지 이미지라 정수 배율 스냅으로 도트 선명.
-const COPY_SIZE = 420, COPY_MARGIN = 1.5, COPY_FRACTION = 0.5
 
 export default function PreviewModel() {
   const { index, equipped, hidden, tone, pv, renderPalette: dyePalette, renderHsb: dyeHsb, dotPos, dyeInteracting, bp } = useShop() // 염색 비활성화 슬롯은 제외된 렌더용 값
@@ -446,19 +443,12 @@ export default function PreviewModel() {
   }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
 
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
-  // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·큰 모델·흰 배경 이미지를 만든다.
-  // 미리보기는 스냅샷을 벡터에서 재렌더(정수 배율 스냅) → 도트가 가장 선명한 결과.
+  // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.
+  // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 몸통 중앙 · 정수 배율 · 그림에 맞춘 여백).
   const makeBlob = useCallback(async (): Promise<Blob | null> => {
     const snap = copyRef.current
     if (!snap) return null
-    const off = document.createElement('canvas')
-    const pl = computeModelPlacement({ divW: COPY_SIZE, divH: COPY_SIZE, dpr: 1, margin: COPY_MARGIN, fraction: COPY_FRACTION, centerDx: snap.cDx, centerDy: snap.cDy, snap: true })
-    await renderCharacter(off, snap.placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, override: snap.override, effects: snap.effects })
-    const ctx = off.getContext('2d')!
-    ctx.globalCompositeOperation = 'destination-over' // 캐릭터 뒤에 미리보기와 동일한 흰 배경
-    ctx.fillStyle = '#fff'
-    ctx.fillRect(0, 0, off.width, off.height)
-    return await new Promise<Blob | null>((res) => off.toBlob((b) => res(b), 'image/png'))
+    return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
   }, [])
 
   // 우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등)로 복사/저장 메뉴. wrap 은 항상 존재하므로 여기 바인딩.
