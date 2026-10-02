@@ -46,18 +46,19 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
   const main = (
     <>
       <div className={clsx(styles.stages, mobile && styles.stagesM, mobile && post.imageUrl && styles.stagesPairM)}>
+        {/* 대회 수상은 상세에서 **띠지**로 보인다(2026-10-02 사용자 지시 — 카드의 작은 배지 대신, 앱에서 가장 큰 띠지).
+            코디·프리셋 카드의 띠지처럼 칸 위로 살짝 걸친다 — 칸(.stage)은 넘치는 것을 자르므로 칸 **밖**(.stages)에 둔다.
+            글자·색은 카드 배지와 같고, 두 낱말이면('주최자 픽') 두 줄로 쌓는다. */}
+        {post.award && (
+          <span title={PLAZA_AWARD_TITLE[post.award.kind]}
+            className={clsx(styles.ribbon, mobile && styles.ribbonM, post.award.kind === 'pick' && styles.ribbonPick, post.award.kind === 'lucky' && styles.ribbonLucky, PLAZA_AWARD_LABEL[post.award.kind].includes(' ') && styles.ribbonTwo)}>
+            {PLAZA_AWARD_LABEL[post.award.kind].split(' ').map((w) => <span key={w}>{w}</span>)}
+          </span>
+        )}
         <div className={styles.stage}>
           <Image src={bg} alt="" fill sizes="300px" className={styles.stageImg} />
           <div className={styles.stageTone} />
           <SnapThumb snap={post.snapshot} fraction={DETAIL_FRACTION} />
-          {/* 대회 수상은 상세에서 **띠지**로 보인다(2026-10-02 사용자 지시 — 카드의 작은 배지 대신, 앱에서 가장 큰 띠지).
-              글자는 카드 배지와 같은 낱말이고, 두 낱말이면('주최자 픽') 두 줄로 쌓는다. */}
-          {post.award && (
-            <span title={PLAZA_AWARD_TITLE[post.award.kind]}
-              className={clsx(styles.ribbon, mobile && styles.ribbonM, !post.award.kind.startsWith('rank') && styles.ribbonSub, PLAZA_AWARD_LABEL[post.award.kind].includes(' ') && styles.ribbonTwo)}>
-              {PLAZA_AWARD_LABEL[post.award.kind].split(' ').map((w) => <span key={w}>{w}</span>)}
-            </span>
-          )}
         </div>
         {post.imageUrl && (
           <div className={clsx(styles.stage, styles.stageRef)}>
