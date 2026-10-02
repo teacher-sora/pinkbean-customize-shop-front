@@ -23,8 +23,9 @@ export const PLAZA_OPEN = '자유 코디'
 export const PLAZA_CONTEST_MAX = 3
 // 대회 기간 — 광장 목록 아래 안내 줄에 그대로 쓴다(대회 필터일 때). 정해지면 '2026.10.01 ~ 10.31' 처럼 적는다.
 export const PLAZA_CONTEST_PERIOD: string | null = '10월 1일 오후 11시 59분까지'
-// 마감 시각 — 이 순간부터 대회 출품 · 대회 출품작 좋아요가 막힌다. **DB 가 진짜 방어선**(supabase/0011 plaza_contest_deadline)이고
+// 마감 시각 — 이 순간부터 대회 **출품**이 막히고 등록할 곳에서 대회가 빠진다. **DB 가 진짜 방어선**(supabase/0011 plaza_contest_deadline)이고
 // 여기 값은 화면 안내용이다. 바꿀 땐 둘 다 바꾼다.
+// 좋아요는 마감 뒤에도 누를 수 있다(2026-10-02, supabase/0015) — 순위는 plaza_awards 로 고정돼 좋아요 수가 바뀌어도 맨 앞 순서는 그대로다.
 export const PLAZA_CONTEST_DEADLINE = Date.parse('2026-10-02T00:00:00+09:00')
 export const plazaContestClosed = () => Date.now() >= PLAZA_CONTEST_DEADLINE
 export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
@@ -333,7 +334,7 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
 }
 
 // 좋아요 누르기/취소 — 서버가 기기 기준으로 판정한다(이 기기가 이미 눌렀으면 어느 창에서든 취소가 된다).
-// 돌려받은 실제 상태·수로 화면을 맞춘다. 마감 뒤 대회 출품작이면 사유가 담긴 오류.
+// 돌려받은 실제 상태·수로 화면을 맞춘다.
 export async function togglePlazaLike(post: PlazaPost): Promise<{ liked: boolean; likes: number }> {
   const c = sb()
   if (!c) throw new Error('supabase not configured')
