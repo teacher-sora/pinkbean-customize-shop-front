@@ -6,7 +6,7 @@ import { type AnimaRace } from '@/lib/core/data'
 import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { animaNow, animaOnce, composePeek, composeSnapshotCached, snapKey, type SnapComposite } from '@/lib/core/snapRender'
-import { canvasToSquareBlob } from '@/lib/canvasExport'
+import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { CARD_FRACTION, CARD_MARGIN } from '@/lib/shopData'
 import { enqueueThumb } from '@/lib/thumbQueue'
@@ -82,11 +82,14 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     return () => { cancelled = true }
   }, [placed, ov, effects, center, dims, fraction, margin])
 
-  // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재).
+  // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
+  // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 몸통 중앙 · 정수 배율 · 그림에 맞춘 여백).
+  const shotRef = useRef<ModelShot | null>(null)
+  shotRef.current = placed ? { placed, override: ov, effects, centerX: center === 'x', centerMount: center === 'mount' } : null
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return
-    return bindImageMenu(el, () => canvasToSquareBlob(el), 'pinkbean-cody')
+    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), 'pinkbean-cody')
   }, [])
 
   return (
