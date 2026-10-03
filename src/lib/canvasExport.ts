@@ -10,6 +10,8 @@
 //       카드가 작아도 결과 해상도가 같다. 가운데 기준은 화면과 같다(마네킹 중심 / 라이딩은 navel·메카).
 //    2) 그 중심을 **그대로 둔 채** 그림이 닿는 데까지만 자른다(중심에서 가장 먼 픽셀까지가 반 변) → 몸통은 정중앙,
 //       여백은 판 크기가 아니라 그림 크기에 비례(SHOT_PAD).
+//    3) **배경은 투명**이다(2026-10-04 사용자 지시 — 건의함: "저장할 때 배경이 투명하면 좋겠다"). 전에는 흰 바탕을 깔았다.
+//       여백(2번)은 그대로 투명 여백으로 남는다. ⚠️ 투명을 모르는 곳에 붙여 넣으면(그림판·일부 메신저) 바탕이 검게 나올 수 있다.
 // renderCharacter 가 CORS 로 이미지를 로드해 그리므로 taint 되지 않는다 → getImageData / toBlob 이 동작한다.
 import type { PlacedLayer } from './core/assemble'
 import { computeModelPlacement } from './core/modelPlacement'
@@ -30,7 +32,7 @@ const SHOT_BOX = 480   // 다시 그리는 판(게임 픽셀). 큰 탈것·이�
 const SHOT_PAD = 0.12  // 결과 한 변 대비 사방 여백 비율
 const SHOT_MIN = 256   // 결과 최소 한 변(px)
 
-export async function modelShotBlob (shot: ModelShot, bg = '#fff'): Promise<Blob | null> {
+export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
   if (!shot.placed.length) return null
   const off = document.createElement('canvas')
   const dev = SHOT_BOX * SHOT_SCALE
@@ -67,9 +69,7 @@ export async function modelShotBlob (shot: ModelShot, bg = '#fff'): Promise<Blob
   out.width = side; out.height = side
   const ctx = out.getContext('2d')!
   ctx.imageSmoothingEnabled = false
-  ctx.fillStyle = bg
-  ctx.fillRect(0, 0, side, side)
-  ctx.drawImage(off, side / 2 - cx, side / 2 - cy) // 늘리지 않고 그대로 옮긴다(1:1)
+  ctx.drawImage(off, side / 2 - cx, side / 2 - cy) // 늘리지 않고 그대로 옮긴다(1:1). 바탕은 칠하지 않는다 — 투명
   return await new Promise((res) => out.toBlob((b) => res(b), 'image/png'))
 }
 
