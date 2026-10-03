@@ -8,9 +8,6 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 31536000, // 경로에 올린 시각이 들어가 같은 주소의 그림은 바뀌지 않는다
   },
-  // NOTE (CDN phase): when wiring the real sprite renderer, set
-  //   env.NEXT_PUBLIC_DATA_BASE = 'https://cdn.pinkbean-customize.com'
-  // and (if using next/image for sprites) add the CDN host to images.remotePatterns.
 };
 
 export default nextConfig;

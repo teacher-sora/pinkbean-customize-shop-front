@@ -1,22 +1,18 @@
-# `src/lib/core` — 캐릭터 합성 · 염색 코어 (⚠️ 레거시 아님)
+# `src/lib/core` — 캐릭터 합성 · 염색 코어
 
-메이플 프로토타입(`maple test/web/lib`)에서 **검증 완료된 핵심 렌더링 파이프라인**을 그대로 가져온 것.
-이건 서비스 완성 후에도 유지되는 **핵심 기술**이며 제거 대상(레거시)이 아니다.
+화면에 보이는 모든 캐릭터·아이템 그림이 이 폴더를 거친다(미리보기, 카드, 광장, 공유 카드, 복사 이미지).
 
 ## 파일
-- `data.ts` — 데이터 접근 계층. 모든 리소스를 `DATA_BASE`(기본 = R2 CDN `https://cdn.pinkbean-customize.com`)에서 fetch. 타입(`ItemMeta`/`Index`/`Layer`/`Frame` 등)의 단일 출처.
-- `assemble.ts` — **순수 캐릭터 조립**. body `navel`을 월드 원점(0,0)으로 삼아 부위별 앵커(map 포인트)로 정렬 → **어떤 액션/프레임에서도 캐릭터가 중앙에 고정**되는 로직. zmap 순서로 페인트.
-- `dye.ts` — **정밀 염색**. 팔레트 혼합(hair/성형: 두 색상 변형 스프라이트 픽셀 보간) + HSB(캐시 아이템: WcR2 `Prism.cs` 충실 포팅, 색상계열 게이트/16비트 스텝/238 캡).
-- `occlusion.ts` — smap/vslot 기반 부위 가림(모자↔헤어 등).
-- `render.ts` — 조립 결과를 캔버스에 그리기 + 이펙트/스프라이트 URL.
-- `lru.ts` — 염색/렌더 결과 캐시.
+- `data.ts` — 데이터 접근 계층. 모든 리소스를 CDN(`https://cdn.pinkbean-customize.com`)에서 받는다. 타입(`ItemMeta`·`Index`·`Layer`·`Frame`)의 단일 출처. 자리 코드(islot·vslot)가 잘못 들어간 아이템을 여기서 보정한다.
+- `assemble.ts` — 캐릭터 조립. 몸통 `navel` 을 원점으로 부위별 앵커를 이어 붙여, 어떤 액션·프레임에서도 캐릭터가 같은 자리에 선다. zmap 순으로 그린다. 뒷모습 프레임 판정(`isBackFrame`)도 여기.
+- `occlusion.ts` — smap·vslot 기반 가림(모자 ↔ 헤어 등).
+- `dye.ts` — 염색. 헤어·성형은 팔레트 혼합(색 A·B·비율), 그 밖의 캐시 아이템은 HSB(게임 클라이언트 `Prism.cs` 를 그대로 옮긴 것 — 추측으로 고치지 않는다).
+- `render.ts` — 조립 결과를 캔버스에 그리기, 이펙트.
+- `modelPlacement.ts` — 칸에 맞춘 정수 배율과 캔버스 크기(`computeModelPlacement`·`canvasBitmap`·`fitCanvas`).
+- `snapRender.ts` — 스냅샷(저장된 코디) 한 장을 합성한다. 프리셋·광장·상세·공유 카드가 함께 쓰고, 결과를 캐시한다.
+- `thumbEffects.ts` · `warm.ts` · `slots.ts` · `lru.ts` — 썸네일 이펙트, 미리 받기, 부위 표, 캐시.
 
-## 현재 상태 (디자인 재현 단계)
-아직 UI(`components/PinkbeanShop.tsx`)에 **연결되어 있지 않다.** 지금 화면은 디자인 핸드오프
-재현이 목적이라 플레이스홀더(mock 아이템·점선 미리보기·hsl 근사 염색)를 쓴다.
-
-## CDN 연동 단계에서 할 일
-1. `NEXT_PUBLIC_DATA_BASE`를 CDN URL로 설정(기본값이 이미 CDN이라 미설정이면 CDN 사용).
-2. 미리보기 점선 카드를 `assemble.getFrameLayers` + `render` 캔버스로 교체.
-3. 염색 미리보기(hsl/rgb 근사)를 `dye.buildOverrides`(팔레트/HSB)로 교체.
-4. 필요 시 `tsconfig.json`의 `exclude`에서 이 폴더를 풀고 strict 타입 정리.
+## 지킬 것
+- 캔버스는 **정수 배율만**(소수 배율은 도트를 뭉갠다). 크기·정렬은 `modelPlacement` 의 함수를 쓴다.
+- 미리보기(`PreviewModel`)와 스냅샷 합성(`snapRender`)의 규칙이 달라지면 안 된다 — 한쪽만 고치면 카드와 미리보기가 다른 그림이 된다.
+- 라이딩 규칙은 `lib/shopData.ts` 한 곳에 있다.

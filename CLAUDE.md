@@ -1,57 +1,44 @@
 # 핑크빈 커마샵 Front — 작업 가이드 (모든 세션 공통)
 
-메이플 스타일 코디(외형) 세팅 서비스의 프론트엔드. Next.js 14 (App Router) · React 18 · TypeScript.
-Vercel에 이 저장소의 `main`을 배포한다.
+메이플스토리 캐릭터 코디 웹앱의 프론트엔드. Next.js 14(App Router) · React 18 · TypeScript.
+`main` → 운영(`pinkbean-customize.com`), `dev` → dev 사이트(`dev.pinkbean-customize.com`). 둘 다 Vercel.
+
+전체 구조와 규칙의 정본은 **`Desktop/maple test/ARCHITECTURE.md`** 다(§5 프론트, §6 코디 광장). 여기에는 이 레포에서 바로 필요한 것만 적는다.
 
 ## 구조
 ```
 src/
-  app/            # layout.tsx, page.tsx, globals.css (공유 CSS)
+  app/              page(홈) · share(공유 링크 메타) · guide · viewer(dev 전용)
+                    api/nick · api/share · api/plaza/…
   components/
-    PinkbeanShop.tsx      # 조합 루트 (ShopProvider + Shell)
-    shop/
-      ShopContext.tsx     # 모든 상태·핸들러의 단일 출처 (useShop())
-      frame/ nav/ list/ info/ preset/ preview/ surface/ ui/   # UI v2(핸드오프 v2 마크업 1:1, 각 *.module.css)
-      render/             # 재활용 캔버스(염색 스프라이트·발색표·점 위치 편집기)
-      PreviewModel.tsx / ItemThumb.tsx / SnapThumb.tsx / LookDialog.tsx / ShareReceiveSheet.tsx
+    PinkbeanShop.tsx        조합 루트(ShopProvider + Shell)
+    shop/ShopContext.tsx    모든 상태·핸들러의 단일 출처(useShop())
+    shop/frame nav list info preset preview surface plaza ui render
+    shop/PreviewModel.tsx · ItemThumb.tsx · SnapThumb.tsx · LookDialog.tsx
   lib/
-    catalog.ts      # 정적 데이터 + 공유 타입 (부위/팔레트/연출 옵션/상수)
-    color.ts        # 염색·색상 계산 (디자인 재현용 근사)
-    style.ts        # css() 인라인 헬퍼 + 공유 스타일 빌더
-    core/           # ⚠️ 합성·정밀염색 코어 (레거시 아님, CDN 단계에서 연결). core/README.md 참고.
+    core/           캐릭터 합성·염색·가림·렌더 코어(core/README.md)
+    shopData.ts     부위·라이딩 규칙      catalog.ts   정적 데이터·공유 타입
+    plaza*.ts       코디 광장            shareCode.ts · shareImage.ts   공유 링크
+    uiState.ts      보던 자리 기억        canvasExport.ts   복사·저장 이미지
+supabase/           코디 광장 스키마 SQL(번호순, public 과 plaza_dev 를 함께 담는다)
+scripts/merge-dev-to-main.sh
 ```
-상태 추가/변경은 `ShopContext`, 데이터 추가는 `catalog.ts`, 색 계산은 `color.ts`에서.
+상태는 `ShopContext`, 아이템 데이터는 CDN(`https://cdn.pinkbean-customize.com`)에서 받는다.
 
-## 🎨 스타일링 컨벤션 (중요 — 새 작업 시 준수)
-현재 화면 코드는 디자인 정본(`design_handoff_pinkbean_shop`)을 충실히 옮기느라 **상태 기반 인라인
-스타일**을 `style.ts`의 `css('...')` 문자열로 쓴다. 정본이 hover/선택/열림 상태로 색·보더를 바꾸는
-구조라 이렇게 시작했다.
-
-**앞으로 디자인을 바꾸거나 새 컴포넌트를 만들 때는 다음을 우선한다:**
-1. **정적 스타일**(레이아웃/컨테이너/타이포 등 상태와 무관한 것)은 컴포넌트 옆에 **`Xxx.module.css`**
-   를 만들어 `className`으로 적용한다. (예: `CodiScreen.tsx` ↔ `CodiScreen.module.css`)
-2. **상태 기반 동적 스타일**(hover/선택/열림/드래그 오프셋 등)만 인라인(`css()` 또는 CSS 변수)로 둔다.
-   토글되는 값은 CSS 변수(`style={{ '--x': ... }}`)로 넘기고 나머지는 module.css에서 처리하면 깔끔하다.
-3. 여러 컴포넌트가 공유하는 원시 스타일/애니메이션(스크롤바, 카드 hover, 다이얼로그 애니메이션,
-   `pb-select`, 아코디언 등)은 이미 `app/globals.css`에 있으니 재사용한다.
-4. 기존 `css()` 인라인을 **대량으로 한꺼번에 module.css로 옮기지는 말 것**(시각 회귀 위험). 대신
-   **건드리는 컴포넌트부터 점진적으로** 위 규칙으로 전환한다.
-
-판단이 애매하면: "상태에 따라 바뀌는가?" → 예면 인라인, 아니면 module.css.
-
-## 데이터 / CDN (현 단계 = 디자인 재현)
-- 지금 아이템/캐릭터는 **플레이스홀더**(mock 60종, 점선 미리보기, 근사 염색).
-- CDN 연동 단계에서: `NEXT_PUBLIC_DATA_BASE`(기본값 이미 R2 CDN `https://cdn.pinkbean-customize.com`)로
-  index/slots/meta 로드 → 미리보기를 `lib/core`(assemble/render/dye)로 실제 스프라이트 합성·정밀염색.
-- 임포트: 닉네임=넥슨 OpenAPI, 코드=Supabase 공유코드(백엔드는 `../back` 예정).
+## 스타일
+- 정적 스타일은 컴포넌트 옆 `*.module.css`. 인라인은 즉시 수치를 반영해야 하는 값만.
+- 여러 컴포넌트가 함께 쓰는 것(카드 hover, 다이얼로그 전환, 스크롤바 등)은 `app/globals.css` 에 있다 — 재사용한다.
+- 디자인은 확정돼 있다. 색·간격·모션 값은 `maple test/.claude/skills/pinkbean-design` 에서 고른다.
 
 ## 명령
 ```bash
 npm install
-npm run dev      # http://localhost:80  (포트 80)
-npm run build    # 프로덕션 빌드/타입체크 검증 — 커밋 전 통과 확인
+npm run dev                          # http://localhost (포트 80) — 사용자 전용
+npx tsc --noEmit --noUnusedLocals    # 커밋 전 통과 확인(테스트·린트는 없다)
 ```
 
-## 커밋
-- git 신원은 이 저장소 로컬 config에 `teacher-sora <sora05153@gmail.com>` 로 설정돼 있다(멀티계정 주의).
-- 작업 브랜치에서 커밋·푸시 후 `main`에 병합하는 흐름을 따른다.
+## 브랜치와 병합
+- `main` 에 직접 커밋하지 않는다. `dev` 에 올려 dev 사이트에서 확인하고, 지시가 있을 때 운영으로 올린다.
+- dev → main 은 **`sh scripts/merge-dev-to-main.sh`** 로만 병합한다(`src/app/viewer` 를 빼고 커밋한다). 그 뒤 `git push origin main`.
+- `src/app/viewer` 는 dev 전용이다. 훅(`.githooks`)·워크플로(`guard-dev-only.yml`)·병합 스크립트를 지우거나 우회하지 않는다.
+- git 신원은 이 저장소 로컬 config 의 `teacher-sora <sora05153@gmail.com>`.
