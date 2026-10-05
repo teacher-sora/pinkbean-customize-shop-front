@@ -66,9 +66,14 @@ export function weaponPose(weapon: ItemMeta | null | undefined, opts: ViewOpts):
   if (!weapon || weapon.slot !== 'weapon' || !alt) return opts
   const f = weapon.frames as Record<string, unknown>
   const pre = weapon.stances?.length ? pickWeaponStance(weapon.stances, opts.weaponMotion) + '/' : ''
-  if (f[pre + opts.action] || !f[pre + alt]) return opts
-  return { ...opts, action: alt }
+  if (f[pre + opts.action]) return opts
+  if (f[pre + alt]) return { ...opts, action: alt }
+  // 서기·걷기 프레임이 아예 없는 무기(채집 도구 — 스패너·곡괭이·삽은 휘두르는 프레임뿐이다)는 그 무기가 가진
+  // 공격 자세로 선다. 안 그러면 아래 폴백이 휘두르는 그림을 서 있는 몸에 얹는다. 공격 프레임도 없으면(이펙트뿐인 무기) 그대로.
+  const own = POSE_FALLBACK.find((a) => f[pre + a])
+  return own ? { ...opts, action: own } : opts
 }
+const POSE_FALLBACK = ['alert', 'swingO1', 'swingT1', 'swingP1', 'stabO1', 'stabT1', 'shoot1', 'swingO2', 'swingT2', 'swingP2', 'stabO2', 'stabT2', 'shoot2', 'swingO3', 'swingT3', 'swingOF', 'swingTF', 'swingPF', 'stabOF', 'stabTF', 'shootF']
 
 const TINTABLE_SLOTS = new Set(['hair', 'longcoat'])
 // Climbing actions face away from the camera — show the back of the head, hide the face.
