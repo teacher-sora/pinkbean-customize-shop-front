@@ -24,7 +24,7 @@ const GENDERS: SegOpt<GenderFilter>[] = [
   { v: 'f', l: '여', t: '여자 캐릭터가 입을 수 있는 것' },
   { v: 'm', l: '남', t: '남자 캐릭터가 입을 수 있는 것' },
 ]
-const AI_EXAMPLES = ['동물 귀 모자', '분홍 단발 헤어', '검은 정장 한벌옷', '반짝이는 날개 망토']
+const AI_EXAMPLES = ['동물 귀 모자', '한벌옷 스타킹', '고양이 입 성형', '양갈래 헤어']
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
   const { primary } = useShop()
