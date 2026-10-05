@@ -1144,7 +1144,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [watching])
   const plazaRemove = (post: PlazaPost) => {
     // 3초 안에, 다른 상호작용 없이 연속으로 두 번 눌러야 내린다(lib/confirmTwice).
-    if (confirmTwice(`plaza:${post.id}`)) {
+    if (confirmTwice(`plaza:${post.id}`, '한 번 더 누르면 광장에서 내려요')) {
       deletePlazaPost(post)
         .then(() => {
           myRemoved.current.add(post.id)
@@ -1153,9 +1153,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
           notify('등록한 코디를 내렸어요')
         })
         .catch(() => notify('내리지 못했어요. 다시 시도해 주세요'))
-      return
     }
-    notify('한 번 더 누르면 광장에서 내려요')
   }
   const plazaCopyLink = (post: PlazaPost) => {
     if (post.shareCode) {

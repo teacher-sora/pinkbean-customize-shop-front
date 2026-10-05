@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
-import { assemble, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, type AssembleInput } from '@/lib/core/assemble'
+import { assemble, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, buildOverrides, skinHsb as skinHsb2 } from '@/lib/core/dye'
 import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
@@ -108,7 +108,9 @@ export default function PreviewModel() {
   // 안 보이는 아이템이 표정을 붙잡고 있으면 안 되니까. 연출 설정(pv.expr)은 건드리지 않고 여기서만 덮어쓴다.
   const fixedE = fixedExpr(Object.entries(equipped).filter(([sl]) => !hidden[sl]).map(([, it]) => it), pv.expr)
   const viewInfo = useMemo(() => buildView({ ...pv, expr: fixedE }), [pv.action, pv.weapon, fixedE, pv.ear, pv.gaze])
-  const V = viewInfo.view
+  // 서기·걷기 자세는 착용한 무기가 정한다(두손 전용 무기 → stand2) — assemble.weaponPose 주석 참고.
+  const wpnMeta = equipped['weapon'] && !hidden['weapon'] ? metas.get(equipped['weapon'].id) : undefined
+  const V = useMemo(() => weaponPose(wpnMeta, viewInfo.view), [wpnMeta, viewInfo])
   const bodyMeta = bodyId ? metas.get(bodyId) : undefined
   const headMeta = headId ? metas.get(headId) : undefined
   const ready = !!(bodyMeta && headMeta)
@@ -162,7 +164,8 @@ export default function PreviewModel() {
         const m = metas.get(it.id); if (!m) continue
         const itemV = slot === 'riding' ? jagV : charV // 탈것은 자기(매핑된) 액션, 나머지는 캐릭터 포즈(sit/선택)를 따른다
         // 탈것(riding)은 자기 액션을 도는 별도 모델이라 캐릭터의 뒷프레임 판단을 붙이지 않는다.
-        let layers = getFrameLayers(m, itemV, fi, slot === 'riding' ? false : backFrame)
+        // 정지('기본' 액션)면 프레임 번호를 넘기지 않는다 → 머리부착 아이템은 대표 그림(카드와 같은 규칙, assemble.stillIndex).
+        let layers = getFrameLayers(m, itemV, viewInfo.isStatic ? undefined : fi, slot === 'riding' ? false : backFrame)
         if (slot === 'weapon' && !pv.wEffect) layers = layers.filter((l) => l.name !== 'effect')
         items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace, name: m.name, dotOffsets: dotPos[m.id] })
       }

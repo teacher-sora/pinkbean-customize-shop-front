@@ -108,7 +108,7 @@ function NoticeComments({ notice, mobile, notify }: { notice: PlazaNotice; mobil
       .finally(() => setBusy(false))
   }
   const remove = (c: NoticeComment) => {
-    if (!confirmTwice(`ntc:${c.id}`)) { notify('한 번 더 누르면 댓글을 지워요'); return }
+    if (!confirmTwice(`ntc:${c.id}`, '한 번 더 누르면 댓글을 지워요')) return
     deleteNoticeComment(c.id)
       .then(() => load(page))
       .catch(() => notify('댓글을 지우지 못했어요'))

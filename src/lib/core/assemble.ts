@@ -55,6 +55,21 @@ function pickWeaponStance(stances: string[], wm?: string): string {
   return inRange(30, 39) ?? stances[0]
 }
 
+// 서기·걷기 자세는 **무기가 정한다**(2026-10-06 사용자 제보 — 아란의 폴암 마하·청룡언월도(관우)가 어긋나 보임).
+// 두손 전용 무기(폴암·두손검 일부)는 stand2·walk2 프레임만 갖고 stand1·walk1 이 아예 없다. 몸을 stand1 로 그리면
+// 무기는 아래 폴백으로 stand2 그림을 내놓아, 한 손을 내린 몸에 두 손 자세의 무기가 얹혀 어긋난다.
+// 게임은 무기에 맞는 자세로 선다 → 몸의 액션을 무기가 가진 쪽으로 바꾼다. 무기가 그 자세를 갖고 있으면 그대로 둔다.
+// 바뀌지 않으면 **받은 객체를 그대로** 돌려준다(useMemo 의존성이 흔들리지 않게).
+const POSE_PAIR: Record<string, string> = { stand1: 'stand2', stand2: 'stand1', walk1: 'walk2', walk2: 'walk1' }
+export function weaponPose(weapon: ItemMeta | null | undefined, opts: ViewOpts): ViewOpts {
+  const alt = POSE_PAIR[opts.action]
+  if (!weapon || weapon.slot !== 'weapon' || !alt) return opts
+  const f = weapon.frames as Record<string, unknown>
+  const pre = weapon.stances?.length ? pickWeaponStance(weapon.stances, opts.weaponMotion) + '/' : ''
+  if (f[pre + opts.action] || !f[pre + alt]) return opts
+  return { ...opts, action: alt }
+}
+
 const TINTABLE_SLOTS = new Set(['hair', 'longcoat'])
 // Climbing actions face away from the camera — show the back of the head, hide the face.
 const BACK_ACTIONS = new Set(['ladder', 'rope'])
@@ -116,7 +131,16 @@ export function getFrameSeq(meta: ItemMeta, opts: ViewOpts, backFrame = false): 
   } else if (meta.slot === 'head') {
     key = back && (f[opts.action] || f['back']) ? (f[opts.action] ? opts.action : 'back') : f['front'] ? 'front' : keys[0]
   } else if (f['base']) {
-    // head-attached non-face (hair/cap/accessories). 등반 시엔 뒷프레임만 — 없으면 숨김.
+    // head-attached non-face (hair/cap/accessories).
+    // 그 액션의 프레임이 따로 있으면 그것이 우선이다(2026-10-06 사용자 제보 — 트리 모자·초밥 모자).
+    // 모자 약 130개는 서기·걷기·공격마다 그림이나 위치가 base(=원본 default)와 다르다: 트리 모자는 default 의
+    // origin 이 얼굴 높이라 base 로 그리면 얼굴을 덮고, 초밥 모자는 default 가 빈 그림이라 아무것도 안 나온다.
+    // 게임은 그 액션의 노드를 쓴다. 추출기가 base 와 다른 액션만 그 이름으로 넣어 두므로(extract.cjs frameSet),
+    // 있으면 쓰고 없으면 아래 base/back 규칙 그대로다. 뒷모습 액션·프레임도 그 액션 프레임이 곧 뒷모습이다.
+    const afb = ACTION_FALLBACK[opts.action]
+    const own = f[opts.action] ? opts.action : (afb && f[afb]) ? afb : null
+    if (own && own !== 'prone') return normFrames(f[own])
+    // 등반 시엔 뒷프레임만 — 없으면 숨김.
     if (back) return f['back'] ? normFrames(f['back']) : []
     // 엎드리기: prone 전용 프레임이 있으면 그걸 사용(엎드림 헤어). 없으면 서기(base)로 폴백.
     key = (PRONE_ACTIONS.has(opts.action) && f['prone']) ? 'prone' : 'base'
@@ -142,8 +166,10 @@ export function getFrameSeq(meta: ItemMeta, opts: ViewOpts, backFrame = false): 
 // 하나만 map={}, 나머지 24개는 brow={0,0}). meta.json 은 WZ 를 충실히 옮긴 것이므로 렌더 쪽에서 견딘다.
 // ⚠️ 빌려오는 건 map(앵커 오프셋)뿐이다. origin 은 프레임마다 다르므로 그 프레임 것을 그대로 쓴다.
 // 전 프레임에 map 이 없으면 빌려올 게 없다 → 그대로 두고 assemble 이 버린다(추측으로 지어내지 않는다).
+// ⚠️ root 표지가 붙은 레이어는 채우지 않는다 — 앵커가 없는 것이 결손이 아니라 "발 기준으로 놓는 그림"이라는 뜻이다
+//    (초밥 모자 stand1: origin (20,80)). 다른 프레임의 brow 를 빌리면 눈썹에서 80 위로 날아간다.
 function fillMissingMap(meta: ItemMeta, layers: Layer[]): Layer[] {
-  if (!layers.some((l) => !l.map || !Object.keys(l.map).length)) return layers // 정상이면 원본 그대로(할당 없음)
+  if (!layers.some((l) => !l.root && (!l.map || !Object.keys(l.map).length))) return layers // 정상이면 원본 그대로(할당 없음)
   const donor = new Map<string, Layer['map']>()
   for (const seq of Object.values(meta.frames || {})) {
     for (const fr of (seq as { layers: Layer[] }[]) || []) {
@@ -153,15 +179,32 @@ function fillMissingMap(meta: ItemMeta, layers: Layer[]): Layer[] {
     }
   }
   return layers.map((l) => {
-    if ((l.map && Object.keys(l.map).length) || !donor.has(l.name)) return l
+    if (l.root || (l.map && Object.keys(l.map).length) || !donor.has(l.name)) return l
     return { ...l, map: donor.get(l.name)! } // has() 로 확인 후라 non-null
   })
 }
 
-export function getFrameLayers(meta: ItemMeta, opts: ViewOpts, i = 0, backFrame = false): Layer[] {
+// 정지 화면(카드·프리셋·'기본' 액션)에서 머리부착 아이템의 액션 프레임 중 어느 것을 보여 줄지.
+// 액션 프레임의 0번이 꼭 대표 그림은 아니다 — 눈을 깜빡이는 모자(핑크빈 모자)는 0번이 감은 눈이고, 빛나는 모자
+// (글로잉 스마일캡)는 0번이 꺼진 그림이다. 원본의 default(=base)가 그 아이템의 대표 그림이므로, 액션 프레임 가운데
+// **base 와 같은 그림을 쓰는 첫 프레임**을 고른다(추출기가 같은 그림은 base 의 png 경로를 가리키게 해 둔다).
+// 없으면 0번이다(초밥 모자처럼 base 가 빈 그림인 경우).
+function stillIndex(meta: ItemMeta, seq: Frame[]): number {
+  if (seq.length < 2) return 0
+  const f = meta.frames as Record<string, any>
+  const pool = new Set<string>()
+  for (const k of ['base', 'back']) for (const fr of normFrames(f[k])) for (const l of fr.layers) pool.add(l.png)
+  if (!pool.size) return 0
+  const k = seq.findIndex((fr) => fr.layers.length > 0 && fr.layers.every((l) => pool.has(l.png)))
+  return k < 0 ? 0 : k
+}
+
+// i 를 주지 않으면 **정지 화면**이다(대표 프레임, stillIndex). 애니메이션은 프레임 번호를 넘긴다.
+export function getFrameLayers(meta: ItemMeta, opts: ViewOpts, i?: number, backFrame = false): Layer[] {
   const seq = getFrameSeq(meta, opts, backFrame)
   if (!seq.length) return []
-  return fillMissingMap(meta, seq[Math.min(i, seq.length - 1)].layers)
+  const still = i === undefined && meta.slot !== 'face' && meta.slot !== 'head' && meta.slot !== 'body' && !!(meta.frames as Record<string, unknown>)['base']
+  return fillMissingMap(meta, seq[still ? stillIndex(meta, seq) : Math.min(i ?? 0, seq.length - 1)].layers)
 }
 
 // Number of animation frames for the current view (drives the master clock = base body).
@@ -240,7 +283,8 @@ export function assemble(
     const roy = bodyLayer.y + bodyLayer.origin.y
     for (const L of remaining) {
       if (L.hidden) continue // 가려진 레이어는 폴백으로도 그리지 않는다
-      if (!Object.keys(L.map || {}).some((n) => L.map[n])) continue // no valid anchor at all → drop
+      // root 표지 레이어(앵커 없는 액션 프레임 그림)는 여기서 몸 원점에 놓인다 — 원본이 정한 자리다.
+      if (!L.root && !Object.keys(L.map || {}).some((n) => L.map[n])) continue // no valid anchor at all → drop
       placed.push({ ...L, x: rox - L.origin.x, y: roy - L.origin.y, tintable: TINTABLE_SLOTS.has(L.slot) })
     }
   }
@@ -249,7 +293,9 @@ export function assemble(
     const i = zmap.indexOf(z)
     return i < 0 ? 9999 : i
   }
-  placed.sort((a, b) => zIndex(b.z) - zIndex(a.z))
+  // root 레이어의 z 는 zmap 이름이 아니라 정수일 수 있다(이펙트와 같은 규칙: 0 이상 = 캐릭터 앞, 음수 = 뒤).
+  const zOf = (p: PlacedLayer) => (p.root && /^-?\d+$/.test(String(p.z)) ? (Number(p.z) >= 0 ? -1 : 10000) : zIndex(p.z))
+  placed.sort((a, b) => zOf(b) - zOf(a))
   // `anchors` holds every resolved named reference point (navel/neck/brow/hand/…) in
   // world coords (navel = 0,0). Item effects use it to pick their attach point by `pos`.
   return { placed, anchors }

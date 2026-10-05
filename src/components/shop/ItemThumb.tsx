@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
+import { assemble, getFrameLayers, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
@@ -101,8 +101,9 @@ interface ModelProps {
   isMy?: boolean                            // "내 모델" 카드 여부. 아이템 자체 이펙트(연출)는 내 모델에만 그린다.
   dotOffsets?: Record<string, { x: number; y: number }> // 내 모델: 후보가 변경점/변경쩜이면 내가 옮긴 점 위치
   stance?: boolean                          // 배경이 무기모션 자세(두손=stand2)로 구워졌으면 후보 아이템도 같은 자세로
+  ctxAction?: string                        // 배경이 내 무기 때문에 다른 자세로 구워졌으면 그 액션(thumbCtx.action) — 후보도 같은 자세로
 }
-function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, dotOffsets }: ModelProps) {
+function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets }: ModelProps) {
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [effs, setEffs] = useState<EffectDraw[]>([])
   const [ovr, setOvr] = useState<Map<string, HTMLCanvasElement> | undefined>(override)
@@ -112,7 +113,9 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
   const shotRef = useRef<ModelShot | null>(null)
   // 표정 얼굴장식이면 이 카드만 그 표정으로 본다(연출 설정·다른 카드에는 영향 없음).
   const cardExpr = item.fixedEmotion || ctxExpr
-  const { view, flip } = thumbView(gaze, cardExpr, ear, weapon, stance) // 시선(왼/오/뒷) + 표정 + 귀/무기 반영
+  const tv = thumbView(gaze, cardExpr, ear, weapon, stance) // 시선(왼/오/뒷) + 표정 + 귀/무기 반영
+  const flip = tv.flip
+  const ctxView = ctxAction && gaze !== 'back' ? { ...tv.view, action: ctxAction } : tv.view // 배경과 같은 자세
 
   useEffect(() => {
     let alive = true
@@ -120,6 +123,10 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     ;(async () => {
       let self: AssembleInput[]
       let selfMeta: ItemMeta | null = null
+      // 이 카드가 무기면 서기 자세는 그 무기가 정한다(두손 전용 무기 → stand2, assemble.weaponPose).
+      // 배경(몸·머리·내 착용)은 ctxView 자세로 구워져 있으므로, 자세가 바뀌면 아래에서 배경도 같은 자세로 다시 잡는다.
+      let view = ctxView
+      if (item.slot === 'weapon') { const wm = await loadMeta(item.id); if (!alive) return; view = weaponPose(wm, ctxView) }
       if (item.slot === 'skin' && skinHeadId) {
         const [body, head] = await Promise.all([loadMeta(item.id), loadMeta(skinHeadId)])
         self = [
@@ -145,9 +152,13 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       // 통째로 빗나간다 → 그 표정 기준으로 얼굴 염색을 다시 굽고 배경 override 위에 덮어쓴다.
       // (안 하면 표정 얼굴장식 카드에서만 얼굴 염색이 풀려 보인다.)
       let bg = ctxItems
+      if (view !== ctxView) {
+        bg = await Promise.all(bg.map(async (ci) => { try { const m = await loadMeta(ci.itemId); return { ...ci, layers: getFrameLayers(m, view) } } catch { return ci } }))
+        if (!alive) return
+      }
       let faceOvr: Map<string, HTMLCanvasElement> | null = null
       if (cardExpr !== ctxExpr && faceMeta) {
-        bg = ctxItems.map((ci) => (ci.slot === 'face' ? { ...ci, layers: getFrameLayers(faceMeta, view) } : ci))
+        bg = bg.map((ci) => (ci.slot === 'face' ? { ...ci, layers: getFrameLayers(faceMeta, view) } : ci))
         if (dye) {
           faceOvr = await buildOverrides([faceMeta], dye, view).catch(() => null)
           if (!alive) return
@@ -196,7 +207,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     })().catch(() => {})
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id, ctxKey, skinHeadId, gaze, ctxEffs, pvEff, cardExpr, faceMeta, override, ear, weapon, stance, dotOffsets])
+  }, [item.id, ctxKey, skinHeadId, gaze, ctxEffs, pvEff, cardExpr, faceMeta, override, ear, weapon, stance, ctxAction, dotOffsets])
 
   // 셀(div) 표시크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.
   useEffect(() => {
@@ -256,9 +267,9 @@ export default function ItemThumb(props: {
   ctxExpr?: string
   faceMeta?: ItemMeta | null
   dye?: DyeState
-  ear?: string; weapon?: string; isMy?: boolean; stance?: boolean
+  ear?: string; weapon?: string; isMy?: boolean; stance?: boolean; ctxAction?: string
   dotOffsets?: Record<string, { x: number; y: number }>
 }) {
   if (props.mode === 'sprite') return props.item.slot === 'hair' ? <HairSprite item={props.item} zmap={props.zmap} /> : <Sprite item={props.item} />
-  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} dotOffsets={props.dotOffsets} />
+  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} />
 }

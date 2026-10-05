@@ -74,16 +74,14 @@ export default function PlazaComments({ post, mobile }: { post: PlazaPost; mobil
   const onAdded = (c: PlazaComment) => { setList((l) => [...(l || []), c]); setReplyTo(null); scrollToEnd() }
 
   const remove = (c: PlazaComment) => {
-    if (confirmTwice(`cmt:${c.id}`)) {
+    if (confirmTwice(`cmt:${c.id}`, '한 번 더 누르면 댓글을 지워요')) {
       // 원댓글을 지우면 딸린 답글도 함께 사라진다(DB 도 cascade).
       setList((l) => (l || []).filter((x) => x.id !== c.id && x.parentId !== c.id))
       deleteComment(c).catch(() => {
         s.notify('댓글을 지우지 못했어요')
         loadComments(post).then(setList).catch(() => undefined)
       })
-      return
     }
-    s.notify('한 번 더 누르면 댓글을 지워요')
   }
 
   const nameOf = (c: PlazaComment) => names.get(c.owner) || plazaAlias(c.owner)
