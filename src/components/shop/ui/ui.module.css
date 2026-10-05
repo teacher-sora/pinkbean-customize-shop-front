@@ -77,10 +77,14 @@
 /* ── 되묻는 말풍선(지우기 두 번 누르기) — 누른 버튼 바로 위에 뜬다(ui/ConfirmBubble) ──
    팝오버 규격(흰 바탕 · 1px 보더 · 팝오버 그림자) + 파괴적 동작 글자색. 누를 수 없고(pointer-events:none) 항상 마운트돼 있다.
    z 는 토스트와 같다 — 광장 상세(다이얼로그) 안의 댓글 지우기에서도 막 위에 보여야 한다. */
-.confirmBubble { position: fixed; z-index: 10000; width: max-content; max-width: min(275px, 75vw); padding: 8px 12px; background: #fff; border: 1px solid #e7ded4; border-radius: 8px; box-shadow: 0 12px 32px rgba(42,37,33,.12); color: #e0533e; font-size: 12px; font-weight: 600; line-height: 1.45; word-break: keep-all; pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity .2s ease, transform .2s ease; }
+.confirmBubble { position: fixed; z-index: 10000; display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: min(275px, 75vw); padding: 8px 12px; background: #fff; border: 1px solid #e7ded4; border-radius: 8px; box-shadow: 0 12px 32px rgba(42,37,33,.12); color: #e0533e; font-size: 12px; font-weight: 600; line-height: 1.45; word-break: keep-all; pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity .2s ease, transform .2s ease; }
 .confirmBubbleBelow { transform: translateY(-4px); }
 .confirmBubbleShow { opacity: 1; transform: translateY(0); }
 /* 꼬리: 버튼 가운데(--tail)를 가리킨다. 말풍선과 같은 흰 바탕에 바깥 두 변만 보더. */
 .confirmBubble::after { content: ''; position: absolute; left: var(--tail, 12px); bottom: -5px; width: 8px; height: 8px; margin-left: -4px; background: #fff; border-right: 1px solid #e7ded4; border-bottom: 1px solid #e7ded4; transform: rotate(45deg); }
 .confirmBubbleBelow::after { bottom: auto; top: -5px; border: 0; border-left: 1px solid #e7ded4; border-top: 1px solid #e7ded4; }
-@media (prefers-reduced-motion: reduce) { .confirmBubble, .confirmBubbleBelow { transform: none; transition: opacity .2s ease; } }
+/* 남은 시간 막대: 3초(CONFIRM_WINDOW_MS) 동안 왼쪽으로 줄어든다. 폭이 아니라 scaleX 로 줄인다(레이아웃을 건드리지 않게). */
+.confirmBar { display: block; height: 3px; border-radius: 999px; background: #f0e9e1; overflow: hidden; }
+.confirmBarFill { display: block; height: 100%; border-radius: 999px; background: #e0533e; transform-origin: left center; animation: confirmBarShrink 3s linear forwards; }
+@keyframes confirmBarShrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .confirmBubble, .confirmBubbleBelow { transform: none; transition: opacity .2s ease; } .confirmBar { display: none; } }

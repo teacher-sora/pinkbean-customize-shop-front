@@ -12,10 +12,10 @@
 // 누른 자리와 멀어 무엇을 되묻는지 바로 읽히지 않았다). 그래서 대기 상태(무엇을·어느 버튼에서·무슨 문구로)를
 // 구독할 수 있게 내보낸다. 대기가 풀리면(다른 상호작용 · 3초 경과 · 두 번째 누름) 말풍선도 같이 사라진다.
 
-const WINDOW_MS = 3000
+export const CONFIRM_WINDOW_MS = 3000 // 말풍선의 남은 시간 막대도 이 값으로 줄어든다
 export const CONFIRM_ATTR = 'data-confirm-key'
 
-export type ConfirmPending = { key: string; text: string; el: Element | null }
+export type ConfirmPending = { key: string; text: string; el: Element | null; at: number } // at = 첫 누름 시각(막대가 여기서부터 줄어든다)
 
 let armed: { key: string; at: number } | null = null
 let pending: ConfirmPending | null = null
@@ -54,16 +54,16 @@ function listen() {
 export function confirmTwice(key: string, text?: string): boolean {
   listen()
   const now = Date.now()
-  if (armed && armed.key === key && now - armed.at < WINDOW_MS) { disarm(); return true }
+  if (armed && armed.key === key && now - armed.at < CONFIRM_WINDOW_MS) { disarm(); return true }
   disarm()
   armed = { key, at: now }
-  timer = setTimeout(disarm, WINDOW_MS)
+  timer = setTimeout(disarm, CONFIRM_WINDOW_MS)
   if (text) {
     // 방금 누른 버튼. 못 잡았으면(리스너가 붙기 전의 첫 누름 등) 포커스된 버튼 → 화면에서 같은 key 의 첫 버튼 순으로 찾는다.
     const own = (el: Element | null | undefined) => (el && el.isConnected && el.getAttribute(CONFIRM_ATTR) === key ? el : null)
     const hit = own(lastEl) ?? own(document.activeElement?.closest(`[${CONFIRM_ATTR}]`))
       ?? Array.from(document.querySelectorAll(`[${CONFIRM_ATTR}]`)).find((el) => el.getAttribute(CONFIRM_ATTR) === key) ?? null
-    setPending({ key, text, el: hit })
+    setPending({ key, text, el: hit, at: now })
   }
   return false
 }
