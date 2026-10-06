@@ -15,8 +15,8 @@ export type SceneKind = 'sky' | 'room'
 const UNIFORMS = ['uRes', 'uPx', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 'uLight', 'uSunCol', 'uSun', 'uMoon', 'uNight', 'uLamp', 'uOrigin', 'uShadow', 'uTex', 'uTexSize', 'uFoot'] as const
 const FRAME_MS = 33
 const ROOM_MS = 2000 // 무대는 멈춘 그림이라 시각에 따른 빛만 가끔 갱신한다
-// 무대 그림 안에서 캐릭터가 서는 자리(발). parser/scripts/stage-build.cjs 의 FOOT_X · FOOT_Y 와 같은 값이다.
-const STAGE_FOOT = [640, 430]
+// 무대 그림 안에서 캐릭터가 서는 자리(발). parser/scripts/stage-build.cjs 의 FX · FY 와 같은 값이다.
+const STAGE_FOOT = [380, 400]
 const REDUCED_MS = 20000
 const COMPLETION_STATUS_KHR = 0x91b1
 

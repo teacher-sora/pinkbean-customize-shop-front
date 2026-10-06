@@ -263,8 +263,8 @@ const SKY_PARTS = {
 }
 
 // 미리보기 무대: 피팅룸 그림(assets/stage-fitting.png)을 그대로 깐다. 그림은 parser/scripts/stage-build.cjs 가
-// 메이플 원화 조각(핑크빈 벽지 · 커튼 · 가구)을 1:1 픽셀로 배치해 만든다 — 수식으로 그린 방은 메이플 것으로 보이지 않았고,
-// 맵 한 장을 통째로 쓰면 피팅룸이 아니었다. 여기서는 발 위치 맞춤 · 시각에 따른 빛 · 발밑 그림자만 얹는다.
+// 처음부터 도트로 찍는다(1픽셀 외곽선 + 단색 서너 단 — 캐릭터와 같은 결). 수식 셰이더로 그린 방 · 맵 한 장 · 원화 조각 조립은
+// 모두 반려됐다. 여기서는 발 위치 맞춤 · 시각에 따른 빛 · 발밑 그림자만 얹는다.
 const ROOM_MAIN = `
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
