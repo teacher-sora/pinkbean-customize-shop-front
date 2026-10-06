@@ -36,10 +36,11 @@ const REDUCED_MS = 20000
 const MAX_RATIO = 2      // 앱 배경 캔버스 해상도 상한(화면 배율)
 const SWAY = 12          // 화면이 좌우로 흔들리는 폭(그림 픽셀)
 const HELI_UP = 150      // 헬리콥터를 원래 자리보다 올려 띄우는 높이(그림 픽셀) — 열기구와 같은 하늘 높이
+const HELI_SIZE = 0.75    // 헬리콥터 크기(원래 그림에 견준 배율)
 const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 막
 
 // 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상 | 지나가는 것의 번호, 처음 x | 그림이 보는 쪽(-1 왼쪽 · 0 뒤집지 않음), 걷는 그림 한 장의 텍스처 폭](4)
-// 종류 0 구름 · 1 열기구 · 2 헬리콥터 · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대 · 8 밤 불빛의 번짐 · 9 걷는 이
+// 종류 0 구름 · 1 열기구 · 2 헬리콥터 · 3 이벤트 열기구(건물 앞에 뜬다) · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대 · 8 밤 불빛의 번짐 · 9 걷는 이
 //      · 11 열기구의 밤 그림(속에서 빛난다. 낮 그림 위에 겹쳐 두고 밤에만 드러낸다)
 // 지나가는 것들(1 · 2 · 9 · 11)의 자리는 uMov[번호] = (가운데 x, y 를 옮긴 만큼, 걷는 그림 번호, 가는 쪽 ±1). 정점의 x 는 가운데에서의 거리다.
 const MAX_MOVERS = 12
@@ -49,7 +50,7 @@ uniform vec4 uView; uniform vec2 uRes; uniform float uTime; uniform float uSway;
 varying vec2 vUv; varying float vKind; varying vec2 vPos;
 void main(){
   float kind = aAni.x;
-  float k = kind > 10.5 ? 1. : kind;   // 밤 그림은 열기구와 똑같이 움직인다
+  float k = kind > 10.5 || (kind > 2.5 && kind < 3.5) ? 1. : kind;   // 이벤트 열기구(3)와 그 밤 그림(11)은 열기구와 똑같이 움직인다
   vec2 p = aPos, uv = aUv;
   if (k < .5) {
     float sp = 3. + aAni.y * 2.;
@@ -60,12 +61,12 @@ void main(){
     uv.x += m.z * aAni.w;
   }
   float par = k < .5 ? .15 : k < 2.5 ? .3 : k < 4.5 ? .5 : k < 5.5 ? 1. : k < 6.5 ? .25 : k < 7.5 ? 0. : 1.;
-  p.x += uSway * par;
-  vPos = p;
+  vPos = p + vec2(uSway * par, 0.);
   vec2 c = p * uView.xy + uView.zw;          // 캔버스 픽셀(왼쪽 위 원점)
   if (k > 8.5) c = floor(c + .5);            // 걷는 캐릭터만 화면 픽셀에 맞춘다
+  c.x += uSway * par * uView.x;              // 흔들림은 맞춘 뒤에 더한다 — 길과 한 몸으로 움직여야 서 있을 때 혼자 한 칸씩 밀리지 않는다
   gl_Position = vec4(c.x / uRes.x * 2. - 1., 1. - c.y / uRes.y * 2., 0., 1.);
-  vUv = uv; vKind = kind;
+  vUv = uv; vKind = kind > 10.5 ? kind : k;
 }`
 const QUAD_FS = `
 precision mediump float;
@@ -257,7 +258,7 @@ function stepMovers(sc: Scene, dt: number, s: number, left: number, right: numbe
     const o = i * 4
     out[o] = m.wait > 0 ? -1e5 : m.x
     out[o + 1] = m.type === 0 ? m.jit + Math.sin(s * 0.55 + m.ph * 6.283) * 5 : m.type === 1 ? m.jit + Math.sin(s * 1.3 + m.ph * 6.283) * 2.5 : 0
-    out[o + 2] = m.type === 2 ? (m.pause > 0 ? 1 : Math.floor(m.walk * (m.frames > 4 ? 8.33 : 5)) % m.frames) : 0
+    out[o + 2] = m.type === 2 ? (m.pause > 0 ? 0 : Math.floor(m.walk * (m.frames > 4 ? 8.33 : 5)) % m.frames) : 0
     out[o + 3] = m.dir
   })
 }
@@ -296,6 +297,7 @@ function mesh(kind: SceneKind) {
     // sprites: [종류, 아틀라스 x, y, w, h, 장면 x, y, 빠르기 배수 | 걷는 그림 장수, 박자 | 장 사이 간격]
     // 구름은 제자리에서 흘러가고, 나머지는 지나가는 것들이다. 같은 그림이 여러 번 놓여 있으면 하나만 쓴다(하늘이 붐비지 않게).
     const defs: typeof moverDefs = [], byArt = new Map<string, number>(), byBeat = new Map<number, number>()
+    let helis = 0
     STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, b], i) => {
       const uv = [ax / aw, ay / ah, (ax + w) / aw, (ay + h) / ah] as const
       if (k === 0) { quad(0, (i * 0.618034) % 1, x, y, w, h, ...uv, 0); return }
@@ -304,11 +306,13 @@ function mesh(kind: SceneKind) {
       if (byArt.has(art) || defs.length >= MAX_MOVERS) return
       const walker = k === 9 || k === 10, idx = defs.length
       byArt.set(art, idx); if (b >= 0 && !walker) byBeat.set(b, idx)
-      // 걷는 이: 핑크빈(9)은 오른쪽을 보게 뒤집어 뽑아 두었고 나머지는 왼쪽을 본다. 슈피겔만 열기구(배수가 음수)와 헬리콥터도 왼쪽을 본다.
+      // 걷는 이: 핑크빈(9)은 오른쪽을 보게 뒤집어 뽑아 두었고 나머지는 왼쪽을 본다. 슈피겔만 열기구(배수가 음수)도 왼쪽을 본다.
+      // 헬리콥터는 그림이 둘이다 — 첫째는 오른쪽, 둘째는 왼쪽을 본다(서로 뒤집은 그림).
       // 주황버섯 열기구(박자가 정해진 것 가운데 배수가 양수)는 오른쪽을 본다. 핑크빈 · 페페 열기구는 앞을 보고 있어 뒤집지 않는다
-      const face = walker ? (k === 9 ? 1 : -1) : k === 2 || extra < 0 ? -1 : b >= 0 ? 1 : 0
+      const face = walker ? (k === 9 ? 1 : -1) : k === 2 ? (helis++ ? -1 : 1) : extra < 0 ? -1 : b >= 0 ? 1 : 0
+      const sz = k === 2 ? HELI_SIZE : 1
       defs.push({ type: walker ? 2 : k === 2 ? 1 : 0, w, mult: walker ? (k === 9 ? 0.75 : 1) : k === 1 ? Math.abs(extra) : 1, frames: walker ? extra : 1, ph: (idx * 0.618034) % 1 })
-      quad(walker ? 9 : k, idx, -w / 2, k === 2 ? y - HELI_UP : y, w, h, ...uv, walker ? b / aw : 0, face)
+      quad(walker ? 9 : k === 1 && b >= 0 ? 3 : k, idx, (-w * sz) / 2, k === 2 ? y - HELI_UP : y, w * sz, h * sz, ...uv, walker ? b / aw : 0, face)
     })
     moverDefs = defs
     quad(4, 0, 0, STREET.far.y, STREET.w, STREET.far.h, 0, 0, 1, 1)
@@ -480,7 +484,7 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
     for (const kd of kinds) { const r = sc.ranges[kd]; if (r) gl.drawArrays(gl.TRIANGLES, r[0], r[1]) }
   }
   if (room) { part(0, [6]); part(1, [7]) }
-  else { part(0, [0, 1, 11, 2]); part(1, [4]); part(2, [5]); part(3, [8]); part(0, [9]) }
+  else { part(0, [0, 1, 2]); part(1, [4]); part(2, [5]); part(3, [8]); part(0, [3, 11, 9]) }
   sc.dirty = false
   sc.at = now
   if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }
