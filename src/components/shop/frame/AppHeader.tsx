@@ -2,12 +2,20 @@
 
 import clsx from 'clsx'
 import Image from 'next/image'
+import { useEffect, useState } from 'react'
 import { useShop } from '../ShopContext'
-import { IconCopy, IconRate } from '../ui/Icons'
+import { IconCopy, IconRate, IconScene } from '../ui/Icons'
 import styles from './frame.module.css'
 
 export default function AppHeader({ mobile }: { mobile: boolean }) {
   const s = useShop()
+  // 배경 보기(PC 만): 헤더만 남기고 나머지를 감춘다. 표시는 <html> 속성 하나로 한다 — 감추는 것은 CSS(globals.css),
+  // 어두운 막을 걷는 것은 배경 장면(sceneGl)이 이 속성을 보고 한다. 화면이 좁아져 모바일이 되면 저절로 풀린다.
+  const [bgOnly, setBgOnly] = useState(false)
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-pb-bgonly', bgOnly && !mobile)
+    return () => document.documentElement.removeAttribute('data-pb-bgonly')
+  }, [bgOnly, mobile])
   if (mobile) {
     return (
       <div className={styles.headerM}>
@@ -33,6 +41,9 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
         <span className={styles.logoText}>핑크빈 커마샵</span>
       </button>
       <div className={styles.headerActs}>
+        <button type="button" onClick={() => setBgOnly((v) => !v)} aria-pressed={bgOnly} title={bgOnly ? '화면으로 돌아가기' : '배경만 보기'} className={clsx('pb-ghost', styles.rateBtn)}>
+          <IconScene />{bgOnly ? '돌아가기' : '배경 보기'}
+        </button>
         <button type="button" onClick={s.rateCodi} title="핑크빈에게 코디 평가받기" className={clsx('pb-ghost', styles.rateBtn)}>
           <IconRate />코디 평가
         </button>

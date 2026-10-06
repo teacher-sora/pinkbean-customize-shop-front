@@ -1,14 +1,13 @@
 'use client'
 
-// 코디 미리보기(PC·절반·태블릿): 헤더(좌 부위 염색 · 우 되돌리기/다시실행) · 스테이지(배경 일러스트 + PreviewModel + 점 위치) ·
+// 코디 미리보기(PC·절반·태블릿): 헤더(좌 부위 염색 · 우 되돌리기/다시실행) · 스테이지(피팅룸 장면 + PreviewModel + 점 위치) ·
 // 연출 설정 드로어 · 상시 필드 행 · 북마크 박스.  모바일은 MobileHero.
 
 import clsx from 'clsx'
-import Image from 'next/image'
 import { useState } from 'react'
-import bg from '@/assets/pinkbean-bg.png'
 import { DOT_MOVER_IDS } from '@/lib/shopData'
 import PreviewModel from '../PreviewModel'
+import SceneCanvas from '../scene/SceneCanvas'
 import { useShop } from '../ShopContext'
 import { IconBookmark, IconCaretDown, IconDot, IconDrop, IconRedo, IconUndo } from '../ui/Icons'
 import { BookmarkBox, RateBubbles } from './PreviewParts'
@@ -51,8 +50,7 @@ export default function PreviewColumn() {
 
         {/* data-pv-stage: 연출 설정 고르기(PvPicker)가 이 영역 안 가운데에 뜬다 — 미리보기 밖으로 나가지 않게. */}
         <div data-pv-stage className={styles.stage}>
-          <Image src={bg} alt="" fill priority sizes="360px" className={styles.stageImg} />
-          <div className={styles.stageTone} />
+          <SceneCanvas kind="room" />
           <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} title="점 위치 변경" tabIndex={dotItem ? 0 : -1}
             className={clsx('pb-ghost', styles.dotBtn, dotItem && styles.dotBtnOn)}>
             <IconDot />점 위치
@@ -80,7 +78,7 @@ export default function PreviewColumn() {
   )
 }
 
-// 모바일 히어로: 배경 일러스트 위 모델 + 되돌리기/다시실행 · 연출 설정 · 우하단 [점 위치][부위 염색][북마크].
+// 모바일 히어로: 피팅룸 장면 위 모델 + 되돌리기/다시실행 · 연출 설정 · 우하단 [점 위치][부위 염색][북마크].
 export function MobileHero() {
   const s = useShop()
   const dotItem = useDotEquipped()
@@ -89,8 +87,7 @@ export function MobileHero() {
   const n = s.bookmarks.length
   return (
     <div className={styles.hero}>
-      <Image src={bg} alt="" fill priority sizes="100vw" className={styles.heroImg} />
-      <div className={styles.heroTone} />
+      <SceneCanvas kind="room" />
       <div className={styles.heroModel}><PreviewModel /></div>
       <RateBubbles />
       <div className={styles.heroHist}>

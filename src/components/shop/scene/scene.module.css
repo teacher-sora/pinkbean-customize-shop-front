@@ -1,0 +1,4 @@
+/* 배경 장면(SceneCanvas). 캔버스는 sceneGl 이 넣고 크기·위치를 직접 잡는다. */
+.host { position: absolute; inset: 0; overflow: hidden; pointer-events: none; background: #f6ecf3; }
+/* 앱 배경: 화면 전체 고정 */
+.app { position: fixed; z-index: 0; }

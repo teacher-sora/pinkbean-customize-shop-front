@@ -1,12 +1,11 @@
 // 공유 링크(/?c=<코드>&n=<이름>) 전용 페이지 — middleware.ts 가 c 가 있는 / 요청만 여기로 rewrite 한다(주소창은 그대로).
-// 본문은 홈과 같고, 링크 미리보기(카카오톡·디스코드 등)용 메타만 프리셋 기준으로 바꾼다:
+// 본문은 홈과 같고((shop)/layout.tsx 가 그린다), 링크 미리보기(카카오톡·디스코드 등)용 메타만 프리셋 기준으로 바꾼다:
 //   og:title = 프리셋 이름 · og:description = 받아가기 안내 · og:image = 복사 시 올린 캐릭터 카드(share/<id>.jpg)
 // 홈(/)은 정적 페이지로 남기기 위해 동적 메타를 여기로 분리했다.
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { permanentRedirect } from 'next/navigation'
 import { inflateRawSync } from 'zlib'
-import ShopHome from '@/components/ShopHome'
 import { r2, r2Configured } from '@/lib/server/r2'
 
 const CDN = process.env.NEXT_PUBLIC_DATA_BASE?.startsWith('http') ? process.env.NEXT_PUBLIC_DATA_BASE : 'https://cdn.pinkbean-customize.com'
@@ -79,5 +78,5 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 // (rewrite 로 들어온 요청은 `c` 를 그대로 들고 오므로 카톡 카드 경로는 영향이 없다.)
 export default function SharePage({ searchParams }: Props) {
   if (!one(searchParams.c)) permanentRedirect('/') // 308 — 공개 주소가 아니다
-  return <ShopHome />
+  return null
 }

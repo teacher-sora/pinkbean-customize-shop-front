@@ -108,7 +108,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   }
 
   return (
-    <div className={styles.bottom}>
+    <div className={styles.bottom} data-pb-body>
       <div className={clsx('pb-partnav', styles.partNav)}>
         <nav ref={railRef} className={clsx('pb-norail', styles.rail)} aria-label={plaza ? '분류' : '부위'}>
           {chips.map((c) => (

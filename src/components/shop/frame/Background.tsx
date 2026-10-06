@@ -1,15 +1,8 @@
-import Image from 'next/image'
-import bg from '@/assets/pinkbean-bg.png'
-import styles from './frame.module.css'
+import SceneCanvas from '../scene/SceneCanvas'
+import sceneStyles from '../scene/scene.module.css'
 
-// 배경 3겹 스택: 배경 일러스트(.pb-bg, blur) → 톤 레이어(.pb-tone) → UI.
-export default function Background() {
-  return (
-    <>
-      <div className="pb-bg" aria-hidden>
-        <Image src={bg} alt="" fill priority sizes="100vw" className={styles.bgImg} />
-      </div>
-      <div className="pb-tone" aria-hidden />
-    </>
-  )
+// 앱 배경: 실제 시각에 따라 바뀌는 도트 하늘(scene/). 모바일은 화면 전체가 흰 컬럼에 덮여 보이지 않으므로 띄우지 않는다.
+export default function Background({ mobile }: { mobile: boolean }) {
+  if (mobile) return null
+  return <SceneCanvas kind="sky" className={sceneStyles.app} />
 }

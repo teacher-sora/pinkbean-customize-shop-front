@@ -33,7 +33,7 @@ function Shell() {
 
   return (
     <>
-      <Background />
+      <Background mobile={mobile} />
       {mobile ? (
         // 모바일: 폰 프레임(390×780) 없이 화면 전체(100svh 고정, 문서 스크롤 없음).
         <div className={clsx('pb-root', 'pb-shell', styles.root)}>
@@ -59,7 +59,7 @@ function Shell() {
         <div className={clsx('pb-root', styles.root)}>
           <div className={clsx(styles.frame, s.bp === 'pc' ? styles.framePc : s.bp === 'half' ? styles.frameHalf : styles.frameTablet)}>
             <AppHeader mobile={false} />
-            <main className={styles.main}>
+            <main className={styles.main} data-pb-body>
               {/* 오른쪽 칸(미리보기 ↔ 등록 폼)도 같은 슬롯 안에 둔다. 탭에 따라 바뀌는 칸이라
                   밖에 두면 뼈대 동안 미리보기가 보였다가 등록 폼으로 갈아끼워진다. */}
               <div data-pb-panel>
