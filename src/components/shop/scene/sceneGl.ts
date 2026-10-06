@@ -1,22 +1,23 @@
 // 배경 장면을 그리는 WebGL 실행기. 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
 //  · 초당 30번 그린다. 구름·열기구가 화면 픽셀 단위로 매끄럽게 흘러가려면 필요하고, 메인 스레드가 하는 일은 유니폼 몇 개를 넘기는 것뿐이다.
-//  · 앱 배경은 캔버스 픽셀 수를 묶는다(layout: 약 240만 이하). 무대는 멈춘 그림 한 장이라 게임 픽셀 한 칸 = 1픽셀로 그리고 2초에 한 번만 갱신한다.
+//  · 앱 배경은 캔버스 픽셀 수를 묶는다(layout: 약 240만 이하). 무대는 그림 두 겹을 합치는 일뿐이라 게임 픽셀 한 칸 = 1픽셀로 그리고 초당 12번쯤만 갱신한다(빛줄기·먼지가 천천히 움직인다).
 //  · 셰이더 컴파일은 KHR_parallel_shader_compile 로 끝나기를 기다린다(없으면 다음 프레임에 확인) → 메인 스레드를 막지 않는다.
 //  · 탭이 가려지면 rAF 가 멈추니 따로 멈출 것이 없다. '동작 줄이기' 설정이면 20초에 한 번만(시각에 따른 색만) 그린다.
 //  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다(탭을 오갈 때마다 다시 컴파일하지 않는다).
 
-import stage from '@/assets/stage-fitting.png'
+import stageFar from '@/assets/stage-far.png'
+import stageMain from '@/assets/stage-main.png'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import { VERT, fragSource } from './sceneShader'
 import { skyHour, skyState, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
 
-const UNIFORMS = ['uRes', 'uPx', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 'uLight', 'uSunCol', 'uSun', 'uMoon', 'uNight', 'uLamp', 'uOrigin', 'uShadow', 'uTex', 'uTexSize', 'uFoot'] as const
+const UNIFORMS = ['uRes', 'uPx', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 'uLight', 'uSunCol', 'uSun', 'uMoon', 'uNight', 'uLamp', 'uOrigin', 'uShadow', 'uTex', 'uTexB', 'uTexSize', 'uFoot'] as const
 const FRAME_MS = 33
-const ROOM_MS = 2000 // 무대는 멈춘 그림이라 시각에 따른 빛만 가끔 갱신한다
+const ROOM_MS = 80 // 무대의 움직임(빛줄기·먼지)은 느려서 이 간격이면 충분하다
 // 무대 그림 안에서 캐릭터가 서는 자리(발). parser/scripts/stage-build.cjs 의 FX · FY 와 같은 값이다.
-const STAGE_FOOT = [380, 400]
+const STAGE_FOOT = [340, 400]
 const REDUCED_MS = 20000
 const COMPLETION_STATUS_KHR = 0x91b1
 
@@ -32,7 +33,7 @@ interface Scene {
   ox: number; oy: number; px: number; shadow: number
   dirty: boolean
   shown: boolean
-  img: HTMLImageElement | null // 무대 그림
+  imgs: HTMLImageElement[]     // 무대 그림: [far, main]
   tex: boolean                 // 텍스처로 올렸는가
   at: number                   // 마지막으로 그린 때
   failed: boolean
@@ -61,16 +62,20 @@ function build(sc: Scene) {
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
 }
 
-// 무대 그림을 텍스처로 올린다(확대는 nearest — 도트를 뭉개지 않는다). 컨텍스트를 되찾았을 때도 다시 부른다.
+// 무대 그림 두 겹을 텍스처로 올린다. far 는 흐리게 쓸 것이라 linear, main 은 도트를 뭉개지 않게 nearest.
+// 컨텍스트를 되찾았을 때도 다시 부른다.
 function upload(sc: Scene) {
-  const gl = sc.gl, img = sc.img
-  if (!gl || !img || !img.complete || !img.naturalWidth) return
-  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture())
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  const gl = sc.gl
+  if (!gl || sc.imgs.length < 2 || sc.imgs.some((i) => !i.complete || !i.naturalWidth)) return
+  sc.imgs.forEach((img, n) => {
+    gl.activeTexture(gl.TEXTURE0 + n)
+    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture())
+    gl.texImage2D(gl.TEXTURE_2D, 0, n ? gl.RGBA : gl.RGB, n ? gl.RGBA : gl.RGB, gl.UNSIGNED_BYTE, img)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, n ? gl.NEAREST : gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, n ? gl.NEAREST : gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  })
   sc.tex = true
   sc.dirty = true
 }
@@ -95,7 +100,7 @@ function poll(sc: Scene) {
 function create(kind: SceneKind): Scene {
   const canvas = document.createElement('canvas')
   canvas.style.cssText = 'position:absolute;left:0;top:0;display:block;image-rendering:pixelated;opacity:0;transition:opacity .5s ease;pointer-events:none'
-  const sc: Scene = { kind, canvas, gl: null, prog: null, building: null, parallel: false, u: {}, host: null, ox: 0, oy: 0, px: 1, shadow: 13, dirty: true, shown: false, img: null, tex: false, at: 0, failed: false, cleanup: null }
+  const sc: Scene = { kind, canvas, gl: null, prog: null, building: null, parallel: false, u: {}, host: null, ox: 0, oy: 0, px: 1, shadow: 13, dirty: true, shown: false, imgs: [], tex: false, at: 0, failed: false, cleanup: null }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다 — CPU 로 셰이더를 돌리면 느려진다. 그때는 바탕색만 남는다.
   // (?skygl=soft 는 GPU 없는 확인 환경에서 강제로 켜는 용도)
   const soft = /[?&]skygl=soft/.test(window.location.search)
@@ -106,11 +111,13 @@ function create(kind: SceneKind): Scene {
   canvas.addEventListener('webglcontextrestored', () => { build(sc); upload(sc) })
   build(sc)
   if (kind === 'room') {
-    const img = new Image()
-    img.decoding = 'async'
-    img.onload = () => upload(sc)
-    img.src = stage.src
-    sc.img = img
+    sc.imgs = [stageFar.src, stageMain.src].map((src) => {
+      const img = new Image()
+      img.decoding = 'async'
+      img.onload = () => upload(sc)
+      img.src = src
+      return img
+    })
   }
   return sc
 }
@@ -182,7 +189,7 @@ function draw(sc: Scene, now: number, st: SkyState) {
   gl.uniform1f(u.uLamp!, st.lamp)
   if (sc.kind === 'room') {
     gl.uniform2f(u.uOrigin!, sc.ox, sc.oy); gl.uniform1f(u.uShadow!, sc.shadow)
-    gl.uniform1i(u.uTex!, 0); gl.uniform2f(u.uTexSize!, sc.img!.naturalWidth, sc.img!.naturalHeight); gl.uniform2f(u.uFoot!, STAGE_FOOT[0], STAGE_FOOT[1])
+    gl.uniform1i(u.uTex!, 0); gl.uniform1i(u.uTexB!, 1); gl.uniform2f(u.uTexSize!, sc.imgs[0].naturalWidth, sc.imgs[0].naturalHeight); gl.uniform2f(u.uFoot!, STAGE_FOOT[0], STAGE_FOOT[1])
   }
   gl.drawArrays(gl.TRIANGLES, 0, 3)
   sc.dirty = false
@@ -198,7 +205,7 @@ function tick(now: number) {
     if (!sc || !sc.host) continue
     if (sc.building) poll(sc)
     if (!sc.prog || (sc.kind === 'room' && !sc.tex)) continue
-    if (!(sc.dirty || (sc.kind === 'room' ? now - sc.at >= ROOM_MS : due))) continue
+    if (!(sc.dirty || (sc.kind === 'room' ? now - sc.at >= (reduce?.matches ? REDUCED_MS : ROOM_MS) : due))) continue
     draw(sc, now, st ?? (st = skyState(skyHour())))
   }
   if (due) last = now

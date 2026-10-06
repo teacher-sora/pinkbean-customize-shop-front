@@ -262,9 +262,10 @@ const SKY_PARTS = {
     cityLayer(col, p, size.y, 38., size.y * .2, size.y * .52, 11., 0., size.y * .66);`,
 }
 
-// 미리보기 무대: 피팅룸 그림(assets/stage-fitting.png)을 그대로 깐다. 그림은 parser/scripts/stage-build.cjs 가
-// 처음부터 도트로 찍는다(1픽셀 외곽선 + 단색 서너 단 — 캐릭터와 같은 결). 수식 셰이더로 그린 방 · 맵 한 장 · 원화 조각 조립은
-// 모두 반려됐다. 여기서는 발 위치 맞춤 · 시각에 따른 빛 · 발밑 그림자만 얹는다.
+// 미리보기 무대: 피팅룸 그림 두 겹을 합친다. 그림은 parser/scripts/stage-build.cjs 가 찍는다(게임 원화는 쓰지 않는다).
+//  · far(가게 안쪽 홀) : 살짝 흐리고 뿌옇게 → 멀리 있는 것으로 읽힌다. 바깥 빛이 드는 곳이라 시각의 색을 많이 탄다.
+//  · main(바닥 · 단상 · 피팅 정자 · 소품) : 손대지 않고 또렷하게 얹는다.
+//  · 그 사이에 창에서 비껴 드는 빛줄기와 떠다니는 빛 먼지가 천천히 움직인다(먼지는 게임 픽셀 격자에 맞춘다).
 const ROOM_MAIN = `
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -273,20 +274,40 @@ precision mediump float;
 #endif
 uniform vec2 uRes;
 uniform float uPx;
+uniform float uTime;
 uniform vec2 uOrigin;
 uniform float uShadow;
 uniform vec3 uAmb;
 uniform float uLamp;
-uniform sampler2D uTex;
+uniform float uNight;
+uniform sampler2D uTex;   // far
+uniform sampler2D uTexB;  // main
 uniform vec2 uTexSize;
-uniform vec2 uFoot;     // 그림 안에서 캐릭터가 서는 자리(발)
+uniform vec2 uFoot;       // 그림 안에서 캐릭터가 서는 자리(발)
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+vec3 farAt(vec2 q){ return texture2D(uTex, clamp(q, vec2(.5), uTexSize - .5) / uTexSize).rgb; }
+float beam(vec2 w, float side){
+  float d = side * w.x + 182. - (190. + w.y) * .52;               // 창(발 기준 x=±182, 높이 190)에서 안쪽 아래로 비껴 내린다
+  return smoothstep(48., 8., abs(d)) * smoothstep(-250., -150., w.y) * smoothstep(20., -60., w.y) * (.8 + .2 * sin(uTime * .35 + d * .06 + side));
+}
 void main(){
   vec2 w = floor((vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) - uOrigin) * uPx) + .5;
   vec2 t = w + uFoot;
-  vec3 col = texture2D(uTex, clamp(t, vec2(.5), uTexSize - .5) / uTexSize).rgb;
-  col = mix(col, vec3(.17, .1, .12), smoothstep(-24., 30., t.y - uTexSize.y)); // 그림 아래로 넘어가면 어두운 바닥색으로 잦아든다
-  col *= mix(uAmb, vec3(1.02, .98, .92), .5 + .35 * uLamp);      // 실내라 바깥보다 덜 물들고, 밤에는 조명 색
-  col = mix(col, vec3(.2, .14, .12), .3 * (1. - smoothstep(.55, 1., length(vec2(w.x / uShadow, (w.y - .4) / 1.9)))));
+  vec3 col = farAt(t) * .36 + (farAt(t + vec2(1.5, 0.)) + farAt(t - vec2(1.5, 0.)) + farAt(t + vec2(0., 1.5)) + farAt(t - vec2(0., 1.5))) * .16;
+  col *= mix(vec3(1.), uAmb, .9);
+  col = mix(col, uAmb * vec3(.97, .94, 1.), .14);                  // 뿌연 공기
+  float b = beam(w, 1.) + beam(w, -1.);
+  col += mix(vec3(1., .96, .82), vec3(.55, .65, 1.), uNight) * b * mix(.13, .05, uNight);
+  vec2 g = floor(w / 26.);                                         // 빛 먼지: 칸마다 하나, 천천히 떠오른다
+  vec2 o = vec2(hash(g), hash(g + 7.3));
+  vec2 p = (g + .2 + .6 * o) * 26. + vec2(sin(uTime * .3 + o.x * 6.3) * 5., 13. - mod(uTime * (1.5 + 2.5 * o.y) + o.x * 26., 26.));
+  float mote = step(.5, hash(g + 3.1)) * step(length(floor(w) - floor(p)), .5) * (.5 + .5 * sin(uTime * 1.3 + o.y * 20.)) * step(w.y, -8.);
+  col += vec3(1., .97, .86) * mote * .5;
+  vec4 m = texture2D(uTexB, clamp(t, vec2(.5), uTexSize - .5) / uTexSize);
+  m.rgb *= mix(uAmb, vec3(1.02, .98, .92), .55 + .3 * uLamp);      // 가까운 것은 실내 조명을 받아 덜 물든다
+  m.rgb = mix(m.rgb, vec3(.2, .13, .12), .32 * (1. - smoothstep(.55, 1., length(vec2(w.x / uShadow, (w.y - .4) / 1.9))))); // 발밑 그림자
+  col = mix(col, m.rgb, m.a);
+  col = mix(col, vec3(.1, .06, .08), smoothstep(-24., 30., t.y - uTexSize.y)); // 그림 아래로 넘어가면 어둠으로 잦아든다
   gl_FragColor = vec4(col, 1.);
 }
 `
