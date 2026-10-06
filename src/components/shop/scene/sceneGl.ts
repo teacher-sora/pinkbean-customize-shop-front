@@ -38,6 +38,7 @@ const MAX_RATIO = 2      // 앱 배경 캔버스 해상도 상한(화면 배율)
 const SWAY = 12          // 화면이 좌우로 흔들리는 폭(그림 픽셀)
 const HELI_UP = 150      // 헬리콥터를 원래 자리보다 올려 띄우는 높이(그림 픽셀) — 열기구와 같은 하늘 높이
 const HELI_SIZE = 0.75    // 헬리콥터 크기(원래 그림에 견준 배율)
+const NIGHT_DIM = 0.18   // 밤에 앱 배경 전체를 가라앉히는 양(한밤 기준. 너무 밝다는 지적)
 const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 막
 
 // 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상 | 지나가는 것의 번호, 처음 x | 그림이 보는 쪽(-1 왼쪽 · 0 뒤집지 않음), 걷는 그림 한 장의 텍스처 폭](4)
@@ -79,14 +80,14 @@ void main(){
 }`
 const QUAD_FS = `
 precision mediump float;
-uniform sampler2D uTex; uniform sampler2D uGlow; uniform vec3 uAmb; uniform vec3 uCloud; uniform vec3 uHaze; uniform float uLamp; uniform float uMask; uniform float uTw;
+uniform sampler2D uTex; uniform sampler2D uGlow; uniform vec3 uAmb; uniform vec3 uCloud; uniform vec3 uHaze; uniform float uLamp; uniform float uMask; uniform float uTw; uniform vec4 uDim;   // 밤의 전체 밝기(rgb 에만 곱한다)
 uniform vec3 uFoot;   // 발 자리(그림 픽셀)와 그림자 반폭
 varying vec2 vUv; varying float vKind; varying vec2 vPos; varying vec2 vGuv;
 void main(){
   vec4 t = texture2D(uTex, vUv);
   if (vKind > 7.5 && vKind < 8.5) {
     // 밤 불빛의 번짐: 창 · 간판 · 가로등 둘레에 빛무리가 지고(b), 그 빛이 닿는 공기도 조금 밝다(g). 더하기. 위로 갈수록 스러진다(지도에서)
-    gl_FragColor = vec4(vec3(1., .74, .38) * (t.b * .34 + t.g * .07) * uLamp * ${(1 - MASK).toFixed(2)}, 0.);
+    gl_FragColor = uDim * vec4(vec3(1., .74, .38) * (t.b * .34 + t.g * .07) * uLamp * ${(1 - MASK).toFixed(2)}, 0.);
     return;
   }
   if (t.a < .004) discard;
@@ -94,7 +95,7 @@ void main(){
   if (vKind > 10.5) {
     // 열기구의 밤 그림: 제 빛 그대로, 밤이 깊을수록 드러난다
     float nf = smoothstep(.45, .95, uLamp) * t.a;
-    gl_FragColor = vec4(mix(c, vec3(.09, .07, .16), uMask * .5) * nf, nf);
+    gl_FragColor = uDim * vec4(mix(c, vec3(.09, .07, .16), uMask * .5) * nf, nf);
     return;
   }
   float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), lum = dot(c, vec3(.3, .59, .11));
@@ -125,10 +126,10 @@ void main(){
     }
     // 캐릭터와 열기구는 색을 고르게 다룬다(부분만 밝히면 얼룩져 보인다).
     // 걷는 이들: 한낮에는 제 색 그대로 가장 밝고, 밤으로 갈수록 가로등 빛에 조금 가라앉는다. 어두운 막은 씌우지 않는다
-    else if (vKind > 8.5) { gl_FragColor = vec4(c * mix(vec3(1.), vec3(.9, .85, .78), uLamp) * t.a, t.a); return; }
+    else if (vKind > 8.5) { gl_FragColor = uDim * vec4(c * mix(vec3(1.), vec3(.9, .85, .78), uLamp) * t.a, t.a); return; }
     else if (vKind < 1.5) lit = c * mix(uAmb, vec3(1.), .5 * uLamp);
   }
-  gl_FragColor = vec4(mix(lit, vec3(.09, .07, .16), mix(uMask, ${MASK.toFixed(2)}, keep)) * t.a, t.a);
+  gl_FragColor = uDim * vec4(mix(lit, vec3(.09, .07, .16), mix(uMask, ${MASK.toFixed(2)}, keep)) * t.a, t.a);
 }`
 const SKY_VS = 'attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0., 1.); }'
 // 하늘: 네 단 그러데이션 · 해와 달 · 별 · 핑크빈 별자리. 좌표는 CSS px(왼쪽 위 원점)
@@ -181,7 +182,7 @@ void main(){
   vec2 s = p - uSun.xy;
   col = mix(col, uSunCol, exp(-length(s) * .016) * .6 * uSun.z);
   col = mix(col, mix(uSunCol, vec3(1.), .7), smoothstep(19., 17., length(s)) * uSun.z);
-  gl_FragColor = vec4(mix(col, vec3(.09, .07, .16), uMask), 1.);
+  gl_FragColor = vec4(mix(col, vec3(.09, .07, .16), uMask) * (1. - ${NIGHT_DIM} * uNight), 1.);
 }`
 
 type Uni = Record<string, WebGLUniformLocation | null>
@@ -340,7 +341,7 @@ function init(sc: Scene) {
   const gl = sc.gl
   if (!gl) return
   if (sc.kind === 'sky' && gl.getParameter(gl.MAX_TEXTURE_SIZE) < STREET.w) { sc.failed = true; return }
-  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uMov', 'uTex', 'uGlow', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
+  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uMov', 'uTex', 'uGlow', 'uDim', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
   const sp = sc.kind === 'sky' ? program(gl, SKY_VS, SKY_FS, ['uRes', 'uPx', 'uSky', 'uSun', 'uMoon', 'uSunCol', 'uNight', 'uTime', 'uMask']) : null
   if (!qp || (sc.kind === 'sky' && !sp)) { sc.failed = true; return }
   const m = mesh(sc.kind)
@@ -488,6 +489,8 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   gl.uniform3fv(q.u.uCloud, st.cloudA)
   gl.uniform3fv(q.u.uHaze, st.sky[2].map((v, i) => (v + st.sky[3][i]) / 2))
   gl.uniform1f(q.u.uLamp, st.lamp); gl.uniform1f(q.u.uMask, mask)
+  const nd = room ? 1 : 1 - NIGHT_DIM * st.night
+  gl.uniform4f(q.u.uDim, nd, nd, nd, 1)
   gl.uniform3f(q.u.uFoot, ROOM.foot[0], ROOM.foot[1] + 1, sc.shadow)
   const part = (tex: number, kinds: number[]) => {
     gl.bindTexture(gl.TEXTURE_2D, sc.tex[tex])
