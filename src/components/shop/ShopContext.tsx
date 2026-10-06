@@ -12,6 +12,7 @@ import { createContext, useCallback, useContext, useDeferredValue, useEffect, us
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
 import { nameMatcher } from '@/lib/nameSearch'
+import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
@@ -550,6 +551,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const deferredSearch = useDeferredValue(search)
   const activeList = useMemo(() => {
     const list = byGender(activeListFull, genderFilter)
+    if (isEgg(deferredSearch)) return list.filter((it) => isEggItem(it.id))   // 이스터에그(lib/easterEgg)
     const match = nameMatcher(deferredSearch)
     if (!match) return list
     return list.filter((it) => match(it.name || it.id))
@@ -618,11 +620,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [])
   const activeCatRef = useRef(activeCat)
   activeCatRef.current = activeCat
+  const skinListRef = useRef(skinList)
+  skinListRef.current = skinList
   const runSearch = useCallback(async (query: string) => {
     const t = query.trim(); if (!t) return
     setSearchQuery(t); setSearchLoading(true); setSearchResults([])
     setPageByCat((s) => ({ ...s, ['search:' + activeCatRef.current]: 0 }))
     try {
+      if (isEgg(t)) {
+        // 이스터에그(lib/easterEgg): 서버에 묻지 않고 정해진 아이템만 돌려준다
+        const got = await Promise.all(EGG_ITEMS.map(async (e) => (e.slot === 'skin' ? skinListRef.current : await loadSlotRaw(e.slot)).find((it) => it.id === e.id)))
+        setSearchResults(got.filter((x): x is ListItem => !!x))
+        return
+      }
       const res = await fetch(`${SEARCH_API}/search`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: t, slot: null, topK: 100 }),
