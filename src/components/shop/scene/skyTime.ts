@@ -63,6 +63,7 @@ function keyAt(h: number): Key {
 export interface SkyState extends Key {
   sunPhase: number   // 0(뜸) → 1(짐). 범위 밖이면 지평선 아래
   moonPhase: number
+  orb: number        // 해 · 달의 세기(평소 1). 시간대가 바뀌는 동안 꺼졌다가 새 자리에서 다시 켜진다
 }
 
 const RISE = 5.5, SET = 19 // 해가 떠 있는 시간(달은 그 반대)
@@ -70,12 +71,43 @@ const RISE = 5.5, SET = 19 // 해가 떠 있는 시간(달은 그 반대)
 export function skyState(h: number): SkyState {
   const night = SET - RISE
   const mh = h >= SET ? h - SET : h + 24 - SET
-  return { ...keyAt(h), sunPhase: (h - RISE) / night, moonPhase: mh / (24 - night) }
+  return { ...keyAt(h), sunPhase: (h - RISE) / night, moonPhase: mh / (24 - night), orb: 1 }
 }
 
-// 지금 시각(0~24). 주소에 ?sky=18.5 처럼 주면 그 시각으로 고정하고, ?sky=fast 면 하루를 48초에 돌린다(확인용).
+// 시간대를 손으로 고른다(PC 헤더의 버튼). 'auto' 는 실제 시각을 따른다. 고른 값은 이 브라우저에 남겨 둔다.
+export type SkyMode = 'auto' | 'noon' | 'sunset' | 'night' | 'dawn'
+export const SKY_MODES: { id: SkyMode; label: string; hour: number }[] = [
+  { id: 'auto', label: '자동', hour: -1 }, { id: 'noon', label: '정오', hour: 13 }, { id: 'sunset', label: '석양', hour: 18.25 },
+  { id: 'night', label: '자정', hour: 0 }, { id: 'dawn', label: '여명', hour: 5.75 },
+]
+const MODE_KEY = 'pb.sky'
+const FADE_MS = 800    // 시간대를 바꾸면 이만큼에 걸쳐 지금 장면에서 새 장면으로 스며든다
+let mode: SkyMode | undefined
+let fade: { from: SkyState; at: number } | null = null
+const watchers = new Set<() => void>()
+export function onSkyChange(fn: () => void): () => void { watchers.add(fn); return () => { watchers.delete(fn) } }
+export function getSkyMode(): SkyMode {
+  if (mode === undefined) {
+    mode = 'auto'
+    try { const v = localStorage.getItem(MODE_KEY); if (SKY_MODES.some((m) => m.id === v)) mode = v as SkyMode } catch { /* 저장소를 못 쓰면 자동 */ }
+  }
+  return mode
+}
+export function setSkyMode(m: SkyMode) {
+  const from = skyNow()
+  mode = m
+  let still = false
+  try { localStorage.setItem(MODE_KEY, m) } catch { /* 못 남겨도 이번 화면에서는 바뀐다 */ }
+  try { still = window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { /* 그대로 */ }
+  fade = still ? null : { from, at: performance.now() }
+  watchers.forEach((fn) => fn())
+}
+
+// 지금 시각(0~24). 헤더에서 고른 시간대가 먼저다. 주소에 ?sky=18.5 처럼 주면 그 시각으로 고정하고, ?sky=fast 면 하루를 48초에 돌린다(확인용).
 let fixed: number | 'fast' | null | undefined
-export function skyHour(): number {
+function targetHour(): number {
+  const m = getSkyMode()
+  if (m !== 'auto') return SKY_MODES.find((x) => x.id === m)!.hour
   if (fixed === undefined) {
     fixed = null
     try {
@@ -88,6 +120,17 @@ export function skyHour(): number {
   if (typeof fixed === 'number') return fixed
   const d = new Date()
   return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600
+}
+export const skyHour = targetHour
+// 지금 그릴 장면. 시간대를 막 바꿨으면 앞 장면에서 색이 스며들듯 넘어간다 — 시곗바늘을 돌리면 그 사이의 시간대가 휙 지나가 어지럽다(사용자 지적).
+// 해와 달은 자리를 옮기지 않고, 제자리에서 꺼졌다가 새 자리에서 켜진다.
+export function skyNow(): SkyState {
+  const to = skyState(targetHour())
+  if (!fade) return to
+  const t = (performance.now() - fade.at) / FADE_MS
+  if (t >= 1) { fade = null; return to }
+  const e = ease(t), from = fade.from, at = e < 0.5 ? from : to
+  return { ...blend(from, to, e), sunPhase: at.sunPhase, moonPhase: at.moonPhase, orb: Math.abs(1 - 2 * e) * at.orb }
 }
 
 const css = (c: RGB) => `rgb(${c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255)).join(',')})`

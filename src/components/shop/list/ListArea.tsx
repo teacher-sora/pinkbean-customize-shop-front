@@ -24,7 +24,8 @@ const GENDERS: SegOpt<GenderFilter>[] = [
   { v: 'f', l: '여', t: '여자 캐릭터가 입을 수 있는 것' },
   { v: 'm', l: '남', t: '남자 캐릭터가 입을 수 있는 것' },
 ]
-const AI_EXAMPLES = ['동물 귀 모자', '한벌옷 스타킹', '고양이 입 성형', '양갈래 헤어']
+// 보이는 순서대로 적는다. keep = 자리가 좁아 줄일 때 남기는 순서(작을수록 끝까지 남는다) — 모바일은 둘, 좁은 화면은 셋만 보인다
+const AI_EXAMPLES = [{ q: '동물 귀', keep: 2 }, { q: '한벌옷 스타킹', keep: 0 }, { q: '귀여운 얼굴', keep: 3 }, { q: '단발 헤어', keep: 1 }]
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
   const { primary } = useShop()
@@ -232,7 +233,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
             </button>
           </div>
           <div className={mobile ? clsx('pb-norail', styles.chipsM) : styles.chips}>
-            {AI_EXAMPLES.slice(0, mobile ? 2 : narrow ? 3 : 4).map((q) => (
+            {AI_EXAMPLES.filter((e) => e.keep < (mobile ? 2 : narrow ? 3 : 4)).map(({ q }) => (
               <button key={q} type="button" onClick={() => runAi(q)} className={clsx('pb-soft', styles.chip)}>{q}</button>
             ))}
           </div>

@@ -28,7 +28,7 @@ import streetMain from '@/assets/scene/street-main.webp'
 import streetTower from '@/assets/scene/street-tower.webp'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import { ROOM, STREET } from './sceneData'
-import { skyHour, skyState, type SkyState } from './skyTime'
+import { onSkyChange, skyNow, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
 
@@ -457,12 +457,14 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   const mask = room ? 0 : sc.mask
   if (sc.sky) {
     const k = sc.sky, cw = W / sc.ratio, moon = orb(st.moonPhase, cw)
-    moon[2] *= Math.min(1, st.night * 1.6)
+    moon[2] *= Math.min(1, st.night * 1.6) * st.orb
+    const sun = orb(st.sunPhase, cw)
+    sun[2] *= st.orb
     gl.disable(gl.BLEND)
     gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2)
     gl.useProgram(k.prog)
     gl.bindBuffer(gl.ARRAY_BUFFER, k.buf); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
-    gl.uniform2f(k.u.uRes, W, H); gl.uniform1f(k.u.uPx, sc.ratio); gl.uniform3fv(k.u.uSky, st.sky.flat()); gl.uniform3fv(k.u.uSun, orb(st.sunPhase, cw)); gl.uniform3fv(k.u.uMoon, moon)
+    gl.uniform2f(k.u.uRes, W, H); gl.uniform1f(k.u.uPx, sc.ratio); gl.uniform3fv(k.u.uSky, st.sky.flat()); gl.uniform3fv(k.u.uSun, sun); gl.uniform3fv(k.u.uMoon, moon)
     gl.uniform3fv(k.u.uSunCol, st.sun); gl.uniform1f(k.u.uNight, st.night); gl.uniform1f(k.u.uTime, s); gl.uniform1f(k.u.uMask, mask)
     gl.drawArrays(gl.TRIANGLES, 0, 3)
   } else { gl.clearColor(0.085, 0.075, 0.075, 1); gl.clear(gl.COLOR_BUFFER_BIT) }
@@ -506,6 +508,9 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }
 }
 
+// 헤더에서 시간대를 바꾸면 곧바로 다시 그린다(동작 줄이기에서는 20초마다만 그리므로)
+onSkyChange(() => { for (const sc of Object.values(scenes)) if (sc) sc.dirty = true })
+
 function tick(now: number) {
   raf = requestAnimationFrame(tick)
   const still = !!reduce?.matches
@@ -514,7 +519,7 @@ function tick(now: number) {
   for (const sc of Object.values(scenes)) {
     if (!sc || !sc.host || !sc.quad) continue
     if (!sc.dirty && now - sc.at < (still ? REDUCED_MS : FRAME_MS[sc.kind])) continue
-    draw(sc, now, st ?? (st = skyState(skyHour())), still)
+    draw(sc, now, st ?? (st = skyNow()), still)
   }
 }
 
@@ -540,7 +545,7 @@ export function mountScene(kind: SceneKind, host: HTMLElement): () => void {
   }
   layout(sc)
   reduce ??= window.matchMedia('(prefers-reduced-motion: reduce)')
-  if (again) draw(sc, performance.now(), skyState(skyHour()), reduce.matches) // 빈 프레임 없이
+  if (again) draw(sc, performance.now(), skyNow(), reduce.matches) // 빈 프레임 없이
   if (!raf) raf = requestAnimationFrame(tick)
   const mine = sc.cleanup
   return () => { if (sc.cleanup === mine) mine() }
