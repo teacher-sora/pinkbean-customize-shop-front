@@ -46,15 +46,17 @@ function blend(a: Key, b: Key, t: number): Key {
   }
 }
 
-// 여명 05:45 · 낮 08:30~15:30 · 석양 18:15 · 밤 21:00~04:00. 그 사이는 부드럽게 넘어간다.
+// 여명 05:45 · 낮 08:30~15:30 · 석양 17:45~18:45 · 밤 21:00~04:00. 그 사이는 부드럽게 넘어간다.
+// 석양은 한 시간쯤 머문다 — 한 점에서만 석양이면 넘어가는 중간색만 보이다 끝나 너무 짧게 느껴진다(사용자 지적).
 function keyAt(h: number): Key {
   const K = KEYS
   if (h < 4) return K.night
   if (h < 5.75) return blend(K.night, K.dawn, ease((h - 4) / 1.75))
   if (h < 8.5) return blend(K.dawn, K.noon, ease((h - 5.75) / 2.75))
   if (h < 15.5) return K.noon
-  if (h < 18.25) return blend(K.noon, K.sunset, ease((h - 15.5) / 2.75))
-  if (h < 21) return blend(K.sunset, K.night, ease((h - 18.25) / 2.75))
+  if (h < 17.75) return blend(K.noon, K.sunset, ease((h - 15.5) / 2.25))
+  if (h < 18.75) return K.sunset
+  if (h < 21) return blend(K.sunset, K.night, ease((h - 18.75) / 2.25))
   return K.night
 }
 
