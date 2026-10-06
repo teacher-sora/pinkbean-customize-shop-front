@@ -1,6 +1,6 @@
 // 배경 장면을 그리는 WebGL 실행기. 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
-//  · 초당 12번만 그린다. 구름·열기구가 천천히 흘러가는 정도라 그 이상은 낭비다.
-//  · 버퍼 픽셀 수를 묶는다(layout 참고). 그리는 일은 GPU 가 하고 메인 스레드는 유니폼 몇 개만 넘긴다.
+//  · 초당 30번 그린다. 구름·열기구가 화면 픽셀 단위로 매끄럽게 흘러가려면 필요하고, 메인 스레드가 하는 일은 유니폼 몇 개를 넘기는 것뿐이다.
+//  · 캔버스 픽셀 수를 묶는다(layout: 무대 약 120만 · 앱 배경 약 240만 픽셀 이하). 넘으면 게임 픽셀 한 칸에 쓰는 캔버스 픽셀을 줄인다.
 //  · 셰이더 컴파일은 KHR_parallel_shader_compile 로 끝나기를 기다린다(없으면 다음 프레임에 확인) → 메인 스레드를 막지 않는다.
 //  · 탭이 가려지면 rAF 가 멈추니 따로 멈출 것이 없다. '동작 줄이기' 설정이면 20초에 한 번만(시각에 따른 색만) 그린다.
 //  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다(탭을 오갈 때마다 다시 컴파일하지 않는다).
@@ -12,7 +12,7 @@ import { skyHour, skyState, type SkyState } from './skyTime'
 export type SceneKind = 'sky' | 'room'
 
 const UNIFORMS = ['uRes', 'uPx', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 'uLight', 'uSunCol', 'uSun', 'uMoon', 'uNight', 'uLamp', 'uOrigin', 'uShadow'] as const
-const FRAME_MS = 83
+const FRAME_MS = 33
 const REDUCED_MS = 20000
 const COMPLETION_STATUS_KHR = 0x91b1
 
@@ -73,7 +73,7 @@ function poll(sc: Scene) {
 
 function create(kind: SceneKind): Scene {
   const canvas = document.createElement('canvas')
-  canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .5s ease;pointer-events:none'
+  canvas.style.cssText = 'position:absolute;left:0;top:0;display:block;image-rendering:pixelated;opacity:0;transition:opacity .5s ease;pointer-events:none'
   const sc: Scene = { kind, canvas, gl: null, prog: null, building: null, parallel: false, u: {}, host: null, ox: 0, oy: 0, px: 1, shadow: 13, dirty: true, shown: false, failed: false, cleanup: null }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다 — CPU 로 셰이더를 돌리면 느려진다. 그때는 바탕색만 남는다.
   // (?skygl=soft 는 GPU 없는 확인 환경에서 강제로 켜는 용도)
@@ -87,34 +87,40 @@ function create(kind: SceneKind): Scene {
   return sc
 }
 
-// 캔버스 크기와 장면 좌표. 무대(room)는 캐릭터의 발 위치와 배율에 맞춘다.
-// 그림이 매끈한 선이라 화면 해상도대로 그리되, 픽셀 수가 지나치게 늘지 않게 묶는다(무대: 배율 2 까지, 앱 배경: 약 100만 픽셀).
+// 캔버스 크기·위치. 게임 픽셀 한 칸(= px 디바이스 픽셀)을 캔버스 k 픽셀로 그리고 CSS 로 px/k 배(정수) 확대한다.
+// k 가 클수록 움직이는 물체가 잘게(화면 픽셀 단위로) 미끄러진다. 픽셀 수가 MAX_PIXELS 를 넘지 않는 가장 큰 약수를 쓴다.
+// 무대(room)는 캐릭터의 발 위치와 배율에 맞춰, 배경 도트가 캐릭터 도트와 같은 크기로 놓인다.
+const MAX_PIXELS = 1_200_000
 function layout(sc: Scene) {
   const host = sc.host
   if (!host) return
   const hw = host.clientWidth, hh = host.clientHeight
   if (!hw || !hh) return
   const dpr = window.devicePixelRatio || 1
-  let r: number    // 버퍼 픽셀 / CSS 픽셀
-  let unit: number // 게임 픽셀 한 칸 = CSS 픽셀 몇 칸
-  let cx = 0, fy = 0
-  if (sc.kind === 'sky') { r = Math.min(dpr, Math.sqrt(1_000_000 / (hw * hh))); unit = 2 }
+  let px: number, cx = 0, fy = 0 // px = 한 칸의 디바이스 픽셀 수, cx·fy = 발 위치(디바이스 픽셀)
+  if (sc.kind === 'sky') px = Math.max(1, Math.round(2 * dpr))
   else {
-    r = Math.min(dpr, 2)
     const f = getStageFloor()
     if (f && f.wrap.isConnected && host.parentElement?.contains(f.wrap)) {
       const wr = f.wrap.getBoundingClientRect(), hr = host.getBoundingClientRect()
-      unit = f.scale / dpr; cx = wr.left - hr.left + f.cx; fy = wr.top - hr.top + f.footY; sc.shadow = f.shadow
+      px = f.scale; cx = (wr.left - hr.left + f.cx) * dpr; fy = (wr.top - hr.top + f.footY) * dpr; sc.shadow = f.shadow
     } else {
       // 캐릭터가 아직 안 그려졌을 때: 그려질 자리와 거의 같은 값으로 미리 잡는다.
-      unit = Math.max(2, Math.round(2 * dpr)) / dpr; cx = hw / 2; fy = hh / 2 + 38.4 * unit
+      px = Math.max(2, Math.round(2 * dpr)); cx = (hw * dpr) / 2; fy = (hh * dpr) / 2 + 38.4 * px
     }
   }
-  const bw = Math.max(1, Math.round(hw * r)), bh = Math.max(1, Math.round(hh * r))
+  const ox = Math.ceil(cx / px), oy = Math.ceil(fy / px)
+  const uw = ox + Math.ceil((hw * dpr - cx) / px), uh = oy + Math.ceil((hh * dpr - fy) / px) // 게임 픽셀 수
+  let k = 1
+  for (let d = px; d > 1; d--) if (px % d === 0 && uw * uh * d * d <= (sc.kind === 'sky' ? MAX_PIXELS * 2 : MAX_PIXELS)) { k = d; break }
   const c = sc.canvas
-  if (c.width !== bw) c.width = bw
-  if (c.height !== bh) c.height = bh
-  sc.ox = cx * r; sc.oy = fy * r; sc.px = 1 / (unit * r)
+  if (c.width !== uw * k) c.width = uw * k
+  if (c.height !== uh * k) c.height = uh * k
+  c.style.width = `${(uw * px) / dpr}px`
+  c.style.height = `${(uh * px) / dpr}px`
+  c.style.left = `${(cx - ox * px) / dpr}px`
+  c.style.top = `${(fy - oy * px) / dpr}px`
+  sc.ox = ox * k; sc.oy = oy * k; sc.px = 1 / k
   sc.dirty = true
 }
 
@@ -124,7 +130,7 @@ function orb(kind: SceneKind, phase: number, moon: boolean, skyH: number): [numb
   const s = Math.sin(Math.PI * phase)
   const vis = Math.min(1, s * 6)
   if (kind === 'sky') return [0.12 + 0.76 * phase, (12 + (1 - s) * 26) / skyH, vis]
-  return moon ? [0.1 + 0.1 * phase, 0.78 - s * 0.22, vis] : [0.2 + 0.72 * phase, 0.84 - s * 0.7, vis]
+  return moon ? [0.08 + 0.08 * phase, 0.72 - s * 0.2, vis] : [0.2 + 0.72 * phase, 0.84 - s * 0.7, vis]
 }
 
 function draw(sc: Scene, now: number, st: SkyState) {

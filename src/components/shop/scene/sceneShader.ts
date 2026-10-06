@@ -1,8 +1,13 @@
 // 배경 장면 셰이더(WebGL1). 텍스처 없이 수식(거리 함수)만으로 그린다 — 받아 올 그림이 없어 가볍다.
 //  · sky  : 앱 배경. 메이플 15번가 — 하늘 · 뭉게구름 · 도시 스카이라인 · 열기구 · 해와 달 · 별자리.
-//  · room : 미리보기 무대. 핑크빈의 집 안에 차린 커마샵 피팅룸. 둥근 창밖으로 같은 15번가가 보인다.
-// 그림체는 메이플스토리 배경을 따른다: 도트가 아니라 **매끈한 외곽선과 부드러운 채색**이다(도트는 캐릭터만).
-// 좌표 단위는 '게임 픽셀'이고, 화면 해상도에 맞춰 가장자리를 부드럽게 깎는다(gPx = 화면 한 픽셀이 차지하는 단위 길이).
+//  · room : 미리보기 무대. 15번가를 등진 쇼 무대(아치 배경판 · 날개 장식 · 단상 · 금테 발판 · 계단).
+// 그림체는 메이플 배경의 방식이다:
+//  · **게임 픽셀 격자에 찍은 도트 그림**이다. 좌표를 격자에 맞춰(snap) 계산하므로 한 칸 안은 한 색이고, 가장자리는
+//    한 칸만 중간색으로 깎으며(손으로 넣는 안티에일리어싱), 명암은 몇 단으로 끊는다(band). 멀리서 보면 선으로 읽힌다.
+//  · **원근**: 멀리 있는 것은 가장자리를 넓게 풀고(gPx 를 키운다) 하늘빛에 묻어 뿌옇다. 가까운 것은 진한 외곽선으로 또렷하다.
+//  · **움직이는 것**(구름·열기구)은 그 물체 자신의 격자에 맞춘다 → 무늬는 물체에 붙어 흔들리지 않고, 물체는 화면 픽셀
+//    단위로 매끄럽게 미끄러진다(도트 스프라이트를 translate 로 옮기는 것과 같다). 그래서 캔버스는 화면 해상도로 그린다.
+// 좌표 단위는 게임 픽셀. uPx = 캔버스 한 픽셀이 차지하는 단위 길이, gPx = 가장자리를 푸는 폭.
 
 export const VERT = 'attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0., 1.); }'
 
@@ -36,7 +41,10 @@ float vnoise(vec2 p){
 vec2 rot(vec2 p, float a){ float c = cos(a), s = sin(a); return vec2(c * p.x - s * p.y, s * p.x + c * p.y); }
 float smin(float a, float b, float k){ float h = clamp(.5 + .5 * (b - a) / k, 0., 1.); return mix(b, a, h) - k * h * (1. - h); }
 
+// 명암을 n 단으로 끊는다(도트 그림의 면 나누기)
+float band(float x, float n){ return floor(clamp(x, 0., 1.) * n + .5) / n; }
 // 거리 → 덮는 정도(가장자리 한 픽셀을 부드럽게)
+vec2 snap(vec2 p){ return floor(p) + .5; }
 float cov(float d){ return clamp(.5 - d / gPx, 0., 1.); }
 // 채우고 바깥에 외곽선을 두른다
 void ink(inout vec3 col, float d, vec3 fillc, vec3 line, float lw){ col = mix(col, line, cov(d - lw)); col = mix(col, fillc, cov(d)); }
@@ -147,7 +155,8 @@ float cloudD(vec2 q){
 }
 void cloudLayer(inout vec3 col, vec2 p, float y, float s, float speed, float seed, float fade){
   float cell = 96. * s;
-  float x = p.x + uTime * speed + seed * 57.;
+  float x = floor(p.x + uTime * speed + seed * 57.) + .5;
+  p.y = floor(p.y) + .5;
   float id = floor(x / cell);
   float h = hash(vec2(id, seed));
   if (h < .22) return;
@@ -206,55 +215,8 @@ void balloon(inout vec3 col, vec2 q, vec3 a, vec3 b, float fade){
   col = mix(col, base, fade);
 }
 
-// 핑크빈(공식 간판 그림: 헤드폰 · 보라색 뿔귀 · 흰 배 · 자주색 발 · 꼬리). q = 몸 가운데 기준, 키 약 36.
-void pinkbean(inout vec3 col, vec2 q, vec3 amb, float blink){
-  if (q.x < -18. || q.x > 23. || q.y < -19. || q.y > 20.) return;
-  vec3 line = vec3(.27, .1, .2) * amb;
-  vec3 pink = vec3(.985, .74, .8), purple = vec3(.47, .27, .66);
-  // 꼬리
-  ink(col, min(sdSeg(q, vec2(9., 10.), vec2(15.5, 9.)), sdSeg(q, vec2(15.5, 9.), vec2(18.5, 4.))) - .8, pink * amb, line, .7);
-  ink(col, length(q - vec2(19.2, 2.4)) - 2.5, purple * amb, line, .7);
-  col = mix(col, vec3(.66, .46, .86) * amb, cov(length(q - vec2(18.5, 1.6)) - .9));
-  // 헤드폰 띠
-  ink(col, max(abs(length(q - vec2(0., -3.)) - 14.) - .95, q.y + 5.), vec3(.97, .97, .99) * amb, line, .65);
-  // 뿔귀
-  float ex = abs(q.x);
-  float ear = sdCone(vec2(ex, q.y), vec2(6.2, -9.5), vec2(12.2, -15.8), 3.6, .7);
-  ink(col, ear, purple * amb, line, .7);
-  col = mix(col, vec3(.63, .43, .84) * amb, cov(ear + .9) * smoothstep(.2, .7, sin((ex * .7 - q.y * .7) * 2.6)));
-  // 왼쪽 헤드폰(몸 뒤로 살짝)
-  ink(col, sdEll(q - vec2(-12.8, -2.), vec2(2.9, 5.4)), vec3(.56, .8, .27) * amb, line, .7);
-  col = mix(col, vec3(.98, .98, 1.) * amb, cov(sdEll(q - vec2(-13.6, -2.), vec2(1.5, 4.))));
-  // 몸
-  float body = smin(sdEll(q - vec2(0., -4.), vec2(10.2, 10.2)), sdEll(q - vec2(0., 5.5), vec2(12.6, 10.6)), 5.);
-  ink(col, body, mix(pink, vec3(.95, .6, .71), smoothstep(2., 17., q.y + q.x * .35)) * amb, line, .8);
-  float inb = cov(body + .7);
-  col = mix(col, vec3(1., .985, .985) * amb, cov(sdEll(q - vec2(-.6, 9.2), vec2(8.6, 6.4))) * inb);
-  col = mix(col, vec3(1., .92, .94) * amb, cov(sdEll(rot(q - vec2(-4.6, -10.2), -.5), vec2(1.7, .9))));
-  col = mix(col, vec3(.97, .5, .6) * amb, .6 * (1. - smoothstep(.4, 1., length((vec2(abs(q.x + .2), q.y) - vec2(7.3, 1.4)) / vec2(2.5, 1.4)))) * inb);
-  // 눈 · 입
-  vec2 e = vec2(abs(q.x + .2) - 4., q.y + 2.2);
-  if (blink > .5) col = mix(col, line, cov(sdSeg(e, vec2(-1.8, .2), vec2(1.8, .2)) - .5));
-  else { col = mix(col, line, cov(length(e) - 2.3)); col = mix(col, vec3(1.), cov(length(e) - 1.05)); }
-  vec2 m = q - vec2(-.2, .2);
-  col = mix(col, line, cov(max(abs(length(vec2(abs(m.x) - 1.35, m.y)) - 1.35) - .4, -m.y)));
-  // 오른쪽 헤드폰(초록 테 · 흰 판 · 주황 별)
-  ink(col, length(q - vec2(12.4, -1.6)) - 6.3, vec3(.56, .8, .27) * amb, line, .75);
-  ink(col, length(q - vec2(13.2, -1.6)) - 5., vec3(.99, .99, 1.) * amb, line, .5);
-  col = mix(col, vec3(.97, .55, .13) * amb, cov(sdStar(rot(q - vec2(13.3, -1.4), .25), 3.7)));
-  // 발
-  vec3 foot = vec3(.67, .2, .5) * amb;
-  ink(col, sdEll(rot(q - vec2(-9.8, 13.), .55), vec2(2.8, 5.2)), foot, line, .75);
-  ink(col, sdEll(rot(q - vec2(5.8, 14.2), -.12), vec2(3., 5.4)), foot, line, .75);
-  col = mix(col, vec3(.82, .36, .64) * amb, cov(sdEll(rot(q - vec2(-10.5, 12.4), .55), vec2(1., 3.2))) + cov(sdEll(rot(q - vec2(5., 13.6), -.12), vec2(1.1, 3.4))));
-}
-void pinkbeanAt(inout vec3 col, vec2 q, float s, vec3 amb, float blink){
-  float keep = gPx; gPx = keep / s;
-  pinkbean(col, q / s, amb, blink);
-  gPx = keep;
-}
-
-vec3 sky(vec2 p, vec2 size){
+vec3 sky(vec2 pr, vec2 size){
+  vec2 p = snap(pr);
   float t = p.y / size.y;
   vec3 col = gradAt(t);
   if (uNight > .01) {
@@ -262,18 +224,20 @@ vec3 sky(vec2 p, vec2 size){
     CONSTELLATIONS
   }
   orbs(col, p, size);
-  cloudLayer(col, p, size.y * .34, .55, 1., 3., .45);
-  cloudLayer(col, p, size.y * .58, .8, 2.2, 9., .1);
+  gPx = 2.2;
+  cloudLayer(col, pr, size.y * .34, .55, 1., 3., .5);
+  gPx = 1.5;
+  cloudLayer(col, pr, size.y * .58, .8, 2.2, 9., .15);
   SKY_MID
+  gPx = 1.;
   return col;
 }
 `
 
 const SKY_MAIN = `
 void main(){
-  gPx = uPx;
-  vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) * uPx;
-  gl_FragColor = vec4(sky(p, uRes * uPx), 1.);
+  gPx = 1.;
+  gl_FragColor = vec4(sky(vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) * uPx, uRes * uPx), 1.);
 }
 `
 
@@ -286,200 +250,177 @@ const SKY_PARTS = {
     constel(col, cPinkbean(p - vec2(size.x * .035, size.y * .16)), 1.);
     constel(col, cPinkbean(p - vec2(size.x * .965, size.y * .2)), 3.);`,
   SKY_MID: `
-    cloudLayer(col, p, 27., .5, 2., 33., .05);
-    cityLayer(col, p, size.y, 26., size.y * .4, size.y * .72, 4., .62, size.y * .93);
-    balloon(col, p - vec2(mod(uTime * 2.5 + size.x * .7, size.x + 60.) - 30., 13. + sin(uTime * .5) * 1.5), vec3(.96, .42, .4), vec3(1., .9, .6), .1);
-    balloon(col, p - vec2(mod(uTime * 1.6 + size.x * .2, size.x + 60.) - 30., size.y * .3 + sin(uTime * .4 + 2.) * 2.), vec3(.4, .7, .9), vec3(1., .97, .92), .25);
-    pinkbeanAt(col, p - vec2(mod(uTime * 4., size.x + 60.) - 30., 12.5 + sin(uTime * .7) * 1.5), .56, mix(uAmb, vec3(1.), .5), step(.96, fract(uTime * .23)));
-    cityLayer(col, p, size.y, 38., size.y * .2, size.y * .52, 11., .12, size.y * .66);`,
+    cloudLayer(col, pr, 27., .5, 2., 33., .08);
+    gPx = 2.4;
+    cityLayer(col, p, size.y, 26., size.y * .4, size.y * .72, 4., .66, size.y * .93);
+    gPx = 1.6;
+    balloon(col, snap(pr - vec2(mod(uTime * 1.6 + size.x * .2, size.x + 60.) - 30., size.y * .3 + sin(uTime * .4 + 2.) * 2.)), vec3(.4, .7, .9), vec3(1., .97, .92), .3);
+    gPx = 1.;
+    balloon(col, snap(pr - vec2(mod(uTime * 2.5 + size.x * .7, size.x + 60.) - 30., 13. + sin(uTime * .5) * 1.5)), vec3(.96, .42, .4), vec3(1., .9, .6), 0.);
+    cityLayer(col, p, size.y, 38., size.y * .2, size.y * .52, 11., 0., size.y * .66);`,
 }
 
 const ROOM_PARTS = {
   CONSTELLATIONS: `
-    constel(col, cStar(p - vec2(152., 63.)), 3.);
-    constel(col, cStar(p - vec2(20., 82.)), 0.);`,
+    constel(col, cPinkbean((p - vec2(163., 84.)) / .56) * .56, 1.);
+    constel(col, cStar(p - vec2(18., 38.)), 3.);
+    constel(col, cDipper(p - vec2(90., 12.)), 0.);`,
   SKY_MID: `
-    cityLayer(col, p, size.y, 15., size.y * .34, size.y * .5, 4., .6, size.y * .56);
-    balloon(col, (p - vec2(mod(uTime * 1.4, size.x + 40.) - 20., 66. + sin(uTime * .5) * 1.5)) / .6, vec3(.96, .42, .4), vec3(1., .9, .6), .1);
-    cityLayer(col, p, size.y, 21., size.y * .26, size.y * .36, 11., .12, size.y * .4);`,
+    gPx = 2.6;
+    cityLayer(col, p, size.y, 15., size.y * .3, size.y * .48, 4., .7, size.y * .55);
+    gPx = 1.8;
+    balloon(col, snap(pr - vec2(mod(uTime * 1.4, size.x + 40.) - 20., 52. + sin(uTime * .5) * 1.5)), vec3(.96, .42, .4), vec3(1., .9, .6), .2);
+    cityLayer(col, p, size.y, 21., size.y * .2, size.y * .32, 11., .4, size.y * .36);`,
 }
 
-// 핑크빈의 집 안. w = 발이 닿는 자리(0,0) 기준 좌표(아래가 +). 메이플 맵처럼 옆에서 본 그림이다: y=0 이 바닥 윗면(발판)이고
-// 그 아래는 발판 앞면이다. 가운데는 보라색 뿔 아치의 피팅 부스(밝은 안쪽 벽 + 노란 커튼 = 집 대문의 색)다.
+// 쇼 무대. w = 발이 닿는 자리(0,0) 기준 좌표(아래가 +). 메이플 맵의 짜임을 따른다:
+//  원경(15번가 하늘) → 중경(화면 밖으로 잘리는 큰 기둥 · 아치 배경판 · 날개 장식 · 단상) → 발판(금테 윗면) → 아래로 내려가는 계단.
 const ROOM_MAIN = `
 uniform vec2 uOrigin;
 uniform float uShadow;
-const vec2 WIN = vec2(62., -78.);   // 둥근 창(좌우 대칭)
-const vec2 SKY_SIZE = vec2(180., 124.);
-const vec3 LINE = vec3(.56, .3, .46);
-const vec3 PUR = vec3(.5, .31, .72);
-const vec3 PUR_L = vec3(.67, .48, .88);
-const vec3 PUR_D = vec3(.3, .16, .44);
-const vec3 GOLD = vec3(.97, .78, .42);
-const vec3 GOLD_D = vec3(.6, .4, .22);
+const vec2 SKY_SIZE = vec2(180., 170.);
+const vec3 LINE = vec3(.34, .25, .5);
+const vec3 GOLD = vec3(.98, .78, .36);
+const vec3 GOLD_L = vec3(1., .93, .64);
+const vec3 GOLD_D = vec3(.6, .38, .16);
 
 void main(){
-  gPx = uPx;
-  vec2 w = (vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) - uOrigin) * uPx;
+  gPx = 1.;
+  vec2 wr = (vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) - uOrigin) * uPx;
+  vec2 w = snap(wr);
   float ax = abs(w.x);
-  vec3 col;
-  float self = 0.;           // 스스로 빛나는 정도(창밖 · 켜진 등) — 실내 빛을 곱하지 않는다
+  // 무대 빛: 시각에 따른 빛 + 가운데를 비추는 조명(밤에도 캐릭터 둘레는 밝다)
+  float lf = (1. - smoothstep(20., 170., length(w - vec2(0., -40.)))) * uLamp;
+  vec3 A = mix(uAmb, vec3(1.03, .97, .9), lf * .85);
+  vec3 col = sky(wr + vec2(90., 160.), SKY_SIZE);
 
   if (w.y < 0.) {
-    // 돔 벽: 집 겉과 같은 분홍. 돔 바깥(천장 그늘)은 짙은 자주.
-    float dome = sdEll(w - vec2(0., 20.), vec2(140., 245.));
-    col = mix(vec3(.5, .24, .46), vec3(.4, .18, .4), smoothstep(-120., -260., w.y));
-    vec3 wall = mix(vec3(1., .82, .88), vec3(.99, .72, .82), smoothstep(-190., -20., w.y));
-    wall = mix(wall, vec3(1., .9, .93), .6 * (1. - smoothstep(.3, 1., length((w - vec2(-58., -150.)) / vec2(22., 9.)))));
-    ink(col, dome + 5., wall, PUR_D, .8);
-    col = mix(col, mix(PUR, PUR_L, smoothstep(1., -3., dome + 2.5)), cov(abs(dome + 2.5) - 2.5));
-    float inDome = cov(dome + 5.8);
-    // 아래 벽: 물결 끝의 짙은 분홍 띠 + 보라 굽도리
-    float wave = w.y - (-27. + sin(w.x * .21) * 2.4);
-    col = mix(col, vec3(.74, .38, .56), cov(abs(wave) - .45) * inDome);
-    col = mix(col, mix(vec3(.97, .6, .75), vec3(.94, .52, .7), smoothstep(-26., 0., w.y)), cov(-wave) * inDome);
-    col = mix(col, vec3(1., .78, .86), .8 * cov(length(vec2(mod(w.x + 9., 18.) - 9., w.y + 14.)) - 1.6) * inDome);
-    ink(col, sdBox(w - vec2(w.x, -2.6), vec2(999., 2.8)), mix(PUR_L, PUR, smoothstep(-5., 0., w.y)), PUR_D, .6);
-
-    // 둥근 창(집의 눈처럼 하늘색 테)
-    vec2 wq = vec2(ax, w.y) - WIN;
-    float wd = length(wq) - 19.;
-    if (wd < 6.) {
-      ink(col, wd - 4.4, mix(vec3(.9, .97, 1.), vec3(.68, .84, .98), smoothstep(-20., 20., wq.y)), vec3(.3, .42, .7), .8);
-      col = mix(col, vec3(1.), .7 * cov(abs(wd - 3.) - .4) * step(wq.y, -4.));
-      float g = cov(wd);
-      if (g > 0.) {
-        vec3 s = sky(w + vec2(90., 150.), SKY_SIZE);
-        s = mix(s, vec3(1.), .12 * smoothstep(.7, 1., sin((w.x + w.y) * .09 + 1.)));
-        s *= 1. - .28 * smoothstep(-4.5, 0., wd);
-        float bar = min(abs(wq.x), abs(wq.y)) - 1.;
-        s = mix(s, vec3(.3, .42, .7), cov(bar - .6) * .85);
-        s = mix(s, vec3(.86, .95, 1.), cov(bar));
-        col = mix(col, s, g);
-        self = g * (1. - cov(bar - .6));
-      }
-      col = mix(col, vec3(.3, .42, .7), cov(abs(wd) - .4));
+    // 양옆 기둥(화면 밖으로 잘린다)
+    if (ax > 72.) {
+      float px = (ax - 88.) * sign(w.x);
+      vec3 pc = mix(vec3(1., .98, 1.), vec3(.7, .65, .9), band(smoothstep(-9., 9., px), 4.));
+      pc *= 1. - .09 * step(.5, fract((px + 9.5) / 4.75));
+      ink(col, abs(px) - 9.5, pc * A, LINE * A, .9);
+      float ring = min(abs(w.y + 30.), abs(w.y + 116.)) - 3.2;
+      ink(col, max(ring, abs(px) - 11.5), mix(GOLD_L, GOLD, band(smoothstep(-10., 10., px), 3.)) * A, GOLD_D * A, .8);
+      ink(col, max(-w.y - 9., abs(px) - 12.5), pc * .94 * A, LINE * A, .9);
     }
-
-    // 피팅 부스: 보라색 뿔 아치 + 밝은 안쪽 벽 + 노란 커튼
-    if (ax < 44. && w.y > -116.) {
-      vec2 aq = vec2(w.x, w.y + 66.);
-      float arch = w.y > -66. ? ax - 31. : length(aq) - 31.;
-      float r = length(aq);
-      float la = mod(atan(aq.y, aq.x) + 3.14159 + .2618, .5236) - .2618;
-      float spike = w.y < -62. ? r - (31. + 8.5 * max(0., 1. - abs(la) / .19)) : 99.;
-      ink(col, min(arch, spike), PUR, PUR_D, .8);
-      col = mix(col, PUR_L, cov(abs(arch + 1.6) - .6));
-      float inner = arch + 5.2;
-      vec3 back = mix(vec3(1., .985, .93), vec3(1., .95, .84), smoothstep(-96., 0., w.y));
-      back = mix(back, vec3(1., .93, .78), .5 * smoothstep(2.6, 3.2, abs(mod(w.x + 6., 12.) - 6.)));
-      back *= 1. - .16 * smoothstep(-5., 0., inner);
-      ink(col, inner, back, PUR_D, .7);
-      float cw = w.y < -40. ? mix(13., 4.5, smoothstep(-92., -40., w.y)) : 4.5 + 3. * smoothstep(-40., -4., w.y);
-      float cd = max((25.8 - cw) - ax, inner + .4);
-      vec3 cur = mix(vec3(.97, .68, .2), vec3(1., .9, .44), .5 + .5 * sin(ax * 1.7 + w.y * .05));
-      ink(col, cd, cur, vec3(.66, .4, .12), .6);
-      col = mix(col, PUR, cov(abs(w.y + 40.) - 1.7) * cov(cd));
+    // 아치 배경판(금테 + 연보라 판 + 조명 기둥 무늬)
+    vec2 aq = vec2(w.x, w.y + 80.);
+    float arch = w.y > -80. ? ax - 48. : length(aq) - 48.;
+    if (arch < 3.) {
+      ink(col, arch, GOLD * A, GOLD_D * A, .9);
+      col = mix(col, GOLD_L * A, cov(abs(arch + 1.5) - .5));
+      float inner = arch + 4.6;
+      vec3 pn = mix(vec3(.84, .72, .97), vec3(.99, .86, .95), band(smoothstep(-128., -8., w.y), 7.));
+      float ch = 26. + hash(vec2(floor((w.x + 4.) / 8.), 3.)) * 74.;
+      float bar = max(max(abs(mod(w.x + 4., 8.) - 4.) - 2.6, abs(mod(w.y, 7.) - 3.5) - 2.3), -w.y - ch);
+      pn = mix(pn, vec3(1., .94, 1.), .5 * cov(bar));
+      pn = mix(pn, vec3(1., .97, 1.), .55 * band(1. - smoothstep(8., 62., length(w - vec2(0., -62.))), 4.));
+      pn *= 1. - .16 * smoothstep(-5., 0., inner);
+      ink(col, inner, pn * A, GOLD_D * A, .8);
     }
-
-    // 아치 위 간판
-    vec2 sq = w - vec2(0., -134.);
-    if (abs(sq.x) < 26. && abs(sq.y) < 24.) {
-      ink(col, length(sq) - 19., GOLD, GOLD_D, .8);
-      col = mix(col, vec3(1., .93, .68), cov(abs(length(sq) - 17.6) - .4));
-      ink(col, length(sq) - 16., mix(vec3(1., .95, .97), vec3(1., .86, .91), smoothstep(-12., 14., sq.y)), GOLD_D, .6);
-      pinkbeanAt(col, sq - vec2(-1.5, -.5), .72, vec3(1.), step(.97, fract(uTime * .19)));
+    ink(col, sdStar(w - vec2(0., -135.), 7.5), GOLD_L * A, GOLD_D * A, .9);
+    // 날개 장식과 별
+    vec2 cq = vec2(ax, w.y);
+    if (ax < 50. && w.y > -84. && w.y < -36.) {
+      float wing = sdEll(rot(cq - vec2(26., -66.), .38), vec2(21., 7.5));
+      wing = smin(wing, sdEll(rot(cq - vec2(23., -55.), .12), vec2(16., 6.)), 2.);
+      wing = smin(wing, sdEll(rot(cq - vec2(19., -46.), -.15), vec2(11., 4.5)), 2.);
+      ink(col, wing - 1.8, mix(GOLD_L, GOLD, band(smoothstep(-74., -44., w.y), 3.)) * A, GOLD_D * A, .8);
+      col = mix(col, mix(vec3(1., .76, .88), vec3(.96, .54, .77), band(smoothstep(-72., -42., w.y), 3.)) * A, cov(wing));
+      col = mix(col, GOLD_L * A, cov(abs(length(cq - vec2(31., -64.)) - 2.8) - .8) * cov(wing + 1.5));
+      float star = sdStar(w - vec2(0., -64.), 13.) - 1.2;
+      ink(col, star, mix(GOLD_L, GOLD, band(smoothstep(-76., -54., w.y), 3.)) * A, GOLD_D * A, .9);
+      col = mix(col, vec3(1., .78, .9) * A, cov(sdStar(w - vec2(0., -64.), 7.5)));
     }
-
-    // 벽등
-    vec2 lq = vec2(ax - 44., w.y + 118.);
-    if (abs(lq.x) < 7. && abs(lq.y) < 12.) {
-      ink(col, min(sdBox(lq - vec2(0., 6.5), vec2(.8, 3.)), sdRBox(lq - vec2(0., 9.5), vec2(3.4, 1.2), 1.)), GOLD, GOLD_D, .5);
-      float sh = sdTrap(lq - vec2(0., -.5), 2.2, 3.8, 4.) - .8;
-      ink(col, sh, mix(vec3(1., .96, .9), vec3(1., .9, .56), uLamp), GOLD_D, .55);
-      self = max(self, cov(sh) * uLamp);
+    // 단상(둥근 2단 + 금띠 하트)
+    if (w.y > -35. && ax < 44.) {
+      float t2 = sdRBox(w - vec2(0., -25.), vec2(30., 7.5), 2.);
+      float t1 = sdRBox(w - vec2(0., -9.), vec2(41., 9.6), 2.);
+      vec3 pd = mix(vec3(1., .98, 1.), vec3(.74, .68, .92), band(smoothstep(.25, 1., ax / 41.), 4.));
+      ink(col, t2, pd * A, LINE * A, .9);
+      col = mix(col, vec3(1.) * A, cov(abs(w.y + 31.) - .6) * cov(t2 + 1.2));
+      ink(col, t1, pd * A, LINE * A, .9);
+      col = mix(col, vec3(1.) * A, cov(abs(w.y + 17.2) - .6) * cov(t1 + 1.2));
+      float bd = abs(w.y + 8.6) - 3.6;
+      col = mix(col, GOLD_D * A, cov(bd - .7) * cov(t1 + .5));
+      col = mix(col, mix(GOLD_L, GOLD, band(smoothstep(-12., -5., w.y), 3.)) * A, cov(bd) * cov(t1 + .5));
+      vec2 hq = vec2(mod(w.x + 6., 12.) - 6., w.y + 9.);
+      float heart = min(length(vec2(abs(hq.x) - 1.05, hq.y + .6)) - 1.25, max((abs(hq.x) + hq.y - 1.8) * .707, -hq.y - .6));
+      col = mix(col, vec3(.97, .5, .7) * A, cov(heart) * cov(t1 + 2.));
+    }
+    // 근경: 발판 양옆의 덤불과 꽃(진한 외곽선)
+    vec2 bq = vec2(ax - 64., w.y);
+    if (abs(bq.x) < 22. && w.y > -27.) {
+      float bush = length(bq - vec2(0., -9.)) - 10.;
+      bush = smin(bush, length(bq - vec2(-9., -5.)) - 7., 2.);
+      bush = smin(bush, length(bq - vec2(10., -6.)) - 8., 2.);
+      bush = smin(bush, length(bq - vec2(3., -16.)) - 6., 2.);
+      vec3 gr = mix(vec3(.66, .92, .42), vec3(.16, .46, .32), band(smoothstep(-22., 2., w.y + bq.x * .35), 4.));
+      ink(col, bush, gr * A, vec3(.07, .24, .2) * A, 1.1);
+      vec2 lf2 = vec2(mod(bq.x + 2.5, 5.) - 2.5, mod(w.y + floor((bq.x + 2.5) / 5.) * 2.5, 5.) - 2.5);
+      col = mix(col, vec3(.84, .98, .56) * A, cov(length(lf2) - 1.) * cov(bush + 3.5) * step(w.y, -7.));
+      float fl = min(length(bq - vec2(-6., -10.)), min(length(bq - vec2(7., -15.)), length(bq - vec2(12., -5.))));
+      ink(col, fl - 2., vec3(1., .62, .82) * A, vec3(.6, .2, .42) * A, .8);
+      col = mix(col, vec3(1., .95, .7) * A, cov(fl - .8));
+    }
+    // 위쪽 휘장
+    if (w.y < -140.) {
+      float edge = w.y - (-172. + 24. * ax * ax / 7921.);
+      vec3 dr = mix(vec3(.8, .26, .52), vec3(.98, .56, .76), band(.5 + .5 * sin(ax * .33 - w.y * .12), 3.));
+      dr = mix(dr, GOLD, cov(abs(edge + 2.8) - 1.));
+      ink(col, edge, dr * A, vec3(.46, .12, .32) * A, .9);
     }
   } else {
-    // 발판 앞면: 보라색 바탕에 밝은 물결 띠(핑크빈 마을 땅의 물결 무늬)
-    col = mix(vec3(.56, .37, .78), vec3(.36, .22, .56), smoothstep(8., 150., w.y));
-    float wv = w.y - (16. + sin(w.x * .2) * 2.6);
-    col = mix(col, vec3(.7, .52, .9), cov(wv));
-    col = mix(col, PUR_D, .7 * cov(abs(wv) - .45));
-    col = mix(col, vec3(.8, .64, .96), cov(abs(w.y - (9. + sin(w.x * .2 + 1.2) * 1.4)) - .5));
-    float wv2 = w.y - (62. + sin(w.x * .13 + 2.) * 4.);
-    col = mix(col, col * .88, cov(-wv2) * 0. + cov(wv2));
-    col = mix(col, vec3(.62, .44, .84), .8 * cov(abs(wv2) - .5));
-    col = mix(col, vec3(.63, .44, .84), .7 * cov(sdStar(vec2(mod(w.x + 20., 40.) - 20., w.y - 36. - mod(floor((w.x + 20.) / 40.), 2.) * 22.), 3.2)));
-    // 윗면
-    ink(col, sdBox(w - vec2(w.x, 2.5), vec2(999., 2.5)), mix(vec3(1., .86, .91), vec3(.98, .7, .82), smoothstep(.5, 4.8, w.y)), PUR_D, .7);
-    col = mix(col, vec3(1., .96, .97), cov(w.y - .9));
-    // 러그: 발판 위에 깔려 앞으로 살짝 늘어진다
-    if (ax < 50. && w.y < 18.) {
-      float drape = max(sdRBox(w - vec2(0., 6.), vec2(36., 9.), 3.), -w.y + 1.);
-      float sc = mod(w.x + 4.5, 9.) - 4.5;
-      drape = max(drape, w.y - (11. + sqrt(max(0., 20. - sc * sc))));
-      ink(col, drape, mix(vec3(1., .86, .4), vec3(.97, .7, .24), smoothstep(2., 14., w.y)), vec3(.62, .38, .12), .6);
-      col = mix(col, PUR, cov(abs(w.y - 9.5) - .5) * cov(ax - 34.));
-      col = mix(col, vec3(1., .97, .86), cov(sdStar(w - vec2(0., 5.4), 2.6)) * cov(drape + 1.));
-      ink(col, sdRBox(w - vec2(0., .3), vec2(45., 1.5), 1.4), vec3(1., .84, .38), vec3(.62, .38, .12), .6);
-      col = mix(col, vec3(1., .95, .7), cov(abs(w.y + .3) - .35) * cov(ax - 43.));
-    }
+    // 아래로 내려가는 계단 + 가운데 카펫
+    float sy = mod(w.y - 30., 12.);
+    float dim = 1. - clamp(floor((w.y - 30.) / 12.) * .07, 0., .55);
+    float cz = ax - 26.;
+    vec3 stone = sy < 3. ? vec3(.96, .93, 1.) : vec3(.8, .75, .94) * mix(1., .84, (sy - 3.) / 9.);
+    vec3 carpet = sy < 3. ? vec3(.99, .52, .7) : vec3(.88, .34, .55) * mix(1., .84, (sy - 3.) / 9.);
+    if (w.y < 30.) {
+      stone = mix(vec3(.99, .97, 1.), vec3(.84, .79, .96), band(smoothstep(5., 30., w.y), 4.)) * (1. - .06 * step(6., mod(w.x + 6., 12.)));
+      float bd = abs(w.y - 15.5) - 3.6;
+      stone = mix(stone, vec3(.72, .4, .62), cov(bd - .7));
+      stone = mix(stone, vec3(.98, .66, .82), cov(bd));
+      stone = mix(stone, GOLD_L, cov(abs(mod(w.x + 8., 16.) - 8.) + abs(w.y - 15.5) - 2.3));
+      stone = mix(stone, GOLD_D, cov(abs(w.y - 27.8) - 2.6));
+      stone = mix(stone, mix(GOLD_L, GOLD, smoothstep(26., 30., w.y)), cov(abs(w.y - 27.8) - 1.9));
+      carpet = vec3(.93, .4, .6) * mix(1., .86, smoothstep(5., 30., w.y));
+      dim = 1.;
+    } else stone = mix(stone, LINE, .45 * cov(abs(sy - 3.) - .45));
+    carpet = mix(carpet, GOLD, cov(abs(cz + 3.5) - .9));
+    carpet = mix(carpet, GOLD, cov(w.y < 30. ? abs(w.x) + abs(w.y - 16.) - 5. : abs(w.x) + abs(sy - 7.5) - 2.4));
+    if (w.y < 30.) carpet = mix(carpet, vec3(.93, .4, .6), cov(abs(w.x) + abs(w.y - 16.) - 3.));
+    col = mix(stone, carpet, cov(cz));
+    col = mix(col, vec3(.5, .16, .34), .7 * cov(abs(cz) - .45));
+    col *= dim * A;
+    // 금테 발판 윗면
+    float top = sdBox(w - vec2(w.x, 2.5), vec2(999., 2.5));
+    ink(col, top, mix(GOLD_L, GOLD, band(smoothstep(.5, 5., w.y), 3.)) * A, GOLD_D * A, .8);
+    col = mix(col, vec3(1., .98, .86) * A, cov(w.y - 1.));
+    col = mix(col, GOLD_D * A, .6 * cov(length(vec2(mod(w.x + 11., 22.) - 11., w.y - 2.9)) - .9));
+    col = mix(col, mix(vec3(1., .62, .78), vec3(.95, .46, .66), smoothstep(.5, 5., w.y)) * A, cov(cz + 1.) * cov(top));
     // 발밑 그림자
     col = mix(col, vec3(.3, .14, .32), .32 * (1. - smoothstep(.55, 1., length(vec2(w.x / uShadow, (w.y - .4) / 1.9)))));
   }
 
-  // 옷걸이(왼쪽)
-  if (w.x < -44. && w.x > -96. && w.y > -52. && w.y < 1.) {
-    float pole = min(sdRBox(w - vec2(-70., -45.5), vec2(21., 1.1), 1.), min(sdBox(w - vec2(-88., -23.), vec2(1., 22.)), sdBox(w - vec2(-52., -23.), vec2(1., 22.))));
-    pole = min(pole, min(sdRBox(w - vec2(-88., -1.2), vec2(5., 1.2), 1.), sdRBox(w - vec2(-52., -1.2), vec2(5., 1.2), 1.)));
-    ink(col, pole, GOLD, GOLD_D, .6);
-    ink(col, min(length(w - vec2(-91.5, -45.5)), length(w - vec2(-48.5, -45.5))) - 1.8, GOLD, GOLD_D, .6);
-    for (int i = 0; i < 3; i++) {
-      float fi = float(i);
-      vec2 gq = w - vec2(-81. + fi * 11., 0.);
-      if (abs(gq.x) > 8.) continue;
-      float bot = i == 0 ? -15. : (i == 1 ? -19. : -12.);
-      col = mix(col, GOLD_D, cov(abs(length(gq - vec2(0., -43.)) - 1.4) - .4));
-      vec3 gc = i == 0 ? vec3(.26, .32, .56) : (i == 1 ? vec3(.98, .99, 1.) : vec3(.6, .86, .78));
-      vec3 gl = i == 0 ? vec3(.13, .16, .32) : (i == 1 ? vec3(.5, .56, .72) : vec3(.26, .5, .46));
-      float gd = sdTrap(gq - vec2(0., (-40. + bot) * .5), 3.4, i == 1 ? 4.6 : 6.4, (bot + 40.) * .5) - 1.;
-      ink(col, gd, gc * (1. - .1 * smoothstep(-1., 4., gq.x)), gl, .6);
-      float inside = cov(gd + .8);
-      if (i == 0) col = mix(col, vec3(1., .84, .42), cov(length(vec2(gq.x, mod(gq.y, 6.) - 3.)) - .8) * inside);
-      if (i == 1) { col = mix(col, vec3(.3, .46, .82), cov(sdTri(gq, -40., -35.5, .9)) * inside); col = mix(col, vec3(.3, .46, .82), cov(abs(gq.y - bot + 2.2) - .6) * inside); }
-      if (i == 2) { col = mix(col, vec3(1., .98, .96), cov(bot - 3. - gq.y) * inside); col = mix(col, vec3(.95, .5, .6), cov(min(length(gq - vec2(-1.6, -36.)), length(gq - vec2(1.6, -36.))) - 1.3)); }
-    }
+  // 위에서 내려오는 조명 두 줄기
+  if (w.y < 5.) {
+    vec2 d = normalize(vec2(-70., 170.));
+    vec2 o = vec2(ax, w.y) - vec2(70., -190.);
+    float t = dot(o, d);
+    float bm = (1. - smoothstep(7. + t * .09, 11. + t * .13, abs(dot(o, vec2(-d.y, d.x))))) * step(0., t);
+    col += vec3(1., .95, .8) * band(bm, 3.) * (.07 + .1 * uLamp);
   }
-  // 전신 거울(오른쪽 뒤)
-  vec2 mq = w - vec2(78., -27.);
-  if (abs(mq.x) < 14. && abs(mq.y) < 29.) {
-    ink(col, min(sdBox(mq - vec2(0., 22.5), vec2(1., 3.)), sdRBox(mq - vec2(0., 25.8), vec2(7., 1.2), 1.)), GOLD, GOLD_D, .6);
-    ink(col, sdEll(mq, vec2(10.4, 21.4)), GOLD, GOLD_D, .7);
-    col = mix(col, vec3(1., .93, .68), cov(abs(sdEll(mq, vec2(9.4, 20.4))) - .35));
-    vec3 gl = mix(vec3(.93, .98, 1.), vec3(.72, .87, .98), smoothstep(-18., 18., mq.y - mq.x * .5));
-    gl = mix(gl, vec3(1.), .75 * smoothstep(.55, .9, sin((mq.x + mq.y) * .32 + .6)));
-    ink(col, sdEll(mq, vec2(8.2, 19.2)), gl, vec3(.5, .62, .78), .5);
-  }
-  // 분홍 탁자와 그 위에 앉은 핑크빈(가게 주인)
-  if (w.x > 30. && w.x < 72. && w.y > -50. && w.y < 1.) {
-    ink(col, min(sdBox(w - vec2(40., -8.), vec2(1.3, 8.)), sdBox(w - vec2(62., -8.), vec2(1.3, 8.))), vec3(.93, .5, .68), LINE, .6);
-    ink(col, sdRBox(w - vec2(51., -17.4), vec2(15.5, 2.2), 1.6), mix(vec3(1., .74, .84), vec3(.97, .6, .75), smoothstep(-19., -15.5, w.y)), LINE, .7);
-    pinkbeanAt(col, w - vec2(50., -32.6), .66, vec3(1.), step(.96, fract(uTime * .21 + .4)));
-  }
-
-  // 실내 빛: 시각에 따른 빛 + 벽등 불빛(밤에도 캐릭터 둘레는 밝다)
-  float ld = min(length(w - vec2(44., -118.)), length(w - vec2(-44., -118.)));
-  float lf = (1. - smoothstep(6., 190., ld)) * uLamp;
-  col *= mix(mix(uAmb, vec3(1.04, .95, .84), lf * .85), vec3(1.), self);
-  col += vec3(1., .78, .4) * exp(-ld * .13) * .35 * uLamp;
-  if (w.y > 0. && w.y < 5.) col += uLight * (1. - smoothstep(18., 30., abs(ax - WIN.x)));
   // 떠다니는 반짝이
   vec2 sc = floor(w / 31.);
   float sh = hash(sc + 5.);
   if (sh > .5 && w.y < 0.) {
     float fy = mod(hash(sc + 2.) * 31. - uTime * (1. + sh * 2.), 31.);
     vec2 sp = w - sc * 31. - vec2(4. + hash(sc) * 23. + sin(uTime * .3 + sh * 6.) * 2., fy);
-    col = mix(col, vec3(1., .97, .99), cov(abs(sp.x) * abs(sp.y) * 2.5 + length(sp) * .5 - .9) * (.4 + .4 * sin(uTime * 2. + sh * 20.)) * smoothstep(0., 4., min(fy, 31. - fy)));
+    col = mix(col, vec3(1., .98, 1.), cov(abs(sp.x) * abs(sp.y) * 2.5 + length(sp) * .5 - 1.) * (.45 + .4 * sin(uTime * 2. + sh * 20.)) * smoothstep(0., 4., min(fy, 31. - fy)));
   }
 
   gl_FragColor = vec4(col, 1.);
