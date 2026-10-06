@@ -470,7 +470,7 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   gl.uniform3fv(q.u.uHaze, st.sky[2].map((v, i) => (v + st.sky[3][i]) / 2))
   gl.uniform1f(q.u.uLamp, st.lamp); gl.uniform1f(q.u.uMask, mask)
   // 밤 불빛의 세기는 어두운 막 아래에서 맞춘 것이다 → 막이 걷히면(배경 보기) 그만큼 조금 줄인다
-  gl.uniform1f(q.u.uGlowK, room ? 1 : 0.78 + 0.22 * (mask / MASK))
+  gl.uniform1f(q.u.uGlowK, room ? 1 : 0.66 + 0.34 * (mask / MASK))
   gl.uniform3f(q.u.uFoot, ROOM.foot[0], ROOM.foot[1] + 1, sc.shadow)
   const part = (tex: number, kinds: number[]) => {
     gl.bindTexture(gl.TEXTURE_2D, sc.tex[tex])
