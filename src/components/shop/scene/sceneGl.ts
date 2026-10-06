@@ -1,9 +1,10 @@
 // 배경 장면을 그리는 WebGL 실행기. 그림은 게임 맵에서 뽑은 것(메이플 15번가)이고, 여기서는 층을 겹쳐 놓고
 // 시각에 따른 색과 작은 움직임만 입힌다. 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
 //  · 앱 배경(sky) = 15번가 거리: 하늘(셰이더) → 구름 · 열기구 → 먼 빌딩 숲 → 거리의 건물(탑을 끌어안은 예티 풍선 포함) → 밤 불빛의 번짐
-//    → 길을 걷는 핑크빈(왼쪽 → 오른쪽)과 커닝 타워의 페리(오른쪽 → 왼쪽, 가끔 멈춰 선다) → 헬리콥터.
+//    → 길을 걷는 핑크빈(왼쪽 → 오른쪽)과 커닝 타워의 아미(오른쪽 → 왼쪽, 가끔 멈춰 선다) → 헬리콥터.
 //    그림 1칸 = 화면 1px 로 놓고(배율을 바꾸지 않는다) 아래 가운데를 화면 아래 가운데에 맞춘다.
-//    움직임은 화면 픽셀 단위로 끊어 옮긴다 — 반 칸씩 걸쳐 그리면 작은 그림(캐릭터 · 열기구)이 뭉개져 보인다.
+//    흔들림과 하늘의 것들은 끊지 않고 매끄럽게 흘려보내고(칸 사이는 부드럽게 섞인다), 걷는 캐릭터만 화면 픽셀에 맞춰 놓는다 —
+//    도트 캐릭터는 반 칸씩 걸치면 뭉개져 보이고, 큰 그림은 한 칸씩 끊기면 딱딱해 보인다.
 //  · 무대(room) = 15번가 패션 매장 안: 창밖 거리 → 매장. 가운데 깔개가 캐릭터 발밑에 오고, 그림 1칸 = 캐릭터 도트 1칸이다 —
 //    미리보기 배율을 올리면 방도 함께 커진다(정수 배율이라 칸을 그대로 키운다).
 //  · 움직임: 구름 · 열기구 · 차가 따로 흘러가고(정점 셰이더에서 계산), 화면 전체가 아주 천천히 좌우로 흔들린다(층마다 폭이 다르다).
@@ -11,7 +12,8 @@
 //    그림을 덧칠하지 않고 밝기만 올린다: 길에서 가게 높이까지 은은하게, 가로등 둘레는 더, 창유리 자리는 조금 더 밝고 따뜻하게
 //    (어디가 밝은지는 미리 뽑아 둔 지도 street-glow 가 정한다). 네온처럼 밝고 진한 색도 제 빛을 지킨다.
 //  · 그림은 화면이 한가할 때 받아 한 프레임에 한 장씩 올린다(디코딩은 createImageBitmap 으로 메인 스레드 밖에서).
-//  · 초당 30번 그린다. '동작 줄이기'면 바뀔 때와 20초마다만 그린다. 탭이 가려지면 rAF 가 멈춘다.
+//  · 앱 배경은 초당 60번까지(느린 움직임이 끊겨 보이지 않게), 무대는 30번 그린다. 프레임마다 하는 일은 유니폼 몇 개와 그리기 호출 대여섯 번뿐이고
+//    움직임은 전부 정점 셰이더가 시간으로 계산한다. '동작 줄이기'면 바뀔 때와 20초마다만 그린다. 탭이 가려지면 rAF 가 멈춘다.
 //  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다. 밝아지며 다가가는 연출은 처음 뜰 때 한 번뿐 —
 //    탭을 오가며 다시 붙을 때는 그 자리에서 바로 보인다(전환이 밀리지 않게).
 
@@ -27,7 +29,7 @@ import { skyHour, skyState, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
 
-const FRAME_MS = 33
+const FRAME_MS: Record<SceneKind, number> = { sky: 14, room: 31 }   // 다시 그리는 최소 간격(주사율이 높은 화면에서도 60번 · 30번을 넘지 않게)
 const REDUCED_MS = 20000
 const MAX_RATIO = 2      // 앱 배경 캔버스 해상도 상한(화면 배율)
 const SWAY = 12          // 화면이 좌우로 흔들리는 폭(그림 픽셀)
@@ -35,12 +37,14 @@ const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 �
 
 // 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상(걷는 이는 그림 한 장의 텍스처 폭), 처음 x, 빠르기 배수(걷는 이는 그림 장수)](4)
 // 종류 0 구름 · 1 열기구 · 2 헬리콥터 · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대 · 8 밤 불빛의 번짐 · 9 오른쪽으로 걷는 이 · 10 왼쪽으로 걷는 이
+//      · 11 열기구의 밤 그림(속에서 빛난다. 낮 그림 위에 겹쳐 두고 밤에만 드러낸다)
 const QUAD_VS = `
 attribute vec2 aPos; attribute vec2 aUv; attribute vec4 aAni;
 uniform vec4 uView; uniform vec2 uRes; uniform float uTime; uniform float uSway;
 varying vec2 vUv; varying float vKind; varying vec2 vPos;
 void main(){
-  float k = aAni.x, ph = aAni.y;
+  float kind = aAni.x, ph = aAni.y;
+  float k = kind > 10.5 ? 1. : kind;   // 밤 그림은 열기구와 똑같이 움직인다
   vec2 mv = vec2(0.), uv = aUv;     // mv = 제자리에서 옮긴 만큼(그림 픽셀)
   if (k < 2.5) {
     // 핑크빈 열기구가 기준(5칸/초). 다른 열기구는 그 배수(aAni.w)로 흘러간다
@@ -66,9 +70,11 @@ void main(){
   float par = k < .5 ? .15 : k < 1.5 ? .3 : k < 2.5 ? .6 : k < 4.5 ? .5 : k < 5.5 ? 1. : k < 6.5 ? .25 : k < 7.5 ? 0. : 1.;
   mv.x += uSway * par;
   vPos = aPos + mv;
-  vec2 c = aPos * uView.xy + uView.zw + floor(mv * uView.xy + .5);   // 캔버스 픽셀(왼쪽 위 원점). 옮긴 만큼은 픽셀 단위로 끊는다
+  vec2 d = mv * uView.xy;
+  if (k > 8.5) d = floor(d + .5);            // 걷는 캐릭터만 화면 픽셀에 맞춘다
+  vec2 c = aPos * uView.xy + uView.zw + d;   // 캔버스 픽셀(왼쪽 위 원점)
   gl_Position = vec4(c.x / uRes.x * 2. - 1., 1. - c.y / uRes.y * 2., 0., 1.);
-  vUv = uv; vKind = k;
+  vUv = uv; vKind = kind;
 }`
 const QUAD_FS = `
 precision mediump float;
@@ -84,6 +90,12 @@ void main(){
   }
   if (t.a < .004) discard;
   vec3 c = t.rgb / t.a;
+  if (vKind > 10.5) {
+    // 열기구의 밤 그림: 제 빛 그대로, 밤이 깊을수록 드러난다
+    float nf = smoothstep(.45, .95, uLamp) * t.a;
+    gl_FragColor = vec4(mix(c, vec3(.09, .07, .16), uMask * .5) * nf, nf);
+    return;
+  }
   float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), lum = dot(c, vec3(.3, .59, .11));
   vec3 lit;
   if (vKind < .5) lit = c * uCloud;
@@ -107,8 +119,9 @@ void main(){
         lit = mix(lit, mix(c, vec3(1., .9, .62) * (lum * 1.2 + .1), .45) * 1.12, gw.x * .9);
       } else lit = mix(lit, uHaze, .3);
     }
-    // 캐릭터와 열기구는 색을 고르게 다룬다(부분만 밝히면 얼룩져 보인다). 걷는 이들은 가로등 아래라 밤에도 거의 제 색이다
-    else if (vKind > 8.5) lit = c * mix(uAmb, vec3(1., .96, .9), .88 * uLamp);
+    // 캐릭터와 열기구는 색을 고르게 다룬다(부분만 밝히면 얼룩져 보인다).
+    // 걷는 이들: 한낮에는 제 색 그대로 가장 밝고, 밤으로 갈수록 가로등 빛에 조금 가라앉는다. 어두운 막은 씌우지 않는다
+    else if (vKind > 8.5) { gl_FragColor = vec4(c * mix(vec3(1.), vec3(.9, .85, .78), uLamp) * t.a, t.a); return; }
     else if (vKind < 1.5) lit = c * mix(uAmb, vec3(1.), .5 * uLamp);
   }
   gl_FragColor = vec4(mix(lit, vec3(.09, .07, .16), uMask) * t.a, t.a);
@@ -195,7 +208,6 @@ interface Scene {
 const SOURCES: Record<SceneKind, string[]> = { sky: [streetAir.src, streetFar.src, streetMain.src, streetGlow.src], room: [roomFar.src, roomMain.src] }
 const scenes: Partial<Record<SceneKind, Scene>> = {}
 let raf = 0
-let last = 0
 let reduce: MediaQueryList | null = null
 
 function program(gl: WebGLRenderingContext, vs: string, fs: string, names: string[]) {
@@ -224,8 +236,9 @@ function mesh(kind: SceneKind) {
   }
   if (kind === 'sky') {
     const [aw, ah] = STREET.atlas
-    // extra = 빠르기 배수(열기구) 또는 걷는 그림 장수. 걷는 이는 위상 자리에 그림 한 장의 텍스처 폭을 싣는다
-    STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, pitch], i) => quad(k, pitch ? pitch / aw : (i * 0.618034) % 1, x, y, w, h, ax / aw, ay / ah, (ax + w) / aw, (ay + h) / ah, extra))
+    // extra = 빠르기 배수(열기구) 또는 걷는 그림 장수.
+    // 걷는 이는 위상 자리에 그림 한 장의 텍스처 폭을 싣는다. 나머지는 흔들리는 박자(정해 두지 않았으면 순서대로 흩는다)
+    STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, b], i) => quad(k, k === 9 || k === 10 ? b / aw : b >= 0 ? b : (i * 0.618034) % 1, x, y, w, h, ax / aw, ay / ah, (ax + w) / aw, (ay + h) / ah, extra))
     quad(4, 0, 0, STREET.far.y, STREET.w, STREET.far.h, 0, 0, 1, 1)
     quad(5, 0, 0, STREET.main.y, STREET.w, STREET.main.h, 0, 0, 1, 1)
     quad(8, 0, 0, STREET.main.y, STREET.w, STREET.main.h, 0, 0, 1, 1)
@@ -388,7 +401,7 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
     for (const kd of kinds) { const r = sc.ranges[kd]; if (r) gl.drawArrays(gl.TRIANGLES, r[0], r[1]) }
   }
   if (room) { part(0, [6]); part(1, [7]) }
-  else { part(0, [0, 1]); part(1, [4]); part(2, [5]); part(3, [8]); part(0, [9, 10, 2]) }
+  else { part(0, [0, 1, 11]); part(1, [4]); part(2, [5]); part(3, [8]); part(0, [9, 10, 2]) }
   sc.dirty = false
   sc.at = now
   if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }
@@ -398,12 +411,10 @@ function tick(now: number) {
   raf = requestAnimationFrame(tick)
   const still = !!reduce?.matches
   for (const sc of Object.values(scenes)) if (sc && sc.host && sc.pending.length) { upload(sc); break } // 한 프레임에 한 장
-  if (now - last < FRAME_MS) return
-  last = now
   let st: SkyState | null = null
   for (const sc of Object.values(scenes)) {
     if (!sc || !sc.host || !sc.quad) continue
-    if (still && !sc.dirty && now - sc.at < REDUCED_MS) continue
+    if (!sc.dirty && now - sc.at < (still ? REDUCED_MS : FRAME_MS[sc.kind])) continue
     draw(sc, now, st ?? (st = skyState(skyHour())), still)
   }
 }
