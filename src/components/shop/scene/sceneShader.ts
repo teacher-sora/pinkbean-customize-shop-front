@@ -262,9 +262,9 @@ const SKY_PARTS = {
     cityLayer(col, p, size.y, 38., size.y * .2, size.y * .52, 11., 0., size.y * .66);`,
 }
 
-// 미리보기 무대: 실제 메이플 맵 그림(assets/stage-department.png — 커닝타워 백화점 엘리베이터 앞)을 그대로 깐다.
-// 수식으로 그린 방은 선이 너무 깔끔하고 가구가 메이플 것으로 보이지 않았다. 원화는 캐릭터와 같은 게임 픽셀 그림이라
-// 같은 배율로 놓기만 하면 게임 화면 그대로다. 여기서는 발 위치 맞춤 · 시각에 따른 빛 · 발밑 그림자만 얹는다.
+// 미리보기 무대: 피팅룸 그림(assets/stage-fitting.png)을 그대로 깐다. 그림은 parser/scripts/stage-build.cjs 가
+// 메이플 원화 조각(핑크빈 벽지 · 커튼 · 가구)을 1:1 픽셀로 배치해 만든다 — 수식으로 그린 방은 메이플 것으로 보이지 않았고,
+// 맵 한 장을 통째로 쓰면 피팅룸이 아니었다. 여기서는 발 위치 맞춤 · 시각에 따른 빛 · 발밑 그림자만 얹는다.
 const ROOM_MAIN = `
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -284,7 +284,7 @@ void main(){
   vec2 w = floor((vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) - uOrigin) * uPx) + .5;
   vec2 t = w + uFoot;
   vec3 col = texture2D(uTex, clamp(t, vec2(.5), uTexSize - .5) / uTexSize).rgb;
-  col = mix(col, vec3(.2, .17, .11), smoothstep(-24., 30., t.y - uTexSize.y)); // 그림 아래로 넘어가면 어두운 바닥색으로 잦아든다
+  col = mix(col, vec3(.17, .1, .12), smoothstep(-24., 30., t.y - uTexSize.y)); // 그림 아래로 넘어가면 어두운 바닥색으로 잦아든다
   col *= mix(uAmb, vec3(1.02, .98, .92), .5 + .35 * uLamp);      // 실내라 바깥보다 덜 물들고, 밤에는 조명 색
   col = mix(col, vec3(.2, .14, .12), .3 * (1. - smoothstep(.55, 1., length(vec2(w.x / uShadow, (w.y - .4) / 1.9)))));
   gl_FragColor = vec4(col, 1.);

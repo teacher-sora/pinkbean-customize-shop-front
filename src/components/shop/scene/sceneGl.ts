@@ -5,7 +5,7 @@
 //  · 탭이 가려지면 rAF 가 멈추니 따로 멈출 것이 없다. '동작 줄이기' 설정이면 20초에 한 번만(시각에 따른 색만) 그린다.
 //  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다(탭을 오갈 때마다 다시 컴파일하지 않는다).
 
-import stage from '@/assets/stage-department.png'
+import stage from '@/assets/stage-fitting.png'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import { VERT, fragSource } from './sceneShader'
 import { skyHour, skyState, type SkyState } from './skyTime'
@@ -15,8 +15,8 @@ export type SceneKind = 'sky' | 'room'
 const UNIFORMS = ['uRes', 'uPx', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 'uLight', 'uSunCol', 'uSun', 'uMoon', 'uNight', 'uLamp', 'uOrigin', 'uShadow', 'uTex', 'uTexSize', 'uFoot'] as const
 const FRAME_MS = 33
 const ROOM_MS = 2000 // 무대는 멈춘 그림이라 시각에 따른 빛만 가끔 갱신한다
-// 무대 그림 안에서 캐릭터가 서는 자리(발). parser/scripts/map-render.cjs 로 뽑은 103041165 의 엘리베이터 앞.
-const STAGE_FOOT = [360, 400]
+// 무대 그림 안에서 캐릭터가 서는 자리(발). parser/scripts/stage-build.cjs 의 FOOT_X · FOOT_Y 와 같은 값이다.
+const STAGE_FOOT = [640, 430]
 const REDUCED_MS = 20000
 const COMPLETION_STATUS_KHR = 0x91b1
 
