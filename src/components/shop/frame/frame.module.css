@@ -24,8 +24,6 @@
 .logoImg { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
 .logoText { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; background: linear-gradient(100deg,#e5699a,#e894bb 55%,#b978d6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .headerActs { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; height: 100%; }
-/* 배경 보기 동안 감출 수 있게 하단 바를 감싼 칸 — 배치에는 끼어들지 않는다 */
-.navSlot { display: contents; }
 .rateBtn { display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 16px; background: #fff; border: 1px solid #efe6dc; border-radius: 12px; font-size: 13px; font-weight: 500; color: #a8748f; letter-spacing: -0.01em; cursor: pointer; white-space: nowrap; }
 .copyBtn { display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 18px; border: none; background: #ec86ac; border-radius: 12px; font-size: 13px; font-weight: 600; color: #fff; letter-spacing: -0.01em; cursor: pointer; white-space: nowrap; }
 

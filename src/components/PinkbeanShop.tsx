@@ -73,7 +73,7 @@ function Shell() {
               <div data-pb-stub="main" aria-hidden />
               <div data-pb-stub="side" aria-hidden />
             </main>
-            <div data-pb-body className={styles.navSlot}><BottomNav mobile={false} /></div>
+            <BottomNav mobile={false} />
           </div>
         </div>
       )}

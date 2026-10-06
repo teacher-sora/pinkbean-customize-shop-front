@@ -205,7 +205,7 @@ interface Mover { type: number; w: number; mult: number; frames: number; x: numb
 const MOVE = [
   { speed: [4.2, 6], gap: [4, 26], jit: 26 },
   { speed: [9, 16], gap: [14, 60], jit: 24 },
-  { speed: [28, 40], gap: [10, 48], jit: 0 },
+  { speed: [26, 42], gap: [25, 95], jit: 0 },   // 걷는 이는 여섯이라 저마다 오래 쉰다 — 거리에 한둘만 보이게
 ]
 const PAUSE = { chance: 0.5, sec: [3, 6] }    // 걷는 이가 도중에 멈춰 서는 비율과 시간
 const rnd = (r: number[]) => r[0] + Math.random() * (r[1] - r[0])
@@ -223,6 +223,7 @@ function spawn(m: Mover, left: number, right: number) {
 function initMovers(left: number, right: number): Mover[] {
   const count = [0, 0, 0], seen = [0, 0, 0]
   for (const d of moverDefs) count[d.type]++
+  const first = Math.floor(Math.random() * count[2])   // 걷는 이 가운데 곧바로 들어올 하나
   return moverDefs.map((d) => {
     const m: Mover = { ...d, x: -1e5, dir: 1, speed: 0, wait: 0, jit: 0, walk: 0, pauseAt: NaN, pause: 0 }
     const i = seen[d.type]++
@@ -230,7 +231,8 @@ function initMovers(left: number, right: number): Mover[] {
     // 처음: 열기구는 하늘에 고루 떠 있고, 헬리콥터 하나도 떠 있다. 걷는 이는 하나가 곧 들어오고 나머지는 사이를 두고 온다
     if (d.type === 0) m.x = left + ((i + 0.15 + 0.7 * Math.random()) / count[0]) * (right - left)
     else if (d.type === 1 && i === 0) m.x = left + (0.2 + 0.6 * Math.random()) * (right - left)
-    else m.wait = d.type === 2 && i === 0 ? 1 + Math.random() * 3 : rnd(MOVE[d.type].gap) * (0.4 + 0.6 * i)
+    else if (d.type === 2) m.wait = i === first ? 1 + Math.random() * 3 : 6 + Math.random() * MOVE[2].gap[1] * 1.3
+    else m.wait = rnd(MOVE[d.type].gap)
     return m
   })
 }
