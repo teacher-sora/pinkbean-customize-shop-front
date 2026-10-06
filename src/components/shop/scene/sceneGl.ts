@@ -124,7 +124,6 @@ interface Scene {
 }
 
 const scenes: Partial<Record<SceneKind, Scene>> = {}
-const pointer = { x: 0, y: 0, tx: 0, ty: 0 }
 let raf = 0
 let last = 0
 let reduce: MediaQueryList | null = null
@@ -230,11 +229,11 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   const room = sc.kind === 'room'
   const sway = still ? 0 : room ? 0.5 : 1
   const eye = [
-    def.eye[0] + (pointer.x * 1.2 + Math.sin(s * 0.21) * 0.4) * sway,
-    def.eye[1] - (pointer.y * 0.6 - Math.sin(s * 0.33) * 0.15) * sway,
+    def.eye[0] + Math.sin(s * 0.21) * 0.4 * sway,
+    def.eye[1] + Math.sin(s * 0.33) * 0.15 * sway,
     def.eye[2] + (1 - ease) * (room ? 3 : 5),
   ]
-  const look = [def.look[0] + pointer.x * 0.4 * sway, def.look[1], def.look[2]]
+  const look = def.look
   const fov = ((!room && W < H ? 70 : def.fov) * Math.PI) / 180
   const pv = mul(perspective(fov, room ? 1 : W / H, 0.5, 260), lookAt(eye, look))
   let vs = [1, 1, 0, 0]
@@ -283,8 +282,6 @@ function tick(now: number) {
   const still = !!reduce?.matches
   if (now - last < FRAME_MS) return
   last = now
-  pointer.x += (pointer.tx - pointer.x) * 0.05
-  pointer.y += (pointer.ty - pointer.y) * 0.05
   let st: SkyState | null = null
   for (const sc of Object.values(scenes)) {
     if (!sc || !sc.host || !sc.block) continue
@@ -292,7 +289,6 @@ function tick(now: number) {
     draw(sc, now, st ?? (st = skyState(skyHour())), still)
   }
 }
-const onMove = (e: PointerEvent) => { pointer.tx = (e.clientX / window.innerWidth) * 2 - 1; pointer.ty = (e.clientY / window.innerHeight) * 2 - 1 }
 
 // host 안에 장면을 붙인다. 돌려주는 함수로 뗀다(캔버스·컨텍스트는 남겨 두었다가 다시 쓴다).
 export function mountScene(kind: SceneKind, host: HTMLElement): () => void {
@@ -309,11 +305,10 @@ export function mountScene(kind: SceneKind, host: HTMLElement): () => void {
   ro.observe(host)
   window.addEventListener('resize', relayout)
   const off = kind === 'room' ? onStageFloor(relayout) : null
-  if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) window.addEventListener('pointermove', onMove, { passive: true })
   sc.cleanup = () => {
     ro.disconnect(); window.removeEventListener('resize', relayout); off?.()
     sc.canvas.remove(); sc.host = null; sc.cleanup = null
-    if (!Object.values(scenes).some((s) => s?.host)) { cancelAnimationFrame(raf); raf = 0; window.removeEventListener('pointermove', onMove) }
+    if (!Object.values(scenes).some((s) => s?.host)) { cancelAnimationFrame(raf); raf = 0 }
   }
   layout(sc)
   reduce ??= window.matchMedia('(prefers-reduced-motion: reduce)')
