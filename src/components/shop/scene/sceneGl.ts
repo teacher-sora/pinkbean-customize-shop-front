@@ -40,7 +40,7 @@ const HELI_SIZE = 0.75    // 헬리콥터 크기(원래 그림에 견준 배율)
 const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 막
 
 // 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상 | 지나가는 것의 번호, 처음 x | 그림이 보는 쪽(-1 왼쪽 · 0 뒤집지 않음), 걷는 그림 한 장의 텍스처 폭](4)
-// 종류 0 구름 · 1 열기구 · 2 헬리콥터 · 3 이벤트 열기구(건물 앞에 뜬다) · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대 · 8 밤 불빛의 번짐 · 9 걷는 이
+// 종류 0 구름 · 1 열기구 · 2 헬리콥터 · 3 이벤트 열기구(먼 빌딩과 거리 사이에 뜬다) · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대 · 8 밤 불빛의 번짐 · 9 걷는 이
 //      · 11 열기구의 밤 그림(속에서 빛난다. 낮 그림 위에 겹쳐 두고 밤에만 드러낸다)
 // 지나가는 것들(1 · 2 · 9 · 11)의 자리는 uMov[번호] = (가운데 x, y 를 옮긴 만큼, 걷는 그림 번호, 가는 쪽 ±1). 정점의 x 는 가운데에서의 거리다.
 const MAX_MOVERS = 12
@@ -52,6 +52,7 @@ void main(){
   float kind = aAni.x;
   float k = kind > 10.5 || (kind > 2.5 && kind < 3.5) ? 1. : kind;   // 이벤트 열기구(3)와 그 밤 그림(11)은 열기구와 똑같이 움직인다
   vec2 p = aPos, uv = aUv;
+  float snap = 0.;   // 걷는 이: 그림의 왼쪽 끝이 놓일 캔버스 x(맞추기 전)
   if (k < .5) {
     float sp = 3. + aAni.y * 2.;
     p.x += mod(aAni.z + sp * uTime + 2155., 6465.) - 2155. - aAni.z;
@@ -59,12 +60,16 @@ void main(){
     vec4 m = uMov[int(aAni.y + .5)];
     p = vec2(m.x + aPos.x * (aAni.z == 0. ? 1. : m.w * aAni.z), aPos.y + m.y);   // 가는 쪽을 보도록 뒤집는다
     uv.x += m.z * aAni.w;
+    snap = (m.x - abs(aPos.x)) * uView.x + uView.z;
   }
-  float par = k < .5 ? .15 : k < 2.5 ? .3 : k < 4.5 ? .5 : k < 5.5 ? 1. : k < 6.5 ? .25 : k < 7.5 ? 0. : 1.;
-  vPos = p + vec2(uSway * par, 0.);
+  // 화면의 느린 좌우 흔들림(깊이감). 거리와 걷는 이는 제자리에 두고 뒤의 층만 반대쪽으로 민다 — 층 사이의 어긋남은 그대로이고,
+  // 길 위의 캐릭터가 화면 픽셀에 맞은 채로 가만히 있을 수 있다(거리째 흔들면 서 있는 캐릭터가 한 칸씩 끌려가거나 흐려진다).
+  float par = k < .5 ? -.85 : k < 2.5 ? -.7 : k < 4.5 ? -.5 : k < 5.5 ? 0. : k < 6.5 ? .25 : 0.;
+  p.x += uSway * par;
+  vPos = p;
   vec2 c = p * uView.xy + uView.zw;          // 캔버스 픽셀(왼쪽 위 원점)
-  if (k > 8.5) c = floor(c + .5);            // 걷는 캐릭터만 화면 픽셀에 맞춘다
-  c.x += uSway * par * uView.x;              // 흔들림은 맞춘 뒤에 더한다 — 길과 한 몸으로 움직여야 서 있을 때 혼자 한 칸씩 밀리지 않는다
+  // 걷는 캐릭터만 화면 픽셀에 맞춘다. 꼭짓점마다 따로 반올림하면 폭이 한 칸씩 늘었다 줄므로 그림 전체를 같은 만큼 옮긴다
+  if (k > 8.5) c.x += floor(snap + .5) - snap;
   gl_Position = vec4(c.x / uRes.x * 2. - 1., 1. - c.y / uRes.y * 2., 0., 1.);
   vUv = uv; vKind = kind > 10.5 ? kind : k;
 }`
@@ -484,7 +489,7 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
     for (const kd of kinds) { const r = sc.ranges[kd]; if (r) gl.drawArrays(gl.TRIANGLES, r[0], r[1]) }
   }
   if (room) { part(0, [6]); part(1, [7]) }
-  else { part(0, [0, 1, 2]); part(1, [4]); part(2, [5]); part(3, [8]); part(0, [3, 11, 9]) }
+  else { part(0, [0, 1, 2]); part(1, [4]); part(0, [3, 11]); part(2, [5]); part(3, [8]); part(0, [9]) }
   sc.dirty = false
   sc.at = now
   if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }
