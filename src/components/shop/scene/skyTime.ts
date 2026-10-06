@@ -95,5 +95,5 @@ const mul = (a: RGB, b: RGB): RGB => [a[0] * b[0], a[1] * b[1], a[2] * b[2]]
 export function sceneFallback(kind: 'sky' | 'room'): string {
   const s = skyState(skyHour())
   if (kind === 'sky') return `linear-gradient(180deg, ${s.sky.map(css).join(', ')})`
-  return css(mul(hex('#eadcea'), s.amb)) // 무대 그림이 뜨기 전: 가게 안쪽 벽 색
+  return css(mul(hex('#ecc2d8'), s.amb)) // 무대 그림이 뜨기 전: 방 벽 색
 }

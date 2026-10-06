@@ -17,7 +17,7 @@ const UNIFORMS = ['uRes', 'uPx', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 
 const FRAME_MS = 33
 const ROOM_MS = 80 // 무대의 움직임(빛줄기·먼지)은 느려서 이 간격이면 충분하다
 // 무대 그림 안에서 캐릭터가 서는 자리(발). parser/scripts/stage-build.cjs 의 FX · FY 와 같은 값이다.
-const STAGE_FOOT = [340, 400]
+const STAGE_FOOT = [280, 400]
 const REDUCED_MS = 20000
 const COMPLETION_STATUS_KHR = 0x91b1
 
