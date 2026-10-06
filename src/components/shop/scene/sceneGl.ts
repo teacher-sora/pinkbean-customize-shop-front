@@ -35,6 +35,7 @@ const FRAME_MS: Record<SceneKind, number> = { sky: 14, room: 31 }   // 다시 �
 const REDUCED_MS = 20000
 const MAX_RATIO = 2      // 앱 배경 캔버스 해상도 상한(화면 배율)
 const SWAY = 12          // 화면이 좌우로 흔들리는 폭(그림 픽셀)
+const HELI_UP = 150      // 헬리콥터를 원래 자리보다 올려 띄우는 높이(그림 픽셀) — 열기구와 같은 하늘 높이
 const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 막
 
 // 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상 | 지나가는 것의 번호, 처음 x | 그림이 보는 쪽(-1 왼쪽 · 0 뒤집지 않음), 걷는 그림 한 장의 텍스처 폭](4)
@@ -58,7 +59,7 @@ void main(){
     p = vec2(m.x + aPos.x * (aAni.z == 0. ? 1. : m.w * aAni.z), aPos.y + m.y);   // 가는 쪽을 보도록 뒤집는다
     uv.x += m.z * aAni.w;
   }
-  float par = k < .5 ? .15 : k < 1.5 ? .3 : k < 2.5 ? .6 : k < 4.5 ? .5 : k < 5.5 ? 1. : k < 6.5 ? .25 : k < 7.5 ? 0. : 1.;
+  float par = k < .5 ? .15 : k < 2.5 ? .3 : k < 4.5 ? .5 : k < 5.5 ? 1. : k < 6.5 ? .25 : k < 7.5 ? 0. : 1.;
   p.x += uSway * par;
   vPos = p;
   vec2 c = p * uView.xy + uView.zw;          // 캔버스 픽셀(왼쪽 위 원점)
@@ -68,14 +69,14 @@ void main(){
 }`
 const QUAD_FS = `
 precision mediump float;
-uniform sampler2D uTex; uniform sampler2D uGlow; uniform vec3 uAmb; uniform vec3 uCloud; uniform vec3 uHaze; uniform float uLamp; uniform float uMask; uniform float uTw; uniform float uGlowK;
+uniform sampler2D uTex; uniform sampler2D uGlow; uniform vec3 uAmb; uniform vec3 uCloud; uniform vec3 uHaze; uniform float uLamp; uniform float uMask; uniform float uTw;
 uniform vec3 uFoot;   // 발 자리(그림 픽셀)와 그림자 반폭
 varying vec2 vUv; varying float vKind; varying vec2 vPos;
 void main(){
   vec4 t = texture2D(uTex, vUv);
   if (vKind > 7.5 && vKind < 8.5) {
     // 밤 불빛의 번짐: 창 · 간판 · 가로등 둘레에 빛무리가 지고(b), 그 빛이 닿는 공기도 조금 밝다(g). 더하기. 위로 갈수록 스러진다(지도에서)
-    gl_FragColor = vec4(vec3(1., .74, .38) * (t.b * .34 + t.g * .07) * uLamp * uGlowK * (1. - uMask), 0.);
+    gl_FragColor = vec4(vec3(1., .74, .38) * (t.b * .34 + t.g * .07) * uLamp * ${(1 - MASK).toFixed(2)}, 0.);
     return;
   }
   if (t.a < .004) discard;
@@ -88,6 +89,7 @@ void main(){
   }
   float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), lum = dot(c, vec3(.3, .59, .11));
   vec3 lit;
+  float keep = 0.;   // 불빛을 받는 곳(창유리 · 빛이 닿은 벽과 길)은 막이 걷혀도 막이 있을 때의 밝기에 머문다 — 이미 가장 밝은 곳이라 더 밝아지면 하얗게 날아간다
   if (vKind < .5) lit = c * uCloud;
   else if (vKind > 6.5 && vKind < 7.5) {
     // 매장 안은 등불을 받아 바깥보다 덜 물든다. 아주 밝은 면(조명)은 느리게 일렁인다
@@ -103,7 +105,9 @@ void main(){
       if (vKind > 4.5) {
         // 거리: 건물의 창 · 간판 · 가로등에서 나온 빛(g)을 받은 면은 제 색이 살아나고 살짝 노랗게 물든다.
         // 창유리 자리(r)는 스스로 빛난다 — 안이 보이는 채로 더 밝고 따뜻하다
-        vec2 gw = texture2D(uGlow, vUv).rg * uLamp * uGlowK;
+        vec2 gr = texture2D(uGlow, vUv).rg;
+        vec2 gw = gr * uLamp;
+        keep = min(1., max(gr.x, gr.y * 2.)) * smoothstep(0., .25, uLamp);
         lit *= 1. + gw.y * 1.45;
         lit += vec3(1., .72, .34) * gw.y * .1;
         lit = mix(lit, mix(c, vec3(1., .9, .62) * (lum * 1.2 + .1), .45) * 1.12, gw.x * .9);
@@ -114,7 +118,7 @@ void main(){
     else if (vKind > 8.5) { gl_FragColor = vec4(c * mix(vec3(1.), vec3(.9, .85, .78), uLamp) * t.a, t.a); return; }
     else if (vKind < 1.5) lit = c * mix(uAmb, vec3(1.), .5 * uLamp);
   }
-  gl_FragColor = vec4(mix(lit, vec3(.09, .07, .16), uMask) * t.a, t.a);
+  gl_FragColor = vec4(mix(lit, vec3(.09, .07, .16), mix(uMask, ${MASK.toFixed(2)}, keep)) * t.a, t.a);
 }`
 const SKY_VS = 'attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0., 1.); }'
 // 하늘: 네 단 그러데이션 · 해와 달 · 별 · 핑크빈 별자리. 좌표는 CSS px(왼쪽 위 원점)
@@ -295,15 +299,16 @@ function mesh(kind: SceneKind) {
     STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, b], i) => {
       const uv = [ax / aw, ay / ah, (ax + w) / aw, (ay + h) / ah] as const
       if (k === 0) { quad(0, (i * 0.618034) % 1, x, y, w, h, ...uv, 0); return }
-      if (k === 11) { const idx = byBeat.get(b); if (idx != null) quad(11, idx, -w / 2, y, w, h, ...uv, 0, extra < 0 ? -1 : 0); return }
+      if (k === 11) { const idx = byBeat.get(b); if (idx != null) quad(11, idx, -w / 2, y, w, h, ...uv, 0, extra < 0 ? -1 : 1); return }
       const art = `${ax},${ay}`
       if (byArt.has(art) || defs.length >= MAX_MOVERS) return
       const walker = k === 9 || k === 10, idx = defs.length
       byArt.set(art, idx); if (b >= 0 && !walker) byBeat.set(b, idx)
-      // 걷는 이: 핑크빈(9)은 오른쪽을 보게 뒤집어 뽑아 두었고 나머지는 왼쪽을 본다. 슈피겔만 열기구(배수가 음수)와 헬리콥터도 왼쪽을 본다
-      const face = walker ? (k === 9 ? 1 : -1) : k === 2 || extra < 0 ? -1 : 0
+      // 걷는 이: 핑크빈(9)은 오른쪽을 보게 뒤집어 뽑아 두었고 나머지는 왼쪽을 본다. 슈피겔만 열기구(배수가 음수)와 헬리콥터도 왼쪽을 본다.
+      // 주황버섯 열기구(박자가 정해진 것 가운데 배수가 양수)는 오른쪽을 본다. 핑크빈 · 페페 열기구는 앞을 보고 있어 뒤집지 않는다
+      const face = walker ? (k === 9 ? 1 : -1) : k === 2 || extra < 0 ? -1 : b >= 0 ? 1 : 0
       defs.push({ type: walker ? 2 : k === 2 ? 1 : 0, w, mult: walker ? (k === 9 ? 0.75 : 1) : k === 1 ? Math.abs(extra) : 1, frames: walker ? extra : 1, ph: (idx * 0.618034) % 1 })
-      quad(walker ? 9 : k, idx, -w / 2, y, w, h, ...uv, walker ? b / aw : 0, face)
+      quad(walker ? 9 : k, idx, -w / 2, k === 2 ? y - HELI_UP : y, w, h, ...uv, walker ? b / aw : 0, face)
     })
     moverDefs = defs
     quad(4, 0, 0, STREET.far.y, STREET.w, STREET.far.h, 0, 0, 1, 1)
@@ -321,7 +326,7 @@ function init(sc: Scene) {
   const gl = sc.gl
   if (!gl) return
   if (sc.kind === 'sky' && gl.getParameter(gl.MAX_TEXTURE_SIZE) < STREET.w) { sc.failed = true; return }
-  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uMov', 'uTex', 'uGlow', 'uGlowK', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
+  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uMov', 'uTex', 'uGlow', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
   const sp = sc.kind === 'sky' ? program(gl, SKY_VS, SKY_FS, ['uRes', 'uPx', 'uSky', 'uSun', 'uMoon', 'uSunCol', 'uNight', 'uTime', 'uMask']) : null
   if (!qp || (sc.kind === 'sky' && !sp)) { sc.failed = true; return }
   const m = mesh(sc.kind)
@@ -469,15 +474,13 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   gl.uniform3fv(q.u.uCloud, st.cloudA)
   gl.uniform3fv(q.u.uHaze, st.sky[2].map((v, i) => (v + st.sky[3][i]) / 2))
   gl.uniform1f(q.u.uLamp, st.lamp); gl.uniform1f(q.u.uMask, mask)
-  // 밤 불빛의 세기는 어두운 막 아래에서 맞춘 것이다 → 막이 걷히면(배경 보기) 그만큼 조금 줄인다
-  gl.uniform1f(q.u.uGlowK, room ? 1 : 0.66 + 0.34 * (mask / MASK))
   gl.uniform3f(q.u.uFoot, ROOM.foot[0], ROOM.foot[1] + 1, sc.shadow)
   const part = (tex: number, kinds: number[]) => {
     gl.bindTexture(gl.TEXTURE_2D, sc.tex[tex])
     for (const kd of kinds) { const r = sc.ranges[kd]; if (r) gl.drawArrays(gl.TRIANGLES, r[0], r[1]) }
   }
   if (room) { part(0, [6]); part(1, [7]) }
-  else { part(0, [0, 1, 11]); part(1, [4]); part(2, [5]); part(3, [8]); part(0, [9, 2]) }
+  else { part(0, [0, 1, 11, 2]); part(1, [4]); part(2, [5]); part(3, [8]); part(0, [9]) }
   sc.dirty = false
   sc.at = now
   if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }
