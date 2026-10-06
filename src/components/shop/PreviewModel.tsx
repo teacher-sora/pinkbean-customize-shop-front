@@ -20,6 +20,7 @@ import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
+import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
 import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from './ShopContext'
@@ -193,7 +194,10 @@ export default function PreviewModel() {
     // 막았기 때문 — seated 아닐 때는 원래대로 왕복시킨다.)
     // 메탈아머(ridingCenterMount)는 메카(마운트)를 중앙정렬, 그 외 라이딩은 캐릭터(navel) 가로 중앙정렬(centerXOnly).
     const centerMount = riding && !!ridingItem?.ridingCenterMount
-    return { frames, delays, N, riding, centerMount, animated: !viewInfo.isStatic && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action) }
+    // 바닥에 닿는 높이(navel 기준). 맨몸은 발, 탑승 중이면 탈것의 원점 — 배경 장면이 이 높이에 바닥을 깐다(lib/stageFloor).
+    const mount = riding ? frames[0]?.placed.find((p) => p.name.startsWith('mount')) : undefined
+    const ground = mount ? mount.y + mount.origin.y : frames[0]?.foot.y ?? 21
+    return { frames, delays, N, riding, centerMount, ground, animated: !viewInfo.isStatic && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action) }
   }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, V, viewInfo.isStatic])
 
   const effList = useMemo(() => {
@@ -357,7 +361,7 @@ export default function PreviewModel() {
     if (!canvas || !spec || !dims.w || !dims.h) return
     if (effPending || dyeStale) return // 입력이 다 모일 때까지 직전 그림 유지(중간 상태 미표시)
     let cancelled = false, raf = 0
-    const { frames, delays, animated, pingpong, riding, centerMount } = spec
+    const { frames, delays, animated, pingpong, riding, centerMount, ground } = spec
     const hasEff = effList.length > 0
     // div 크기·dpr·연출배율로 배치 계산: 캔버스는 div×margin(디바이스 해상도), 마네킹은 fraction×divH 고정.
     // 미리보기는 stabOffset 적용 → 뒷쪽은 카드용 back* 대신 stab 보정된 previewBack* 사용(중앙 고정).
@@ -375,8 +379,10 @@ export default function PreviewModel() {
     const fx = rect ? (rect.left * dims.dpr) % 1 : 0, fy = rect ? (rect.top * dims.dpr) % 1 : 0
     canvas.style.width = bw / dims.dpr + 'px'
     canvas.style.height = bh / dims.dpr + 'px'
-    canvas.style.left = (Math.round((dims.w * dims.dpr - bw) / 2) - fx) / dims.dpr + 'px'
-    canvas.style.top = (Math.round((dims.h * dims.dpr - bh) / 2) - fy) / dims.dpr + 'px'
+    const leftDev = Math.round((dims.w * dims.dpr - bw) / 2) - fx, topDev = Math.round((dims.h * dims.dpr - bh) / 2) - fy
+    canvas.style.left = leftDev / dims.dpr + 'px'
+    canvas.style.top = topDev / dims.dpr + 'px'
+    if (wrapEl) setStageFloor({ wrap: wrapEl, cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((pl.anchor.y + ground) * pl.scale)) / dims.dpr, scale: pl.scale, shadow: riding ? 30 : 13 })
     const pngs = new Set<string>()
     frames.forEach((f) => f.placed.forEach((p) => pngs.add(p.png)))
     effList.forEach((em) => Object.values(em.groups).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))

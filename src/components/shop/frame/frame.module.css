@@ -40,6 +40,3 @@
 @media (hover: hover) and (pointer: fine) {
   .logoBtn:hover { border-color: #ec86ac; }
 }
-
-/* 배경 일러스트(next/image) 채우기 */
-.bgImg { object-fit: cover; object-position: center; }
