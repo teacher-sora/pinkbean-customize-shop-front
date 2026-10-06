@@ -277,7 +277,7 @@ const ROOM_PARTS = {
 
 // 커마샵 피팅룸(건물 안). w = 발이 닿는 자리(0,0) 기준 좌표(아래가 +). 메이플 맵의 짜임을 따른다:
 //  원경(창밖 15번가) → 벽(벽지 · 창 · 벽기둥 · 선반 · 휘장 · 천장 들보와 등) → 가구(옷걸이 · 소파) →
-//  피팅 자리(아치 배경판 · 날개 장식 · 단상) → 발판(금테 윗면) → 발판 앞면(나무 패널) → 아래층 바닥과 근경 소품 → 돌 기단.
+//  피팅 자리(금테 아치 안의 빈 벽 — 캐릭터 둘레는 비운다) → 발판(금테 윗면) → 발판 앞면(나무 패널) → 아래층 바닥과 근경 소품 → 돌 기단.
 // 1배율(넓게)로 봐도 비지 않도록 위아래·양옆으로 내용을 채우고, 같은 무늬가 얇게 되풀이되지 않게 큰 덩어리로 나눈다.
 const ROOM_MAIN = `
 uniform vec2 uOrigin;
@@ -431,51 +431,20 @@ void main(){
       col = mix(col, ROSE * A, cov(heartD(rot(q - vec2(-12., -19.), .3) / 1.4) * 1.4));
     }
 
-    // 피팅 자리: 아치 배경판(금테 + 연보라 판 + 조명 기둥 무늬)
+    // 피팅 자리: 금테 아치 안은 무늬 없는 밝은 벽이다. 캐릭터가 서는 곳 둘레는 비워 둔다 — 시선이 캐릭터에만 가도록.
     vec2 aq = vec2(w.x, w.y + 80.);
     float arch = w.y > -80. ? ax - 48. : length(aq) - 48.;
     if (arch < 3.) {
       ink(col, arch, GOLD * A, GOLD_D * A, .9);
       col = mix(col, GOLD_L * A, cov(abs(arch + 1.5) - .5));
       float inner = arch + 4.6;
-      vec3 pn = mix(vec3(.84, .72, .97), vec3(.99, .86, .95), band(smoothstep(-128., -8., w.y), 7.));
-      float ch = 26. + hash(vec2(floor((w.x + 4.) / 8.), 3.)) * 74.;
-      float bar = max(max(abs(mod(w.x + 4., 8.) - 4.) - 2.6, abs(mod(w.y, 7.) - 3.5) - 2.3), -w.y - ch);
-      pn = mix(pn, vec3(1., .94, 1.), .5 * cov(bar));
-      pn = mix(pn, vec3(1., .97, 1.), .55 * band(1. - smoothstep(8., 62., length(w - vec2(0., -62.))), 4.));
-      pn *= 1. - .16 * smoothstep(-5., 0., inner);
+      vec3 pn = mix(vec3(1., .95, .93), vec3(1., .98, .94), band(smoothstep(-128., -8., w.y), 5.));
+      pn *= 1. - .12 * smoothstep(-5., 0., inner);
       ink(col, inner, pn * A, GOLD_D * A, .8);
     }
     ink(col, sdStar(w - vec2(0., -135.), 7.5), GOLD_L * A, GOLD_D * A, .9);
-    // 날개 장식과 별
-    vec2 cq = vec2(ax, w.y);
-    if (ax < 50. && w.y > -84. && w.y < -36.) {
-      float wing = sdEll(rot(cq - vec2(26., -66.), .38), vec2(21., 7.5));
-      wing = smin(wing, sdEll(rot(cq - vec2(23., -55.), .12), vec2(16., 6.)), 2.);
-      wing = smin(wing, sdEll(rot(cq - vec2(19., -46.), -.15), vec2(11., 4.5)), 2.);
-      ink(col, wing - 1.8, mix(GOLD_L, GOLD, band(smoothstep(-74., -44., w.y), 3.)) * A, GOLD_D * A, .8);
-      col = mix(col, mix(vec3(1., .76, .88), vec3(.96, .54, .77), band(smoothstep(-72., -42., w.y), 3.)) * A, cov(wing));
-      col = mix(col, GOLD_L * A, cov(abs(length(cq - vec2(31., -64.)) - 2.8) - .8) * cov(wing + 1.5));
-      float star = sdStar(w - vec2(0., -64.), 13.) - 1.2;
-      ink(col, star, mix(GOLD_L, GOLD, band(smoothstep(-76., -54., w.y), 3.)) * A, GOLD_D * A, .9);
-      col = mix(col, vec3(1., .78, .9) * A, cov(sdStar(w - vec2(0., -64.), 7.5)));
-    }
-    // 단상(둥근 2단 + 금띠 하트)
-    if (w.y > -35. && ax < 44.) {
-      float t2 = sdRBox(w - vec2(0., -25.), vec2(30., 7.5), 2.);
-      float t1 = sdRBox(w - vec2(0., -9.), vec2(41., 9.6), 2.);
-      vec3 pd = mix(vec3(1., .98, 1.), vec3(.74, .68, .92), band(smoothstep(.25, 1., ax / 41.), 4.));
-      ink(col, t2, pd * A, LINE * A, .9);
-      col = mix(col, vec3(1.) * A, cov(abs(w.y + 31.) - .6) * cov(t2 + 1.2));
-      ink(col, t1, pd * A, LINE * A, .9);
-      col = mix(col, vec3(1.) * A, cov(abs(w.y + 17.2) - .6) * cov(t1 + 1.2));
-      float bd = abs(w.y + 8.6) - 3.6;
-      col = mix(col, GOLD_D * A, cov(bd - .7) * cov(t1 + .5));
-      col = mix(col, mix(GOLD_L, GOLD, band(smoothstep(-12., -5., w.y), 3.)) * A, cov(bd) * cov(t1 + .5));
-      col = mix(col, vec3(.97, .5, .7) * A, cov(heartD(vec2(mod(w.x + 6., 12.) - 6., w.y + 9.))) * cov(t1 + 2.));
-    }
     // 단상 양옆 덤불
-    if (abs(ax - 64.) < 22. && w.y > -27.) bushAt(col, vec2(ax - 64., w.y), A);
+    if (abs(ax - 70.) < 22. && w.y > -27.) bushAt(col, vec2(ax - 70., w.y), A);
   } else {
     // 돌 기단: 큰 돌을 어긋나게 쌓고 돌마다 색을 조금씩 달리한다
     float row = floor((w.y - 80.) / 18.);
