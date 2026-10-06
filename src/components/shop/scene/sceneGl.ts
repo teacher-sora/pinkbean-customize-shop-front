@@ -68,14 +68,14 @@ void main(){
 }`
 const QUAD_FS = `
 precision mediump float;
-uniform sampler2D uTex; uniform sampler2D uGlow; uniform vec3 uAmb; uniform vec3 uCloud; uniform vec3 uHaze; uniform float uLamp; uniform float uMask; uniform float uTw;
+uniform sampler2D uTex; uniform sampler2D uGlow; uniform vec3 uAmb; uniform vec3 uCloud; uniform vec3 uHaze; uniform float uLamp; uniform float uMask; uniform float uTw; uniform float uGlowK;
 uniform vec3 uFoot;   // 발 자리(그림 픽셀)와 그림자 반폭
 varying vec2 vUv; varying float vKind; varying vec2 vPos;
 void main(){
   vec4 t = texture2D(uTex, vUv);
   if (vKind > 7.5 && vKind < 8.5) {
     // 밤 불빛의 번짐: 창 · 간판 · 가로등 둘레에 빛무리가 지고(b), 그 빛이 닿는 공기도 조금 밝다(g). 더하기. 위로 갈수록 스러진다(지도에서)
-    gl_FragColor = vec4(vec3(1., .74, .38) * (t.b * .34 + t.g * .07) * uLamp * (1. - uMask), 0.);
+    gl_FragColor = vec4(vec3(1., .74, .38) * (t.b * .34 + t.g * .07) * uLamp * uGlowK * (1. - uMask), 0.);
     return;
   }
   if (t.a < .004) discard;
@@ -103,7 +103,7 @@ void main(){
       if (vKind > 4.5) {
         // 거리: 건물의 창 · 간판 · 가로등에서 나온 빛(g)을 받은 면은 제 색이 살아나고 살짝 노랗게 물든다.
         // 창유리 자리(r)는 스스로 빛난다 — 안이 보이는 채로 더 밝고 따뜻하다
-        vec2 gw = texture2D(uGlow, vUv).rg * uLamp;
+        vec2 gw = texture2D(uGlow, vUv).rg * uLamp * uGlowK;
         lit *= 1. + gw.y * 1.45;
         lit += vec3(1., .72, .34) * gw.y * .1;
         lit = mix(lit, mix(c, vec3(1., .9, .62) * (lum * 1.2 + .1), .45) * 1.12, gw.x * .9);
@@ -321,7 +321,7 @@ function init(sc: Scene) {
   const gl = sc.gl
   if (!gl) return
   if (sc.kind === 'sky' && gl.getParameter(gl.MAX_TEXTURE_SIZE) < STREET.w) { sc.failed = true; return }
-  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uMov', 'uTex', 'uGlow', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
+  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uMov', 'uTex', 'uGlow', 'uGlowK', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
   const sp = sc.kind === 'sky' ? program(gl, SKY_VS, SKY_FS, ['uRes', 'uPx', 'uSky', 'uSun', 'uMoon', 'uSunCol', 'uNight', 'uTime', 'uMask']) : null
   if (!qp || (sc.kind === 'sky' && !sp)) { sc.failed = true; return }
   const m = mesh(sc.kind)
@@ -469,6 +469,8 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   gl.uniform3fv(q.u.uCloud, st.cloudA)
   gl.uniform3fv(q.u.uHaze, st.sky[2].map((v, i) => (v + st.sky[3][i]) / 2))
   gl.uniform1f(q.u.uLamp, st.lamp); gl.uniform1f(q.u.uMask, mask)
+  // 밤 불빛의 세기는 어두운 막 아래에서 맞춘 것이다 → 막이 걷히면(배경 보기) 그만큼 조금 줄인다
+  gl.uniform1f(q.u.uGlowK, room ? 1 : 0.78 + 0.22 * (mask / MASK))
   gl.uniform3f(q.u.uFoot, ROOM.foot[0], ROOM.foot[1] + 1, sc.shadow)
   const part = (tex: number, kinds: number[]) => {
     gl.bindTexture(gl.TEXTURE_2D, sc.tex[tex])
