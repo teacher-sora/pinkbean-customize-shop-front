@@ -1,6 +1,6 @@
 // 배경 장면을 그리는 WebGL 실행기. 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
-//  · 캔버스를 '도트 한 칸 = 1픽셀'로 작게 그리고 CSS 로 정수배 확대한다(무대 약 5만 픽셀, 앱 배경 약 50만 픽셀).
-//  · 초당 12번만 그린다. 도트 그림은 한 칸씩 움직여서 그 이상 그려도 같은 그림이다.
+//  · 초당 12번만 그린다. 구름·열기구가 천천히 흘러가는 정도라 그 이상은 낭비다.
+//  · 버퍼 픽셀 수를 묶는다(layout 참고). 그리는 일은 GPU 가 하고 메인 스레드는 유니폼 몇 개만 넘긴다.
 //  · 셰이더 컴파일은 KHR_parallel_shader_compile 로 끝나기를 기다린다(없으면 다음 프레임에 확인) → 메인 스레드를 막지 않는다.
 //  · 탭이 가려지면 rAF 가 멈추니 따로 멈출 것이 없다. '동작 줄이기' 설정이면 20초에 한 번만(시각에 따른 색만) 그린다.
 //  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다(탭을 오갈 때마다 다시 컴파일하지 않는다).
@@ -11,7 +11,7 @@ import { skyHour, skyState, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
 
-const UNIFORMS = ['uRes', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 'uLight', 'uSunCol', 'uSun', 'uMoon', 'uNight', 'uLamp', 'uOrigin', 'uShadow'] as const
+const UNIFORMS = ['uRes', 'uPx', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 'uLight', 'uSunCol', 'uSun', 'uMoon', 'uNight', 'uLamp', 'uOrigin', 'uShadow'] as const
 const FRAME_MS = 83
 const REDUCED_MS = 20000
 const COMPLETION_STATUS_KHR = 0x91b1
@@ -25,7 +25,7 @@ interface Scene {
   parallel: boolean
   u: Partial<Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>>
   host: HTMLElement | null
-  ox: number; oy: number; shadow: number
+  ox: number; oy: number; px: number; shadow: number
   dirty: boolean
   shown: boolean
   failed: boolean
@@ -73,8 +73,8 @@ function poll(sc: Scene) {
 
 function create(kind: SceneKind): Scene {
   const canvas = document.createElement('canvas')
-  canvas.style.cssText = 'position:absolute;left:0;top:0;display:block;image-rendering:pixelated;opacity:0;transition:opacity .5s ease;pointer-events:none'
-  const sc: Scene = { kind, canvas, gl: null, prog: null, building: null, parallel: false, u: {}, host: null, ox: 0, oy: 0, shadow: 13, dirty: true, shown: false, failed: false, cleanup: null }
+  canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .5s ease;pointer-events:none'
+  const sc: Scene = { kind, canvas, gl: null, prog: null, building: null, parallel: false, u: {}, host: null, ox: 0, oy: 0, px: 1, shadow: 13, dirty: true, shown: false, failed: false, cleanup: null }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다 — CPU 로 셰이더를 돌리면 느려진다. 그때는 바탕색만 남는다.
   // (?skygl=soft 는 GPU 없는 확인 환경에서 강제로 켜는 용도)
   const soft = /[?&]skygl=soft/.test(window.location.search)
@@ -87,45 +87,44 @@ function create(kind: SceneKind): Scene {
   return sc
 }
 
-// 캔버스 크기·위치. 무대(room)는 캐릭터의 발 위치와 배율에 맞춘다.
+// 캔버스 크기와 장면 좌표. 무대(room)는 캐릭터의 발 위치와 배율에 맞춘다.
+// 그림이 매끈한 선이라 화면 해상도대로 그리되, 픽셀 수가 지나치게 늘지 않게 묶는다(무대: 배율 2 까지, 앱 배경: 약 100만 픽셀).
 function layout(sc: Scene) {
   const host = sc.host
   if (!host) return
   const hw = host.clientWidth, hh = host.clientHeight
   if (!hw || !hh) return
   const dpr = window.devicePixelRatio || 1
-  let px: number, cx = 0, fy = 0
-  if (sc.kind === 'sky') px = Math.max(1, Math.round(2 * dpr))
+  let r: number    // 버퍼 픽셀 / CSS 픽셀
+  let unit: number // 게임 픽셀 한 칸 = CSS 픽셀 몇 칸
+  let cx = 0, fy = 0
+  if (sc.kind === 'sky') { r = Math.min(dpr, Math.sqrt(1_000_000 / (hw * hh))); unit = 2 }
   else {
+    r = Math.min(dpr, 2)
     const f = getStageFloor()
     if (f && f.wrap.isConnected && host.parentElement?.contains(f.wrap)) {
       const wr = f.wrap.getBoundingClientRect(), hr = host.getBoundingClientRect()
-      px = f.scale; cx = (wr.left - hr.left + f.cx) * dpr; fy = (wr.top - hr.top + f.footY) * dpr; sc.shadow = f.shadow
+      unit = f.scale / dpr; cx = wr.left - hr.left + f.cx; fy = wr.top - hr.top + f.footY; sc.shadow = f.shadow
     } else {
       // 캐릭터가 아직 안 그려졌을 때: 그려질 자리와 거의 같은 값으로 미리 잡는다.
-      px = Math.max(2, Math.round(2 * dpr)); cx = (hw * dpr) / 2; fy = (hh * dpr) / 2 + 38.4 * px
+      unit = Math.max(2, Math.round(2 * dpr)) / dpr; cx = hw / 2; fy = hh / 2 + 38.4 * unit
     }
   }
-  const ox = Math.ceil(cx / px), oy = Math.ceil(fy / px)
-  const bw = ox + Math.ceil((hw * dpr - cx) / px), bh = oy + Math.ceil((hh * dpr - fy) / px)
+  const bw = Math.max(1, Math.round(hw * r)), bh = Math.max(1, Math.round(hh * r))
   const c = sc.canvas
   if (c.width !== bw) c.width = bw
   if (c.height !== bh) c.height = bh
-  c.style.width = `${(bw * px) / dpr}px`
-  c.style.height = `${(bh * px) / dpr}px`
-  c.style.left = `${(cx - ox * px) / dpr}px`
-  c.style.top = `${(fy - oy * px) / dpr}px`
-  sc.ox = ox; sc.oy = oy
+  sc.ox = cx * r; sc.oy = fy * r; sc.px = 1 / (unit * r)
   sc.dirty = true
 }
 
 // 해·달의 자리. 무대 창은 가운데가 벽이라 달은 왼쪽 창 안에서만 움직이고, 앱 배경은 위쪽 띠만 보이니 거기 둔다.
-function orb(kind: SceneKind, phase: number, moon: boolean, bh: number): [number, number, number] {
+function orb(kind: SceneKind, phase: number, moon: boolean, skyH: number): [number, number, number] {
   if (phase <= 0 || phase >= 1) return [0, 0, 0]
   const s = Math.sin(Math.PI * phase)
   const vis = Math.min(1, s * 6)
-  if (kind === 'sky') return [0.12 + 0.76 * phase, (12 + (1 - s) * 26) / bh, vis]
-  return moon ? [0.1 + 0.18 * phase, 0.9 - s * 0.5, vis] : [0.2 + 0.72 * phase, 0.84 - s * 0.7, vis]
+  if (kind === 'sky') return [0.12 + 0.76 * phase, (12 + (1 - s) * 26) / skyH, vis]
+  return moon ? [0.1 + 0.1 * phase, 0.78 - s * 0.22, vis] : [0.2 + 0.72 * phase, 0.84 - s * 0.7, vis]
 }
 
 function draw(sc: Scene, now: number, st: SkyState) {
@@ -133,6 +132,7 @@ function draw(sc: Scene, now: number, st: SkyState) {
   if (!gl || !sc.prog) return
   gl.viewport(0, 0, c.width, c.height)
   gl.uniform2f(u.uRes!, c.width, c.height)
+  gl.uniform1f(u.uPx!, sc.px)
   gl.uniform1f(u.uTime!, now / 1000)
   gl.uniform3fv(u.uSky!, st.sky.flat())
   gl.uniform3fv(u.uCloudA!, st.cloudA)
@@ -140,8 +140,8 @@ function draw(sc: Scene, now: number, st: SkyState) {
   gl.uniform3fv(u.uAmb!, st.amb)
   gl.uniform3fv(u.uLight!, st.light)
   gl.uniform3fv(u.uSunCol!, st.sun)
-  gl.uniform3fv(u.uSun!, orb(sc.kind, st.sunPhase, false, c.height))
-  const moon = orb(sc.kind, st.moonPhase, true, c.height)
+  gl.uniform3fv(u.uSun!, orb(sc.kind, st.sunPhase, false, c.height * sc.px))
+  const moon = orb(sc.kind, st.moonPhase, true, c.height * sc.px)
   moon[2] *= Math.min(1, st.night * 1.6)
   gl.uniform3fv(u.uMoon!, moon)
   gl.uniform1f(u.uNight!, st.night)
