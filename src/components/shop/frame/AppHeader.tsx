@@ -8,6 +8,16 @@ import { SKY_MODES, getSkyMode, setSkyMode, type SkyMode } from '../scene/skyTim
 import { IconCopy, IconRate, IconScene, IconSky } from '../ui/Icons'
 import styles from './frame.module.css'
 
+// 글자가 바뀌는 버튼의 라벨. 나올 수 있는 글자를 모두 같은 자리에 겹쳐 두고 지금 것만 보인다 →
+// 칸의 폭이 가장 긴 글자에 맞춰 고정돼, 글자가 바뀌어도 옆의 버튼이 밀리지 않는다.
+function Swap({ now, all }: { now: string; all: string[] }) {
+  return (
+    <span className={styles.swap}>
+      {all.map((t) => <span key={t} aria-hidden={t !== now} className={t === now ? undefined : styles.swapOff}>{t}</span>)}
+    </span>
+  )
+}
+
 export default function AppHeader({ mobile }: { mobile: boolean }) {
   const s = useShop()
   // 배경 보기(PC 만): 헤더만 남기고 나머지를 감춘다. 표시는 <html> 속성 하나로 한다 — 감추는 것은 CSS(globals.css),
@@ -49,10 +59,10 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
       {/* 도구 모음 한 칸: 배경을 다루는 둘(시간대 · 배경 보기) | 코디를 다루는 둘(평가 · 복사) */}
       <div className={styles.tools}>
         <button type="button" onClick={nextSky} title={`배경 시간대: ${SKY_MODES[skyAt].label} (누르면 다음으로)`} className={clsx('pb-ghost', styles.tool)}>
-          <IconSky mode={sky} />{SKY_MODES[skyAt].label}
+          <IconSky mode={sky} /><Swap now={SKY_MODES[skyAt].label} all={SKY_MODES.map((m) => m.label)} />
         </button>
         <button type="button" onClick={() => setBgOnly((v) => !v)} aria-pressed={bgOnly} title={bgOnly ? '화면으로 돌아가기' : '배경만 보기'} className={clsx('pb-ghost', styles.tool, bgOnly && styles.toolOn)}>
-          <IconScene />{bgOnly ? '돌아가기' : '배경 보기'}
+          <IconScene /><Swap now={bgOnly ? '돌아가기' : '배경 보기'} all={['배경 보기', '돌아가기']} />
         </button>
         <span className={styles.toolSep} aria-hidden />
         <button type="button" onClick={s.rateCodi} title="핑크빈에게 코디 평가받기" className={clsx('pb-ghost', styles.tool)}>
