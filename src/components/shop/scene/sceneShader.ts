@@ -238,8 +238,8 @@ const SKY_MAIN = `
 void main(){
   gPx = 1.;
   vec3 col = sky(vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) * uPx, uRes * uPx);
-  // 옅은 막: 화면 내용(흰 카드)과 배경을 갈라 준다. 셰이더 안에서 섞으므로 따로 드는 비용이 없다.
-  gl_FragColor = vec4(mix(col, mix(vec3(1.), uSky[2], .25), .26), 1.);
+  // 어두운 막: 배경을 한 톤 눌러 화면 내용(흰 카드)과 갈라 준다. 흰 막은 뿌옇게 보였다. 셰이더 안에서 섞으므로 따로 드는 비용이 없다.
+  gl_FragColor = vec4(mix(col, vec3(.09, .07, .16), .32), 1.);
 }
 `
 
