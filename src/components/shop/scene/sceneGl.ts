@@ -1,11 +1,15 @@
 // 배경 장면을 그리는 WebGL 실행기. 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
 //  · 초당 30번 그린다. 구름·열기구가 화면 픽셀 단위로 매끄럽게 흘러가려면 필요하고, 메인 스레드가 하는 일은 유니폼 몇 개를 넘기는 것뿐이다.
-//  · 앱 배경은 캔버스 픽셀 수를 묶는다(layout: 약 240만 이하). 무대는 그림 두 겹을 합치는 일뿐이라 게임 픽셀 한 칸 = 1픽셀로 그리고 초당 12번쯤만 갱신한다(빛줄기·먼지가 천천히 움직인다).
+//  · 앱 배경은 캔버스 픽셀 수를 묶는다(layout: 약 240만 이하). 무대는 그림을 합치고 높이 지도로 빛을 계산하지만 게임 픽셀 한 칸 = 1픽셀(약 360×570)이라 가볍고, 초당 12번쯤만 갱신한다.
 //  · 셰이더 컴파일은 KHR_parallel_shader_compile 로 끝나기를 기다린다(없으면 다음 프레임에 확인) → 메인 스레드를 막지 않는다.
 //  · 탭이 가려지면 rAF 가 멈추니 따로 멈출 것이 없다. '동작 줄이기' 설정이면 20초에 한 번만(시각에 따른 색만) 그린다.
 //  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다(탭을 오갈 때마다 다시 컴파일하지 않는다).
 
+import cityFar from '@/assets/city-far.png'
+import cityHeight from '@/assets/city-height.png'
+import cityNear from '@/assets/city-near.png'
 import stageFar from '@/assets/stage-far.png'
+import stageHeight from '@/assets/stage-height.png'
 import stageMain from '@/assets/stage-main.png'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import { VERT, fragSource } from './sceneShader'
@@ -13,7 +17,7 @@ import { skyHour, skyState, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
 
-const UNIFORMS = ['uRes', 'uPx', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 'uLight', 'uSunCol', 'uSun', 'uMoon', 'uNight', 'uLamp', 'uOrigin', 'uShadow', 'uTex', 'uTexB', 'uTexSize', 'uFoot'] as const
+const UNIFORMS = ['uRes', 'uPx', 'uTime', 'uSky', 'uCloudA', 'uCloudB', 'uAmb', 'uLight', 'uSunCol', 'uSun', 'uMoon', 'uNight', 'uLamp', 'uOrigin', 'uShadow', 'uTex', 'uTexB', 'uTexH', 'uTexSize', 'uFoot'] as const
 const FRAME_MS = 33
 const ROOM_MS = 80 // 무대의 움직임(빛줄기·먼지)은 느려서 이 간격이면 충분하다
 // 무대 그림 안에서 캐릭터가 서는 자리(발). parser/scripts/stage-build.cjs 의 FX · FY 와 같은 값이다.
@@ -33,7 +37,7 @@ interface Scene {
   ox: number; oy: number; px: number; shadow: number
   dirty: boolean
   shown: boolean
-  imgs: HTMLImageElement[]     // 무대 그림: [far, main]
+  imgs: HTMLImageElement[]     // 그림 셋: [먼 것, 가까운 것, 가까운 것의 높이]
   tex: boolean                 // 텍스처로 올렸는가
   at: number                   // 마지막으로 그린 때
   failed: boolean
@@ -62,17 +66,17 @@ function build(sc: Scene) {
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
 }
 
-// 무대 그림 두 겹을 텍스처로 올린다. far 는 흐리게 쓸 것이라 linear, main 은 도트를 뭉개지 않게 nearest.
+// 그림 셋을 텍스처로 올린다. 먼 것과 높이는 부드럽게 읽으려고 linear, 가까운 것은 도트를 뭉개지 않게 nearest.
 // 컨텍스트를 되찾았을 때도 다시 부른다.
 function upload(sc: Scene) {
   const gl = sc.gl
-  if (!gl || sc.imgs.length < 2 || sc.imgs.some((i) => !i.complete || !i.naturalWidth)) return
+  if (!gl || sc.imgs.length < 3 || sc.imgs.some((i) => !i.complete || !i.naturalWidth)) return
   sc.imgs.forEach((img, n) => {
     gl.activeTexture(gl.TEXTURE0 + n)
     gl.bindTexture(gl.TEXTURE_2D, gl.createTexture())
-    gl.texImage2D(gl.TEXTURE_2D, 0, n ? gl.RGBA : gl.RGB, n ? gl.RGBA : gl.RGB, gl.UNSIGNED_BYTE, img)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, n ? gl.NEAREST : gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, n ? gl.NEAREST : gl.LINEAR)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, n === 1 ? gl.NEAREST : gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, n === 1 ? gl.NEAREST : gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   })
@@ -110,15 +114,13 @@ function create(kind: SceneKind): Scene {
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sc.prog = null; sc.building = null; sc.tex = false })
   canvas.addEventListener('webglcontextrestored', () => { build(sc); upload(sc) })
   build(sc)
-  if (kind === 'room') {
-    sc.imgs = [stageFar.src, stageMain.src].map((src) => {
-      const img = new Image()
-      img.decoding = 'async'
-      img.onload = () => upload(sc)
-      img.src = src
-      return img
-    })
-  }
+  sc.imgs = (kind === 'room' ? [stageFar, stageMain, stageHeight] : [cityFar, cityNear, cityHeight]).map((s) => {
+    const img = new Image()
+    img.decoding = 'async'
+    img.onload = () => upload(sc)
+    img.src = s.src
+    return img
+  })
   return sc
 }
 
@@ -187,10 +189,8 @@ function draw(sc: Scene, now: number, st: SkyState) {
   gl.uniform3fv(u.uMoon!, moon)
   gl.uniform1f(u.uNight!, st.night)
   gl.uniform1f(u.uLamp!, st.lamp)
-  if (sc.kind === 'room') {
-    gl.uniform2f(u.uOrigin!, sc.ox, sc.oy); gl.uniform1f(u.uShadow!, sc.shadow)
-    gl.uniform1i(u.uTex!, 0); gl.uniform1i(u.uTexB!, 1); gl.uniform2f(u.uTexSize!, sc.imgs[0].naturalWidth, sc.imgs[0].naturalHeight); gl.uniform2f(u.uFoot!, STAGE_FOOT[0], STAGE_FOOT[1])
-  }
+  gl.uniform1i(u.uTex!, 0); gl.uniform1i(u.uTexB!, 1); gl.uniform1i(u.uTexH!, 2); gl.uniform2f(u.uTexSize!, sc.imgs[1].naturalWidth, sc.imgs[1].naturalHeight)
+  if (sc.kind === 'room') { gl.uniform2f(u.uOrigin!, sc.ox, sc.oy); gl.uniform1f(u.uShadow!, sc.shadow); gl.uniform2f(u.uFoot!, STAGE_FOOT[0], STAGE_FOOT[1]) }
   gl.drawArrays(gl.TRIANGLES, 0, 3)
   sc.dirty = false
   sc.at = now
@@ -204,7 +204,7 @@ function tick(now: number) {
   for (const sc of Object.values(scenes)) {
     if (!sc || !sc.host) continue
     if (sc.building) poll(sc)
-    if (!sc.prog || (sc.kind === 'room' && !sc.tex)) continue
+    if (!sc.prog || !sc.tex) continue
     if (!(sc.dirty || (sc.kind === 'room' ? now - sc.at >= (reduce?.matches ? REDUCED_MS : ROOM_MS) : due))) continue
     draw(sc, now, st ?? (st = skyState(skyHour())))
   }

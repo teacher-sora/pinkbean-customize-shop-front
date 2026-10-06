@@ -1,9 +1,11 @@
-// 배경 장면 셰이더(WebGL1). 텍스처 없이 수식(거리 함수)만으로 그린다 — 받아 올 그림이 없어 가볍다.
-//  · sky  : 앱 배경. 메이플 15번가 — 하늘 · 뭉게구름 · 도시 스카이라인 · 열기구 · 해와 달 · 별자리.
-//  · room : 미리보기 무대. 수식이 아니라 실제 맵 그림을 깐다(ROOM_MAIN 머리말).
-// 그림체는 메이플 배경의 방식이다:
+// 배경 장면 셰이더(WebGL1).
+//  · sky  : 앱 배경. 메이플 15번가 — 하늘 · 뭉게구름 · 열기구 · 해와 달 · 별자리는 수식으로, 거리(먼 건물 · 길가의 가게)는 그림으로.
+//  · room : 미리보기 무대(피팅룸). 그림 + 높이 지도(ROOM_MAIN 머리말).
+// 거리와 무대의 그림은 parser/scripts/stage-build.cjs 가 찍는다(게임 원화는 쓰지 않는다). 그림마다 높이 지도가 딸려 있어,
+// 셰이더가 해의 방향으로 빛 · 그림자를 계산한다 → 평면 그림이 아니라 튀어나온 덩어리로 보인다. 밤에는 창과 등이 켜진다.
+// 수식으로 그리는 하늘의 것들은 메이플 배경의 방식을 따른다:
 //  · **게임 픽셀 격자에 찍은 도트 그림**이다. 좌표를 격자에 맞춰(snap) 계산하므로 한 칸 안은 한 색이고, 가장자리는
-//    한 칸만 중간색으로 깎으며(손으로 넣는 안티에일리어싱), 명암은 몇 단으로 끊는다(band). 멀리서 보면 선으로 읽힌다.
+//    한 칸만 중간색으로 깎는다(손으로 넣는 안티에일리어싱).
 //  · **원근**: 멀리 있는 것은 가장자리를 넓게 풀고(gPx 를 키운다) 하늘빛에 묻어 뿌옇다. 가까운 것은 진한 외곽선으로 또렷하다.
 //  · **움직이는 것**(구름·열기구)은 그 물체 자신의 격자에 맞춘다 → 무늬는 물체에 붙어 흔들리지 않고, 물체는 화면 픽셀
 //    단위로 매끄럽게 미끄러진다(도트 스프라이트를 translate 로 옮기는 것과 같다). 그래서 캔버스는 화면 해상도로 그린다.
@@ -30,6 +32,10 @@ uniform vec3 uSun;   // xy = 하늘 안 위치(0~1), z = 보이는 정도
 uniform vec3 uMoon;
 uniform float uNight;
 uniform float uLamp;
+uniform sampler2D uTex;   // 거리: 먼 건물
+uniform sampler2D uTexB;  // 거리: 길가의 가게
+uniform sampler2D uTexH;  // 가게의 높이(빨강) · 불빛(초록)
+uniform vec2 uTexSize;
 
 float gPx;
 
@@ -170,36 +176,34 @@ void cloudLayer(inout vec3 col, vec2 p, float y, float s, float speed, float see
   col = mix(col, mix(c, col, fade), cov(d));
 }
 
-// 15번가 건물 한 줄. q.y 는 땅에서 위로 잰 높이. haze 가 클수록 멀리 있어 하늘빛에 묻힌다(외곽선도 옅다).
-void cityLayer(inout vec3 col, vec2 p, float ground, float cell, float hmin, float hmax, float seed, float haze, float tall){
-  float id = floor(p.x / cell);
-  float h1 = hash(vec2(id, seed)), h2 = hash(vec2(id, seed + 1.)), h3 = hash(vec2(id, seed + 2.));
-  float bh = mix(hmin, hmax, h1 * h1);
-  if (h3 > .86) bh = max(bh, tall * (.9 + .1 * h2));   // 눈에 띄게 높은 탑
-  vec2 q = vec2(p.x - (id + .5) * cell, ground - p.y);
-  if (q.y < 0. || q.y > bh + cell * 1.3) return;
-  float bw = cell * (.36 + .12 * h2);
-  float body = max(abs(q.x) - bw, q.y - bh);
-  float top = floor(h3 * 4.99);
-  float cap = 99.;
-  if (top == 1. || top == 4.) cap = max((abs(q.x) * (cell * 1.1 / (bw * .7)) + q.y - bh - cell * 1.1) / 2.4, bh - q.y);   // 뾰족 지붕
-  else if (top == 2.) cap = length(vec2(q.x, q.y - bh)) - bw * .72;                                                    // 돔
-  else if (top == 3.) cap = max(abs(q.x) - bw * .58, q.y - bh - cell * .3);                                             // 한 단 더
-  vec3 base = col;
-  vec3 c = h2 < .2 ? vec3(.97, .6, .72) : (h2 < .4 ? vec3(.99, .9, .74) : (h2 < .6 ? vec3(.5, .78, .8) : (h2 < .8 ? vec3(.86, .46, .42) : vec3(.62, .64, .78))));
-  vec3 roof = h1 < .5 ? vec3(.36, .5, .78) : vec3(.5, .34, .62);
-  vec3 line = c * .5;
-  ink(col, cap, (top == 3. ? c * .93 : roof) * uAmb, line * uAmb, .6 * (1. - haze));
-  vec3 bc = c * (1. - .13 * smoothstep(-.5, .5, q.x - bw * .35));
-  bc = mix(bc, c * 1.08, cov(abs(q.y - bh + 2.) - 1.2));               // 처마 띠
-  ink(col, body, bc * uAmb, line * uAmb, .6 * (1. - haze));
-  // 창: 켜진 창은 스스로 빛난다
-  vec2 wc = vec2(floor((q.x + bw) / 6.), floor(q.y / 8.));
-  vec2 g = vec2(mod(q.x + bw, 6.) - 3., mod(q.y, 8.) - 4.);
-  float win = cov(sdBox(g, vec2(1.5, 2.3))) * cov(body + 2.5) * step(5., q.y);
-  float on = step(.45, hash(wc + id * 7. + seed)) * uLamp;
-  col = mix(col, mix(mix(vec3(.6, .82, .98), vec3(.26, .32, .56), uNight) * uAmb, vec3(1., .86, .46), on), win);
-  col = mix(col, base, haze);
+// 15번가 거리. 그림은 가로로 이어 붙고, 땅은 화면 아래 끝에 닿는다.
+vec4 tileAt(sampler2D s, vec2 q){ return texture2D(s, vec2(mod(q.x, uTexSize.x), clamp(q.y, .5, uTexSize.y - .5)) / uTexSize); }
+float cityH(vec2 q){ return tileAt(uTexH, q).r * 44. - 12.; }
+vec2 cityQ(vec2 p, vec2 size){ return vec2(p.x + 96., uTexSize.y - (size.y - p.y)); }
+void cityFar(inout vec3 col, vec2 p, vec2 size){
+  vec2 q = cityQ(p, size);
+  if (q.y < 0.) return;
+  vec4 f = tileAt(uTex, q);
+  col = mix(col, mix(f.rgb * uAmb, col, .52), f.a);            // 먼 건물은 하늘빛에 반쯤 묻힌다
+}
+void cityNear(inout vec3 col, vec2 p, vec2 size){
+  vec2 q = cityQ(p, size);
+  if (q.y < 0.) return;
+  vec4 m = tileAt(uTexB, q);
+  if (m.a < .01) return;
+  vec4 hh = tileAt(uTexH, q);
+  float h0 = hh.r * 44. - 12.;
+  vec3 n = normalize(vec3(cityH(q - vec2(1., 0.)) - cityH(q + vec2(1., 0.)), cityH(q - vec2(0., 1.)) - cityH(q + vec2(0., 1.)), 2.4));
+  vec3 Ld = normalize(vec3(mix(-.45, (uSun.x - .5) * 1.5, uSun.z), -.6, .62)); // 해가 있는 쪽에서 빛이 든다
+  float diff = max(dot(n, Ld), 0.);
+  vec2 dir = normalize(Ld.xy);
+  float rise = Ld.z / length(Ld.xy), sh = 0.;
+  for (int i = 1; i <= 7; i++) { float s = float(i) * 2.; sh = max(sh, clamp((cityH(q + dir * s) - h0 - rise * s) * .45, 0., 1.) * (1. - float(i) / 10.)); }
+  float ao = clamp(((cityH(q + vec2(2.5, 0.)) + cityH(q - vec2(2.5, 0.)) + cityH(q + vec2(0., 2.5)) + cityH(q - vec2(0., 2.5))) * .25 - h0) * .1, 0., .34);
+  vec3 c = m.rgb * (.64 + .56 * diff) * (1. - .42 * sh) * (1. - ao) * uAmb;
+  float on = mix(.5 + .5 * smoothstep(.3, .6, vnoise(q / 34.)), 1., step(.97, hh.g));   // 창은 집마다 밝기가 다르고, 등은 모두 켜진다
+  c = mix(c, vec3(1., .88, .5), hh.g * uLamp * on * .92);
+  col = mix(col, c, m.a);
 }
 
 // 열기구
@@ -254,18 +258,21 @@ const SKY_PARTS = {
   SKY_MID: `
     cloudLayer(col, pr, 27., .5, 2., 33., .08);
     gPx = 2.4;
-    cityLayer(col, p, size.y, 26., size.y * .4, size.y * .72, 4., .66, size.y * .93);
+    cityFar(col, p, size);
     gPx = 1.6;
     balloon(col, snap(pr - vec2(mod(uTime * 1.6 + size.x * .2, size.x + 60.) - 30., size.y * .3 + sin(uTime * .4 + 2.) * 2.)), vec3(.4, .7, .9), vec3(1., .97, .92), .3);
     gPx = 1.;
     balloon(col, snap(pr - vec2(mod(uTime * 2.5 + size.x * .7, size.x + 60.) - 30., 13. + sin(uTime * .5) * 1.5)), vec3(.96, .42, .4), vec3(1., .9, .6), 0.);
-    cityLayer(col, p, size.y, 38., size.y * .2, size.y * .52, 11., 0., size.y * .66);`,
+    cityNear(col, p, size);`,
 }
 
-// 미리보기 무대: 피팅룸 그림 두 겹을 합친다. 그림은 parser/scripts/stage-build.cjs 가 찍는다(게임 원화는 쓰지 않는다).
+// 미리보기 무대: 피팅룸 그림을 합치고 빛을 계산한다. 그림은 parser/scripts/stage-build.cjs 가 찍는다(게임 원화는 쓰지 않는다).
 //  · far(창밖 하늘 · 먼 지붕) : 살짝 흐리고 뿌옇게 → 멀리 있는 것으로 읽힌다. 시각의 색을 그대로 탄다.
-//  · main(저택의 방: 벽 · 기둥 · 아치 벽감과 커튼 · 단상 · 바닥) : 손대지 않고 또렷하게 얹는다. 창 자리만 뚫려 있다.
-//  · 그 위로 창에서 비껴 드는 빛줄기와 떠다니는 빛 먼지가 천천히 움직인다(먼지는 게임 픽셀 격자에 맞춘다).
+//  · main(방 안) + height(그 높이 지도) : 픽셀마다 높이의 기울기로 면의 방향을 구해 빛을 계산한다.
+//      - 창 쪽에서 드는 빛(해의 위치에 따라 좌우로 움직인다) → 몰딩 · 액자 · 단상의 모서리가 둥글게 빛을 받는다
+//      - 빛 쪽으로 높이를 더듬어 그림자를 드리운다(튀어나온 것이 벽에 그림자를 떨군다)
+//      - 둘레가 더 높으면 어둡게(구석의 그늘), 벽등 네 개는 따뜻한 점빛
+//  · 그 위로 창에서 비껴 드는 빛줄기와 떠다니는 빛 먼지(게임 픽셀 격자에 맞춘다), 고운 픽셀 결.
 const ROOM_MAIN = `
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -278,17 +285,25 @@ uniform float uTime;
 uniform vec2 uOrigin;
 uniform float uShadow;
 uniform vec3 uAmb;
+uniform vec3 uSun;
 uniform float uLamp;
 uniform float uNight;
 uniform sampler2D uTex;   // far
 uniform sampler2D uTexB;  // main
+uniform sampler2D uTexH;  // main 의 높이
 uniform vec2 uTexSize;
 uniform vec2 uFoot;       // 그림 안에서 캐릭터가 서는 자리(발)
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 vec3 farAt(vec2 q){ return texture2D(uTex, clamp(q, vec2(.5), uTexSize - .5) / uTexSize).rgb; }
+float hAt(vec2 q){ return texture2D(uTexH, clamp(q, vec2(.5), uTexSize - .5) / uTexSize).r * 44. - 12.; }
 float beam(vec2 w, float side){
-  float d = side * w.x + 119. - (160. + w.y) * .5;                // 창(발 기준 x=±119, 높이 104~211)에서 안쪽 아래로 비껴 내린다
-  return smoothstep(17., 5., abs(d)) * smoothstep(-212., -150., w.y) * smoothstep(18., -30., w.y) * (.8 + .2 * sin(uTime * .35 + d * .1 + side));
+  float d = side * w.x + 138. - (150. + w.y) * .5;                // 창(발 기준 x=±138)에서 안쪽 아래로 비껴 내린다
+  return smoothstep(22., 6., abs(d)) * smoothstep(-200., -140., w.y) * smoothstep(16., -30., w.y) * (.8 + .2 * sin(uTime * .35 + d * .1 + side));
+}
+vec3 lampAt(vec2 w, float h0, vec3 n, vec2 at){                   // 벽등 하나의 따뜻한 점빛
+  vec3 dl = vec3(at - w, 16. - h0);
+  float dd = length(dl);
+  return vec3(1., .8, .52) * max(dot(n, dl / dd), 0.) * exp(-dd / 46.);
 }
 void main(){
   vec2 w = floor((vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) - uOrigin) * uPx) + .5;
@@ -297,12 +312,29 @@ void main(){
   col *= mix(vec3(1.), uAmb * uAmb, .95) * (1. - .45 * uNight);    // 바깥은 시각을 그대로 탄다(밤에는 어둡다)
   col = mix(col, uAmb * vec3(.97, .94, 1.), .12);                  // 뿌연 공기
   vec4 m = texture2D(uTexB, clamp(t, vec2(.5), uTexSize - .5) / uTexSize);
+  // 면의 방향과 빛
+  float h0 = hAt(t);
+  vec3 n = normalize(vec3(hAt(t - vec2(1., 0.)) - hAt(t + vec2(1., 0.)), hAt(t - vec2(0., 1.)) - hAt(t + vec2(0., 1.)), 2.4));
+  vec3 Ld = normalize(vec3(mix(-.5, (uSun.x - .5) * 1.3, uSun.z), -.62, .62));
+  float diff = max(dot(n, Ld), 0.);
+  vec2 dir = normalize(Ld.xy);
+  float rise = Ld.z / length(Ld.xy), sh = 0.;
+  for (int i = 1; i <= 10; i++) {                                  // 빛 쪽으로 더듬어 가며 가려지는지 본다
+    float s = float(i) * 2.;
+    sh = max(sh, clamp((hAt(t + dir * s) - h0 - rise * s) * .45, 0., 1.) * (1. - float(i) / 14.));
+  }
+  float ao = clamp(((hAt(t + vec2(2.5, 0.)) + hAt(t - vec2(2.5, 0.)) + hAt(t + vec2(0., 2.5)) + hAt(t - vec2(0., 2.5))) * .25 - h0) * .1, 0., .34);
+  float day = 1. - .35 * uNight;                                   // 밤에는 창빛이 약하고 벽등이 방을 밝힌다
+  float key = (.64 + .56 * diff * day) * (1. - .42 * sh * day) * (1. - ao);
+  vec3 warm = lampAt(w, h0, n, vec2(-104., -128.)) + lampAt(w, h0, n, vec2(104., -128.)) + lampAt(w, h0, n, vec2(-70., 111.)) + lampAt(w, h0, n, vec2(70., 111.));
+  float spec = pow(max(dot(n, normalize(Ld + vec3(0., 0., 1.))), 0.), 28.) * .14 * day;
   m.rgb *= 1. + .036 * (hash(floor(t)) - .5) + .008 * (mod(floor(t.x) + floor(t.y), 2.) - .5); // 고운 픽셀 결(메이플 그림의 질감)
+  m.rgb = m.rgb * key + m.rgb * warm * (.35 + .5 * uLamp) + spec;
   m.rgb *= mix(uAmb, vec3(1.02, .98, .92), .55 + .3 * uLamp);      // 방 안은 실내 조명을 받아 덜 물든다
   m.rgb = mix(m.rgb, vec3(.2, .13, .12), .32 * (1. - smoothstep(.55, 1., length(vec2(w.x / uShadow, (w.y - .4) / 1.9))))); // 발밑 그림자
   col = mix(col, m.rgb, m.a);
   float b = (beam(w, 1.) + beam(w, -1.)) * m.a;
-  col += mix(vec3(1., .95, .8), vec3(.55, .65, 1.), uNight) * b * mix(.16, .07, uNight);
+  col += mix(vec3(1., .95, .8), vec3(.55, .65, 1.), uNight) * b * mix(.14, .06, uNight);
   vec2 g = floor(w / 26.);                                         // 빛 먼지: 칸마다 하나, 천천히 떠오른다
   vec2 o = vec2(hash(g), hash(g + 7.3));
   vec2 p = (g + .2 + .6 * o) * 26. + vec2(sin(uTime * .3 + o.x * 6.3) * 5., 13. - mod(uTime * (1.5 + 2.5 * o.y) + o.x * 26., 26.));
