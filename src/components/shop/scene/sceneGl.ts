@@ -84,7 +84,7 @@ void main(){
     // 매장 안은 등불을 받아 바깥보다 덜 물든다. 아주 밝은 점(천장 · 바닥의 조명)은 느리게 반짝인다
     lit = c * mix(vec3(1.), uAmb, .3) + vec3(.03, .012, 0.) * uLamp;
     float lum = dot(c, vec3(.3, .59, .11));
-    lit *= 1. + smoothstep(.86, .97, lum) * .09 * sin(uTw * 1.7 + floor(vPos.x / 46.) * 2.4 + floor(vPos.y / 40.) * 1.3);
+    lit *= 1. + smoothstep(.9, .99, lum) * .07 * sin(uTw * 1.7 + vPos.x * .11 + vPos.y * .07);
     vec2 d = (vPos - uFoot.xy) / vec2(uFoot.z, uFoot.z * .26);
     lit *= 1. - .34 * smoothstep(1., .25, length(d));
   }
