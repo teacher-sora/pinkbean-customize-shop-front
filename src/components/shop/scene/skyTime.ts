@@ -73,9 +73,40 @@ export function skyState(h: number): SkyState {
   return { ...keyAt(h), sunPhase: (h - RISE) / night, moonPhase: mh / (24 - night) }
 }
 
-// 지금 시각(0~24). 주소에 ?sky=18.5 처럼 주면 그 시각으로 고정하고, ?sky=fast 면 하루를 48초에 돌린다(확인용).
+// 시간대를 손으로 고른다(PC 헤더의 버튼). 'auto' 는 실제 시각을 따른다. 고른 값은 이 브라우저에 남겨 둔다.
+export type SkyMode = 'auto' | 'noon' | 'sunset' | 'night' | 'dawn'
+export const SKY_MODES: { id: SkyMode; label: string; hour: number }[] = [
+  { id: 'auto', label: '자동', hour: -1 }, { id: 'noon', label: '정오', hour: 13 }, { id: 'sunset', label: '석양', hour: 18.25 },
+  { id: 'night', label: '자정', hour: 0 }, { id: 'dawn', label: '여명', hour: 5.75 },
+]
+const MODE_KEY = 'pb.sky'
+const SHIFT_MS = 900   // 시간대를 바꾸면 이만큼에 걸쳐 시곗바늘을 돌려 넘어간다
+let mode: SkyMode | undefined
+let shift: { from: number; at: number } | null = null
+const watchers = new Set<() => void>()
+export function onSkyChange(fn: () => void): () => void { watchers.add(fn); return () => { watchers.delete(fn) } }
+export function getSkyMode(): SkyMode {
+  if (mode === undefined) {
+    mode = 'auto'
+    try { const v = localStorage.getItem(MODE_KEY); if (SKY_MODES.some((m) => m.id === v)) mode = v as SkyMode } catch { /* 저장소를 못 쓰면 자동 */ }
+  }
+  return mode
+}
+export function setSkyMode(m: SkyMode) {
+  const from = skyHour()
+  mode = m
+  let still = false
+  try { localStorage.setItem(MODE_KEY, m) } catch { /* 못 남겨도 이번 화면에서는 바뀐다 */ }
+  try { still = window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { /* 그대로 */ }
+  shift = still ? null : { from, at: performance.now() }
+  watchers.forEach((fn) => fn())
+}
+
+// 지금 시각(0~24). 헤더에서 고른 시간대가 먼저다. 주소에 ?sky=18.5 처럼 주면 그 시각으로 고정하고, ?sky=fast 면 하루를 48초에 돌린다(확인용).
 let fixed: number | 'fast' | null | undefined
-export function skyHour(): number {
+function targetHour(): number {
+  const m = getSkyMode()
+  if (m !== 'auto') return SKY_MODES.find((x) => x.id === m)!.hour
   if (fixed === undefined) {
     fixed = null
     try {
@@ -88,6 +119,14 @@ export function skyHour(): number {
   if (typeof fixed === 'number') return fixed
   const d = new Date()
   return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600
+}
+export function skyHour(): number {
+  const to = targetHour()
+  if (!shift) return to
+  const t = (performance.now() - shift.at) / SHIFT_MS
+  if (t >= 1) { shift = null; return to }
+  const d = ((to - shift.from + 36) % 24) - 12   // 가까운 쪽으로 돈다
+  return (shift.from + d * ease(t) + 24) % 24
 }
 
 const css = (c: RGB) => `rgb(${c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255)).join(',')})`

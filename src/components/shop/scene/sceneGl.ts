@@ -28,7 +28,7 @@ import streetMain from '@/assets/scene/street-main.webp'
 import streetTower from '@/assets/scene/street-tower.webp'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import { ROOM, STREET } from './sceneData'
-import { skyHour, skyState, type SkyState } from './skyTime'
+import { onSkyChange, skyHour, skyState, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
 
@@ -505,6 +505,9 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   sc.at = now
   if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }
 }
+
+// 헤더에서 시간대를 바꾸면 곧바로 다시 그린다(동작 줄이기에서는 20초마다만 그리므로)
+onSkyChange(() => { for (const sc of Object.values(scenes)) if (sc) sc.dirty = true })
 
 function tick(now: number) {
   raf = requestAnimationFrame(tick)
