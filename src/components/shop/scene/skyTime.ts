@@ -96,5 +96,5 @@ const mul = (a: RGB, b: RGB): RGB => [a[0] * b[0], a[1] * b[1], a[2] * b[2]]
 export function sceneFallback(kind: 'sky' | 'room'): string {
   const s = skyState(skyHour())
   if (kind === 'sky') return `linear-gradient(180deg, ${s.sky.map((c) => css(mul(c, [0.5, 0.48, 0.56]))).join(', ')})`
-  return css(mul(hex('#4a3d40'), s.amb))
+  return css(mul(hex('#3a302c'), s.amb))
 }

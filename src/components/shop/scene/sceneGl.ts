@@ -1,56 +1,86 @@
-// 배경 장면을 그리는 WebGL 실행기. 블록(상자)을 3D 로 쌓고 16×16 텍스처를 입혀 원근 카메라로 본다(마인크래프트 방식).
-// 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
-//  · 라이브러리도 그림 파일도 없다: 텍스처는 코드로 찍고(voxelAtlas), 장면은 상자 목록으로 쌓아(voxelScenes) 정점 버퍼 하나로 올린다.
-//    → 내려받는 것은 이 코드 조각뿐이고, 한 번 올린 뒤 프레임마다 하는 일은 행렬 하나와 유니폼 몇 개를 넘기는 것이다.
-//  · 초당 30번 그린다(카메라가 천천히 흔들리고 포인터를 따라 살짝 움직인다). '동작 줄이기'면 바뀔 때만 그린다.
-//  · 장면이 뜰 때: 어두운 바탕에서 밝아지며 카메라가 살짝 다가간다(arrive).
-//  · 무대(room)는 캐릭터의 발 위치·배율에 맞춘다: 발이 놓이는 블록 자리가 늘 캐릭터 발밑에 오도록 화면을 민다(카메라가 움직여도 고정).
-//  · 시각(skyTime)에 따라 하늘 · 빛 · 안개 색이 바뀌고, 밤에는 창과 등이 켜진다.
-//  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다. 탭이 가려지면 rAF 가 멈춘다.
+// 배경 장면을 그리는 WebGL 실행기. 그림은 게임 맵에서 뽑은 것(메이플 15번가)이고, 여기서는 층을 겹쳐 놓고
+// 시각에 따른 색과 작은 움직임만 입힌다. 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
+//  · 앱 배경(sky) = 15번가 거리: 하늘(셰이더) → 구름 · 열기구 → 먼 빌딩 숲 → 버스와 차 → 거리의 건물 → 헬리콥터.
+//    그림 1칸 = 화면 1px 로 놓고(배율을 바꾸지 않는다) 아래 가운데를 화면 아래 가운데에 맞춘다.
+//  · 무대(room) = 15번가 패션 매장 안: 창밖 거리 → 매장. 가운데 깔개가 캐릭터 발밑에 온다. 그림은 늘 1칸 = 화면 1px —
+//    캐릭터 배율을 올려도 방은 키우지 않는다(키우면 선이 뭉개지고 방이 조금밖에 안 보인다).
+//  · 움직임: 구름 · 열기구 · 차가 따로 흘러가고(정점 셰이더에서 계산), 화면 전체가 아주 천천히 좌우로 흔들린다(층마다 폭이 다르다).
+//  · 시각(skyTime): 하늘 · 해 · 달 · 별 · 핑크빈 별자리, 그림에 곱하는 빛. 밤에는 네온처럼 밝고 진한 색만 제 빛을 지킨다.
+//  · 그림은 화면이 한가할 때 받아 한 프레임에 한 장씩 올린다(디코딩은 createImageBitmap 으로 메인 스레드 밖에서).
+//  · 초당 30번 그린다. '동작 줄이기'면 바뀔 때와 20초마다만 그린다. 탭이 가려지면 rAF 가 멈춘다.
+//  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다.
 
+import roomFar from '@/assets/scene/room-far.webp'
+import roomMain from '@/assets/scene/room-main.webp'
+import streetAir from '@/assets/scene/street-air.webp'
+import streetFar from '@/assets/scene/street-far.webp'
+import streetMain from '@/assets/scene/street-main.webp'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
+import { ROOM, STREET } from './sceneData'
 import { skyHour, skyState, type SkyState } from './skyTime'
-import { COLS, FIRST_LIT, ROWS, paintAtlas } from './voxelAtlas'
-import { SCENES, buildMesh } from './voxelScenes'
 
 export type SceneKind = 'sky' | 'room'
 
 const FRAME_MS = 33
-const MAX_RATIO = 1.5   // 캔버스 해상도 상한(화면 배율)
-const BLOCK_PX = 26     // 무대: 블록 1칸 = 캐릭터 도트 26칸(캐릭터 키가 블록 두 칸 반쯤)
+const REDUCED_MS = 20000
+const MAX_RATIO = 2      // 앱 배경 캔버스 해상도 상한(화면 배율)
+const SWAY = 12          // 화면이 좌우로 흔들리는 폭(그림 픽셀)
+const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 막
 
-const BLOCK_VS = `
-attribute vec3 aPos; attribute vec2 aUv; attribute vec3 aInfo;
-uniform mat4 uPV; uniform vec4 uVs;
-varying vec2 vUv; varying vec3 vInfo; varying float vDepth;
+// 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상, 처음 x](3)
+// 종류 0 구름 · 1 열기구 · 2 헬리콥터와 풍선 행렬 · 3 버스와 차 · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대
+const QUAD_VS = `
+attribute vec2 aPos; attribute vec2 aUv; attribute vec3 aAni;
+uniform vec4 uView; uniform vec2 uRes; uniform float uTime; uniform float uSway;
+varying vec2 vUv; varying float vKind; varying vec2 vPos;
 void main(){
-  vec4 p = uPV * vec4(aPos, 1.);
-  vDepth = p.w;
-  p.xy = p.xy * uVs.xy + uVs.zw * p.w;   // 화면 밀기(무대: 발 자리를 캐릭터 발밑에 고정)
-  gl_Position = p; vUv = aUv; vInfo = aInfo;
+  float k = aAni.x, ph = aAni.y;
+  vec2 p = aPos;
+  if (k < 3.5) {
+    float sp = k < .5 ? 3. + ph * 2. : k < 1.5 ? 1.5 + ph * 2.5 : k < 2.5 ? 7. + ph * 6. : 22. + ph * 16.;
+    float pad = k < .5 ? 2155. : 400., per = k < .5 ? 6465. : ${STREET.w + 500}.;
+    p.x += mod(aAni.z + sp * uTime + pad, per) - pad - aAni.z;
+    p.y += k < .5 ? 0. : k < 1.5 ? sin(uTime * .55 + ph * 6.283) * 5. : k < 2.5 ? sin(uTime * 1.3 + ph * 6.283) * 2.5 : 0.;
+  }
+  float par = k < .5 ? .15 : k < 1.5 ? .3 : k < 2.5 ? .6 : k < 3.5 ? .8 : k < 4.5 ? .5 : k < 5.5 ? 1. : k < 6.5 ? .25 : 0.;
+  p.x += uSway * par;
+  vPos = p;
+  vec2 c = p * uView.xy + uView.zw;          // 캔버스 픽셀(왼쪽 위 원점)
+  gl_Position = vec4(c.x / uRes.x * 2. - 1., 1. - c.y / uRes.y * 2., 0., 1.);
+  vUv = aUv; vKind = k;
 }`
-const BLOCK_FS = `
+const QUAD_FS = `
 precision mediump float;
-uniform sampler2D uAtlas; uniform vec2 uGrid; uniform float uLit0;
-uniform vec3 uAmb; uniform vec3 uFog; uniform vec2 uFogR; uniform float uLamp; uniform float uMask;
-varying vec2 vUv; varying vec3 vInfo; varying float vDepth;
+uniform sampler2D uTex; uniform vec3 uAmb; uniform vec3 uCloud; uniform vec3 uHaze; uniform float uLamp; uniform float uMask; uniform float uTw;
+uniform vec3 uFoot;   // 발 자리(그림 픽셀)와 그림자 반폭
+varying vec2 vUv; varying float vKind; varying vec2 vPos;
 void main(){
-  float t = floor(vInfo.x + .5);
-  vec2 tile = vec2(mod(t, uGrid.x), floor(t / uGrid.x));
-  vec3 c = texture2D(uAtlas, (tile * 16. + floor(fract(vUv) * 16.) + .5) / (uGrid * 16.)).rgb;
-  vec3 col = c * vInfo.y * uAmb;
-  if (t >= uLit0) {
-    if (vInfo.z > 1.5) col = mix(col, c * vec3(1.2, 1., .55) + vec3(.3, .2, .04), uLamp * step(.42, fract(vInfo.z)) * .92); // 창: 밤에 군데군데 켜진다
-    else col = c * (.82 + .4 * uLamp);                                                                                      // 등 · 전구
-  } else if (vInfo.z > .5) col = c * vInfo.y * mix(uAmb, vec3(1.), .5 + .5 * uLamp);                                         // 불 밝힌 간판
-  col = mix(col, uFog, smoothstep(uFogR.x, uFogR.y, vDepth));
-  gl_FragColor = vec4(mix(col, vec3(.09, .07, .16), uMask), 1.);
+  vec4 t = texture2D(uTex, vUv);
+  if (t.a < .004) discard;
+  vec3 c = t.rgb / t.a;
+  float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
+  vec3 lit;
+  if (vKind < .5) lit = c * uCloud;
+  else if (vKind < 6.5) {
+    lit = c * uAmb;
+    // 밤: 밝고 진한 색(네온 · 간판 · 불 켜진 창)은 제 빛을 지킨다
+    lit = mix(lit, c * 1.05 + .03, smoothstep(.6, .9, mx) * smoothstep(.2, .5, mx - mn) * uLamp);
+    if (vKind > 3.5 && vKind < 4.5) lit = mix(lit, uHaze, .3);
+  } else {
+    // 매장 안은 등불을 받아 바깥보다 덜 물든다. 아주 밝은 점(천장 · 바닥의 조명)은 느리게 반짝인다
+    lit = c * mix(vec3(1.), uAmb, .3) + vec3(.03, .012, 0.) * uLamp;
+    float lum = dot(c, vec3(.3, .59, .11));
+    lit *= 1. + smoothstep(.86, .97, lum) * .09 * sin(uTw * 1.7 + floor(vPos.x / 46.) * 2.4 + floor(vPos.y / 40.) * 1.3);
+    vec2 d = (vPos - uFoot.xy) / vec2(uFoot.z, uFoot.z * .26);
+    lit *= 1. - .34 * smoothstep(1., .25, length(d));
+  }
+  gl_FragColor = vec4(mix(lit, vec3(.09, .07, .16), uMask) * t.a, t.a);
 }`
-const SKY_VS = 'attribute vec2 aP; void main(){ gl_Position = vec4(aP, 0., 1.); }'
-// 하늘: 네 단 그러데이션 · 네모난 해와 달 · 별 · 핑크빈 별자리. 3픽셀 칸으로 끊어 블록 세상의 하늘처럼 보이게 한다
+const SKY_VS = 'attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0., 1.); }'
+// 하늘: 네 단 그러데이션 · 해와 달 · 별 · 핑크빈 별자리. 좌표는 CSS px(왼쪽 위 원점)
 const SKY_FS = `
 precision mediump float;
-uniform vec2 uRes; uniform vec3 uSky[4]; uniform vec3 uSun; uniform vec3 uMoon; uniform vec3 uSunCol; uniform float uNight; uniform float uTime; uniform float uMask;
+uniform vec2 uRes; uniform float uPx; uniform vec3 uSky[4]; uniform vec3 uSun; uniform vec3 uMoon; uniform vec3 uSunCol; uniform float uNight; uniform float uTime; uniform float uMask;
 float hash(vec2 p){ vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
 float seg(vec2 p, vec2 a, vec2 b){ vec2 pa = p - a, ba = b - a; return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0., 1.)); }
 #define S(ax,ay,bx,by) d = min(d, seg(q, vec2(ax,ay), vec2(bx,by)));
@@ -64,65 +94,54 @@ vec2 pinkbean(vec2 q){
   return vec2(d, n);
 }
 void main(){
-  vec2 size = floor(uRes / 3.);
-  vec2 p = floor(vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / 3.) + .5;
-  float t = clamp(p.y / size.y, 0., 1.);
+  vec2 size = uRes / uPx;
+  vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uPx;
+  float t = clamp(p.y / (size.y * .8), 0., 1.);
   vec3 col = t < .42 ? mix(uSky[0], uSky[1], t / .42) : (t < .78 ? mix(uSky[1], uSky[2], (t - .42) / .36) : mix(uSky[2], uSky[3], (t - .78) / .22));
   if (uNight > .01) {
-    float h = hash(floor(p / 3.));
-    col = mix(col, vec3(1., .97, .9), step(.955, h) * step(length(fract(p / 3.) - .5), .34) * (.6 + .4 * sin(uTime * (.8 + h * 2.) + h * 40.)) * uNight * (1. - smoothstep(.6, .95, t)));
+    vec2 g = floor(p / 16.); float h = hash(g);
+    vec2 o = (vec2(hash(g + 7.), hash(g + 13.)) - .5) * 10.;
+    float tw = .6 + .4 * sin(uTime * (.8 + h * 2.) + h * 40.);
+    col += vec3(1., .97, .9) * step(.8, h) * smoothstep(1.5, .3, length(p - (g + .5) * 16. - o)) * tw * uNight * (1. - smoothstep(.5, .9, t));
     for (int i = 0; i < 2; i++) {
-      vec2 dn = pinkbean((p - vec2(size.x * (i == 0 ? .06 : .94), size.y * (i == 0 ? .2 : .26))) * .9);
+      vec2 dn = pinkbean((p - vec2(i == 0 ? 78. : size.x - 78., i == 0 ? 44. : 48.)) * .52);
       float a = max(exp(-dn.x * dn.x * 4.) * .7, exp(-dn.y * dn.y * .3));
       col = mix(col, vec3(1., .86, .4), min(1., a) * uNight * (.75 + .25 * sin(uTime * 1.2 + float(i) * 2.)));
     }
   }
-  vec2 m = p - uMoon.xy * size;
-  col = mix(col, vec3(.78, .84, 1.), exp(-length(m) * .06) * .35 * uMoon.z);
-  col = mix(col, vec3(1., .96, .8), step(max(abs(m.x), abs(m.y)), 9.) * step(4., max(abs(m.x - 4.), abs(m.y + 3.)) - 3.) * uMoon.z);
-  vec2 s = p - uSun.xy * size;
-  col = mix(col, uSunCol, exp(-length(s) * .035) * .55 * uSun.z);
-  col = mix(col, mix(uSunCol, vec3(1.), .7), step(max(abs(s.x), abs(s.y)), 11.) * uSun.z);
+  vec2 m = p - uMoon.xy;
+  col = mix(col, vec3(.78, .84, 1.), exp(-length(m) * .03) * .4 * uMoon.z);
+  col = mix(col, vec3(1., .97, .84), smoothstep(15., 13.5, length(m)) * smoothstep(11., 12.5, length(m - vec2(7., -5.))) * uMoon.z);
+  vec2 s = p - uSun.xy;
+  col = mix(col, uSunCol, exp(-length(s) * .016) * .6 * uSun.z);
+  col = mix(col, mix(uSunCol, vec3(1.), .7), smoothstep(19., 17., length(s)) * uSun.z);
   gl_FragColor = vec4(mix(col, vec3(.09, .07, .16), uMask), 1.);
 }`
-
-// ── 행렬(열 우선) ──
-type M4 = Float32Array
-const perspective = (fovy: number, aspect: number, n: number, f: number): M4 => {
-  const k = 1 / Math.tan(fovy / 2)
-  return new Float32Array([k / aspect, 0, 0, 0, 0, k, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, (2 * f * n) / (n - f), 0])
-}
-const lookAt = (e: number[], t: number[]): M4 => {
-  let zx = e[0] - t[0], zy = e[1] - t[1], zz = e[2] - t[2]
-  const zl = Math.hypot(zx, zy, zz); zx /= zl; zy /= zl; zz /= zl
-  let xx = zz, xz = -zx; const xl = Math.hypot(xx, xz); xx /= xl; xz /= xl // x = up(0,1,0) × z
-  const yx = zy * xz, yy = zz * xx - zx * xz, yz = -zy * xx                 // y = z × x
-  return new Float32Array([xx, yx, zx, 0, 0, yy, zy, 0, xz, yz, zz, 0, -(xx * e[0] + xz * e[2]), -(yx * e[0] + yy * e[1] + yz * e[2]), -(zx * e[0] + zy * e[1] + zz * e[2]), 1])
-}
-const mul = (a: M4, b: M4): M4 => {
-  const o = new Float32Array(16)
-  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3]
-  return o
-}
 
 type Uni = Record<string, WebGLUniformLocation | null>
 interface Scene {
   kind: SceneKind
   canvas: HTMLCanvasElement
   gl: WebGLRenderingContext | null
-  block: { prog: WebGLProgram; u: Uni; buf: WebGLBuffer; ibuf: WebGLBuffer; count: number } | null
+  quad: { prog: WebGLProgram; u: Uni; buf: WebGLBuffer } | null
   sky: { prog: WebGLProgram; u: Uni; buf: WebGLBuffer } | null
+  ranges: number[][]             // 종류별 [첫 정점, 개수]
+  bmps: (ImageBitmap | HTMLImageElement | null)[]
+  tex: (WebGLTexture | null)[]
+  pending: number[]              // 아직 올리지 않은 그림 번호
   host: HTMLElement | null
-  ratio: number                 // 캔버스 픽셀 / CSS 픽셀
-  foot: [number, number]        // 발 자리(캔버스 픽셀)
-  blockPx: number               // 발 자리에서 블록 1칸의 캔버스 픽셀 수
-  arrive: number                // 0 → 1: 뜨면서 다가간다
+  ratio: number                  // 캔버스 픽셀 / CSS 픽셀
+  foot: [number, number]         // 무대: 발 자리(캔버스 픽셀)
+  shadow: number                 // 무대: 발밑 그림자 반폭(그림 픽셀)
+  arrive: number                 // 0 → 1: 뜨면서 살짝 다가간다
   shown: boolean
   dirty: boolean
+  at: number
   failed: boolean
   cleanup: (() => void) | null
 }
 
+const SOURCES: Record<SceneKind, string[]> = { sky: [streetAir.src, streetFar.src, streetMain.src], room: [roomFar.src, roomMain.src] }
 const scenes: Partial<Record<SceneKind, Scene>> = {}
 let raf = 0
 let last = 0
@@ -132,57 +151,96 @@ function program(gl: WebGLRenderingContext, vs: string, fs: string, names: strin
   const mk = (type: number, src: string) => { const s = gl.createShader(type)!; gl.shaderSource(s, src); gl.compileShader(s); return s }
   const prog = gl.createProgram()!
   gl.attachShader(prog, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, fs))
-  gl.bindAttribLocation(prog, 0, names[0]); gl.bindAttribLocation(prog, 1, 'aUv'); gl.bindAttribLocation(prog, 2, 'aInfo')
+  gl.bindAttribLocation(prog, 0, 'aPos'); gl.bindAttribLocation(prog, 1, 'aUv'); gl.bindAttribLocation(prog, 2, 'aAni')
   gl.linkProgram(prog)
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
     if (process.env.NODE_ENV !== 'production') console.warn('[scene]', gl.getProgramInfoLog(prog), gl.getShaderInfoLog(gl.getAttachedShaders(prog)![0]), gl.getShaderInfoLog(gl.getAttachedShaders(prog)![1]))
     return null
   }
   const u: Uni = {}
-  for (const n of names.slice(1)) u[n] = gl.getUniformLocation(prog, n)
+  for (const n of names) u[n] = gl.getUniformLocation(prog, n)
   return { prog, u }
 }
 
-// 텍스처 · 정점 버퍼 · 셰이더를 올린다. 컨텍스트를 되찾았을 때도 다시 부른다.
+// 사각형 목록 → 정점 배열. 종류순으로 놓고 종류별 범위를 적어 둔다.
+function mesh(kind: SceneKind) {
+  const out: number[] = [], ranges: number[][] = []
+  const quad = (k: number, ph: number, x: number, y: number, w: number, h: number, u0: number, v0: number, u1: number, v1: number) => {
+    const r = (ranges[k] ??= [out.length / 7, 0])
+    r[1] += 6
+    for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]) out.push(x + cx * w, y + cy * h, cx ? u1 : u0, cy ? v1 : v0, k, ph, x)
+  }
+  if (kind === 'sky') {
+    const [aw, ah] = STREET.atlas
+    STREET.sprites.forEach(([k, ax, ay, w, h, x, y], i) => quad(k, (i * 0.618034) % 1, x, y, w, h, ax / aw, ay / ah, (ax + w) / aw, (ay + h) / ah))
+    quad(4, 0, 0, STREET.far.y, STREET.w, STREET.far.h, 0, 0, 1, 1)
+    quad(5, 0, 0, STREET.main.y, STREET.w, STREET.main.h, 0, 0, 1, 1)
+  } else {
+    quad(6, 0, 0, 0, ROOM.w, ROOM.h, 0, 0, 1, 1)
+    quad(7, 0, 0, 0, ROOM.w, ROOM.h, 0, 0, 1, 1)
+  }
+  return { verts: new Float32Array(out), ranges }
+}
+
+// 셰이더 · 정점 버퍼를 올린다. 컨텍스트를 되찾았을 때도 다시 부른다(그림은 다시 올린다).
 function init(sc: Scene) {
   const gl = sc.gl
   if (!gl) return
-  if (!gl.getExtension('OES_element_index_uint')) { sc.failed = true; return }
-  const bp = program(gl, BLOCK_VS, BLOCK_FS, ['aPos', 'uPV', 'uVs', 'uAtlas', 'uGrid', 'uLit0', 'uAmb', 'uFog', 'uFogR', 'uLamp', 'uMask'])
-  const sp = sc.kind === 'sky' ? program(gl, SKY_VS, SKY_FS, ['aP', 'uRes', 'uSky', 'uSun', 'uMoon', 'uSunCol', 'uNight', 'uTime', 'uMask']) : null
-  if (!bp || (sc.kind === 'sky' && !sp)) { sc.failed = true; return }
-  const atlas = paintAtlas()
-  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture())
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, atlas.width, atlas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, atlas.data)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-  const mesh = buildMesh(SCENES[sc.kind])
-  const buf = gl.createBuffer()!, ibuf = gl.createBuffer()!
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, mesh.verts, gl.STATIC_DRAW)
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibuf); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.index, gl.STATIC_DRAW)
-  sc.block = { ...bp, buf, ibuf, count: mesh.index.length }
+  if (sc.kind === 'sky' && gl.getParameter(gl.MAX_TEXTURE_SIZE) < STREET.w) { sc.failed = true; return }
+  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uTex', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
+  const sp = sc.kind === 'sky' ? program(gl, SKY_VS, SKY_FS, ['uRes', 'uPx', 'uSky', 'uSun', 'uMoon', 'uSunCol', 'uNight', 'uTime', 'uMask']) : null
+  if (!qp || (sc.kind === 'sky' && !sp)) { sc.failed = true; return }
+  const m = mesh(sc.kind)
+  const buf = gl.createBuffer()!
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, m.verts, gl.STATIC_DRAW)
+  sc.quad = { ...qp, buf }; sc.ranges = m.ranges
   if (sp) {
     const sb = gl.createBuffer()!
     gl.bindBuffer(gl.ARRAY_BUFFER, sb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
     sc.sky = { ...sp, buf: sb }
   }
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+  sc.tex = sc.bmps.map(() => null)
+  sc.pending = sc.bmps.map((b, i) => (b ? i : -1)).filter((i) => i >= 0)
   sc.dirty = true
+}
+
+// 그림 한 장을 텍스처로. 한 프레임에 한 장만 올린다(큰 그림을 한꺼번에 올리면 프레임이 끊긴다).
+function upload(sc: Scene) {
+  const gl = sc.gl, i = sc.pending.shift()
+  if (!gl || i == null) return
+  const t = gl.createTexture()
+  gl.bindTexture(gl.TEXTURE_2D, t)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sc.bmps[i]!)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  sc.tex[i] = t
+  sc.dirty = true
+}
+
+function load(sc: Scene) {
+  SOURCES[sc.kind].forEach((src, i) => {
+    const done = (b: ImageBitmap | HTMLImageElement) => { sc.bmps[i] = b; if (sc.quad && !sc.tex[i] && !sc.pending.includes(i)) sc.pending.push(i) }
+    const viaImg = () => { const img = new Image(); img.decoding = 'async'; img.onload = () => done(img); img.src = src }
+    if (typeof createImageBitmap !== 'function') { viaImg(); return }
+    fetch(src).then((r) => r.blob()).then((b) => createImageBitmap(b, { premultiplyAlpha: 'premultiply' })).then(done).catch(viaImg)
+  })
 }
 
 function create(kind: SceneKind): Scene {
   const canvas = document.createElement('canvas')
-  canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;image-rendering:pixelated;opacity:0;pointer-events:none'
-  const sc: Scene = { kind, canvas, gl: null, block: null, sky: null, host: null, ratio: 1, foot: [0, 0], blockPx: 52, arrive: 0, shown: false, dirty: true, failed: false, cleanup: null }
+  canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;pointer-events:none'
+  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], shadow: 13, arrive: 0, shown: false, dirty: true, at: 0, failed: false, cleanup: null }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다. 그때는 바탕색만 남는다. (?skygl=soft 는 GPU 없는 확인 환경에서 강제로 켜는 용도)
   const soft = /[?&]skygl=soft/.test(window.location.search)
-  const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: true, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft })
+  const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft })
   if (!gl) { sc.failed = true; return sc }
   sc.gl = gl
-  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sc.block = null; sc.sky = null })
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sc.quad = null; sc.sky = null; sc.tex = []; sc.pending = [] })
   canvas.addEventListener('webglcontextrestored', () => init(sc))
   init(sc)
+  if (!sc.failed) load(sc)
   return sc
 }
 
@@ -193,7 +251,7 @@ function layout(sc: Scene) {
   const hw = host.clientWidth, hh = host.clientHeight
   if (!hw || !hh) return
   const dpr = window.devicePixelRatio || 1
-  const r = (sc.ratio = Math.min(dpr, MAX_RATIO))
+  const r = (sc.ratio = sc.kind === 'room' ? dpr : Math.min(dpr, MAX_RATIO))
   const c = sc.canvas, w = Math.round(hw * r), h = Math.round(hh * r)
   if (c.width !== w) c.width = w
   if (c.height !== h) c.height = h
@@ -201,91 +259,83 @@ function layout(sc: Scene) {
     const f = getStageFloor()
     if (f && f.wrap.isConnected && host.parentElement?.contains(f.wrap)) {
       const wr = f.wrap.getBoundingClientRect(), hr = host.getBoundingClientRect()
-      sc.foot = [(wr.left - hr.left + f.cx) * r, (wr.top - hr.top + f.footY) * r]
-      sc.blockPx = (BLOCK_PX * f.scale * r) / dpr
+      sc.foot = [Math.round((wr.left - hr.left + f.cx) * r), Math.round((wr.top - hr.top + f.footY) * r)]
+      sc.shadow = (f.shadow * f.scale) / dpr
     } else {
       // 캐릭터가 아직 안 그려졌을 때: 그려질 자리와 거의 같은 값으로 미리 잡는다.
-      const px = Math.max(2, Math.round(2 * dpr))
-      sc.foot = [(hw / 2) * r, (hh / 2 + (38.4 * px) / dpr) * r]
-      sc.blockPx = (BLOCK_PX * px * r) / dpr
+      sc.foot = [Math.round((hw / 2) * r), Math.round((hh / 2 + 38.4) * r)]
     }
   }
   sc.dirty = true
 }
 
-// 해·달의 자리(하늘 안 0~1). 앱 배경은 위쪽 띠만 보이니 거기 둔다.
-function orb(phase: number): [number, number, number] {
+// 해·달의 자리(CSS px). 앱 배경은 위쪽 띠와 양옆만 보이니 위쪽에 둔다.
+function orb(phase: number, w: number): [number, number, number] {
   if (phase <= 0 || phase >= 1) return [0, 0, 0]
   const s = Math.sin(Math.PI * phase)
-  return [0.12 + 0.76 * phase, 0.05 + (1 - s) * 0.2, Math.min(1, s * 6)]
+  return [(0.1 + 0.8 * phase) * w, 34 + (1 - s) * 130, Math.min(1, s * 6)]
 }
 
 function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
-  const gl = sc.gl, b = sc.block, c = sc.canvas
-  if (!gl || !b) return
-  const def = SCENES[sc.kind], s = still ? 4 : now / 1000, W = c.width, H = c.height
-  sc.arrive = still ? 1 : Math.min(1, sc.arrive + 0.03)
-  const ease = 1 - Math.pow(1 - sc.arrive, 3)
-  const room = sc.kind === 'room'
-  const sway = still ? 0 : room ? 0.5 : 1
-  const eye = [
-    def.eye[0] + Math.sin(s * 0.21) * 0.4 * sway,
-    def.eye[1] + Math.sin(s * 0.33) * 0.15 * sway,
-    def.eye[2] + (1 - ease) * (room ? 3 : 5),
-  ]
-  const look = def.look
-  const fov = ((!room && W < H ? 70 : def.fov) * Math.PI) / 180
-  const pv = mul(perspective(fov, room ? 1 : W / H, 0.5, 260), lookAt(eye, look))
-  let vs = [1, 1, 0, 0]
-  if (room && def.pin) {
-    // 발 자리가 화면의 sc.foot 에 오고, 그 깊이에서 블록 1칸이 sc.blockPx 가 되도록 큰 정사각 화면의 일부를 잘라 그린다
-    const p = def.pin, cw = pv[3] * p[0] + pv[7] * p[1] + pv[11] * p[2] + pv[15]
-    const nx = (pv[0] * p[0] + pv[4] * p[1] + pv[8] * p[2] + pv[12]) / cw, ny = (pv[1] * p[0] + pv[5] * p[1] + pv[9] * p[2] + pv[13]) / cw
-    const full = sc.blockPx * 2 * cw * Math.tan(fov / 2)
-    const ox = ((nx + 1) / 2) * full - sc.foot[0], oy = ((1 - ny) / 2) * full - sc.foot[1]
-    vs = [full / W, full / H, full / W - (2 * ox) / W - 1, 1 - full / H + (2 * oy) / H]
-  }
+  const gl = sc.gl, q = sc.quad, c = sc.canvas
+  if (!gl || !q || sc.tex.length < SOURCES[sc.kind].length || sc.tex.some((t) => !t)) return
+  const s = still ? 40 : now / 1000, W = c.width, H = c.height, room = sc.kind === 'room'
+  sc.arrive = still ? 1 : Math.min(1, sc.arrive + 0.035)
+  const ease = 1 - Math.pow(1 - sc.arrive, 3), zoom = 1 + 0.03 * (1 - ease)
   gl.viewport(0, 0, W, H)
   gl.enableVertexAttribArray(0)
-  const mask = room ? 0 : 0.3
+  const mask = room ? 0 : MASK
   if (sc.sky) {
-    const k = sc.sky, moon = orb(st.moonPhase)
+    const k = sc.sky, cw = W / sc.ratio, moon = orb(st.moonPhase, cw)
     moon[2] *= Math.min(1, st.night * 1.6)
-    gl.disable(gl.DEPTH_TEST)
+    gl.disable(gl.BLEND)
     gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2)
     gl.useProgram(k.prog)
     gl.bindBuffer(gl.ARRAY_BUFFER, k.buf); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
-    gl.uniform2f(k.u.uRes, W, H); gl.uniform3fv(k.u.uSky, st.sky.flat()); gl.uniform3fv(k.u.uSun, orb(st.sunPhase)); gl.uniform3fv(k.u.uMoon, moon)
+    gl.uniform2f(k.u.uRes, W, H); gl.uniform1f(k.u.uPx, sc.ratio); gl.uniform3fv(k.u.uSky, st.sky.flat()); gl.uniform3fv(k.u.uSun, orb(st.sunPhase, cw)); gl.uniform3fv(k.u.uMoon, moon)
     gl.uniform3fv(k.u.uSunCol, st.sun); gl.uniform1f(k.u.uNight, st.night); gl.uniform1f(k.u.uTime, s); gl.uniform1f(k.u.uMask, mask)
     gl.drawArrays(gl.TRIANGLES, 0, 3)
-    gl.clear(gl.DEPTH_BUFFER_BIT)
-  } else { gl.clearColor(0.1, 0.07, 0.09, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) }
-  gl.enable(gl.DEPTH_TEST)
+  } else { gl.clearColor(0.085, 0.075, 0.075, 1); gl.clear(gl.COLOR_BUFFER_BIT) }
+  gl.enable(gl.BLEND)
   gl.enableVertexAttribArray(1); gl.enableVertexAttribArray(2)
-  gl.useProgram(b.prog)
-  gl.bindBuffer(gl.ARRAY_BUFFER, b.buf); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.ibuf)
-  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 32, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 32, 12); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 32, 20)
-  gl.uniformMatrix4fv(b.u.uPV, false, pv); gl.uniform4fv(b.u.uVs, vs)
-  gl.uniform1i(b.u.uAtlas, 0); gl.uniform2f(b.u.uGrid, COLS, ROWS); gl.uniform1f(b.u.uLit0, FIRST_LIT)
-  // 방 안은 등불을 받아 바깥보다 덜 물든다
-  const amb = room ? st.amb.map((v, i) => v + ([1.04, 0.98, 0.9][i] - v) * (0.5 + 0.3 * st.lamp)) : st.amb
-  const fog = room ? [0.13, 0.09, 0.11] : st.sky[3].map((v, i) => v * 0.7 + st.sky[2][i] * 0.3)
-  gl.uniform3fv(b.u.uAmb, amb); gl.uniform3fv(b.u.uFog, fog); gl.uniform2f(b.u.uFogR, def.fog[0], def.fog[1])
-  gl.uniform1f(b.u.uLamp, st.lamp); gl.uniform1f(b.u.uMask, mask)
-  gl.drawElements(gl.TRIANGLES, b.count, gl.UNSIGNED_INT, 0)
+  gl.useProgram(q.prog)
+  gl.bindBuffer(gl.ARRAY_BUFFER, q.buf)
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 28, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 28, 8); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 28, 16)
+  // 그림 픽셀 → 캔버스 픽셀: c = p * k + o
+  let k: number, ox: number, oy: number
+  if (room) { k = sc.ratio * zoom; ox = sc.foot[0] - ROOM.foot[0] * k; oy = sc.foot[1] - ROOM.foot[1] * k }
+  else { k = sc.ratio * Math.max(1, W / sc.ratio / (STREET.w - 4 * SWAY)) * zoom; ox = W / 2 - (STREET.w / 2) * k; oy = H - STREET.h * k }
+  gl.uniform4f(q.u.uView, k, k, ox, oy); gl.uniform2f(q.u.uRes, W, H); gl.uniform1f(q.u.uTime, s); gl.uniform1f(q.u.uTw, s % 600)
+  gl.uniform1f(q.u.uSway, still ? 0 : Math.sin(s * 0.09) * SWAY)
+  gl.uniform1i(q.u.uTex, 0); gl.activeTexture(gl.TEXTURE0)
+  // 밤의 거리는 하늘빛보다 더 가라앉힌다 — 네온이 살아난다
+  const dim = 1 - 0.4 * st.night
+  gl.uniform3f(q.u.uAmb, st.amb[0] * dim, st.amb[1] * dim, st.amb[2] * dim)
+  gl.uniform3fv(q.u.uCloud, st.cloudA)
+  gl.uniform3fv(q.u.uHaze, st.sky[2].map((v, i) => (v + st.sky[3][i]) / 2))
+  gl.uniform1f(q.u.uLamp, st.lamp); gl.uniform1f(q.u.uMask, mask)
+  gl.uniform3f(q.u.uFoot, ROOM.foot[0], ROOM.foot[1] + 1, sc.shadow)
+  const part = (tex: number, kinds: number[]) => {
+    gl.bindTexture(gl.TEXTURE_2D, sc.tex[tex])
+    for (const kd of kinds) { const r = sc.ranges[kd]; if (r) gl.drawArrays(gl.TRIANGLES, r[0], r[1]) }
+  }
+  if (room) { part(0, [6]); part(1, [7]) }
+  else { part(0, [0, 1]); part(1, [4]); part(0, [3]); part(2, [5]); part(0, [2]) }
   sc.dirty = false
-  if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .4s ease'; c.style.opacity = '1' }
+  sc.at = now
+  if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }
 }
 
 function tick(now: number) {
   raf = requestAnimationFrame(tick)
   const still = !!reduce?.matches
+  for (const sc of Object.values(scenes)) if (sc && sc.host && sc.pending.length) { upload(sc); break } // 한 프레임에 한 장
   if (now - last < FRAME_MS) return
   last = now
   let st: SkyState | null = null
   for (const sc of Object.values(scenes)) {
-    if (!sc || !sc.host || !sc.block) continue
-    if (still && !sc.dirty) continue
+    if (!sc || !sc.host || !sc.quad) continue
+    if (still && !sc.dirty && now - sc.at < REDUCED_MS) continue
     draw(sc, now, st ?? (st = skyState(skyHour())), still)
   }
 }
@@ -296,7 +346,7 @@ export function mountScene(kind: SceneKind, host: HTMLElement): () => void {
   if (sc.failed) return () => {}
   sc.cleanup?.()
   sc.host = host
-  // 붙을 때마다: 어두운 바탕에서 밝아지며 다가간다
+  // 붙을 때마다: 어두운 바탕에서 밝아지며 살짝 다가간다
   sc.canvas.style.transition = 'none'; sc.canvas.style.opacity = '0'
   sc.shown = false; sc.arrive = 0
   host.appendChild(sc.canvas)
