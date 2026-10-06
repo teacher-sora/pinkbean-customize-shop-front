@@ -1,10 +1,12 @@
 // 배경 장면을 그리는 WebGL 실행기. 그림은 게임 맵에서 뽑은 것(메이플 15번가)이고, 여기서는 층을 겹쳐 놓고
 // 시각에 따른 색과 작은 움직임만 입힌다. 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
 //  · 앱 배경(sky) = 15번가 거리: 하늘(셰이더) → 구름 · 열기구 → 먼 빌딩 숲 → 거리의 건물(탑을 끌어안은 예티 풍선 포함) → 밤 불빛의 번짐
-//    → 길을 걷는 핑크빈(왼쪽 → 오른쪽)과 커닝 타워의 아미(오른쪽 → 왼쪽, 가끔 멈춰 선다) → 헬리콥터.
-//    그림 1칸 = 화면 1px 로 놓고(배율을 바꾸지 않는다) 아래 가운데를 화면 아래 가운데에 맞춘다.
+//    → 길을 걷는 이들 → 헬리콥터. 그림 1칸 = 화면 1px 로 놓고(배율을 바꾸지 않는다) 아래 가운데를 화면 아래 가운데에 맞춘다.
 //    흔들림과 하늘의 것들은 끊지 않고 매끄럽게 흘려보내고(칸 사이는 부드럽게 섞인다), 걷는 캐릭터만 화면 픽셀에 맞춰 놓는다 —
 //    도트 캐릭터는 반 칸씩 걸치면 뭉개져 보이고, 큰 그림은 한 칸씩 끊기면 딱딱해 보인다.
+//  · 지나가는 것들(열기구 · 헬리콥터 · 걷는 이들)은 저마다 화면 한쪽 끝에서 나타나 반대쪽으로 사라지고, 화면에서 완전히 사라진 뒤
+//    쉬었다가 다시 나타난다. 나타날 때마다 방향 · 빠르기 · 쉬는 시간을 정해진 범위 안에서 새로 뽑는다(MOVE). 걷는 이는 가끔 멈춰 선다.
+//    자리 계산은 여기(JS)서 한다: 열 개 남짓의 덧셈이고, 셰이더에는 유니폼 배열 하나(uMov)로 넘긴다.
 //  · 무대(room) = 15번가 패션 매장 안: 창밖 거리 → 매장. 가운데 깔개가 캐릭터 발밑에 오고, 그림 1칸 = 캐릭터 도트 1칸이다 —
 //    미리보기 배율을 올리면 방도 함께 커진다(정수 배율이라 칸을 그대로 키운다).
 //  · 움직임: 구름 · 열기구 · 차가 따로 흘러가고(정점 셰이더에서 계산), 화면 전체가 아주 천천히 좌우로 흔들린다(층마다 폭이 다르다).
@@ -35,44 +37,32 @@ const MAX_RATIO = 2      // 앱 배경 캔버스 해상도 상한(화면 배율)
 const SWAY = 12          // 화면이 좌우로 흔들리는 폭(그림 픽셀)
 const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 막
 
-// 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상(걷는 이는 그림 한 장의 텍스처 폭), 처음 x, 빠르기 배수(걷는 이는 그림 장수)](4)
-// 종류 0 구름 · 1 열기구 · 2 헬리콥터 · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대 · 8 밤 불빛의 번짐 · 9 오른쪽으로 걷는 이 · 10 왼쪽으로 걷는 이
+// 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상 | 지나가는 것의 번호, 처음 x | 그림이 보는 쪽(-1 왼쪽 · 0 뒤집지 않음), 걷는 그림 한 장의 텍스처 폭](4)
+// 종류 0 구름 · 1 열기구 · 2 헬리콥터 · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대 · 8 밤 불빛의 번짐 · 9 걷는 이
 //      · 11 열기구의 밤 그림(속에서 빛난다. 낮 그림 위에 겹쳐 두고 밤에만 드러낸다)
+// 지나가는 것들(1 · 2 · 9 · 11)의 자리는 uMov[번호] = (가운데 x, y 를 옮긴 만큼, 걷는 그림 번호, 가는 쪽 ±1). 정점의 x 는 가운데에서의 거리다.
+const MAX_MOVERS = 12
 const QUAD_VS = `
 attribute vec2 aPos; attribute vec2 aUv; attribute vec4 aAni;
-uniform vec4 uView; uniform vec2 uRes; uniform float uTime; uniform float uSway;
+uniform vec4 uView; uniform vec2 uRes; uniform float uTime; uniform float uSway; uniform vec4 uMov[${MAX_MOVERS}];
 varying vec2 vUv; varying float vKind; varying vec2 vPos;
 void main(){
-  float kind = aAni.x, ph = aAni.y;
+  float kind = aAni.x;
   float k = kind > 10.5 ? 1. : kind;   // 밤 그림은 열기구와 똑같이 움직인다
-  vec2 mv = vec2(0.), uv = aUv;     // mv = 제자리에서 옮긴 만큼(그림 픽셀)
-  if (k < 2.5) {
-    // 핑크빈 열기구가 기준(5칸/초). 다른 열기구는 그 배수(aAni.w)로 흘러간다
-    float sp = k < .5 ? 3. + ph * 2. : k < 1.5 ? 5. * aAni.w : 7. + ph * 6.;
-    float pad = k < .5 ? 2155. : 400., per = k < .5 ? 6465. : ${STREET.w + 500}.;
-    mv.x = mod(aAni.z + sp * uTime + pad, per) - pad - aAni.z;
-    mv.y = k < .5 ? 0. : k < 1.5 ? sin(uTime * .55 + ph * 6.283) * 5. : sin(uTime * 1.3 + ph * 6.283) * 2.5;
-  } else if (k > 8.5) {
-    // 길을 걷는 이들: 한쪽 끝에서 나타나 반대쪽 끝으로 사라지고, 쉬었다가 다시 나타난다(둘의 빠르기 · 주기 · 처음 자리가 다르다).
-    // 건널 때마다 열에 여섯 번쯤은 도중에 한 번 멈춰 선다(자리와 여부는 건널 때마다 다르다).
-    bool right = k < 9.5;
-    float sp = right ? 24. : 34.;
-    float travel = ${STREET.w + 700}. / sp, per = travel + (right ? 50. : 85.);
-    float tt = uTime + (right ? travel * .28 : 17.);
-    float j = floor(tt / per), tau = tt - j * per;
-    float h1 = fract(sin(j * 12.9898 + k) * 43758.5453), h2 = fract(sin(j * 78.233 + k * 3.7) * 24634.6345);
-    float stop = step(h1, .6) * 4.5, tp = (.3 + .4 * h2) * travel;
-    float walked = tau < tp ? tau : (tau < tp + stop ? tp : tau - stop);
-    bool paused = tau >= tp && tau < tp + stop;
-    mv.x = (right ? walked * sp - 350. : ${STREET.w + 350}. - walked * sp) - aAni.z;
-    uv.x += (paused ? 0. : floor(mod(uTime * (right ? 8.33 : 5.), aAni.w))) * ph;
+  vec2 p = aPos, uv = aUv;
+  if (k < .5) {
+    float sp = 3. + aAni.y * 2.;
+    p.x += mod(aAni.z + sp * uTime + 2155., 6465.) - 2155. - aAni.z;
+  } else if (k < 2.5 || k > 8.5) {
+    vec4 m = uMov[int(aAni.y + .5)];
+    p = vec2(m.x + aPos.x * (aAni.z == 0. ? 1. : m.w * aAni.z), aPos.y + m.y);   // 가는 쪽을 보도록 뒤집는다
+    uv.x += m.z * aAni.w;
   }
   float par = k < .5 ? .15 : k < 1.5 ? .3 : k < 2.5 ? .6 : k < 4.5 ? .5 : k < 5.5 ? 1. : k < 6.5 ? .25 : k < 7.5 ? 0. : 1.;
-  mv.x += uSway * par;
-  vPos = aPos + mv;
-  vec2 d = mv * uView.xy;
-  if (k > 8.5) d = floor(d + .5);            // 걷는 캐릭터만 화면 픽셀에 맞춘다
-  vec2 c = aPos * uView.xy + uView.zw + d;   // 캔버스 픽셀(왼쪽 위 원점)
+  p.x += uSway * par;
+  vPos = p;
+  vec2 c = p * uView.xy + uView.zw;          // 캔버스 픽셀(왼쪽 위 원점)
+  if (k > 8.5) c = floor(c + .5);            // 걷는 캐릭터만 화면 픽셀에 맞춘다
   gl_Position = vec4(c.x / uRes.x * 2. - 1., 1. - c.y / uRes.y * 2., 0., 1.);
   vUv = uv; vKind = kind;
 }`
@@ -198,11 +188,72 @@ interface Scene {
   nearest: boolean               // 무대: 지금 텍스처 필터
   shadow: number                 // 무대: 발밑 그림자 반폭(그림 픽셀)
   arrive: number                 // 0 → 1: 처음 뜨면서 살짝 다가간다
+  mask: number                   // 지금의 어두운 막(배경만 볼 때는 걷힌다)
+  movers: Mover[] | null         // 지나가는 것들(처음 그릴 때 화면 폭을 보고 놓는다)
+  mov: Float32Array
   shown: boolean
   dirty: boolean
   at: number
   failed: boolean
   cleanup: (() => void) | null
+}
+
+// 지나가는 것 하나. type 0 열기구 · 1 헬리콥터 · 2 걷는 이
+interface Mover { type: number; w: number; mult: number; frames: number; x: number; dir: number; speed: number; wait: number; jit: number; ph: number; walk: number; pauseAt: number; pause: number }
+// 종류별 범위: 빠르기(그림 칸/초) · 화면에서 사라진 뒤 쉬는 시간(초) · 나타날 때마다 높이를 바꾸는 폭(칸).
+// 열기구는 핑크빈 열기구가 기준이고 주황버섯은 그 0.75배, 슈피겔만은 1.25배다(mult). 걷는 이는 핑크빈이 느리고(mult 0.75) 아이돌이 빠르다.
+const MOVE = [
+  { speed: [4.2, 6], gap: [4, 26], jit: 26 },
+  { speed: [9, 16], gap: [14, 60], jit: 24 },
+  { speed: [28, 40], gap: [10, 48], jit: 0 },
+]
+const PAUSE = { chance: 0.5, sec: [3, 6] }    // 걷는 이가 도중에 멈춰 서는 비율과 시간
+const rnd = (r: number[]) => r[0] + Math.random() * (r[1] - r[0])
+let moverDefs: Omit<Mover, 'x' | 'dir' | 'speed' | 'wait' | 'jit' | 'walk' | 'pauseAt' | 'pause'>[] = []
+
+function spawn(m: Mover, left: number, right: number) {
+  const edge = SWAY + 4 + m.w / 2
+  m.dir = Math.random() < 0.5 ? -1 : 1
+  m.speed = rnd(MOVE[m.type].speed) * m.mult
+  m.x = m.dir > 0 ? left - edge : right + edge
+  m.jit = (Math.random() * 2 - 1) * MOVE[m.type].jit
+  m.walk = 0; m.pause = 0
+  m.pauseAt = m.type === 2 && Math.random() < PAUSE.chance ? left + (0.2 + 0.6 * Math.random()) * (right - left) : NaN
+}
+function initMovers(left: number, right: number): Mover[] {
+  const count = [0, 0, 0], seen = [0, 0, 0]
+  for (const d of moverDefs) count[d.type]++
+  return moverDefs.map((d) => {
+    const m: Mover = { ...d, x: -1e5, dir: 1, speed: 0, wait: 0, jit: 0, walk: 0, pauseAt: NaN, pause: 0 }
+    const i = seen[d.type]++
+    spawn(m, left, right)
+    // 처음: 열기구는 하늘에 고루 떠 있고, 헬리콥터 하나도 떠 있다. 걷는 이는 하나가 곧 들어오고 나머지는 사이를 두고 온다
+    if (d.type === 0) m.x = left + ((i + 0.15 + 0.7 * Math.random()) / count[0]) * (right - left)
+    else if (d.type === 1 && i === 0) m.x = left + (0.2 + 0.6 * Math.random()) * (right - left)
+    else m.wait = d.type === 2 && i === 0 ? 1 + Math.random() * 3 : rnd(MOVE[d.type].gap) * (0.4 + 0.6 * i)
+    return m
+  })
+}
+function stepMovers(sc: Scene, dt: number, s: number, left: number, right: number) {
+  const list = (sc.movers ??= initMovers(left, right)), out = sc.mov
+  list.forEach((m, i) => {
+    if (m.wait > 0) { m.wait -= dt; if (m.wait <= 0) spawn(m, left, right) }
+    else {
+      if (m.pause > 0) m.pause -= dt
+      else {
+        const nx = m.x + m.dir * m.speed * dt
+        if ((m.pauseAt - m.x) * (m.pauseAt - nx) <= 0) { m.pause = rnd(PAUSE.sec); m.pauseAt = NaN } // 멈출 자리를 지났다
+        m.x = nx; m.walk += dt
+      }
+      const edge = SWAY + 4 + m.w / 2
+      if (m.dir > 0 ? m.x > right + edge : m.x < left - edge) { m.wait = rnd(MOVE[m.type].gap); m.x = -1e5 } // 화면에서 완전히 사라졌다 → 쉰다
+    }
+    const o = i * 4
+    out[o] = m.wait > 0 ? -1e5 : m.x
+    out[o + 1] = m.type === 0 ? m.jit + Math.sin(s * 0.55 + m.ph * 6.283) * 5 : m.type === 1 ? m.jit + Math.sin(s * 1.3 + m.ph * 6.283) * 2.5 : 0
+    out[o + 2] = m.type === 2 ? (m.pause > 0 ? 1 : Math.floor(m.walk * (m.frames > 4 ? 8.33 : 5)) % m.frames) : 0
+    out[o + 3] = m.dir
+  })
 }
 
 const SOURCES: Record<SceneKind, string[]> = { sky: [streetAir.src, streetFar.src, streetMain.src, streetGlow.src], room: [roomFar.src, roomMain.src] }
@@ -229,16 +280,30 @@ function program(gl: WebGLRenderingContext, vs: string, fs: string, names: strin
 const STRIDE = 8
 function mesh(kind: SceneKind) {
   const out: number[] = [], ranges: number[][] = []
-  const quad = (k: number, ph: number, x: number, y: number, w: number, h: number, u0: number, v0: number, u1: number, v1: number, extra = 0) => {
+  const quad = (k: number, ph: number, x: number, y: number, w: number, h: number, u0: number, v0: number, u1: number, v1: number, extra = 0, z = x) => {
     const r = (ranges[k] ??= [out.length / STRIDE, 0])
     r[1] += 6
-    for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]) out.push(x + cx * w, y + cy * h, cx ? u1 : u0, cy ? v1 : v0, k, ph, x, extra)
+    for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]) out.push(x + cx * w, y + cy * h, cx ? u1 : u0, cy ? v1 : v0, k, ph, z, extra)
   }
   if (kind === 'sky') {
     const [aw, ah] = STREET.atlas
-    // extra = 빠르기 배수(열기구) 또는 걷는 그림 장수.
-    // 걷는 이는 위상 자리에 그림 한 장의 텍스처 폭을 싣는다. 나머지는 흔들리는 박자(정해 두지 않았으면 순서대로 흩는다)
-    STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, b], i) => quad(k, k === 9 || k === 10 ? b / aw : b >= 0 ? b : (i * 0.618034) % 1, x, y, w, h, ax / aw, ay / ah, (ax + w) / aw, (ay + h) / ah, extra))
+    // sprites: [종류, 아틀라스 x, y, w, h, 장면 x, y, 빠르기 배수 | 걷는 그림 장수, 박자 | 장 사이 간격]
+    // 구름은 제자리에서 흘러가고, 나머지는 지나가는 것들이다. 같은 그림이 여러 번 놓여 있으면 하나만 쓴다(하늘이 붐비지 않게).
+    const defs: typeof moverDefs = [], byArt = new Map<string, number>(), byBeat = new Map<number, number>()
+    STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, b], i) => {
+      const uv = [ax / aw, ay / ah, (ax + w) / aw, (ay + h) / ah] as const
+      if (k === 0) { quad(0, (i * 0.618034) % 1, x, y, w, h, ...uv, 0); return }
+      if (k === 11) { const idx = byBeat.get(b); if (idx != null) quad(11, idx, -w / 2, y, w, h, ...uv, 0, extra < 0 ? -1 : 0); return }
+      const art = `${ax},${ay}`
+      if (byArt.has(art) || defs.length >= MAX_MOVERS) return
+      const walker = k === 9 || k === 10, idx = defs.length
+      byArt.set(art, idx); if (b >= 0 && !walker) byBeat.set(b, idx)
+      // 걷는 이: 핑크빈(9)은 오른쪽을 보게 뒤집어 뽑아 두었고 나머지는 왼쪽을 본다. 슈피겔만 열기구(배수가 음수)와 헬리콥터도 왼쪽을 본다
+      const face = walker ? (k === 9 ? 1 : -1) : k === 2 || extra < 0 ? -1 : 0
+      defs.push({ type: walker ? 2 : k === 2 ? 1 : 0, w, mult: walker ? (k === 9 ? 0.75 : 1) : k === 1 ? Math.abs(extra) : 1, frames: walker ? extra : 1, ph: (idx * 0.618034) % 1 })
+      quad(walker ? 9 : k, idx, -w / 2, y, w, h, ...uv, walker ? b / aw : 0, face)
+    })
+    moverDefs = defs
     quad(4, 0, 0, STREET.far.y, STREET.w, STREET.far.h, 0, 0, 1, 1)
     quad(5, 0, 0, STREET.main.y, STREET.w, STREET.main.h, 0, 0, 1, 1)
     quad(8, 0, 0, STREET.main.y, STREET.w, STREET.main.h, 0, 0, 1, 1)
@@ -254,7 +319,7 @@ function init(sc: Scene) {
   const gl = sc.gl
   if (!gl) return
   if (sc.kind === 'sky' && gl.getParameter(gl.MAX_TEXTURE_SIZE) < STREET.w) { sc.failed = true; return }
-  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uTex', 'uGlow', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
+  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uMov', 'uTex', 'uGlow', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
   const sp = sc.kind === 'sky' ? program(gl, SKY_VS, SKY_FS, ['uRes', 'uPx', 'uSky', 'uSun', 'uMoon', 'uSunCol', 'uNight', 'uTime', 'uMask']) : null
   if (!qp || (sc.kind === 'sky' && !sp)) { sc.failed = true; return }
   const m = mesh(sc.kind)
@@ -299,7 +364,7 @@ function load(sc: Scene) {
 function create(kind: SceneKind): Scene {
   const canvas = document.createElement('canvas')
   canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;pointer-events:none'
-  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, arrive: 0, shown: false, dirty: true, at: 0, failed: false, cleanup: null }
+  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, arrive: 0, mask: MASK, movers: null, mov: new Float32Array(MAX_MOVERS * 4), shown: false, dirty: true, at: 0, failed: false, cleanup: null }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다. 그때는 바탕색만 남는다. (?skygl=soft 는 GPU 없는 확인 환경에서 강제로 켜는 용도)
   const soft = /[?&]skygl=soft/.test(window.location.search)
   const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft })
@@ -362,7 +427,9 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   }
   gl.viewport(0, 0, W, H)
   gl.enableVertexAttribArray(0)
-  const mask = room ? 0 : MASK
+  // 배경만 볼 때(헤더의 '배경 보기')는 어두운 막을 걷는다
+  sc.mask += ((document.documentElement.hasAttribute('data-pb-bgonly') ? 0 : MASK) - sc.mask) * (still ? 1 : 0.1)
+  const mask = room ? 0 : sc.mask
   if (sc.sky) {
     const k = sc.sky, cw = W / sc.ratio, moon = orb(st.moonPhase, cw)
     moon[2] *= Math.min(1, st.night * 1.6)
@@ -386,6 +453,11 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   if (zoom === 1) { ox = Math.round(ox); oy = Math.round(oy) } // 칸이 화면 픽셀에 딱 맞게
   gl.uniform4f(q.u.uView, k, k, ox, oy); gl.uniform2f(q.u.uRes, W, H); gl.uniform1f(q.u.uTime, s); gl.uniform1f(q.u.uTw, s % 600)
   gl.uniform1f(q.u.uSway, still ? 0 : Math.sin(s * 0.09) * SWAY)
+  if (!room) {
+    // 지나가는 것들: 지금 화면에 보이는 범위(그림 칸)를 기준으로 드나든다
+    stepMovers(sc, still || !sc.at ? 0 : Math.min(0.1, (now - sc.at) / 1000), s, Math.max(0, -ox / k), Math.min(STREET.w, (W - ox) / k))
+    gl.uniform4fv(q.u.uMov, sc.mov)
+  }
   // 불빛 지도는 1번 자리에(거리만 읽는다. 무대는 아무 그림이나 물려 둔다)
   gl.uniform1i(q.u.uGlow, 1); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, sc.tex[room ? 0 : 3])
   gl.uniform1i(q.u.uTex, 0); gl.activeTexture(gl.TEXTURE0)
@@ -401,7 +473,7 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
     for (const kd of kinds) { const r = sc.ranges[kd]; if (r) gl.drawArrays(gl.TRIANGLES, r[0], r[1]) }
   }
   if (room) { part(0, [6]); part(1, [7]) }
-  else { part(0, [0, 1, 11]); part(1, [4]); part(2, [5]); part(3, [8]); part(0, [9, 10, 2]) }
+  else { part(0, [0, 1, 11]); part(1, [4]); part(2, [5]); part(3, [8]); part(0, [9, 2]) }
   sc.dirty = false
   sc.at = now
   if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }

@@ -206,3 +206,7 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
 
 /* 화면엔 안 보이지만 크롤러·스크린리더는 읽는 콘텐츠(접근성/SEO). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* 배경 보기(PC 헤더의 버튼): 헤더만 남기고 본문과 하단 바를 감춘다. 자리는 그대로 두어(visibility) 돌아올 때 배치가 흔들리지 않는다. */
+[data-pb-body] { transition: opacity .25s ease, visibility 0s; }
+html[data-pb-bgonly] [data-pb-body] { opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s .25s; }
