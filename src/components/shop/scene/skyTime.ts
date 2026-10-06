@@ -1,5 +1,5 @@
 // 실제 시각 → 장면 색. 정오 · 석양 · 자정 · 여명 네 장면 사이를 시각에 따라 천천히 섞는다.
-// 셰이더(sceneShader)와 캔버스가 뜨기 전 바탕색(SceneCanvas)이 같은 값을 쓴다.
+// 장면(sceneGl)과 캔버스가 뜨기 전 바탕색(SceneCanvas)이 같은 값을 쓴다.
 
 type RGB = [number, number, number]
 const hex = (s: string): RGB => [parseInt(s.slice(1, 3), 16) / 255, parseInt(s.slice(3, 5), 16) / 255, parseInt(s.slice(5, 7), 16) / 255]
@@ -91,9 +91,10 @@ export function skyHour(): number {
 const css = (c: RGB) => `rgb(${c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255)).join(',')})`
 const mul = (a: RGB, b: RGB): RGB => [a[0] * b[0], a[1] * b[1], a[2] * b[2]]
 
-// 캔버스가 뜨기 전(또는 WebGL 을 못 쓰는 기기)에 깔리는 바탕. 장면과 같은 시각의 색이다.
+// 캔버스가 뜨기 전(또는 WebGL 을 못 쓰는 기기)에 깔리는 바탕. 장면과 같은 시각의 색을 어둡게 눌러 둔다 —
+// 장면은 이 어두운 바탕에서 밝아지며 나타난다.
 export function sceneFallback(kind: 'sky' | 'room'): string {
   const s = skyState(skyHour())
-  if (kind === 'sky') return `linear-gradient(180deg, ${s.sky.map(css).join(', ')})`
-  return css(mul(hex('#f3e0b8'), s.amb)) // 무대 그림이 뜨기 전: 회벽 색
+  if (kind === 'sky') return `linear-gradient(180deg, ${s.sky.map((c) => css(mul(c, [0.5, 0.48, 0.56]))).join(', ')})`
+  return css(mul(hex('#4a3d40'), s.amb))
 }
