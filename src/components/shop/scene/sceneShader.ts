@@ -35,7 +35,7 @@ uniform float uLamp;
 uniform sampler2D uTex;   // 거리: 먼 건물
 uniform sampler2D uTexB;  // 거리: 길가의 가게
 uniform sampler2D uTexH;  // 가게의 높이(빨강) · 불빛(초록)
-uniform vec2 uTexSize;
+uniform vec2 uTexSize;   // 게임 픽셀 단위의 그림 크기(그림 파일은 그 2배 밀도)
 
 float gPx;
 
@@ -258,12 +258,12 @@ const SKY_PARTS = {
   SKY_MID: `
     cloudLayer(col, pr, 27., .5, 2., 33., .08);
     gPx = 2.4;
-    cityFar(col, p, size);
+    cityFar(col, pr, size);
     gPx = 1.6;
     balloon(col, snap(pr - vec2(mod(uTime * 1.6 + size.x * .2, size.x + 60.) - 30., size.y * .3 + sin(uTime * .4 + 2.) * 2.)), vec3(.4, .7, .9), vec3(1., .97, .92), .3);
     gPx = 1.;
     balloon(col, snap(pr - vec2(mod(uTime * 2.5 + size.x * .7, size.x + 60.) - 30., 13. + sin(uTime * .5) * 1.5)), vec3(.96, .42, .4), vec3(1., .9, .6), 0.);
-    cityNear(col, p, size);`,
+    cityNear(col, pr, size);`,
 }
 
 // 미리보기 무대: 피팅룸 그림을 합치고 빛을 계산한다. 그림은 parser/scripts/stage-build.cjs 가 찍는다(게임 원화는 쓰지 않는다).
@@ -297,8 +297,8 @@ float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); 
 vec3 farAt(vec2 q){ return texture2D(uTex, clamp(q, vec2(.5), uTexSize - .5) / uTexSize).rgb; }
 float hAt(vec2 q){ return texture2D(uTexH, clamp(q, vec2(.5), uTexSize - .5) / uTexSize).r * 44. - 12.; }
 float beam(vec2 w, float side){
-  float d = side * w.x + 138. - (150. + w.y) * .5;                // 창(발 기준 x=±138)에서 안쪽 아래로 비껴 내린다
-  return smoothstep(22., 6., abs(d)) * smoothstep(-200., -140., w.y) * smoothstep(16., -30., w.y) * (.8 + .2 * sin(uTime * .35 + d * .1 + side));
+  float d = side * w.x + 128. - (153. + w.y) * .5;                // 창(발 기준 x=-128, 높이 153)에서 안쪽 아래로 비껴 내린다
+  return smoothstep(26., 6., abs(d)) * smoothstep(-190., -150., w.y) * smoothstep(16., -30., w.y) * (.8 + .2 * sin(uTime * .35 + d * .1 + side));
 }
 vec3 lampAt(vec2 w, float h0, vec3 n, vec2 at){                   // 벽등 하나의 따뜻한 점빛
   vec3 dl = vec3(at - w, 16. - h0);
@@ -306,7 +306,7 @@ vec3 lampAt(vec2 w, float h0, vec3 n, vec2 at){                   // 벽등 하�
   return vec3(1., .8, .52) * max(dot(n, dl / dd), 0.) * exp(-dd / 46.);
 }
 void main(){
-  vec2 w = floor((vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) - uOrigin) * uPx) + .5;
+  vec2 w = (vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) - uOrigin) * uPx; // 게임 픽셀 단위(소수) — 그림은 그보다 2배 곱다
   vec2 t = w + uFoot;
   vec3 col = farAt(t) * .36 + (farAt(t + vec2(1.5, 0.)) + farAt(t - vec2(1.5, 0.)) + farAt(t + vec2(0., 1.5)) + farAt(t - vec2(0., 1.5))) * .16;
   col *= mix(vec3(1.), uAmb * uAmb, .95) * (1. - .45 * uNight);    // 바깥은 시각을 그대로 탄다(밤에는 어둡다)
@@ -326,14 +326,14 @@ void main(){
   float ao = clamp(((hAt(t + vec2(2.5, 0.)) + hAt(t - vec2(2.5, 0.)) + hAt(t + vec2(0., 2.5)) + hAt(t - vec2(0., 2.5))) * .25 - h0) * .1, 0., .34);
   float day = 1. - .35 * uNight;                                   // 밤에는 창빛이 약하고 벽등이 방을 밝힌다
   float key = (.64 + .56 * diff * day) * (1. - .42 * sh * day) * (1. - ao);
-  vec3 warm = lampAt(w, h0, n, vec2(-104., -128.)) + lampAt(w, h0, n, vec2(104., -128.)) + lampAt(w, h0, n, vec2(-70., 111.)) + lampAt(w, h0, n, vec2(70., 111.));
+  vec3 warm = lampAt(w, h0, n, vec2(-62., -208.)) + lampAt(w, h0, n, vec2(62., -208.)) + lampAt(w, h0, n, vec2(-120., 96.)) + lampAt(w, h0, n, vec2(120., 96.));
   float spec = pow(max(dot(n, normalize(Ld + vec3(0., 0., 1.))), 0.), 28.) * .14 * day;
-  m.rgb *= 1. + .036 * (hash(floor(t)) - .5) + .008 * (mod(floor(t.x) + floor(t.y), 2.) - .5); // 고운 픽셀 결(메이플 그림의 질감)
+  m.rgb *= 1. + .04 * (hash(floor(t * 2.)) - .5);               // 고운 픽셀 결(그림 픽셀마다)
   m.rgb = m.rgb * key + m.rgb * warm * (.35 + .5 * uLamp) + spec;
   m.rgb *= mix(uAmb, vec3(1.02, .98, .92), .55 + .3 * uLamp);      // 방 안은 실내 조명을 받아 덜 물든다
   m.rgb = mix(m.rgb, vec3(.2, .13, .12), .32 * (1. - smoothstep(.55, 1., length(vec2(w.x / uShadow, (w.y - .4) / 1.9))))); // 발밑 그림자
   col = mix(col, m.rgb, m.a);
-  float b = (beam(w, 1.) + beam(w, -1.)) * m.a;
+  float b = beam(w, 1.) * m.a;
   col += mix(vec3(1., .95, .8), vec3(.55, .65, 1.), uNight) * b * mix(.14, .06, uNight);
   vec2 g = floor(w / 26.);                                         // 빛 먼지: 칸마다 하나, 천천히 떠오른다
   vec2 o = vec2(hash(g), hash(g + 7.3));

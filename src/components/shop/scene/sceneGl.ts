@@ -1,6 +1,6 @@
 // 배경 장면을 그리는 WebGL 실행기. 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
 //  · 초당 30번 그린다. 구름·열기구가 화면 픽셀 단위로 매끄럽게 흘러가려면 필요하고, 메인 스레드가 하는 일은 유니폼 몇 개를 넘기는 것뿐이다.
-//  · 앱 배경은 캔버스 픽셀 수를 묶는다(layout: 약 240만 이하). 무대는 그림을 합치고 높이 지도로 빛을 계산하지만 게임 픽셀 한 칸 = 1픽셀(약 360×570)이라 가볍고, 초당 12번쯤만 갱신한다.
+//  · 앱 배경은 캔버스 픽셀 수를 묶는다(layout: 약 240만 이하). 무대도 화면 해상도로 그린다(그림이 게임 픽셀의 2배 밀도라 캐릭터 도트보다 곱다). 높이 지도로 빛을 계산하므로 초당 12번쯤만 갱신한다.
 //  · 셰이더 컴파일은 KHR_parallel_shader_compile 로 끝나기를 기다린다(없으면 다음 프레임에 확인) → 메인 스레드를 막지 않는다.
 //  · 탭이 가려지면 rAF 가 멈추니 따로 멈출 것이 없다. '동작 줄이기' 설정이면 20초에 한 번만(시각에 따른 색만) 그린다.
 //  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다(탭을 오갈 때마다 다시 컴파일하지 않는다).
@@ -23,6 +23,7 @@ const ROOM_MS = 80 // 무대의 움직임(빛줄기·먼지)은 느려서 이 �
 // 무대 그림 안에서 캐릭터가 서는 자리(발). parser/scripts/stage-build.cjs 의 FX · FY 와 같은 값이다.
 const STAGE_FOOT = [280, 400]
 const REDUCED_MS = 20000
+const TEX_DENSITY = 2 // 그림의 밀도(게임 픽셀당). parser/scripts/stage/paint.cjs 의 D 와 같다
 const COMPLETION_STATUS_KHR = 0x91b1
 
 interface Scene {
@@ -66,7 +67,7 @@ function build(sc: Scene) {
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
 }
 
-// 그림 셋을 텍스처로 올린다. 먼 것과 높이는 부드럽게 읽으려고 linear, 가까운 것은 도트를 뭉개지 않게 nearest.
+// 그림 셋을 텍스처로 올린다. 그림은 게임 픽셀의 2배 밀도(TEX_DENSITY)라 화면 픽셀과 1:1 로 맞는다 — 어긋나는 배율에서는 linear 로 부드럽게.
 // 컨텍스트를 되찾았을 때도 다시 부른다.
 function upload(sc: Scene) {
   const gl = sc.gl
@@ -75,8 +76,8 @@ function upload(sc: Scene) {
     gl.activeTexture(gl.TEXTURE0 + n)
     gl.bindTexture(gl.TEXTURE_2D, gl.createTexture())
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, n === 1 ? gl.NEAREST : gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, n === 1 ? gl.NEAREST : gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   })
@@ -149,7 +150,7 @@ function layout(sc: Scene) {
   const ox = Math.ceil(cx / px), oy = Math.ceil(fy / px)
   const uw = ox + Math.ceil((hw * dpr - cx) / px), uh = oy + Math.ceil((hh * dpr - fy) / px) // 게임 픽셀 수
   let k = 1
-  if (sc.kind === 'sky') for (let d = px; d > 1; d--) if (px % d === 0 && uw * uh * d * d <= MAX_PIXELS) { k = d; break }
+  for (let d = px; d > 1; d--) if (px % d === 0 && uw * uh * d * d <= MAX_PIXELS) { k = d; break }
   const c = sc.canvas
   if (c.width !== uw * k) c.width = uw * k
   if (c.height !== uh * k) c.height = uh * k
@@ -189,7 +190,7 @@ function draw(sc: Scene, now: number, st: SkyState) {
   gl.uniform3fv(u.uMoon!, moon)
   gl.uniform1f(u.uNight!, st.night)
   gl.uniform1f(u.uLamp!, st.lamp)
-  gl.uniform1i(u.uTex!, 0); gl.uniform1i(u.uTexB!, 1); gl.uniform1i(u.uTexH!, 2); gl.uniform2f(u.uTexSize!, sc.imgs[1].naturalWidth, sc.imgs[1].naturalHeight)
+  gl.uniform1i(u.uTex!, 0); gl.uniform1i(u.uTexB!, 1); gl.uniform1i(u.uTexH!, 2); gl.uniform2f(u.uTexSize!, sc.imgs[1].naturalWidth / TEX_DENSITY, sc.imgs[1].naturalHeight / TEX_DENSITY)
   if (sc.kind === 'room') { gl.uniform2f(u.uOrigin!, sc.ox, sc.oy); gl.uniform1f(u.uShadow!, sc.shadow); gl.uniform2f(u.uFoot!, STAGE_FOOT[0], STAGE_FOOT[1]) }
   gl.drawArrays(gl.TRIANGLES, 0, 3)
   sc.dirty = false
