@@ -9,6 +9,8 @@
  */
 
 import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useSelectedLayoutSegment } from 'next/navigation'
+import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
 import { nameMatcher } from '@/lib/nameSearch'
 import { CATS, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
@@ -25,7 +27,7 @@ import { safeBubbles } from '@/lib/safeText'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { warmItem } from '@/lib/core/warm'
 import { confirmTwice } from '@/lib/confirmTwice'
-import { RESTORE_ATTR, RESTORE_TABS, SEARCH_KEEP, type PresetOver, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
+import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
@@ -182,7 +184,7 @@ export interface ShopCtx {
   search: string; setSearch: Dispatch<string>
   genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용(v2)
   // primary/screen
-  primary: string; setPrimary: Dispatch<string>
+  primary: string; setPrimary: (tab: string) => void
   goHome: () => void // 로고 — 첫 진입 화면(코디 탭 · 전체 · 1페이지)으로
   // AI 코디 검색 — 결과는 하단 부위 바(activeCat)·성별로 필터(결과 집합은 perPage 와 무관)
   aiQ: string; setAiQ: Dispatch<string>
@@ -297,7 +299,25 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [dataLoading, setDataLoading] = useState(true)
 
   // ── UI ──
-  const [primary, setPrimary] = useState('codi')
+  // 탭은 주소와 짝이다(lib/tabRoute). 처음 값은 들어온 주소에서 읽고, 바꿀 때는 상태를 먼저 바꾼 뒤 주소를 따라 적는다 —
+  // 주소 이동(서버 왕복)으로 화면을 바꾸지 않으므로 탭은 그 자리에서 바로 바뀐다. 뒤로 · 앞으로는 주소를 보고 상태를 맞춘다.
+  const segment = useSelectedLayoutSegment()
+  const [primary, setPrimaryState] = useState(() => tabOfPath('/' + (segment ?? '')))
+  const setPrimary = useCallback((tab: string) => {
+    setPrimaryState(tab)
+    const path = TAB_PATH[tab]
+    try { if (path && window.location.pathname !== path) window.history.pushState(null, '', path + window.location.search) } catch {} // 주소를 못 바꿔도 탭은 바뀐다
+  }, [])
+  useEffect(() => {
+    const onPop = () => setPrimaryState(tabOfPath(window.location.pathname))
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+  const titled = useRef(false)
+  useEffect(() => {
+    if (!titled.current) { titled.current = true; return } // 처음 제목은 서버가 낸 것(공유 링크는 프리셋 이름)을 둔다
+    document.title = TAB_TITLE[primary] ? `${TAB_TITLE[primary]} · 핑크빈 커마샵` : '핑크빈 커마샵'
+  }, [primary])
   const [searchQuery, setSearchQuery] = useState<string | null>(null) // AI 코디 검색어(null=미검색)
   const [aiQ, setAiQ] = useState('')
   const [activeCat, setActiveCat] = useState('all') // 기본 = 전체(모든 부위 한 리스트)
@@ -541,14 +561,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [searchLoading, setSearchLoading] = useState(false)
 
   // ── 보던 자리 기억(새로고침까지만) ──
-  // 실수로 새로고침해도 탭·부위·검색어·페이지를 잃지 않는다. 탭을 닫고 다시 들어오면
+  // 실수로 새로고침해도 부위·검색어·페이지를 잃지 않는다(탭은 주소가 기억한다). 탭을 닫고 다시 들어오면
   // sessionStorage 가 비어 있으므로 저절로 첫 화면(코디 탭 · 전체 · 1페이지)에서 시작한다.
   //  · 되살리기는 **페인트 전**(layout effect)에 해서 기본 화면이 한 번 스치지 않게 한다.
   //  · 저장은 되살리기가 끝난 뒤에만 한다 — 먼저 돌면 기본값으로 덮어써 버린다.
   const [uiReady, setUiReady] = useState(false)
   useIsoLayoutEffect(() => {
     const u = readUiSession()
-    if (u.primary && RESTORE_TABS.has(u.primary)) setPrimary(u.primary)
     if (typeof u.activeCat === 'string') setActiveCat(u.activeCat)
     if (typeof u.search === 'string') setSearch(u.search)
     if (u.pageByCat && typeof u.pageByCat === 'object') setPageByCat(u.pageByCat)
@@ -569,10 +588,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!uiReady) return
     writeUiSession({
-      primary, activeCat, search, pageByCat, plazaFilter, plazaQ,
+      activeCat, search, pageByCat, plazaFilter, plazaQ,
       aiQ, searchQuery, searchResults: searchResults.slice(0, SEARCH_KEEP),
     })
-  }, [uiReady, primary, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
+  }, [uiReady, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
   useEffect(() => { if (uiReady) writeUiPref({ plazaSort }) }, [uiReady, plazaSort])
   const [rateResult, setRateResult] = useState<{ bubbles: string[]; nonce: number } | null>(null) // 코디 평가 말풍선
   // 말풍선은 **평가를 눌러 받은 그 한 번만** 뜬다(2026-09-22 사용자 제보 — 광장처럼 미리보기가 없는 탭에

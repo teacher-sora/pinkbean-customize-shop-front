@@ -1,19 +1,22 @@
 // 배경 장면을 그리는 WebGL 실행기. 그림은 게임 맵에서 뽑은 것(메이플 15번가)이고, 여기서는 층을 겹쳐 놓고
 // 시각에 따른 색과 작은 움직임만 입힌다. 화면 조작(INP)에 끼어들지 않는 것이 첫째 조건이다.
-//  · 앱 배경(sky) = 15번가 거리: 하늘(셰이더) → 구름 · 열기구 → 먼 빌딩 숲 → 버스와 차 → 거리의 건물 → 헬리콥터.
+//  · 앱 배경(sky) = 15번가 거리: 하늘(셰이더) → 구름 · 열기구 → 먼 빌딩 숲 → 버스와 차 → 거리의 건물(탑을 끌어안은 예티 풍선 포함) → 헬리콥터.
 //    그림 1칸 = 화면 1px 로 놓고(배율을 바꾸지 않는다) 아래 가운데를 화면 아래 가운데에 맞춘다.
-//  · 무대(room) = 15번가 패션 매장 안: 창밖 거리 → 매장. 가운데 깔개가 캐릭터 발밑에 온다. 그림은 늘 1칸 = 화면 1px —
-//    캐릭터 배율을 올려도 방은 키우지 않는다(키우면 선이 뭉개지고 방이 조금밖에 안 보인다).
+//  · 무대(room) = 15번가 패션 매장 안: 창밖 거리 → 매장. 가운데 깔개가 캐릭터 발밑에 오고, 그림 1칸 = 캐릭터 도트 1칸이다 —
+//    미리보기 배율을 올리면 방도 함께 커진다(정수 배율이라 칸을 그대로 키운다).
 //  · 움직임: 구름 · 열기구 · 차가 따로 흘러가고(정점 셰이더에서 계산), 화면 전체가 아주 천천히 좌우로 흔들린다(층마다 폭이 다르다).
-//  · 시각(skyTime): 하늘 · 해 · 달 · 별 · 핑크빈 별자리, 그림에 곱하는 빛. 밤에는 네온처럼 밝고 진한 색만 제 빛을 지킨다.
+//  · 시각(skyTime): 하늘 · 해 · 달 · 별 · 핑크빈 별자리, 그림에 곱하는 빛. 밤에는 거리가 가라앉고 창에 노란 불이 켜져 둘레로 새어 나온다
+//    (어느 창이 켜지는지는 그림에서 미리 뽑아 둔 지도 street-glow 가 정한다). 네온처럼 밝고 진한 색도 제 빛을 지킨다.
 //  · 그림은 화면이 한가할 때 받아 한 프레임에 한 장씩 올린다(디코딩은 createImageBitmap 으로 메인 스레드 밖에서).
 //  · 초당 30번 그린다. '동작 줄이기'면 바뀔 때와 20초마다만 그린다. 탭이 가려지면 rAF 가 멈춘다.
-//  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다.
+//  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다. 밝아지며 다가가는 연출은 처음 뜰 때 한 번뿐 —
+//    탭을 오가며 다시 붙을 때는 그 자리에서 바로 보인다(전환이 밀리지 않게).
 
 import roomFar from '@/assets/scene/room-far.webp'
 import roomMain from '@/assets/scene/room-main.webp'
 import streetAir from '@/assets/scene/street-air.webp'
 import streetFar from '@/assets/scene/street-far.webp'
+import streetGlow from '@/assets/scene/street-glow.webp'
 import streetMain from '@/assets/scene/street-main.webp'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import { ROOM, STREET } from './sceneData'
@@ -28,7 +31,7 @@ const SWAY = 12          // 화면이 좌우로 흔들리는 폭(그림 픽셀)
 const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 막
 
 // 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상, 처음 x](3)
-// 종류 0 구름 · 1 열기구 · 2 헬리콥터와 풍선 행렬 · 3 버스와 차 · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대
+// 종류 0 구름 · 1 열기구 · 2 헬리콥터 · 3 버스와 차 · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대
 const QUAD_VS = `
 attribute vec2 aPos; attribute vec2 aUv; attribute vec3 aAni;
 uniform vec4 uView; uniform vec2 uRes; uniform float uTime; uniform float uSway;
@@ -51,7 +54,7 @@ void main(){
 }`
 const QUAD_FS = `
 precision mediump float;
-uniform sampler2D uTex; uniform vec3 uAmb; uniform vec3 uCloud; uniform vec3 uHaze; uniform float uLamp; uniform float uMask; uniform float uTw;
+uniform sampler2D uTex; uniform sampler2D uGlow; uniform vec3 uAmb; uniform vec3 uCloud; uniform vec3 uHaze; uniform float uLamp; uniform float uMask; uniform float uTw;
 uniform vec3 uFoot;   // 발 자리(그림 픽셀)와 그림자 반폭
 varying vec2 vUv; varying float vKind; varying vec2 vPos;
 void main(){
@@ -65,7 +68,18 @@ void main(){
     lit = c * uAmb;
     // 밤: 밝고 진한 색(네온 · 간판 · 불 켜진 창)은 제 빛을 지킨다
     lit = mix(lit, c * 1.05 + .03, smoothstep(.6, .9, mx) * smoothstep(.2, .5, mx - mn) * uLamp);
-    if (vKind > 3.5 && vKind < 4.5) lit = mix(lit, uHaze, .3);
+    if (vKind > 4.5 && vKind < 5.5) {
+      // 거리: 불 켜진 창(r)은 노랗게, 창에서 새어 나온 빛(g)은 둘레를 물들인다
+      vec2 gw = texture2D(uGlow, vUv).rg * uLamp;
+      lit = mix(lit, vec3(1., .86, .5) * (.55 + .5 * dot(c, vec3(.3, .59, .11))), gw.x);
+      lit += vec3(1., .74, .36) * gw.y * .42;
+    } else if (vKind > 3.5 && vKind < 4.5) {
+      // 먼 빌딩: 창 몇 개에만 불을 켠다
+      vec2 cell = vPos / vec2(7., 9.), f = fract(cell);
+      float h = fract(sin(dot(floor(cell), vec2(12.9898, 78.233))) * 43758.5453);
+      lit = mix(lit, vec3(1., .84, .5), step(.82, h) * step(.2, f.x) * step(f.x, .75) * step(.2, f.y) * step(f.y, .7) * uLamp * .85);
+      lit = mix(lit, uHaze, .3);
+    }
   } else {
     // 매장 안은 등불을 받아 바깥보다 덜 물든다. 아주 밝은 점(천장 · 바닥의 조명)은 느리게 반짝인다
     lit = c * mix(vec3(1.), uAmb, .3) + vec3(.03, .012, 0.) * uLamp;
@@ -132,8 +146,10 @@ interface Scene {
   host: HTMLElement | null
   ratio: number                  // 캔버스 픽셀 / CSS 픽셀
   foot: [number, number]         // 무대: 발 자리(캔버스 픽셀)
+  px: number                     // 무대: 그림 1칸의 캔버스 픽셀 수(= 캐릭터 도트 1칸)
+  nearest: boolean               // 무대: 지금 텍스처 필터
   shadow: number                 // 무대: 발밑 그림자 반폭(그림 픽셀)
-  arrive: number                 // 0 → 1: 뜨면서 살짝 다가간다
+  arrive: number                 // 0 → 1: 처음 뜨면서 살짝 다가간다
   shown: boolean
   dirty: boolean
   at: number
@@ -141,7 +157,7 @@ interface Scene {
   cleanup: (() => void) | null
 }
 
-const SOURCES: Record<SceneKind, string[]> = { sky: [streetAir.src, streetFar.src, streetMain.src], room: [roomFar.src, roomMain.src] }
+const SOURCES: Record<SceneKind, string[]> = { sky: [streetAir.src, streetFar.src, streetMain.src, streetGlow.src], room: [roomFar.src, roomMain.src] }
 const scenes: Partial<Record<SceneKind, Scene>> = {}
 let raf = 0
 let last = 0
@@ -187,7 +203,7 @@ function init(sc: Scene) {
   const gl = sc.gl
   if (!gl) return
   if (sc.kind === 'sky' && gl.getParameter(gl.MAX_TEXTURE_SIZE) < STREET.w) { sc.failed = true; return }
-  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uTex', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
+  const qp = program(gl, QUAD_VS, QUAD_FS, ['uView', 'uRes', 'uTime', 'uTw', 'uSway', 'uTex', 'uGlow', 'uAmb', 'uCloud', 'uHaze', 'uLamp', 'uMask', 'uFoot'])
   const sp = sc.kind === 'sky' ? program(gl, SKY_VS, SKY_FS, ['uRes', 'uPx', 'uSky', 'uSun', 'uMoon', 'uSunCol', 'uNight', 'uTime', 'uMask']) : null
   if (!qp || (sc.kind === 'sky' && !sp)) { sc.failed = true; return }
   const m = mesh(sc.kind)
@@ -203,6 +219,7 @@ function init(sc: Scene) {
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
   sc.tex = sc.bmps.map(() => null)
   sc.pending = sc.bmps.map((b, i) => (b ? i : -1)).filter((i) => i >= 0)
+  sc.nearest = false
   sc.dirty = true
 }
 
@@ -231,7 +248,7 @@ function load(sc: Scene) {
 function create(kind: SceneKind): Scene {
   const canvas = document.createElement('canvas')
   canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;pointer-events:none'
-  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], shadow: 13, arrive: 0, shown: false, dirty: true, at: 0, failed: false, cleanup: null }
+  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, arrive: 0, shown: false, dirty: true, at: 0, failed: false, cleanup: null }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다. 그때는 바탕색만 남는다. (?skygl=soft 는 GPU 없는 확인 환경에서 강제로 켜는 용도)
   const soft = /[?&]skygl=soft/.test(window.location.search)
   const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft })
@@ -244,7 +261,7 @@ function create(kind: SceneKind): Scene {
   return sc
 }
 
-// 캔버스 크기와(무대라면) 캐릭터 발 자리.
+// 캔버스 크기와(무대라면) 캐릭터 발 자리 · 배율.
 function layout(sc: Scene) {
   const host = sc.host
   if (!host) return
@@ -260,9 +277,10 @@ function layout(sc: Scene) {
     if (f && f.wrap.isConnected && host.parentElement?.contains(f.wrap)) {
       const wr = f.wrap.getBoundingClientRect(), hr = host.getBoundingClientRect()
       sc.foot = [Math.round((wr.left - hr.left + f.cx) * r), Math.round((wr.top - hr.top + f.footY) * r)]
-      sc.shadow = (f.shadow * f.scale) / dpr
+      sc.px = f.scale; sc.shadow = f.shadow
     } else {
       // 캐릭터가 아직 안 그려졌을 때: 그려질 자리와 거의 같은 값으로 미리 잡는다.
+      sc.px = Math.max(1, Math.round(dpr))
       sc.foot = [Math.round((hw / 2) * r), Math.round((hh / 2 + 38.4) * r)]
     }
   }
@@ -282,6 +300,15 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   const s = still ? 40 : now / 1000, W = c.width, H = c.height, room = sc.kind === 'room'
   sc.arrive = still ? 1 : Math.min(1, sc.arrive + 0.035)
   const ease = 1 - Math.pow(1 - sc.arrive, 3), zoom = 1 + 0.03 * (1 - ease)
+  if (room) {
+    // 다가가는 동안만 부드럽게, 멈추면 칸을 그대로(캐릭터 도트와 같은 결)
+    const nearest = sc.arrive >= 1 && Number.isInteger(sc.px)
+    if (nearest !== sc.nearest) {
+      sc.nearest = nearest
+      const f = nearest ? gl.NEAREST : gl.LINEAR
+      for (const t of sc.tex) { gl.bindTexture(gl.TEXTURE_2D, t); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f) }
+    }
+  }
   gl.viewport(0, 0, W, H)
   gl.enableVertexAttribArray(0)
   const mask = room ? 0 : MASK
@@ -303,10 +330,12 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 28, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 28, 8); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 28, 16)
   // 그림 픽셀 → 캔버스 픽셀: c = p * k + o
   let k: number, ox: number, oy: number
-  if (room) { k = sc.ratio * zoom; ox = sc.foot[0] - ROOM.foot[0] * k; oy = sc.foot[1] - ROOM.foot[1] * k }
+  if (room) { k = sc.px * zoom; ox = sc.foot[0] - ROOM.foot[0] * k; oy = sc.foot[1] - ROOM.foot[1] * k }
   else { k = sc.ratio * Math.max(1, W / sc.ratio / (STREET.w - 4 * SWAY)) * zoom; ox = W / 2 - (STREET.w / 2) * k; oy = H - STREET.h * k }
   gl.uniform4f(q.u.uView, k, k, ox, oy); gl.uniform2f(q.u.uRes, W, H); gl.uniform1f(q.u.uTime, s); gl.uniform1f(q.u.uTw, s % 600)
   gl.uniform1f(q.u.uSway, still ? 0 : Math.sin(s * 0.09) * SWAY)
+  // 불빛 지도는 1번 자리에(거리만 읽는다. 무대는 아무 그림이나 물려 둔다)
+  gl.uniform1i(q.u.uGlow, 1); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, sc.tex[room ? 0 : 3])
   gl.uniform1i(q.u.uTex, 0); gl.activeTexture(gl.TEXTURE0)
   // 밤의 거리는 하늘빛보다 더 가라앉힌다 — 네온이 살아난다
   const dim = 1 - 0.4 * st.night
@@ -346,9 +375,9 @@ export function mountScene(kind: SceneKind, host: HTMLElement): () => void {
   if (sc.failed) return () => {}
   sc.cleanup?.()
   sc.host = host
-  // 붙을 때마다: 어두운 바탕에서 밝아지며 살짝 다가간다
-  sc.canvas.style.transition = 'none'; sc.canvas.style.opacity = '0'
-  sc.shown = false; sc.arrive = 0
+  // 처음 뜰 때만 어두운 바탕에서 밝아지며 살짝 다가간다. 이미 떠 있던 장면은 다시 붙자마자 그린다(아래)
+  const again = sc.shown
+  if (!again) { sc.canvas.style.transition = 'none'; sc.canvas.style.opacity = '0'; sc.arrive = 0 }
   host.appendChild(sc.canvas)
   const relayout = () => layout(sc)
   const ro = new ResizeObserver(relayout)
@@ -362,6 +391,7 @@ export function mountScene(kind: SceneKind, host: HTMLElement): () => void {
   }
   layout(sc)
   reduce ??= window.matchMedia('(prefers-reduced-motion: reduce)')
+  if (again) draw(sc, performance.now(), skyState(skyHour()), reduce.matches) // 빈 프레임 없이
   if (!raf) raf = requestAnimationFrame(tick)
   const mine = sc.cleanup
   return () => { if (sc.cleanup === mine) mine() }

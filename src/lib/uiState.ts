@@ -2,7 +2,8 @@
 
 // 화면 상태 기억 — 두 갈래로 나눈다(2026-09-21 사용자 지시).
 //  · 영구(localStorage)   : 취향에 가까운 값. 지금은 광장 정렬 하나.
-//  · 새로고침까지(sessionStorage): 길찾기 값(탭·부위·검색어·페이지·광장 필터).
+//  · 새로고침까지(sessionStorage): 길찾기 값(부위·검색어·페이지·광장 필터). 탭은 주소가 기억한다(lib/tabRoute).
+//    서버가 그 주소의 탭을 처음부터 그려 주므로 탭 때문에 뼈대를 띄울 일이 없다.
 //    실수로 새로고침해도 보던 자리를 잃지 않되, **탭을 닫고 다시 들어오면 깨끗한 첫 화면**
 //    (코디 탭 · 전체 · 1페이지)에서 시작한다 — sessionStorage 가 그 경계를 그대로 그어 준다.
 //
@@ -16,7 +17,6 @@ import type { ListItem } from '@/lib/core/data'
 export const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 export type UiSession = {
-  primary?: string
   activeCat?: string
   search?: string
   pageByCat?: Record<string, number>
@@ -38,7 +38,6 @@ const SESSION_KEY = 'pb_ui_session_v1'
 const PREF_KEY = 'pb_ui_pref_v1'
 const HIST_KEY = 'pb_ui_hist_v1'
 
-export const RESTORE_TABS = new Set(['codi', 'search', 'info', 'preset', 'share'])
 // 검색 결과 저장 상한(검색 자체가 topK 100 이다). sessionStorage 를 과하게 쓰지 않도록 둔다.
 export const SEARCH_KEEP = 100
 // 새로고침 복원 중 표시. layout.tsx 의 인라인 스크립트가 **새로고침일 때만** 켜고,
@@ -62,7 +61,6 @@ function write(store: 'sessionStorage' | 'localStorage', key: string, v: unknown
 // ⚠️ 여기 적힌 기본값은 ShopContext 의 useState 초기값과 같아야 한다.
 function differs(v: UiSession): boolean {
   return Boolean(
-    (v.primary && v.primary !== 'codi') ||
     (v.activeCat && v.activeCat !== 'all') ||
     v.search || v.aiQ || v.searchQuery ||
     (v.searchResults && v.searchResults.length) ||
