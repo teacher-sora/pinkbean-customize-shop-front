@@ -44,7 +44,7 @@ const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 �
 // 정점: 자리(2) · 텍스처 좌표(2) · [종류, 위상 | 지나가는 것의 번호, 처음 x | 그림이 보는 쪽(-1 왼쪽 · 0 뒤집지 않음), 걷는 그림 한 장의 텍스처 폭](4)
 // 종류 0 구름 · 1 열기구 · 2 헬리콥터 · 3 이벤트 열기구(가운데 탑과 거리의 건물 사이에 뜬다) · 4 먼 빌딩 · 5 거리 · 6 무대의 창밖 · 7 무대 · 8 밤 불빛의 번짐 · 9 걷는 이 · 10 가운데 탑
 //      · 11 열기구의 밤 그림(속에서 빛난다. 낮 그림 위에 겹쳐 두고 밤에만 드러낸다)
-// 지나가는 것들(1 · 2 · 9 · 11)의 자리는 uMov[번호] = (가운데 x, y 를 옮긴 만큼, 걷는 그림 번호, 가는 쪽 ±1). 정점의 x 는 가운데에서의 거리다.
+// 지나가는 것들(1 · 2 · 9 · 11)의 자리는 uMov[번호] = (가운데 x, y 를 옮긴 만큼, 걷는 그림 번호, 가는 쪽 ±1 — 멈춰 서 있으면 ±2). 정점의 x 는 가운데에서의 거리다.
 const MAX_MOVERS = 12
 const QUAD_VS = `
 attribute vec2 aPos; attribute vec2 aUv; attribute vec4 aAni;
@@ -55,14 +55,16 @@ void main(){
   float k = kind > 10.5 || (kind > 2.5 && kind < 3.5) ? 1. : kind;   // 이벤트 열기구(3)와 그 밤 그림(11)은 열기구와 똑같이 움직인다
   vec2 p = aPos, uv = aUv;
   float snap = 0.;   // 걷는 이: 그림의 왼쪽 끝이 놓일 캔버스 x(맞추기 전)
+  float still = 0.;  // 걷는 이가 멈춰 서 있는가
   if (k < .5) {
     float sp = 3. + aAni.y * 2.;
     p.x += mod(aAni.z + sp * uTime + 2155., 6465.) - 2155. - aAni.z;
   } else if (k < 2.5 || (k > 8.5 && k < 9.5)) {
     vec4 m = uMov[int(aAni.y + .5)];
-    p = vec2(m.x + aPos.x * (aAni.z == 0. ? 1. : m.w * aAni.z), aPos.y + m.y);   // 가는 쪽을 보도록 뒤집는다
+    p = vec2(m.x + aPos.x * (aAni.z == 0. ? 1. : sign(m.w) * aAni.z), aPos.y + m.y);   // 가는 쪽을 보도록 뒤집는다
     uv.x += m.z * aAni.w;
     snap = (m.x - abs(aPos.x)) * uView.x + uView.z;
+    still = abs(m.w) > 1.5 ? 1. : 0.;
   }
   // 화면의 느린 좌우 흔들림(깊이감). 거리와 걷는 이는 제자리에 두고 뒤의 층만 반대쪽으로 민다 — 층 사이의 어긋남은 그대로이고,
   // 길 위의 캐릭터가 화면 픽셀에 맞은 채로 가만히 있을 수 있다(거리째 흔들면 서 있는 캐릭터가 한 칸씩 끌려가거나 흐려진다).
@@ -70,8 +72,9 @@ void main(){
   p.x += uSway * par;
   vPos = p;
   vec2 c = p * uView.xy + uView.zw;          // 캔버스 픽셀(왼쪽 위 원점)
-  // 걷는 캐릭터만 화면 픽셀에 맞춘다. 꼭짓점마다 따로 반올림하면 폭이 한 칸씩 늘었다 줄므로 그림 전체를 같은 만큼 옮긴다
-  if (k > 8.5 && k < 9.5) c.x += floor(snap + .5) - snap;
+  // 걷는 캐릭터는 서 있을 때만 화면 픽셀에 맞춘다(또렷하게). 걷는 동안은 맞추지 않는다 — 한 칸씩 끊어 옮기면 걸음이 덜컥거린다.
+  // 꼭짓점마다 따로 반올림하면 폭이 한 칸씩 늘었다 줄므로 그림 전체를 같은 만큼 옮긴다
+  if (k > 8.5 && k < 9.5 && still > .5) c.x += floor(snap + .5) - snap;
   gl_Position = vec4(c.x / uRes.x * 2. - 1., 1. - c.y / uRes.y * 2., 0., 1.);
   // 가운데 탑(10)은 거리(5)와 똑같이 칠한다. 불빛 지도는 거리 그림 자리에 맞춰 있어 탑은 제 자리로 읽을 곳을 따로 계산한다
   bool tower = kind > 9.5 && kind < 10.5;
@@ -126,7 +129,7 @@ void main(){
     }
     // 캐릭터와 열기구는 색을 고르게 다룬다(부분만 밝히면 얼룩져 보인다).
     // 걷는 이들: 한낮에는 제 색 그대로 가장 밝고, 밤으로 갈수록 가로등 빛에 조금 가라앉는다. 어두운 막은 씌우지 않는다
-    else if (vKind > 8.5) { gl_FragColor = uDim * vec4(c * mix(vec3(1.), vec3(.9, .85, .78), uLamp) * t.a, t.a); return; }
+    else if (vKind > 8.5) { gl_FragColor = uDim * vec4(c * mix(vec3(1.), vec3(.98, .93, .86), uLamp) * t.a, t.a); return; }
     else if (vKind < 1.5) lit = c * mix(uAmb, vec3(1.), .5 * uLamp);
   }
   gl_FragColor = uDim * vec4(mix(lit, vec3(.09, .07, .16), mix(uMask, ${MASK.toFixed(2)}, keep)) * t.a, t.a);
@@ -269,7 +272,7 @@ function stepMovers(sc: Scene, dt: number, s: number, left: number, right: numbe
     out[o] = m.wait > 0 ? -1e5 : m.x
     out[o + 1] = m.type === 0 ? m.jit + Math.sin(s * 0.55 + m.ph * 6.283) * 5 : m.type === 1 ? m.jit + Math.sin(s * 1.3 + m.ph * 6.283) * 2.5 : 0
     out[o + 2] = m.type === 2 ? (m.pause > 0 ? 0 : Math.floor(m.walk * (m.frames > 4 ? 8.33 : 5)) % m.frames) : 0
-    out[o + 3] = m.dir
+    out[o + 3] = m.dir * (m.type === 2 && m.pause > 0 ? 2 : 1)   // 크기 2 = 멈춰 서 있다
   })
 }
 
