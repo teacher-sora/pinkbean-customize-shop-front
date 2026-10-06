@@ -185,6 +185,12 @@ function fixSlotCodes<T extends { slot?: string; islot?: string | null; vslot?: 
   return { ...it, islot: base, vslot: base } // islot 이 통째로 남의 코드 = vslot 도 같은 값이라 함께 되돌린다
 }
 
+// 원본의 아이콘이 다른 물건 그림인 아이템 → 같은 이름의 올바른 아이콘으로 바꿔 끼운다.
+//  · 투명 방패 01092056: 원본 아이콘이 투명 장갑 그림이다. 같은 이름의 01092067 은 방패 그림이다(둘 다 입으면 아무것도 안 보인다).
+//    목록은 같은 이름 가운데 가장 낮은 id 를 대표로 쓰므로(foldList) 장갑 그림이 방패 칸에 떴다.
+const ICON_FIX: Record<string, string> = { '01092056': 'sprites/01092067/icon.png' }
+const fixIcon = <T extends { id: string; icon?: string | null }>(it: T): T => (ICON_FIX[it.id] ? { ...it, icon: ICON_FIX[it.id] } : it)
+
 // 라이딩(dev 로컬) 아이템의 meta 경로를 id→url 로 등록. 슬롯 로드 시 채워지고 loadMeta 가 이걸 우선 쓴다.
 const ridingMetaUrl = new Map<string, string>()
 const slotCache = new Map<string, Promise<ListItem[]>>()
@@ -193,7 +199,7 @@ export function loadSlot(file: string): Promise<ListItem[]> {
   if (!p) {
     p = fetch(url(file), FRESH).then((r) => r.json()).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
-      return items.map(fixSlotCodes)
+      return items.map((it) => fixIcon(fixSlotCodes(it)))
     })
     slotCache.set(file, p)
   }
