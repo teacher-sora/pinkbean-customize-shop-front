@@ -21,6 +21,9 @@ export interface Layer {
   z: string
   origin: Vec
   map: Record<string, Vec>
+  // 원본에 앵커(map)가 없는 캔버스 — 뼈대의 어느 점에도 붙지 않고 캐릭터 원점(발)에 origin 을 맞춘다(이펙트 프레임과
+  // 같은 좌표계). 추출기가 머리부착 아이템의 액션 프레임에서만 단다(extract.cjs extractFrame). z 가 정수일 수 있다.
+  root?: boolean
 }
 
 // One animation frame: its display duration (ms) + the layers to draw.

@@ -1,6 +1,6 @@
 // 스냅샷(착용+톤+염색+점 위치+연출설정 일부) → 합성 결과(placed·염색 override·이펙트). 렌더 캔버스와 무관한 순수 조립.
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
-import { assemble, getFrameLayers, isBackFrame, type AssembleInput, type PlacedLayer } from './assemble'
+import { assemble, getFrameLayers, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
 import { loadMeta, loadAnima, loadSlot, type AnimaRace, type Index, type ItemMeta, type ListItem } from './data'
 import { LRU } from './lru'
 import { applyHsb, buildOverrides, skinHsb as skinHsbFor } from './dye'
@@ -39,9 +39,11 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   // 시선=왼쪽 고정(gaze='left' → flip 없음) + 저장된 귀/무기모션 반영.
   // stance=true: 무기 모션은 **자세까지** 바꾼다(두손 → stand2). 미리보기와 같은 규칙으로 맞춘다
   //   (2026-09-21 — 카드는 늘 stand1 이라 '두손'으로 둔 코디가 광장에서 다른 자세로 보였다).
-  const TV = view
+  const TV0 = view
     ? { ...THUMB_VIEW, action: resolveAction(spv.action || 'basic', spv.weapon || 'basic'), expression: snapExpr || spv.expr || THUMB_VIEW.expression, ear: spv.ear || THUMB_VIEW.ear, weaponMotion: spv.weapon || THUMB_VIEW.weaponMotion }
     : thumbView('left', snapExpr, spv.ear, spv.weapon, true).view
+  // 서기 자세는 착용한 무기가 정한다(두손 전용 무기 → stand2) — assemble.weaponPose 주석 참고.
+  const TV = weaponPose(equipMetas.find(({ slot }) => slot === 'weapon')?.meta, TV0)
   // [dev] 탑승 중이면 캐릭터는 **앉는다**(미리보기·부위 카드와 같은 규칙, shopData.ridingSeatedSet).
   //   · 탈것은 자기 액션(TV)으로, 캐릭터·옷은 sit 으로 그린다.
   //   · 방패는 탑승 중 숨김(직업 불일치), 무기는 앉은 채에선 미출력.
@@ -59,7 +61,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   //   ItemEff 만 걸러서는 꺼지지 않았다(2026-09-21 사용자 제보 — 광장에 연출 설정이 반영 안 됨).
   const wornLayers = (slot: string, meta: ItemMeta) => {
     // 탈것만 자기 액션(TV)을 돈다 — 캐릭터의 뒷프레임 판단도 붙이지 않는다(별도 모델).
-    const ls = slot === 'riding' ? getFrameLayers(meta, rideTV) : getFrameLayers(meta, charTV, 0, backFrame)
+    const ls = slot === 'riding' ? getFrameLayers(meta, rideTV) : getFrameLayers(meta, charTV, undefined, backFrame) // 정지 화면 = 대표 프레임
     return slot === 'weapon' && !spv.wEffect ? ls.filter((l) => l.name !== 'effect') : ls
   }
   const items: AssembleInput[] = [

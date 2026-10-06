@@ -1,42 +1,36 @@
-# 브랜치 · 배포 워크플로우
+# 브랜치 · 배포
 
 ## 브랜치
 | 브랜치 | 용도 | 배포 |
 |---|---|---|
-| `main` | **실서버(프로덕션)** | push 시 **자동으로 pinkbean-customize.com 에 반영** |
-| `dev` | **확인용(코드 스테이징)** | **배포 안 함** — 로컬(`npm run dev`)에서 확인 |
-| `feat/*`, `fix/*`, `chore/*` | 작업 단위 | 배포 안 함 |
+| `main` | 운영 | push 하면 `pinkbean-customize.com` 에 반영 |
+| `dev` | 확인용 | push 하면 `dev.pinkbean-customize.com` 에 반영 |
 
-## 기본 흐름
+Vercel 프로젝트에 이 저장소가 연결돼 있어 **push 만으로 배포된다.**
+
+## 흐름
 ```
-feat/xxx  →  dev  (여기서 확인)  →  main  (실서버)
+dev 에 커밋·push → dev 사이트에서 확인 → (지시가 있을 때) main 으로 병합 → 운영 반영
 ```
-1. 작업 브랜치에서 커밋 → **`dev` 에 머지·푸시**
-2. **로컬에서 확인**(`npm run dev`). 자잘한 수정·테스트 기능은 `dev` 에 계속 쌓아둔다.
-3. 문제 없음이 확인되면 **`dev` → `main` 머지** → 실서버 반영
 
 ```bash
-# 1) 작업 → dev 로 (배포되지 않는다)
-git checkout dev && git merge --no-ff feat/xxx && git push origin dev
-#    → 로컬 npm run dev 로 확인
+# 1) dev 로
+git push origin dev
 
-# 2) 확인 끝나면 실서버로
-git checkout main && git merge --no-ff dev && git push origin main
-#    → pinkbean-customize.com 자동 반영
+# 2) 확인이 끝나면 운영으로 — 반드시 스크립트로 병합한다
+sh scripts/merge-dev-to-main.sh
+git push origin main
+git checkout dev
 ```
 
-## 배포가 어떻게 걸려 있나 (중요)
-- Vercel **프로젝트에 GitHub 저장소가 연결**돼 있어(productionBranch=`main`) **push 만으로 배포된다.**
-  GitHub Actions 워크플로우는 **없다** — 예전엔 CLI 수동 배포라 main 에 머지해도 사이트에 반영되지
-  않는 사고가 있었고, 그래서 Git 연동으로 전환했다.
-- **프리뷰 배포는 꺼져 있다.** Vercel 프로젝트의 Ignored Build Step 에
-  `[ "$VERCEL_ENV" != "production" ]` 를 걸어 **프로덕션이 아니면 빌드를 취소**한다.
-  (Vercel 규칙: 이 명령이 exit 0 이면 빌드 취소, exit 1 이면 빌드 진행.)
-  **왜**: CDN(cdn.pinkbean-customize.com)이 실서버 도메인에만 이미지를 내주므로 프리뷰는 어차피
-  이미지가 깨진다 → 쓸모없는 빌드만 도는 셈. 확인은 로컬에서 한다.
+## 개발 전용 경로
+`src/app/viewer`(화면 뷰어)는 dev 에만 있다. `merge-dev-to-main.sh` 가 병합하면서 이 경로를 빼고,
+커밋 전·후 두 번 확인한다. 그냥 `git merge` 하면 훅(`.githooks`, `core.hooksPath=.githooks`)이 거부하고,
+훅이 없는 환경은 GitHub Actions(`guard-dev-only.yml`)가 막는다. 셋 다 지우거나 우회하지 않는다.
+
+dev 에 아직 운영에 올리면 안 되는 기능이 섞여 있으면 스크립트를 쓰지 말고, `origin/main` 에서 브랜치를 떼어 그 기능만 올린다.
 
 ## 주의
-- **`main` 에 직접 커밋하지 말 것.** 실서버로 바로 나간다.
-- `dev` 는 실험이 쌓이는 곳이라 언제든 `main` 기준으로 리셋될 수 있다.
-- 프리뷰를 다시 켜려면 Vercel → Settings → Git → Ignored Build Step 을 비우면 된다.
-- 백엔드(`pinkbean-customize-shop-back`)는 Fly.io 이고 **수동 배포**(`flyctl deploy`)다 — 브랜치 머지만으로 반영되지 않는다.
+- `main` 에 직접 커밋하지 않는다.
+- 코디 광장의 DB(Supabase)는 운영(`public`)과 dev(`plaza_dev`)가 나뉘어 있다. 스키마가 바뀌는 변경은 **운영 DB 를 먼저** 바꾼 뒤 main 을 올린다.
+- 백엔드(`pinkbean-customize-shop-back`)는 Fly.io 이고 **수동 배포**(`fly deploy`)다 — 브랜치 병합만으로 반영되지 않는다.

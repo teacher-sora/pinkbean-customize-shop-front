@@ -21,6 +21,7 @@ import { useRidingGuards } from './shop/preview/pvControls'
 import Surface from './shop/surface/Surface'
 import LookDialog from './shop/LookDialog'
 import Toast from './shop/ui/Toast'
+import ConfirmBubble from './shop/ui/ConfirmBubble'
 import styles from './shop/frame/frame.module.css'
 
 function Shell() {
@@ -79,6 +80,7 @@ function Shell() {
       <Surface />
       <LookDialog />
       <Toast />
+      <ConfirmBubble />
     </>
   )
 }

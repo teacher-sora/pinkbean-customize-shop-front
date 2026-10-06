@@ -26,8 +26,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
 
   // 삭제는 2단계 확인: 3초 안에, 다른 상호작용 없이 연속으로 한 번 더 누르면 삭제(lib/confirmTwice).
   const remove = (p: Preset) => {
-    if (confirmTwice(`preset:${p.id}`)) { s.resetPreset(p.id); return }
-    s.notify(`한 번 더 누르면 '${p.name}' 프리셋을 삭제해요`)
+    // 되묻는 문구는 삭제 버튼 바로 위 말풍선으로 뜬다(ui/ConfirmBubble) — 어느 카드인지는 자리로 알 수 있어 이름을 뺐다.
+    if (confirmTwice(`preset:${p.id}`, '한 번 더 누르면 삭제해요')) s.resetPreset(p.id)
   }
 
   const chip = (

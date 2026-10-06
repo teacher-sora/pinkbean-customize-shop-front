@@ -5,7 +5,7 @@
 //  · 표정 얼굴장식은 맨 마네킹에 올려도 안 보여 '내 캐릭터'로 승격한다.
 
 import { useEffect, useRef, useState } from 'react'
-import { getFrameLayers, type AssembleInput } from '@/lib/core/assemble'
+import { getFrameLayers, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadMeta, type AnimaRace, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides } from '@/lib/core/dye'
 import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
@@ -20,7 +20,9 @@ const toneIds = (idx: Tones, tone: number) => {
 }
 
 // stance = 배경이 무기모션 자세(두손=stand2)로 구워졌는지 — 카드의 후보 아이템도 같은 자세로 그려야 어긋나지 않는다.
-export type ThumbCtx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement>; effs?: WornEff[]; expr?: string; faceMeta?: ItemMeta | null; stance?: boolean }
+// action = 배경을 구운 몸의 액션이 카드 기본(stand1/무기모션 자세)과 다를 때만 적는다 — 내 무기가 두손 전용이라
+//          stand2 로 선 경우(assemble.weaponPose). 카드의 후보 아이템도 이 액션으로 그려야 한다.
+export type ThumbCtx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement>; effs?: WornEff[]; expr?: string; faceMeta?: ItemMeta | null; stance?: boolean; action?: string }
 const EMPTY: ThumbCtx = { items: [], key: '' }
 
 function useAnimaRaces() {
@@ -90,7 +92,9 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
       // isMy = "내 캐릭터"(내 착용 배경) 컨텍스트. 형상변이·귀·이펙트는 코디 취급 → 내 캐릭터에만 적용.
       const build = async (worn: [string, ListItem][], expr: string, k: string, isMy: boolean): Promise<ThumbCtx> => {
         const stance = isMy && mode === 'mymodel' // 무기모션 자세는 '내 캐릭터' 보기에서만(승격 카드 제외)
-        const view = thumbView(gaze, expr, isMy ? s.pv.ear : undefined, s.pv.weapon, stance).view
+        const view0 = thumbView(gaze, expr, isMy ? s.pv.ear : undefined, s.pv.weapon, stance).view
+        const wornWpn = worn.find(([sl]) => sl === 'weapon')
+        const view = weaponPose(wornWpn ? map.get(wornWpn[1].id) : null, view0)
         const items: AssembleInput[] = []
         if (!isSkinCat) {
           const t = isMy ? mine : elf
@@ -114,7 +118,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
         }
         // 표정 얼굴장식 카드는 배경의 얼굴을 **자기 표정으로 다시 그려야** 한다(ItemThumb) → 메타를 넘긴다.
         const faceEntry = worn.find(([sl]) => sl === 'face')
-        return { items, key: k, override, effs, expr, faceMeta: faceEntry ? (map.get(faceEntry[1].id) ?? null) : null, stance }
+        return { items, key: k, override, effs, expr, faceMeta: faceEntry ? (map.get(faceEntry[1].id) ?? null) : null, stance, action: view !== view0 ? view.action : undefined }
       }
       const main = await build(eqEntries, ctxExpr, key, mode === 'mymodel')
       const my = needMy ? await build(myEq, THUMB_VIEW.expression, `${key}:my`, true) : EMPTY
@@ -174,7 +178,9 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
           // '내 캐릭터' 보기는 연출 설정 표정·무기모션 자세를 따라간다(승격 카드는 기본 표정·자세).
           const stance = mode === 'mymodel'
           const cexpr = fixedExpr(myEq.filter(([sl]) => sl !== slot).map(([, it]) => it), stance ? s.pv.expr : THUMB_VIEW.expression)
-          const cview = thumbView(gaze, cexpr, s.pv.ear, s.pv.weapon, stance).view
+          const cview0 = thumbView(gaze, cexpr, s.pv.ear, s.pv.weapon, stance).view
+          const myWpn = slot === 'weapon' ? undefined : myEq.find(([sl]) => sl === 'weapon')
+          const cview = weaponPose(myWpn ? map.get(myWpn[1].id) : null, cview0)
           const items: AssembleInput[] = []
           if (myBody) items.push({ itemId: myBody.id, slot: 'body', vslot: null, layers: getFrameLayers(myBody, cview) })
           if (myHead) items.push({ itemId: myHead.id, slot: 'head', vslot: null, layers: getFrameLayers(myHead, cview) })
@@ -192,7 +198,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
           const effs = await collectWornEffects(
             myEq.filter(([sl]) => sl !== slot).map(([sl, it]) => ({ slot: sl, id: it.id, dyeable: it.dyeMode !== 'none' })), s.pv, s.renderHsb, override,
           ).catch(() => [])
-          bySlot[slot] = { items, key: `${key}:${slot}:${cexpr}`, override, effs, expr: cexpr, faceMeta, stance }
+          bySlot[slot] = { items, key: `${key}:${slot}:${cexpr}`, override, effs, expr: cexpr, faceMeta, stance, action: cview !== cview0 ? cview.action : undefined }
         }
       }
       if (!alive) return
