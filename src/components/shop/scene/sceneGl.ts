@@ -200,7 +200,6 @@ interface Scene {
   px: number                     // 무대: 그림 1칸의 캔버스 픽셀 수(= 캐릭터 도트 1칸)
   nearest: boolean               // 무대: 지금 텍스처 필터
   shadow: number                 // 무대: 발밑 그림자 반폭(그림 픽셀)
-  arrive: number                 // 0 → 1: 처음 뜨면서 살짝 다가간다
   since: number                  // 화면에 붙은 때(그림을 얼마나 기다렸는지 잰다)
   loading: boolean               // 그림을 받기 시작했다
   els: (HTMLImageElement | undefined)[]   // 화면에 깔린 <img>(텍스처의 원본)
@@ -321,14 +320,16 @@ function mesh(kind: SceneKind) {
     for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]) out.push(x + cx * w, y + cy * h, cx ? u1 : u0, cy ? v1 : v0, k, ph, z, extra)
   }
   if (kind === 'sky') {
-    const [aw, ah] = STREET.atlas, [cw, ch] = STREET.cloud
+    const [fw, fh] = STREET.atlas, [bw, bh] = STREET.back
     // sprites: [종류, 아틀라스 x, y, w, h, 장면 x, y, 빠르기 배수 | 걷는 그림 장수, 박자 | 장 사이 간격]
     // 구름은 제자리에서 흘러가고, 나머지는 지나가는 것들이다. 같은 그림이 여러 번 놓여 있으면 하나만 쓴다(하늘이 붐비지 않게).
     const defs: typeof moverDefs = [], byArt = new Map<string, number>(), byBeat = new Map<number, number>()
     let helis = 0
     STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, b], i) => {
-      if (k === 0) { quad(0, (i * 0.618034) % 1, x, y, w, h, ax / cw, ay / ch, (ax + w) / cw, (ay + h) / ch, 0); return }   // 구름은 제 그림(street-cloud)에 있다
+      // 구름 · 핑크빈/페페 열기구 · 헬리콥터는 뒤쪽 그림(street-back)에, 나머지는 street-air 에 있다
+      const [aw, ah] = k === 0 || k === 2 || (k === 1 && b < 0) ? [bw, bh] : [fw, fh]
       const uv = [ax / aw, ay / ah, (ax + w) / aw, (ay + h) / ah] as const
+      if (k === 0) { quad(0, (i * 0.618034) % 1, x, y, w, h, ...uv, 0); return }
       if (k === 11) { const idx = byBeat.get(b); if (idx != null) quad(11, idx, -w / 2, y, w, h, ...uv, 0, extra < 0 ? -1 : 1); return }
       const art = `${ax},${ay}`
       if (byArt.has(art) || defs.length >= MAX_MOVERS) return
@@ -428,7 +429,7 @@ function load(sc: Scene) {
 function create(kind: SceneKind): Scene {
   const canvas = document.createElement('canvas')
   canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;pointer-events:none'
-  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, arrive: 0, since: 0, loading: false, els: [], frozen: false, mask: MASK, movers: null, mov: new Float32Array(MAX_MOVERS * 4), shown: false, dirty: true, at: 0, failed: false, cleanup: null }
+  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, since: 0, loading: false, els: [], frozen: false, mask: MASK, movers: null, mov: new Float32Array(MAX_MOVERS * 4), shown: false, dirty: true, at: 0, failed: false, cleanup: null }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다. 그때는 바탕색만 남는다. (?skygl=soft 는 GPU 없는 확인 환경에서 강제로 켜는 용도)
   const soft = /[?&]skygl=soft/.test(window.location.search)
   const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft })
@@ -482,11 +483,9 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   // 네트워크가 느린 곳에서 몇 장을 기다리느라 화면이 내내 바탕색으로 남지 않게. 무대는 바탕(매장 색)이 있어 다 올 때까지 기다린다.
   if (sc.tex.length < SOURCES[sc.kind].length || sc.tex.some((t) => !t)) { if (room || now - sc.since < PATIENCE) return }
   const s = still ? 40 : now / 1000, W = c.width, H = c.height
-  sc.arrive = still ? 1 : Math.min(1, sc.arrive + 0.035)
-  const ease = 1 - Math.pow(1 - sc.arrive, 3), zoom = 1 + 0.03 * (1 - ease)
   if (room) {
-    // 다가가는 동안만 부드럽게, 멈추면 칸을 그대로(캐릭터 도트와 같은 결)
-    const nearest = sc.arrive >= 1 && Number.isInteger(sc.px)
+    // 칸을 그대로 그린다(캐릭터 도트와 같은 결)
+    const nearest = Number.isInteger(sc.px)
     if (nearest !== sc.nearest) {
       sc.nearest = nearest
       const f = nearest ? gl.NEAREST : gl.LINEAR
@@ -518,9 +517,9 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, STRIDE * 4, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, STRIDE * 4, 8); gl.vertexAttribPointer(2, 4, gl.FLOAT, false, STRIDE * 4, 16)
   // 그림 픽셀 → 캔버스 픽셀: c = p * k + o
   let k: number, ox: number, oy: number
-  if (room) { k = sc.px * zoom; ox = sc.foot[0] - ROOM.foot[0] * k; oy = sc.foot[1] - ROOM.foot[1] * k }
-  else { k = sc.ratio * Math.max(1, W / sc.ratio / (STREET.w - 4 * SWAY)) * zoom; ox = W / 2 - (STREET.w / 2) * k; oy = H - STREET.h * k }
-  if (zoom === 1) { ox = Math.round(ox); oy = Math.round(oy) } // 칸이 화면 픽셀에 딱 맞게
+  if (room) { k = sc.px; ox = sc.foot[0] - ROOM.foot[0] * k; oy = sc.foot[1] - ROOM.foot[1] * k }
+  else { k = sc.ratio * Math.max(1, W / sc.ratio / (STREET.w - 4 * SWAY)); ox = W / 2 - (STREET.w / 2) * k; oy = H - STREET.h * k }
+  ox = Math.round(ox); oy = Math.round(oy) // 칸이 화면 픽셀에 딱 맞게
   gl.uniform4f(q.u.uView, k, k, ox, oy); gl.uniform2f(q.u.uRes, W, H); gl.uniform1f(q.u.uTime, s); gl.uniform1f(q.u.uTw, s % 600)
   gl.uniform1f(q.u.uSway, still ? 0 : Math.sin(s * 0.09) * SWAY)
   if (!room) {
@@ -546,10 +545,10 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
     for (const kd of kinds) { const r = sc.ranges[kd]; if (r) gl.drawArrays(gl.TRIANGLES, r[0], r[1]) }
   }
   if (room) { part(0, [6]); part(1, [7]) }
-  else { part(5, [0]); part(0, [1, 2]); part(1, [4]); part(4, [10]); part(0, [3, 11]); part(2, [5]); part(3, [8]); part(0, [9]) }
+  else { part(5, [0, 1, 2]); part(1, [4]); part(4, [10]); part(0, [3, 11]); part(2, [5]); part(3, [8]); part(0, [9]) }
   sc.dirty = false
   sc.at = now
-  if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }
+  if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .7s ease'; c.style.opacity = '1' }   // 깔려 있던 그림 위로 번지듯 나타난다(크기는 그대로 — 다가가는 효과는 그림과 어긋나 보였다)
 }
 
 // 헤더에서 시간대를 바꾸면 곧바로 다시 그린다(동작 줄이기에서는 20초마다만 그리므로)
@@ -601,9 +600,9 @@ export function mountScene(kind: SceneKind, host: HTMLElement): () => void {
   sc.host = host
   load(sc)
   if (!sc.shown) sc.since = performance.now()
-  // 처음 뜰 때만 어두운 바탕에서 밝아지며 살짝 다가간다. 이미 떠 있던 장면은 다시 붙자마자 그린다(아래)
+  // 처음 뜰 때만 서서히 나타난다. 이미 떠 있던 장면은 다시 붙자마자 그린다(아래)
   const again = sc.shown
-  if (!again) { sc.canvas.style.transition = 'none'; sc.canvas.style.opacity = '0'; sc.arrive = 0 }
+  if (!again) { sc.canvas.style.transition = 'none'; sc.canvas.style.opacity = '0' }
   host.appendChild(sc.canvas)
   const relayout = () => layout(sc)
   const ro = new ResizeObserver(relayout)
