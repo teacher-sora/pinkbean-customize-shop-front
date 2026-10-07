@@ -33,19 +33,26 @@ function Sprite({ s }: { s: StillSprite }) {
 export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room'; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const veil = useRef<HTMLDivElement>(null)
+  const lone = useRef(false)                                      // 앱 배경인데 WebGL 을 못 쓴다
+  const repaint = useRef<() => void>()
   const [ready, setReady] = useState(false)                       // 화면이 떴다 → 그림을 넣는다
   const [sprites, setSprites] = useState<StillSprite[] | null>(null)   // WebGL 을 못 쓴다 → 지나가는 것들을 그림으로 놓는다
   useEffect(() => {
     const host = ref.current
     if (!host) return
     setReady(true)
-    const paint = () => { host.style.background = sceneFallback(kind); if (veil.current) veil.current.style.opacity = String(sceneVeil(kind)) }
+    // WebGL 을 못 쓰는 앱 배경(lone)은 막을 고정 짙기로 두고 '배경 보기'에서 걷는다(CSS 의 .mask) — 그때는 바탕색도 막을 섞지 않은 색으로 칠한다
+    const paint = () => {
+      host.style.background = sceneFallback(kind, lone.current)
+      if (veil.current) veil.current.style.opacity = lone.current ? '' : String(sceneVeil(kind))
+    }
+    repaint.current = paint
     paint()
     const iv = window.setInterval(paint, 120000)
     const off = onSkyChange(paint)
     let dead = false
     let unmount: (() => void) | undefined
-    const noGl = () => { if (!dead && kind === 'sky') setSprites(stillSprites(host.clientWidth || window.innerWidth)) }
+    const noGl = () => { if (dead || kind !== 'sky') return; lone.current = true; repaint.current?.(); setSprites(stillSprites(host.clientWidth || window.innerWidth)) }
     const start = () => {
       import('./sceneGl').then((m) => { if (dead) return; unmount = m.mountScene(kind, host); if (m.sceneFailed(kind)) noGl() }).catch(noGl)
     }
@@ -58,7 +65,7 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
       unmount?.()
     }
   }, [kind])
-  useEffect(() => { if (veil.current) veil.current.style.opacity = String(sceneVeil(kind)) }, [ready, kind])
+  useEffect(() => { repaint.current?.() }, [ready, kind])
   const at = (layer: number) => sprites?.filter((s) => s.layer === layer).map((s) => <Sprite key={s.key} s={s} />)
   // 무대의 그림은 캐릭터가 서는 자리와 배율(미리보기 배율 설정)에 맞춰 놓는다 — 장면(sceneGl 의 layout)과 같은 계산.
   // 그래야 처음 깔리는 그림과 그 위로 나타나는 장면의 크기 · 자리가 같다. 칸을 그대로 키운다(장면도 정수 배율에서는 그렇게 그린다).
@@ -98,7 +105,7 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
         // 쌓는 순서는 장면과 같다: 구름 · 열기구 · 헬리콥터 → 먼 빌딩 → 탑 → 이벤트 열기구 → 거리 → 걷는 이
         <>{at(0)}{img(1)}{img(4)}{at(1)}{img(2)}{at(2)}{early(5, STREET.back)}{early(0, STREET.atlas)}{early(3, [STREET.w / 2, STREET.main.h / 2])}</>
       ) : STILL.room.map((l) => img(l.i)))}
-      {ready && <div ref={veil} className={styles.veil} />}
+      {ready && <div ref={veil} className={clsx(styles.veil, sprites && styles.mask)} />}
     </div>
   )
 }

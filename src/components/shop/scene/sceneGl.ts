@@ -21,7 +21,7 @@
 
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import { ROOM, STREET } from './sceneData'
-import { SCENE_SRC, spread } from './sceneSrc'
+import { SCENE_SRC, pickSome, spread, stillCount } from './sceneSrc'
 import { onSkyChange, skyNow, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
@@ -242,13 +242,16 @@ function initMovers(left: number, right: number, frozen: boolean): Mover[] {
   const count = [0, 0, 0], seen = [0, 0, 0]
   for (const d of moverDefs) count[d.type]++
   if (frozen) {
-    // 하늘의 것들(열기구 · 헬리콥터)끼리, 걷는 이들끼리 겹치지 않게 흩는다
-    const sky = spread(count[0] + count[1], left, right), xs = [sky, sky, spread(count[2], left, right)]
-    let skyN = 0
+    // 하늘의 것들(열기구 · 헬리콥터)끼리, 걷는 이들끼리 겹치지 않게 흩는다. 보이는 폭이 좁으면 일부만 골라 놓는다(stillCount)
+    const nSky = count[0] + count[1], kSky = stillCount(nSky, right - left), kWalk = stillCount(count[2], right - left)
+    const useSky = pickSome(nSky, kSky), useWalk = pickSome(count[2], kWalk)
+    const sky = spread(kSky, left, right), walk = spread(kWalk, left, right)
+    let skyI = 0, skyN = 0, walkN = 0
     return moverDefs.map((d) => {
       const m: Mover = { ...d, x: -1e5, dir: 1, speed: 0, wait: 0, jit: 0, walk: 0, pauseAt: NaN, pause: 0 }
+      if (!(d.type === 2 ? useWalk.has(seen[2]++) : useSky.has(skyI++))) { m.wait = 1e9; return m }   // 이번에는 놓지 않는다
       spawn(m, left, right)
-      m.x = Math.min(right - d.w / 2, Math.max(left + d.w / 2, d.type === 2 ? xs[2][seen[2]++] : sky[skyN++]))
+      m.x = Math.min(right - d.w / 2, Math.max(left + d.w / 2, d.type === 2 ? walk[walkN++] : sky[skyN++]))
       m.pauseAt = NaN
       if (d.type === 2) m.pause = 1e9
       return m
