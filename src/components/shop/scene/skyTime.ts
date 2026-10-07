@@ -159,22 +159,20 @@ export function skyNow(): SkyState {
 const css = (c: RGB) => `rgb(${c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255)).join(',')})`
 const mul = (a: RGB, b: RGB): RGB => [a[0] * b[0], a[1] * b[1], a[2] * b[2]]
 
-// 캔버스가 뜨기 전에, 그리고 장면을 못 띄우는 기기(WebGL 없음 · 그림을 못 받음)에서는 끝까지 깔려 있는 바탕.
+// 장면(WebGL)이 뜨기 전에, 그리고 못 띄우는 기기에서는 끝까지 깔려 있는 바탕. 이 위에 움직이지 않는 그림(<img>)이 얹힌다(SceneCanvas).
 // 장면과 같은 시각의 색을 **장면과 같은 밝기로** 낸다 — 어둡게 눌러 두었더니 네트워크가 느린 곳과 GPU 가 없는 기기에서
-// 화면이 내내 검게 보였다(사용자 제보). art = 장면의 그림을 CSS 배경으로 겹친 것(sceneGl 의 sceneArt, WebGL 을 못 쓸 때만).
-export function sceneFallback(kind: 'sky' | 'room', art?: string | null): string {
+// 화면이 내내 검게 보였다(사용자 제보).
+export function sceneFallback(kind: 'sky' | 'room'): string {
   const s = skyState(skyHour())
   if (kind === 'sky') {
     // 장면이 하는 것과 같게: 어두운 막 20% + 밤에는 전체를 18% 가라앉힌다(sceneGl 의 MASK · NIGHT_DIM)
     const dark: RGB = [0.09, 0.07, 0.16], k = 1 - 0.18 * s.night
-    const sky = `linear-gradient(180deg, ${s.sky.map((c) => css(mul(mix3(c, dark, 0.2), [k, k, k]))).join(', ')})`
-    if (!art) return sky
-    const veil = `rgba(23,18,41,${(0.2 + 0.45 * s.night).toFixed(2)})`   // 그림은 낮의 색이라 밤에는 막을 짙게 씌운다
-    return `linear-gradient(${veil}, ${veil}), ${art}, ${sky}`
+    return `linear-gradient(180deg, ${s.sky.map((c) => css(mul(mix3(c, dark, 0.2), [k, k, k]))).join(', ')})`
   }
-  // 무대: 매장 안의 색(천장 · 벽 · 바닥 · 그 아래 그늘)
-  const room = `linear-gradient(180deg, ${[['#8f6f55', 0], ['#cfa983', 38], ['#e2c7a4', 60], ['#3b2e27', 74], ['#17120f', 100]].map(([c, p]) => `${css(mul(hex(c as string), s.amb))} ${p}%`).join(', ')})`
-  if (!art) return room
-  const veil = `rgba(23,18,41,${(0.3 * s.night).toFixed(2)})`
-  return `linear-gradient(${veil}, ${veil}), ${art}, ${css(mul(hex('#17120f'), s.amb))}`
+  return css(mul(hex('#17120f'), s.amb))
+}
+// 움직이지 않는 그림 위에 씌우는 막의 짙기. 그림은 낮의 색이라 밤에는 짙게 씌운다(장면이 뜨면 장면이 제 빛으로 그린다).
+export function sceneVeil(kind: 'sky' | 'room'): number {
+  const s = skyState(skyHour())
+  return kind === 'sky' ? 0.2 + 0.45 * s.night : 0.3 * s.night
 }
