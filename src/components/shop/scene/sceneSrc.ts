@@ -3,6 +3,7 @@
 import roomFar from '@/assets/scene/room-far.webp'
 import roomMain from '@/assets/scene/room-main.webp'
 import streetAir from '@/assets/scene/street-air.webp'
+import streetCloud from '@/assets/scene/street-cloud.webp'
 import streetFar from '@/assets/scene/street-far.webp'
 import streetGlow from '@/assets/scene/street-glow.webp'
 import streetMain from '@/assets/scene/street-main.webp'
@@ -11,7 +12,7 @@ import { ROOM, STREET } from './sceneData'
 
 // 자리 번호가 곧 텍스처 번호다(sceneGl 의 part()).
 export const SCENE_SRC = {
-  sky: [streetAir, streetFar, streetMain, streetGlow, streetTower].map((m) => m.src),
+  sky: [streetAir, streetFar, streetMain, streetGlow, streetTower, streetCloud].map((m) => m.src),
   room: [roomFar, roomMain].map((m) => m.src),
 }
 
@@ -42,7 +43,7 @@ export function spread(n: number, lo: number, hi: number): number[] {
 // WebGL 을 못 쓰는 기기에서: 지나가는 것들(구름 · 열기구 · 헬리콥터 · 걷는 이)을 움직이지 않는 그림으로 놓는다.
 // 구름은 제자리에, 나머지는 화면에 보이는 폭 안에 고루 흩어 놓고 저마다 가는 쪽을 뽑아 그쪽을 보게 한다.
 // 자리와 보는 쪽의 규칙은 장면(sceneGl 의 mesh)과 같다. layer = 쌓는 자리: 0 먼 빌딩 뒤 · 1 탑과 거리 사이 · 2 거리 앞.
-export interface StillSprite { key: string; layer: 0 | 1 | 2; ax: number; ay: number; w: number; h: number; x: number; y: number; scale: number; flip: boolean }
+export interface StillSprite { key: string; layer: 0 | 1 | 2; cloud?: boolean; ax: number; ay: number; w: number; h: number; x: number; y: number; scale: number; flip: boolean }
 const HELI = { up: 150, size: 0.75 }   // sceneGl 의 HELI_UP · HELI_SIZE 와 같은 값
 export function stillSprites(viewW: number): StillSprite[] {
   const out: StillSprite[] = [], seen = new Set<string>()
@@ -51,7 +52,7 @@ export function stillSprites(viewW: number): StillSprite[] {
   const rows: Row[] = []
   let helis = 0
   STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, b], i) => {
-    if (k === 0) { out.push({ key: 'c' + i, layer: 0, ax, ay, w, h, x, y, scale: 1, flip: false }); return }
+    if (k === 0) { out.push({ key: 'c' + i, layer: 0, cloud: true, ax, ay, w, h, x, y, scale: 1, flip: false }); return }
     if (k === 11) return                       // 열기구의 밤 그림은 장면에서만 쓴다
     const art = `${ax},${ay}`
     if (seen.has(art)) return                  // 같은 그림은 하나만

@@ -8,7 +8,7 @@
 import clsx from 'clsx'
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import bg from '@/assets/pinkbean-bg.png'
+import bg from '@/assets/pinkbean-bg.webp'
 import { contestCandidates, plazaContestClosed, plazaMe, PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX, type RefView } from '@/lib/plaza'
 import { shrinkPlazaImage } from '@/lib/plazaImage'
 import { isNarrow } from '@/lib/useBreakpoint'

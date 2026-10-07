@@ -321,14 +321,14 @@ function mesh(kind: SceneKind) {
     for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]) out.push(x + cx * w, y + cy * h, cx ? u1 : u0, cy ? v1 : v0, k, ph, z, extra)
   }
   if (kind === 'sky') {
-    const [aw, ah] = STREET.atlas
+    const [aw, ah] = STREET.atlas, [cw, ch] = STREET.cloud
     // sprites: [종류, 아틀라스 x, y, w, h, 장면 x, y, 빠르기 배수 | 걷는 그림 장수, 박자 | 장 사이 간격]
     // 구름은 제자리에서 흘러가고, 나머지는 지나가는 것들이다. 같은 그림이 여러 번 놓여 있으면 하나만 쓴다(하늘이 붐비지 않게).
     const defs: typeof moverDefs = [], byArt = new Map<string, number>(), byBeat = new Map<number, number>()
     let helis = 0
     STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, b], i) => {
+      if (k === 0) { quad(0, (i * 0.618034) % 1, x, y, w, h, ax / cw, ay / ch, (ax + w) / cw, (ay + h) / ch, 0); return }   // 구름은 제 그림(street-cloud)에 있다
       const uv = [ax / aw, ay / ah, (ax + w) / aw, (ay + h) / ah] as const
-      if (k === 0) { quad(0, (i * 0.618034) % 1, x, y, w, h, ...uv, 0); return }
       if (k === 11) { const idx = byBeat.get(b); if (idx != null) quad(11, idx, -w / 2, y, w, h, ...uv, 0, extra < 0 ? -1 : 1); return }
       const art = `${ax},${ay}`
       if (byArt.has(art) || defs.length >= MAX_MOVERS) return
@@ -546,7 +546,7 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
     for (const kd of kinds) { const r = sc.ranges[kd]; if (r) gl.drawArrays(gl.TRIANGLES, r[0], r[1]) }
   }
   if (room) { part(0, [6]); part(1, [7]) }
-  else { part(0, [0, 1, 2]); part(1, [4]); part(4, [10]); part(0, [3, 11]); part(2, [5]); part(3, [8]); part(0, [9]) }
+  else { part(5, [0]); part(0, [1, 2]); part(1, [4]); part(4, [10]); part(0, [3, 11]); part(2, [5]); part(3, [8]); part(0, [9]) }
   sc.dirty = false
   sc.at = now
   if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }

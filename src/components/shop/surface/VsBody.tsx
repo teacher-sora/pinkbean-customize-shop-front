@@ -9,7 +9,7 @@
 import clsx from 'clsx'
 import Image from 'next/image'
 import { useMemo } from 'react'
-import bg from '@/assets/pinkbean-bg.png'
+import bg from '@/assets/pinkbean-bg.webp'
 import type { ListItem } from '@/lib/core/data'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'

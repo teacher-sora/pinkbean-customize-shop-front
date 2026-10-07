@@ -17,13 +17,13 @@ import styles from './scene.module.css'
 
 type Idle = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void }
 
-// 아틀라스(street-air)에서 한 조각을 잘라 장면과 같은 자리에 놓는다.
+// 아틀라스(구름은 street-cloud, 나머지는 street-air)에서 한 조각을 잘라 장면과 같은 자리에 놓는다.
 function Sprite({ s }: { s: StillSprite }) {
-  const [aw, ah] = STREET.atlas, k = s.scale
+  const [aw, ah] = s.cloud ? STREET.cloud : STREET.atlas, k = s.scale
   return (
     <div className={styles.still} style={{
       left: `calc(50% + ${s.x - STREET.w / 2}px)`, bottom: `${STREET.h - (s.y + s.h * k)}px`, width: s.w * k, height: s.h * k,
-      backgroundImage: `url("${SCENE_SRC.sky[0]}")`, backgroundPosition: `${-s.ax * k}px ${-s.ay * k}px`, backgroundSize: `${aw * k}px ${ah * k}px`,
+      backgroundImage: `url("${SCENE_SRC.sky[s.cloud ? 5 : 0]}")`, backgroundPosition: `${-s.ax * k}px ${-s.ay * k}px`, backgroundSize: `${aw * k}px ${ah * k}px`,
       transform: s.flip ? 'scaleX(-1)' : undefined,
     }} />
   )
@@ -64,11 +64,14 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
     const l = STILL[kind].find((x) => x.i === i)!
     return <Image key={i} data-scene={i} src={SCENE_SRC[kind][i]} alt="" width={l.w} height={l.h} unoptimized loading="eager" fetchPriority="low" draggable={false} className={styles.still} style={l.style} />
   }
+  // 장면만 쓰는 그림(아틀라스 · 빛 지도 · 구름)도 여기서 함께 받기 시작한다 — 장면 코드가 도착할 때까지 기다렸다 받으면 그만큼 늦게 뜬다.
+  // 화면에는 안 보이고, 장면이 이 <img> 를 텍스처로 쓴다(WebGL 을 못 쓰면 아래의 조각 그림이 같은 파일을 쓴다) → 한 번만 받는다.
+  const early = (i: number, [w, h]: number[]) => <Image key={'e' + i} data-scene={i} src={SCENE_SRC.sky[i]} alt="" width={w} height={h} unoptimized loading="eager" fetchPriority="low" style={{ display: 'none' }} />
   return (
     <div ref={ref} aria-hidden className={clsx(styles.host, className)}>
       {ready && (kind === 'sky' ? (
         // 쌓는 순서는 장면과 같다: 구름 · 열기구 · 헬리콥터 → 먼 빌딩 → 탑 → 이벤트 열기구 → 거리 → 걷는 이
-        <>{at(0)}{img(1)}{img(4)}{at(1)}{img(2)}{at(2)}</>
+        <>{at(0)}{img(1)}{img(4)}{at(1)}{img(2)}{at(2)}{early(5, STREET.cloud)}{early(0, STREET.atlas)}{early(3, [STREET.w / 2, STREET.main.h / 2])}</>
       ) : STILL.room.map((l) => img(l.i)))}
       {ready && <div ref={veil} className={styles.veil} />}
     </div>

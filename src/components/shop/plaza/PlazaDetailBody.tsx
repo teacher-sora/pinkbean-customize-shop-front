@@ -17,7 +17,7 @@
 import clsx from 'clsx'
 import Image from 'next/image'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import bg from '@/assets/pinkbean-bg.png'
+import bg from '@/assets/pinkbean-bg.webp'
 import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
 import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
