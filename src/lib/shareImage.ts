@@ -1,7 +1,7 @@
 // 공유 링크 미리보기 카드(카카오톡·디스코드 등 og:image) 이미지 — 1200×630 JPEG.
 // 미리보기 스테이지와 같은 배경(center 78% + 톤 그라데이션) 위에 프리셋 캐릭터를 정수 배율(도트 선명)로 중앙 합성한다.
 // 복사 시점에 브라우저에서 그려 /api/share 로 코드와 함께 올린다(서버는 캔버스·염색 로직이 없어 여기서 그린다).
-import bg from '@/assets/pinkbean-bg.png'
+import bg from '@/assets/pinkbean-bg.webp'
 import { loadAnima, loadIndex } from '@/lib/core/data'
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
 import { renderCharacter } from '@/lib/core/render'

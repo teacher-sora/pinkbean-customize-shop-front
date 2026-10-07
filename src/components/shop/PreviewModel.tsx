@@ -23,7 +23,7 @@ import { bindImageMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
 import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
-import { useShop } from './ShopContext'
+import { peekSavedZoom, useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
 
@@ -354,6 +354,20 @@ export default function PreviewModel() {
   useEffect(() => { if (spec && !everReady) setEverReady(true) }, [spec, everReady])
   const effPending = effectIndex.size > 0 && Object.values(equipped).some((it) => !!it && effectIndex.has(String(parseInt(it.id, 10))) && !effMetas.has(it.id))
   const dyeStale = hasDye && !dyeInteracting && ovKey !== dyeKey
+
+  // 캐릭터가 그려지기 전에도 설 자리와 배율(미리보기 배율 설정)을 알린다 — 피팅룸 배경이 처음 깔릴 때부터 그 배율이다.
+  // 아래(그릴 때)와 같은 계산이다. 캐릭터가 그려지면 그쪽이 정확한 값(자세 · 라이딩)으로 다시 알린다.
+  // 배율은 저장된 값을 직접 읽는다 — 연출 설정(pv)은 목록을 받은 뒤에야 복원돼, 그 전의 pv.zoom 은 기본값이다.
+  // 발 높이 21 은 서 있는 캐릭터의 값이다(spec 의 ground 기본값과 같다).
+  useEffect(() => {
+    const wrapEl = wrapRef.current
+    if (spec || !wrapEl || !dims.w || !dims.h) return
+    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: index ? pv.zoom : peekSavedZoom() ?? pv.zoom, mults: ZOOM_WORLD }), centerDx: MODEL_REF.centerDx, centerDy: MODEL_REF.centerDy, snap: true, drop: true })
+    const bw = Math.round(pl.box.w * pl.scale), bh = Math.round(pl.box.h * pl.scale)
+    const rect = wrapEl.getBoundingClientRect()
+    const leftDev = Math.round((dims.w * dims.dpr - bw) / 2) - ((rect.left * dims.dpr) % 1), topDev = Math.round((dims.h * dims.dpr - bh) / 2) - ((rect.top * dims.dpr) % 1)
+    setStageFloor({ wrap: wrapEl, cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((pl.anchor.y + 21) * pl.scale)) / dims.dpr, scale: pl.scale, shadow: 13 })
+  }, [spec, dims, pv.zoom, fraction, index])
 
   // 명령형 rAF: 프리로드 후 캔버스에 직접 그림(React state 갱신 없음 → 부드럽고 렉 없음).
   useEffect(() => {
