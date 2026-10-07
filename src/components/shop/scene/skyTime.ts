@@ -46,17 +46,37 @@ function blend(a: Key, b: Key, t: number): Key {
   }
 }
 
-// 여명 05:45 · 낮 08:30~15:30 · 석양 17:45~18:45 · 밤 21:00~04:00. 그 사이는 부드럽게 넘어간다.
-// 석양은 한 시간쯤 머문다 — 한 점에서만 석양이면 넘어가는 중간색만 보이다 끝나 너무 짧게 느껴진다(사용자 지적).
-function keyAt(h: number): Key {
+// 그날의 해 뜨는 시각 · 지는 시각(시계 시각, 0~24). 계절에 따라 하늘이 바뀌는 때가 달라지게 한다 —
+// 여름에는 밤이 늦게 오고 겨울에는 일찍 온다(사용자 지시). 위치는 묻지 않고 서울(북위 37.57° · 동경 126.98° · 표준시 +9)로 계산한다:
+// 위치 권한을 물으면 첫 화면에 창이 뜨고, 쓰는 사람 대부분이 한국에 있다. 다른 나라에서도 기기 시계에 서울의 해 시각을 그대로 얹는다.
+// 식은 NOAA 의 근사식(균시차 · 적위 → 시간각). 오차는 1~2분이다. 하루에 한 번만 계산한다.
+const LAT = 37.57 * Math.PI / 180, LON = 126.98, TZ = 9
+let sunDay = -1, sunTimes: [number, number] = [5.5, 19]
+function sunToday(): [number, number] {
+  const d = new Date(), day = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(d.getFullYear(), 0, 0)) / 864e5)
+  if (day === sunDay) return sunTimes
+  const g = (2 * Math.PI / 365) * (day - 1)
+  const eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g))
+  const dec = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g)
+  const ha = Math.acos(Math.cos(90.833 * Math.PI / 180) / (Math.cos(LAT) * Math.cos(dec)) - Math.tan(LAT) * Math.tan(dec)) * 180 / Math.PI
+  const at = (sign: number) => (720 - 4 * (LON + sign * ha) - eq) / 60 + TZ
+  sunDay = day; sunTimes = [at(1), at(-1)]
+  return sunTimes
+}
+
+// 해 뜨는 시각 R · 지는 시각 S 를 기준으로 한다(시간 단위):
+//   밤 ~R-1.5 · 밤→여명 ~R(해 뜰 때가 온전한 여명) · 여명→낮 ~R+2.25 · 낮 ~S-2.5 · 낮→석양 ~S-0.5 · 석양 ~S+0.1 · 석양→밤 ~S+0.75 · 밤
+// 석양은 30분 남짓 머문다 — 한 점에서만 석양이면 넘어가는 중간색만 보이다 끝나 너무 짧게 느껴진다(사용자 지적).
+// 해가 지고 45분 뒤(시민 박명이 끝난 뒤)면 온전한 밤이다: 하지 무렵 20:40쯤, 동지 무렵 18:00쯤.
+function keyAt(h: number, R: number, S: number): Key {
   const K = KEYS
-  if (h < 4) return K.night
-  if (h < 5.75) return blend(K.night, K.dawn, ease((h - 4) / 1.75))
-  if (h < 8.5) return blend(K.dawn, K.noon, ease((h - 5.75) / 2.75))
-  if (h < 15.5) return K.noon
-  if (h < 17.75) return blend(K.noon, K.sunset, ease((h - 15.5) / 2.25))
-  if (h < 18.75) return K.sunset
-  if (h < 21) return blend(K.sunset, K.night, ease((h - 18.75) / 2.25))
+  if (h < R - 1.5) return K.night
+  if (h < R) return blend(K.night, K.dawn, ease((h - (R - 1.5)) / 1.5))
+  if (h < R + 2.25) return blend(K.dawn, K.noon, ease((h - R) / 2.25))
+  if (h < S - 2.5) return K.noon
+  if (h < S - 0.5) return blend(K.noon, K.sunset, ease((h - (S - 2.5)) / 2))
+  if (h < S + 0.1) return K.sunset
+  if (h < S + 0.75) return blend(K.sunset, K.night, ease((h - (S + 0.1)) / 0.65))
   return K.night
 }
 
@@ -66,19 +86,18 @@ export interface SkyState extends Key {
   orb: number        // 해 · 달의 세기(평소 1). 시간대가 바뀌는 동안 꺼졌다가 새 자리에서 다시 켜진다
 }
 
-const RISE = 5.5, SET = 19 // 해가 떠 있는 시간(달은 그 반대)
-
 export function skyState(h: number): SkyState {
-  const night = SET - RISE
-  const mh = h >= SET ? h - SET : h + 24 - SET
-  return { ...keyAt(h), sunPhase: (h - RISE) / night, moonPhase: mh / (24 - night), orb: 1 }
+  const [R, S] = sunToday()
+  // 해는 뜨기 조금 전부터 지고 조금 뒤까지 하늘에 걸려 있다(지평선 둘레의 빛). 달은 그 반대
+  const rise = R - 0.25, set = S + 0.25, day = set - rise
+  const mh = h >= set ? h - set : h + 24 - set
+  return { ...keyAt(h, R, S), sunPhase: (h - rise) / day, moonPhase: mh / (24 - day), orb: 1 }
 }
 
 // 시간대를 손으로 고른다(PC 헤더의 버튼). 'auto' 는 실제 시각을 따른다. 고른 값은 이 브라우저에 남겨 둔다.
 export type SkyMode = 'auto' | 'noon' | 'sunset' | 'night' | 'dawn'
-export const SKY_MODES: { id: SkyMode; label: string; hour: number }[] = [
-  { id: 'auto', label: '자동', hour: -1 }, { id: 'noon', label: '정오', hour: 13 }, { id: 'sunset', label: '석양', hour: 18.25 },
-  { id: 'night', label: '자정', hour: 0 }, { id: 'dawn', label: '여명', hour: 5.75 },
+export const SKY_MODES: { id: SkyMode; label: string }[] = [
+  { id: 'auto', label: '자동' }, { id: 'noon', label: '정오' }, { id: 'sunset', label: '석양' }, { id: 'night', label: '자정' }, { id: 'dawn', label: '여명' },
 ]
 const MODE_KEY = 'pb.sky'
 const FADE_MS = 800    // 시간대를 바꾸면 이만큼에 걸쳐 지금 장면에서 새 장면으로 스며든다
@@ -107,7 +126,11 @@ export function setSkyMode(m: SkyMode) {
 let fixed: number | 'fast' | null | undefined
 function targetHour(): number {
   const m = getSkyMode()
-  if (m !== 'auto') return SKY_MODES.find((x) => x.id === m)!.hour
+  if (m !== 'auto') {
+    // 고른 시간대의 온전한 모습이 되는 시각(그날의 해 시각 기준)
+    const [R, S] = sunToday()
+    return m === 'noon' ? (R + S) / 2 : m === 'sunset' ? S - 0.2 : m === 'dawn' ? R : 0
+  }
   if (fixed === undefined) {
     fixed = null
     try {
