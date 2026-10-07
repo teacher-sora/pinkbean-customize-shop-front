@@ -21,7 +21,7 @@
 
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import { ROOM, STREET } from './sceneData'
-import { SCENE_SRC } from './sceneSrc'
+import { SCENE_SRC, spread } from './sceneSrc'
 import { onSkyChange, skyNow, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
@@ -203,7 +203,8 @@ interface Scene {
   arrive: number                 // 0 → 1: 처음 뜨면서 살짝 다가간다
   since: number                  // 화면에 붙은 때(그림을 얼마나 기다렸는지 잰다)
   loading: boolean               // 그림을 받기 시작했다
-  onLive: ((on: boolean) => void) | null
+  els: (HTMLImageElement | undefined)[]   // 화면에 깔린 <img>(텍스처의 원본)
+  frozen: boolean                // 움직이지 않는 장면으로 놓았다
   mask: number                   // 지금의 어두운 막(배경만 볼 때는 걷힌다)
   movers: Mover[] | null         // 지나가는 것들(처음 그릴 때 화면 폭을 보고 놓는다)
   mov: Float32Array
@@ -236,9 +237,24 @@ function spawn(m: Mover, left: number, right: number) {
   m.walk = 0; m.pause = 0
   m.pauseAt = m.type === 2 && Math.random() < PAUSE.chance ? left + (0.2 + 0.6 * Math.random()) * (right - left) : NaN
 }
-function initMovers(left: number, right: number): Mover[] {
+// frozen = 움직이지 않는 장면('동작 줄이기' · 느린 기기): 모두를 화면 안에 고루 흩어 놓고 저마다 가는 쪽을 뽑아 그쪽을 보게 한다.
+// 걷는 이는 서 있는 모습(첫 장)이다.
+function initMovers(left: number, right: number, frozen: boolean): Mover[] {
   const count = [0, 0, 0], seen = [0, 0, 0]
   for (const d of moverDefs) count[d.type]++
+  if (frozen) {
+    // 하늘의 것들(열기구 · 헬리콥터)끼리, 걷는 이들끼리 겹치지 않게 흩는다
+    const sky = spread(count[0] + count[1], left, right), xs = [sky, sky, spread(count[2], left, right)]
+    let skyN = 0
+    return moverDefs.map((d) => {
+      const m: Mover = { ...d, x: -1e5, dir: 1, speed: 0, wait: 0, jit: 0, walk: 0, pauseAt: NaN, pause: 0 }
+      spawn(m, left, right)
+      m.x = Math.min(right - d.w / 2, Math.max(left + d.w / 2, d.type === 2 ? xs[2][seen[2]++] : sky[skyN++]))
+      m.pauseAt = NaN
+      if (d.type === 2) m.pause = 1e9
+      return m
+    })
+  }
   const first = Math.floor(Math.random() * count[2])   // 걷는 이 가운데 곧바로 들어올 하나
   return moverDefs.map((d) => {
     const m: Mover = { ...d, x: -1e5, dir: 1, speed: 0, wait: 0, jit: 0, walk: 0, pauseAt: NaN, pause: 0 }
@@ -252,8 +268,9 @@ function initMovers(left: number, right: number): Mover[] {
     return m
   })
 }
-function stepMovers(sc: Scene, dt: number, s: number, left: number, right: number) {
-  const list = (sc.movers ??= initMovers(left, right)), out = sc.mov
+function stepMovers(sc: Scene, dt: number, s: number, left: number, right: number, frozen: boolean) {
+  if (sc.frozen !== frozen) { sc.frozen = frozen; sc.movers = null }   // 멈추거나 다시 움직이게 되면 처음부터 놓는다
+  const list = (sc.movers ??= initMovers(left, right, frozen)), out = sc.mov
   list.forEach((m, i) => {
     if (m.wait > 0) { m.wait -= dt; if (m.wait <= 0) spawn(m, left, right) }
     else {
@@ -374,6 +391,9 @@ function upload(sc: Scene) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   sc.tex[i] = t
   sc.dirty = true
+  // 화면의 <img> 에서 만든 복사본은 올렸으면 놓아준다(큰 그림을 한 벌 더 쥐고 있지 않게). 컨텍스트를 되찾으면 <img> 로 다시 올린다
+  const b = sc.bmps[i], el = sc.els[i]
+  if (el && b && b !== el) { (b as ImageBitmap).close?.(); sc.bmps[i] = el }
 }
 
 // 그림 한 장을 받는다. 못 받으면 사이를 벌려 가며 다시 받는다(1.5초 → 3 → 6 → … 최대 30초 간격, 여덟 번) —
@@ -389,6 +409,7 @@ function loadOne(sc: Scene, i: number, tries: number) {
   // 화면에 이미 깔린 그림(<img data-scene>)이 있으면 그것을 쓴다 — 같은 파일을 두 번 받지 않는다
   const el = tries === 0 ? sc.host?.querySelector<HTMLImageElement>(`img[data-scene="${i}"]`) : null
   if (el) {
+    sc.els[i] = el
     const use = () => { if (bitmap) createImageBitmap(el, { premultiplyAlpha: 'premultiply' }).then(done).catch(() => done(el)); else done(el) }
     if (el.complete && el.naturalWidth) use()
     else { el.addEventListener('load', use, { once: true }); el.addEventListener('error', () => loadOne(sc, i, 1), { once: true }) }
@@ -407,14 +428,14 @@ function load(sc: Scene) {
 function create(kind: SceneKind): Scene {
   const canvas = document.createElement('canvas')
   canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;pointer-events:none'
-  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, arrive: 0, since: 0, loading: false, onLive: null, mask: MASK, movers: null, mov: new Float32Array(MAX_MOVERS * 4), shown: false, dirty: true, at: 0, failed: false, cleanup: null }
+  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, arrive: 0, since: 0, loading: false, els: [], frozen: false, mask: MASK, movers: null, mov: new Float32Array(MAX_MOVERS * 4), shown: false, dirty: true, at: 0, failed: false, cleanup: null }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다. 그때는 바탕색만 남는다. (?skygl=soft 는 GPU 없는 확인 환경에서 강제로 켜는 용도)
   const soft = /[?&]skygl=soft/.test(window.location.search)
   const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft })
   if (!gl) { sc.failed = true; return sc }
   sc.gl = gl
   // 컨텍스트를 잃으면(메모리가 모자란 기기 · 그래픽 드라이버 재시작) 캔버스가 검게 남는다 → 감춰서 바탕이 보이게 하고, 되찾으면 다시 밝아지며 나타난다
-  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sc.quad = null; sc.sky = null; sc.tex = []; sc.pending = []; sc.shown = false; canvas.style.transition = 'none'; canvas.style.opacity = '0'; sc.onLive?.(false) })
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sc.quad = null; sc.sky = null; sc.tex = []; sc.pending = []; sc.shown = false; canvas.style.transition = 'none'; canvas.style.opacity = '0' })
   canvas.addEventListener('webglcontextrestored', () => init(sc))
   init(sc)
   return sc
@@ -504,7 +525,7 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   gl.uniform1f(q.u.uSway, still ? 0 : Math.sin(s * 0.09) * SWAY)
   if (!room) {
     // 지나가는 것들: 지금 화면에 보이는 범위(그림 칸)를 기준으로 드나든다
-    stepMovers(sc, still || !sc.at ? 0 : Math.min(0.1, (now - sc.at) / 1000), s, Math.max(0, -ox / k), Math.min(STREET.w, (W - ox) / k))
+    stepMovers(sc, still || !sc.at ? 0 : Math.min(0.1, (now - sc.at) / 1000), s, Math.max(0, -ox / k), Math.min(STREET.w, (W - ox) / k), still)
     gl.uniform4fv(q.u.uMov, sc.mov)
   }
   // 불빛 지도는 1번 자리에(거리만 읽는다. 무대는 아무 그림이나 물려 둔다)
@@ -528,17 +549,18 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   else { part(0, [0, 1, 2]); part(1, [4]); part(4, [10]); part(0, [3, 11]); part(2, [5]); part(3, [8]); part(0, [9]) }
   sc.dirty = false
   sc.at = now
-  if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1'; window.setTimeout(() => { if (sc.shown) sc.onLive?.(true) }, 600) }   // 다 밝아진 뒤에 아래의 그림을 걷는다
+  if (!sc.shown) { sc.shown = true; c.style.transition = 'opacity .45s ease'; c.style.opacity = '1' }
 }
 
 // 헤더에서 시간대를 바꾸면 곧바로 다시 그린다(동작 줄이기에서는 20초마다만 그리므로)
 onSkyChange(() => { for (const sc of Object.values(scenes)) if (sc) sc.dirty = true })
 
 // 느린 기기 보호. 화면이 실제로 얼마나 자주 그려지는지(rAF 간격)를 재서, 90프레임 가운데 절반 넘게 28ms 를 넘기면 한 단계씩 덜어 낸다:
-//   1단계 = 앱 배경을 초당 30번만 · 2단계 = 앱 배경 해상도를 화면 배율 1 로 · 3단계 = 초당 15번만.
+//   1단계 = 앱 배경을 초당 30번만 · 2단계 = 앱 배경 해상도를 화면 배율 1 로 · 3단계 = 움직임을 멈춘다(지나가는 것들을 화면에 흩어 놓은 정지 장면.
+//   '동작 줄이기'와 같은 길 — 시각에 따른 빛은 20초마다 다시 그린다). 부드럽게 보여 줄 수 없으면 덜컥거리는 것보다 멈춘 쪽이 낫다(사용자 지시).
 // 한번 내리면 그 화면에서는 올리지 않는다(오르내리면 그게 더 거슬린다). 그림을 올리는 동안과 탭이 가려졌다 돌아온 순간은 세지 않는다.
 let slow = 0, slowN = 0, seenN = 0, lastTick = 0
-const SLOW_MS = [FRAME_MS.sky, 31, 31, 64]
+const SLOW_MS = [FRAME_MS.sky, 31, 31, 31]
 function watchPace(now: number, busy: boolean) {
   const dt = now - lastTick
   lastTick = now
@@ -549,34 +571,35 @@ function watchPace(now: number, busy: boolean) {
   if (slowN > 45) {
     slow++
     if (process.env.NODE_ENV !== 'production') console.info('[scene] slow level', slow)
-    if (slow === 2) { const sc = scenes.sky; if (sc) { layout(sc); sc.dirty = true } }
+    if (slow >= 2) { const sc = scenes.sky; if (sc) { layout(sc); sc.dirty = true } }
   }
   seenN = slowN = 0
 }
 
 function tick(now: number) {
   raf = requestAnimationFrame(tick)
-  const still = !!reduce?.matches
-  watchPace(now, still || !scenes.sky?.host || !scenes.sky.shown || Object.values(scenes).some((sc) => !!sc && !!sc.host && sc.pending.length > 0))
+  const calm = !!reduce?.matches
+  watchPace(now, calm || !scenes.sky?.host || !scenes.sky.shown || Object.values(scenes).some((sc) => !!sc && !!sc.host && sc.pending.length > 0))
   for (const sc of Object.values(scenes)) if (sc && sc.host && sc.pending.length) { upload(sc); break } // 한 프레임에 한 장
   let st: SkyState | null = null
   for (const sc of Object.values(scenes)) {
     if (!sc || !sc.host || !sc.quad) continue
+    const still = calm || (slow >= 3 && sc.kind === 'sky')
     if (!sc.dirty && now - sc.at < (still ? REDUCED_MS : sc.kind === 'sky' ? SLOW_MS[slow] : FRAME_MS.room)) continue
     draw(sc, now, st ?? (st = skyNow()), still)
   }
 }
 
 // host 안에 장면을 붙인다. 돌려주는 함수로 뗀다(캔버스·컨텍스트는 남겨 두었다가 다시 쓴다).
-// onLive = 장면이 화면에 떴는지(true) · 내려갔는지(false) 알린다 — 아래에 깔린 그림(<img>)을 걷거나 되돌리는 데 쓴다.
-export function mountScene(kind: SceneKind, host: HTMLElement, onLive?: (on: boolean) => void): () => void {
+// WebGL 을 못 쓰는 기기인가(그때는 SceneCanvas 가 지나가는 것들도 그림으로 놓는다)
+export const sceneFailed = (kind: SceneKind) => !!scenes[kind]?.failed
+
+export function mountScene(kind: SceneKind, host: HTMLElement): () => void {
   const sc = scenes[kind] ?? (scenes[kind] = create(kind))
   if (sc.failed) return () => {}
   sc.cleanup?.()
   sc.host = host
-  sc.onLive = onLive ?? null
   load(sc)
-  if (sc.shown) onLive?.(true)
   if (!sc.shown) sc.since = performance.now()
   // 처음 뜰 때만 어두운 바탕에서 밝아지며 살짝 다가간다. 이미 떠 있던 장면은 다시 붙자마자 그린다(아래)
   const again = sc.shown
@@ -589,7 +612,7 @@ export function mountScene(kind: SceneKind, host: HTMLElement, onLive?: (on: boo
   const off = kind === 'room' ? onStageFloor(relayout) : null
   sc.cleanup = () => {
     ro.disconnect(); window.removeEventListener('resize', relayout); off?.()
-    sc.canvas.remove(); sc.host = null; sc.cleanup = null; sc.onLive = null
+    sc.canvas.remove(); sc.host = null; sc.cleanup = null
     if (!Object.values(scenes).some((s) => s?.host)) { cancelAnimationFrame(raf); raf = 0 }
   }
   layout(sc)
