@@ -38,6 +38,7 @@ const MAX_RATIO = 2      // 앱 배경 캔버스 해상도 상한(화면 배율)
 const SWAY = 12          // 화면이 좌우로 흔들리는 폭(그림 픽셀)
 const HELI_UP = 150      // 헬리콥터를 원래 자리보다 올려 띄우는 높이(그림 픽셀) — 열기구와 같은 하늘 높이
 const HELI_SIZE = 0.75    // 헬리콥터 크기(원래 그림에 견준 배율)
+const PATIENCE = 2500    // 앱 배경: 그림이 다 오기를 기다려 주는 시간(ms). 넘으면 온 것부터 그린다
 const NIGHT_DIM = 0.18   // 밤에 앱 배경 전체를 가라앉히는 양(한밤 기준. 너무 밝다는 지적)
 const MASK = 0.2         // 앱 배경을 화면 내용과 가르는 어두운 막
 
@@ -206,6 +207,7 @@ interface Scene {
   nearest: boolean               // 무대: 지금 텍스처 필터
   shadow: number                 // 무대: 발밑 그림자 반폭(그림 픽셀)
   arrive: number                 // 0 → 1: 처음 뜨면서 살짝 다가간다
+  since: number                  // 화면에 붙은 때(그림을 얼마나 기다렸는지 잰다)
   mask: number                   // 지금의 어두운 막(배경만 볼 때는 걷힌다)
   movers: Mover[] | null         // 지나가는 것들(처음 그릴 때 화면 폭을 보고 놓는다)
   mov: Float32Array
@@ -371,31 +373,54 @@ function upload(sc: Scene) {
   const t = gl.createTexture()
   gl.bindTexture(gl.TEXTURE_2D, t)
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sc.bmps[i]!)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  const f = sc.nearest ? gl.NEAREST : gl.LINEAR   // 늦게 온 그림도 먼저 온 그림과 같은 보간으로
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   sc.tex[i] = t
   sc.dirty = true
 }
 
+// 그림 한 장을 받는다. 못 받으면 사이를 벌려 가며 다시 받는다(1.5초 → 3 → 6 → … 최대 30초 간격, 여덟 번) —
+// 네트워크가 나쁜 곳에서 한 장이라도 놓치면 그 층이 끝내 안 뜬다. 연결이 돌아오면('online') 곧바로 다시 받는다.
+const RETRY = 8
+function loadOne(sc: Scene, i: number, tries: number) {
+  if (sc.bmps[i]) return
+  const src = SOURCES[sc.kind][i]
+  const done = (b: ImageBitmap | HTMLImageElement) => { if (sc.bmps[i]) return; sc.bmps[i] = b; if (sc.quad && !sc.tex[i] && !sc.pending.includes(i)) sc.pending.push(i) }
+  const again = () => { if (tries < RETRY) window.setTimeout(() => loadOne(sc, i, tries + 1), Math.min(30000, 1500 * 2 ** tries)) }
+  const viaImg = () => { const img = new Image(); img.decoding = 'async'; img.onload = () => done(img); img.onerror = again; img.src = src }
+  if (typeof createImageBitmap !== 'function') { viaImg(); return }
+  fetch(src).then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob() }).then((b) => createImageBitmap(b, { premultiplyAlpha: 'premultiply' })).then(done).catch(viaImg)
+}
 function load(sc: Scene) {
-  SOURCES[sc.kind].forEach((src, i) => {
-    const done = (b: ImageBitmap | HTMLImageElement) => { sc.bmps[i] = b; if (sc.quad && !sc.tex[i] && !sc.pending.includes(i)) sc.pending.push(i) }
-    const viaImg = () => { const img = new Image(); img.decoding = 'async'; img.onload = () => done(img); img.src = src }
-    if (typeof createImageBitmap !== 'function') { viaImg(); return }
-    fetch(src).then((r) => r.blob()).then((b) => createImageBitmap(b, { premultiplyAlpha: 'premultiply' })).then(done).catch(viaImg)
-  })
+  SOURCES[sc.kind].forEach((_, i) => loadOne(sc, i, 0))
+  window.addEventListener('online', () => SOURCES[sc.kind].forEach((_, i) => loadOne(sc, i, 0)))
+}
+
+// WebGL 을 못 쓰는 기기(GPU 없음 등)에 깔 그림: 장면의 층을 CSS 배경으로 겹친다(움직임 · 빛은 없다). 쓸 수 있으면 null.
+// 거리는 장면과 같이 아래 가운데에 맞추고, 무대는 캐릭터가 서는 자리(발)를 칸의 가운데 조금 아래에 맞춘다.
+export function sceneArt(kind: SceneKind): string | null {
+  if (!scenes[kind]?.failed) return null
+  const url = (i: number) => `url("${SOURCES[kind][i]}")`
+  if (kind === 'sky') {
+    const lift = STREET.h - (STREET.far.y + STREET.far.h), tx = STREET.tower.x + STREET.tower.w / 2 - STREET.w / 2
+    return [`${url(2)} left 50% bottom 0 no-repeat`, `${url(4)} left calc(50% + ${tx}px) bottom ${STREET.h - (STREET.tower.y + STREET.tower.h)}px no-repeat`, `${url(1)} left 50% bottom ${lift}px no-repeat`].join(', ')
+  }
+  const at = `left calc(50% + ${ROOM.w / 2 - ROOM.foot[0]}px) top calc(50% + ${38 + ROOM.h / 2 - ROOM.foot[1]}px) no-repeat`
+  return `${url(1)} ${at}, ${url(0)} ${at}`
 }
 
 function create(kind: SceneKind): Scene {
   const canvas = document.createElement('canvas')
   canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;pointer-events:none'
-  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, arrive: 0, mask: MASK, movers: null, mov: new Float32Array(MAX_MOVERS * 4), shown: false, dirty: true, at: 0, failed: false, cleanup: null }
+  const sc: Scene = { kind, canvas, gl: null, quad: null, sky: null, ranges: [], bmps: SOURCES[kind].map(() => null), tex: [], pending: [], host: null, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, arrive: 0, since: 0, mask: MASK, movers: null, mov: new Float32Array(MAX_MOVERS * 4), shown: false, dirty: true, at: 0, failed: false, cleanup: null }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다. 그때는 바탕색만 남는다. (?skygl=soft 는 GPU 없는 확인 환경에서 강제로 켜는 용도)
   const soft = /[?&]skygl=soft/.test(window.location.search)
   const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft })
   if (!gl) { sc.failed = true; return sc }
   sc.gl = gl
-  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sc.quad = null; sc.sky = null; sc.tex = []; sc.pending = [] })
+  // 컨텍스트를 잃으면(메모리가 모자란 기기 · 그래픽 드라이버 재시작) 캔버스가 검게 남는다 → 감춰서 바탕이 보이게 하고, 되찾으면 다시 밝아지며 나타난다
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sc.quad = null; sc.sky = null; sc.tex = []; sc.pending = []; sc.shown = false; canvas.style.transition = 'none'; canvas.style.opacity = '0' })
   canvas.addEventListener('webglcontextrestored', () => init(sc))
   init(sc)
   if (!sc.failed) load(sc)
@@ -437,8 +462,12 @@ function orb(phase: number, w: number): [number, number, number] {
 
 function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   const gl = sc.gl, q = sc.quad, c = sc.canvas
-  if (!gl || !q || sc.tex.length < SOURCES[sc.kind].length || sc.tex.some((t) => !t)) return
-  const s = still ? 40 : now / 1000, W = c.width, H = c.height, room = sc.kind === 'room'
+  if (!gl || !q) return
+  const room = sc.kind === 'room'
+  // 그림이 다 오면 한꺼번에 띄운다. 다만 앱 배경은 PATIENCE 가 지나도록 덜 왔으면 온 것부터 그린다(하늘은 그림 없이도 그려진다) —
+  // 네트워크가 느린 곳에서 몇 장을 기다리느라 화면이 내내 바탕색으로 남지 않게. 무대는 바탕(매장 색)이 있어 다 올 때까지 기다린다.
+  if (sc.tex.length < SOURCES[sc.kind].length || sc.tex.some((t) => !t)) { if (room || now - sc.since < PATIENCE) return }
+  const s = still ? 40 : now / 1000, W = c.width, H = c.height
   sc.arrive = still ? 1 : Math.min(1, sc.arrive + 0.035)
   const ease = 1 - Math.pow(1 - sc.arrive, 3), zoom = 1 + 0.03 * (1 - ease)
   if (room) {
@@ -447,7 +476,7 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
     if (nearest !== sc.nearest) {
       sc.nearest = nearest
       const f = nearest ? gl.NEAREST : gl.LINEAR
-      for (const t of sc.tex) { gl.bindTexture(gl.TEXTURE_2D, t); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f) }
+      for (const t of sc.tex) if (t) { gl.bindTexture(gl.TEXTURE_2D, t); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f) }
     }
   }
   gl.viewport(0, 0, W, H)
@@ -498,6 +527,7 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
   gl.uniform4f(q.u.uDim, nd, nd, nd, 1)
   gl.uniform3f(q.u.uFoot, ROOM.foot[0], ROOM.foot[1] + 1, sc.shadow)
   const part = (tex: number, kinds: number[]) => {
+    if (!sc.tex[tex]) return   // 아직 안 온 그림의 층은 건너뛴다
     gl.bindTexture(gl.TEXTURE_2D, sc.tex[tex])
     for (const kd of kinds) { const r = sc.ranges[kd]; if (r) gl.drawArrays(gl.TRIANGLES, r[0], r[1]) }
   }
@@ -550,6 +580,7 @@ export function mountScene(kind: SceneKind, host: HTMLElement): () => void {
   if (sc.failed) return () => {}
   sc.cleanup?.()
   sc.host = host
+  if (!sc.shown) sc.since = performance.now()
   // 처음 뜰 때만 어두운 바탕에서 밝아지며 살짝 다가간다. 이미 떠 있던 장면은 다시 붙자마자 그린다(아래)
   const again = sc.shown
   if (!again) { sc.canvas.style.transition = 'none'; sc.canvas.style.opacity = '0'; sc.arrive = 0 }
