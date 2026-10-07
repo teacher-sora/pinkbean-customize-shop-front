@@ -1,7 +1,7 @@
 'use client'
 
 // 배경 장면이 들어갈 자리. 처음에는 지금 시각의 바탕색만 깔고, 화면이 한가해지면 WebGL 장면(scene/sceneGl)을
-// 따로 받아 그 위에 띄운다 — 첫 화면 로딩과 조작을 막지 않는다. WebGL 을 못 쓰는 기기는 바탕색으로 남는다.
+// 따로 받아 그 위에 띄운다 — 첫 화면 로딩과 조작을 막지 않는다. WebGL 을 못 쓰는 기기에는 같은 그림을 움직임 없이 깔아 둔다.
 
 import clsx from 'clsx'
 import { useEffect, useRef } from 'react'
@@ -15,12 +15,13 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
   useEffect(() => {
     const host = ref.current
     if (!host) return
-    const paint = () => { host.style.background = sceneFallback(kind) }
+    let art: string | null = null   // WebGL 을 못 쓰는 기기: 장면의 그림을 CSS 배경으로 대신 깐다
+    const paint = () => { host.style.background = sceneFallback(kind, art) }
     paint()
     const iv = window.setInterval(paint, 120000)
     let dead = false
     let unmount: (() => void) | undefined
-    const start = () => { import('./sceneGl').then((m) => { if (!dead) unmount = m.mountScene(kind, host) }).catch(() => {}) }
+    const start = () => { import('./sceneGl').then((m) => { if (dead) return; unmount = m.mountScene(kind, host); art = m.sceneArt(kind); if (art) paint() }).catch(() => {}) }
     const w = window as Idle
     const id = w.requestIdleCallback ? w.requestIdleCallback(start, { timeout: 2000 }) : window.setTimeout(start, 300)
     return () => {
