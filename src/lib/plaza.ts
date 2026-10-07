@@ -6,6 +6,7 @@
 //  · 공유 코드(PB-…)는 기존 R2 공유 링크를 그대로 쓴다(링크 복사·카톡 카드 재사용).
 //  · 목록은 한 번에 받아 화면에서 거르고 정렬한다(광장 규모가 작고, 검색·필터가 즉시 반응해야 한다).
 
+import { censor } from './safeText'
 import { createClient } from '@supabase/supabase-js'
 import type { Snapshot } from '@/components/shop/ShopContext'
 import { nameMatcher } from '@/lib/nameSearch'
@@ -537,7 +538,8 @@ export async function loadNoticeComments(noticeId: string, page: number): Promis
   type Row = { id: string; owner: string; body: string; created_at: string }
   const rows = (data || []) as Row[]
   const mk = (r: Row, admin: boolean): NoticeComment =>
-    ({ id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, mine: !!uid && r.owner === uid, admin })
+    // 욕설 · 성희롱 낱말은 보여 줄 때도 가린다(lib/safeText) — 올릴 때 가리지만, 그 전에 올라온 글과 앱을 거치지 않고 넣은 글도 있다
+    ({ id: r.id, owner: r.owner, body: admin ? r.body : censor(r.body), createdAt: r.created_at, mine: !!uid && r.owner === uid, admin })
   // 이 쪽에 보이는 글들의 답변만 한 번에 받아 붙인다(오래된 순 — 대화 순서대로 읽힌다).
   const byParent = new Map<string, NoticeComment[]>()
   if (rows.length) {
@@ -562,7 +564,7 @@ export async function addNoticeComment(noticeId: string, body: string): Promise<
   if (!c) throw new Error('supabase not configured')
   const uid = await plazaAuth()
   if (!uid) throw new Error('auth failed')
-  const text = body.trim().slice(0, PLAZA_COMMENT_MAX)
+  const text = censor(body.trim().slice(0, PLAZA_COMMENT_MAX))   // 욕설 · 성희롱 낱말만 가려서 올린다
   if (!text) throw new Error('empty')
   const { error } = await c.from('plaza_notice_comments').insert({ notice_id: noticeId, owner: uid, body: text })
   if (error) throw error
