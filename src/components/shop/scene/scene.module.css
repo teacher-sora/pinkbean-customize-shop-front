@@ -1,4 +1,7 @@
 /* 배경 장면(SceneCanvas). 캔버스는 sceneGl 이 넣고 크기·위치를 직접 잡는다. */
 .host { position: absolute; inset: 0; overflow: hidden; pointer-events: none; background: #f6ecf3; }
+/* 움직이지 않는 그림(WebGL 장면이 뜨기 전 · 못 뜰 때)과 그 위의 어두운 막. 캔버스는 이 뒤에 붙어 위를 덮는다 */
+.still { position: absolute; max-width: none; user-select: none; }
+.veil { position: absolute; inset: 0; background: #17122a; opacity: 0; }
 /* 앱 배경: 화면 전체 고정 */
 .app { position: fixed; z-index: 0; }
