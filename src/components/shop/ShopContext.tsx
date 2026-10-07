@@ -136,6 +136,15 @@ const loadPv = (): Partial<Pv> | null => {
 }
 type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null; v?: number }
 const PRESET_STORE_V = 2 // 2 = 녹셀→레아 기본 헤어 이관을 마친 저장소
+// 저장된 미리보기 배율을 미리 읽는다(없으면 null). 연출 설정(pv)은 목록을 받은 뒤에야 복원되므로, 그 전에 깔리는
+// 피팅룸 배경이 이 값으로 크기를 잡는다. 복원 순서와 같다: 전역 연출 설정 → 고른 프리셋에 담긴 값.
+export const peekSavedZoom = (): number | null => {
+  const z = loadPv()?.zoom
+  if (typeof z === 'number') return z
+  const store = loadPresetStore()
+  const pz = store?.data?.[store.sel && PRESET_IDS.includes(store.sel) ? store.sel : 'd0']?.pv?.zoom
+  return typeof pz === 'number' ? pz : null
+}
 const loadPresetStore = (): PresetStore | null => {
   try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
 }
