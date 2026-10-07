@@ -409,7 +409,7 @@ function layout(sc: Scene) {
   const hw = host.clientWidth, hh = host.clientHeight
   if (!hw || !hh) return
   const dpr = window.devicePixelRatio || 1
-  const r = (sc.ratio = sc.kind === 'room' ? dpr : Math.min(dpr, MAX_RATIO))
+  const r = (sc.ratio = sc.kind === 'room' ? dpr : Math.min(dpr, slow >= 2 ? 1 : MAX_RATIO))
   const c = sc.canvas, w = Math.round(hw * r), h = Math.round(hh * r)
   if (c.width !== w) c.width = w
   if (c.height !== h) c.height = h
@@ -511,14 +511,35 @@ function draw(sc: Scene, now: number, st: SkyState, still: boolean) {
 // 헤더에서 시간대를 바꾸면 곧바로 다시 그린다(동작 줄이기에서는 20초마다만 그리므로)
 onSkyChange(() => { for (const sc of Object.values(scenes)) if (sc) sc.dirty = true })
 
+// 느린 기기 보호. 화면이 실제로 얼마나 자주 그려지는지(rAF 간격)를 재서, 90프레임 가운데 절반 넘게 28ms 를 넘기면 한 단계씩 덜어 낸다:
+//   1단계 = 앱 배경을 초당 30번만 · 2단계 = 앱 배경 해상도를 화면 배율 1 로 · 3단계 = 초당 15번만.
+// 한번 내리면 그 화면에서는 올리지 않는다(오르내리면 그게 더 거슬린다). 그림을 올리는 동안과 탭이 가려졌다 돌아온 순간은 세지 않는다.
+let slow = 0, slowN = 0, seenN = 0, lastTick = 0
+const SLOW_MS = [FRAME_MS.sky, 31, 31, 64]
+function watchPace(now: number, busy: boolean) {
+  const dt = now - lastTick
+  lastTick = now
+  if (busy || slow >= 3 || dt <= 0 || dt > 250) return
+  seenN++
+  if (dt > 28) slowN++
+  if (seenN < 90) return
+  if (slowN > 45) {
+    slow++
+    if (process.env.NODE_ENV !== 'production') console.info('[scene] slow level', slow)
+    if (slow === 2) { const sc = scenes.sky; if (sc) { layout(sc); sc.dirty = true } }
+  }
+  seenN = slowN = 0
+}
+
 function tick(now: number) {
   raf = requestAnimationFrame(tick)
   const still = !!reduce?.matches
+  watchPace(now, still || !scenes.sky?.host || !scenes.sky.shown || Object.values(scenes).some((sc) => !!sc && !!sc.host && sc.pending.length > 0))
   for (const sc of Object.values(scenes)) if (sc && sc.host && sc.pending.length) { upload(sc); break } // 한 프레임에 한 장
   let st: SkyState | null = null
   for (const sc of Object.values(scenes)) {
     if (!sc || !sc.host || !sc.quad) continue
-    if (!sc.dirty && now - sc.at < (still ? REDUCED_MS : FRAME_MS[sc.kind])) continue
+    if (!sc.dirty && now - sc.at < (still ? REDUCED_MS : sc.kind === 'sky' ? SLOW_MS[slow] : FRAME_MS.room)) continue
     draw(sc, now, st ?? (st = skyNow()), still)
   }
 }
