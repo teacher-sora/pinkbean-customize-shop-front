@@ -9,8 +9,9 @@
 
 import clsx from 'clsx'
 import Image from 'next/image'
-import { useEffect, useRef, useState } from 'react'
-import { STREET } from './sceneData'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
+import { ROOM, STREET } from './sceneData'
 import { SCENE_SRC, STILL, STILL_OVER } from './sceneSrc'
 import { onSkyChange, sceneFallback, sceneVeil } from './skyTime'
 import styles from './scene.module.css'
@@ -46,6 +47,30 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
     }
   }, [kind])
   useEffect(() => { if (veil.current) veil.current.style.opacity = String(sceneVeil(kind)) }, [ready, kind])
+  // 무대의 그림은 캐릭터가 서는 자리와 배율(미리보기 배율 설정)에 맞춰 놓는다 — 장면(sceneGl 의 layout)과 같은 계산.
+  // 그래야 처음 깔리는 그림과 그 위로 나타나는 장면의 크기 · 자리가 같다. 칸을 그대로 키운다(장면도 정수 배율에서는 그렇게 그린다).
+  useLayoutEffect(() => {
+    const host = ref.current
+    if (!host || !ready || kind !== 'room') return
+    const place = () => {
+      const f = getStageFloor(), dpr = window.devicePixelRatio || 1
+      let px: number, fx: number, fy: number
+      if (f && f.wrap.isConnected && host.parentElement?.contains(f.wrap)) {
+        const wr = f.wrap.getBoundingClientRect(), hr = host.getBoundingClientRect()
+        px = f.scale; fx = Math.round((wr.left - hr.left + f.cx) * dpr); fy = Math.round((wr.top - hr.top + f.footY) * dpr)
+      } else { px = Math.max(1, Math.round(dpr)); fx = Math.round((host.clientWidth / 2) * dpr); fy = Math.round((host.clientHeight / 2 + 38.4) * dpr) }
+      host.querySelectorAll<HTMLImageElement>('img[data-scene]').forEach((el) => {
+        el.style.width = `${(ROOM.w * px) / dpr}px`; el.style.height = `${(ROOM.h * px) / dpr}px`
+        el.style.left = `${(fx - ROOM.foot[0] * px) / dpr}px`; el.style.top = `${(fy - ROOM.foot[1] * px) / dpr}px`
+        el.style.imageRendering = Number.isInteger(px) ? 'pixelated' : ''
+      })
+    }
+    place()
+    const off = onStageFloor(place)
+    const ro = new ResizeObserver(place)
+    ro.observe(host)
+    return () => { off(); ro.disconnect() }
+  }, [ready, kind])
   // 원래 크기 그대로(1칸 = 1px) 깐다 — 줄이거나 다시 압축하면 장면과 어긋나고 선이 뭉개진다
   const img = (i: number) => {
     const l = STILL[kind].find((x) => x.i === i)!
