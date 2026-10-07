@@ -1,12 +1,18 @@
-// 배경 장면의 그림(public/scene). WebGL 장면(sceneGl)과 그 아래에 깔리는 <img>(SceneCanvas)가 같은 주소를 쓴다 → 한 번만 받는다.
-// 주소가 고정이라 그림이 바뀌면 판 번호(SCENE_V — scene-build 가 적는다)가 바뀌어 새로 받는다(next.config 가 /scene 을 오래 캐시한다).
-import { ROOM, SCENE_V, STREET } from './sceneData'
+// 배경 장면의 그림(src/assets/scene — 빌드할 때 사이트의 정적 파일로 묶인다. 주소에 해시가 붙어 캐시가 알아서 맞는다).
+// WebGL 장면(sceneGl)과 그 아래에 깔리는 <img>(SceneCanvas)가 같은 주소를 쓴다 → 한 번만 받는다.
+import roomFar from '@/assets/scene/room-far.webp'
+import roomMain from '@/assets/scene/room-main.webp'
+import streetAir from '@/assets/scene/street-air.webp'
+import streetFar from '@/assets/scene/street-far.webp'
+import streetGlow from '@/assets/scene/street-glow.webp'
+import streetMain from '@/assets/scene/street-main.webp'
+import streetTower from '@/assets/scene/street-tower.webp'
+import { ROOM, STREET } from './sceneData'
 
-const u = (n: string) => `/scene/${n}.webp?v=${SCENE_V}`
 // 자리 번호가 곧 텍스처 번호다(sceneGl 의 part()).
 export const SCENE_SRC = {
-  sky: ['street-air', 'street-far', 'street-main', 'street-glow', 'street-tower'].map(u),
-  room: ['room-far', 'room-main'].map(u),
+  sky: [streetAir, streetFar, streetMain, streetGlow, streetTower].map((m) => m.src),
+  room: [roomFar, roomMain].map((m) => m.src),
 }
 
 // WebGL 없이도 보이는 층: 움직이지 않는 그림을 장면과 같은 자리에 <img> 로 깐다(아래에 적은 순서대로 쌓는다).

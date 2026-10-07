@@ -8,10 +8,6 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 31536000, // 경로에 올린 시각이 들어가 같은 주소의 그림은 바뀌지 않는다
   },
-  // 배경 장면의 그림(public/scene)은 주소 뒤의 판 번호(?v=)가 바뀔 때만 바뀐다 → 오래 캐시한다
-  async headers() {
-    return [{ source: '/scene/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] }];
-  },
 };
 
 export default nextConfig;
