@@ -1,0 +1,29 @@
+/* 운영자용 건의함(/suggestion). 운영자 한 사람만 쓰는 화면이라 기능 위주로 단순하게 둔다. */
+.page { min-height: 100svh; padding: 24px 16px; background: #faf7f3; color: #3d372f; }
+.box { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.card { padding: 16px; border: 1px solid #e7ded4; border-radius: 12px; background: #fff; display: flex; flex-direction: column; gap: 10px; }
+.title { margin: 0; font-size: 16px; font-weight: 700; }
+.row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wrap { flex-wrap: wrap; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; font-size: 16px; color: #3d372f; outline: none; }
+.input:focus, .area:focus { border-color: #ec86ac; }
+.area { width: 100%; min-height: 64px; padding: 8px 12px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; font-size: 16px; line-height: 1.5; color: #3d372f; outline: none; resize: vertical; }
+.btn { flex: 0 0 auto; height: 36px; padding: 0 16px; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; transition: opacity .24s ease; }
+.btn:disabled { opacity: .45; cursor: default; }
+.ghost { flex: 0 0 auto; height: 28px; padding: 0 10px; border: 1px solid #e7ded4; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; cursor: pointer; transition: border-color .22s ease, color .22s ease, background-color .24s ease; }
+.ghostOn { border-color: #ec86ac; color: #d9608e; background: #fdf1f6; }
+/* 지우기: 글자가 바뀌어도 자리가 밀리지 않게 폭을 잡아 둔다 */
+.del { flex: 0 0 auto; width: 64px; height: 28px; border: 1px solid #f2d7d2; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 700; color: #d1735f; cursor: pointer; transition: border-color .22s ease, color .22s ease, background-color .24s ease; }
+.delArmed { border-color: #d1735f; background: #d1735f; color: #fff; }
+.msg { min-height: 18px; margin: 0; font-size: 12px; color: #d1735f; }
+.item { padding: 12px 0; border-top: 1px solid #f0e9e1; display: flex; flex-direction: column; gap: 6px; }
+.item:first-child { border-top: none; }
+.who { font-size: 12px; font-weight: 700; color: #8a8075; white-space: nowrap; }
+.op { color: #d9608e; }
+.time { font-size: 11px; color: #b7ada2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.body { margin: 0; font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.reply { margin-left: 10px; padding-left: 10px; border-left: 2px solid #f0e9e1; display: flex; flex-direction: column; gap: 4px; }
+.form { margin-left: 10px; display: flex; flex-direction: column; gap: 6px; }
+.len { font-size: 11px; color: #b7ada2; }
+.empty { margin: 0; padding: 12px 0; font-size: 13px; color: #8a8075; }
