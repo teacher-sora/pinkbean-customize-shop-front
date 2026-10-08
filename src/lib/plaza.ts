@@ -575,3 +575,34 @@ export async function deleteNoticeComment(id: string): Promise<void> {
   const { error } = await c.from('plaza_notice_comments').delete().eq('id', id)
   if (error) throw error
 }
+
+// ── 운영자용 건의함(/suggestion, supabase/0016) ──
+// 아이디 · 비밀번호는 DB 함수가 확인한다(앱에는 서비스 키가 없다). 화면은 로그인한 값을 메모리에만 쥐고 부를 때마다 함께 보낸다.
+export type OpCred = { id: string; pw: string }
+export type OpComment = { id: string; owner: string; body: string; createdAt: string; replies: OpComment[] }
+const opRpc = async <T>(fn: string, args: Record<string, unknown>): Promise<T | null> => {
+  const c = sb()
+  if (!c) throw new Error('supabase not configured')
+  const { data, error } = await c.rpc(fn, args)
+  if (error) throw error
+  return data as T | null
+}
+export const opLogin = async (cred: OpCred) => (await opRpc<boolean>('plaza_op_login', { p_id: cred.id, p_pw: cred.pw })) === true
+// 한 공지의 건의글 전부(최신이 위)와 그 답변. 운영자 화면이라 가리지 않은 원문 그대로다.
+export async function opLoadComments(noticeId: string): Promise<OpComment[]> {
+  const c = sb()
+  if (!c) return []
+  const { data, error } = await c.from('plaza_notice_comments').select('id,owner,body,created_at,parent_id')
+    .eq('notice_id', noticeId).order('created_at', { ascending: true }).limit(2000)
+  if (error) throw error
+  const rows = (data || []) as { id: string; owner: string; body: string; created_at: string; parent_id: string | null }[]
+  const top = new Map<string, OpComment>()
+  for (const r of rows) if (!r.parent_id) top.set(r.id, { id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, replies: [] })
+  for (const r of rows) if (r.parent_id) top.get(r.parent_id)?.replies.push({ id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, replies: [] })
+  return [...top.values()].reverse()
+}
+// 돌려주는 값: 성공 true, 로그인이 틀렸으면(또는 잠겼으면) false
+export const opReply = async (cred: OpCred, parentId: string, body: string) =>
+  (await opRpc<string>('plaza_op_reply', { p_id: cred.id, p_pw: cred.pw, p_parent: parentId, p_body: body.trim().slice(0, PLAZA_COMMENT_MAX) })) != null
+export const opDelete = async (cred: OpCred, id: string) =>
+  (await opRpc<boolean>('plaza_op_delete', { p_id: cred.id, p_pw: cred.pw, p_comment: id })) != null
