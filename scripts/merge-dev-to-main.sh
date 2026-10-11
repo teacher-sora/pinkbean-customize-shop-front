@@ -19,10 +19,9 @@ cd "$(dirname "$0")/.."
 git checkout main
 git pull --ff-only origin main
 git fetch origin dev
-git merge --no-ff --no-commit origin/dev || {
-  echo "✗ 충돌이 있습니다. 해결한 뒤 이 스크립트를 다시 실행하세요."
-  exit 1
-}
+# 병합이 충돌로 멈춰도 여기서 끝내지 않는다: dev 에서 개발 전용 파일을 고치면
+# "main 에서는 지워졌고 dev 에서는 바뀜" 충돌이 나는데, 그 파일은 어차피 뺄 것이다.
+git merge --no-ff --no-commit origin/dev || true
 
 for p in $DEV_ONLY; do
   if git ls-files -- "$p" | grep -q .; then
@@ -30,6 +29,14 @@ for p in $DEV_ONLY; do
     echo "· $p 를 빼고 병합합니다(dev 전용)."
   fi
 done
+
+# 개발 전용 경로를 뺀 뒤에도 남은 충돌은 사람이 풀어야 한다.
+if git diff --name-only --diff-filter=U | grep -q .; then
+  echo "✗ 충돌이 있습니다. 풀고 커밋한 뒤, 트리에 개발 전용 경로가 없는지 확인하세요:"
+  git diff --name-only --diff-filter=U
+  exit 1
+fi
+git rev-parse -q --verify MERGE_HEAD >/dev/null || { echo "· 병합할 것이 없습니다."; exit 0; }
 
 # 커밋 **전** 확인: 스테이지에 개발 전용 경로가 하나라도 남아 있으면 중단한다.
 for p in $DEV_ONLY; do
