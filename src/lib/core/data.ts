@@ -130,12 +130,22 @@ const url = (rel: string) => {
 // 왕복 한 번만 더 드는 값이다. 스프라이트(png)와 아이템별 meta 는 그대로 둔다(개수가 많고 id 가 바뀌면 경로도 바뀐다).
 const FRESH: RequestInit = { cache: 'no-cache' }
 
+// 앱 코드가 도착하기 전에 미리 받기 시작한 것(app/(shop)/layout 의 BOOT 스크립트)을 한 번 가져다 쓴다. 없으면 null.
+// 실패한 약속일 수 있으므로 쓰는 쪽이 평소의 요청으로 되받는다(pre).
+function boot<T>(rel: string): Promise<T> | null {
+  const b = typeof window === 'undefined' ? undefined : (window as unknown as { __pbBoot?: Record<string, Promise<unknown>> }).__pbBoot
+  const p = b?.[rel]
+  if (!p) return null
+  delete b![rel]
+  return p as Promise<T>
+}
+const pre = <T,>(rel: string, load: () => Promise<T>): Promise<T> => { const p = boot<T>(rel); return p ? p.catch(load) : load() }
+
 // 최근 패치 신규 아이템 id(파서 stringwz-merge 가 패치마다 catalog/new.json 을 교체). 없거나 실패하면 빈 집합.
 let newItemsPromise: Promise<Set<string>> | null = null
 export function loadNewItems(): Promise<Set<string>> {
   if (!newItemsPromise) {
-    newItemsPromise = fetch(url('catalog/new.json'), FRESH)
-      .then((r) => (r.ok ? r.json() : { ids: [] }))
+    newItemsPromise = pre<{ ids?: string[] }>('catalog/new.json', () => fetch(url('catalog/new.json'), FRESH).then((r) => (r.ok ? r.json() : { ids: [] })))
       .then((j: { ids?: string[] }) => new Set(j.ids || []))
       .catch(() => new Set<string>())
   }
@@ -143,9 +153,11 @@ export function loadNewItems(): Promise<Set<string>> {
 }
 
 export async function loadIndex(): Promise<Index> {
-  const r = await fetch(url('index.json'), FRESH)
-  if (!r.ok) throw new Error(`index.json ${r.status}`)
-  return r.json()
+  return pre<Index>('index.json', async () => {
+    const r = await fetch(url('index.json'), FRESH)
+    if (!r.ok) throw new Error(`index.json ${r.status}`)
+    return r.json()
+  })
 }
 // 원본 WZ 의 자리 코드(islot·vslot)가 **남의 부위로** 들어간 아이템 보정. 리스트·단건 어디로 들어와도 같은
 // 값이 되도록 여기 한 곳에서 고친다(islot = 인벤 충돌로 다른 부위를 **벗기고**, vslot = 가림으로 **숨긴다**).
@@ -188,7 +200,7 @@ const slotCache = new Map<string, Promise<ListItem[]>>()
 export function loadSlot(file: string): Promise<ListItem[]> {
   let p = slotCache.get(file)
   if (!p) {
-    p = fetch(url(file), FRESH).then((r) => r.json()).then((items: ListItem[]) => {
+    p = pre<ListItem[]>(file, () => fetch(url(file), FRESH).then((r) => r.json())).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
       return items.map((it) => fixIcon(fixSlotCodes(it)))
     })
@@ -202,7 +214,8 @@ export function loadMeta(id: string): Promise<ItemMeta> {
   // ⚠️ 실패한 결과는 캐시에 남기지 않는다. 라이딩 meta 는 목록(riding.json)이 경로를 등록해 줘야 찾을 수 있는데,
   //    그 전에 한 번 부르면 CDN 404 로 실패한다 — 실패까지 캐시하면 목록이 온 뒤에도 영영 안 나온다.
   if (!p) {
-    p = fetch(url(ridingMetaUrl.get(id) ?? `meta/${id}.json`)).then((r) => r.json()).then(fixSlotCodes)
+    const rel = ridingMetaUrl.get(id) ?? `meta/${id}.json`
+    p = pre<ItemMeta>(rel, () => fetch(url(rel)).then((r) => r.json())).then(fixSlotCodes)
     p.catch(() => { if (metaCache.get(id) === p) metaCache.delete(id) })
     metaCache.set(id, p)
   }
@@ -214,8 +227,7 @@ let effectIndexPromise: Promise<Set<string>> | null = null
 // Set of item ids (non-padded, as stored in ItemEff) that have an extracted effect.
 export function loadEffectIndex(): Promise<Set<string>> {
   if (!effectIndexPromise) {
-    effectIndexPromise = fetch(url('effects/index.json'), FRESH)
-      .then((r) => (r.ok ? r.json() : []))
+    effectIndexPromise = pre<string[]>('effects/index.json', () => fetch(url('effects/index.json'), FRESH).then((r) => (r.ok ? r.json() : [])))
       .then((ids: string[]) => new Set(ids))
       .catch(() => new Set<string>())
   }
@@ -238,7 +250,7 @@ export interface AnimaPart { name: string; png: string; origin: Vec; map: Record
 export interface AnimaRace { node: string; name: string; parts: AnimaPart[] }
 let animaPromise: Promise<AnimaRace[]> | null = null
 export function loadAnima(): Promise<AnimaRace[]> {
-  if (!animaPromise) animaPromise = fetch(url('anima.json'), FRESH).then((r) => (r.ok ? r.json() : [])).catch(() => [] as AnimaRace[])
+  if (!animaPromise) animaPromise = pre<AnimaRace[]>('anima.json', () => fetch(url('anima.json'), FRESH).then((r) => (r.ok ? r.json() : []))).catch(() => [] as AnimaRace[])
   return animaPromise
 }
 

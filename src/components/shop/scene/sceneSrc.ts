@@ -1,5 +1,5 @@
 // 배경 장면의 그림(src/assets/scene — 빌드할 때 사이트의 정적 파일로 묶인다. 주소에 해시가 붙어 캐시가 알아서 맞는다).
-// WebGL 장면(sceneGl)과 그 아래에 깔리는 <img>(SceneCanvas)가 같은 주소를 쓴다 → 한 번만 받는다.
+// WebGL 장면(sceneCore)과 그 아래에 깔리는 <img>(SceneCanvas)가 같은 주소를 쓴다 → 한 번만 받는다.
 import roomFar from '@/assets/scene/room-far.webp'
 import roomMain from '@/assets/scene/room-main.webp'
 import streetAir from '@/assets/scene/street-air.webp'
@@ -9,8 +9,9 @@ import streetGlow from '@/assets/scene/street-glow.webp'
 import streetMain from '@/assets/scene/street-main.webp'
 import streetTower from '@/assets/scene/street-tower.webp'
 import { ROOM, STREET } from './sceneData'
+import { pickSome, spread, stillCount } from './sceneMath'
 
-// 자리 번호가 곧 텍스처 번호다(sceneGl 의 part()).
+// 자리 번호가 곧 텍스처 번호다(sceneCore 의 part()).
 export const SCENE_SRC = {
   sky: [streetAir, streetFar, streetMain, streetGlow, streetTower, streetBack].map((m) => m.src),
   room: [roomFar, roomMain].map((m) => m.src),
@@ -33,29 +34,12 @@ export const STILL: Record<'sky' | 'room', StillLayer[]> = {
   ],
 }
 
-// n 개를 [lo, hi] 에 고루 흩되 순서는 섞는다(서로 겹치지 않으면서 볼 때마다 다르게).
-export function spread(n: number, lo: number, hi: number): number[] {
-  const slot = Array.from({ length: n }, (_, i) => i)
-  for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [slot[i], slot[j]] = [slot[j], slot[i]] }
-  return slot.map((k) => lo + ((k + 0.15 + 0.7 * Math.random()) / n) * (hi - lo))
-}
-
 // WebGL 을 못 쓰는 기기에서: 지나가는 것들(구름 · 열기구 · 헬리콥터 · 걷는 이)을 움직이지 않는 그림으로 놓는다.
-// 멈춘 채로 놓을 때 몇 개를 놓을지: 보이는 폭이 좁으면 덜 놓는다(좁은 화면에 다 놓으면 붐빈다).
-// 하늘의 것(열기구 · 헬리콥터)과 걷는 이 모두 300px 에 하나꼴, 적어도 둘. 폭 1800 이상이면 전부 놓인다.
-export const stillCount = (total: number, width: number) => Math.min(total, Math.max(2, Math.floor(width / 300)))
-// 0..n-1 가운데 keep 개를 아무렇게나 고른다.
-export function pickSome(n: number, keep: number): Set<number> {
-  const idx = Array.from({ length: n }, (_, i) => i)
-  for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]] }
-  return new Set(idx.slice(0, keep))
-}
-
 // 구름은 제자리에, 나머지는 화면에 보이는 폭 안에 고루 흩어 놓고 저마다 가는 쪽을 뽑아 그쪽을 보게 한다.
-// 자리와 보는 쪽의 규칙은 장면(sceneGl 의 mesh)과 같다. layer = 쌓는 자리: 0 먼 빌딩 뒤 · 1 탑과 거리 사이 · 2 거리 앞.
+// 자리와 보는 쪽의 규칙은 장면(sceneCore 의 mesh)과 같다. layer = 쌓는 자리: 0 먼 빌딩 뒤 · 1 탑과 거리 사이 · 2 거리 앞.
 // back = 뒤쪽 그림(street-back: 구름 · 핑크빈/페페 열기구 · 헬리콥터)에 있다. 나머지는 street-air 에 있다.
 export interface StillSprite { key: string; layer: 0 | 1 | 2; back: boolean; ax: number; ay: number; w: number; h: number; x: number; y: number; scale: number; flip: boolean }
-const HELI = { up: 150, size: 0.75 }   // sceneGl 의 HELI_UP · HELI_SIZE 와 같은 값
+const HELI = { up: 150, size: 0.75 }   // sceneCore 의 HELI_UP · HELI_SIZE 와 같은 값
 export function stillSprites(viewW: number): StillSprite[] {
   const out: StillSprite[] = [], seen = new Set<string>()
   const lo = STREET.w / 2 - viewW / 2, hi = STREET.w / 2 + viewW / 2
