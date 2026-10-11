@@ -214,7 +214,8 @@ export function loadMeta(id: string): Promise<ItemMeta> {
   // ⚠️ 실패한 결과는 캐시에 남기지 않는다. 라이딩 meta 는 목록(riding.json)이 경로를 등록해 줘야 찾을 수 있는데,
   //    그 전에 한 번 부르면 CDN 404 로 실패한다 — 실패까지 캐시하면 목록이 온 뒤에도 영영 안 나온다.
   if (!p) {
-    p = fetch(url(ridingMetaUrl.get(id) ?? `meta/${id}.json`)).then((r) => r.json()).then(fixSlotCodes)
+    const rel = ridingMetaUrl.get(id) ?? `meta/${id}.json`
+    p = pre<ItemMeta>(rel, () => fetch(url(rel)).then((r) => r.json())).then(fixSlotCodes)
     p.catch(() => { if (metaCache.get(id) === p) metaCache.delete(id) })
     metaCache.set(id, p)
   }
