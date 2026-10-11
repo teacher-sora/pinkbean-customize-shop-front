@@ -1,5 +1,5 @@
 // 실제 시각 → 장면 색. 정오 · 석양 · 자정 · 여명 네 장면 사이를 시각에 따라 천천히 섞는다.
-// 장면(sceneGl)과 캔버스가 뜨기 전 바탕색(SceneCanvas)이 같은 값을 쓴다.
+// 장면(sceneCore)과 캔버스가 뜨기 전 바탕색(SceneCanvas)이 같은 값을 쓴다.
 
 type RGB = [number, number, number]
 const hex = (s: string): RGB => [parseInt(s.slice(1, 3), 16) / 255, parseInt(s.slice(3, 5), 16) / 255, parseInt(s.slice(5, 7), 16) / 255]
@@ -112,25 +112,24 @@ export function getSkyMode(): SkyMode {
   }
   return mode
 }
-export function setSkyMode(m: SkyMode) {
+// 시간대를 바꾼다(저장하지 않는다). fadeIn 이면 지금 장면에서 새 장면으로 스며든다. 워커 안의 장면(sceneCore)도 이것으로 맞춘다.
+export function applySkyMode(m: SkyMode, fadeIn: boolean) {
   const from = skyNow()
   mode = m
+  fade = fadeIn ? { from, at: performance.now() } : null
+}
+export function setSkyMode(m: SkyMode) {
   let still = false
   try { localStorage.setItem(MODE_KEY, m) } catch { /* 못 남겨도 이번 화면에서는 바뀐다 */ }
   try { still = window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { /* 그대로 */ }
-  fade = still ? null : { from, at: performance.now() }
+  applySkyMode(m, !still)
   watchers.forEach((fn) => fn())
 }
 
 // 지금 시각(0~24). 헤더에서 고른 시간대가 먼저다. 주소에 ?sky=18.5 처럼 주면 그 시각으로 고정하고, ?sky=fast 면 하루를 48초에 돌린다(확인용).
 let fixed: number | 'fast' | null | undefined
-function targetHour(): number {
-  const m = getSkyMode()
-  if (m !== 'auto') {
-    // 고른 시간대의 온전한 모습이 되는 시각(그날의 해 시각 기준)
-    const [R, S] = sunToday()
-    return m === 'noon' ? (R + S) / 2 : m === 'sunset' ? S - 0.2 : m === 'dawn' ? R : 0
-  }
+// 주소의 ?sky= 값. 워커에는 주소가 없으므로 화면 쪽이 읽어 넘긴다(setSkyFixed).
+export function skyFixed(): number | 'fast' | null {
   if (fixed === undefined) {
     fixed = null
     try {
@@ -139,6 +138,17 @@ function targetHour(): number {
       else if (v != null && v !== '' && isFinite(+v)) fixed = ((+v % 24) + 24) % 24
     } catch { /* 주소를 못 읽으면 실제 시각 */ }
   }
+  return fixed
+}
+export function setSkyFixed(v: number | 'fast' | null) { fixed = v }
+function targetHour(): number {
+  const m = getSkyMode()
+  if (m !== 'auto') {
+    // 고른 시간대의 온전한 모습이 되는 시각(그날의 해 시각 기준)
+    const [R, S] = sunToday()
+    return m === 'noon' ? (R + S) / 2 : m === 'sunset' ? S - 0.2 : m === 'dawn' ? R : 0
+  }
+  skyFixed()
   if (fixed === 'fast') return (performance.now() / 2000) % 24
   if (typeof fixed === 'number') return fixed
   const d = new Date()
@@ -166,7 +176,7 @@ const mul = (a: RGB, b: RGB): RGB => [a[0] * b[0], a[1] * b[1], a[2] * b[2]]
 export function sceneFallback(kind: 'sky' | 'room', bare = false): string {
   const s = skyState(skyHour())
   if (kind === 'sky') {
-    // 장면이 하는 것과 같게: 어두운 막 20% + 밤에는 전체를 18% 가라앉힌다(sceneGl 의 MASK · NIGHT_DIM)
+    // 장면이 하는 것과 같게: 어두운 막 20% + 밤에는 전체를 18% 가라앉힌다(sceneCore 의 MASK · NIGHT_DIM)
     const dark: RGB = [0.09, 0.07, 0.16], k = 1 - 0.18 * s.night
     return `linear-gradient(180deg, ${s.sky.map((c) => css(mul(mix3(c, dark, bare ? 0 : 0.2), [k, k, k]))).join(', ')})`
   }

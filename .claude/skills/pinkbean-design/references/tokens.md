@@ -22,7 +22,7 @@
 
 ## 글자
 
-- Wanted Sans Variable(`src/assets/fonts` 의 파일을 `app/layout.tsx` 가 `--font-wanted` 로 건다), `letter-spacing:-0.01em`, `word-break: keep-all`.
+- Wanted Sans Variable(`src/assets/fonts` 의 파일 — `font-family: var(--font-wanted), "Wanted Sans Rest"`. `app/layout.tsx`), `letter-spacing:-0.01em`, `word-break: keep-all`.
 - 굵기: 본문·라벨 500 · 강조 600 · 제목과 고른 값 700.
 - 크기는 반 픽셀 단계를 쓴다. 자주 쓰는 것: 15(빈 상태 제목·큰 제목) · 13(입력·본문) · 12~12.5(라벨·안내) · 11~11.5(보조·모바일 버튼) · 10.5(배지). 로고는 PC 16 · 모바일 15.
 - 바뀌는 숫자(쪽 번호·개수·염색 수치)는 `font-variant-numeric: tabular-nums`.
