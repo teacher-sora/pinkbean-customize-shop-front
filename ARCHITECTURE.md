@@ -68,7 +68,7 @@ scripts/merge-dev-to-main.sh
   - **앱 본문은 `(shop)/layout.tsx` 에 한 번만 놓고 탭 주소의 page 는 비워 둔다.** 왜: 새로고침한 뒤 뒤로 가면 Next 가 진짜 주소 이동을 하는데, 본문이 page 에 있으면 그때 앱이 통째로 다시 뜬다.
   - 처음 탭은 들어온 주소에서 읽어(`useSelectedLayoutSegment`) 서버가 그 탭을 바로 그린다. 그래서 탭은 세션에 저장하지 않는다.
   - 주소의 `?sky=` 같은 꼬리는 탭을 바꿔도 따라간다.
-- **아이템 데이터는 전부 CDN 에서 받는다**(`lib/core/data.ts`). 목록·카탈로그 JSON 만 `cache: 'no-cache'` 로 받아 새로고침 한 번에 최신이 보이게 한다(CDN 의 JSON 은 60초 캐시, png 는 immutable).
+- **아이템 데이터는 전부 CDN 에서 받는다**(`lib/core/data.ts`). 목록·카탈로그 JSON 만 `cache: 'no-cache'` 로 받아 새로고침 한 번에 최신이 보이게 한다(CDN 의 JSON 은 60초 캐시, png 는 immutable). JSON 과 png 모두 Cloudflare 엣지에서 나온다(응답 약 50ms) — JSON 을 엣지에 캐시하는 규칙과 패치 뒤 반영 시간(목록 최대 60초)은 parser 레포 `ARCHITECTURE.md` §2 '캐시'.
 - **첫 화면의 데이터는 앱 코드보다 먼저 요청한다**(`(shop)/layout.tsx` 의 BOOT 스크립트 → `window.__pbBoot` → `lib/core/data` 의 로더가 한 번씩 이어받는다). HTML 을 읽는 즉시 도는 작은 스크립트가 index · 이펙트 색인 · 신규 목록 · 형상변이, 고른 프리셋의 착용 아이템 meta(없으면 기본 코디)와 피부 meta, 그 부위의 목록을 요청하고, 목록 화면만 쓰는 나머지 부위 목록은 **낮은 우선순위**로 요청한다(전체 · 신규 · 즐겨찾기 탭일 때만). 왜: 앱 코드를 내려받아 실행하는 수백 ms 동안 CDN 왕복이 함께 진행된다 — 미리보기 캐릭터와 목록 카드가 0.3~0.5초 먼저 뜬다(잰 값). 순위를 나누지 않고 한꺼번에 보내면 느린 회선에서 미리보기가 쓰는 목록까지 늦게 온다. 스크립트가 틀리거나 실패해도 로더가 평소대로 받는다(느려질 뿐 깨지지 않는다). 저장소 키(`pb_presets_v1` · `pb_ui_session_v1`)나 프리셋의 모양을 바꾸면 이 스크립트가 읽는 값도 함께 본다.
 - **글꼴**(Wanted Sans 가변, OFL)은 `src/assets/fonts` 에 두고 사이트의 정적 파일로 내보낸다. 파일은 둘이다(`scripts/font-subset.py` 가 만든다): 자주 쓰는 글자 0.38MB(`app/layout.tsx` 의 next/font, `--font-wanted`)와 드문 한글 음절 0.95MB(`app/fonts.css` 의 "Wanted Sans Rest" — `unicode-range` 라 그 글자가 화면에 나올 때만 받는다). 왜: 통째(1.26MB)로 받으면 첫 화면에서 목록 · 스프라이트와 회선을 나눠 쓴다. 미리 받기(preload)는 끈다 — 켜면 글꼴이 CSS · 앱 코드보다 먼저 회선을 차지해 첫 그리기가 0.1~0.2초 늦어진다(잰 값).
 - **신규 표시**: CDN `catalog/new.json` 의 id 에 NEW 라벨과 '신규' 필터.
