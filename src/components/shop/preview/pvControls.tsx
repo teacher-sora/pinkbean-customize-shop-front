@@ -2,7 +2,7 @@
 
 // 연출 설정 컨트롤(PC 드로어 · 모바일 시트 공용).
 //  상시: 배율·액션·무기 모션·표정 / 접힘: 캐릭터(형상 변이·귀·시선) · 이펙트(무기·망토·모자).
-//  옵션 데이터는 실제 데이터(catalog.ts) — v2 파일의 목록은 디자인용 임의 데이터였다.
+//  옵션 데이터는 실제 데이터(catalog.ts).
 
 import clsx from 'clsx'
 import { useEffect } from 'react'
@@ -26,13 +26,11 @@ export function useRidingGuards() {
     if (!riding) return
     const allow = ridingActionSet(ridingItem)
     if (!allow.has(s.pv.action)) s.setPv('action', 'basic')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [riding, ridingItem, s.pv.action])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (riding && s.pv.form !== 'none') s.setPv('form', 'none') }, [riding, s.pv.form])
 }
 
-// [dev] 라이딩 중 "가능한" 액션은 아이템별(riding.json, 없으면 재규어 기준) — 나머지는 목록에서 지우지 않고 비활성으로 표시한다.
+// 라이딩 중 "가능한" 액션은 아이템별(riding.json, 없으면 재규어 기준) — 나머지는 목록에서 지우지 않고 비활성으로 표시한다.
 function useRiding() {
   const s = useShop()
   const ridingItem = s.equipped?.riding

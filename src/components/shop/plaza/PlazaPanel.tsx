@@ -66,8 +66,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
     const smooth = !jump
     // ⚠️ 트랙 폭은 `pageCount * 100cqw`(컨테이너 쿼리 단위)라, 페이지 수가 늘어난 **그 커밋의 layout effect
     //    시점엔 아직 한 페이지 폭**이다. 그때 scrollTo 를 부르면 브라우저가 목표를 최대 스크롤(=0)로 깎는다
-    //    → 인덱스는 6 인데 스크롤은 0 이라 페이지 DOM(현재 ±1) 이 화면 밖에 있어 **빈 리스트**가 보였다
-    //    (2026-09-21 실측: scrollTo({left:1880}) 호출 4회 모두 scrollWidth-clientWidth = 0).
+    //    → 인덱스는 6 인데 스크롤은 0 이라 페이지 DOM(현재 ±1) 이 화면 밖에 있어 **빈 리스트**가 보인다.
     //    트랙이 다 자랄 때까지 프레임을 넘겨 다시 시도한다(조건이 맞는 즉시 끝난다).
     let raf = 0
     let left = 120 // 폭주 방지용 상한(≈2초). 대기 시간이 아니라 안전장치다 — 조건이 맞는 즉시 빠져나간다.
@@ -196,7 +195,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
       <div className={styles.hr} />
       {viewport}
       <div className={clsx('pb-hintbar', styles.hintBar)}>
-        {/* 대회 필터에서는 조작 안내 대신 대회 기간을 알린다(사용자 지시 — 규칙 안내는 기간이면 충분). */}
+        {/* 대회 필터에서는 조작 안내 대신 대회 기간을 알린다(규칙 안내는 기간이면 충분). */}
         <span className={styles.hintText}>{s.plazaFilter === 'contest'
           ? `${PLAZA_CONTEST} · ${plazaContestClosed() ? '마감됐어요' : PLAZA_CONTEST_PERIOD ?? '기간은 곧 안내돼요'}`
           : '스크롤 · 스와이프 · ← → 로 페이지를 넘겨요'}</span>

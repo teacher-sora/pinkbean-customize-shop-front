@@ -27,8 +27,8 @@ import { peekSavedZoom, useShop } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
 
-// [dev] 라이딩 중 "앉은 채" 나오는 액션(캐릭터=sit, 재규어가 대신 움직임)은 shopData.ridingSeatedSet 하나로 정한다 —
-// 미리보기·부위 카드·프리셋/광장 카드가 같은 답을 내야 한다(2026-09-29: 카드만 선 채로 나왔다).
+// 라이딩 중 "앉은 채" 나오는 액션(캐릭터=sit, 재규어가 대신 움직임)은 shopData.ridingSeatedSet 하나로 정한다 —
+// 미리보기·부위 카드·프리셋/광장 카드가 같은 답을 내야 한다.
 
 
 export default function PreviewModel() {
@@ -119,7 +119,7 @@ export default function PreviewModel() {
   // 프레임 "미리 조립"(spec) — 구조 변화(장비/뷰/톤/메타/형상변이)에만 재계산. 프레임 루프에선 재계산 안 함.
   const spec = useMemo(() => {
     if (!ready || !bodyMeta || !headMeta || !index || !bodyId || !headId) return null
-    // [dev] 라이딩(탑승) 렌더 규칙(실제 게임 기준):
+    // 라이딩(탑승) 렌더 규칙(실제 게임 기준):
     //   · 기본/서기/걷기 = "앉은 채"(캐릭터 sit 고정) → 재규어가 대신 걷기/서기 애니메이션, 무기 미출력.
     //   · 전투대기/점프/사다리/밧줄/석궁사격 = 캐릭터가 "일어서서" 해당 모션 → 무기 출력.
     //   V.action 은 이미 resolved WZ 키(walk1/jump/rope/shoot2…)라 재규어 프레임과 그대로 매칭된다(없으면
@@ -172,14 +172,14 @@ export default function PreviewModel() {
       }
       items.push(...animaParts)
       // navel-only 앵커링은 프레임마다 navel 의 스프라이트 내부 위치가 달라 몸통이 몇 px 흔들린다. 매 프레임
-      // stand1 navel 기준으로 보정(stabOffset)해 몸통·옷은 고정되고 팔·다리만 움직이게 한다(maple test 방식).
+      // stand1 navel 기준으로 보정(stabOffset)해 몸통·옷은 고정되고 팔·다리만 움직이게 한다.
       // ⚠️ 이 보정을 무효화하지 않도록 렌더는 centerX(navel 재중심) 대신 고정 anchor 를 쓴다.
       const { placed: raw, anchors } = assemble(items, index.zmap, index.smap)
       const curBody = raw.find((p) => p.slot === 'body' && p.name === 'body')
       const curNav = curBody?.map?.navel
       // 캐릭터 stab = 발(origin) 고정, 몸통/사지만 움직임(stand1 navel 기준). 앉은 채(seated)면 stab 없음(안장 위 원위치).
       const stab = refNav && curNav ? { x: curNav.x - refNav.x, y: curNav.y - refNav.y } : { x: 0, y: 0 }
-      // ⚠️ stab 은 캐릭터+마운트 "전 레이어에 균일" 적용해야 한다. 예전엔 마운트를 stab 에서 뺐는데, 그러면
+      // ⚠️ stab 은 캐릭터+마운트 "전 레이어에 균일" 적용해야 한다. 마운트를 stab 에서 빼면
       //   centerX/centerMount(캐릭터 navel/마운트 bbox 재중심)에서 stab 만큼 마운트가 어긋난다(카드는 stab 이
       //   없어 안 어긋남 → 미리보기만 왼쪽 치우침). 균일 적용하면 재중심에서 stab 이 상쇄돼 카드와 동일해진다.
       const shift = riding && seated ? { x: 0, y: 0 } : stab
@@ -230,7 +230,7 @@ export default function PreviewModel() {
     const myKey = dyeKey
     const dyeable: ItemMeta[] = []
     for (const it of Object.values(equipped)) { if (!it) continue; const m = metas.get(it.id); if (m) dyeable.push(m) }
-    // [dev] 라이딩 앉은 액션이면 캐릭터가 sit 로 그려지므로 염색도 sit 프레임 기준으로 계산해야 그 프레임 옷/피부
+    // 라이딩 앉은 액션이면 캐릭터가 sit 로 그려지므로 염색도 sit 프레임 기준으로 계산해야 그 프레임 옷/피부
     //   png 가 칠해진다(안 그러면 선택 액션 png 만 칠해져 sit 옷이 원본색으로 보인다). ⚠️ seated 판정은 spec 과
     //   똑같이 "아이템별 ridingSeated"를 써야 한다(메탈아머는 prone/ladder/rope 도 seated라 상수만 보면 안 칠해짐).
     const dyeRidingIt = equipped['riding']

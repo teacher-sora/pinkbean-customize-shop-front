@@ -20,7 +20,7 @@ import styles from './preview.module.css'
 
 const BOOKMARK_FRAC = 0.9
 
-// 핑크빈 코디 평가 말풍선 — 평가가 오면 캐릭터 주변 링 모양 위치에 2~3개를 페이드업→3초 유지→페이드다운(기존 기능 유지).
+// 핑크빈 코디 평가 말풍선 — 평가가 오면 캐릭터 주변 링 모양 위치에 2~3개를 페이드업→3초 유지→페이드다운.
 export function RateBubbles() {
   const s = useShop()
   const [bubbles, setBubbles] = useState<{ id: number; text: string; top: number; left: number; delay: number }[]>([])
@@ -102,7 +102,7 @@ export function BookmarkBox() {
   )
 }
 
-// 모바일: 북마크 시트 본문(delta §4·§5). 위에서부터 VS 확장 영역(0↔248px, 비교 캔버스 고정 236px) → 북마크 줄(VS·비우기)
+// 모바일: 북마크 시트 본문. 위에서부터 VS 확장 영역(0↔248px, 비교 캔버스 고정 236px) → 북마크 줄(VS·비우기)
 // → 4×2 = 항상 8칸 예약(빈칸 점선). VS 가 켜진 동안 칩은 장착이 아니라 비교 대상 선택, 꺼져 있으면 장착 후 닫기.
 // 북마크 줄의 윗선은 상시 유지하고 margin-top:-1px 로 접힌 상태에선 헤더 밑선과 정확히 겹친다.
 // VS 펼침/접힘은 높이 전환이 아니라 transform FLIP(surface/sheetMotion.useVsFlip) — 목록(bmList)이 비교 영역을 덮고 있다가 드러낸다.
@@ -155,9 +155,9 @@ export function BookmarkSheetBody() {
   )
 }
 
-// 모바일: 연출 설정 시트 본문. 닫기는 공용 푸터가 맡는다(자체 '연출 설정 닫기' 버튼 제거, delta §6).
+// 모바일: 연출 설정 시트 본문. 닫기는 공용 푸터가 맡는다.
 // 액션 · 무기 모션 · 표정을 누르면 **시트 안에서 가로로 슬라이드**해 3열 격자 고르기 화면으로 간다
-// (부위 염색 → 염색과 같은 몸짓 — 좁은 화면에 시트 위 팝오버를 겹치지 않으려고, 2026-09-24).
+// (부위 염색 → 염색과 같은 몸짓 — 좁은 화면에 시트 위 팝오버를 겹치지 않으려고).
 // 푸터는 고르는 중에는 '이전'이라 한 단계만 돌아온다.
 export function PvSheetBody() {
   const [group, setGroup] = useState<PvGroup>('char')
@@ -168,7 +168,7 @@ export function PvSheetBody() {
   // 격자는 **시트가 다 오른 뒤에** 붙인다(움직임이 끝나고 조금 더 뒤). 움직이는 도중에 칸 31개를 마운트하면
   //  · 메인 스레드가 붙들려 끊겨 보이고,
   //  · 마운트가 컨텍스트를 건드려 리액트가 시트 패널을 다시 그리면서 **진행 중이던 transform 을 0 으로 덮어써**
-  //    시트가 목표 위치로 툭 튀었다(2026-09-24 실측: 359 → 261 한 프레임, 그동안 푸터만 따로 미끄러짐).
+  //    시트가 목표 위치로 툭 튄다.
   const [gridOn, setGridOn] = useState(false)
   const gridTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (gridTimer.current) clearTimeout(gridTimer.current) }, [])
@@ -187,8 +187,8 @@ export function PvSheetBody() {
 
   // 화면(설정 ↔ 고르기)이 바뀌면 시트 높이도 바뀐다.
   //  · 설정 화면 = **내용 높이 그대로**. 내용 블록(mainRef)을 직접 재는 게 핵심이다 — 스크롤 상자를 재면
-  //    `scrollHeight` 가 상자 높이보다 작아지지 않아 고르기(460px)에서 돌아와도 460 으로 굳었고(되돌아가지 않음),
-  //    애니메이션 중 다시 재는 되먹임이 생겨 높이가 매 프레임 재시작돼 툭툭 끊겼다(2026-09-24 사용자 제보).
+  //    `scrollHeight` 가 상자 높이보다 작아지지 않아 고르기(460px)에서 돌아와도 460 으로 굳고(되돌아가지 않음),
+  //    애니메이션 중 다시 재는 되먹임이 생겨 높이가 매 프레임 재시작돼 툭툭 끊긴다.
   //  · 고르기 화면 = 화면의 62%(최대 460px) — 격자는 그 안에서 스크롤한다.
   // 움직임은 **높이 전환이 아니라 VS 와 같은 FLIP**이다: 높이는 한 번에 바꾸고(레이아웃 1회), 보이는 움직임은
   // 패널·푸터의 translateY 로만 한다(합성 단계라 매끄럽고, 도중에 다시 눌러도 glide 가 지금 위치·속도를 이어받는다).
@@ -205,7 +205,7 @@ export function PvSheetBody() {
     return () => ro?.disconnect()
   }, [view, group])
   // ⚠️ 고르기 높이는 **열기 전에 이미 정해져 있어야** 한다. 열고 나서 효과에서 고치면 높이가 두 번 커밋되고
-  //    두 번째 FLIP 이 첫 번째 움직임을 끊어 먹어 '툭' 뛰어 보였다(2026-09-24 실측: 447 → 301 한 프레임).
+  //    두 번째 FLIP 이 첫 번째 움직임을 끊어 먹어 '툭' 뛰어 보인다.
   const pickOf = () => Math.round(Math.min(460, (typeof window === 'undefined' ? 700 : window.innerHeight) * 0.62))
   const [pickH, setPickH] = useState(pickOf)
   useEffect(() => {
@@ -215,9 +215,9 @@ export function PvSheetBody() {
   }, [])
   const want = view === 'pick' ? pickH : mainH
   // 실제로 시트에 걸리는 높이. **늘 때와 줄 때 순서가 다르다**(VS 펼침/접힘과 같은 규칙).
-  //  · 늘 때  = 레이아웃 먼저 바꾸고 → 예전 모습으로 되돌려 놓은 뒤 0 으로 미끄러진다.
+  //  · 늘 때  = 레이아웃 먼저 바꾸고 → 직전 모습으로 되돌려 놓은 뒤 0 으로 미끄러진다.
   //  · 줄 때  = 큰 레이아웃 그대로 두고 먼저 미끄러진 뒤 → 다 내려간 자리에서 레이아웃을 줄인다.
-  //    (먼저 줄이면 패널 아랫변이 화면 안으로 들어와 푸터가 붕 뜨고 아래에 빈 칸이 생긴다 — 2026-09-24 사용자 제보.)
+  //    (먼저 줄이면 패널 아랫변이 화면 안으로 들어와 푸터가 붕 뜨고 아래에 빈 칸이 생긴다.)
   const [appliedH, setAppliedH] = useState<number | null>(null)
   const shrinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const els = () => {
@@ -243,7 +243,7 @@ export function PvSheetBody() {
     if (!e || !wrap) { setAppliedH(want); return }
     if (shrinkTimer.current) clearTimeout(shrinkTimer.current)
     if (want > from) {
-      // 늘 때: 높이를 **같은 프레임에** 바꾸고(리액트 상태도 곧 같은 값) 예전 모습으로 되돌린 뒤 0 으로 미끄러진다.
+      // 늘 때: 높이를 **같은 프레임에** 바꾸고(리액트 상태도 곧 같은 값) 직전 모습으로 되돌린 뒤 0 으로 미끄러진다.
       wrap.style.height = `${want}px`
       const d = want - from
       place([[e.panel, d], [e.foot, -d]])
@@ -256,7 +256,6 @@ export function PvSheetBody() {
       const ms = glideTo([[e.panel, d], [e.foot, -d]])
       shrinkTimer.current = setTimeout(() => { wrap.style.height = `${want}px`; setAppliedH(want); settle(e.panel, e.foot) }, ms)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [want])
   useEffect(() => () => { if (shrinkTimer.current) clearTimeout(shrinkTimer.current) }, [])
   const h = appliedH

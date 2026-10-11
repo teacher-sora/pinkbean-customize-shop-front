@@ -214,7 +214,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
   )
   // 테두리(순수 검정) 포함 — 염색 다이얼로그와 같은 값(dyeHsb.edge)을 여기서도 켜고 끈다.
   // 검정은 채도가 0이라 색조·채도는 수학적으로 무효고 **명도로만 회색으로** 밝아진다(lib/core/dye).
-  // ⚠️ **커스텀 피부는 제외**한다(2026-09-23 사용자 지시 — 피부에는 이 테두리가 있어선 안 된다).
+  // ⚠️ **커스텀 피부는 제외**한다(피부에는 이 테두리가 있어선 안 된다).
   const edgeOn = !!s.dyeHsb[target]?.edge
   const edgeBtn = (
     <button type="button" aria-pressed={edgeOn}
@@ -268,8 +268,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
                     onBlur={() => clearRaw('ratio')}
                     onStep={(d) => { clearRaw('ratio'); setPal((cur) => ({ ...cur, ratio: Math.max(0, Math.min(100, cur.ratio + d)) })) }}
                     decOff={pal.ratio <= 0} incOff={pal.ratio >= 100} />} />
-                {/* 헤어·성형은 여기까지다 — 색 A·B 와 그 사이 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다
-                    (2026-09-21 사용자 지시: 한때 얹었던 커스텀 HSB 를 걷어냈다). */}
+                {/* 헤어·성형은 여기까지다 — 색 A·B 와 그 사이 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다. */}
                 <div className={styles.acts}>
                   <button type="button" onClick={() => s.openDye(it)} title="발색표 보기" className={clsx('pb-ghost', styles.btn)}>염색표 보기</button>
                   {offBtn}

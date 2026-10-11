@@ -1,6 +1,6 @@
 /* 선택(토글) 표시는 새로고침 복원 중(html[data-pb-csr])에는 켜지 않는다 — 기본값이 잠깐 비쳤다가
    sessionStorage 값으로 바뀌는 점멸을 없애려는 것. 되살린 값이 그려질 때 한 번에 켜진다. */
-/* 하단 부위 바 + 탭 바 — v2 partNavStyle/partTabs/mainTabs/railFade 값 그대로. */
+/* 하단 부위 바 + 탭 바. */
 
 /* ── PC(절반·태블릿 포함) ── */
 .bottom { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
@@ -22,7 +22,7 @@
 .partNavM { flex: 0 0 auto; position: relative; height: 42px; border-top: 1px solid #f0e9e1; background: #fff; }
 .railM { height: 100%; padding: 0 10px; display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
 .partM { flex: 0 0 auto; height: 28px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; color: #7a7066; background: transparent; }
-/* 코디 광장 분류는 4개뿐이라 폭을 나눠 채운다(핸드오프 §1) */
+/* 코디 광장 분류는 4개뿐이라 폭을 나눠 채운다 */
 .partWideM { flex: 1 1 0; min-width: 0; padding: 0 4px; }
 :global(html:not([data-pb-csr])) .partM.partOn { font-weight: 600; color: #fff; background: #ec86ac; }
 .fadeM { width: 44px; }

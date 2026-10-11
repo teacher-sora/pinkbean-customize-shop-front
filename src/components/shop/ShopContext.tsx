@@ -5,7 +5,7 @@
  * 코디(부위별 아이템 목록·착용)와 미리보기 합성은 실제 CDN 데이터를 사용한다.
  *   - index/slots/meta 는 src/lib/core/data.ts 로 CDN(https://cdn.pinkbean-customize.com)에서 로드.
  *   - equipped 는 실제 slot → ListItem. 미리보기(PreviewModel)가 이 값을 합성.
- * UI 는 핸드오프 v2(PinkbeanShop v2.dc.html) 규격 — 시트/다이얼로그는 단일 서피스(surface) 상태 하나로 관리한다.
+ * 시트/다이얼로그는 단일 서피스(surface) 상태 하나로 관리한다.
  */
 
 import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
@@ -43,7 +43,7 @@ export const isMultiCat = (cat: string) => cat === 'all' || cat === 'new' || cat
 const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김. (공유 코드/영속에 이 형태 그대로 저장)
 // 프리셋에 저장하는 연출설정 일부(형상변이·귀·무기모션·이펙트토글·배율). 시선/액션/표정은 "보는 순간의 상태"라 저장 안 함.
-// 프리셋에 담기는 연출 설정은 두 갈래다(2026-09-21 사용자 지시).
+// 프리셋에 담기는 연출 설정은 두 갈래다.
 //  · 코디에 속하는 연출(PV_LOOK_DEFAULT) = 형상변이·귀·무기모션·이펙트 3종. 저장되고 **카드에도 그대로 그려진다**.
 //  · 보기 설정(PV_VIEW_DEFAULT) = 시선·액션·표정·배율. **정보로만** 담아 프리셋을 쓸 때 화면에 되살리고, 카드에는 적용하지 않는다.
 // 보기 설정은 광장에 올릴 때 빠진다(lib/plazaLook.plazaSnapshot) → 없을 수 있고, 없으면 지금 보던 값을 유지한다.
@@ -56,21 +56,21 @@ export const PV_SNAP_DEFAULT: PvSnap = { ...PV_LOOK_DEFAULT, ...PV_VIEW_DEFAULT 
 export type DotOffsets = Record<string, Vec>
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; dotPos?: Record<string, DotOffsets>; dyeOff?: Record<string, boolean>; pv?: PvSnap; name?: string }
 // 공유·광장에서 받은 코디는 메타 정보(연출·시선·액션·표정·배율)를 **전부 그 코디의 값**으로 가져온다.
-// 담겨 있지 않은 칸은 기본값이다 — 공유 코드는 기본값과 같은 칸을 아예 빼고 싣고(shareCode.minPv), 옛 광장 글엔
-// 보기 설정이 없다. 예전엔 빠진 칸을 '보던 화면의 값'으로 뒀다 → 3배로 보던 중에 가져오면 저장한 빈 칸의 코디까지
-// 3배가 돼 프리셋마다 크기가 제멋대로였다(2026-09-29 사용자 제보·지시: 가져오면 메타 정보가 모두 따라와야 한다).
+// 담겨 있지 않은 칸은 기본값이다 — 공유 코드는 기본값과 같은 칸을 아예 빼고 싣고(shareCode.minPv), 오래된 광장 글엔
+// 보기 설정이 없다. 빠진 칸을 '보던 화면의 값'으로 두면 3배로 보던 중에 가져온 코디가 3배로 저장돼
+// 프리셋마다 크기가 제멋대로가 된다.
 const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAULT, ...Object.fromEntries(Object.entries(s.pv || {}).filter(([, v]) => v !== undefined)) } as PvSnap })
 
-// 단일 서피스(시트·다이얼로그): 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 하나를 쓴다(v2 §10.4).
+// 단일 서피스(시트·다이얼로그): 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 하나를 쓴다.
 // part = 부위 염색(착용 부위 고르기 → 같은 다이얼로그 안에서 염색/점 위치로 슬라이드), vs = 북마크 코디 비교(PC).
-// fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다(delta §3·§8).
+// fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다.
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
-//   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(2026-09-21 사용자 지시:
-//   예전엔 상세가 닫히고 공유 받기 다이얼로그가 새로 떠서 화면이 한 번 끊겼다).
+//   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
+//   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
 export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza' | 'ptake' | 'notice'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot }
-const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴(delta 값)
+const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
 // 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
@@ -87,8 +87,8 @@ function copyAsyncText(make: () => Promise<string>): Promise<void> {
 }
 
 // ── 프리셋: 30칸, 초깃값은 코디 기본(밤의 레아 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
-// 20 → 30 (2026-09-21 사용자 지시 — 쓰는 사람이 늘었다). 칸 id 는 'd0'…'d29' 로 **앞의 20칸이 그대로**이고,
-// 복원은 저장소에 있는 칸만 읽어 오므로(아래 PRESET_IDS.forEach) 기존 코디·이름은 손대지 않는다. 새 10칸만 기본값으로 생긴다.
+// 칸 id 는 'd0'…'d29' 다. 칸 수를 늘려도 앞 칸의 id 는 그대로이고,
+// 복원은 저장소에 있는 칸만 읽어 오므로(아래 PRESET_IDS.forEach) 기존 코디·이름은 손대지 않는다. 새 칸만 기본값으로 생긴다.
 const PRESET_COUNT = 30
 const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
 const defaultPresetName = (i: number) => `코디 ${i + 1}`
@@ -96,7 +96,7 @@ const defaultPresetName = (i: number) => `코디 ${i + 1}`
 const namesOf = (ps: Preset[]): Record<string, string> => Object.fromEntries(ps.map((p) => [p.id, p.name]))
 const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, string>) => JSON.stringify({ s: snap, p: sel, n: names })
 // 연출 설정 기본값 — 첫 상태이자 '프리셋 초기화'가 되돌릴 값이다(한곳에서 관리).
-// 시선·액션·표정·fps 는 스냅샷에 담기지 않지만, 초기화는 **이것까지 전부** 되돌린다(2026-09-21 사용자 지시).
+// 시선·액션·표정·fps 는 스냅샷에 담기지 않지만, 초기화는 **이것까지 전부** 되돌린다.
 const PV_DEFAULT: Pv = {
   action: 'basic', weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
   gaze: 'left', wEffect: true, cEffect: true, capEffect: true, fps: 12, zoom: 2,
@@ -119,9 +119,9 @@ const DEFAULT_CORE_KEY = snapCoreKey(defaultSnapshot())
 export const isCustomSnapshot = (s: Snapshot) => snapCoreKey(s) !== DEFAULT_CORE_KEY
 // 대회 '같은 조합' 판정은 lib/plazaLook.ts(정규화·DB 안전망 규칙) + lib/plazaLookPixels.ts(결과 픽셀 비교) — DB 는 0009.
 // 이전 기본 헤어(녹셀 헤어 (여) 00071400) 그대로 손대지 않은 저장 프리셋 → 새 기본값(밤의 레아 헤어)으로 이관.
-// 조금이라도 바꾼 프리셋(다른 착용·염색·숨김·점 위치)은 사용자 코디라 건드리지 않는다. (2026-09-17)
-// ★ 이관은 **저장소당 한 번만**(v < PRESET_STORE_V 일 때). 예전엔 매 로드마다 돌아, 기본 코디에 녹셀 헤어만 입힌
-//   코디(이제는 정당한 사용자 코디)가 새로고침할 때마다 레아 헤어로 되돌아갔다(2026-09-21 사용자 제보).
+// 조금이라도 바꾼 프리셋(다른 착용·염색·숨김·점 위치)은 사용자 코디라 건드리지 않는다.
+// ★ 이관은 **저장소당 한 번만**(v < PRESET_STORE_V 일 때). 매 로드마다 돌리면 기본 코디에 녹셀 헤어만 입힌
+//   코디(정당한 사용자 코디)가 새로고침할 때마다 레아 헤어로 되돌아간다.
 const LEGACY_DEFAULT_CORE_KEY = (() => { const d = defaultSnapshot(); return snapCoreKey({ ...d, equipped: { ...d.equipped, hair: '00071400' } }) })()
 const migrateLegacyDefault = (s: Snapshot): Snapshot => (snapCoreKey(s) === LEGACY_DEFAULT_CORE_KEY ? { ...s, equipped: defaultSnapshot().equipped } : s)
 const PRESET_KEY = 'pb_presets_v1'
@@ -192,7 +192,7 @@ export interface ShopCtx {
   catLoading: boolean
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
   search: string; setSearch: Dispatch<string>
-  genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용(v2)
+  genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용
   // primary/screen
   primary: string; setPrimary: (tab: string) => void
   goHome: () => void // 로고 — 첫 진입 화면(코디 탭 · 전체 · 1페이지)으로
@@ -354,7 +354,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [])
   const saveBookmarks = (next: ListItem[]) => { try { localStorage.setItem(BOOKMARK_KEY, JSON.stringify(next)) } catch { /* noop */ } }
 
-  // 공유 링크 수신: ?n=<이름>&c=<짧은 코드 PB-…|긴 코드>(신규) 또는 #c=<code>(레거시)로 접속하면 디코드해 '코디 받기' 시트를 띄운다.
+  // 공유 링크 수신: ?n=<이름>&c=<짧은 코드 PB-…|긴 코드> 또는 #c=<code>(해시 형식 링크)로 접속하면 디코드해 '공유받은 코디' 화면(서피스 ptake)을 띄운다.
   //  · 쿼리(?c=)를 쓰는 이유: 모바일 카톡 등 일부 링크파서가 '#' 이후를 하이퍼링크로 인식하지 못한다.
   //  · 창/탭 조율(포커스·자동닫기)은 일부 환경(카톡·모바일 다중탭)에서 불가·불일치라 의도적으로 넣지 않음 — 그냥 이 탭에서 처리.
   useEffect(() => {
@@ -368,7 +368,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false
     resolveShareCode(code).then((snap) => { if (!cancelled && snap) openShared(snap) }).catch(() => {})
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=기본 캐릭터(코디는 모델이 기본)
   const [search, setSearch] = useState('')
@@ -393,7 +392,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [plazaPosts, setPlazaPosts] = useState<PlazaPost[]>([])
   const [plazaLoaded, setPlazaLoaded] = useState(false) // 첫 로드가 끝났는지(스켈레톤은 이 전에만)
   const [plazaFilter, setPlazaFilter] = useState<PlazaFilter>('all')
-  // 기본은 **최신순**(2026-09-21). 인기순은 '좋아요 → 같으면 최신' 이라 초기에는 결과가 최신순과 같으면서,
+  // 기본은 **최신순**. 인기순은 '좋아요 → 같으면 최신' 이라 초기에는 결과가 최신순과 같으면서,
   // 먼저 좋아요를 받은 글이 1페이지를 계속 차지해 새 글이 묻히는 고착만 만든다.
   // 정렬이 진입 시 한 번 고정이고 좋아요 수는 최대 3분 캐시라 그 고착이 더 오래간다.
   const [plazaSort, setPlazaSort] = useState<PlazaSort>('recent')
@@ -414,7 +413,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [presets, setPresets] = useState<Preset[]>(() => PRESET_IDS.map((id, i) => ({ id, name: defaultPresetName(i) })))
   const [presetData, setPresetData] = useState<Record<string, Snapshot>>(() => Object.fromEntries(PRESET_IDS.map((id) => [id, defaultSnapshot()])))
   // 처음엔 **아무것도 선택하지 않는다**. 'd0' 으로 시작하면 저장소를 읽기 전 잠깐 1번 칸에
-  // '선택됨' 띠지가 붙었다가 실제 프리셋으로 옮겨 간다(사용자 지적 2026-09-21). 아래 초기 로드에서 채운다.
+  // '선택됨' 띠지가 붙었다가 실제 프리셋으로 옮겨 간다. 아래 초기 로드에서 채운다.
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
   const [nickInput, setNickInput] = useState('')
   const [importing, setImporting] = useState(false) // 불러오기 진행 중(로딩 애니메이션)
@@ -433,8 +432,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 함께 복원한다 → 프리셋 전환도 되돌리기 대상(1번→2번 후 되돌리기 = 다시 1번 선택 + 그때 코디).
   // 다른 프리셋을 덮어쓴 기록(공유 코디·광장 가져오기)은 over 에 그 프리셋의 전후 내용·이름을 함께 남긴다(uiState.PresetOver).
   // 엔트리마다 그때의 프리셋 이름 전체(names)도 담는다 — 되돌리기는 코디·연출(시선·배율 등)·선택 프리셋·**이름**을
-  // 함께 되살린다. 예전엔 이름이 over(다른 칸 덮어쓰기)에만 있어, 가져오기로 바뀐 이름이 되돌아오지 않는 경우가 있었고
-  // 이름을 고친 것 자체는 기록되지 않았다(2026-09-29 사용자 지시: 이름 변경도 기록 한 건).
+  // 함께 되살린다. 이름을 over(다른 칸 덮어쓰기)에만 두면 가져오기로 바뀐 이름이 되돌아오지 않는 경우가 생기고
+  // 이름을 고친 것 자체도 기록되지 않는다. 이름 변경도 기록 한 건이다.
   const histRef = useRef<{ stack: { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot> }[]; idx: number }>({ stack: [], idx: -1 })
   const histOver = useRef<PresetOver<Snapshot> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
@@ -497,7 +496,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }).catch((e) => console.error('[shop] index 로드 실패', e))
       .finally(() => { if (alive) setDataLoading(false) })
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 부위 리스트 지연 로드(활성 부위만). loadSlot 은 data.ts 에서 파일별 캐시됨.
@@ -505,7 +503,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const ensureSlot = useCallback((slot: string) => {
     if (!index || slot === 'skin') return
     if (lists[slot] !== undefined || loadingSlots.current.has(slot)) return
-    // [dev] 라이딩은 CDN index 에 없고 프론트 로컬 public 에서 서빙(절대경로 → data.ts url() 패스스루) — shopData.slotFile.
+    // 라이딩은 CDN index 에 없고 프론트 public 에서 서빙(절대경로 → data.ts url() 패스스루) — shopData.slotFile.
     const file = slotFile(slot, index)
     if (!file) { setLists((m) => ({ ...m, [slot]: [] })); return }
     loadingSlots.current.add(slot)
@@ -547,7 +545,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 성별 필터. 카탈로그의 gender(0=남 1=여 2=공용)를 쓴다.
   // ⚠️ "여"는 여 전용만이 아니라 **여캐가 입을 수 있는 것**(여 + 공용)이다. 남도 마찬가지.
   //    사람들이 원하는 건 "여자 전용템 목록"이 아니라 "내 캐릭터가 입을 수 있는 것만 보기"다.
-  // v2: 코디와 AI 코디 검색이 하단 부위 바·성별 필터를 공유한다.
+  // 코디와 AI 코디 검색이 하단 부위 바·성별 필터를 공유한다.
   const [genderFilter, setGenderFilter] = useState<GenderFilter>('all')
   // gender: 0=남 1=여 2=공용. 공용과 미상(null)은 항상 남긴다 — 걸러서 얻는 게 없고 오히려 빠뜨린다.
   const byGender = useCallback((list: ListItem[], gf: GenderFilter) => {
@@ -588,7 +586,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (Array.isArray(u.searchResults)) setSearchResults(u.searchResults)
     if (u.plazaFilter && PLAZA_FILTERS.some((f: { id: string }) => f.id === u.plazaFilter)) setPlazaFilter(u.plazaFilter as PlazaFilter)
     if (typeof u.plazaQ === 'string') setPlazaQState(u.plazaQ)
-    // 광장 정렬만 **영구**다(취향에 가까운 값 — 사용자 지시). 나머지는 전부 새로고침까지만.
+    // 광장 정렬만 **영구**다(취향에 가까운 값). 나머지는 전부 새로고침까지만.
     const pref = readUiPref()
     if (pref.plazaSort === 'popular' || pref.plazaSort === 'recent') setPlazaSort(pref.plazaSort)
     setUiReady(true)
@@ -605,9 +603,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [uiReady, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
   useEffect(() => { if (uiReady) writeUiPref({ plazaSort }) }, [uiReady, plazaSort])
   const [rateResult, setRateResult] = useState<{ bubbles: string[]; nonce: number } | null>(null) // 코디 평가 말풍선
-  // 말풍선은 **평가를 눌러 받은 그 한 번만** 뜬다(2026-09-22 사용자 제보 — 광장처럼 미리보기가 없는 탭에
-  // 갔다 오면 지난 평가가 계속 다시 떴다). 원인은 RateBubbles 가 미리보기와 함께 언마운트됐다가 다시 붙으면서
-  // 남아 있던 rateResult 로 effect 가 또 도는 것이었다. 그래서 '띄웠다'는 표시를 **컴포넌트 밖**(여기)에 둔다.
+  // 말풍선은 **평가를 눌러 받은 그 한 번만** 뜬다(광장처럼 미리보기가 없는 탭에
+  // 갔다 와도 지난 평가가 다시 뜨지 않는다). RateBubbles 는 미리보기와 함께 언마운트됐다가 다시 붙으면서
+  // 남아 있던 rateResult 로 effect 가 또 돈다. 그래서 '띄웠다'는 표시를 **컴포넌트 밖**(여기)에 둔다.
   const rateSeen = useRef(0)
   const rateLive = useRef<{ bubbles: string[]; nonce: number } | null>(null)
   rateLive.current = rateResult
@@ -621,8 +619,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
   const loadSlotRaw = useCallback(async (slot: string): Promise<ListItem[]> => {
     if (searchRaw.current[slot]) return searchRaw.current[slot]
-    // ⚠️ 라이딩도 여기서 해석된다(shopData.slotFile). 예전엔 CDN index 만 뒤져 빈 목록을 돌려줬고,
-    //    스냅샷 복원(resolveEquipped)이 이걸 쓰는 탓에 프리셋을 다시 고르면 탈것이 사라졌다(2026-09-29).
+    // ⚠️ 라이딩도 여기서 해석된다(shopData.slotFile). CDN index 만 뒤지면 빈 목록이 나오고,
+    //    스냅샷 복원(resolveEquipped)이 이걸 쓰는 탓에 프리셋을 다시 고르면 탈것이 사라진다.
     const file = slotFile(slot, indexRef.current)
     if (!file) return []
     try { const r = await loadSlot(file); searchRaw.current[slot] = r; return r } catch { return [] }
@@ -656,7 +654,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     } catch { setSearchResults([]) } finally { setSearchLoading(false) }
   }, [loadSlotRaw])
 
-  // ── 반응형 그리드: 뷰포트를 측정해 카드 비율(PC 6×3 ≈ 1.34)에 가장 가까운 열·행 조합을 고른다(v2 measure) ──
+  // ── 반응형 그리드: 뷰포트를 측정해 카드 비율(PC 6×3 ≈ 1.34)에 가장 가까운 열·행 조합을 고른다 ──
   const bp = useBreakpoint()
   const bpRef = useRef(bp)
   bpRef.current = bp
@@ -668,7 +666,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!el || !el.clientWidth || !el.clientHeight) return
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
-    // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄(핸드오프 perPage).
+    // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄.
     if (primaryRef.current === 'share') {
       const mob = vp === 'mobile'
       const pcols = mob ? 2 : (vp === 'half' || vp === 'tablet') ? 3 : 6
@@ -684,9 +682,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const w = el.clientWidth - pad, h = el.clientHeight - pad
     const colRange = vp === 'half' ? [3] : vp === 'tablet' ? [3, 4, 5] : [3, 4, 5, 6]
     const rowRange = [2, 3, 4, 5]
-    // v2 원식(TARGET 편차 최소)은 화면 높이에 따라 PC 1920×1080 에서 4×2, 절반 창에서 5×4 처럼 크게 흔들린다.
+    // TARGET 편차 최소만으로 고르면 화면 높이에 따라 PC 1920×1080 에서 4×2, 절반 창에서 5×4 처럼 크게 흔들린다.
     // 의도 밀도(PC 6×3 · 절반 3×3)를 지키도록: 세로형 비율 범위 [1.12, TARGET×1.3] 안에서 "가장 많이 보이는" 조합,
-    // 같은 수면 TARGET 에 가까운 쪽. 범위 안 조합이 없을 때만 원식(편차 최소)으로 폴백.
+    // 같은 수면 TARGET 에 가까운 쪽. 범위 안 조합이 없을 때만 편차 최소로 폴백.
     const RMIN = 1.12, RMAX = TARGET * 1.3
     let best: { cols: number; rows: number; dev: number } | null = null
     let near: { cols: number; rows: number; dev: number } | null = null
@@ -704,7 +702,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
     best = best || near
     if (!best) best = { cols: 3, rows: Math.max(1, Math.min(3, Math.floor((h + gap) / (MINH + gap)))), dev: 0 }
-    // 최소 카드 높이 가드(delta §7): 어떤 경로로 골랐든 96px 미만 행은 만들지 않는다(띠지가 아트워크를 덮지 않게).
+    // 최소 카드 높이 가드: 어떤 경로로 골랐든 96px 미만 행은 만들지 않는다(띠지가 아트워크를 덮지 않게).
     const fitRows = Math.max(1, Math.floor((h + gap) / (MINH + gap)))
     if (best.rows > fitRows) best = { ...best, rows: fitRows }
     apply(best.cols, best.rows)
@@ -721,7 +719,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     else if (activeCat !== 'all') out = out.filter((it) => it.slot === CAT_TO_SLOT[activeCat])
     return byGender(out, genderFilter)
   }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter])
-  // 정렬은 **화면에 들어올 때 한 번만** 확정한다(사용자 지시) — 좋아요를 누를 때마다 카드가 자리를 바꾸면 보던 곳을 잃는다.
+  // 정렬은 **화면에 들어올 때 한 번만** 확정한다 — 좋아요를 누를 때마다 카드가 자리를 바꾸면 보던 곳을 잃는다.
   // 같은 (분류·검색어·정렬·목록 세대) 안에서는 처음 잡은 순서를 그대로 쓰고, 그 사이 새로 생긴 글(내 등록)만 맨 앞에 붙는다.
   const plazaOrder = useRef<{ key: string; ids: string[] }>({ key: '', ids: [] })
   const plazaList = useMemo(() => {
@@ -991,8 +989,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   notifyLive.current = notify
   const setPlazaQ = (v: string) => { setPlazaQState(v); setIdx(0, false) }
   // 스켈레톤은 **첫 로드 전에만** 보여준다.
-  // 전에는 '보여줄 글이 있는지'로 판단했는데, 글이 0개면 그 조건이 영원히 거짓이라
-  // 들를 때마다 다시 깔려 깜빡였다(사용자 제보 2026-09-21, PC·모바일 모두).
+  // '보여줄 글이 있는지'로 판단하면 글이 0개일 때 그 조건이 영원히 거짓이라
+  // 들를 때마다 다시 깔려 깜빡인다.
   // 성공이든 실패든 한 번 끝나면 다시는 깔지 않는다 — 빈 목록에는 빈 상태 문구만 남는다.
   const loadedOnce = useRef(false)
   const lastPlazaLoad = useRef(0)
@@ -1002,10 +1000,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const myAdded = useRef<PlazaPost[]>([])
   const myRemoved = useRef<Set<string>>(new Set())
   // 방금 누른 좋아요는 목록을 새로 받아도 유지한다 — 누르기 전에 출발한 목록 요청(미리 받기·탭 진입)이 늦게 도착하면
-  // 옛 상태로 덮어써 하트가 꺼져 보였다(2026-09-21 실측: 새로고침 직후 누름). 1분 동안은 내가 누른 결과를 믿는다.
+  // 누르기 전 상태로 덮어써 하트가 꺼져 보인다. 1분 동안은 내가 누른 결과를 믿는다.
   const likeLocal = useRef<Map<string, { liked: boolean; likes: number; at: number }>>(new Map())
-  // 하트(켜짐/꺼짐)는 1분, **수는 8초**만 내 값을 믿는다(2026-09-21).
-  //  · 하트는 목록이 아니라 '내 좋아요'(plaza_me)에서 오므로, 늦게 도착한 옛 응답에 꺼지지 않게 넉넉히 잡는다.
+  // 하트(켜짐/꺼짐)는 1분, **수는 8초**만 내 값을 믿는다.
+  //  · 하트는 목록이 아니라 '내 좋아요'(plaza_me)에서 오므로, 늦게 도착한 응답에 꺼지지 않게 넉넉히 잡는다.
   //  · 수는 남들이 계속 누른다. 1분을 붙들고 있으면 그동안 남이 누른 4~5개가 내 화면에만 안 보인다
   //    → 서버 값(직접 조회 6초 · 목록 첫 쪽 10초)이 더 정확해지는 8초 뒤부터는 서버를 따른다.
   const LIKE_HOLD = { flag: 60000, count: 8000 }
@@ -1076,14 +1074,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 공지 및 건의함 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
   const openNotice = () => openSurface({ kind: 'notice', item: null })
   // 공유받은 코디를 프리셋 칸에 저장하는 화면(서피스 ptake) — 공유 링크·코드로 받았을 때도 이 화면이다
-  // (2026-09-21 사용자 지시: 저장 다이얼로그는 하나로 통일). 칸을 고르면 applySharedToPreset 으로 들어간다.
+  // (저장 화면은 하나다). 칸을 고르면 applySharedToPreset 으로 들어간다.
   const openShared = (snap: Snapshot) => openSurface({ kind: 'ptake', item: null, take: snap })
   const plazaTakeDirect = (post: PlazaPost) => {
     const take: Snapshot = { ...post.snapshot, name: post.name }
     // 상세가 열려 있으면 같은 다이얼로그 안에서 슬라이드로 넘어간다(닫았다 다시 뜨지 않는다).
     if (surfaceRef.current?.kind === 'plaza') { slideTo(1, { kind: 'ptake', item: null, post, take, fromDetail: true }); return }
-    // 목록 카드의 가져오기로 바로 연 경우는 돌아갈 상세가 없다 → post 를 넘기지 않아 푸터가 '닫기'가 된다
-    // (2026-09-21 사용자 지시). 저장해도 상세로 넘어가지 않고 그대로 닫힌다.
+    // 목록 카드의 가져오기로 바로 연 경우는 돌아갈 상세가 없다 → post 를 넘기지 않아 푸터가 '닫기'가 된다.
+    // 저장해도 상세로 넘어가지 않고 그대로 닫힌다.
     openSurface({ kind: 'ptake', item: null, take })
   }
   // 'ptake' 에서 '이전' — 보던 상세로 되돌아간다(역방향 슬라이드).
@@ -1145,9 +1143,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const t = window.setInterval(() => { void tick() }, 4000)
     return () => { alive = false; window.clearInterval(t) }
   }, [watching])
-  // 광장을 **열어 둔 채로도** 남이 올린 글·내린 글이 몇 초 안에 보이게 한다
-  // (2026-09-21 사용자 제보 — 남이 올린 코디가 화면에 나타나지 않았다).
-  // 목록은 탭에 들어올 때만 받아서, 화면을 켜 두고 기다리는 사람에게는 새 글이 영영 오지 않았다.
+  // 광장을 **열어 둔 채로도** 남이 올린 글·내린 글이 몇 초 안에 보이게 한다.
+  // 목록을 탭에 들어올 때만 받으면, 화면을 켜 두고 기다리는 사람에게는 새 글이 영영 오지 않는다.
   // 5초마다 **첫 쪽만** 본다(lib/plaza.loadPlazaHead — 엣지 캐시에 걸려 대개 DB 까지 가지 않는다).
   // ⚠️ plazaGen 은 올리지 않는다 — 올리면 보던 순서가 다시 잡혀 카드가 자리를 옮긴다. 새 글은 맨 앞에 붙는다.
   useEffect(() => {
@@ -1178,7 +1175,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
     const t = window.setInterval(() => { void tick() }, 5000)
     return () => { alive = false; window.clearInterval(t) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watching])
   const plazaRemove = (post: PlazaPost) => {
     // 3초 안에, 다른 상호작용 없이 연속으로 두 번 눌러야 내린다(lib/confirmTwice).
@@ -1244,7 +1240,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (surfT.current) clearTimeout(surfT.current)
     surfT.current = setTimeout(() => { surfT.current = null; setSurface(null); setSurfaceClosing(false); setPartSlide(0); setVsOn(false); setVsPicks([]) }, SURFACE_UNMOUNT_MS)
   }
-  // 로고 = 처음 화면으로(2026-09-22 사용자 지시). 진짜 새로고침은 쓰지 않는다 — 보던 자리를 되살리는
+  // 로고 = 처음 화면으로. 진짜 새로고침은 쓰지 않는다 — 보던 자리를 되살리는
   // sessionStorage 때문에 되레 그 자리로 돌아오고(위 '보던 자리 기억'), 카탈로그를 다시 받느라 느리다.
   // 대신 첫 진입과 같은 값으로 되돌린다: 코디 탭 · 전체 · 1페이지 · 검색어 없음. 저장은 아래 effect 가 따라 쓴다.
   // 코디·프리셋·북마크·즐겨찾기는 건드리지 않는다(진짜 새로고침도 그것들은 그대로다).
@@ -1275,7 +1271,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   const openPartItem = (item: ListItem) => slideTo(1, { kind: DOT_MOVER_IDS.has(item.id) ? 'dot' : 'dye', item, fromPart: true })
   const partBack = () => slideTo(-1, { kind: 'part', item: null })
-  // VS: 북마크가 없으면 열지 않는다. 열 때는 아무것도 고르지 않은 상태로 시작한다(사용자 지시 2026-09-20).
+  // VS: 북마크가 없으면 열지 않는다. 열 때는 아무것도 고르지 않은 상태로 시작한다.
   const openVs = () => {
     if (!bookmarks.length) { notify('먼저 아이템을 북마크해주세요'); return }
     setVsPicks([])
@@ -1335,7 +1331,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         gaze: pv.gaze, action: pv.action, expr: pv.expr, zoom: pv.zoom } }
   }
   // 스냅샷의 연출설정을 라이브 pv 에 반영. 코디에 속하는 연출(형상변이·귀·무기모션·이펙트)은 없으면 기본값으로,
-  // 보기 설정(시선·액션·표정·배율)은 **담겨 있을 때만** 되살린다 — 광장 코디나 옛 프리셋처럼 담기지 않은 것을
+  // 보기 설정(시선·액션·표정·배율)은 **담겨 있을 때만** 되살린다 — 광장 코디나 오래된 프리셋처럼 담기지 않은 것을
   // 적용할 때 보던 화면 설정이 제멋대로 바뀌면 안 된다. fps 는 담지 않는다.
   const applyPvSnap = (v?: PvSnap) => {
     const s = v ?? PV_LOOK_DEFAULT
@@ -1522,7 +1518,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 일반 직업은 1벌, 제로/엔젤릭버스터는 2벌이 나온다.
   const importByNick = async (nick: string): Promise<LookOption[] | null> => {
     try {
-      // v: 캐시 버스터. 응답 로직이 바뀌면 올린다 → 과거의 잘못 캐시된 응답(예: beauty 누락 검은머리)을 무시하고 새로 받는다.
+      // v: 캐시 버스터. 브라우저에 남아 있을 수 있는 잘못된 옛 응답을 다시 쓰지 않게 한다(서버는 읽지 않는다). 응답 형식을 바꾸면 올린다.
       const r = await fetch(`/api/nick?name=${encodeURIComponent(nick)}&v=2`)
       const j = await r.json().catch(() => null)
       if (!r.ok) { notify(j?.error || '불러오기에 실패했어요'); return null }
@@ -1563,7 +1559,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (importing) return
     const val = nickInput.trim()
     if (!val) { notify('닉네임이나 공유 링크를 입력해 주세요'); return }
-    // 공유 링크/코드 입력 → 링크로 접속했을 때와 동일하게 '코디 받기' 시트를 띄워 어느 프리셋에 넣을지 고르게 한다.
+    // 공유 링크/코드 입력 → 링크로 접속했을 때와 동일하게 '공유받은 코디' 화면을 띄워 어느 프리셋에 넣을지 고르게 한다.
     // 공유 링크·코드면 닉네임으로 넘기지 않는다(못 풀면 '없는 캐릭터'가 아니라 공유 코디 안내). 푸는 동안도 '불러오는 중'.
     const isShare = /[#?&]c=|^PB/.test(val)
     if (isShare) setImporting(true)
@@ -1595,7 +1591,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       .then((ok) => { if (!ok) notify('링크 저장에 실패했어요. 다시 복사해 주세요') })
       .catch(() => {})
   }
-  // 프리셋 카드의 복사 띠지. 이름까지 담아, 접속하면 '코디 받기' 시트가 뜬다.
+  // 프리셋 카드의 복사 띠지. 이름까지 담아, 접속하면 '공유받은 코디' 화면이 뜬다.
   const sharePreset = (p: Preset) => {
     const snap = p.id === selectedPreset ? snapshot() : (presetData[p.id] ?? defaultSnapshot())
     copyShareLink({ ...snap, name: p.name })
@@ -1632,8 +1628,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const resetPreset = (id: string) => {
     const snap = defaultSnapshot()
     const i = PRESET_IDS.indexOf(id)
-    // 지우기 전 내용·이름을 기록에 함께 남긴다 → 되돌리기로 그 칸의 코디·이름이 돌아온다(2026-09-21 사용자 지시).
-    // 보고 있지 않은 칸을 지우면 라이브 코디가 그대로여서 예전에는 기록 자체가 남지 않았다.
+    // 지우기 전 내용·이름을 기록에 함께 남긴다 → 되돌리기로 그 칸의 코디·이름이 돌아온다.
+    // 보고 있지 않은 칸을 지우면 라이브 코디가 그대로라, 따로 남기지 않으면 기록 자체가 없다.
     const over: PresetOver<Snapshot> = {
       id,
       prev: id === selectedPreset ? snapshot() : (presetData[id] ?? defaultSnapshot()),
@@ -1643,7 +1639,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPresetData((d) => ({ ...d, [id]: snap }))
     if (i >= 0) setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name: defaultPresetName(i) } : p)))
     // 연출 설정(형상변이·귀·무기모션·이펙트·배율뿐 아니라 시선·액션·표정·fps 까지)도 이 프리셋에 각인돼 있다
-    // → 보고 있는 프리셋을 초기화하면 화면의 연출도 전부 기본으로 되돌린다(2026-09-21 사용자 지시).
+    // → 보고 있는 프리셋을 초기화하면 화면의 연출도 전부 기본으로 되돌린다.
     // applySnapshot 은 코디에 속하는 연출만 되돌리므로, 나머지는 여기서 함께 맞춘다.
     if (id === selectedPreset) {
       histOver.current = over // 라이브가 바뀌므로 아래 기록 effect 가 이 over 를 집어간다
@@ -1657,7 +1653,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 프리셋 이름(카드의 인라인 입력). 비운 채로 두면 기본 이름으로 되돌린다(blur 시 호출부가 처리).
   const renamePreset = (id: string, name: string) => setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name } : p)))
   // 이름 입력을 마쳤을 때(입력창을 벗어날 때) — 비었으면 기본 이름으로 되돌리고, 바뀐 이름을 되돌리기 기록 한 건으로 남긴다.
-  // 글자마다 기록하면 되돌리기가 한 글자씩 지워지므로 확정 시점에만 남긴다(2026-09-29 사용자 지시).
+  // 글자마다 기록하면 되돌리기가 한 글자씩 지워지므로 확정 시점에만 남긴다.
   const commitPresetName = (id: string, fallback: string) => {
     const cur = presets.find((p) => p.id === id)
     if (!cur) return
@@ -1688,7 +1684,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => { if (saveT.current) clearTimeout(saveT.current) }
     // 저장 대상 pv 변경도 자동저장 트리거에 포함해야 새로고침 후 유지된다 — 코디 연출(형상변이·귀·무기모션·이펙트)과
     // 보기 설정(시선·액션·표정·배율) 모두. (fps 만 담지 않는다.)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, presets,
       pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.zoom, pv.gaze, pv.action, pv.expr])
 
@@ -1702,7 +1697,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 예외: 발색 슬라이더 드래그 중(dyeInteracting)은 보류 → 릴리즈 시 최종 상태 1개만 기록(스택 폭주 방지).
   // undo/redo 로 적용된 변경(histExpect 일치)은 기록하지 않아 스택이 오염되지 않는다. 최근 50개 유지.
   // 기록 한 건. 보통은 아래 effect 가 라이브 코디 변화를 보고 부르지만, **라이브가 그대로인 변경**
-  // (선택하지 않은 프리셋을 초기화 — 2026-09-21 사용자 지시)은 그 자리에서 직접 부른다.
+  // (선택하지 않은 프리셋을 초기화)은 그 자리에서 직접 부른다.
   // 그런 기록은 코디·선택 프리셋이 직전과 같고 over 만 다르다 → undo 가 over 로 그 칸을 되살린다.
   // names: 방금 바꿔 아직 상태에 반영되지 않은 이름을 넘길 때(이름 확정 — commitPresetName). 없으면 지금 이름.
   const pushHistory = (over?: PresetOver<Snapshot> | null, namesNow?: Record<string, string>) => {
@@ -1725,7 +1720,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!initedRef.current || dyeInteracting) return // 초기 로드 완료 전엔 기록 안 함 → 첫 기록 = 초기 프리셋(baseline)
     pushHistory()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, dyeInteracting])
 
   // 스택을 sessionStorage 에 남긴다(새로고침까지). 변경이 몰아칠 수 있어 한 박자 묶어서 쓴다.
@@ -1738,7 +1732,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [histVer])
 
   const applyHistory = (e: { snap: Snapshot; sel: string | null; names?: Record<string, string> }) => {
-    // 이름 전체도 그 시점으로(옛 기록엔 없으면 지금 이름 유지). 코디가 같아도 이름만 바뀌는 기록이 있다.
+    // 이름 전체도 그 시점으로(오래된 기록엔 없으면 지금 이름 유지). 코디가 같아도 이름만 바뀌는 기록이 있다.
     const names = e.names ?? namesOf(presets)
     if (e.names) setPresets((ps) => ps.map((p) => (e.names![p.id] != null ? { ...p, name: e.names![p.id] } : p)))
     const j = histKey(e.snap, e.sel, names)

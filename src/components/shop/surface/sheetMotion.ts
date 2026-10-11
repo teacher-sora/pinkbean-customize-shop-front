@@ -22,7 +22,7 @@ const topOf = (el: Element) => el.getBoundingClientRect().top
 // 지금 화면에 그려진 translateY(전환 도중이면 중간값).
 const tyOf = (el: Element) => { const t = getComputedStyle(el).transform; return !t || t === 'none' ? 0 : new DOMMatrixReadOnly(t).m42 }
 
-// 2026-09-21: 전환 도중에도 다시 누를 수 있다(사용자 지시 — 한 동작이 끝나야 다음 동작을 받던 busy 잠금 제거).
+// 전환 도중에도 다시 누를 수 있다(한 동작이 끝나야 다음 동작을 받는 잠금은 두지 않는다).
 // 움직임은 glide.ts(되돌릴 때 지금 위치·속도를 이어받는 CSS transition)로 한다.
 //  - 접는 중(vsOn 은 아직 true) 다시 누름 → 커밋 타이머 취소, 셋 다 0 으로(펼친 모습으로 되돌아감).
 //  - 펼치는 중 다시 누름 → 접힘 목표를 **레이아웃 위치**(지금 걸린 transform 을 뺀 값) 기준으로 계산해 그리로.
@@ -107,7 +107,7 @@ export function useVsFlip() {
       // 펼침: 패널·목록·푸터를 "전" 위치에 놓고 다음 프레임에 0 으로.
       stop()
       // ⚠️ 세 값을 **모두 잰 다음** 옮긴다 — 패널을 먼저 옮기고 목록·푸터를 재면 패널 이동분이 섞여
-      //    목록·푸터가 첫 프레임에 튀고 패널을 따라 요동친다(2026-09-21 이 순서를 바꿨다가 모바일 VS 가 깨졌다).
+      //    목록·푸터가 첫 프레임에 튀고 패널을 따라 요동친다(순서를 바꾸면 모바일 VS 가 깨진다).
       const dp = f0.p - topOf(e.panel), dl = f0.l - topOf(e.list) - dp, df = f0.f - topOf(e.foot) - dp
       place([[e.panel, dp], [e.list, dl], [e.foot, df]])
       e.panel.getBoundingClientRect()
@@ -117,7 +117,6 @@ export function useVsFlip() {
         glide(e, [0, 0, 0], () => settle(e))
       })
     } else settle(e)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.vsOn])
   useEffect(() => () => stop(), [])
 

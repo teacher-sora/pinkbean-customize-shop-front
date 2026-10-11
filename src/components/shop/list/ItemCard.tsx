@@ -31,7 +31,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   // 누르는 순간(클릭보다 먼저) 착용에 필요한 메타·스프라이트를 받기 시작 → 착용 반영 대기 단축.
   const warm = () => s.warmForPreview(item)
   const pin = (e: React.MouseEvent) => { e.stopPropagation(); s.toggleBookmark(item) }
-  // 염색 버튼은 착용을 바꾸지 않는다(§10.7). 사소한 변경점/쩜은 점 위치 전용 다이얼로그.
+  // 염색 버튼은 착용을 바꾸지 않는다. 사소한 변경점/쩜은 점 위치 전용 다이얼로그.
   const dye = (e: React.MouseEvent) => { e.stopPropagation(); if (isDot) s.openDot(item); else s.openDye(item) }
 
   return (
@@ -50,7 +50,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
             ctxExpr={ctx.expr} faceMeta={ctx.faceMeta} dye={mode === 'mymodel' ? { palette: s.renderPalette, hsb: s.renderHsb } : undefined}
             ear={mode === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={mode === 'mymodel'} stance={ctx.stance} ctxAction={ctx.action} dotOffsets={mode === 'mymodel' ? s.dotPos[item.id] : undefined} />
           {badgeKind && (
-            // eslint-disable-next-line @next/next/no-img-element -- WZ 등급 배지(픽셀 아트)는 리샘플링 없이 원본 도트로 그린다
+            // WZ 등급 배지(픽셀 아트)는 리샘플링 없이 원본 도트로 그린다(next/image 를 쓰지 않는다)
             <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
               className={clsx(styles.labelBadge, badgeKind === 'cash' && styles.labelBadgeCash)} />
           )}

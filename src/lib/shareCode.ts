@@ -75,7 +75,7 @@ function reviveMin(m: Record<string, unknown>): Snapshot | null {
     dotPos: (m.d as Snapshot['dotPos']) || {},
     ...(m.o && typeof m.o === 'object' ? { dyeOff: m.o as Record<string, boolean> } : {}),
     // PB2 는 부분 pv, 레거시 PB1 은 전체 pv — 둘 다 기본값 위에 얹으면 정확히 복원된다.
-    // 보기 설정(시선·액션·표정·배율)이 빠진 칸은 가져올 때 기본값으로 채운다(ShopContext.withTakenView, 2026-09-29).
+    // 보기 설정(시선·액션·표정·배율)이 빠진 칸은 가져올 때 기본값으로 채운다(ShopContext.withTakenView).
     pv: v ? { ...PV_LOOK_DEFAULT, ...v } : undefined,
     name: typeof m.n === 'string' ? m.n : undefined,
   }
@@ -123,8 +123,8 @@ async function shortIdOf(long: string): Promise<string | null> {
   } catch { return null }
 }
 
-// 이 기기에서 만든 짧은 코드 → 긴 코드(2026-09-21). 복사 직후 같은 기기의 불러오기 칸에 붙여 넣으면 서버 저장보다 먼저 올 수 있다
-// (사용자 제보: '없는 코디'). 내가 만든 코드는 서버를 거치지 않고 바로 푼다. 최근 30개만 localStorage 에 둔다.
+// 이 기기에서 만든 짧은 코드 → 긴 코드. 복사 직후 같은 기기의 불러오기 칸에 붙여 넣으면 서버 저장보다 먼저 올 수 있다
+// ('없는 코디'가 뜬다). 내가 만든 코드는 서버를 거치지 않고 바로 푼다. 최근 30개만 localStorage 에 둔다.
 const LOCAL_KEY = 'pb_share_local'
 const localCodes = new Map<string, string>()
 function rememberLocal(id: string, long: string) {
@@ -174,7 +174,7 @@ export async function resolveShareCode(code: string): Promise<Snapshot | null> {
 
 // 공유 링크: https://…/?c=<짧은 코드>&n=<프리셋 이름>
 //  · 복사는 즉시: 긴 코드 인코딩 + 짧은 코드 해시(둘 다 로컬, 수 ms)만으로 URL 을 만들어 클립보드에 넣고,
-//    카드 이미지 렌더·서버 저장(uploadShare)은 그 뒤 백그라운드로 한다(예전엔 이미지 렌더+업로드를 기다려 복사가 수 초 늦었다).
+//    카드 이미지 렌더·서버 저장(uploadShare)은 그 뒤 백그라운드로 한다(기다리면 복사가 수 초 늦는다).
 //  · c 를 **앞에** 둔다. 카카오톡 링크 인식이 한글에서 끊겨(`?n=요시노…` → `/?n=` 까지만 링크) 코드가 빠진 홈 카드가 떴다.
 //    n 은 받는 사람이 어떤 코디인지 보게 하는 표시용(실제 이름은 코드 안). 공백은 '+', 쿼리를 깨는 문자(& # % + ?)만 인코딩.
 //  · 짧은 코드를 못 만들면(구형 브라우저) 긴 코드. 긴 코드가 '-'/'_' 로 끝나고 뒤에 아무것도 없으면 카톡이 끝 '_' 를 떼므로 '&e=1'.
@@ -192,9 +192,9 @@ export async function prepareShare(origin: string, snap: Snapshot): Promise<Shar
 
 // 백그라운드 저장: 카드 이미지(프리셋 캐릭터)를 그려 긴 코드와 함께 올린다. 서버가 돌려준 id 가 로컬 계산과 다르면
 // (해시 충돌로 더 긴 id 발급 — 사실상 없음) 복사된 링크가 틀리므로 false.
-// 저장은 두 번이다(2026-09-21). ① 코드만 **곧바로** — 링크·불러오기는 이것만 있으면 된다.
+// 저장은 두 번이다. ① 코드만 **곧바로** — 링크·불러오기는 이것만 있으면 된다.
 // ② 카드 이미지는 렌더(수백 ms~수 초)가 끝나는 대로 따로 — 서버는 코드가 이미 있으면 이미지만 붙인다(없을 때만 저장).
-// 예전엔 ①이 이미지 렌더를 기다려, 복사 직후 붙여 넣으면 '없는 코디'가 떴다. 카톡 카드 쪽은 공유 페이지 메타가 이미지를 최대 5초 기다린다.
+// ①이 이미지 렌더를 기다리면 복사 직후 붙여 넣었을 때 '없는 코디'가 뜬다. 카톡 카드 쪽은 공유 페이지 메타가 이미지를 최대 5초 기다린다.
 async function postShare(long: string, image?: string | null): Promise<string | null | false> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {

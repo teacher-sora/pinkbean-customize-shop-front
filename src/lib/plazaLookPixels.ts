@@ -15,13 +15,13 @@ import { loadImage } from './core/render'
 import { hsbParamSame, lookItems, normLook, palGap, paramSame, type HsbN, type LookSnap } from './plazaLook'
 import { THUMB_VIEW } from './shopData'
 
-// 기준(2026-09-21 보정: 아이템 7종 × 염색 14가지 실측).
+// 기준(아이템 7종 × 염색 14가지 실측으로 보정).
 //  · 픽셀 하나가 '눈에 띄게 다르다' = ΔE ≥ 15. 게임 공식의 색 계단(17 단위) 때문에 색조 1~5 만 돌려도 일부 픽셀이
 //    ΔE 10~15 로 튀지만 15 를 넘는 픽셀은 0% 였다(ΔE 10 기준이면 색조 1 이 '다름'으로 잘못 나왔다).
 //  · 그런 픽셀이 불투명 픽셀의 10% 이상이면 '다른 부위'.
 //    실측: 색조 1~5·채도/명도 ±10 → 전부 같음 / 검은 옷 색조 60 → 같음(실제로 거의 안 바뀜), 명도 +20 → 다름 /
 //    채도 높은 모자 색조 15 → 다름 / 헤어 검정 vs 검정70+빨강30 → 같음, 검정 vs 갈색·빨강 vs 주황 → 다름.
-//  · 2026-09-21 추가(사용자 지시 — 색조만 조금 더 엄하게): 색조 차이만 따로 본다. Lab 색상각 차이 ΔH ≥ 10 인 픽셀이 8% 이상이면
+//  · 색조는 조금 더 엄하게: 색조 차이만 따로 본다. Lab 색상각 차이 ΔH ≥ 10 인 픽셀이 8% 이상이면
 //    '다른 부위'. 채색된 부분이 적은 아이템(검은 옷 등)은 색조가 완전히 바뀌어도 ΔE15 픽셀이 10% 에 못 미쳐 같은 조합으로
 //    묻혔다(금단의 계약 채도-50 에서 초록→보라 9%). 색조 1~5 는 모든 아이템에서 0% 라 계단 잡음은 걸리지 않는다.
 //    실측: 초록→보라는 전 아이템 다름 / 색조 15 → 채색이 많은 모자·한벌옷은 다름, 검은 옷·망토는 같음 / 색조 30 이상 어두운 옷도 채도가 있으면 다름.
@@ -139,13 +139,6 @@ export async function sameLookDeep(a: LookSnap, b: LookSnap, skinOf: (tone: numb
     if (differs(ra, rb).differ) return false
   }
   return true
-}
-
-// 한 부위의 두 설정 차이 수치(확인·보정용).
-export async function slotDiff(id: string, slot: string, a: { pal?: Record<number, number>; hsb?: HsbN | null }, b: { pal?: Record<number, number>; hsb?: HsbN | null }) {
-  const meta = await loadMeta(id)
-  const [ra, rb] = await Promise.all([renderItem(meta, slot, a.pal, a.hsb), renderItem(meta, slot, b.pal, b.hsb)])
-  return differs(ra, rb)
 }
 
 

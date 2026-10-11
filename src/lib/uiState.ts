@@ -1,13 +1,13 @@
 'use client'
 
-// 화면 상태 기억 — 두 갈래로 나눈다(2026-09-21 사용자 지시).
+// 화면 상태 기억 — 두 갈래로 나눈다.
 //  · 영구(localStorage)   : 취향에 가까운 값. 지금은 광장 정렬 하나.
 //  · 새로고침까지(sessionStorage): 길찾기 값(부위·검색어·페이지·광장 필터). 탭은 주소가 기억한다(lib/tabRoute).
 //    서버가 그 주소의 탭을 처음부터 그려 주므로 탭 때문에 뼈대를 띄울 일이 없다.
 //    실수로 새로고침해도 보던 자리를 잃지 않되, **탭을 닫고 다시 들어오면 깨끗한 첫 화면**
 //    (코디 탭 · 전체 · 1페이지)에서 시작한다 — sessionStorage 가 그 경계를 그대로 그어 준다.
 //
-// 작업물(프리셋 30칸·연출 설정·찜·북마크)은 예전부터 localStorage 에 따로 있다. 여기서 다루지 않는다.
+// 작업물(프리셋 30칸·연출 설정·찜·북마크)은 localStorage 에 따로 있다. 여기서 다루지 않는다.
 // 저장이 막힌 환경(시크릿 창 등)에서도 앱이 멀쩡해야 하므로 읽기·쓰기를 모두 try 로 감싼다.
 
 import { useEffect, useLayoutEffect } from 'react'
@@ -83,7 +83,7 @@ export function writeUiSession(v: UiSession): void {
 // over = 그 기록이 **다른 프리셋을 덮어쓴** 기록일 때(공유 코디·광장 가져오기) 덮어쓰기 전후의 그 프리셋 내용·이름.
 //        되돌리면 prev 로, 다시 실행하면 next 로 그 프리셋을 되살린다(선택 프리셋 코디만 되돌리면 덮어쓴 프리셋은 그대로 남았다).
 export type PresetOver<S> = { id: string; prev: S; prevName: string; next: S; nextName: string }
-// names = 그때의 **프리셋 이름 전체**(id → 이름). 되돌리기가 이름까지 되살린다(2026-09-29). 옛 기록엔 없을 수 있다.
+// names = 그때의 **프리셋 이름 전체**(id → 이름). 되돌리기가 이름까지 되살린다. 오래된 기록엔 없을 수 있다.
 export type UiHistory<S> = { stack: { snap: S; sel: string | null; names?: Record<string, string>; over?: PresetOver<S> }[]; idx: number }
 export function readUiHistory<S>(): UiHistory<S> | null {
   const h = read<UiHistory<S>>('sessionStorage', HIST_KEY)

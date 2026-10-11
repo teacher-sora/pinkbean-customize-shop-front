@@ -19,8 +19,8 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const spv = snap.pv ?? PV_SNAP_DEFAULT
   const te = index.base.tones.find((t) => t.tone === snap.tone) || index.base.tones[0]
   if (!te) return null
-  // [dev] 라이딩(탑승)이 들어 있으면 **목록부터** 받는다. 라이딩 meta 는 CDN 이 아니라 프론트 public 에 있어,
-  // 목록이 그 경로(metaUrl)를 등록해 줘야 loadMeta 가 찾는다 — 등록 전엔 CDN 404 라 카드에서 탈것만 조용히 빠졌다.
+  // 라이딩(탑승)이 들어 있으면 **목록부터** 받는다. 라이딩 meta 는 CDN 이 아니라 프론트 public 에 있어,
+  // 목록이 그 경로(metaUrl)를 등록해 줘야 loadMeta 가 찾는다 — 등록 전엔 CDN 404 라 카드에서 탈것만 조용히 빠진다.
   // 목록에는 이 아이템이 "앉는 액션"인지, 정렬을 메카 기준으로 할지(메탈아머)도 함께 들어 있다.
   const rideId = snap.hidden?.riding ? undefined : snap.equipped.riding
   const rideItem: ListItem | null = rideId
@@ -38,13 +38,13 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const snapExpr = equipMetas.find(({ meta }) => meta.fixedEmotion)?.meta.fixedEmotion
   // 시선=왼쪽 고정(gaze='left' → flip 없음) + 저장된 귀/무기모션 반영.
   // stance=true: 무기 모션은 **자세까지** 바꾼다(두손 → stand2). 미리보기와 같은 규칙으로 맞춘다
-  //   (2026-09-21 — 카드는 늘 stand1 이라 '두손'으로 둔 코디가 광장에서 다른 자세로 보였다).
+  //   (카드를 늘 stand1 로 그리면 '두손'으로 둔 코디가 광장에서 다른 자세로 보인다).
   const TV0 = view
     ? { ...THUMB_VIEW, action: resolveAction(spv.action || 'basic', spv.weapon || 'basic'), expression: snapExpr || spv.expr || THUMB_VIEW.expression, ear: spv.ear || THUMB_VIEW.ear, weaponMotion: spv.weapon || THUMB_VIEW.weaponMotion }
     : thumbView('left', snapExpr, spv.ear, spv.weapon, true).view
   // 서기 자세는 착용한 무기가 정한다(두손 전용 무기 → stand2) — assemble.weaponPose 주석 참고.
   const TV = weaponPose(equipMetas.find(({ slot }) => slot === 'weapon')?.meta, TV0)
-  // [dev] 탑승 중이면 캐릭터는 **앉는다**(미리보기·부위 카드와 같은 규칙, shopData.ridingSeatedSet).
+  // 탑승 중이면 캐릭터는 **앉는다**(미리보기·부위 카드와 같은 규칙, shopData.ridingSeatedSet).
   //   · 탈것은 자기 액션(TV)으로, 캐릭터·옷은 sit 으로 그린다.
   //   · 방패는 탑승 중 숨김(직업 불일치), 무기는 앉은 채에선 미출력.
   //   카드의 액션은 정지 서기('basic')다. 연출 고르기 미리보기(view)만 스냅샷의 액션을 쓴다(일어서는 액션도 있다).
@@ -58,7 +58,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const backFrame = isBackFrame(bodyMeta, charTV)
   // 무기 이펙트를 끄면 **무기 자신의 'effect' 레이어**도 뺀다 — 미리보기(PreviewModel)와 같은 규칙.
   //   이펙트는 ItemEff(별도 png)뿐 아니라 무기 프레임 안에 레이어로 박혀 있기도 해서(예 01703646: effect 90장),
-  //   ItemEff 만 걸러서는 꺼지지 않았다(2026-09-21 사용자 제보 — 광장에 연출 설정이 반영 안 됨).
+  //   ItemEff 만 걸러서는 꺼지지 않는다.
   const wornLayers = (slot: string, meta: ItemMeta) => {
     // 탈것만 자기 액션(TV)을 돈다 — 캐릭터의 뒷프레임 판단도 붙이지 않는다(별도 모델).
     const ls = slot === 'riding' ? getFrameLayers(meta, rideTV) : getFrameLayers(meta, charTV, undefined, backFrame) // 정지 화면 = 대표 프레임
@@ -72,7 +72,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
     ...animaLayers(spv.form, animaRaces), // 형상변이 — 프리셋에 저장된 값
   ]
   const { placed, anchors } = assemble(items, index.zmap, index.smap)
-  // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (옛 프리셋엔 dye 키가 없을 수 있어 방어)
+  // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (오래된 프리셋엔 dye 키가 없을 수 있어 방어)
   // 염색 비활성화(dyeOff) 슬롯은 수치가 있어도 렌더에서 뺀다.
   const off = snap.dyeOff || {}
   const onlyOn = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
@@ -98,10 +98,10 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
 }
 
 // ── 합성 결과 캐시 ─────────────────────────────────────────────────────────────
-// 2026-09-22 사용자 제보: 광장에서 자유 코디 ↔ 블아 대회 필터를 여러 번 오가면 점점 느려지다 끊겼다.
+// 광장에서 자유 코디 ↔ 블아 대회 필터를 오가도 느려지지 않게 합성 결과를 기억한다.
 // 필터를 바꾸면 카드 키(post.id)가 전부 바뀌어 18~54장이 통째로 언마운트→재마운트되는데, 합성 결과를
-// 아무도 기억하지 않아 **돌아올 때마다 처음부터 다시** 조립·염색했다. 게다가 시작된 합성은 중간에 멈출 수
-// 없어서(네트워크·픽셀 작업의 연쇄 await) 빨리 오갈수록 버려질 작업이 메인 스레드에 쌓였다.
+// 기억하지 않으면 **돌아올 때마다 처음부터 다시** 조립·염색한다. 게다가 시작된 합성은 중간에 멈출 수
+// 없어서(네트워크·픽셀 작업의 연쇄 await) 빨리 오갈수록 버려질 작업이 메인 스레드에 쌓인다.
 //  · 같은 코디(스냅샷)면 결과를 그대로 재사용한다 → 되돌아온 필터는 계산 0.
 //  · 같은 키를 여러 장이 동시에 부르면 한 번만 계산하고 나눠 쓴다(같은 코디를 올린 사람이 여럿일 때).
 //  · 중간에 취소된 카드의 작업도 캐시에 남으므로 헛일이 되지 않는다.

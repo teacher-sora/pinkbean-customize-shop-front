@@ -2,7 +2,7 @@
 
 // 코디 광장 카드 — 썸네일(실제 코디) + 이름 한 줄. 프리셋 카드와 같은 테두리·hover(-4px)를 쓴다.
 // 우상단 세로 레일 = 가져오기 · 링크 복사, 좌상단 = (수상작이면) 배지 · (내 글이면) 내리기, 썸네일 우하단 = 좋아요 수 + 하트.
-// 카드를 누르면 상세, 아이콘은 stopPropagation 으로 카드 클릭을 막는다(핸드오프 §1).
+// 카드를 누르면 상세, 아이콘은 stopPropagation 으로 카드 클릭을 막는다.
 
 import { CONFIRM_ATTR } from '@/lib/confirmTwice'
 import clsx from 'clsx'
@@ -13,7 +13,7 @@ import { IconHeart, IconLinkCopy, IconTakeDown, IconTrashSolid } from '../ui/Ico
 import styles from './plaza.module.css'
 
 const CARD_FRACTION = 0.38 // 프리셋 카드와 같은 마네킹 비율
-// 모바일은 2열이라 칸이 프리셋 탭(3열)보다 넓은데 같은 비율이면 인물이 작아 보였다(2026-09-21 사용자 지적).
+// 모바일은 2열이라 칸이 프리셋 탭(3열)보다 넓은데 같은 비율이면 인물이 작아 보인다.
 // ⚠️ 도트가 뭉개지지 않게 배율이 **정수로 스냅**되므로(modelPlacement) 조금 올려서는 안 바뀐다 — 0.46 은 그대로였다.
 //    칸 높이 ≈142px(폭 390) 기준 0.54 면: DPR 3 → 3→4배(64→85px) · 2.75 → 2→3배(46→70px) · DPR 2 는 2배 그대로(64px).
 //    DPR 2 까지 올리면(0.57) 3배 = 96px 라 머리가 오른쪽 아이콘 레일에 닿았다 — 그래서 한 단계 아래에서 멈춘다.
@@ -32,8 +32,8 @@ export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaP
           <button type="button" onClick={stop(() => s.plazaCopyLink(post))} title="공유 링크 복사" aria-label="링크 복사"
             className={clsx(styles.railBtn, mobile && styles.railBtnM)}><IconLinkCopy /></button>
         </div>
-        {/* 내리기는 반대쪽(좌상단)에 둔다 — 가져오기·링크 복사와 나란히 두면 잘못 누르기 쉽다(사용자 지시) */}
-        {/* 대회 수상 배지도 좌상단이다(2026-10-02 사용자 지시). 내 글이면 배지 아래로 내리기가 온다 — 겹치지 않는다. */}
+        {/* 내리기는 반대쪽(좌상단)에 둔다 — 가져오기·링크 복사와 나란히 두면 잘못 누르기 쉽다 */}
+        {/* 대회 수상 배지도 좌상단이다. 내 글이면 배지 아래로 내리기가 온다 — 겹치지 않는다. */}
         {(post.award || post.mine) && (
           <div className={clsx(styles.railLeft, mobile && styles.railM, post.award && styles.railLeftAward)}>
             {post.award && <span className={clsx(styles.award, AWARD_CLASS[post.award.kind])} title={PLAZA_AWARD_TITLE[post.award.kind]}>{PLAZA_AWARD_LABEL[post.award.kind]}</span>}
@@ -43,7 +43,7 @@ export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaP
         )}
         <div className={styles.thumb}>
           <SnapThumb snap={post.snapshot} fraction={mobile ? CARD_FRACTION_M : CARD_FRACTION} priority={priority} />
-          {/* 대회 출품 날짜(간략히 M.D) — 순번(#n)은 중간 글이 내려가면 비어 보여 날짜로 바꿨다(2026-09-21 사용자 지시). */}
+          {/* 대회 출품 날짜(간략히 M.D) — 순번(#n)은 중간 글이 내려가면 비어 보여 쓰지 않는다. */}
           {post.contest && (
             <span className={clsx(styles.contestNo, mobile && styles.contestNoM)} title={`${fullDate(post.createdAt)} 등록`}>{shortDate(post.createdAt)}</span>
           )}

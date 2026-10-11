@@ -2,17 +2,17 @@
 
 // 코디 광장 글 상세 — 공용 서피스 본문.
 //  · PC·태블릿: 왼쪽 = 미리보기(첨부 이미지가 있으면 두 칸 그대로) · 설명 · 태그, 오른쪽 = 댓글 열.
-//    두 칸을 세로로 쌓거나 한 칸으로 합치지 않는다 — 코디와 참고 이미지를 **나란히 두고 비교**하는 게 이 화면의 목적이다
-//    (사용자 지시 2026-09-20). 대신 댓글 열이 들어온 만큼 스테이지를 조금 줄였다(432×280 → 292×250).
+//    두 칸을 세로로 쌓거나 한 칸으로 합치지 않는다 — 코디와 참고 이미지를 **나란히 두고 비교**하는 게 이 화면의 목적이다.
+//    대신 댓글 열이 들어온 만큼 스테이지를 줄여 둔다.
 //  · 모바일: 폭이 없어 나눌 수 없다. 스테이지는 지금처럼 나란히 두고 댓글은 설명 아래로 이어 붙인다
 //    (가로 슬라이드로 빼면 댓글을 보는 동안 코디가 사라진다).
 // 태그를 누르면 시트를 닫고 그 태그로 검색한다(닫힘 애니메이션을 끝까지 보여준 뒤 검색어를 넣는다).
-// 구역(2026-09-21): 비교 칸 → 행동 줄(좋아요·링크·가져오기) ┆ 설명·태그 ┆ 착용 아이템 ┆ 댓글.
+// 구역: 비교 칸 → 행동 줄(좋아요·링크·가져오기) ┆ 설명·태그 ┆ 착용 아이템 ┆ 댓글.
 //  · 행동 줄은 비교 칸 바로 아래에 둔다 — 보고 있는 코디에 대한 행동이고, 모바일에서 스크롤 없이 '가져오기'가 보여야 한다.
 //  · 올린 사람의 글(설명)과 행동은 성격이 달라 끊긴 구분선(양 끝이 비어 있는 hr)으로 나눈다.
-//  · 착용 아이템은 가져오기 전에 무엇을 입었는지 바로 보이게(가져와서 확인하는 번거로움을 덜기 — 사용자 제안).
-//    부위 염색 칩과 같은 스프라이트 칩(염색 반영)으로, 기본은 **닫힌 아코디언**(2026-09-21 사용자 지시) —
-//    닫혀 있는 동안은 스프라이트를 하나도 받지 않아 상세가 가볍게 열리고, 모바일에서는 댓글이 한 단계 위로 온다.
+//  · 착용 아이템은 가져오기 전에 무엇을 입었는지 바로 보이게(가져와서 확인하는 번거로움을 덜기).
+//    부위 염색 칩과 같은 스프라이트 칩(염색 반영)을 **아코디언**에 담는다. 기본은 펼침(아래 WornItems) —
+//    접혀 있는 동안은 스프라이트를 하나도 받지 않는다.
 
 import clsx from 'clsx'
 import Image from 'next/image'
@@ -46,7 +46,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
   const main = (
     <>
       <div className={clsx(styles.stages, mobile && styles.stagesM, mobile && post.imageUrl && styles.stagesPairM)}>
-        {/* 대회 수상은 상세에서 **띠지**로 보인다(2026-10-02 사용자 지시 — 카드의 작은 배지 대신, 앱에서 가장 큰 띠지).
+        {/* 대회 수상은 상세에서 **띠지**로 보인다(카드의 작은 배지 대신, 앱에서 가장 큰 띠지).
             코디·프리셋 카드의 띠지처럼 칸 위로 살짝 걸친다 — 칸(.stage)은 넘치는 것을 자르므로 칸 **밖**(.stages)에 둔다.
             글자·색은 카드 배지와 같고, 두 낱말이면('주최자 픽') 두 줄로 쌓는다. */}
         {post.award && (
@@ -67,7 +67,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
           </div>
         )}
       </div>
-      {/* 하트 · 링크 복사 · 가져오기를 한 줄에 모은다(사용자 지시). 푸터에는 닫기만 남긴다. */}
+      {/* 하트 · 링크 복사 · 가져오기를 한 줄에 모은다. 푸터에는 닫기만 남긴다. */}
       <div className={clsx(styles.actBar, mobile && styles.actBarM)}>
         <button type="button" onClick={() => s.plazaLike(live)} aria-pressed={live.liked}
           title={live.liked ? '좋아요 취소' : '좋아요'}
@@ -86,7 +86,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
       <div className={styles.secHr} />
       <div className={styles.descBlock}>
         <span className={styles.descLabel}>설명</span>
-        {/* 등록 뒤에는 고칠 수 없으므로 '아직 적지 않았다'가 아니라 끝난 사실로 적는다(사용자 지시). */}
+        {/* 등록 뒤에는 고칠 수 없으므로 '아직 적지 않았다'가 아니라 끝난 사실로 적는다. */}
         <p className={clsx(styles.descText, !post.description && styles.descNone)}>
           {post.description || '작성된 설명이 없어요 :)'}
         </p>
@@ -153,13 +153,11 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
       setItems(out)
     }).catch(() => { if (alive) setItems([]) })
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId])
 
   // want = 누른 결과(목표) — 화살표·aria 는 누르는 즉시 이걸 따른다. mounted = 칩이 레이아웃에 있는가(접힘이 끝나야 빠진다).
-  // 움직임은 CSS transition 이라 도중에 다시 누르면 **지금 위치에서** 반대 목표로 돌아간다(2026-09-21 사용자 지시 — 끝날 때까지 막지 않는다).
-  // **기본은 펼침**(2026-09-24 사용자 지시 — "현재 착용 아이템을 못 보냐"는 댓글이 달렸다. 접혀 있으면
-  // 막대가 있는 줄도 모르고 지나친다). 보기 싫은 사람이 접는 쪽으로 뒤집었다.
+  // 움직임은 CSS transition 이라 도중에 다시 누르면 **지금 위치에서** 반대 목표로 돌아간다(끝날 때까지 막지 않는다).
+  // **기본은 펼침** — 접혀 있으면 막대가 있는 줄도 모르고 지나친다. 보기 싫은 사람이 접는다.
   const [want, setWant] = useState(true)
   const [mounted, setMounted] = useState(true)
   const wantRef = useRef(true)
@@ -205,7 +203,6 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
     place(moving.current.map((el) => [el, -inner.offsetHeight] as [HTMLElement, number]))
     inner.getBoundingClientRect()
     raf.current = requestAnimationFrame(() => go(wantRef.current))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted])
   const open = want
 

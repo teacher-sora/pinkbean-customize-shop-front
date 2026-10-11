@@ -24,6 +24,5 @@ export function useLiveRedraw(compute: () => Promise<void>, deps: unknown[]) {
       running.current = false
     }
     pump()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
 }

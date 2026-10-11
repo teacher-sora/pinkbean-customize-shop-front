@@ -1,13 +1,13 @@
 'use client'
 
 /*
- * 점 위치 편집 캔버스 로직(재활용 — 기존 DotDialog 의 캔버스·상호작용을 그대로 분리).
+ * 점 위치 편집 캔버스 로직.
  *  - 얼굴(머리+성형) bbox 기준으로 "항상 같은 배율"에 fit → 얼굴 전체가 중앙. 몸통·머리카락 등 전부 그린다(잘려도 됨).
  *  - 편집: 캔버스를 클릭/드래그하면 "현재 선택한 점"이 그 자리(정수 px)로 이동. 방향키 1px 미세조정.
  *  - 확대: 마우스 휠(커서 기준 줌인/아웃) · 모바일 두 손가락 핀치(중심 기준).
  *  - '이동' 툴: 확대된 화면을 드래그로 패닝 / 어떤 점에도 확인용 원을 두고 싶지 않을 때.
  *  - 열려 있는 동안엔 앱의 다른 키보드 단축키(리스트 ←/→ 페이지 등)를 캡처 단계에서 차단, 닫으면 복구.
- * 달라진 점: 캔버스 크기(box)를 고정 상수 대신 v2 캔버스 영역의 측정값으로 받는다.
+ * 캔버스 크기(box)는 고정 상수가 아니라 캔버스 영역의 측정값으로 받는다.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -95,7 +95,6 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item])
 
   // 아이템 로드 → 전체 착용(몸통·머리·머리카락·눈장식 등) 합성 입력 + 얼굴 bbox·점 기본좌표/크기 + 현재 염색/오프셋으로 초기화.
@@ -166,7 +165,6 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
       setTool(0); setZoom(1); setFocus({ x: faceBox.cx, y: faceBox.cy })
     })().catch(() => {})
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id, s.index, s.tone])
 
   // 염색 오버라이드 — 두 갈래로 분리해 "눈장식 염색 슬라이더 드래그"가 헤어/성형까지 매 틱 리컬러하지 않게 한다.
@@ -196,7 +194,6 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
       } catch { /* noop */ }
     })()
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parts, s.renderHsb, s.renderPalette, s.index])
 
   useEffect(() => {
@@ -208,7 +205,6 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
       catch { /* noop */ }
     })()
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parts, hsb, off])
 
   const dyeOv = useMemo(() => { const m = new Map(baseOv); for (const [k, v] of eyeOv) m.set(k, v); return m }, [baseOv, eyeOv])

@@ -116,7 +116,7 @@ function Frame({ preset, zoom, path, tab, nonce, inspect, onPick }: FrameProps) 
   const ref = useRef<HTMLIFrameElement | null>(null)
   const [hover, setHover] = useState<DOMRect | null>(null)
   const [ready, setReady] = useState(0)
-  const src = `${path}${path.includes('?') ? '&' : '?'}pbview=1${preset.touch ? '&pbtouch=1' : ''}`
+  const src = preset.touch ? `${path}${path.includes('?') ? '&' : '?'}pbtouch=1` : path
 
   // 탭 전환: 앱에 파라미터를 더하지 않고 하단 탭 버튼(aria-label)을 눌러 준다.
   useEffect(() => {

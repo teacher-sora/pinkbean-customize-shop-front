@@ -1,9 +1,9 @@
 'use client'
 
 /*
- * 핑크빈 커마샵 — 화면 조합 루트(핸드오프 v2).
+ * 핑크빈 커마샵 — 화면 조합 루트.
  * 상태/핸들러는 shop/ShopContext. 레이아웃 모드는 화면 폭(useBreakpoint): PC · 절반 · 태블릿 = 2분할, 모바일 = 세로 적층.
- * 시트·다이얼로그는 단일 서피스(shop/surface/Surface) 하나. 불러오기 코디 선택(LookDialog)·공유 받기 시트는 현행 유지.
+ * 시트·다이얼로그는 단일 서피스(shop/surface/Surface) 하나. 닉네임 불러오기의 코디 선택만 별도 다이얼로그(LookDialog)다.
  */
 
 import clsx from 'clsx'
@@ -35,8 +35,8 @@ function Shell() {
     <>
       <Background mobile={mobile} />
       {mobile ? (
-        // 모바일: 폰 프레임(390×780) 없이 화면 전체(100svh 고정, 문서 스크롤 없음).
-        <div className={clsx('pb-root', 'pb-shell', styles.root)}>
+        // 모바일: 화면 전체를 쓰는 흰 컬럼. 터치 기기에서는 문서(루트)가 스크롤한다(globals.css).
+        <div className={clsx('pb-shell', styles.root)}>
           <div data-mobile-col className={styles.mobileCol}>
             <AppHeader mobile />
             {/* 새로고침 복원 중에는 이 슬롯을 통째로 감추고 아래 빈 뼈대를 대신 보여준다.
@@ -56,7 +56,7 @@ function Shell() {
         </div>
       ) : (
         // PC·절반·태블릿: 2분할은 높이가 고정돼야(리스트 그리드 height:100%) 하므로 문서 스크롤로 풀지 않는다.
-        <div className={clsx('pb-root', styles.root)}>
+        <div className={styles.root}>
           <div className={clsx(styles.frame, s.bp === 'pc' ? styles.framePc : s.bp === 'half' ? styles.frameHalf : styles.frameTablet)}>
             <AppHeader mobile={false} />
             <main className={styles.main} data-pb-body>

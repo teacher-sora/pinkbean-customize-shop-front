@@ -1,4 +1,4 @@
-/* 프리셋 — v2 마크업/presetVals 값 그대로. */
+/* 프리셋. */
 
 .panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
 .header { flex: 0 0 auto; padding: 10px 16px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
@@ -23,11 +23,11 @@
 .loadLabel { display: inline-grid; }
 .loadLabel > span { grid-area: 1 / 1; text-align: center; }
 .loadBtnM { flex: 0 0 auto; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 9px; background: #ec86ac; color: #fff; cursor: pointer; }
-/* 불러오는 중: 배경을 연하게(§4.2 loading) */
+/* 불러오는 중: 배경을 연하게 */
 .busy { background: #f0aecb; cursor: default; }
 
 .scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 10px 16px; }
-/* 모바일: 코디 리스트와 같은 **자유** 가로 스크롤(스냅 없음, 스크롤바 숨김 — 사용자 지시) — 뷰포트 좌우 7px 들임 + 안쪽 5px(가장자리 12px), 열 간격 10px.
+/* 모바일: 코디 리스트와 같은 **자유** 가로 스크롤(스냅 없음, 스크롤바 숨김) — 뷰포트 좌우 7px 들임 + 안쪽 5px(가장자리 12px), 열 간격 10px.
    2줄 고정, 열 수는 폭에 따라 2(좁음) / 3(콘텐츠 폭 330px 이상). cqw = 스크롤 영역 콘텐츠 폭 → n열이 한 화면에 정확히 들어간다. */
 .hscrollM { flex: 1 1 auto; min-height: 0; margin: 0 7px; padding: 8px 5px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y; container-type: inline-size; }
 .gridHM { display: grid; height: 100%; grid-auto-flow: column; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-columns: calc((100cqw - 10px) / 2); gap: 10px; }
@@ -45,7 +45,7 @@
 .badge { position: absolute; top: 7px; left: 7px; z-index: 3; display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 20px; background: #fce9f1; border: 1px solid #f4cfdf; color: #d76d9a; font-size: 10px; font-weight: 700; pointer-events: none; transition: opacity .22s ease, transform .22s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); }
 .badgeOn { opacity: 1; transform: translateY(0); }
 /* 모바일: '선택됨' 대신 체크 아이콘 — 원형 */
-/* 모바일: 코디 탭 신규(N) 라벨과 같은 모서리 둥근 정사각형(사용자 지시 2026-09-20) */
+/* 모바일: 코디 탭 신규(N) 라벨과 같은 모서리 둥근 정사각형 */
 .badgeM { width: 19px; padding: 0; justify-content: center; border-radius: 6px; }
 .thumb { position: relative; flex: 1 1 auto; width: 100%; aspect-ratio: 3/4; background: #f7f2ec; border-radius: 11px 11px 0 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .nameRow { position: relative; flex: 0 0 auto; padding: 8px; display: flex; align-items: center; gap: 4px; border-top: 1px solid #f4efe8; }

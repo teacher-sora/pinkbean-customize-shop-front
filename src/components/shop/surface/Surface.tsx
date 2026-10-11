@@ -1,7 +1,7 @@
 'use client'
 
 /*
- * 단일 서피스 — 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 컴포넌트 하나를 공유한다(v2 §10.4).
+ * 단일 서피스 — 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 컴포넌트 하나를 공유한다.
  *  - PC(절반·태블릿): 중앙 다이얼로그 min(900px, 앱 영역−40px) × min(620px, 86svh)
  *  - 모바일: 하단 시트 85%. 패널·마스크 어디를 잡아도(버튼 포함) 아래로 끌어 닫힘(70px), 핸들은 56px.
  *    제외 = 글자 입력·슬라이더·점 위치 캔버스. 안쪽 스크롤이 맨 위가 아니면 먼저 스크롤한다. 손 뗀 최종 위치로만 판정.
@@ -10,9 +10,9 @@
  *  - 마스크는 누름(pointerdown)·뗌(pointerup)이 둘 다 마스크일 때만 닫힘. click 으로 판정하면 마스크에서 눌러 패널에서
  *    떼도 click 대상이 공통 조상(마스크)이 되어 닫히므로 쓰지 않는다. 8px 넘게 움직였거나 드래그 직후 400ms 는 무시.
  *  - 등장은 마운트 후 한 프레임 뒤, 닫힘은 대칭 곡선 후 320ms 뒤 언마운트(ShopContext).
- *  - PC 등장·퇴장은 translateY + opacity 만(scale 금지 — 내용까지 확대돼 미리보기 캔버스가 움찔했다, delta §8).
+ *  - PC 등장·퇴장은 translateY + opacity 만(scale 금지 — 내용까지 확대돼 미리보기 캔버스가 움찔한다).
  *  - 부위 염색 ↔ 염색/점 위치 전환은 패널을 유지한 채 **본문만** 가로 슬라이드(본문 래퍼만 kind·item 키로 리마운트).
- *  - 모든 종류에 공용 푸터(닫기)가 있다. 부위 염색을 거쳐 들어온 염색/점 위치만 '이전'(delta §6·§8).
+ *  - 모든 종류에 공용 푸터(닫기)가 있다. 부위 염색을 거쳐 들어온 염색/점 위치만 '이전'.
  */
 
 import clsx from 'clsx'
@@ -76,11 +76,10 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') s.closeSurface() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   // 모바일은 문서 스크롤이 열려 있어, 시트가 떠 있는 동안 뒤 페이지를 **제자리에 고정**한다.
-  // overflow:hidden 만으로는 부족했다(2026-09-21 사용자 제보): 가상 키보드가 뜨면서 입력칸을 보이게 하려는
-  // 브라우저의 스크롤은 막지 못해, 키보드가 닫힌 뒤 뒤 페이지가 엉뚱한 위치(빈 공간)에 남고 터치 위치도 어긋났다.
+  // overflow:hidden 만으로는 부족하다: 가상 키보드가 뜨면서 입력칸을 보이게 하려는
+  // 브라우저의 스크롤은 막지 못해, 키보드가 닫힌 뒤 뒤 페이지가 엉뚱한 위치(빈 공간)에 남고 터치 위치도 어긋난다.
   // body 를 현재 스크롤 위치 그대로 position:fixed 로 세워 두면 문서가 움직일 수 없고, 닫을 때 그 위치로 되돌린다.
   // 터치 기기(태블릿 포함)는 모두 문서 스크롤이 열려 있어(globals.css pointer:coarse) 같은 잠금이 필요하다.
   useEffect(() => {
@@ -156,7 +155,6 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
       layer.removeEventListener('touchcancel', onEnd)
       layer.removeEventListener('click', onClickCapture, true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mobile])
 
   // 드래그 직후 400ms 는 마스크 닫기 무시(끌다 놓은 손이 마스크 위였던 경우).
@@ -174,7 +172,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
         : k === 'dot' ? '점 위치 · 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 · 발색' : '염색')
 
   // 패널 폭(앱 영역 기준)·등장/닫힘 위치는 즉시 반영 값이라 인라인(드래그 중 오프셋은 위 터치 핸들러가 DOM 직접).
-  // PC 패널 크기는 **모든 종류가 같다**(2026-09-21 사용자 지시 — 가져오기만 작게 뜨던 것을 일반 다이얼로그와 맞춤).
+  // PC 패널 크기는 **모든 종류가 같다**.
   const panelStyle: React.CSSProperties = mobile
     ? { transform: `translateY(${hidden ? '100%' : '0px'})`, transition: EASE, ...(bmH ? { height: bmH } : {}) }
     : { width: `min(900px, ${Math.max(320, frameW - 40)}px)`, height: 'min(620px, 86svh)' }
@@ -205,12 +203,12 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             <button type="button" onClick={s.closeSurface} title="닫기 (Esc)" aria-label="닫기" className={clsx('pb-icon', styles.close)}><IconClose /></button>
           </div>
           <div key={`${k}:${sf.item?.id ?? ''}`} className={styles.slide} style={slideStyle}>
-            {/* 연출 설정은 자체 푸터를 쓴다 — 고르기 화면에서는 '이전'이 되어야 해서(2026-09-24). */}
+            {/* 연출 설정은 자체 푸터를 쓴다 — 고르기 화면에서는 '이전'이 되어야 해서. */}
             {k === 'pv' && <PvSheetBody />}
             {k === 'bm' && <><BookmarkSheetBody /><SurfaceFooter /></>}
             {k === 'part' && <><PartPickBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
-            {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다(사용자 지시). */}
+            {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다. */}
             {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
             {/* 공유받은 코디 — 광장 상세를 거쳐 왔으면(post 있음) '이전'으로 상세로 되돌아가고, 링크·코드로 받은 경우는 '닫기'. */}
             {k === 'ptake' && sf.take && <><PlazaTakeBody snap={sf.take} mobile={mobile} /><SurfaceFooter onBack={sf.post ? s.plazaTakeBack : undefined} /></>}

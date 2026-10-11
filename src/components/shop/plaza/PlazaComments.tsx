@@ -177,7 +177,7 @@ function Composer({ post, mobile, parentId, onAdded, autoFocus, initial = '' }: 
     const el = ref.current
     if (!autoFocus || !el) return
     // 문서가 아니라 시트 안에서만 보이게 한다 — 그냥 focus() 는 브라우저가 스크롤할 곳으로 뒤 페이지(문서)를 골라
-    // 마스크 뒤 배경이 움직였다(2026-09-21 사용자 제보).
+    // 마스크 뒤 배경이 움직인다.
     el.focus({ preventScroll: true })
     el.setSelectionRange(el.value.length, el.value.length) // '@이름 ' 뒤에서 바로 이어 쓰게
     el.scrollIntoView({ block: 'nearest' })

@@ -1,17 +1,8 @@
-// Static data access. Everything is fetched from DATA_BASE so swapping between the
-// local `public/data` mirror and the Cloudflare R2/CDN bucket is a one-line change.
-// Default now points at the R2 CDN (bucket contents live at the bucket root, i.e.
-// public/data/index.json → <cdn>/index.json). Set NEXT_PUBLIC_DATA_BASE=/data to
-// fall back to the local mirror. Index is split per slot for virtualization.
+// Static data access. Everything is fetched from DATA_BASE — the Cloudflare R2/CDN bucket
+// (bucket contents live at the bucket root, e.g. <cdn>/index.json). NEXT_PUBLIC_DATA_BASE
+// overrides the base. Index is split per slot for virtualization.
 export const DATA_BASE =
   process.env.NEXT_PUBLIC_DATA_BASE ?? 'https://cdn.pinkbean-customize.com'
-
-// One-time confirmation (browser only) that assets are served from the CDN, not
-// the local public/data mirror.
-if (typeof window !== 'undefined') {
-  const source = /^https?:\/\//.test(DATA_BASE) ? 'CDN' : 'local public/data'
-  console.log(`[data] serving assets from ${source}: ${DATA_BASE}`)
-}
 
 export type Vec = { x: number; y: number }
 
@@ -49,7 +40,7 @@ export interface ItemMeta {
   reqLevel?: number
   sn?: number                 // Commodity serial (~release order), when matched
   name?: string               // Korean name (PKG2 join) + (남)/(여) gender suffix
-  gender?: number             // 0=남 1=여 2=공용 (id-rule, v8)
+  gender?: number             // 0=남 1=여 2=공용
   label?: 'master' | 'special' // external grade badge (마라벨/스라벨); none = undefined
   invisibleFace?: number      // info.invisibleFace: 착용 시 성형(face)을 가림
   fixedEmotion?: string       // info.fixedEmotion: 착용 시 표정을 이 값으로 고정(표정 얼굴장식 25종)
@@ -81,11 +72,11 @@ export interface ListItem {
   fixedEmotion?: string       // 표정 얼굴장식: 'smile' 같은 표정 키 또는 'blink/1' 처럼 키+프레임 인덱스
   headId?: string             // skin-only: paired head id for live compositing
   actions: string[]
-  ridingActions?: string[]    // [dev] 라이딩 아이템: 허용 연출 액션(UI값). 없으면 기본 재규어 세트.
-  ridingSeated?: string[]     // [dev] 라이딩 아이템: 캐릭터가 앉는(sit) 액션(UI값). 메탈아머는 전부 앉음.
-  ridingCenterMount?: boolean // [dev] 라이딩 아이템: 캐릭터가 아니라 마운트(메카)를 중앙정렬(메탈아머).
-  ridingBackSit?: boolean     // [dev] 라이딩 아이템: 뒷쪽 시선에도 캐릭터 sit 강제(탱크: 뒤=줄타기 프레임+앉은 조종사).
-  metaUrl?: string            // [dev] 라이딩 아이템: 로컬 meta.json 경로(CDN 밖)
+  ridingActions?: string[]    // 라이딩 아이템: 허용 연출 액션(UI값). 없으면 기본 재규어 세트.
+  ridingSeated?: string[]     // 라이딩 아이템: 캐릭터가 앉는(sit) 액션(UI값). 메탈아머는 전부 앉음.
+  ridingCenterMount?: boolean // 라이딩 아이템: 캐릭터가 아니라 마운트(메카)를 중앙정렬(메탈아머).
+  ridingBackSit?: boolean     // 라이딩 아이템: 뒷쪽 시선에도 캐릭터 sit 강제(탱크: 뒤=줄타기 프레임+앉은 조종사).
+  metaUrl?: string            // 라이딩 아이템: 프론트 public 의 meta.json 경로(CDN 밖)
 }
 
 export interface SlotSummary {
@@ -98,7 +89,7 @@ export interface SlotSummary {
 }
 
 // Item effect (Effect/ItemEff.wz). Drawn as an overlay behind/in front of the body;
-// see scripts/extract-effects.cjs. `repFrame` indexes the representative static frame.
+// see parser 레포의 scripts/extract-effects.cjs. `repFrame` indexes the representative static frame.
 export interface EffectFrame { png: string; origin: Vec; delay: number }
 export interface EffectGroup { z: number; pos: number; repFrame: number; frames: EffectFrame[] }
 export interface EffectMeta {
@@ -121,7 +112,7 @@ export interface Index {
 // segment from `rel`, and self-heal a doubled base ("/data/data/…") from a misconfigured
 // NEXT_PUBLIC_DATA_BASE, so a stray prefix can never yield "/data/data/sprites/…".
 const url = (rel: string) => {
-  // 절대경로(/riding/…)·완전URL 은 그대로(dev 로컬 public 서빙 — 라이딩 데이터가 CDN 밖에서 로드되게).
+  // 절대경로(/riding/…)·완전URL 은 그대로(프론트 public 서빙 — 라이딩 데이터가 CDN 밖에서 로드되게).
   if (/^(https?:)?\//.test(rel)) return rel
   const base = DATA_BASE.replace(/\/+$/, '')
   const seg = base.split('/').filter(Boolean).pop() || '' // e.g. "data"
@@ -132,9 +123,9 @@ const url = (rel: string) => {
   return out
 }
 
-// 목록·카탈로그 JSON 은 **새로고침하면 반드시 최신**이어야 한다(2026-09-21 사용자 지시).
+// 목록·카탈로그 JSON 은 **새로고침하면 반드시 최신**이어야 한다.
 // CDN 은 `max-age=60, stale-while-revalidate=86400` 이라, 60초가 지나면 브라우저가 **옛 사본을 그대로 쓰고**
-// 갱신은 뒤에서 한다 → 패치나 신규 아이템이 새로고침 한 번으로는 안 나오고 그 다음 번에야 나왔다.
+// 갱신은 뒤에서 한다 → 패치나 신규 아이템이 새로고침 한 번으로는 안 나오고 그 다음 번에야 나온다.
 // `no-cache` 는 "캐시는 두되 매번 서버에 물어본다"라서, 안 바뀌었으면 304(본문 없음)로 끝난다 — 크기가 아니라
 // 왕복 한 번만 더 드는 값이다. 스프라이트(png)와 아이템별 meta 는 그대로 둔다(개수가 많고 id 가 바뀌면 경로도 바뀐다).
 const FRESH: RequestInit = { cache: 'no-cache' }
@@ -158,8 +149,8 @@ export async function loadIndex(): Promise<Index> {
 }
 // 원본 WZ 의 자리 코드(islot·vslot)가 **남의 부위로** 들어간 아이템 보정. 리스트·단건 어디로 들어와도 같은
 // 값이 되도록 여기 한 곳에서 고친다(islot = 인벤 충돌로 다른 부위를 **벗기고**, vslot = 가림으로 **숨긴다**).
-//  · 계기: 2026-09-21 건의함 "쿨썸머 보드 << 장착하면 한벌옷이 사라집니다"(무기인데 islot·vslot 이 MaPn).
-//  · 전수 조사(14슬롯 32,693개, 2026-09-22): 같은 꼴이 21개 더 있었다 —
+//  · 예: 쿨썸머 보드(무기인데 islot·vslot 이 MaPn) — 장착하면 한벌옷이 사라진다.
+//  · 전수 조사(14슬롯 32,693개): 같은 꼴이 21개 더 있다 —
 //      신발 '투명 신발'·장갑 '투명 장갑'·망토 '투명 망토'/'숟가락X포크 망토'/'메이플 갤럭시 망토' = Cp(모자),
 //      신발 '유피테르 슈즈' 등 5개 = MaPn, 한벌옷 '커플/솔로부대 전투복' 등 6개 = Sr(망토), 무기 5개 = MaPn.
 //    이들은 하나같이 **islot 과 vslot 이 똑같이 남의 코드**다(원본이 통째로 잘못 들어간 꼴).
@@ -191,7 +182,7 @@ function fixSlotCodes<T extends { slot?: string; islot?: string | null; vslot?: 
 const ICON_FIX: Record<string, string> = { '01092056': 'sprites/01092067/icon.png' }
 const fixIcon = <T extends { id: string; icon?: string | null }>(it: T): T => (ICON_FIX[it.id] ? { ...it, icon: ICON_FIX[it.id] } : it)
 
-// 라이딩(dev 로컬) 아이템의 meta 경로를 id→url 로 등록. 슬롯 로드 시 채워지고 loadMeta 가 이걸 우선 쓴다.
+// 라이딩(프론트 public) 아이템의 meta 경로를 id→url 로 등록. 슬롯 로드 시 채워지고 loadMeta 가 이걸 우선 쓴다.
 const ridingMetaUrl = new Map<string, string>()
 const slotCache = new Map<string, Promise<ListItem[]>>()
 export function loadSlot(file: string): Promise<ListItem[]> {
@@ -209,7 +200,7 @@ const metaCache = new Map<string, Promise<ItemMeta>>()
 export function loadMeta(id: string): Promise<ItemMeta> {
   let p = metaCache.get(id)
   // ⚠️ 실패한 결과는 캐시에 남기지 않는다. 라이딩 meta 는 목록(riding.json)이 경로를 등록해 줘야 찾을 수 있는데,
-  //    그 전에 한 번 부르면 CDN 404 로 실패한다 — 실패까지 캐시하면 목록이 온 뒤에도 영영 안 나온다(2026-09-29).
+  //    그 전에 한 번 부르면 CDN 404 로 실패한다 — 실패까지 캐시하면 목록이 온 뒤에도 영영 안 나온다.
   if (!p) {
     p = fetch(url(ridingMetaUrl.get(id) ?? `meta/${id}.json`)).then((r) => r.json()).then(fixSlotCodes)
     p.catch(() => { if (metaCache.get(id) === p) metaCache.delete(id) })
@@ -242,7 +233,7 @@ export function loadEffect(id: string): Promise<EffectMeta | null> {
   return p
 }
 
-// 형상변이(Anima race) appearance parts (scripts/extract-anima.cjs → data/anima.json).
+// 형상변이(Anima race) appearance parts (parser 레포의 scripts/extract-anima.cjs → CDN anima.json).
 export interface AnimaPart { name: string; png: string; origin: Vec; map: Record<string, Vec>; z: string; islot: string | null; w: number; h: number }
 export interface AnimaRace { node: string; name: string; parts: AnimaPart[] }
 let animaPromise: Promise<AnimaRace[]> | null = null
@@ -252,9 +243,6 @@ export function loadAnima(): Promise<AnimaRace[]> {
 }
 
 export const spriteUrl = (pngRel: string) => url(pngRel)
-
-// Deterministic path to the baked applied-look thumbnail (scripts/bake.cjs).
-export const bakedThumbUrl = (id: string) => url(`sprites/${id}/thumb.png`)
 
 // WZ-extracted grade badge icon (master/special/cash); 404 → text fallback in UI.
 export const badgeUrl = (kind: string) => url(`badges/${kind}.png`)

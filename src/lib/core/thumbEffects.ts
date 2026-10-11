@@ -14,7 +14,7 @@ import { loadImage } from './render'
 export type WornEff = { slot: string; em: EffectMeta }
 
 /** 슬롯이 연출 토글에 의해 이펙트가 꺼졌는지. (무기=wEffect, 망토=cEffect, 모자=capEffect)
- *  capEffect 는 옛 스냅샷/공유코드엔 없어(undefined) → `!== false` 로 기본 켜짐(기존 동작 보존). */
+ *  capEffect 는 오래된 스냅샷/공유코드엔 없어(undefined) → `!== false` 로 기본 켜짐(기존 동작 보존). */
 export const effectEnabled = (slot: string, pv: { wEffect: boolean; cEffect: boolean; capEffect?: boolean }) =>
   slot === 'weapon' ? pv.wEffect : slot === 'cape' ? pv.cEffect : slot === 'cap' ? pv.capEffect !== false : true
 

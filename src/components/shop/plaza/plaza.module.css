@@ -1,4 +1,4 @@
-/* 코디 광장(handoff_v2_plaza) — 목록·카드·상세·등록. 값은 정본 HTML 의 인라인 스타일 그대로. */
+/* 코디 광장 — 목록·카드·상세·등록. */
 
 /* ── 목록 패널 ── */
 .panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
@@ -33,7 +33,7 @@
 .arrow { flex: 0 0 auto; width: 22px; height: 24px; margin: 0 2px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 6px; background: transparent; color: #ded5cb; cursor: default; transition: background-color .2s ease, color .2s ease; }
 .arrowOn { color: #c08fa4; cursor: pointer; }
 /* 페이지 번호는 **4자리(9999)** 까지 자리를 미리 잡는다 — 숫자가 바뀔 때마다 칸이 넓어지며
-   화살표가 밀리던 것을 막는다(사용자 지시 2026-09-21).
+   화살표가 밀리는 것을 막는다.
    폭을 px 로 박으면 글꼴이 두툼할 때 모자라므로 숫자 한 칸(ch) 기준으로 잡고 여유를 더한다.
    입력칸과 총 페이지 수를 같은 폭으로 둬 '/' 양옆이 대칭이 되게 한다. */
 .pageInput { width: calc(4ch + 16px); height: 22px; padding: 0 4px; border: 1px solid transparent; border-radius: 6px; background: #f1e7ec; text-align: center; font-size: 12px; font-weight: 700; color: #b0748f; outline: none; }
@@ -44,7 +44,7 @@
 .viewport { flex: 1 1 auto; min-height: 0; position: relative; overflow: clip; }
 /* 모바일은 코디 탭과 같은 네이티브 가로 넘기기(트랙을 페이지 수만큼 넓혀 두고 뷰포트가 스크롤한다).
    touch-action 은 코디 탭과 같은 값이어야 한다 — pan-x 만 주면 목록 위에서 손가락으로 페이지를 위아래로
-   움직일 수 없어 같은 몸짓이 탭마다 다르게 먹는다(2026-09-21). */
+   움직일 수 없어 같은 몸짓이 탭마다 다르게 먹는다. */
 .viewportM { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y; container-type: inline-size; }
 .track { position: relative; height: 100%; width: 100%; will-change: transform; }
 .page { position: absolute; top: 0; width: 100%; height: 100%; padding: 10px 16px; overflow: hidden; }
@@ -89,8 +89,8 @@
 
 /* ── 상세(서피스 본문) ── */
 .detail { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 16px; }
-/* PC 는 댓글 열이 오른쪽에 붙는다 — 스테이지를 280 → 250 으로 줄여 두 칸이 나란히 남게 한다(사용자 지시). */
-/* 왼쪽 여백은 상세 본문의 거터(9px)+패딩(6px)이 맡는다 — 착용 아이템 막대의 hover 면(-6px)이 스크롤 칸 안에 들어오게(2026-09-21). */
+/* PC 는 댓글 열이 오른쪽에 붙는다 — 스테이지를 줄여 두 칸이 나란히 남게 한다. */
+/* 왼쪽 여백은 상세 본문의 거터(9px)+패딩(6px)이 맡는다 — 착용 아이템 막대의 hover 면(-6px)이 스크롤 칸 안에 들어오게. */
 .detailPc { flex: 1 1 auto; min-height: 0; padding: 12px 12px 12px 0; display: flex; align-items: stretch; }
 /* 위 4px: 수상 띠지가 칸 위로 걸치는 자리(스크롤 칸은 안쪽 여백 밖을 자른다). 음수 여백으로 그만큼 올려 내용 위치는 그대로다. */
 .detailMain { flex: 1 1 0; min-width: 0; margin-top: -4px; padding: 4px 6px 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; gap: 16px; }
@@ -113,12 +113,12 @@
 .stageTone { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.45)); }
 .stageRef { border: 1px dashed #e4dcd2; background: #fbf8f4; }
 .stageRef { cursor: default; }
-/* 참고 이미지 칸은 PC·모바일 모두 정사각형 — 올린 사람이 편집기의 정사각형 점선으로 고른 범위가 그대로 보인다(2026-09-21).
+/* 참고 이미지 칸은 PC·모바일 모두 정사각형 — 올린 사람이 편집기의 정사각형 점선으로 고른 범위가 그대로 보인다.
    PC: 높이 240 정사각형 + 코디 칸이 남은 폭. 모바일: 두 칸 모두 정사각형(폭 반씩). */
 .stageRef { flex: 0 0 auto; height: 100%; aspect-ratio: 1 / 1; }
 .stagesPairM { height: auto; }
 .stagesPairM .stage { flex: 1 1 0; height: auto; aspect-ratio: 1 / 1; }
-/* 구역 사이 끊긴 구분선 — 양 끝을 비워 '닫힌 상자'가 아니라 흐름 속 쉼표로 읽힌다(사용자 지시 2026-09-21). */
+/* 구역 사이 끊긴 구분선 — 양 끝을 비워 '닫힌 상자'가 아니라 흐름 속 쉼표로 읽힌다. */
 .secHr { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f0e9e1; }
 /* 참고 이미지 확대·이동(PlazaRefViewer) */
 .refView { position: absolute; inset: 0; overflow: hidden; cursor: zoom-in; user-select: none; -webkit-user-select: none; }
@@ -127,7 +127,7 @@
 .refViewImg { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; transition: opacity .22s ease; }
 .refReset { position: absolute; right: 8px; bottom: 8px; z-index: 2; height: 26px; padding: 0 10px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fff; font-family: inherit; font-size: 11px; font-weight: 600; color: #d76d9a; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); opacity: 0; pointer-events: none; transition: opacity .22s ease, background-color .22s ease, border-color .22s ease; }
 .refResetOn { opacity: 1; pointer-events: auto; }
-/* 착용 아이템 — 닫힌 아코디언(2026-09-21). 칩은 부위 염색 칩(surface .partChip)과 같은 모양이되 누르는 요소가 아니라 읽는 칩이다.
+/* 착용 아이템 — 아코디언. 칩은 부위 염색 칩(surface .partChip)과 같은 모양이되 누르는 요소가 아니라 읽는 칩이다.
    막대는 라벨 위치가 다른 구역 라벨과 맞도록 음수 여백(6px — 상세 본문 패딩과 같게, 넘치면 스크롤 칸에 잘린다)으로 hover 면만 넓힌다. 창(overflow:hidden) 안에서 칩이 translateY 로 드러난다. */
 .worn { flex: 0 0 auto; display: flex; flex-direction: column; margin-bottom: -6px; } /* 창의 윗 여백 6px 을 되돌려 닫힘 때 위·아래 간격을 같게(18/18) */
 .wornBar { display: flex; align-items: center; gap: 6px; height: 28px; margin: -6px -6px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .2s ease; }
@@ -190,7 +190,6 @@
 .pickName { display: block; padding: 4px 6px 6px; font-size: 11.5px; font-weight: 600; color: #5c534b; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pickCellOn .pickName { color: #d76d9a; }
 .pickEmpty { grid-column: 1 / -1; margin: 0; padding: 12px 4px; font-size: 12px; color: #a89e93; text-align: center; }
-.pickListM { max-height: 168px; }
 .pickOpt { width: 100%; height: 32px; padding: 0 10px; display: flex; align-items: center; border: none; border-radius: 7px; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 500; color: #5c534b; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: background-color .18s ease, color .18s ease; }
 .pickOptOn { background: #fce9f1; font-weight: 700; color: #d76d9a; }
 .upStage { position: relative; flex: 0 0 auto; height: 164px; border: 1px solid #eee6dc; border-radius: 11px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
@@ -203,7 +202,7 @@
 .tagInput { flex: 1 1 0; min-width: 0; }
 .tagAdd { flex: 0 0 auto; height: 34px; padding: 0 14px; display: flex; align-items: center; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; transition: background-color .2s ease; }
 .tagAddOff { background: #f0c9d9; cursor: default; } /* 등록 버튼 비활성과 같은 연한 핑크 */
-/* 이미지 칸(2026-09-21 키움): 비었을 땐 넉넉한 추가 버튼, 고르면 상세 칸 비율의 편집기. */
+/* 이미지 칸: 비었을 땐 넉넉한 추가 버튼, 고르면 상세 칸 비율의 편집기. */
 .imgBtn { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px dashed #e4dcd2; border-radius: 11px; background: #fbf8f4; font-family: inherit; color: #a89e93; cursor: pointer; transition: background-color .24s ease, border-color .22s ease, color .22s ease; }
 .imgBtnMain { font-size: 12.5px; font-weight: 600; }
 .imgBtnSub { font-size: 11px; font-weight: 500; color: #b7ada2; }
@@ -225,7 +224,7 @@
 .upSubmitM { flex: 1 1 0; min-width: 0; } /* 닫기 : 등록 = 1 : 1 */
 
 @media (hover: hover) and (pointer: fine) {
-  /* 2026-09-21: 연했던 hover 를 코디 탭 띠지 수준으로 진하게 — 핑크 배경 #fce9f1 + 보더 #ec86ac, 솔리드는 #d5578e(pb-solid 와 같게). */
+  /* hover 는 코디 탭 띠지 수준으로 진하게 — 핑크 배경 #fce9f1 + 보더 #ec86ac, 솔리드는 #d5578e(pb-solid 와 같게). */
   .railBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
   .delBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #e0533e; } /* 내리기: 핑크로 채우고 아이콘은 위험색 */
   .likeBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #ec86ac; }
@@ -266,7 +265,7 @@
 
 /* ── 댓글(상세 오른쪽 열 / 모바일은 설명 아래) ── */
 /* 폭 252px + 여백 14 + 구분선 1 = 267. 900px 다이얼로그에서 왼쪽에 607px 이 남아 스테이지 두 칸이 292px 씩 된다. */
-/* 2026-09-21: 252 → 272px. 대신 미리보기 칸 높이를 250 → 240px 로 줄여 가로세로 비율을 거의 그대로 둔다. */
+/* 댓글 열 272px — 미리보기 칸 높이(240px)와 함께 잡아 가로세로 비율을 지킨다. */
 .cmtCol { flex: 0 0 272px; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding-left: 4px; border-left: 1px solid #f0e9e1; }
 .cmtColM { flex: 0 0 auto; padding-left: 0; border-left: none; }
 /* 스크롤 자리(gutter)만큼 머리·입력칸에도 같은 여백을 줘서 글머리가 한 줄로 맞게 한다. 모바일은 스크롤이 없어 뗀다. */
@@ -319,7 +318,7 @@
 .cmtSendOff { background: #f0c9d9; cursor: default; }
 .descNone { color: #a89e93; }
 .scopeHintWarn { color: #d1735f; }
-/* 자유 코디로 둔 사람에게 '대회는 따로 골라야 한다'고 알리는 줄(2026-09-22) — 안내(회색)보다 눈에 들어와야 해서 핑크. */
+/* 자유 코디로 둔 사람에게 '대회는 따로 골라야 한다'고 알리는 줄 — 안내(회색)보다 눈에 들어와야 해서 핑크. */
 .scopeNudge { margin-top: 4px; font-size: 10.5px; font-weight: 600; color: #d76d9a; }
 
 /* ── 공지 및 건의함(NoticeBody) — 광장 상세·댓글 부품을 그대로 쓰고 모자란 것만 ── */

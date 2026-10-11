@@ -72,17 +72,17 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  viewportFit: 'cover', // 핸드오프 v2 README 지정값
+  viewportFit: 'cover', // 노치·홈 인디케이터 영역까지 화면을 쓴다
   // 페이지 자체의 핀치/더블탭 확대를 막는다(모바일에서 얼굴 확대 편집 시 화면이 통째로 확대되던 문제).
-  // 확대가 필요한 곳은 DotDialog 캔버스뿐이고, 그건 pointer 기반 자체 핀치라 네이티브 확대에 의존하지 않는다.
+  // 확대가 필요한 곳은 점 위치 편집 캔버스(useDotEditor)뿐이고, 그건 pointer 기반 자체 핀치라 네이티브 확대에 의존하지 않는다.
   // Android(Chrome) 는 이 설정을 존중. iOS Safari 는 무시하므로 NoNativeZoom 이 gesture 이벤트로 보강한다.
   maximumScale: 1,
   userScalable: false,
   colorScheme: 'light',
   themeColor: '#ec86ac',
   // 가상 키보드가 떠도 레이아웃 높이를 줄이지 않는다(키보드는 화면 위에 겹쳐 보이는 영역만 줄이고, 브라우저가 입력칸이 보이게 이동시킨다).
-  // 2026-09-21 resizes-content → resizes-visual: 높이가 줄면 문서가 화면보다 길어져 입력 포커스가 마스크 뒤 문서를 스크롤했고,
-  // 키보드가 닫힐 때마다 레이아웃이 다시 계산되며 하단 빈 공간·터치 어긋남이 생겼다(사용자 제보·지시). iOS 는 원래 이 방식이다.
+  // resizes-content 로 두면 높이가 줄어 문서가 화면보다 길어지고, 입력 포커스가 마스크 뒤 문서를 스크롤한다.
+  // 키보드가 닫힐 때마다 레이아웃이 다시 계산돼 하단 빈 공간·터치 어긋남도 생긴다. iOS 는 원래 이 방식이다.
   interactiveWidget: 'resizes-visual',
 }
 
@@ -135,7 +135,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
-        {/* Wanted Sans (Variable, OFL) — the design handoff's specified typeface. */}
+        {/* Wanted Sans (Variable, OFL) — 앱 전체 글꼴. */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
         <link
           rel="stylesheet"
@@ -152,7 +152,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           판단 기준은 내비게이션 종류(reload)가 아니라 **저장된 값이 기본 화면과 다른가**(dirty)다.
           탭 복제·주소창 재진입도 sessionStorage 를 물려받아 똑같이 되살아나는데, 그건 'reload' 가
-          아니라 예전 조건으로는 뼈대 없이 점멸했다. 첫 진입은 저장된 값 자체가 없어 여기서 즉시
+          아니라 reload 로만 판단하면 뼈대 없이 점멸한다. 첫 진입은 저장된 값 자체가 없어 여기서 즉시
           빠져나간다 → SSG 출력이 그대로 쓰인다(연산·지연 0).
           표시를 끄는 건 되살린 화면이 실제로 커밋된 뒤(ShopContext) — 고정 대기 시간은 쓰지 않는다.
         */}

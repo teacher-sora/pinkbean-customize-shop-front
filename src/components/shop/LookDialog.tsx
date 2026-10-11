@@ -9,12 +9,12 @@ import { useShop } from './ShopContext'
 import { useDialogFade } from './ui/useDialogFade'
 import { useMaskClose } from './ui/useMaskClose'
 
-// 닉네임으로 불러올 때 "어느 코디의 · 어느 프리셋을 가져올지" 고르는 다이얼로그(현행 요소 유지).
-// ⚠️ 시점(날짜) 변경 기능은 제거했다 — 추후 더 탄탄히 구축해 다시 추가 예정. 항상 최신(현재) 코디를 가져온다.
+// 닉네임으로 불러올 때 "어느 코디의 · 어느 프리셋을 가져올지" 고르는 다이얼로그.
+// 항상 최신(현재) 코디를 가져온다 — 시점(날짜) 선택은 없다.
 
 export default function LookDialog() {
   const s = useShop()
-  // 닫힐 때도 전환이 보이도록 값이 사라진 뒤에도 잠깐 더 그린다(서피스·공유 받기와 같은 방식).
+  // 닫힐 때도 전환이 보이도록 값이 사라진 뒤에도 잠깐 더 그린다(서피스와 같은 방식).
   const { shown: lp, hidden } = useDialogFade(s.lookPick)
   const stacked = isStacked(s.bp)
   const cols = stacked ? 2 : 3
@@ -29,7 +29,6 @@ export default function LookDialog() {
       const pref = lp.options.find((o) => o.key === 'additional') ?? lp.options[0]
       setLookKey(pref?.key ?? null)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lp])
 
   const close = (after?: () => void) => { if (after) after(); else s.closeLookPick() }
@@ -42,7 +41,6 @@ export default function LookDialog() {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lp])
 
   // ← →: 다이얼로그가 열려 있으면 캡처해서 뒤 화면(코디 리스트)이 같이 넘어가지 않게 막는다.

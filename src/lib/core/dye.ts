@@ -6,7 +6,7 @@
 
 // Game dye params (faithful to MapleStory). h = 색조 0..359, s = 채도, b = 명도 (both -99..+99,
 // 0 = neutral), t = 색상 계열 type 0..6 (0 전체/1 빨강/2 노랑/3 초록/4 청록/5 파랑/6 자주).
-// edge = 테두리(순수 검정) 포함(2026-09-22 사용자 지시). 게임 로직상 검정은 채도가 0이라 색조·채도가 수학적으로
+// edge = 테두리(순수 검정) 포함. 게임 로직상 검정은 채도가 0이라 색조·채도가 수학적으로
 // 무효라서 **명도로만, 회색으로만** 바뀐다(실측: 명도 +50 → 119 회색, +99 → 238). 색을 띠지는 않는다.
 // 또 검정은 색조 0·채도 0 이라 '전체'가 아닌 색상 계열 필터에 전부 걸린다 → 테두리는 계열을 건너뛰게 한다
 // (안 그러면 계열을 고른 순간 토글이 아무 일도 안 해 고장으로 보인다).
@@ -153,11 +153,11 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
 
 // 피부 염색 HSB. 스프라이트 실측(00002042/43 body·head): 컬러라인 = 순청 (0,0,255) 하나, 피부 음영 = 연분홍
 // (255,238,255)·(255,221,238) 등 — HSL 채도 1.0 인 '유채색'이다(무채색 아님). 그래서 '전체 색상 계열'로 적용하면
-// 피부 음영까지 색조·채도가 돌아 회색(238,238,238)으로 뭉개진다(2026-09-17 사용자 제보: 인게임은 라인만 바뀜).
+// 피부 음영까지 색조·채도가 돌아 회색(238,238,238)으로 뭉개진다(인게임은 라인만 바뀐다).
 // → 계열을 고르지 않았으면 그 피부의 **포인트 색 계열**로 적용한다(shopData.skinDyeFamily 가 실측으로 정한다).
 //   컬러라인·비비드·블루 팬더는 파랑, 좀비는 청록, 삼색 냥이는 노랑. 계열을 직접 고르면 그대로 쓴다.
-// ⚠️ 커스텀 피부는 **테두리 포함을 쓰지 않는다**(2026-09-23 사용자 지시 — "커스텀 피부 시리즈에 이런 테두리가 있어선 안 돼").
-// 버튼을 감추는 것만으로는 예전에 저장된 값이 남아 그려질 수 있어, 피부로 가는 유일한 길목인 여기서 끈다.
+// ⚠️ 커스텀 피부는 **테두리 포함을 쓰지 않는다**.
+// 버튼을 감추는 것만으로는 이미 저장된 값이 남아 그려질 수 있어, 피부로 가는 유일한 길목인 여기서 끈다.
 export const skinHsb = (h: HsbParams, family = 5): HsbParams => ({ ...h, t: h.t ? h.t : family, edge: false })
 
 // Blend base sprite toward mix sprite by ratio% (per-pixel lerp on RGB; alpha from base).
@@ -184,7 +184,7 @@ export function blendPalette(base: HTMLImageElement, mix: HTMLImageElement, rati
 }
 
 // Palette color encoding is slot-aware: hair encodes color in the units digit,
-// face in the hundreds digit (must mirror scripts/derive.cjs).
+// face in the hundreds digit (must mirror parser 레포의 scripts/derive.cjs).
 export function colorOf(id: number, slot: string): number {
   return slot === 'face' ? Math.floor(id / 100) % 10 : id % 10
 }
@@ -193,8 +193,6 @@ export function variantId(colorGroup: number, color: number, slot: string): stri
   if (slot === 'face') return String(Math.floor(colorGroup / 100) * 1000 + color * 100 + colorGroup % 100).padStart(8, '0')
   return String(colorGroup * 10 + color).padStart(8, '0')
 }
-
-export const PALETTE_8 = ['검정', '빨강', '주황', '노랑', '초록', '파랑', '보라', '갈색']
 
 import type { ItemMeta, Layer } from './data'
 import { frameCount, getFrameLayers, type ViewOpts } from './assemble'
@@ -260,14 +258,14 @@ export async function renderDyedSprite(
   //  - frac 지정(코디정보): avail=size*frac 에 맞추되, 원본이 크면 분수 배율로 축소(넘침 없음, 안정적).
   let scale: number
   if (frac == null) {
-    // 발색표 셀: 셀(디바이스 픽셀)을 최대한 채우는 정수 배율. 예전엔 최대 2배 제한이라 고해상도 모바일(DPR≈3)
-    // 셀에서 스프라이트가 작게 보였다 → 제한 없이, 반올림 배율이 셀을 넘치면 내림 배율로(넘침 없음·선명 유지).
+    // 발색표 셀: 셀(디바이스 픽셀)을 최대한 채우는 정수 배율. 배율에 상한을 두면 고해상도 모바일(DPR≈3)
+    // 셀에서 스프라이트가 작게 보인다 → 제한 없이, 반올림 배율이 셀을 넘치면 내림 배율로(넘침 없음·선명 유지).
     const pad = Math.max(6, Math.round(size * 0.06))
     const fit = Math.min((size - pad) / bw, (size - pad) / bh)
     scale = Math.max(1, Math.round(fit))
     if (scale * bw > size - pad / 2 || scale * bh > size - pad / 2) scale = Math.max(1, Math.floor(fit))
   } else {
-    // 상한 없음 — 예전 "최대 2배"는 디바이스 픽셀 기준이라 DPR≈3 모바일에선 CSS 0.67배 수준으로 작게 보였다.
+    // 상한 없음 — "최대 2배" 같은 상한은 디바이스 픽셀 기준이라 DPR≈3 모바일에선 CSS 0.67배 수준으로 작게 보인다.
     // ≥1 이면 정수(선명): 반올림 배율이 캔버스 안에 들어가면 그걸, 넘치면 내림. <1 이면 분수(맞춤).
     const avail = size * frac
     const fit = Math.min(avail / bw, avail / bh)
@@ -288,9 +286,9 @@ export async function renderDyedSprite(
 
 // Build per-layer dyed source overrides (png path -> canvas) for equipped items.
 // allFrames: false = 지금 보이는 프레임(0)만 → 즉시 반영용. true = 이 뷰의 전 프레임 → 애니메이션 유지용.
-// ⚠️ 예전엔 getFrameLayers(meta, view) 만 불러 i 가 기본값 0 이었다 → 프레임 0 의 png 만 override 에 들어가고,
-// 액션 애니메이션의 2번째 프레임부터는 png 가 달라 override 가 없어 원본색으로 그려졌다(염색이 풀려 보임).
-// 이펙트/피부는 PreviewModel 이 따로 전 프레임을 칠하고 있어 멀쩡했던 것 — 아이템만 빠져 있었다.
+// ⚠️ getFrameLayers(meta, view) 만 부르면 i 가 기본값 0 이다 → 프레임 0 의 png 만 override 에 들어가고,
+// 액션 애니메이션의 2번째 프레임부터는 png 가 달라 override 가 없어 원본색으로 그려진다(염색이 풀려 보임).
+// 이펙트/피부는 PreviewModel 이 따로 전 프레임을 칠한다.
 // backFrame: 이 뷰에 **한 프레임만 뒷모습**인 게 섞여 있다(두손/한손 스윙 마무리 — assemble.isBackFrame).
 // 그 프레임에선 머리 부착물이 '뒷' 스프라이트로 바뀌므로 그 png 도 함께 칠해 둬야 그 프레임에서만
 // 염색이 풀려 보이지 않는다. 뒷 프레임이 없는 아이템은 빈 배열이라 비용이 없다.

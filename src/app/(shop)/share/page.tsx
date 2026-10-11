@@ -43,7 +43,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     // R2 를 직접 읽는다(CDN 은 방금 생긴 객체의 404 를 캐시할 수 있고, Next fetch 캐시도 실패를 굳힌다).
     // 복사 직후 바로 보내면 백그라운드 업로드(카드 렌더 + 저장, 수 초)보다 스크래핑이 먼저 온다 — 실측: 카톡이 이미지 저장 0.5초 전에
     // 긁어가 기본 카드로 굳음(카톡은 URL 별로 카드를 캐시). 그래서 **이미지** 등장을 최대 ~5초 기다린다.
-    // (2026-09-20: 서버 저장 순서를 코드→이미지로 바꿨다. 링크는 즉시 열려야 하고, 기다림은 여기 메타 쪽만 진다.)
     const prefix = sharePrefix()
     const deadline = Date.now() + 5000
     let hasImage = false
@@ -73,7 +72,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 // `/share` 는 middleware 가 `/?c=…` 를 넘겨줄 때만 쓰는 **내부 경로**다. 코드 없이 직접 열면
-// 홈과 똑같은 내용을 noindex 로 한 벌 더 내보내는 꼴이라(실측 2026-09-24: 200 + `noindex, follow`),
+// 홈과 똑같은 내용을 noindex 로 한 벌 더 내보내는 꼴이라(200 + `noindex, follow`),
 // 구글이 이 주소를 주우면 "NOINDEX 태그에 의해 제외됨"으로 잡힌다. 코드가 없으면 홈으로 보낸다.
 // (rewrite 로 들어온 요청은 `c` 를 그대로 들고 오므로 카톡 카드 경로는 영향이 없다.)
 export default function SharePage({ searchParams }: Props) {

@@ -16,9 +16,9 @@ import { plazaDeviceFp } from '@/lib/plazaDevice'
 export type PlazaSort = 'popular' | 'recent'
 export type PlazaFilter = 'all' | 'contest' | 'mine' | 'liked'
 export const PLAZA_CONTEST = '블아 코디 대회'
-// 대회와 **별개**인 평소 광장. 전에는 이 자리가 '전체'였는데, 대회 출품작까지 섞여 보여서
-// '대회 + 그 밖의 전부'처럼 읽혔다(사용자 지시 2026-09-21). 이름과 내용을 함께 바꿨다 —
-// 이제 대회 출품작은 대회 칸에서만 보이고, 등록 폼의 '등록할 곳'과 같은 낱말을 쓴다.
+// 대회와 **별개**인 평소 광장. 여기에 대회 출품작까지 섞어 보이면
+// '대회 + 그 밖의 전부'처럼 읽힌다. 그래서
+// 대회 출품작은 대회 칸에서만 보이고, 등록 폼의 '등록할 곳'과 같은 낱말을 쓴다.
 export const PLAZA_OPEN = '자유 코디'
 // 대회 출품은 기기(익명 세션)당 3개까지. 진짜 방어선은 DB 트리거다(supabase/0006) — 여기 값은 화면 안내용.
 export const PLAZA_CONTEST_MAX = 3
@@ -26,7 +26,7 @@ export const PLAZA_CONTEST_MAX = 3
 export const PLAZA_CONTEST_PERIOD: string | null = '10월 1일 오후 11시 59분까지'
 // 마감 시각 — 이 순간부터 대회 **출품**이 막히고 등록할 곳에서 대회가 빠진다. **DB 가 진짜 방어선**(supabase/0011 plaza_contest_deadline)이고
 // 여기 값은 화면 안내용이다. 바꿀 땐 둘 다 바꾼다.
-// 좋아요는 마감 뒤에도 누를 수 있다(2026-10-02, supabase/0015) — 순위는 plaza_awards 로 고정돼 좋아요 수가 바뀌어도 맨 앞 순서는 그대로다.
+// 좋아요는 마감 뒤에도 누를 수 있다(supabase/0015) — 순위는 plaza_awards 로 고정돼 좋아요 수가 바뀌어도 맨 앞 순서는 그대로다.
 export const PLAZA_CONTEST_DEADLINE = Date.parse('2026-10-02T00:00:00+09:00')
 export const plazaContestClosed = () => Date.now() >= PLAZA_CONTEST_DEADLINE
 export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
@@ -221,7 +221,7 @@ async function loadRows(onFirst?: (rows: Row[]) => void): Promise<Row[] | null> 
   } catch { return null }
 }
 
-// 광장을 **열어 둔 사이에** 남이 올리거나 내린 글을 몇 초 안에 보여 준다(2026-09-21 사용자 제보 — 남의 새 글이 안 보였다).
+// 광장을 **열어 둔 사이에** 남이 올리거나 내린 글을 몇 초 안에 보여 준다.
 // 목록 전체를 다시 받지 않고 **첫 쪽(최신 500개)만** 본다. 엣지 캐시(s-maxage 10)에 걸려 대개 DB 까지 가지 않는다.
 // covers = 첫 쪽이 전체를 담고 있는가 — 담고 있으면 이 응답만으로 '내려간 글'도 가려낼 수 있다.
 export async function loadPlazaHead(): Promise<{ posts: PlazaPost[]; covers: boolean } | null> {
@@ -243,7 +243,7 @@ export async function loadPlaza(onFirst?: (posts: PlazaPost[]) => void): Promise
   const c = sb()
   if (!c) return []
   // 목록은 로그인과 **무관**하다(공개 읽기). 익명 세션을 기다렸다가 받기 시작하면 왕복이 한 번 더 늘어
-  // 광장 탭만 유독 늦게 뜬다 — 둘을 동시에 시작한다(2026-09-20).
+  // 광장 탭만 유독 늦게 뜬다 — 둘을 동시에 시작한다.
   const meP = plazaAuth().then((u) => (u ? plazaMe() : null)).catch(() => null)
   const rowsP = loadRows(onFirst && ((rows) => {
     // 좋아요 표시는 내 상태가 오면 채운다(먼저 온 쪽을 붙잡지 않는다 — 대개 이미 와 있다).
@@ -254,7 +254,7 @@ export async function loadPlaza(onFirst?: (posts: PlazaPost[]) => void): Promise
   const [cached, me] = await Promise.all([rowsP, meP])
   const liked0 = new Set<string>(me?.liked || [])
   if (cached) return cached.map((r) => toPost(r, uid, liked0))
-  // ISR 라우트가 없거나 실패하면 예전처럼 직접 읽는다(로컬·장애 대비).
+  // ISR 라우트가 없거나 실패하면 Supabase 에서 직접 읽는다(로컬·장애 대비).
   const rows: Row[] = []
   for (let from = 0; ; from += PAGE_ROWS) {
     const res = await c.from('plaza_posts').select('*,plaza_awards(kind,seq)').order('created_at', { ascending: false }).order('id').range(from, from + PAGE_ROWS - 1)
@@ -276,7 +276,6 @@ export async function plazaMe(): Promise<{ liked: string[]; contest: number } | 
   meCache = data as { liked: string[]; contest: number }
   return meCache
 }
-export const plazaMyContest = () => meCache?.contest ?? 0
 // 보이는 글들의 좋아요 수만 새로 받는다(목록 캐시와 별개 — 남이 누른 좋아요를 몇 초 안에 보이게).
 // 화면에 있는 카드·열린 상세만 묻기 때문에 응답이 작다(18개 ≈ 1KB).
 export async function loadLikeCounts(ids: string[]): Promise<Map<string, number>> {
@@ -396,7 +395,7 @@ const toComment = (r: CRow, uid: string | null, post: PlazaPost): PlazaComment =
 // 익명 uid 를 해시해 메이플다운 이름을 고정으로 뽑는다 — 같은 사람은 어느 글에서나 같은 이름이고,
 // 이름에서 uid 를 되짚을 수는 없다. 낱말 조합이 1,600 가지라 드물게 겹치는데,
 // 그때만 화면에서 짧은 꼬리표를 붙인다(plazaAliasTag) — 평소에는 이름만 깔끔하게 보인다.
-// 이름 = 수식어 + 메이플 캐릭터(2026-09-21 개편 — 사용자 지적: '몽글한 메이플잎' 은 단어가 어색하다).
+// 이름 = 수식어 + 메이플 캐릭터.
 //  · 명사는 **실제 메이플 몬스터·캐릭터만**. 과자·날씨 같은 일반 명사는 뺐다.
 //  · 수식어는 절반은 담백한 성격 형용사, 절반은 **메이플 지명**('커닝시티의 루팡'). 달달한 신조어('몽글한')는 쓰지 않는다.
 //  ⚠️ 목록을 바꾸면 모든 사람의 이름이 바뀐다(uid → 해시 → 인덱스). 순서·길이를 함부로 건드리지 않는다.
@@ -456,14 +455,14 @@ export async function deleteComment(comment: PlazaComment): Promise<void> {
   if (error) throw error
 }
 
-// ── 화면용 거르기·정렬(핸드오프 규칙: 이름·설명·태그 검색, 앞의 # 무시) ──
+// ── 화면용 거르기·정렬(이름·설명·태그 검색, 앞의 # 무시) ──
 export function plazaView(posts: PlazaPost[], filter: PlazaFilter, query: string, sort: PlazaSort): PlazaPost[] {
   let out = posts
   if (filter === 'all') out = out.filter((p) => !p.contest)   // 대회 출품작은 대회 칸에서만 본다
   else if (filter === 'contest') out = out.filter((p) => p.contest)
   else if (filter === 'mine') out = out.filter((p) => p.mine)
   else if (filter === 'liked') out = out.filter((p) => p.liked)
-  // 이름·설명·태그를 코디 탭과 **같은 매처**로 찾는다(2026-09-21 사용자 지시) — lib/nameSearch:
+  // 이름·설명·태그를 코디 탭과 **같은 매처**로 찾는다 — lib/nameSearch:
   //  · 공백 무시("시로 코" ↔ "시로코")
   //  · 한/영 자판 무관: 영문 자판으로 친 "tlfhzh" 가 "시로코" 에 걸린다(en2ko).
   //  · 조합 중인 마지막 글자도 걸린다("시로ㅋ" → "시로코") → 타이핑 도중에도 결과가 끊기지 않는다.
@@ -475,7 +474,7 @@ export function plazaView(posts: PlazaPost[], filter: PlazaFilter, query: string
     : (a: PlazaPost, b: PlazaPost) => b.likes - a.likes || b.createdAt.localeCompare(a.createdAt)
   return plazaPin(out.slice().sort(by), filter)
 }
-// 대회 칸에서는 수상작이 **어떤 정렬·검색에서도** 맨 앞에 수상 순서대로 온다(2026-10-02 사용자 지시). 나머지는 받은 순서 그대로.
+// 대회 칸에서는 수상작이 **어떤 정렬·검색에서도** 맨 앞에 수상 순서대로 온다. 나머지는 받은 순서 그대로.
 // 다른 칸(내 등록·찜한 코디)은 건드리지 않는다 — 배지만 보인다.
 export function plazaPin(list: PlazaPost[], filter: PlazaFilter): PlazaPost[] {
   if (filter !== 'contest' || !list.some((p) => p.award)) return list
@@ -503,7 +502,7 @@ export function plazaWhen(iso: string): string {
 // 댓글로 신고·건의를 받는다. 한 쪽에 20개, 최신이 위. 운영자 uid(plaza_admins)의 댓글은 '운영자'로 보인다.
 export type PlazaNotice = { id: string; createdAt: string; title: string; body: string; pinned: boolean }
 // replies = 그 건의글에 달린 **운영자 답변**. 앱에서는 아무도 달 수 없고(supabase/0013 정책) 운영자가
-// DB 에서 직접 남긴다 — 그래서 답변은 곧 운영자 글이다(따로 권한 표를 두지 않는다, 2026-09-22 사용자 판단).
+// DB 에서 직접 남긴다 — 그래서 답변은 곧 운영자 글이다(따로 권한 표를 두지 않는다).
 export type NoticeComment = { id: string; owner: string; body: string; createdAt: string; mine: boolean; admin: boolean; replies?: NoticeComment[] }
 export const NOTICE_PAGE = 20
 export async function loadNotices(): Promise<PlazaNotice[]> {
