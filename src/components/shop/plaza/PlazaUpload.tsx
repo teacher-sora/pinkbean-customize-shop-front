@@ -1,8 +1,8 @@
 'use client'
 
-// 내 코디 등록 — PC·절반·태블릿은 오른쪽 컬럼에 상주, 모바일은 목록 자리에서 바뀐다(핸드오프 §3).
+// 내 코디 등록 — PC·절반·태블릿은 오른쪽 컬럼에 상주, 모바일은 목록 자리에서 바뀐다.
 // 순서: 올릴 프리셋(3열 팝오버) → 미리보기 → 이름* → 설명 → 태그(최대 10) → 이미지(자유=선택 · 대회=필수*) → 등록할 곳*(위로 펼침) → (대회) 이메일 → 등록.
-// 대회는 **열려 있는 동안에만** 등록할 곳에 나온다(2026-10-02 사용자 지시 — 마감 뒤에는 선택지에서 뺀다). 다음 대회를 열면 다시 나온다.
+// 대회는 **열려 있는 동안에만** 등록할 곳에 나온다(마감 뒤에는 선택지에서 뺀다). 다음 대회를 열면 다시 나온다.
 // 필수값이 비면 등록 버튼은 비활성(연한 핑크). `*` 는 라벨에만 붙이고 placeholder 에는 넣지 않는다.
 
 import clsx from 'clsx'
@@ -27,7 +27,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const narrow = isNarrow(s.bp)
   const [presetId, setPresetId] = useState(s.selectedPreset ?? s.presets[0]?.id ?? '')
-  // 새로고침하면 저장된 '보던 프리셋'이 복원되기 **전에** 이 폼이 먼저 뜬다 → 첫 프리셋이 잡혀 있었다(2026-09-21 사용자 제보).
+  // 새로고침하면 저장된 '보던 프리셋'이 복원되기 **전에** 이 폼이 먼저 뜬다 → 그대로 두면 첫 프리셋이 잡힌다.
   // 아직 직접 고르지 않았다면 복원된 선택을 따라간다. 한 번이라도 고르면 그 선택을 지킨다.
   const chose = useRef(false)
   useEffect(() => {
@@ -70,12 +70,11 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   // 마감 뒤에는 대회로 올릴 길이 없다 — 대회 칸을 보고 있어도 자유 코디로 올라간다.
   const contestOpen = !plazaContestClosed()
   const contest = contestOpen && (scope ?? (s.plazaFilter === 'contest' ? 'contest' : 'all')) === 'contest'
-  // **직접 꾸민 프리셋만** 보여준다(기본 코디 그대로인 칸은 올릴 게 없다 — 사용자 지시 2026-09-21).
+  // **직접 꾸민 프리셋만** 보여준다(기본 코디 그대로인 칸은 올릴 게 없다).
   // 선택된 칸은 자동저장 전이라도 지금 화면의 코디로 판단한다.
   const snapOf = (id: string): Snapshot | null => (id === s.selectedPreset ? s.snapshot() : s.presetData[id] ?? null)
   const options = useMemo(
     () => s.presets.filter((p) => { const sn = snapOf(p.id); return !!sn && isCustomSnapshot(sn) }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [s.presets, s.presetData, s.selectedPreset, s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos],
   )
   const current = options.find((p) => p.id === presetId) || options[0] || null
@@ -92,7 +91,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   }, [mineCount, s.plazaPosts.length])
   const contestLeft = Math.max(0, PLAZA_CONTEST_MAX - myContest)
   const contestFull = contest && contestLeft === 0
-  // 자유 코디로 둔 채 대회에 나간 줄 아는 사람이 있다(2026-09-22 사용자 지시). 대회 기간에만,
+  // 자유 코디로 둔 채 대회에 나간 줄 아는 사람이 있다. 대회 기간에만,
   // 아직 올릴 칸이 남았을 때만 '대회로 바꿔야 한다'고 한 줄 덧붙인다(마감 뒤·3개 다 쓴 뒤엔 오히려 헷갈린다).
   const nudgeContest = !contest && contestOpen && contestLeft > 0
   // 대회는 **같은 조합을 한 번만** 받는다(선점). 착용·피부가 같은 출품작만 DB 에서 받아(contestCandidates — 수만 개여도 몇 개)
@@ -112,7 +111,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const [taken, setTaken] = useState<{ name: string } | null>(null)
   const [checking, setChecking] = useState(false)
   // ⚠️ 지금 고른 프리셋은 snapOf 가 렌더마다 **새 객체**(s.snapshot())를 만든다 → snap 을 그대로 의존하면
-  //    확인이 끝나 상태가 바뀔 때마다 다시 확인이 돌아 화면이 멈췄다(2026-09-21). 조합이 실제로 바뀔 때만(정규화 문자열) 다시 본다.
+  //    확인이 끝나 상태가 바뀔 때마다 다시 확인이 돌아 화면이 멈춘다. 조합이 실제로 바뀔 때만(정규화 문자열) 다시 본다.
   const snapRef = useRef(snap)
   snapRef.current = snap
   const lookSig = snap ? JSON.stringify(normLook(snap)) : ''
@@ -134,10 +133,9 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
         .finally(() => { if (alive) setChecking(false) })
     }, 200)
     return () => { alive = false; clearTimeout(t) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contest, lookSig, contestSig, findTaken])
-  // 대회 출품은 **원본 그림이 필수**다(2026-09-24 사용자 지시 — 무엇을 따라 한 코디인지 알 수 없다는 댓글).
-  // 자유 코디는 종전대로 선택. 이미 올라간 출품작에는 소급하지 않는다.
+  // 대회 출품은 **원본 그림이 필수**다(무엇을 따라 한 코디인지 알 수 없다는 댓글).
+  // 자유 코디는 선택. 이미 올라간 출품작에는 소급하지 않는다.
   const needImage = contest && !image
   const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !needImage && !contestFull && !taken && !checking && !s.plazaSubmitting && !shrinking
 
@@ -236,7 +234,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
       {/* 태그 */}
       <div>
         <div className={styles.label}>태그</div>
-        {/* 입력칸 옆 '추가' — Enter 를 몰라도(모바일 키보드) 눌러서 단다(2026-09-21 사용자 지시).
+        {/* 입력칸 옆 '추가' — Enter 를 몰라도(모바일 키보드) 눌러서 단다.
             AI 코디 검색(입력 + 옆 솔리드 버튼)과 같은 모양: 안에 끼운 26px 버튼보다 누르기 쉽고 글자 자리도 넓다.
             누를 때 입력칸 포커스를 뺏지 않아 모바일 키보드가 내려가지 않고 이어서 칠 수 있다. */}
         <div className={styles.tagField}>
@@ -261,7 +259,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
       <div>
         <div className={styles.label}>이미지 {contest && <span className={styles.star}>*</span>}</div>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; if (f) void pickImage(f) }} />
-        {/* 칸은 고르기 전부터 편집기 크기 그대로 잡아 둔다 — 이미지를 넣어도 아래 요소가 밀리지 않는다(2026-09-21).
+        {/* 칸은 고르기 전부터 편집기 크기 그대로 잡아 둔다 — 이미지를 넣어도 아래 요소가 밀리지 않는다.
             이미지를 고르면 끌고 확대해 **처음 보일 부분**을 가운데 정사각형 점선에 맞춘다(원본은 자르지 않는다).
             아래 줄도 늘 자리를 차지하고, 이미지가 없을 땐 보이지만 않는다. */}
         {imageUrl ? (
@@ -322,7 +320,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
     </div>
   )
 
-  // 모바일은 목록 자리에서 폼으로 바뀌므로, 닫기도 폼 안에 있어야 한다(위쪽 '닫기'만으로는 멀다 — 사용자 지시).
+  // 모바일은 목록 자리에서 폼으로 바뀌므로, 닫기도 폼 안에 있어야 한다(위쪽 '닫기'만으로는 멀다).
   // PC 는 오른쪽에 상주하는 컬럼이라 닫을 대상이 없어 등록만 둔다.
   if (mobile) return (
     <>

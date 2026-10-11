@@ -41,7 +41,7 @@ export function spread(n: number, lo: number, hi: number): number[] {
 }
 
 // WebGL 을 못 쓰는 기기에서: 지나가는 것들(구름 · 열기구 · 헬리콥터 · 걷는 이)을 움직이지 않는 그림으로 놓는다.
-// 멈춘 채로 놓을 때 몇 개를 놓을지: 보이는 폭이 좁으면 덜 놓는다(좁은 화면에 다 놓으면 붐빈다 — 사용자 제안).
+// 멈춘 채로 놓을 때 몇 개를 놓을지: 보이는 폭이 좁으면 덜 놓는다(좁은 화면에 다 놓으면 붐빈다).
 // 하늘의 것(열기구 · 헬리콥터)과 걷는 이 모두 300px 에 하나꼴, 적어도 둘. 폭 1800 이상이면 전부 놓인다.
 export const stillCount = (total: number, width: number) => Math.min(total, Math.max(2, Math.floor(width / 300)))
 // 0..n-1 가운데 keep 개를 아무렇게나 고른다.

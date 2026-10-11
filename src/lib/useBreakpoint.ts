@@ -5,9 +5,9 @@ import { useEffect, useLayoutEffect, useState } from 'react'
 // SSR 에선 useLayoutEffect 가 경고 → 클라이언트에서만 layout effect 사용(페인트 전 보정용).
 const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
-// 레이아웃 모드(핸드오프 v2): 화면 폭 + 입력 기기로 분기한다.
+// 레이아웃 모드: 화면 폭 + 입력 기기로 분기한다.
 //   모바일 ≤ 520px · PC ≥ 1200px · 그 사이 = 절반(마우스, 창을 절반만 쓸 때) / 태블릿(터치 기기)
-//   v2 에서 태블릿은 pb-touch 모드(터치 전용)라, 마우스 기기의 1920 모니터 절반 창(≈960px)은 '절반'이다.
+//   태블릿은 터치 기기 전용이다 — 마우스 기기의 1920 모니터 절반 창(≈960px)은 '절반'이다.
 // ⚠️ hover/터치 UI 는 폭이 아니라 기기 입력((hover:hover) and (pointer:fine))으로 CSS 가 분기한다.
 export type Breakpoint = 'pc' | 'half' | 'tablet' | 'mobile'
 
@@ -47,5 +47,5 @@ export function useBreakpoint(): Breakpoint {
 
 // 세로 적층(모바일) 레이아웃 여부. 절반·태블릿은 PC 와 같은 2분할이다.
 export const isStacked = (bp: Breakpoint) => bp === 'mobile'
-// 2분할 좁은 모드(절반·태블릿) — v2 의 narrow.
+// 2분할 좁은 모드(절반·태블릿).
 export const isNarrow = (bp: Breakpoint) => bp === 'half' || bp === 'tablet'

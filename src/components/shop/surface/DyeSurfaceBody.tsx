@@ -1,12 +1,11 @@
 'use client'
 
 // 염색 서피스 본문.
-//  · 헤어·성형(mix) = **색상 A · 색상 B · 그 둘 사이의 비율**. 그 외 아이템의 HSB 와는 다른 체계다
-//    (2026-09-21 사용자 지시 — "헤어와 성형 염색은 두 색을 고르고 비율만 조절하는 게 전부"다).
+//  · 헤어·성형(mix) = **색상 A · 색상 B · 그 둘 사이의 비율**. 그 외 아이템의 HSB 와는 다른 체계다.
 //    8×8 염색표는 '염색표 보기'로 같은 다이얼로그 안에서 가로 슬라이드로 오간다(크기가 같아 내용만 움직인다).
 //    표의 한 칸을 고르면 그 두 색이 1:1 로 들어오며 곧바로 조절 화면으로 돌아온다.
 //  · 그 외 = HSB(미리보기 + 색상 계열 + 색조·채도·명도).
-// 적용 = 보던 아이템 착용 + 염색 커밋(v2 dlgApply). 카드의 염색 버튼 자체는 착용을 바꾸지 않는다.
+// 적용 = 보던 아이템 착용 + 염색 커밋. 카드의 염색 버튼 자체는 착용을 바꾸지 않는다.
 
 import clsx from 'clsx'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -30,7 +29,7 @@ const NO_HSB: HsbParams = { h: 0, s: 0, b: 0, t: 0 } // 헤어·성형은 HSB �
 const DEF_PAL = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 }) // 코디 정보 탭과 같은 기본값
 
 // 표시 영역 크기 측정(미리보기 캔버스 박스).
-// ⚠️ **콜백 ref** 여야 한다(2026-09-21 사용자 제보 — 염색표에 갔다 오면 미리보기가 빈 칸이 됐다).
+// ⚠️ **콜백 ref** 여야 한다(아니면 염색표에 갔다 오면 미리보기가 빈 칸이 된다).
 //  · 화면이 바뀌면(염색표 ↔ 색 조절) 상자 DOM 자체가 갈린다. useEffect([]) 로 한 번만 붙이면
 //    ① 상자가 빠질 때 ResizeObserver 가 **크기 0** 을 보고해 box 가 0 이 되고,
 //    ② 돌아와 새 상자가 생겨도 다시 재지 않아 0 인 채로 굳는다 → DyeModelPreview 가 그리기를 멈춘다.
@@ -101,7 +100,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   const setBase = (i: number) => edit((c) => ({ baseColor: i, mixColor: c.mixColor ?? c.baseColor, ratio: c.ratio }))
   const setMixC = (i: number) => edit((c) => ({ ...c, mixColor: i }))
   const setRatio = (fn: (cur: number) => number) => edit((c) => ({ ...c, ratio: Math.max(0, Math.min(100, fn(c.ratio))) }))
-  // 저장 값: A=B 면 단색(mixColor=null)으로 남긴다 — 예전 염색표 선택과 같은 모양이라 대회 중복 판정도 그대로다.
+  // 저장 값: A=B 면 단색(mixColor=null)으로 남긴다 — 염색표에서 한 색을 고른 것과 같은 모양이라 대회 중복 판정도 그대로다.
   const commit: PaletteParams = { baseColor: pal.baseColor, mixColor: bIdx === pal.baseColor ? null : bIdx, ratio: pal.ratio }
   const apply = () => {
     s.equipItem(item)
@@ -136,7 +135,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
         onStep={(d) => { setRaw(null); setRatio((cur) => cur + d) }}
         decOff={pal.ratio <= 0} incOff={pal.ratio >= 100} />} />
   )
-  // 버튼 줄은 **일반 아이템(HSB)과 같은 모양**이다(2026-09-23 사용자 지시) — 염색표 보기까지 한 줄에 양끝 정렬.
+  // 버튼 줄은 **일반 아이템(HSB)과 같은 모양**이다 — 염색표 보기까지 한 줄에 양끝 정렬.
   const actsRow = (big: boolean) => (
     <div className={styles.resetRow}>
       <button type="button" onClick={() => go('table', 1)} title="염색표에서 두 색 고르기"
@@ -246,7 +245,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
     )
   })
   const pvHsb = off ? { h: 0, s: 0, b: 0, t: hsb.t ?? 0 } : hsb
-  // '테두리 포함'과 같은 체크 네모를 단다 — 켜짐/꺼짐이 한눈에 읽히도록(2026-09-23 사용자 지시).
+  // '테두리 포함'과 같은 체크 네모를 단다 — 켜짐/꺼짐이 한눈에 읽히도록.
   const offBtn = (big: boolean) => (
     <button type="button" onClick={() => setOff((v) => !v)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
       className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), styles.tickBtn, off && styles.offOn)}>
@@ -256,8 +255,8 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   const families = <FamilyDots size="lgMin" value={hsb.t ?? 0} onPick={(t) => setHsb((h) => ({ ...h, t }))} />
   // 테두리(순수 검정) 포함 — 명도로만, 회색으로만 바뀐다(lib/core/dye 설명). 그래서 명도가 0 이하면 눌러도
   // 보이는 변화가 없어, 그때만 이유를 알려 준다(버튼은 그대로 눌린다 — 값은 저장돼야 하므로).
-  // 자리는 '염색 비활성화 · 염색 초기화'와 **같은 줄**이다(2026-09-23 사용자 지시 — 염색 설정 버튼은 한 줄에 모은다).
-  // 단 **커스텀 피부는 제외**한다(같은 날 지시 — 피부에는 이 테두리가 있어선 안 된다). 줄도 예전처럼 오른쪽 정렬이다.
+  // 자리는 '염색 비활성화 · 염색 초기화'와 **같은 줄**이다(염색 설정 버튼은 한 줄에 모은다).
+  // 단 **커스텀 피부는 제외**한다(피부에는 이 테두리가 있어선 안 된다). 그때는 줄을 오른쪽 정렬로 둔다.
   const isSkin = slot === 'skin'
   const edgeOn = !!hsb.edge
   const edgeBtn = (big: boolean) => (

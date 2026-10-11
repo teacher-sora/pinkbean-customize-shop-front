@@ -10,7 +10,8 @@
 - `render.ts` — 조립 결과를 캔버스에 그리기, 이펙트.
 - `modelPlacement.ts` — 칸에 맞춘 정수 배율과 캔버스 크기(`computeModelPlacement`·`canvasBitmap`·`fitCanvas`).
 - `snapRender.ts` — 스냅샷(저장된 코디) 한 장을 합성한다. 프리셋·광장·상세·공유 카드가 함께 쓰고, 결과를 캐시한다.
-- `thumbEffects.ts` · `warm.ts` · `slots.ts` · `lru.ts` — 썸네일 이펙트, 미리 받기, 부위 표, 캐시.
+- `thumbEffects.ts` · `warm.ts` · `lru.ts` — 썸네일 이펙트, 미리 받기, 캐시.
+- `slots.ts` — 한 아이템이 여러 자리를 차지할 때 함께 벗겨야 하는 부위(`conflictSlots`).
 
 ## 지킬 것
 - 캔버스는 **정수 배율만**(소수 배율은 도트를 뭉갠다). 크기·정렬은 `modelPlacement` 의 함수를 쓴다.

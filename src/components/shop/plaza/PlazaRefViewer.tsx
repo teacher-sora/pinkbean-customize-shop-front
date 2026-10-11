@@ -1,11 +1,11 @@
 'use client'
 
-// 참고 이미지 보기 · 첫 화면 고르기 — 확대·이동이 되는 칸(2026-09-21 사용자 지시).
+// 참고 이미지 보기 · 첫 화면 고르기 — 확대·이동이 되는 칸.
 //  · 보기(상세): 올린 사람이 고른 **첫 화면(initial)** 에서 시작한다. 없으면 가로형은 높이, 세로형은 너비에 맞춘다.
 //    PC 는 휠로 확대·축소(커서 지점 기준), 끌어서 이동 / 모바일은 두 손가락 확대, 한 손가락 이동.
 //    축소는 그림 전체가 보이는 크기(contain)까지. 두 번 누르거나 '원래대로' 로 첫 화면에 돌아간다.
 //  · 편집(등록 폼, edit): 같은 조작으로 첫 화면을 고른다. 칸 가운데의 **정사각형 점선**이 상세에서 처음 보일 범위다.
-//    상세의 참고 이미지 칸은 PC·모바일 모두 정사각형이라 이 범위가 그대로 보인다(2026-09-21 사용자 지시).
+//    상세의 참고 이미지 칸은 PC·모바일 모두 정사각형이라 이 범위가 그대로 보인다.
 //    점선 안은 항상 그림으로 채워진다(그보다 작게 줄이거나 밖으로 밀 수 없다).
 //    원본은 자르지 않는다 — 고른 건 '처음 보일 자리'일 뿐, 보는 사람은 여전히 확대·이동할 수 있다.
 // 첫 화면은 칸 크기와 무관한 값(RefView: 칸 가운데에 올 그림 위 점 + 정사각형 cover 대비 배율)으로 저장한다.
@@ -83,7 +83,6 @@ export default function PlazaRefViewer({ src, initial, edit, onChange }: {
     if (first) setV(edit ? toView(initial) : home())
     else if (edit) setV((cur) => clamp(cur))
     else setV(home())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, src, box.w, box.h])
 
   // 편집 모드: 고른 첫 화면을 바깥으로 알린다.
@@ -91,7 +90,6 @@ export default function PlazaRefViewer({ src, initial, edit, onChange }: {
     if (!edit || !ready || !onChange) return
     const r = fromView(v)
     if (r) onChange(r)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edit, ready, v.z, v.x, v.y])
 
   // 한 점(칸 중심 기준 px)을 고정한 채 배율을 바꾼다.

@@ -1,8 +1,8 @@
 'use client'
 
-// 북마크 VS(코디 비교, delta §4). 왼쪽 = 현재 코디, 오른쪽 = 고른 북마크 아이템들을 끼운 코디(ShopContext.swapSnapshot).
+// 북마크 VS(코디 비교). 왼쪽 = 현재 코디, 오른쪽 = 고른 북마크 아이템들을 끼운 코디(ShopContext.swapSnapshot).
 // 칩은 여러 개를 함께 고를 수 있고(부위가 겹치면 서로 밀어냄), 열었을 때는 아무것도 고르지 않은 상태다.
-// 두 칸은 미리보기와 같은 배경(center 78% + 톤) 위에 SnapThumb 으로 실제 캔버스를 그린다(delta 의 점선 목업 자리).
+// 두 칸은 미리보기와 같은 배경(center 78% + 톤) 위에 SnapThumb 으로 실제 캔버스를 그린다.
 //  - PC: 코디 비교 다이얼로그 본문(VsBody) — 비교 행 + '비교할 북마크 아이템' 칩 줄(8열), 푸터는 닫기만.
 //  - 모바일: 북마크 시트 안에서 VsPanes 만 확장 영역(고정 236px)에 쓴다(PreviewParts.BookmarkSheetBody).
 
@@ -53,10 +53,10 @@ export function useVsPicked(): ListItem[] {
 export function VsPanes({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const picked = useVsPicked()
-  const cur = useMemo(() => s.snapshot(), // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cur = useMemo(() => s.snapshot(),
     [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos, s.dyeOff, s.pv])
   const pickKey = picked.map((p) => p.id).join(',')
-  const swapped = useMemo(() => s.swapSnapshot(picked), // eslint-disable-next-line react-hooks/exhaustive-deps
+  const swapped = useMemo(() => s.swapSnapshot(picked),
     [pickKey, cur])
   return (
     <div className={clsx(styles.vsRow, mobile && styles.vsRowM)}>

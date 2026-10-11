@@ -4,7 +4,7 @@
 import type { AssembleInput, ViewOpts } from '@/lib/core/assemble'
 import type { AnimaRace, ListItem, SlotSummary } from '@/lib/core/data'
 
-// 시각적 중복 폴딩(HANDOFF.md / 프로토타입 규칙):
+// 시각적 중복 폴딩:
 //  - 헤어/성형(colorGroup 있음): 그룹당 1개, 대표 = 그룹 내 최저 id(= 검정 color 0). 나머지 색은
 //    CDN에서 안 받고, 웹의 "염색" 기능이 유저 설정으로 색을 계산한다.
 //  - 장비(colorGroup 없음): 이름당 1개(남/여·재출시 동명·동일외형 중복 제거), 대표 = 최저 id.
@@ -27,12 +27,12 @@ export function foldList(l: ListItem[]): ListItem[] {
   return out
 }
 
-// 디자인 부위 id → 실제 WZ slot (prototype SLOT_ORDER). skin 은 특수(톤).
+// 화면의 부위 id(CATS) → 실제 WZ slot. skin 은 특수(톤).
 export const CAT_TO_SLOT: Record<string, string> = {
   hair: 'hair', plastic: 'face', skin: 'skin', cap: 'cap', faceacc: 'faceAcc',
   eyeacc: 'eyeAcc', earring: 'earring', overall: 'longcoat', top: 'coat', bottom: 'pants',
   shoes: 'shoes', gloves: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
-  riding: 'riding', // [dev]
+  riding: 'riding',
 }
 export const SLOT_TO_CAT: Record<string, string> = Object.fromEntries(
   Object.entries(CAT_TO_SLOT).map(([c, s]) => [s, c]),
@@ -41,17 +41,17 @@ export const SLOT_TO_CAT: Record<string, string> = Object.fromEntries(
 export const EQUIP_SLOTS = [
   'hair', 'face', 'cap', 'faceAcc', 'eyeAcc', 'earring',
   'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape', 'weapon', 'shield',
-  'riding', // [dev] 탑승 — 마운트/모프 레이어를 코디처럼 합성
+  'riding', // 탑승 — 마운트/모프 레이어를 코디처럼 합성
 ] as const
 
-/* ── [dev] 라이딩(탑승) 공통 규칙 ───────────────────────────────────────────────
- * 라이딩만 **두 가지가 다르다**. 그 둘을 각자 알아서 처리하다 2026-09-29 제보로 두 번 어긋났다.
+/* ── 라이딩(탑승) 공통 규칙 ───────────────────────────────────────────────
+ * 라이딩만 **두 가지가 다르다**.
  *  1) 목록·메타가 CDN 카탈로그(index.slots) 밖, 프론트 public 에 있다 → 슬롯 파일을 따로 골라야 한다.
- *     예전엔 **부위 탭(ensureSlot)만** 이 규칙을 알고 스냅샷 복원(loadSlotRaw)은 몰랐다. 그래서 프리셋을
- *     다시 고르거나 광장 코디를 가져오면 라이딩만 빈 목록에서 조회돼 조용히 사라졌다(그 상태가 자동저장까지 됐다).
+ *     부위 탭(ensureSlot)뿐 아니라 스냅샷 복원(loadSlotRaw)도 이 규칙을 써야 한다. 아니면 프리셋을
+ *     다시 고르거나 광장 코디를 가져오면 라이딩만 빈 목록에서 조회돼 조용히 사라진다(그 상태가 자동저장까지 된다).
  *  2) 캐릭터가 **앉는다**. 앉는 액션·정렬 기준은 아이템마다 다르다(riding.json).
- *     예전엔 미리보기(PreviewModel)와 부위 카드(ItemThumb)만 알고, 스냅샷 합성기(core/snapRender)는 몰랐다.
- *     그래서 프리셋·광장 카드만 선 채로 탑승한 그림이 나왔다.
+ *     미리보기(PreviewModel)·부위 카드(ItemThumb)뿐 아니라 스냅샷 합성기(core/snapRender)도 알아야 한다.
+ *     아니면 프리셋·광장 카드만 선 채로 탑승한 그림이 나온다.
  *  → 두 규칙을 여기 한곳에 둔다. 라이딩을 그리는 곳은 반드시 이 헬퍼를 쓴다. */
 export const RIDING_FILE = '/riding/riding.json'
 export const RIDING_ACTIONS_DEFAULT = new Set(['basic', 'walk', 'jump', 'ladder', 'rope', 'shoot2']) // 재규어 기준
@@ -65,7 +65,7 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
 
 // 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아
 // 스프라이트는 div overflow 로만 잘린다. 모델(마네킹) 높이 = fraction × divH 로 장비·카드크기 무관 일정.
-// 우측 미리보기 배율(연출 설정 1x/2x/3x)은 fraction 에 곱하는 "월드 배율"(예전 CSS transform 방식 대체).
+// 우측 미리보기 배율(연출 설정 1x/2x/3x)은 fraction 에 곱하는 "월드 배율".
 export const ZOOM_WORLD: Record<number, number> = { 1: 0.7, 2: 1.0, 3: 1.4 }
 export const PREVIEW_FRACTION = 0.25 // 우측 미리보기 기준 마네킹 높이 비율(× ZOOM_WORLD; 기본 2x=×1.0 → 실효 0.25)
 // 모바일은 미리보기 영역이 "낮고 넓다"(세로 스택). PC와 같은 0.25 를 쓰면 200px 높이의 25% = 50px 로
@@ -116,21 +116,21 @@ export function fixedExpr(items: readonly (ListItem | null | undefined)[], fallb
 // 표정 고정 아이템은 **베이스 모델('model')에 올려도 아무것도 안 보인다** — 아이템 그림이 투명이고,
 // 베이스 마네킹에는 바뀔 성형(얼굴)이 없기 때문이다. 그래서 '모델' 모드는 **'내 모델'로 승격**한다
 // (사용자의 성형이 있어야 표정 변화가 보인다). '내 모델'/'썸네일'은 그대로 둔다.
-// (호출부: CodiScreen / SearchScreen 의 effMode. ListMode 는 컴포넌트 쪽 타입이라 여기서 import 하지 않는다.)
+// (호출부: list/thumbCtx. ListMode 는 컴포넌트 쪽 타입이라 여기서 import 하지 않는다.)
 export const forceMyModel = (mode: string, it: ListItem): boolean => mode === 'model' && hasFixedExpr(it)
 
 // "컬러라인" 커스텀 피부(커스텀 뽀송/홍조 라벤더 컬러라인)만 염색 가능. 피부 부분은 무채색이고 라인만 채도색
 // 이라, 표준 HSB 를 통째로 적용해도 시각적으로 라인만 변한다(실제 메이플 방식과 동일 — 마스크 불필요). 이름 식별.
 // 염색되는 피부와 그 **기본 색 계열**(색상 계열을 고르지 않았을 때 적용할 계열).
 // 인게임처럼 '커스텀' 피부만 염색되고, 염색은 그 피부가 가진 포인트 색에만 걸린다. 계열을 직접 고르면 그 계열로 걸린다.
-// 근거 — 피부별 머리 스프라이트의 색 분포 실측(2026-09-21, 불투명 1474px 기준, 색 계열 구간은 dye.checkColorType 과 동일):
+// 근거 — 피부별 머리 스프라이트의 색 분포 실측(불투명 1474px 기준, 색 계열 구간은 dye.checkColorType 과 동일):
 //   · 뽀송·홍조 라벤더 컬러라인: 순청 (0,0,255) 252px = 파랑 17%(라인)              → 파랑(5)
 //   · 블루 팬더: (0,51,119) 등 파랑 16%(무늬)                                       → 파랑(5)
 //   · 비비드 컬러: 전부 파랑 100%                                                   → 파랑(5)
 //   · 좀비: (141,217,207) 등 청록 81%(피부 전체)                                    → 청록(4)
 //   · 삼색 냥이: (255,187,51) 등 노랑 42%(무늬)                                     → 노랑(2)
 //   · 홍조 피치: 빨강 29% 뿐 — 기본 피부(엘프 빨강 39%)와 같은 구조라 포인트 색이 없다 → 빨강(1, 피부 음영)
-// 사용자 확인(메애기 드레스룸): 비비드·블루 팬더·컬러라인 2종이 명도에 따라 변한다 = 실측대로 모두 파랑 계열이다.
+// 인게임 확인(메애기 드레스룸): 비비드·블루 팬더·컬러라인 2종이 명도에 따라 변한다 = 실측대로 모두 파랑 계열이다.
 const SKIN_DYE_FAMILY: [RegExp, number][] = [
   [/컬러라인/, 5], [/비비드/, 5], [/블루\s*팬더/, 5],
   [/좀비/, 4], [/삼색\s*냥이/, 2], [/홍조\s*피치/, 1],
@@ -153,7 +153,7 @@ export const DEFAULT_EQUIP: Record<string, ListItem> = {
 
 // 이동/자세 액션 중 **핑퐁(왕복) 재생** 대상. 서기·전투 대기처럼 '숨 쉬는' 동작은 0→…→N-1→…→0 으로 오가야
 // 자연스럽다(끝에서 처음으로 튀지 않는다).
-// ⚠️ **걷기는 뺀다**(2026-09-24 사용자 제보 — "특정 구간에서 프레임이 부자연스럽게 반복된다").
+// ⚠️ **걷기는 뺀다**.
 //    walk1/walk2 는 네 프레임(각 180ms)이 **한 바퀴 도는 걸음**이라 왕복시키면 가운데 두 프레임이 한 주기에
 //    두 번 나오고 다리가 앞뒤로 되돌아가 절뚝이는 걸음이 된다. 게임처럼 0→1→2→3→0 으로 **반복**한다.
 export const MOVE_POSTURE_ACTIONS = new Set(['basic', 'stand', 'alert', 'proneStab', 'sit', 'jump', 'fly', 'ladder', 'rope'])

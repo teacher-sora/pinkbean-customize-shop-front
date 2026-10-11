@@ -33,7 +33,7 @@ export default function PreviewColumn() {
     <section className={clsx(styles.col, s.bp === 'half' && styles.colHalf, s.bp === 'tablet' && styles.colTablet)}>
       <div className={styles.card}>
         <div className={styles.head}>
-          {/* 부위 염색(delta §3): 옛 '코디 미리보기' 제목 자리. 절반·태블릿은 아이콘만. */}
+          {/* 부위 염색. 절반·태블릿은 아이콘만. */}
           <button type="button" onClick={() => s.openSheet('part')} title="부위를 골라 염색하기" aria-label="부위 염색"
             className={clsx('pb-ghost', styles.partBtn, narrow && styles.partBtnNarrow, partOpen && styles.partBtnOn)}>
             <IconDrop size={14} />{!narrow && <span>부위 염색</span>}

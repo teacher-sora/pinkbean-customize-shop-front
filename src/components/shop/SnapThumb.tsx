@@ -26,11 +26,11 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [ov, setOv] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effects, setEffects] = useState<EffectDraw[]>([])
-  // [dev] 라이딩 카드의 가로 정렬 기준(합성기가 정해 준다) — 부위 카드(ItemThumb)·미리보기와 같은 규칙.
+  // 라이딩 카드의 가로 정렬 기준(합성기가 정해 준다) — 부위 카드(ItemThumb)·미리보기와 같은 규칙.
   const [center, setCenter] = useState<'x' | 'mount' | undefined>(undefined)
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   // 형상변이 목록은 **이미 받아 뒀으면 그 값으로 시작**한다. 빈 배열로 한 번 그린 뒤 목록이 도착해 다시 그리면
-  // 카드마다 합성이 두 번 돌았다(2026-09-22 — 광장 필터를 오갈 때 느려진 원인 중 하나).
+  // 카드마다 합성이 두 번 돈다(광장 필터를 오갈 때 느려지는 원인).
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[] | null>(animaNow)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -54,7 +54,6 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     const job = enqueueThumb(prioRef.current, () => composeSnapshotCached(key, snap, index, animaRaces, view).then(done))
     jobRef.current = job
     return () => { alive = false; job.cancel() }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, index, animaRaces, view])
   useEffect(() => { jobRef.current?.setPrio(priority) }, [priority])
 

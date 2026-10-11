@@ -1,7 +1,7 @@
 'use client'
 
-// 점 위치 서피스 본문(사소한 변경점 / 사소한 변경쩜 전용). 편집 캔버스·상호작용은 기존 로직(useDotEditor) 재활용,
-// 둘레(도구·확대 게이지·색상 계열·색조/채도/명도·초기화·푸터)는 v2 마크업.
+// 점 위치 서피스 본문(사소한 변경점 / 사소한 변경쩜 전용). 편집 캔버스·상호작용은 useDotEditor 가 맡고,
+// 둘레(도구·확대 게이지·색상 계열·색조/채도/명도·초기화·푸터)는 여기서 그린다.
 
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
@@ -89,7 +89,7 @@ export default function DotSurfaceBody({ item, mobile }: { item: ListItem; mobil
             })}
           </div>
           <div className={styles.resetRow}>
-            {/* 테두리(순수 검정) 포함 — 염색 다이얼로그와 같은 값·같은 줄(2026-09-23 사용자 지시). */}
+            {/* 테두리(순수 검정) 포함 — 염색 다이얼로그와 같은 값·같은 줄. */}
             <button type="button" onClick={ed.toggleEdge} aria-pressed={!!ed.hsb.edge}
               title={ed.hsb.b > 0 ? '검정 테두리도 함께 밝아져요' : '테두리는 명도를 올려야 밝아져요'}
               className={clsx(styles.resetBtn, styles.tickBtn, ed.hsb.edge && styles.offOn)}>

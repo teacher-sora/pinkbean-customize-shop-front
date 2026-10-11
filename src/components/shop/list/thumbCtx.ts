@@ -1,6 +1,6 @@
 'use client'
 
-// 카드 썸네일(ItemThumb) 배경 컨텍스트 — 기존 CodiScreen/SearchScreen 의 조립 로직을 그대로 옮겼다.
+// 카드 썸네일(ItemThumb) 배경 컨텍스트.
 //  · 기본 캐릭터(model) = 맨 마네킹(엘프 피부 고정) / 내 캐릭터(mymodel) = 내 착용(해당 슬롯 제외) + 염색 + 이펙트 + 형상변이·귀
 //  · 표정 얼굴장식은 맨 마네킹에 올려도 안 보여 '내 캐릭터'로 승격한다.
 
@@ -127,7 +127,6 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
       setCtx(main); setMyCtx(my)
     })
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, needMy, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.renderPalette, s.renderHsb, s.dotPos, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, ctxExpr, animaRaces, spritePromote])
 
   const ctxFor = (it: ListItem) => ((effMode(it) === 'mymodel' && mode === 'model') ? myCtx : ctx)
@@ -206,7 +205,6 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
       setCtx({ base: { items: baseItems, key }, bySlot })
     })
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.renderPalette, s.renderHsb, s.dotPos, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, s.pv.expr, animaRaces])
 
   const ctxFor = (item: ListItem): ThumbCtx => {

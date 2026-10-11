@@ -1,7 +1,7 @@
 // Canvas compositing for assembled characters. Pure client-side; once sprites
 // are preloaded, rendering (main canvas + every thumbnail) does zero network IO.
 //
-// Phase 2 (A2 + C): the character is NOT bbox-centered. Instead the body navel
+// The character is NOT bbox-centered. Instead the body navel
 // (world 0,0) is nailed to a FIXED canvas coordinate inside a fixed world box,
 // so the body never shifts when hair/hats/weapons change extent. All scaling is
 // integer (x1/x2/x3) with smoothing off and integer pixel snapping -> crisp dots.
@@ -31,15 +31,6 @@ export function loadImage(pngRel: string, cors = false): Promise<HTMLImageElemen
     imageCache.set(src, p)
   }
   return p
-}
-
-export async function preload(pngRels: string[], cors = true): Promise<void> {
-  await Promise.all(pngRels.map((r) => loadImage(r, cors).catch(() => null)))
-}
-
-export interface Tints {
-  hair?: number      // hue rotation in degrees; undefined = default color
-  longcoat?: number
 }
 
 // A single item-effect frame to composite (representative static frame). `z < 0` draws

@@ -1,6 +1,6 @@
 // 정적 카탈로그 데이터 + 공유 타입.
-// 부위/팔레트/상수는 디자인 정본 값. 연출 옵션(액션·무기모션·표정·귀·형상변이)은
-// maple test 프로토타입의 "실제 데이터"에 맞춘 값이다(아래 각 항목 주석의 소스 표기 참고).
+// 연출 옵션(액션·무기모션·표정·귀·형상변이)은
+// 게임의 실제 데이터에 맞춘 값이다(아래 각 항목 주석의 소스 표기 참고).
 
 export type Cat = { id: string; label: string }
 export type Opt = { v: string; l: string }
@@ -28,7 +28,7 @@ export const CATS: Cat[] = [
   { id: 'cape', label: '망토' },
   { id: 'weapon', label: '무기' },
   { id: 'shield', label: '방패' },
-  { id: 'riding', label: '라이딩' }, // [dev] 탑승(재규어/메탈아머) — 정적 코디 아이템, AI검색 제외
+  { id: 'riding', label: '라이딩' }, // 탑승(재규어/메탈아머) — 정적 코디 아이템, AI검색 제외
 ]
 
 // 믹스 염색 8색 팔레트
@@ -61,8 +61,8 @@ export const paletteFor = (slot?: string | null) => (slot === 'face' ? FACE_PALE
 
 /* ── 연출 설정 옵션 (실제 데이터 기준) ─────────────────────────────────────────
  * 소스 구분:
- *  - 액션/무기모션/표정/귀 = Character.wz 고유 열거형(프로토타입 web/app/page.tsx). 정적 상수 재활용.
- *  - 형상변이 = CDN anima.json(node 1~4)에서 유도된 결과. 지금은 정적, CDN 단계에서 loadAnima()로 대체.
+ *  - 액션/무기모션/표정/귀 = Character.wz 고유 열거형. 정적 상수.
+ *  - 형상변이 = CDN anima.json(node 1~4)에서 유도된 결과. 여기 목록은 정적 상수다.
  */
 
 // 무기 모션 = 캐시가 제공하는 4종. 근접 자세(stand1↔stand2)와 스윙/찌르기의 O(한손)/T(두손) 변형을 결정.
@@ -101,16 +101,14 @@ export const PV_ACTION_GROUPS: { group: string; items: Opt[] }[] = [
   },
 ]
 export const PV_ACTIONS_FLAT: Opt[] = PV_ACTION_GROUPS.flatMap((g) => g.items)
-// 'basic'(기본)만 정지 프레임 — 나머지는 애니메이션(fps 슬라이더 노출 대상).
-export const isAnimatedAction = (v: string) => v !== 'basic'
 
-// 표정 — 이름은 **표정 얼굴장식 25종의 아이템 이름 그대로** 쓴다(2026-09-23 사용자 지시).
-// 예전엔 임의로 지은 이름이 섞여 있어(미소/화남/멍함…) 아이템과 짝이 안 맞았고, '게슴츠레'(blink/2)·'감은눈'(blink/1)은
-// 아예 빠져 있었다. 또 데이터에 없는 키 6종(cheer·pers·wound·hate·rage·sad)이 남아 있어 골라도 기본 표정이 나왔다.
-// 근거(실측 2026-09-23): 성형 메타의 표정 프레임 키는 아래 27종이 표준이다(성형 40종 중 39종이 정확히 일치).
+// 표정 — 이름은 **표정 얼굴장식 25종의 아이템 이름 그대로** 쓴다.
+// 임의로 지은 이름(미소/화남/멍함…)은 아이템과 짝이 맞지 않는다. '게슴츠레'(blink/2)·'감은눈'(blink/1)도 넣고,
+// 데이터에 없는 키(cheer·pers·wound·hate·rage·sad)는 넣지 않는다 — 골라도 기본 표정이 나온다.
+// 근거(실측): 성형 메타의 표정 프레임 키는 아래 27종이 표준이다(성형 40종 중 39종이 정확히 일치).
 //   각 이름은 그 표정을 고정하는 얼굴장식(info.fixedEmotion)에서 가져왔다. 'blink'(눈깜빡)만 짝이 되는 아이템이 없다.
-// ⚠️ 순서는 **가나다순**이고 '기본'이 맨 위다(사용자 지시 — 빠르게 찾으려고). 아래 sort 가 그 규칙을 지킨다.
-// ⚠️ '눈깜빡'(blink)은 **뺐다**(2026-09-24 사용자 제보 — 골라도 아무 변화가 없다). blink 는 눈을 감았다 뜨는
+// ⚠️ 순서는 **가나다순**이고 '기본'이 맨 위다(빠르게 찾으려고). 아래 sort 가 그 규칙을 지킨다.
+// ⚠️ '눈깜빡'(blink)은 **넣지 않는다**(골라도 아무 변화가 없다). blink 는 눈을 감았다 뜨는
 //    **애니메이션**이고 우리가 쓰는 건 그 **첫 프레임(눈 뜬 얼굴)** 이라 '기본'과 그림이 같다. 실측: 성형 60종을
 //    고르게 뽑아 `default` 와 `blink` 의 png 를 해시 대조 — 60/60 완전히 같았다. 감은 얼굴은 `blink/1`(감은눈),
 //    반쯤 감은 얼굴은 `blink/2`(게슴츠레)로 이미 목록에 있다.
@@ -131,8 +129,8 @@ export const PV_EXPRS: Opt[] = [
 ]
 
 // 표정 → 그 표정을 고정하는 얼굴장식 아이템 id(01012877~01012901 25종).
-// 연출 설정에서 표정을 **아이콘으로 고르기** 위한 것이다 — 아이템 그림은 투명이지만(shopData §표정 얼굴장식)
-// **아이콘은 표정마다 다른 얼굴 그림**이라 그대로 쓸 수 있다(2026-09-24 25개 아이콘 해시 전수 대조: 모두 다름).
+// 연출 설정에서 표정을 **아이콘으로 고르기** 위한 것이다 — 아이템 그림은 투명이지만(shopData 의 표정 얼굴장식 주석)
+// **아이콘은 표정마다 다른 얼굴 그림**이라 그대로 쓸 수 있다(25개 아이콘 해시 전수 대조: 모두 다름).
 // '기본'과 '눈깜빡'은 짝이 되는 아이템이 없어 빠져 있다(그 두 칸은 이름만 보여 준다).
 export const PV_EXPR_ICONS: Record<string, string> = {
   'blink/1': '01012899', 'blink/2': '01012900', stunned: '01012882', cheers: '01012885', bowing: '01012895',
@@ -153,7 +151,6 @@ export const PV_EARS: Opt[] = [
 // 형상변이 = CDN anima.json(node 1~4) 유도 결과. 'none'=변이 없음(기본).
 // node3/4(렌)만 귀 · 머리장식 2종으로 분기 — 게임에서 둘은 **양자택일**이라 각각 Ear/HeadAcc 만 그린다(animaSpec).
 // key 는 anima node 스킴을 그대로 유지해 CDN 연동을 쉽게.
-// ⚠️ CDN 단계에서 loadAnima() 결과로 대체 예정.
 export const PV_FORMS: Opt[] = [
   { v: 'none', l: '기본' },
   { v: '1', l: '호영' },
@@ -177,6 +174,3 @@ export const PV_GAZES: Opt[] = [
 // 염색 색상 계열(Prism type 0~6). 인덱스 = HsbParams.t.
 // 넥슨 API 의 cash_item_coloring_prism.color_range 가 이 문자열과 동일하게 온다 → 그대로 indexOf 로 매핑한다.
 export const DYE_FAMILIES = ['전체 색상 계열', '빨간 색상 계열', '노란 색상 계열', '초록 색상 계열', '청록 색상 계열', '파란 색상 계열', '자주 색상 계열']
-
-export const ITEMS_PER_PAGE = 18
-export const ITEM_COUNT = 60 // 플레이스홀더. CDN 단계에서 부위별 실제 개수로 교체.

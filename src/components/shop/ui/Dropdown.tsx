@@ -1,6 +1,6 @@
 'use client'
 
-// 커스텀 드롭다운(v2 dd/ddVals) — OS select 금지. 메뉴는 버튼 위치를 재서 fixed 로 띄운다(위/아래 자동, 최대 220px).
+// 커스텀 드롭다운 — OS select 금지. 메뉴는 버튼 위치를 재서 fixed 로 띄운다(위/아래 자동, 최대 220px).
 // 바깥 누름·Esc 로 닫힘. Esc 는 캡처 단계에서 먼저 받아 시트/다이얼로그가 함께 닫히지 않게 한다.
 
 import clsx from 'clsx'

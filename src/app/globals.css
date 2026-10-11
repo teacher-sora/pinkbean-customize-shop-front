@@ -1,14 +1,13 @@
-/* 정본: maple test/handoff_v2_final/PinkbeanShop v2.dc.html <style> 이식.
-   - 디자인 확인용 요소(.pb-touch 강제 클래스, 폰 프레임)는 제외했다.
+/* 공용 스타일.
    - hover 는 전부 (hover:hover) and (pointer:fine) 안에서만 — 터치 기기에서는 hover 가 발생하지 않는다.
-   - 컴포넌트 고유 스타일은 각 *.module.css, 여기엔 v2 공용 클래스만 둔다. */
+   - 컴포넌트 고유 스타일은 각 *.module.css, 여기엔 공용 클래스만 둔다. */
 
 * { box-sizing: border-box; word-break: keep-all; }
 /* 더블탭 확대 제거(단일 탭/스크롤/스와이프는 그대로). 핀치는 viewport + NoNativeZoom 이 막는다. */
-/* 탭 하이라이트 끔 — 모바일 브라우저가 누르는 순간 요소 박스에 칠하는 회색·검은 막. 터치에는 hover 류 반응을 두지 않는다(2026-09-21 사용자 지시). */
+/* 탭 하이라이트 끔 — 모바일 브라우저가 누르는 순간 요소 박스에 칠하는 회색·검은 막. 터치에는 hover 류 반응을 두지 않는다. */
 html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
-/* PC = 100svh 고정·문서 스크롤 없음. 모바일(사용자 지시 2026-09-17) = 페이지 높이 max(100vh, 리스트 최소 높이) +
+/* PC = 100svh 고정·문서 스크롤 없음. 모바일 = 페이지 높이 max(100vh, 리스트 최소 높이) +
    **페이지(문서) 스크롤 허용** → 스크롤하면 브라우저 하단 툴바가 접힌다. 리스트 안의 세로 스크롤은 만들지 않는다. */
 html, body { margin: 0; padding: 0; height: 100%; min-height: 100svh; }
 body { font-family: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont, sans-serif; color: #2a2521; overflow: hidden; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; background: linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%); }
@@ -24,7 +23,7 @@ a { color: #ec86ac; text-decoration: none; }
 @media (hover: hover) and (pointer: fine) { a:hover { color: #d76d9a; } }
 input, select, button { font-family: inherit; color: #2a2521; }
 input, textarea, select, button { -webkit-text-fill-color: currentColor; } /* iOS 가 폼 글자색을 덮어쓰는 것 방지 */
-/* textarea 도 포함 — 빠져 있어 설명·댓글 칸만 브라우저 기본(진한 회색)으로 보였다(2026-09-21). */
+/* textarea 도 포함 — 빠지면 설명·댓글 칸만 브라우저 기본(진한 회색)으로 보인다. */
 input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 :root { color-scheme: light; }
 
@@ -56,7 +55,6 @@ button, input, select { transition: background-color .24s ease, border-color .22
   .pb-accbar:hover { background-color: #fbf0f5 !important; }
   .pb-arrow:hover:not(:disabled) { background-color: #fce9f1 !important; color: #d76d9a !important; }
   .pb-input:hover { border-color: #eeb2ce !important; }
-  .pb-row:hover { background-color: #fdf4f8 !important; border-color: #eeb2ce !important; }
   .pb-step:hover { background-color: #f7ecf1 !important; color: #d76d9a !important; }
   .pb-slotrow:hover { background: #fce9f1 !important; border-color: #eeb2ce !important; }
   .pb-partchip:hover { background: #fdf4f8 !important; border-color: #eeb2ce !important; }
@@ -67,7 +65,7 @@ button, input, select { transition: background-color .24s ease, border-color .22
 @media (hover: none), (pointer: coarse) {
   .pb-slot-x { opacity: 1; }
 }
-.pb-input:focus, .pb-select:focus { border-color: #ec86ac !important; outline: none; }
+.pb-input:focus { border-color: #ec86ac !important; outline: none; }
 .pb-presetname:focus { background: #fff !important; border-color: #ec86ac !important; color: #ec86ac !important; }
 .pb-pageinput:focus { background: #fff !important; border-color: #ec86ac !important; color: #ec86ac !important; }
 button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
@@ -83,7 +81,7 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
   .pb-ribbon:hover { filter: brightness(0.8) saturate(1.15) !important; transform: translateY(1px) !important; }
 }
 /* 단일 칸 그리드 — 칸 폭을 minmax(0,1fr) 로 묶는다. auto 면 줄바꿈 없는 긴 이름 폭만큼 칸이 늘어나 말줄임이 안 걸리고
-   옆 카드를 덮었다(2026-09-29 사용자 제보 — 광장 카드 이름). */
+   옆 카드를 덮는다(광장 카드 이름). */
 .pb-presetwrap { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; padding-top: 3px; }
 .pb-presetwrap > .pb-preset { border: 1.5px solid #eee6dc; border-radius: 12px; overflow: visible; background: #fff; display: flex; flex-direction: column; position: relative; transition: transform .18s ease, border-color .22s ease, background-color .24s ease; }
 @media (hover: hover) and (pointer: fine) {
@@ -173,14 +171,14 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
   .pb-tabnav button { height: 30px !important; }
 }
 
-/* ── 로딩 스켈레톤(v2 가 쓰는 pb-skel 셔머) ── */
+/* ── 로딩 스켈레톤(pb-skel 셔머) ── */
 /* 리스트 카드 헤어 '아이템' 보기: 셀 짧은 변 크기의 정사각 캔버스를 중앙에 */
 .pb-hairsprite { position: absolute; inset: 0; container-type: size; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .pb-hairsprite-box { width: 100cqmin; height: 100cqmin; }
 .pb-skel { background: linear-gradient(100deg, #f4ede4 30%, #efe6da 48%, #f4ede4 66%); background-size: 220% 100%; animation: pbSkelShimmer 1.25s ease-in-out infinite; }
 @keyframes pbSkelShimmer { 0% { background-position: 220% 0; } 100% { background-position: -220% 0; } }
 
-/* ── 코디 평가 말풍선(기존 기능 유지) — 캐릭터 주변에서 페이드업 → 유지 → 페이드다운 ── */
+/* ── 코디 평가 말풍선 — 캐릭터 주변에서 페이드업 → 유지 → 페이드다운 ── */
 @keyframes pbBubbleFloat {
   0% { opacity: 0; transform: translateY(16px) scale(.9); }
   13% { opacity: 1; transform: translateY(0) scale(1); }
@@ -190,12 +188,10 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
 .pb-bubble { position: absolute; max-width: 60%; padding: 7px 11px; border-radius: 14px; background: #fff; border: 1.5px solid #f4b8d0; color: #c05a94; font-size: 12px; font-weight: 700; line-height: 1.35; box-shadow: 0 5px 16px rgba(200,90,150,.22); word-break: keep-all; pointer-events: none; z-index: 8; }
 .pb-bubble::after { content: ''; position: absolute; left: 18px; bottom: -7px; width: 12px; height: 12px; background: #fff; border-right: 1.5px solid #f4b8d0; border-bottom: 1.5px solid #f4b8d0; transform: rotate(45deg); }
 
-/* ── 현행 유지 다이얼로그(LookDialog · ShareReceiveSheet)가 쓰는 클래스 ── */
-@keyframes pbSpin { to { transform: rotate(360deg); } }
-.pb-spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; border-radius: 50%; animation: pbSpin .7s linear infinite; }
+/* ── 다이얼로그(LookDialog)가 쓰는 클래스 ── */
 /* 다이얼로그 등장·퇴장 — 서피스(surface.module.css)와 **같은 값·같은 대칭 곡선**을 쓴다.
-   등장 전용 @keyframes 대신 transition + 클래스 토글(DESIGN_RULES §10.3): 들어올 때와 나갈 때가 같은 곡선이라
-   한쪽만 튀지 않는다. scale 은 쓰지 않는다(내용 캔버스가 움찔한다 — delta §8). */
+   등장 전용 @keyframes 대신 transition + 클래스 토글: 들어올 때와 나갈 때가 같은 곡선이라
+   한쪽만 튀지 않는다. scale 은 쓰지 않는다(내용 캔버스가 움찔한다). */
 .pb-dlg-mask { transition: opacity .24s ease; opacity: 1; }
 .pb-dlg-panel { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0); opacity: 1; }
 .pb-dlg-hidden.pb-dlg-mask { opacity: 0; }

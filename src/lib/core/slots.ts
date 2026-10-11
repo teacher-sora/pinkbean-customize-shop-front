@@ -4,18 +4,6 @@
 // longcoat MaPn ⇒ removes coat Ma + pants Pn; 2H weapon WpSi ⇒ removes shield Si).
 import type { ListItem } from './data'
 
-export const SLOT_ORDER = [
-  'hair', 'face', 'cap', 'faceAcc', 'eyeAcc', 'earring',
-  'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape', 'weapon', 'shield',
-] as const
-export type Slot = (typeof SLOT_ORDER)[number]
-
-export const SLOT_LABELS: Record<string, string> = {
-  hair: '헤어', face: '성형', cap: '모자', faceAcc: '얼굴장식', eyeAcc: '눈장식', earring: '귀고리',
-  coat: '상의', longcoat: '한벌옷', pants: '하의', shoes: '신발', glove: '장갑', cape: '망토',
-  weapon: '무기', shield: '방패', skin: '피부',
-}
-
 export function parseCodes(islot: string | null | undefined): string[] {
   if (!islot) return []
   const out: string[] = []
@@ -47,23 +35,4 @@ export function conflictSlots(
     if (intersects(codes, parseCodes(it.islot))) clear.push(slot)
   }
   return clear
-}
-
-// Is `slot` currently blocked by an equipped item in another slot that occupies
-// this slot's primary code? Returns the blocking slot name, or null.
-export function isSlotBlocked(equipped: Record<string, ListItem | null>, slot: string): string | null {
-  const slotCode = SLOT_PRIMARY[slot]
-  if (!slotCode || CONFLICT_IGNORE.has(slotCode)) return null // 헤어/성형은 모자가 가려도 '차단'으로 보지 않는다(conflictSlots 와 동일 철학)
-  for (const [s, it] of Object.entries(equipped)) {
-    if (!it || s === slot) continue
-    if (parseCodes(it.islot).includes(slotCode)) return s
-  }
-  return null
-}
-
-// primary islot code per UI slot (for blocked-state display)
-export const SLOT_PRIMARY: Record<string, string> = {
-  hair: 'Hr', face: 'Fc', cap: 'Cp', faceAcc: 'Af', eyeAcc: 'Ay', earring: 'Ae',
-  coat: 'Ma', longcoat: 'Ma', pants: 'Pn', shoes: 'So', glove: 'Gv', cape: 'Sr',
-  weapon: 'Wp', shield: 'Si',
 }

@@ -17,7 +17,7 @@ const ID_SALT = 'c4|'
 const SHORT_RE = /^PB-[0-9A-Za-z]{8,12}$/
 
 // dev 와 운영의 공유 코드를 섞지 않는다 — 저장 경로 자체를 나눈다(dev 실험 링크가 운영에 남지 않게).
-// dev 쪽은 `share-dev/` 하나만 지우면 통째로 정리된다. ⚠️ lib/shareCode.ts · app/share/page.tsx 와 규칙이 같아야 한다.
+// dev 쪽은 `share-dev/` 하나만 지우면 통째로 정리된다. ⚠️ lib/shareCode.ts · app/(shop)/share/page.tsx 와 규칙이 같아야 한다.
 const sharePrefix = (host: string) => (/^(www\.)?pinkbean-customize\.com$/.test(host) ? 'share' : 'share-dev')
 
 const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
@@ -67,9 +67,9 @@ export async function POST(req: NextRequest) {
       continue // 충돌 → 한 글자 더 긴 id
     }
     if (got.status !== 404) return NextResponse.json({ error: 'storage error' }, { status: 502 })
-    // 코드를 **먼저** 올린다(2026-09-20 변경) — 링크는 복사 즉시 열 수 있어야 한다.
-    // 예전엔 이미지를 먼저 올렸는데, 1200×630 JPEG 업로드가 끝날 때까지 코드가 없어서 방금 복사한 링크로 들어가면
-    // '코디를 찾을 수 없어요' 가 떴다(사용자 제보). 카드 이미지는 공유 페이지 메타가 따로 기다린다.
+    // 코드를 **먼저** 올린다 — 링크는 복사 즉시 열 수 있어야 한다.
+    // 이미지를 먼저 올리면 1200×630 JPEG 업로드가 끝날 때까지 코드가 없어, 방금 복사한 링크로 들어가면
+    // '코디를 찾을 수 없어요' 가 뜬다. 카드 이미지는 공유 페이지 메타가 따로 기다린다.
     const put = await r2('PUT', key, code)
     if (!put.ok) return NextResponse.json({ error: 'storage error' }, { status: 502 })
     await putImage(prefix, id, image)

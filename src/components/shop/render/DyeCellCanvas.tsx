@@ -1,7 +1,7 @@
 'use client'
 
-// 발색표 셀 캔버스(재활용 — 기존 DyeDialog 의 DyeCell 렌더 로직 그대로 분리).
-// 아이템 자체 스프라이트를 (기본색 × 믹스색) 조합으로 리컬러해 정사각형에 그린다. 셀 크롬은 v2 마크업이 담당.
+// 발색표 셀 캔버스.
+// 아이템 자체 스프라이트를 (기본색 × 믹스색) 조합으로 리컬러해 정사각형에 그린다. 셀 테두리·라벨은 부르는 쪽(DyeSurfaceBody)이 그린다.
 
 import { useEffect, useRef } from 'react'
 import type { ItemMeta } from '@/lib/core/data'

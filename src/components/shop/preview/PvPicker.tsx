@@ -1,7 +1,6 @@
 'use client'
 
-// 연출 설정 고르기(액션 · 무기 모션 · 표정) — 이름만 늘어선 목록 대신 **3열 격자 + 작은 미리보기**로 고른다
-// (2026-09-24 사용자 지시: "코디 광장 프리셋 고르는 것처럼 넓게 펼치고 어떤 느낌인지 보여 달라").
+// 연출 설정 고르기(액션 · 무기 모션 · 표정) — 이름만 늘어선 목록 대신 **3열 격자 + 작은 미리보기**로 고른다.
 //  · 액션 · 무기 모션 = **지금 입고 있는 코디**를 그 동작·자세로 작게 그린다. 카드·광장과 같은 합성기(SnapThumb)를
 //    쓰되 view 모드로 불러 스냅샷에 담긴 액션·무기 모션을 반영한다. 베이스 마네킹이 아니라 실제 코디인 이유:
 //    무기 모션은 든 무기가 있어야 차이가 보이고, 지금 보고 있는 미리보기의 스프라이트가 이미 캐시에 있어 더 빠르다.
@@ -30,7 +29,7 @@ type Group = { group: string; items: Opt[] }
 const PANEL_H = 250   // 3열 × 2줄 + 다음 줄 살짝(스크롤이 있다는 신호)
 const INSET = 10      // 미리보기 안쪽 여백 — 이만큼은 늘 미리보기 테두리와 떨어진다
 const OUT_MS = 180    // 닫힘 전환이 끝난 뒤 떼어낸다(등장 .22s · 퇴장 .18s — 양방향 대칭)
-const MODEL_FRACTION = 0.55 // 칸 안 모델 크기. 0.62 는 위아래가 칸에 닿아 답답했다(2026-09-24 사용자 지시)
+const MODEL_FRACTION = 0.55 // 칸 안 모델 크기. 0.62 는 위아래가 칸에 닿아 답답하다
 
 export type PvField = 'action' | 'weapon' | 'expr'
 type GridProps = {
@@ -58,13 +57,13 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
   }, [base, field, options])
 
   // 짝이 되는 얼굴장식이 없는 '기본'·'눈깜빡'은 그림 없이 이름만 가운데 둔다.
-  // (성형 아이템에는 아이콘이 없고, 표정별 얼굴 스프라이트는 눈·입만 떠 있어 그대로 두면 오히려 못 알아본다 — 2026-09-24 확인.)
+  // (성형 아이템에는 아이콘이 없고, 표정별 얼굴 스프라이트는 눈·입만 떠 있어 그대로 두면 오히려 못 알아본다.)
   const iconOf = (v: string) => {
     if (field !== 'expr') return undefined
     const id = PV_EXPR_ICONS[v]
     return id ? spriteUrl(`sprites/${id}/icon.png`) : undefined
   }
-  // 고른 값이 **가운데**에 오도록 열자마자 스크롤한다(2026-09-24 사용자 지시 — 끝에 걸쳐 보이면 찾기 어렵다).
+  // 고른 값이 **가운데**에 오도록 열자마자 스크롤한다(끝에 걸쳐 보이면 찾기 어렵다).
   const onCurrentCell = (el: HTMLButtonElement | null) => { if (el) el.scrollIntoView({ block: 'center', inline: 'nearest' }) }
 
   const cells = (list: Opt[], from: number) => list.map((o, i) => {
@@ -134,7 +133,7 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => setPos(null), OUT_MS)
   }
-  // 버튼에 매달린 '팝 박스'가 아니라 **미리보기 아래쪽에서 올라오는 작은 다이얼로그**다(2026-09-24 사용자 지시).
+  // 버튼에 매달린 '팝 박스'가 아니라 **미리보기 아래쪽에서 올라오는 작은 다이얼로그**다.
   // 자리는 미리보기 영역(data-pv-stage) 안쪽 아래 — 가로로 가득 차고, 밖으로 비어져 나가지 않는다.
   const toggle = () => {
     if (onOpenPage) { onOpenPage(); return }

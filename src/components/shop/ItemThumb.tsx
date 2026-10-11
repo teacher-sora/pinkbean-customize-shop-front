@@ -51,7 +51,7 @@ function Sprite({ item }: { item: ListItem }) {
     const nw = img.naturalWidth, nh = img.naturalHeight
     const target = TARGET_FRAC * Math.min(cw, ch)          // 큰 변을 이 크기에 맞춤(정규화 목표)
     const fitK = Math.min(cw / nw, ch / nh)                // 셀에 들어가는 최대 배율
-    // 배율 단계(2026-09-21 사용자 지시 — 카드마다 크기가 널뛰었다). 정수만 쓰면 1배↔2배 계단이 그대로 크기
+    // 배율 단계. 정수만 쓰면 1배↔2배 계단이 그대로 크기
     // 차이가 된다(칸의 50% vs 96%). 화면 픽셀이 촘촘한 기기(DPR≥2)에서는 **0.5 단계**까지 쓴다 —
     // 디바이스 픽셀로는 여전히 정수(1.5×2=3)라 도트가 깨지지 않으면서 크기가 고르게 모인다.
     const q = dpr >= 2 ? 2 : 1
@@ -66,7 +66,6 @@ function Sprite({ item }: { item: ListItem }) {
     const ro = new ResizeObserver(fitIcon); ro.observe(wrap)
     window.addEventListener('resize', fitIcon)
     return () => { ro.disconnect(); window.removeEventListener('resize', fitIcon) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (idx >= sources.length) return null
@@ -168,7 +167,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       if ((selfOvr && selfOvr.size) || (faceOvr && faceOvr.size)) {
         setOvr(new Map<string, HTMLCanvasElement>([...(override ?? new Map()), ...(faceOvr ?? new Map()), ...(selfOvr ?? new Map())]))
       }
-      // [dev] 라이딩(탈것) 카드 = 탑승 장착샷 (미리보기 규칙과 동일하게 리스트에도 반영).
+      // 라이딩(탈것) 카드 = 탑승 장착샷 (미리보기 규칙과 동일하게 리스트에도 반영).
       //   · 방패는 탑승 중 숨김. 무기는 앉은 채(비-back)에선 숨김.
       //   · 앞/옆(비-back)=캐릭터 sit 재합성. 뒤 시선=보통 rope 뒷모습(캐릭터·마운트 줄타기)이지만,
       //     ridingBackSit(탱크)면 뒤에서도 sit(앉은 조종사) — 미리보기와 동일.
@@ -183,7 +182,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
         }
       }
       // 내 모델: 후보 아이템과 "같은 슬롯"은 배경(내 착용)에서 빼야 그 부위가 후보로 대체된 장착샷이 된다.
-      //   (특정 부위 탭은 CodiScreen 이 이미 제외하지만 '전체' 탭·검색은 카드마다 슬롯이 달라 여기서 처리.)
+      //   (특정 부위 탭은 목록 쪽(list/thumbCtx)이 이미 제외하지만 '전체' 탭·검색은 카드마다 슬롯이 달라 여기서 처리.)
       const bgF = item.slot === 'skin' ? bg : bg.filter((ci) => ci.slot !== item.slot)
       const { placed: p, anchors } = assemble([...bgF, ...self], zmap, smap)
       setPlaced(p)
@@ -206,7 +205,6 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       if (alive) setEffs(draws)
     })().catch(() => {})
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id, ctxKey, skinHeadId, gaze, ctxEffs, pvEff, cardExpr, faceMeta, override, ear, weapon, stance, ctxAction, dotOffsets])
 
   // 셀(div) 표시크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.

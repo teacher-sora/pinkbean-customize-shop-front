@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "next dev --port 80",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

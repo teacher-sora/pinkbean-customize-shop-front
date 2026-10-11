@@ -1,4 +1,4 @@
-// v2 마크업의 인라인 SVG 아이콘(경로·굵기 그대로).
+// 인라인 SVG 아이콘.
 
 type P = { size?: number; className?: string; style?: React.CSSProperties }
 
@@ -54,9 +54,6 @@ export const IconCaretDown = ({ size = 12, className }: P) => (
 export const IconDrop = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.4s5.6 6.3 5.6 10.2a5.6 5.6 0 0 1-11.2 0C6.4 9.7 12 3.4 12 3.4z" /></svg>
 )
-export const IconCaretUp = ({ size = 12 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14.5l6-6 6 6" /></svg>
-)
 export const IconBookmark = ({ filled }: { filled: boolean }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M6 3h12v11l-6 4-6-4z" /></svg>
 )
@@ -107,7 +104,7 @@ export const IconEye = ({ hidden }: { hidden: boolean }) => (
       : 'M2.6 12S6.2 5.5 12 5.5 21.4 12 21.4 12 17.8 18.5 12 18.5 2.6 12 2.6 12z M12 14.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2z'} />
   </svg>
 )
-// 탭 아이콘(v2 TABS.icon 경로)
+// 탭 아이콘
 export const TAB_ICONS: Record<string, string> = {
   codi: 'M12 3.4a2.2 2.2 0 0 0-2.2 2.2c0 .9.6 1.7 1.4 2L4 12.6V18h16v-5.4l-7.2-5a2.2 2.2 0 0 0 1.4-2A2.2 2.2 0 0 0 12 3.4z',
   search: 'M10.5 4.2a6.3 6.3 0 1 0 0 12.6 6.3 6.3 0 0 0 0-12.6zM19.8 19.8l-4.4-4.4',

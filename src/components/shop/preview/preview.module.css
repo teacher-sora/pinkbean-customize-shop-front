@@ -1,12 +1,11 @@
-/* 코디 미리보기 · 연출 설정 · 북마크 — v2 마크업/renderVals 값 그대로. */
+/* 코디 미리보기 · 연출 설정 · 북마크. */
 
 .col { flex: 0 0 360px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .colHalf { flex-basis: 312px; }
 .colTablet { flex-basis: 330px; }
 .card { flex: 1 1 auto; min-height: 0; position: relative; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
 .head { flex: 0 0 auto; height: 44px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0e9e1; }
-.title { font-size: 14px; font-weight: 700; }
-/* 부위 염색 칩(헤더 좌측, delta partDyeBtnStyle) */
+/* 부위 염색 칩(헤더 좌측) */
 .partBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border: 1px solid #f0d3e0; border-radius: 9px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; }
 .partBtnNarrow { padding: 0 8px; }
 .partBtnOn { border-color: #ec86ac; background: #fce9f1; }
@@ -66,7 +65,7 @@
 .slot { position: relative; aspect-ratio: 1/1; border-radius: 9px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; background: #fbf8f4; cursor: default; transition: border-color .22s ease, background-color .22s ease; }
 .slotFilled { border-style: solid; border-color: #efe8e0; background: #fff; cursor: pointer; }
 .slotWorn { border-color: #ec86ac; background: #fce9f1; }
-/* 스프라이트 캔버스 = 칸 거의 전체(v2 의 62% 는 색 블롭 목업 크기라 실제 스프라이트엔 작았다) */
+/* 스프라이트 캔버스 = 칸 거의 전체 */
 .slotSprite { width: calc(100% - 6px); height: calc(100% - 6px); display: flex; align-items: center; justify-content: center; }
 .slotX { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f0d3e0; border-radius: 50%; background: #fff; color: #d76d9a; font-size: 9px; line-height: 1; cursor: pointer; }
 
@@ -89,7 +88,7 @@
 .chipX { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0d3e0; border-radius: 50%; background: #fff; color: #d76d9a; font-size: 10px; line-height: 1; }
 
 /* 모바일 히어로 */
-.hero { flex: 0 0 auto; position: relative; height: 216px; /* v2 236px → 216px: 리스트 여유 확보(사용자 지시 2026-09-17) */ border-bottom: 1px solid #f4efe8; overflow: hidden; }
+.hero { flex: 0 0 auto; position: relative; height: 216px; /* 리스트에 여유를 주려고 낮게 잡는다 */ border-bottom: 1px solid #f4efe8; overflow: hidden; }
 .heroModel { position: absolute; inset: 0; }
 .heroHist { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; }
 .heroIcon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 8px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: default; }

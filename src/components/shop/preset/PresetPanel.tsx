@@ -1,6 +1,6 @@
 'use client'
 
-// 프리셋 30칸. 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog 는 현행 유지) · 복사/삭제 띠지 · 인라인 이름.
+// 프리셋 30칸. 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
 import { useMemo } from 'react'
@@ -9,7 +9,7 @@ import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
-// 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게 — 사용자 지시 2026-09-17)
+// 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
 const PRESET_FRACTION = 0.38
 import { useShop, type Snapshot } from '../ShopContext'
 import { IconImport, IconPencil, IconShare, IconTrash, IconCheck } from '../ui/Icons'
@@ -21,7 +21,6 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   // 라이브 모델 → Snapshot(선택된 카드가 이걸로 그려진다). 자동저장(100ms)을 기다리지 않고 즉시 반영.
   //  ⚠️ 반드시 context 의 snapshot() 을 그대로 쓴다 — 필드를 직접 나열하면 새 상태(점 위치·염색 등)를 빠뜨려
   //     "선택됨" 카드에만 반영이 안 되는 버그가 난다(과거 dotPos 누락 사례).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const liveSnap: Snapshot = useMemo(() => s.snapshot(), [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos, s.pv])
 
   // 삭제는 2단계 확인: 3초 안에, 다른 상호작용 없이 연속으로 한 번 더 누르면 삭제(lib/confirmTwice).
@@ -35,7 +34,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <span className={styles.chipLabel}>프리셋</span>
       <span className={styles.chipNum}>{s.presetUsed}</span>
       <span className={styles.chipSlash}>/</span>
-      {/* 칸 수는 **실제 프리셋 목록**에서 센다 — 20 이 박혀 있어 30칸으로 늘린 뒤에도 '/ 20' 이었다(2026-09-22 사용자 제보). */}
+      {/* 칸 수는 **실제 프리셋 목록**에서 센다 — 숫자를 박아 두면 칸 수를 바꿀 때 어긋난다. */}
       <span className={styles.chipLabel}>{s.presets.length}</span>
     </div>
   )

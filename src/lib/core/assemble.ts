@@ -1,7 +1,7 @@
 // Pure character assembly. Single source of truth shared by the main canvas and
 // the list thumbnails. Validated against the ground-truth render.
 //
-// Phase 2: generalized to (action, frame) via getFrameLayers, plus cap/head
+// Generalized to (action, frame) via getFrameLayers, plus cap/head
 // occlusion. Anchor math unchanged:
 //  - body `navel` is the root at world (0,0); a layer aligns by a shared named
 //    map point: topLeft = worldAnchor - (origin + map[anchor]); it then
@@ -55,7 +55,7 @@ function pickWeaponStance(stances: string[], wm?: string): string {
   return inRange(30, 39) ?? stances[0]
 }
 
-// 서기·걷기 자세는 **무기가 정한다**(2026-10-06 사용자 제보 — 아란의 폴암 마하·청룡언월도(관우)가 어긋나 보임).
+// 서기·걷기 자세는 **무기가 정한다**(예: 아란의 폴암 마하·청룡언월도).
 // 두손 전용 무기(폴암·두손검 일부)는 stand2·walk2 프레임만 갖고 stand1·walk1 이 아예 없다. 몸을 stand1 로 그리면
 // 무기는 아래 폴백으로 stand2 그림을 내놓아, 한 손을 내린 몸에 두 손 자세의 무기가 얹혀 어긋난다.
 // 게임은 무기에 맞는 자세로 선다 → 몸의 액션을 무기가 가진 쪽으로 바꾼다. 무기가 그 자세를 갖고 있으면 그대로 둔다.
@@ -92,8 +92,7 @@ function normFrames(v: any): Frame[] {
   return v[0].layers ? (v as Frame[]) : [{ delay: 120, layers: v as Layer[] }]
 }
 
-// ── 뒷모습은 액션 단위가 아니라 **프레임 단위**도 있다 ──(2026-09-24 사용자 제보
-// "두손 스윙 마무리에 몸이 사라지는 프레임이 있다")
+// ── 뒷모습은 액션 단위가 아니라 **프레임 단위**도 있다 ──
 // 두손 스윙(마무리) 0번과 한손 스윙(마무리) 1번은 한 프레임만 뒤를 보는 포즈다. 근거(실측):
 //  · 베이스 몸의 그 프레임 z 가 `backBody`(zmap 140) — 사다리·밧줄 프레임과 **같은** 값이다.
 //  · 한벌옷(금단의 계약)도 그 프레임만 `mail` 이 `backPants` — 역시 사다리·밧줄과 같다.
@@ -137,7 +136,7 @@ export function getFrameSeq(meta: ItemMeta, opts: ViewOpts, backFrame = false): 
     key = back && (f[opts.action] || f['back']) ? (f[opts.action] ? opts.action : 'back') : f['front'] ? 'front' : keys[0]
   } else if (f['base']) {
     // head-attached non-face (hair/cap/accessories).
-    // 그 액션의 프레임이 따로 있으면 그것이 우선이다(2026-10-06 사용자 제보 — 트리 모자·초밥 모자).
+    // 그 액션의 프레임이 따로 있으면 그것이 우선이다(트리 모자·초밥 모자).
     // 모자 약 130개는 서기·걷기·공격마다 그림이나 위치가 base(=원본 default)와 다르다: 트리 모자는 default 의
     // origin 이 얼굴 높이라 base 로 그리면 얼굴을 덮고, 초밥 모자는 default 가 빈 그림이라 아무것도 안 나온다.
     // 게임은 그 액션의 노드를 쓴다. 추출기가 base 와 다른 액션만 그 이름으로 넣어 두므로(extract.cjs frameSet),

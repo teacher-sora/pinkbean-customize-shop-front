@@ -1,6 +1,6 @@
 'use client'
 
-// 염색(HSB) 미리보기 캔버스(재활용 — 기존 DyeDialog 의 DyeModelPreview 로직 그대로 분리).
+// 염색(HSB) 미리보기 캔버스.
 // 베이스 모델(몸+머리)에 이 아이템을 입힌 뒤 HSB 발색을 실시간 적용. box 는 표시 영역 크기(측정값).
 
 import { useEffect, useRef, useState } from 'react'
@@ -23,7 +23,7 @@ const fractionFor = (h: number) => (h < 300 ? 0.5 : DIALOG_FRACTION)
 const DIALOG_ZOOM: Record<number, number> = { 1: 0.6, 2: 1.0, 3: 1.6 }
 
 // palette = 헤어·성형(발색표) 선택. 있으면 그 색을 바탕으로 깔고 그 위에 커스텀 HSB 를 입힌다
-// (lib/core/dye.buildOverrides 와 같은 순서 — 미리보기와 실제 모델이 같은 색이어야 한다, 2026-09-21).
+// (lib/core/dye.buildOverrides 와 같은 순서 — 미리보기와 실제 모델이 같은 색이어야 한다).
 export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { item: ListItem; hsb: HsbParams; palette?: PaletteParams; zoom: number; box: { w: number; h: number } }) {
   const s = useShop()
   const ref = useRef<HTMLCanvasElement>(null)
@@ -71,7 +71,6 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { ite
       } else if (alive) setEffs([])
     })().catch(() => {})
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.index, s.tone, item.id])
 
   // 슬라이더 드래그 중에도 렉 없이 바로바로 발색(single-flight + 최신값 수렴).

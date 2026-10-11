@@ -24,7 +24,6 @@ yarn-error.log*
 
 # local env files
 .env*.local
-.env.copy
 .env
 
 # vercel
@@ -36,3 +35,7 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# 화면 확인 스킬의 playwright
+.claude/skills/*/node_modules/
+.claude/settings.local.json

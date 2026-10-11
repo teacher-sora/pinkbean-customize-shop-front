@@ -1,12 +1,12 @@
-/* 단일 서피스(연출 설정 · 북마크 · 염색 · 점 위치) — v2 surfaceVals/dotDialogVals/dyeDialogVals 값 그대로. */
+/* 단일 서피스(시트·다이얼로그). */
 
 .layer { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
 .overlay { position: absolute; inset: 0; pointer-events: auto; background: rgba(42,37,33,0.40); display: flex; align-items: center; justify-content: center; padding: 28px; transition: opacity .24s ease; opacity: 1; }
 .overlayM { align-items: flex-end; padding: 0; overflow: hidden; }
-.overlayHidden { opacity: 0; pointer-events: none; } /* 닫히는 동안 투명한 마스크가 터치를 가로채지 않게 — 뒤 버튼으로 바로 다시 열 수 있다(2026-09-21) */
+.overlayHidden { opacity: 0; pointer-events: none; } /* 닫히는 동안 투명한 마스크가 터치를 가로채지 않게 — 뒤 버튼으로 바로 다시 열 수 있다 */
 
 /* PC 다이얼로그 */
-/* 크기는 종류와 무관하게 동일(delta §6). 등장·퇴장은 translateY + opacity 만 — scale 금지(delta §8). */
+/* 크기는 종류와 무관하게 동일. 등장·퇴장은 translateY + opacity 만 — scale 금지. */
 .panel { height: min(620px, 86svh); /* 종류마다 다른 크기는 인라인(Surface.tsx) */ background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease; transform: translateY(0); opacity: 1; }
 .panelHidden { transform: translateY(10px); opacity: 0; }
 /* 모바일 하단 시트 */
@@ -25,7 +25,7 @@
 /* 본문 슬라이드 래퍼(부위 염색 ↔ 염색/점 위치) */
 .slide { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
 /* 모바일 푸터: 얇고 긴 34px */
-/* 위아래 여백을 같게(2026-09-21 사용자 지시 — 아래가 4px 더 넓어 보였다). */
+/* 위아래 여백을 같게. */
 .footM { flex: 0 0 auto; position: relative; z-index: 1; background: #fff; padding: 10px 12px; border-top: 1px solid #f0e9e1; display: flex; align-items: stretch; gap: 8px; }
 .btnCloseM { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; background: #f4ecf3; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; cursor: pointer; }
 .btnApplyM { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; }
@@ -55,7 +55,7 @@
 .rows { display: flex; flex-direction: column; gap: 10px; }
 .rowsCol { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; }
 .resetRow { flex: 0 0 auto; display: flex; justify-content: space-between; gap: 6px; }
-/* 커스텀 피부처럼 버튼이 둘뿐인 줄은 예전대로 오른쪽 정렬(2026-09-23 사용자 지시). */
+/* 커스텀 피부처럼 버튼이 둘뿐인 줄은 오른쪽 정렬. */
 .resetRowEnd { justify-content: flex-end; }
 .resetBtn { height: 30px; padding: 0 10px; white-space: nowrap; border: 1px solid #e7ded4; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; cursor: pointer; }
 .hsvM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
@@ -93,7 +93,7 @@
 /* 염색 비활성화 토글 — 켜짐 상태(문구는 그대로) */
 .offOn { background: #fce9f1; border-color: #f5c6da; color: #d76d9a; }
 
-/* ── 부위 염색(부위 고르기) — delta partPickVals ── */
+/* ── 부위 염색(부위 고르기) ── */
 .partBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; }
 .partEmpty { height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
 .partEmptyTitle { font-size: 13px; font-weight: 600; color: #8a8075; }
@@ -109,7 +109,7 @@
 .partSlot { font-size: 10.5px; font-weight: 600; color: #a89e93; line-height: 1.2; }
 .partName { width: 100%; min-width: 0; display: block; font-size: 12px; font-weight: 500; color: #3d372f; line-height: 1.3; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ── 북마크 VS(코디 비교) — delta vsVals ── */
+/* ── 북마크 VS(코디 비교) ── */
 .vsBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 12px; gap: 10px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .vsRow { flex: 1 1 auto; min-height: 230px; display: flex; gap: 10px; }
 .vsRowM { flex: 0 0 auto; height: 236px; min-height: 0; }

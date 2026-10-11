@@ -22,7 +22,7 @@ const RATE = { error: '요청이 많아요. 잠시 후 다시 시도해 주세�
 // ── 레이트리밋 서킷브레이커 ──
 // 넥슨은 분당 1000회 제한이고, 초과하면 remaining 이 음수로 내려가며 **때릴수록 페널티가 커져 회복이 안 된다.**
 // 그래서 429 를 받으면 그 뒤 일정 시간 동안 넥슨 호출을 "아예 하지 않고" 즉시 429 로 돌려보낸다 → 넥슨이 쉬면서 회복.
-// (예전엔 429 를 5회씩 재시도해서 오히려 홍수를 키우고 락을 연장시켰다. 그 로직을 제거.)
+// 429 를 재시도하지 않는다 — 재시도는 홍수를 키우고 락을 연장시킨다.
 let cooldownUntil = 0
 
 // 넥슨 요청 제한(공식): 개발 키 = 5건/초·1000건/일, 서비스 키 = 500건/초·2천만건/일.
@@ -116,7 +116,7 @@ function mergeItems(data: Cash, prefix: string, presetNo: number) {
 // '클래식 백금슈트'), 아바타에 보이는 일반 장비도 함께 넘겨 캐시 아이템의 "베이스 레이어"로 쓴다.
 interface NexonRegItem { item_equipment_part?: string; item_equipment_slot?: string; item_name?: string; item_shape_name?: string | null }
 type LookItem = ReturnType<typeof mergeItems>[number]
-// 일반 장비는 두 이름이 서로 다른 뜻이다(2026-09-23 실측 — 사용자 제보 "칼리의 옷이 안 불러와진다").
+// 일반 장비는 두 이름이 서로 다른 뜻이다.
 //   item_equipment_part = 아이템 분류(한벌옷 · 차크람 · 헥스시커)
 //   item_equipment_slot = 착용 칸(상의 · 무기 · 보조무기)
 // 칼리의 옷은 part=한벌옷 · slot=상의 로 온다. slot 을 먼저 보면 한벌옷을 '상의'에서 찾게 돼 매칭이 실패하고
@@ -129,7 +129,7 @@ function regularVisible(idata: Cash | null): LookItem[] {
   for (const it of arr) {
     const p = it.item_equipment_part || '', s = it.item_equipment_slot || ''
     const part = WEAR_PARTS.has(p) ? p : (s || p)
-    // 모루(외형 덮어쓰기)를 쓴 장비는 **보이는 게 `item_shape_name`** 이다(2026-09-24 사용자 제보 —
+    // 모루(외형 덮어쓰기)를 쓴 장비는 **보이는 게 `item_shape_name`** 이다(예:
     // '소라사키히나'의 모자가 에테르넬 나이트헬름으로 불러와졌지만 게임에선 브옐 데빌스 혼으로 보인다).
     // 실측(그 캐릭터 장비 25종): 모루를 안 쓴 장비는 shape 가 이름과 **같게** 오고, 모루를 쓴 모자만 달랐다.
     // 우리는 외형만 그리므로 shape 를 먼저 쓴다. 부위(part)는 모루가 같은 분류끼리만 되므로 그대로 둔다.
@@ -173,7 +173,7 @@ function genderForLook(charClass: string | null, kkey: 'normal' | 'additional', 
 }
 
 // 넥슨 실패 응답 → 우리 응답. 점검(OPENAPI00010 게임 점검 / 00011 API 점검)은 400 으로 오는데, 이걸 일반 실패(502·404)로
-// 뭉뚱그리면 "코디 정보를 불러오지 못했어요"만 떠 원인을 알 수 없었다(2026-09-17 패치 점검 중 실측) → 503 + 점검 안내.
+// 뭉뚱그리면 "코디 정보를 불러오지 못했어요"만 떠 원인을 알 수 없다 → 503 + 점검 안내.
 const MAINT = { error: '메이플 점검 중이라 불러올 수 없어요' }
 async function nexonFail(r: Response, fallback: { error: string }, status: number) {
   const name = await r.clone().json().then((j) => j?.error?.name as string | undefined).catch(() => undefined)
@@ -187,13 +187,6 @@ export async function GET(req: NextRequest) {
   const key = process.env.NEXON_API_KEY
   if (!key) return NextResponse.json({ error: '지금은 불러올 수 없어요' }, { status: 500 })
   const headers = { 'x-nxopen-api-key': key }
-  // 특정 시점 조회: date=YYYY-MM-DD(넥슨은 2023-12-21 이후, KST 기준). 형식이 맞고 범위 안일 때만 넘긴다.
-  const dp = req.nextUrl.searchParams.get('date')?.trim()
-  const date = dp && /^\d{4}-\d{2}-\d{2}$/.test(dp) && dp >= '2023-12-21' ? dp : null
-  const dq = date ? `&date=${date}` : ''
-  // 미리보기(light): 일반(비캐시) 장비 조회를 생략 → 넥슨 콜 3→2, 레이트리밋 부담↓·속도↑.
-  // (치장은 대부분 캐시 아이템이라 썸네일엔 충분. 실제 선택 시엔 full 로 다시 받아 정확히 반영한다.)
-  const light = req.nextUrl.searchParams.get('light') === '1'
   // 쿨다운 중이면 넥슨을 아예 부르지 않고 즉시 429 → 넥슨이 쉬면서 레이트리밋이 회복된다(락 연장 방지).
   if (Date.now() < cooldownUntil) {
     return NextResponse.json(RATE, { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil((cooldownUntil - Date.now()) / 1000))) } })
@@ -213,21 +206,21 @@ export async function GET(req: NextRequest) {
       ocidCache.set(name, { ocid, t: Date.now() })
     }
     // 캐시 아이템(치장)을 "먼저" 게이트로 조회 — 레이트리밋이면 이 1콜에서 바로 멈춘다(뒤 조회를 안 쏴 회복이 빨라짐).
-    const cr = await fetchNexon(`${BASE}/character/cashitem-equipment?ocid=${encodeURIComponent(ocid)}${dq}`, init)
+    const cr = await fetchNexon(`${BASE}/character/cashitem-equipment?ocid=${encodeURIComponent(ocid)}`, init)
     if (cr.status === 429) return NextResponse.json(RATE, { status: 429 })
     if (!cr.ok) return nexonFail(cr, { error: '코디 정보를 불러오지 못했어요' }, 502)
     const data: Cash = await cr.json()
-    // 통과했으면 뷰티(+일반장비)만 병렬로. light면 일반 장비는 생략.
+    // 통과했으면 뷰티와 일반 장비를 병렬로.
     const [br, ir] = await Promise.all([
-      fetchNexon(`${BASE}/character/beauty-equipment?ocid=${encodeURIComponent(ocid)}${dq}`, init),
-      light ? Promise.resolve(null) : fetchNexon(`${BASE}/character/item-equipment?ocid=${encodeURIComponent(ocid)}${dq}`, init),
+      fetchNexon(`${BASE}/character/beauty-equipment?ocid=${encodeURIComponent(ocid)}`, init),
+      fetchNexon(`${BASE}/character/item-equipment?ocid=${encodeURIComponent(ocid)}`, init),
     ])
     // ⚠️ 뷰티(헤어·성형·피부)는 "필수"다. 여기서 실패한 걸 무시하고 진행하면 헤어가 null → 기본(검은) 머리로 잘못
     //    렌더된다(예: 레이트리밋으로 뷰티만 429일 때 8/23 미리보기가 검은머리로 나오던 버그). 실패면 통째로 실패시킨다.
     if (br.status === 429) return NextResponse.json(RATE, { status: 429 })
     if (!br.ok) return nexonFail(br, { error: '코디 정보를 불러오지 못했어요' }, 502)
     const beauty: Record<string, NexonBeautyPart & NexonSkinPart> | null = await br.json().catch(() => null)
-    const itemData: Cash | null = ir && ir.ok ? await ir.json().catch(() => null) : null // light면 null(일반 장비 생략), 실패도 비치명적
+    const itemData: Cash | null = ir.ok ? await ir.json().catch(() => null) : null // 일반 장비는 실패해도 치명적이지 않다
     const reg = regularVisible(itemData) // 아바타에 보이는 일반 장비(캐시의 베이스 레이어)
     const charClass = (data.character_class as string) ?? null
     const charGender = (data.character_gender as string) ?? null
@@ -279,10 +272,7 @@ export async function GET(req: NextRequest) {
       lookMode: (data.character_look_mode as string) ?? null,
       looks,
     }, {
-      // 과거 시점(date)은 절대 안 바뀌므로 브라우저/엣지에 오래 캐시 → 재열람·재조회가 즉시. 현재(최신)는 캐시 안 함.
-      headers: date
-        ? { 'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400' }
-        : { 'Cache-Control': 'no-store' },
+      headers: { 'Cache-Control': 'no-store' }, // 항상 지금의 코디를 준다 — 캐시하지 않는다
     })
   } catch {
     return NextResponse.json({ error: '불러오기에 실패했어요' }, { status: 500 })

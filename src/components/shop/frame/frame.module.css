@@ -1,4 +1,4 @@
-/* 셸·헤더 — v2 마크업(루트/pcFrameStyle/header/모바일 헤더) 값 그대로. */
+/* 셸·헤더. */
 
 .root { position: fixed; inset: 0; height: 100svh; z-index: 2; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
 
@@ -9,7 +9,7 @@
 .frameTablet { width: min(1024px, 100%); margin: 0 auto; padding: 16px 18px; }
 .main { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
 
-/* 모바일: 폰 프레임(390×780·scale)은 미리보기 전용이라 제외 → 화면 전체를 쓰는 흰 컬럼.
+/* 모바일: 화면 전체를 쓰는 흰 컬럼.
    높이 = max(100vh, --pb-min-h). 100vh(툴바가 접힌 높이)라 페이지를 스크롤하면 하단 툴바가 접힌다.
    --pb-min-h 는 리스트(ListArea)가 계산: 카드가 가로로 납작해지지 않는(세로형) 2줄 높이를 보장 — 부족하면 페이지가 길어진다.
    고정값이라 내부 height:100% 가 그대로 풀린다. */
@@ -17,7 +17,7 @@
 
 /* ── PC 헤더 ── */
 .header { flex: 0 0 auto; height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-/* 로고 = 처음 화면으로 가는 버튼(2026-09-22). 버튼 기본 모양만 지운다 — 생김새는 .logoBox/.logoBoxM 이 그대로 쥐고
+/* 로고 = 처음 화면으로 가는 버튼. 버튼 기본 모양만 지운다 — 생김새는 .logoBox/.logoBoxM 이 그대로 쥐고
    있어야 하므로 이 규칙이 **먼저** 와야 한다(뒤에 오면 흰 배경·테두리를 덮어 버린다). */
 .logoBtn { margin: 0; padding: 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: border-color .22s ease; }
 .logoBox { display: flex; align-items: center; gap: 8px; min-width: 0; height: 100%; padding: 0 16px 0 8px; background: #fff; border: 1px solid #efe6dc; border-radius: 12px; }
