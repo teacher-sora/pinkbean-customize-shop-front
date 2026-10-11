@@ -11,7 +11,7 @@
 
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import type { CoreIn, CoreOut, Env, SceneKind } from './sceneCore'
-import { SCENE_SRC } from './sceneSrc'
+import { SCENE_SRC, STILL } from './sceneSrc'
 import { getSkyMode, onSkyChange, skyFixed } from './skyTime'
 
 export type { SceneKind }
@@ -27,6 +27,7 @@ interface View {
   host: HTMLElement | null
   shown: boolean
   failed: boolean
+  allowed: boolean[]             // 그리는 쪽에 받아도 된다고 알린 그림
   onFail: (() => void) | null
   cleanup: (() => void) | null
 }
@@ -100,7 +101,7 @@ function make(kind: SceneKind, forceMain: boolean): View {
   canvas.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;pointer-events:none'
   reduce ??= window.matchMedia('(prefers-reduced-motion: reduce)')
   const wp = forceMain ? null : viaWorker()
-  const v: View = { kind, canvas, post: wp ?? viaMain(), worker: !!wp, host: null, shown: false, failed: false, onFail: null, cleanup: null }
+  const v: View = { kind, canvas, post: wp ?? viaMain(), worker: !!wp, host: null, shown: false, failed: false, allowed: [], onFail: null, cleanup: null }
   // GPU 없는 확인 환경에서 강제로 켜는 용도: ?skygl=soft
   const init = { t: 'init' as const, kind, src: SCENE_SRC[kind], soft: /[?&]skygl=soft/.test(search()), skyMode: getSkyMode(), skyFixed: skyFixed(), env: env() }
   if (wp) { const off = canvas.transferControlToOffscreen(); v.post({ ...init, canvas: off }, [off]) }
@@ -146,6 +147,26 @@ function layout(v: View) {
   v.post({ t: 'layout', kind: v.kind, w: Math.round(hw * r), h: Math.round(hh * r), ratio: r, foot, px, shadow })
 }
 
+// 그림을 받아도 되는 때를 그리는 쪽에 알린다. 화면에 <img> 로 깔리는 그림(SceneCanvas 의 data-scene)은 그 <img> 가 다 받은 뒤에,
+// 나머지(아틀라스 · 빛 지도)는 곧바로. 같은 파일을 둘이 동시에 요청하면 느린 회선에서 두 번 내려받는다(sceneCore 머리말).
+function allow(v: View, host: HTMLElement) {
+  const still = new Set(STILL[v.kind].map((l) => l.i))
+  SCENE_SRC[v.kind].forEach((_, i) => {
+    if (v.allowed[i]) return
+    const go = () => { if (!v.allowed[i]) { v.allowed[i] = true; v.post({ t: 'src', kind: v.kind, i }) } }
+    if (!still.has(i)) { go(); return }
+    let tries = 0
+    const look = () => {
+      if (v.allowed[i] || v.host !== host) return
+      const el = host.querySelector<HTMLImageElement>(`img[data-scene="${i}"]`)
+      if (!el) { if (++tries > 60) go(); else requestAnimationFrame(look); return }   // <img> 가 끝내 안 놓이면 그냥 받는다
+      if (el.complete) go()   // 받았거나 실패했다(실패했으면 그리는 쪽이 따로 다시 받는다)
+      else { el.addEventListener('load', go, { once: true }); el.addEventListener('error', go, { once: true }) }
+    }
+    look()
+  })
+}
+
 // host 안에 장면을 붙인다. 돌려주는 함수로 뗀다(캔버스·컨텍스트는 남겨 두었다가 다시 쓴다).
 // onFail = WebGL 을 못 쓰는 기기다(그때는 SceneCanvas 가 지나가는 것들도 그림으로 놓는다). 나중에 불릴 수도 있다.
 export function mountScene(kind: SceneKind, host: HTMLElement, onFail?: () => void, forceMain = false): () => void {
@@ -169,5 +190,6 @@ export function mountScene(kind: SceneKind, host: HTMLElement, onFail?: () => vo
   })
   layout(v)
   v.post({ t: 'attach', kind })
+  allow(v, host)
   return () => { if (v.cleanup === mine) mine() }
 }

@@ -17,8 +17,9 @@
 //  · 시각(skyTime): 하늘 · 해 · 달 · 별 · 별똥별 · 핑크빈 별자리, 그림에 곱하는 빛. 밤에는 하늘이 아니라 거리가 밝다 —
 //    그림을 덧칠하지 않고 밝기만 올린다: 길에서 가게 높이까지 은은하게, 가로등 둘레는 더, 창유리 자리는 조금 더 밝고 따뜻하게
 //    (어디가 밝은지는 미리 뽑아 둔 지도 street-glow 가 정한다). 네온처럼 밝고 진한 색도 제 빛을 지킨다.
-//  · 그림은 장면이 붙자마자 받아 한 프레임에 한 장씩 올린다(받은 파일을 createImageBitmap 으로 디코딩 — 화면에 깔린 <img> 와
-//    같은 주소라 브라우저가 한 번만 내려받는다).
+//  · 그림은 한 프레임에 한 장씩 올린다(받은 파일을 createImageBitmap 으로 디코딩). 화면에 <img> 로도 깔리는 그림은 **<img> 가 다 받은 뒤에**
+//    받는다(화면 쪽이 알려 준다 — 'src'). 같은 주소라 그때는 브라우저 캐시에서 나온다. 둘이 동시에 요청하면 느린 회선에서는
+//    브라우저가 캐시를 기다리지 않고 같은 파일을 한 번 더 내려받는다. 화면에 깔지 않는 그림(아틀라스 · 빛 지도)은 곧바로 받는다.
 //  · 앱 배경은 초당 60번까지(느린 움직임이 끊겨 보이지 않게), 무대는 30번 그린다. 프레임마다 하는 일은 유니폼 몇 개와 그리기 호출 대여섯 번뿐이고
 //    움직임은 전부 정점 셰이더가 시간으로 계산한다. '동작 줄이기'면 바뀔 때와 20초마다만 그린다. 탭이 가려지면 rAF 가 멈춘다.
 //  · 캔버스와 컨텍스트는 종류마다 하나를 끝까지 재사용한다. 밝아지며 다가가는 연출은 처음 뜰 때 한 번뿐 —
@@ -35,6 +36,7 @@ export type CoreIn =
   | { t: 'init'; kind: SceneKind; canvas: SceneCanvasLike; src: string[]; soft: boolean; skyMode: SkyMode; skyFixed: number | 'fast' | null; env: Env }
   | { t: 'layout'; kind: SceneKind; w: number; h: number; ratio: number; foot: [number, number]; px: number; shadow: number }
   | { t: 'attach'; kind: SceneKind }
+  | { t: 'src'; kind: SceneKind; i: number }      // 이 그림은 이제 받아도 된다(화면의 <img> 가 다 받았다 · 화면에 깔지 않는 그림이다)
   | { t: 'detach'; kind: SceneKind }
   | { t: 'env'; env: Partial<Env> }
   | { t: 'sky'; mode: SkyMode; fade: boolean }
@@ -222,6 +224,7 @@ interface Scene {
   since: number                  // 화면에 붙은 때(그림을 얼마나 기다렸는지 잰다)
   loading: boolean               // 그림을 받기 시작했다
   busy: boolean[]                // 지금 받고 있는 그림
+  ok: boolean[]                  // 받아도 되는 그림(화면 쪽이 알려 준다)
   frozen: boolean                // 움직이지 않는 장면으로 놓았다
   mask: number                   // 지금의 어두운 막(배경만 볼 때는 걷힌다)
   movers: Mover[] | null         // 지나가는 것들(처음 그릴 때 화면 폭을 보고 놓는다)
@@ -444,14 +447,14 @@ function loadOne(sc: Scene, i: number, tries: number) {
     .then((b) => createImageBitmap(b, { premultiplyAlpha: 'premultiply' })).then(done).catch(viaImg)
 }
 function load(sc: Scene) {
-  sc.src.forEach((_, i) => loadOne(sc, i, 0))
+  sc.src.forEach((_, i) => { if (sc.ok[i]) loadOne(sc, i, 0) })
   if (sc.loading) return
   sc.loading = true
-  globalThis.addEventListener('online', () => sc.src.forEach((_, i) => loadOne(sc, i, 1)))
+  globalThis.addEventListener('online', () => sc.src.forEach((_, i) => { if (sc.ok[i]) loadOne(sc, i, 1) }))
 }
 
 function create(kind: SceneKind, canvas: SceneCanvasLike, src: string[], soft: boolean): Scene {
-  const sc: Scene = { kind, canvas, src, gl: null, quad: null, sky: null, ranges: [], bmps: src.map(() => null), tex: [], pending: [], on: false, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, since: 0, loading: false, busy: [], frozen: false, mask: MASK, movers: null, mov: new Float32Array(MAX_MOVERS * 4), shown: false, dirty: true, at: 0, failed: false }
+  const sc: Scene = { kind, canvas, src, gl: null, quad: null, sky: null, ranges: [], bmps: src.map(() => null), tex: [], pending: [], on: false, ratio: 1, foot: [0, 0], px: 1, nearest: false, shadow: 13, since: 0, loading: false, busy: [], ok: [], frozen: false, mask: MASK, movers: null, mov: new Float32Array(MAX_MOVERS * 4), shown: false, dirty: true, at: 0, failed: false }
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다. 그때는 움직이지 않는 그림만 남는다. (soft = ?skygl=soft — GPU 없는 확인 환경에서 강제로 켠다)
   const gl = (canvas as HTMLCanvasElement).getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft }) as WebGLRenderingContext | null
   if (!gl) { sc.failed = true; emit({ t: 'failed', kind, retry: true }); return sc }
@@ -611,6 +614,7 @@ export function createCore(send: (m: CoreOut) => void): (m: CoreIn) => void {
     const sc = scenes[m.kind]
     if (!sc || sc.failed) return
     if (m.t === 'layout') { setLayout(sc, m); return }
+    if (m.t === 'src') { sc.ok[m.i] = true; if (sc.on) loadOne(sc, m.i, 0); return }
     if (m.t === 'attach') {
       sc.on = true
       load(sc)
