@@ -10,7 +10,7 @@ html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 /* PC = 100svh 고정·문서 스크롤 없음. 모바일 = 페이지 높이 max(100vh, 리스트 최소 높이) +
    **페이지(문서) 스크롤 허용** → 스크롤하면 브라우저 하단 툴바가 접힌다. 리스트 안의 세로 스크롤은 만들지 않는다. */
 html, body { margin: 0; padding: 0; height: 100%; min-height: 100svh; }
-body { font-family: "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont, sans-serif; color: #2a2521; overflow: hidden; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; background: linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%); }
+body { font-family: var(--font-wanted), "Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont, sans-serif; color: #2a2521; overflow: hidden; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; background: linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%); }
 /* 터치 기기: 모바일 셸을 풀어 **문서(루트)** 가 스크롤되게 한다(브라우저는 루트 스크롤일 때만 툴바를 접는다).
    ⚠️ 반드시 위 공통 body{overflow:hidden} **뒤**에 둔다 — 앞에 두면 덮여서 문서가 안 스크롤되고 페이지가 잘린다.
    html/body 는 height:auto — 100% 면 body 가 스크롤 주체가 돼 툴바가 안 접힌다. */

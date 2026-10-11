@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import localFont from 'next/font/local'
 import './globals.css'
 import NoNativeZoom from './NoNativeZoom'
 import { SITE_URL } from '@/lib/siteUrl'
@@ -131,16 +132,14 @@ const JSON_LD = {
   ],
 }
 
+// 앱 전체 글꼴 Wanted Sans(가변, OFL — src/assets/fonts). 사이트의 정적 파일로 함께 내보낸다(주소에 해시가 붙어 캐시가 알아서 맞고,
+// 첫 화면에서 미리 받는다). 대체 글꼴의 폭 보정은 끈다 — 글꼴이 오기 전후로 글자 폭이 달라지는 것은 그대로다.
+const wanted = localFont({ src: '../assets/fonts/WantedSansVariable.woff2', weight: '400 1000', style: 'normal', display: 'swap', variable: '--font-wanted', adjustFontFallback: false })
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={wanted.variable}>
       <head>
-        {/* Wanted Sans (Variable, OFL) — 앱 전체 글꼴. */}
-        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/complete/WantedSansVariable.min.css"
-        />
         {/* 이미지 CDN 미리 연결(초기 로딩 체감 개선) */}
         <link rel="preconnect" href="https://cdn.pinkbean-customize.com" crossOrigin="" />
         {/*

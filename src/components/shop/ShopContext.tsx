@@ -457,6 +457,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     loadIndex().then(async (idx) => {
       if (!alive) return
       indexRef.current = idx // resolveEquipped/loadSlotFolded 는 상태가 아닌 이 ref 를 쓰므로 setIndex 전에 사용 가능
+      // 여러 부위를 한 목록으로 보는 탭(전체 등)이면 모든 부위 목록을 지금 함께 받기 시작한다 — 아래의 프리셋 복원이
+      // 착용 부위 목록을 다 받을 때까지 기다렸다 나머지를 보내면 왕복 한 번이 더 든다. loadSlot 이 파일별로 캐시하므로
+      // 뒤의 ensureSlot·resolveEquipped 는 같은 요청을 이어받는다.
+      if (isMultiCat(activeCatRef.current)) for (const c of CATS) { const f = c.id === 'skin' ? undefined : slotFile(CAT_TO_SLOT[c.id], idx); if (f) loadSlot(f).catch(() => {}) }
       // localStorage 에서 프리셋 복원(저장된 칸은 그대로, 없는 칸만 코디 기본값). 첫 접속 시 d0 자동 선택.
       const store = loadPresetStore()
       const data: Record<string, Snapshot> = {}
