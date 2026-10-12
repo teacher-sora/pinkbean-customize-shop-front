@@ -178,16 +178,6 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
 .pb-skel { background: linear-gradient(100deg, #f4ede4 30%, #efe6da 48%, #f4ede4 66%); background-size: 220% 100%; animation: pbSkelShimmer 1.25s ease-in-out infinite; }
 @keyframes pbSkelShimmer { 0% { background-position: 220% 0; } 100% { background-position: -220% 0; } }
 
-/* ── 코디 평가 말풍선 — 캐릭터 주변에서 페이드업 → 유지 → 페이드다운 ── */
-@keyframes pbBubbleFloat {
-  0% { opacity: 0; transform: translateY(16px) scale(.9); }
-  13% { opacity: 1; transform: translateY(0) scale(1); }
-  82% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(16px) scale(.95); }
-}
-.pb-bubble { position: absolute; max-width: 60%; padding: 7px 11px; border-radius: 14px; background: #fff; border: 1.5px solid #f4b8d0; color: #c05a94; font-size: 12px; font-weight: 700; line-height: 1.35; box-shadow: 0 5px 16px rgba(200,90,150,.22); word-break: keep-all; pointer-events: none; z-index: 8; }
-.pb-bubble::after { content: ''; position: absolute; left: 18px; bottom: -7px; width: 12px; height: 12px; background: #fff; border-right: 1.5px solid #f4b8d0; border-bottom: 1.5px solid #f4b8d0; transform: rotate(45deg); }
-
 /* ── 다이얼로그(LookDialog)가 쓰는 클래스 ── */
 /* 다이얼로그 등장·퇴장 — 서피스(surface.module.css)와 **같은 값·같은 대칭 곡선**을 쓴다.
    등장 전용 @keyframes 대신 transition + 클래스 토글: 들어올 때와 나갈 때가 같은 곡선이라

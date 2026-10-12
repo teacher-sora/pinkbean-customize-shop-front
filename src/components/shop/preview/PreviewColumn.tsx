@@ -10,7 +10,8 @@ import PreviewModel from '../PreviewModel'
 import SceneCanvas from '../scene/SceneCanvas'
 import { useShop } from '../ShopContext'
 import { IconBookmark, IconCaretDown, IconDot, IconDrop, IconRedo, IconUndo } from '../ui/Icons'
-import { BookmarkBox, RateBubbles } from './PreviewParts'
+import PinkbeanRate from './PinkbeanRate'
+import { BookmarkBox } from './PreviewParts'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
 import styles from './preview.module.css'
 
@@ -56,7 +57,7 @@ export default function PreviewColumn() {
             <IconDot />점 위치
           </button>
           <div className={styles.model}><PreviewModel /></div>
-          <RateBubbles />
+          <PinkbeanRate />
         </div>
 
         <div className={clsx('pb-drawer', styles.drawer, pvAll && styles.drawerOpen)}>
@@ -89,7 +90,7 @@ export function MobileHero() {
     <div className={styles.hero}>
       <SceneCanvas kind="room" />
       <div className={styles.heroModel}><PreviewModel /></div>
-      <RateBubbles />
+      <PinkbeanRate />
       <div className={styles.heroHist}>
         <button type="button" onClick={s.undo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
         <button type="button" onClick={s.redo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>

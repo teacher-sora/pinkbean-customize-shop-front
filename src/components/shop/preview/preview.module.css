@@ -143,3 +143,17 @@
 .pickScroll { flex: 1 1 auto; min-height: 0; padding: 0 16px 14px; overflow: hidden auto; overscroll-behavior: contain; }
 /* 시트 화면은 칸이 넓으니 그림 자리도 그만큼 키운다(팝오버는 88×76 그대로). */
 .pickScroll .pvCellArt { height: 96px; }
+
+/* 코디 평가(PinkbeanRate): 핑크빈이 무대에 나와 말한다. 캐릭터 위, 버튼 아래에 놓이고 누를 수 없다 */
+.rate { position: absolute; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; }
+.bean { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+.beanArt { position: absolute; background-repeat: no-repeat; image-rendering: pixelated; }
+/* 말: 핑크빈 머리 위. 나타나고 사라질 때 같은 곡선으로 6px 오르내린다(크기는 바꾸지 않는다) */
+.say { position: absolute; display: flex; align-items: center; gap: 7px; padding: 6px 10px 6px 6px; background: #fff; border: 1.5px solid #f4b8d0; border-radius: 12px; box-shadow: 0 5px 16px rgba(200,90,150,.22); opacity: 0; transform: translateY(6px); transition: opacity .22s ease, transform .26s cubic-bezier(.45,0,.55,1); }
+.say[data-on] { opacity: 1; transform: translateY(0); animation: sayBob 1.8s ease-in-out infinite; }
+/* 말하는 동안 살짝 오르내린다(전환이 쓰는 transform 과 겹치지 않게 translate 로) */
+@keyframes sayBob { 50% { translate: 0 -2px; } }
+.sayItem { position: relative; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; background: #fdf4f8; overflow: hidden; }
+.sayText { min-width: 0; padding-left: 4px; font-size: 12px; font-weight: 600; line-height: 1.4; color: #c05a94; }
+.sayItem + .sayText { padding-left: 0; }
+.sayTail { position: absolute; bottom: -6px; width: 10px; height: 10px; margin-left: -5px; background: #fff; border-right: 1.5px solid #f4b8d0; border-bottom: 1.5px solid #f4b8d0; transform: rotate(45deg); }

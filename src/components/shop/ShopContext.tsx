@@ -56,6 +56,20 @@ export const PV_VIEW_DEFAULT = { gaze: 'left', action: 'basic', expr: 'default',
 export const PV_SNAP_DEFAULT: PvSnap = { ...PV_LOOK_DEFAULT, ...PV_VIEW_DEFAULT }
 // 점(애교점) 위치 오프셋: 레이어이름(accessoryEye/accessoryEye2) → 월드 오프셋. 사소한 변경점/쩜 전용.
 export type DotOffsets = Record<string, Vec>
+// 핑크빈이 하는 말 한 마디와, 그 말을 할 때 보고 있는 부위('' = 코디 전체).
+export type RateLine = { text: string; slot: string }
+// 말에서 부위를 짐작한다(서버가 부위를 주지 않았을 때). 입고 있는 부위만 돌려준다.
+const RATE_WORDS: [RegExp, string[]][] = [
+  [/헤어|머리카락|머리|앞머리|단발|양갈래|포니테일/, ['hair']], [/모자|리본|머리띠|왕관|헬멧|후드/, ['cap']], [/눈동자|눈빛|눈매|표정|얼굴|성형/, ['face']],
+  [/안경|선글라스|눈장식/, ['eyeAcc']], [/얼굴장식|마스크|수염/, ['faceAcc']], [/귀고리|귀걸이/, ['earring']], [/신발|구두|부츠|운동화|슬리퍼/, ['shoes']],
+  [/장갑/, ['glove']], [/망토|날개|꼬리/, ['cape']], [/방패/, ['shield']], [/무기|검|칼|지팡이|활|총|창|도끼/, ['weapon']],
+  [/치마|바지|하의|스커트|반바지/, ['pants', 'longcoat']], [/원피스|드레스|한벌옷|교복|정장|옷|상의|셔츠|재킷|자켓|코트|티셔츠/, ['longcoat', 'coat']],
+]
+function rateSlotOf(text: string, equipped: Record<string, ListItem | null>): string {
+  for (const [re, slots] of RATE_WORDS) if (re.test(text)) { const hit = slots.find((sl) => equipped[sl]); if (hit) return hit }
+  return ''
+}
+
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; dotPos?: Record<string, DotOffsets>; dyeOff?: Record<string, boolean>; pv?: PvSnap; name?: string }
 // 공유·광장에서 받은 코디는 메타 정보(연출·시선·액션·표정·배율)를 **전부 그 코디의 값**으로 가져온다.
 // 담겨 있지 않은 칸은 기본값이다 — 공유 코드는 기본값과 같은 칸을 아예 빼고 싣고(shareCode.minPv), 오래된 광장 글엔
@@ -290,8 +304,9 @@ export interface ShopCtx {
   shareCurrentLink: () => void
   applySharedToPreset: (snap: Snapshot, targetId: string) => void
   rateCodi: () => void
-  rateResult: { bubbles: string[]; nonce: number } | null
-  takeRate: () => string[] | null // 아직 안 띄운 평가만 한 번 내준다(두 번째부터는 null)
+  rating: boolean                  // 평가를 받아 오는 중(핑크빈이 살펴보고 있다)
+  rateResult: { lines: RateLine[]; nonce: number } | null
+  takeRate: () => RateLine[] | null // 아직 안 띄운 평가만 한 번 내준다(두 번째부터는 null)
   // toast
   toast: boolean; toastText: string
   notify: (msg: string) => void
@@ -608,18 +623,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     })
   }, [uiReady, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
   useEffect(() => { if (uiReady) writeUiPref({ plazaSort }) }, [uiReady, plazaSort])
-  const [rateResult, setRateResult] = useState<{ bubbles: string[]; nonce: number } | null>(null) // 코디 평가 말풍선
-  // 말풍선은 **평가를 눌러 받은 그 한 번만** 뜬다(광장처럼 미리보기가 없는 탭에
-  // 갔다 와도 지난 평가가 다시 뜨지 않는다). RateBubbles 는 미리보기와 함께 언마운트됐다가 다시 붙으면서
+  const [rateResult, setRateResult] = useState<{ lines: RateLine[]; nonce: number } | null>(null) // 코디 평가(핑크빈이 하는 말)
+  // 평가는 **눌러 받은 그 한 번만** 나온다(광장처럼 미리보기가 없는 탭에
+  // 갔다 와도 지난 평가가 다시 나오지 않는다). PinkbeanRate 는 미리보기와 함께 언마운트됐다가 다시 붙으면서
   // 남아 있던 rateResult 로 effect 가 또 돈다. 그래서 '띄웠다'는 표시를 **컴포넌트 밖**(여기)에 둔다.
   const rateSeen = useRef(0)
-  const rateLive = useRef<{ bubbles: string[]; nonce: number } | null>(null)
+  const rateLive = useRef<{ lines: RateLine[]; nonce: number } | null>(null)
   rateLive.current = rateResult
-  const takeRate = useCallback((): string[] | null => {
+  const takeRate = useCallback((): RateLine[] | null => {
     const r = rateLive.current
     if (!r || r.nonce <= rateSeen.current) return null
     rateSeen.current = r.nonce
-    return r.bubbles
+    return r.lines
   }, [])
   const [rating, setRating] = useState(false)
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
@@ -1630,12 +1645,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const shareCurrentLink = () => {
     copyShareLink(curSnapNamed())
   }
-  // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말풍선을 받는다.
+  // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말 두세 마디를 받는다.
+  // 받는 동안과 받은 뒤의 연출은 preview/PinkbeanRate 가 한다(핑크빈이 무대로 나와 말한다).
   const rateNonce = useRef(0)
   const rateHistory = useRef<string[]>([]) // 핑크빈이 최근에 한 말(반복 방지용으로 백엔드에 전달)
   const rateCodi = async () => {
     if (rating) return
-    notify('핑크빈이 코디를 살펴보고 있어요…')
+    // 미리보기가 화면에 없으면(핑크빈이 나올 무대가 없다) 받는 중임을 토스트로 알린다
+    if (!document.querySelector('[data-pb-rate]')) notify('핑크빈이 코디를 살펴보고 있어요')
     setRating(true)
     try {
       // id 도 함께 → 백엔드가 그 아이템의 캡션(생김새)을 붙여 "이름"이 아니라 "모습"을 보고 말하게 한다.
@@ -1645,11 +1662,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json()
       // 말은 모델이 짓는다 → 성적·폭력적 표현이 섞여 나오는 경우를 화면에 붙이기 직전에 버린다(lib/safeText).
       // 서버에서도 같은 규칙으로 거르지만 백엔드는 따로 배포되므로, 여기서 한 번 더 본다.
-      const bubbles = safeBubbles(data.bubbles)
+      // slots = 말마다 핑크빈이 보고 있는 부위(없거나 비어 있으면 말에서 짐작한다 — rateSlotOf).
+      const raw: unknown[] = Array.isArray(data.bubbles) ? data.bubbles : [], slots: unknown[] = Array.isArray(data.slots) ? data.slots : []
+      const bubbles = safeBubbles(raw)
+      const worn = (sl: unknown) => (typeof sl === 'string' && equipped[sl] ? sl : '')
+      const lines = bubbles.map((text) => { const i = raw.findIndex((b) => String(b ?? '').trim() === text); return { text, slot: worn(slots[i]) || rateSlotOf(text, equipped) } })
       rateHistory.current = [...bubbles, ...rateHistory.current].slice(0, 6) // 최근 6개만 기억(거른 뒤 것만)
-      setRateResult({ bubbles, nonce: ++rateNonce.current })
+      setRateResult({ lines, nonce: ++rateNonce.current })
     } catch {
-      setRateResult({ bubbles: ['뀨…? 지금은 딴청 부리는 중이야!'], nonce: ++rateNonce.current })
+      setRateResult({ lines: [{ text: '뀨…? 지금은 딴청 부리는 중이야!', slot: '' }], nonce: ++rateNonce.current })
     } finally { setRating(false) }
   }
   // 프리셋 삭제 = 코디 기본값 + 기본 이름으로 되돌림(칸 수는 고정). 선택된 프리셋이면 라이브 모델도 즉시 적용.
@@ -1848,7 +1869,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     dotPos, setDot, resetDot,
     pv, setPv,
     presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, commitPresetName, snapshot,
-    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rateResult, takeRate,
+    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rating, rateResult, takeRate,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText, notify,
   }

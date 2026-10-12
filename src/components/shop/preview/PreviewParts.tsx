@@ -1,6 +1,6 @@
 'use client'
 
-// 미리보기 영역 부품: 평가 말풍선 · 북마크 스프라이트 · 북마크 박스(PC) · 북마크 시트 본문(모바일) · 연출 설정 시트 본문(모바일).
+// 미리보기 영역 부품: 북마크 스프라이트 · 북마크 박스(PC) · 북마크 시트 본문(모바일) · 연출 설정 시트 본문(모바일).
 
 import clsx from 'clsx'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -19,40 +19,6 @@ import { PvGrid, type PvField } from './PvPicker'
 import styles from './preview.module.css'
 
 const BOOKMARK_FRAC = 0.9
-
-// 핑크빈 코디 평가 말풍선 — 평가가 오면 캐릭터 주변 링 모양 위치에 2~3개를 페이드업→3초 유지→페이드다운.
-export function RateBubbles() {
-  const s = useShop()
-  const [bubbles, setBubbles] = useState<{ id: number; text: string; top: number; left: number; delay: number }[]>([])
-  const bubbleId = useRef(0)
-  useEffect(() => {
-    // takeRate 는 아직 안 띄운 평가만 내준다 → 탭을 옮겼다 와서 이 컴포넌트가 다시 붙어도 지난 평가가 되풀이되지 않는다.
-    const got = s.takeRate()
-    if (!got || !got.length) return
-    // 캐릭터(미리보기 중앙)를 피해 "반지(링) 모양"으로 배치 — 인덱스별로 원주에 분산.
-    const arr = got.slice(0, 3)
-    const base = Math.random() * Math.PI * 2
-    const spawned = arr.map((text, i) => {
-      const angle = base + (i / arr.length) * Math.PI * 2 + (Math.random() - 0.5) * 0.7
-      const rx = 32 + Math.random() * 10, ry = 28 + Math.random() * 10
-      const left = Math.max(2, Math.min(66, 48 + Math.cos(angle) * rx))
-      const top = Math.max(3, Math.min(60, 44 + Math.sin(angle) * ry))
-      return { id: ++bubbleId.current, text, top, left, delay: i * 1.3 } // 일정 간격으로 천천히 하나씩
-    })
-    setBubbles((b) => [...b, ...spawned])
-    const ids = new Set(spawned.map((x) => x.id))
-    const t = setTimeout(() => setBubbles((b) => b.filter((x) => !ids.has(x.id))), 3600 + (spawned.length - 1) * 1300 + 300)
-    return () => clearTimeout(t)
-  }, [s.rateResult, s.takeRate])
-  return (
-    <>
-      {bubbles.map((b) => (
-        // 위치·지연은 말풍선마다 무작위로 정해지는 즉시 값이라 인라인
-        <div key={b.id} className="pb-bubble" style={{ top: `${b.top}%`, left: `${b.left}%`, animation: `pbBubbleFloat 3.6s ease ${b.delay}s both` }}>{b.text}</div>
-      ))}
-    </>
-  )
-}
 
 // 북마크 썸네일: 아이템 스프라이트(헤어·성형은 염색표처럼 몸 없이 모든 파츠 합성, 무염색).
 export function BookmarkSprite({ item }: { item: ListItem }) {

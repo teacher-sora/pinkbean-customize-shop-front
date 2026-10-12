@@ -44,7 +44,7 @@
 | 토스트 | `ui/Toast.tsx` — `s.notify('…')` 로 띄운다 |
 | 캔버스 우클릭 메뉴와 그 알림 | `lib/canvasMenu.ts` — `bindImageMenu`, `flashToast`(React 밖에서 쓰는 것) |
 | 지우기 두 번 누르기 | `lib/confirmTwice.ts`(`confirmTwice`, `CONFIRM_ATTR`) + `ui/ConfirmBubble.tsx` — 누른 버튼 위에 말풍선, 3초 |
-| 코디 평가 말풍선 | `preview/PreviewParts.tsx` 의 `RateBubbles` + 전역 `.pb-bubble` |
+| 코디 평가(핑크빈이 무대에 나와 말한다) | `preview/PinkbeanRate.tsx` + `preview.module.css` 의 `.rate` `.bean` `.say` |
 
 ## 컨트롤 (`ui/controls.tsx`, `ui/ui.module.css`)
 
