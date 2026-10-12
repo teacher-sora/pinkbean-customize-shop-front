@@ -56,8 +56,8 @@ export default function PreviewColumn() {
             className={clsx('pb-ghost', styles.dotBtn, dotItem && styles.dotBtnOn)}>
             <IconDot />점 위치
           </button>
-          <div className={styles.model}><PreviewModel /></div>
           <PinkbeanRate />
+          <div className={styles.model}><PreviewModel /></div>
         </div>
 
         <div className={clsx('pb-drawer', styles.drawer, pvAll && styles.drawerOpen)}>
@@ -89,8 +89,8 @@ export function MobileHero() {
   return (
     <div className={styles.hero}>
       <SceneCanvas kind="room" />
-      <div className={styles.heroModel}><PreviewModel /></div>
       <PinkbeanRate />
+      <div className={styles.heroModel}><PreviewModel /></div>
       <div className={styles.heroHist}>
         <button type="button" onClick={s.undo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
         <button type="button" onClick={s.redo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>

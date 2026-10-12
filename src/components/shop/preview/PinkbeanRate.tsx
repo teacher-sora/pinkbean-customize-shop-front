@@ -1,8 +1,11 @@
 'use client'
 
-// 코디 평가: 핑크빈이 무대로 걸어 나와 캐릭터 옆에 서서 한마디씩 한다.
-//   평가를 누르면 걸어 들어온다 → 답을 기다리는 동안 캐릭터 곁을 오간다 → 말은 핑크빈 머리 위 한 곳에서 한 줄씩 바뀐다
-//   (말하는 동안 그 말이 가리키는 부위의 아이템을 말 앞에 보여 준다) → 다 말하면 좋아하고 걸어 나간다.
+// 코디 평가: 핑크빈이 무대로 걸어 나와 캐릭터 둘레를 돌며 한마디씩 한다.
+//   평가를 누르면 왼쪽에서 걸어 들어온다 → 답을 기다리는 동안 캐릭터 둘레를 돈다(오래 걸릴수록 여러 바퀴)
+//   → 한 마디 하고, 반대쪽으로 돌아가 다음 마디를 한다(말은 핑크빈 머리 위에 뜨고, 그 말이 가리키는 부위의 아이템을 앞에 보여 준다)
+//   → 다 말하면 좋아하고(하트) 가까운 쪽으로 걸어 나간다.
+// 도는 길: 왼쪽 → 오른쪽은 캐릭터 **뒤로**, 오른쪽 → 왼쪽은 **앞으로** 지난다. 그래서 이 칸은 캐릭터(PreviewModel)보다 **먼저** 놓고,
+// 앞으로 지날 때와 말할 때만 z-index 로 올린다(preview.module.css 의 .beanFront · .say).
 // 자리는 미리보기 캐릭터가 딛고 선 바닥(lib/stageFloor)에 맞추고, 도트 크기도 캐릭터와 같은 정수 배율이다.
 // 칸이 좁아 캐릭터 옆에 설 자리가 없으면(태블릿처럼 캐릭터가 크게 그려질 때) 핑크빈만 배율을 낮춘다(정수 배율은 지킨다).
 // 그림은 게임의 펫 '핑크빈'이다(parser 의 pinkbean-build.cjs → assets/pinkbean.png + pinkbeanData.ts). 왼쪽을 보는 그림이다.
@@ -16,10 +19,10 @@ import { BookmarkSprite } from './PreviewParts'
 import styles from './preview.module.css'
 
 type Act = keyof typeof PINKBEAN
-// 서는 자리(게임 픽셀, 캐릭터 가운데에서 왼쪽으로). 말 사이사이에 두 자리를 오간다. 먼 자리는 칸이 좁으면 안쪽으로 당긴다(spots)
-const NEAR = -46, FAR = -62, EDGE = 22
+// 서는 자리 = 캐릭터 가운데에서 양옆으로 SIDE(게임 픽셀). EDGE = 칸의 가장자리에서 띄울 폭
+const SIDE = 46, EDGE = 22
 const HEAD = 36            // 발에서 머리 위까지(게임 픽셀). 말은 이 위에 뜬다
-const SPEED = 70           // 걷는 빠르기(게임 픽셀/초)
+const SPEED = 78           // 걷는 빠르기(게임 픽셀/초)
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 export default function PinkbeanRate() {
@@ -29,7 +32,7 @@ export default function PinkbeanRate() {
   // 바닥: 이 칸 안에서의 캐릭터 가운데 x · 발 높이 y(CSS px) · 핑크빈의 게임 픽셀 1칸의 CSS 크기
   const [geo, setGeo] = useState<{ x: number; y: number; k: number; w: number } | null>(null)
   const [on, setOn] = useState(false)                       // 무대에 나와 있다
-  const [at, setAt] = useState({ gx: 0, ms: 0, right: true })   // 자리(게임 픽셀) · 거기까지 걷는 시간 · 오른쪽을 본다
+  const [at, setAt] = useState({ gx: 0, ms: 0, right: true, front: true })   // 자리(게임 픽셀) · 거기까지 걷는 시간 · 오른쪽을 본다 · 캐릭터 앞에 그린다
   const [act, setAct] = useState<Act>('stand1')
   const [frame, setFrame] = useState(0)
   const [line, setLine] = useState<RateLine | null>(null)
@@ -42,7 +45,7 @@ export default function PinkbeanRate() {
       if (!f || !el || !f.wrap.isConnected || !el.parentElement?.contains(f.wrap)) return
       const wr = f.wrap.getBoundingClientRect(), hr = el.getBoundingClientRect()
       const dpr = window.devicePixelRatio || 1, cx = wr.left - hr.left + f.cx
-      const k = Math.max(1, Math.min(f.scale, Math.floor((cx * dpr) / (EDGE - NEAR)))) / dpr
+      const k = Math.max(1, Math.min(f.scale, Math.floor((Math.min(cx, hr.width - cx) * dpr) / (SIDE + EDGE)))) / dpr
       setGeo((g) => { const n = { x: cx, y: wr.top - hr.top + f.footY, k, w: hr.width }; return g && g.x === n.x && g.y === n.y && g.k === n.k && g.w === n.w ? g : n })
     }
     read()
@@ -66,42 +69,43 @@ export default function PinkbeanRate() {
   const pos = useRef(0), busy = useRef(false), token = useRef(0)
   const pending = useRef<RateLine[] | null>(null)
   const rating = useRef(false); rating.current = s.rating
-  const spots = () => { const g = geoRef.current; return [NEAR, Math.min(NEAR, Math.max(FAR, g ? Math.ceil(-g.x / g.k) + EDGE : FAR))] }
-  const outside = () => { const g = geoRef.current; return g ? -Math.ceil(g.x / g.k) - 40 : -200 }
+  // 칸 밖(왼쪽 -1 · 오른쪽 1)
+  const outside = (side: number) => { const g = geoRef.current; return g ? side * (Math.ceil((side < 0 ? g.x : g.w - g.x) / g.k) + 40) : side * 200 }
+  // 걷는다. 캐릭터를 가로지를 때 왼쪽 → 오른쪽은 뒤로, 오른쪽 → 왼쪽은 앞으로. 서면 캐릭터 쪽을 본다
   const walk = async (to: number, alive: () => boolean) => {
     const d = to - pos.current
     if (!d) return
-    const ms = Math.max(260, (Math.abs(d) / SPEED) * 1000)
+    const ms = Math.max(260, (Math.abs(d) / SPEED) * 1000), cross = pos.current * to < 0
     pos.current = to
-    setAct('move'); setAt({ gx: to, ms, right: d > 0 })
+    setAct('move'); setAt({ gx: to, ms, right: d > 0, front: !(cross && d > 0) })
     await sleep(ms)
-    if (alive()) { setAct('stand1'); setAt({ gx: to, ms: 0, right: true }) }   // 서면 캐릭터 쪽(오른쪽)을 본다
+    if (alive()) { setAct('stand1'); setAt({ gx: to, ms: 0, right: to < 0, front: true }) }
   }
   const start = async () => {
     if (busy.current || !geoRef.current) return
     busy.current = true
     const my = ++token.current, alive = () => token.current === my
-    pos.current = outside()
-    setAt({ gx: pos.current, ms: 0, right: true }); setLine(null); setSay(false); setOn(true)
+    pos.current = outside(-1)
+    setAt({ gx: pos.current, ms: 0, right: true, front: true }); setLine(null); setSay(false); setOn(true)
     await sleep(40)
-    if (alive()) await walk(spots()[0], alive)
-    let side = 0
-    while (alive() && !pending.current && rating.current) {      // 답을 기다린다: 캐릭터 곁을 오가며 살펴본다
-      await sleep(700)
+    let side = -1
+    if (alive()) await walk(side * SIDE, alive)
+    while (alive() && !pending.current && rating.current) {      // 답을 기다린다: 캐릭터 둘레를 돌며 살펴본다
+      await sleep(450)
       if (!alive() || pending.current) break
-      side ^= 1
-      await walk(spots()[side], alive)
+      side = -side
+      await walk(side * SIDE, alive)
     }
     const lines = pending.current; pending.current = null
     if (alive() && lines) {
       for (let i = 0; i < lines.length && alive(); i++) {
-        if (i > 0) { setSay(false); await sleep(240); if (!alive()) break; side ^= 1; await walk(spots()[side], alive); if (!alive()) break }
+        if (i > 0) { setSay(false); await sleep(240); if (!alive()) break; side = -side; await walk(side * SIDE, alive); if (!alive()) break }
         setLine(lines[i]); setAct('chat'); setSay(true)
         await sleep(Math.min(4200, 1900 + lines[i].text.length * 75))
       }
       if (alive()) { setSay(false); setAct('love'); await sleep(1400) }
     }
-    if (alive()) { setSay(false); await walk(outside(), alive) }
+    if (alive()) { setSay(false); await walk(outside(side), alive) }
     if (alive()) { setOn(false); busy.current = false; if (pending.current || rating.current) start() }
   }
   useEffect(() => { if (s.rating) start() }, [s.rating, geo !== null])
@@ -124,7 +128,7 @@ export default function PinkbeanRate() {
     <div ref={host} data-pb-rate aria-live="polite" className={styles.rate}>
       {geo && on && (
         <>
-          <div className={styles.bean} style={{ transform: `translate3d(${px}px, ${geo.y}px, 0)`, transition: at.ms ? `transform ${at.ms}ms linear` : 'none' }}>
+          <div className={at.front ? styles.beanFront : styles.bean} style={{ transform: `translate3d(${px}px, ${geo.y}px, 0)`, transition: at.ms ? `transform ${at.ms}ms linear` : 'none' }}>
             <div style={{ transform: at.right ? 'scaleX(-1)' : undefined }}>
               <div className={styles.beanArt} style={{
                 left: -f[4] * k, top: -f[5] * k, width: f[2] * k, height: f[3] * k,

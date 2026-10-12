@@ -152,7 +152,8 @@ scripts/merge-dev-to-main.sh
 - **닉네임 불러오기**(`api/nick`): 넥슨 `item-equipment` 에서 `item_shape_name || item_name` 으로 읽는다. 왜: 모루로 덮은 외형은 `item_shape_name` 에 있다.
 - **신규 표시**: CDN `catalog/new.json` 의 id 에 NEW 라벨과 '신규' 필터.
 
-- **코디 평가는 핑크빈이 무대에 나와서 한다**(`preview/PinkbeanRate`). 평가를 누르면 핑크빈이 무대 왼쪽에서 걸어 들어와 캐릭터 옆에 서고, 답을 기다리는 동안 곁을 오간다. 말은 핑크빈 머리 위 한 곳에서 한 줄씩 바뀌고(말 사이에 자리를 옮긴다), 그 말이 가리키는 부위의 착용 아이템을 말 앞에 그린다. 다 말하면 좋아하는 동작을 하고 걸어 나간다. 왜: 말풍선만 캐릭터 둘레에 흩어 놓으면 누가 무엇을 보고 하는 말인지 보이지 않는다(사용자 지적).
+- **코디 평가는 핑크빈이 무대에 나와서 한다**(`preview/PinkbeanRate`). 평가를 누르면 핑크빈이 무대 왼쪽에서 걸어 들어와 캐릭터 옆에 서고, 답을 기다리는 동안 **캐릭터 둘레를 돈다**(오래 걸릴수록 여러 바퀴). 한 마디 하고 반대쪽으로 돌아가 다음 마디를 하며, 말은 핑크빈 머리 위에 뜨고 그 말이 가리키는 부위의 착용 아이템을 말 앞에 그린다. 다 말하면 좋아하는 동작(하트)을 하고 가까운 쪽으로 걸어 나간다. 왜: 말풍선만 캐릭터 둘레에 흩어 놓으면 누가 무엇을 보고 하는 말인지 보이지 않는다(사용자 지적).
+  - 도는 길은 왼쪽에서 오른쪽은 캐릭터 뒤로, 오른쪽에서 왼쪽은 앞으로다. 그래서 `PinkbeanRate` 는 캐릭터(`PreviewModel`)보다 **먼저** 놓고 z-index 를 주지 않으며, 앞으로 지날 때와 말만 z-index 로 올린다. 순서를 바꾸거나 칸에 z-index 를 주면 뒤로 지나가지 못한다.
   - 자리와 도트 크기는 캐릭터가 딛고 선 바닥(`lib/stageFloor`)에 맞춘다. 칸이 좁아 설 자리가 없으면(태블릿) 핑크빈만 정수 배율을 낮춘다.
   - 부위는 back 의 `/rate` 가 말과 함께 준다(`slots`). 없거나 비어 있으면 말에 든 낱말로 짐작한다(`ShopContext` 의 `rateSlotOf`). 입고 있지 않은 부위는 그리지 않는다.
   - 그림은 게임의 펫 '핑크빈'이고 parser 가 만든다(`src/assets/pinkbean.png` + `preview/pinkbeanData.ts`). 손으로 고치지 않는다.
@@ -272,7 +273,7 @@ Vercel 프로젝트의 환경변수에 있고, 로컬에서는 `.env.local`(커�
 | `SUPABASE_TOKEN` | 앱은 쓰지 않는다 | `scripts/clean-test-data.mjs` 만 쓴다(dev 데이터 · 자동화 계정 지우기 — CLAUDE.md '시험 데이터'). Supabase 계정의 관리 토큰이다(대시보드 Account → Access Tokens). **Vercel 에 넣지 않는다** — 로컬의 환경변수나 `.env.local` 에만 둔다 |
 | `R2_ENDPOINT` · `R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY` | 공유 링크 만들기가 실패한다 | `lib/server/r2.ts` — 서버 전용 |
 | `R2_BUCKET` | `pinkbean-customize-shop` | 같음 |
-| `NEXT_PUBLIC_SEARCH_API` | `https://pinkbean-customize-shop-back.fly.dev` | `ShopContext.tsx` — AI 코디 검색·코디 평가 |
+| `NEXT_PUBLIC_SEARCH_API` · `NEXT_PUBLIC_SEARCH_API_DEV` | `https://pinkbean-customize-shop-back.fly.dev` · `https://pinkbean-customize-shop-back-dev.fly.dev` | `ShopContext.tsx` — AI 코디 검색·코디 평가. 없어도 된다(기본값이 코드에 있다). **운영 도메인이면 운영 서버, 그 밖(dev 사이트 · 로컬)이면 dev 서버**를 쓴다(호스트로 고른다) |
 | `NEXT_PUBLIC_DATA_BASE` | `https://cdn.pinkbean-customize.com` | `lib/core/data.ts` — parser 의 캡션 도구도 이 파일을 불러 쓰므로 CDN 이 아닌 값으로 바꾸면 캡션 도구의 캐시가 안 걸린다 |
 | `NEXT_PUBLIC_SITE_URL` | apex | `lib/siteUrl.ts` — canonical. `www.` 는 떼어 낸다 |
 | `NEXT_PUBLIC_PLAZA_TARGET` | 호스트로 판단 | `lib/plaza.ts` — `prod` 면 운영 스키마를 강제. 평소에는 두지 않는다 |

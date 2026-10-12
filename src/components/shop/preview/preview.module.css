@@ -144,12 +144,14 @@
 /* 시트 화면은 칸이 넓으니 그림 자리도 그만큼 키운다(팝오버는 88×76 그대로). */
 .pickScroll .pvCellArt { height: 96px; }
 
-/* 코디 평가(PinkbeanRate): 핑크빈이 무대에 나와 말한다. 캐릭터 위, 버튼 아래에 놓이고 누를 수 없다 */
-.rate { position: absolute; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; }
-.bean { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+/* 코디 평가(PinkbeanRate): 핑크빈이 무대에 나와 캐릭터 둘레를 돌며 말한다. 누를 수 없다.
+   이 칸은 캐릭터보다 먼저 놓여 있고 z-index 가 없다 → 핑크빈은 캐릭터 뒤에 그려지고, 앞으로 지날 때(.beanFront)와 말(.say)만 캐릭터 위로 올린다 */
+.rate { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.bean, .beanFront { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+.beanFront { z-index: 3; }
 .beanArt { position: absolute; background-repeat: no-repeat; image-rendering: pixelated; }
 /* 말: 핑크빈 머리 위. 나타나고 사라질 때 같은 곡선으로 6px 오르내린다(크기는 바꾸지 않는다) */
-.say { position: absolute; display: flex; align-items: center; gap: 7px; padding: 6px 10px 6px 6px; background: #fff; border: 1.5px solid #f4b8d0; border-radius: 12px; box-shadow: 0 5px 16px rgba(200,90,150,.22); opacity: 0; transform: translateY(6px); transition: opacity .22s ease, transform .26s cubic-bezier(.45,0,.55,1); }
+.say { position: absolute; z-index: 3; display: flex; align-items: center; gap: 7px; padding: 6px 10px 6px 6px; background: #fff; border: 1.5px solid #f4b8d0; border-radius: 12px; box-shadow: 0 5px 16px rgba(200,90,150,.22); opacity: 0; transform: translateY(6px); transition: opacity .22s ease, transform .26s cubic-bezier(.45,0,.55,1); }
 .say[data-on] { opacity: 1; transform: translateY(0); animation: sayBob 1.8s ease-in-out infinite; }
 /* 말하는 동안 살짝 오르내린다(전환이 쓰는 transform 과 겹치지 않게 translate 로) */
 @keyframes sayBob { 50% { translate: 0 -2px; } }
