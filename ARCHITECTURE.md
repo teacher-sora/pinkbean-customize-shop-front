@@ -254,6 +254,7 @@ Vercel 프로젝트의 환경변수에 있고, 로컬에서는 `.env.local`(커�
 |---|---|---|
 | `NEXON_API_KEY` | 닉네임 불러오기가 500 | `app/api/nick/route.ts` — 서버 전용. 운영에는 **서비스 키**여야 한다(개발 키는 초당 5건·하루 1,000건이라 금방 막힌다) |
 | `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 코디 광장이 꺼진다(목록 503) | `lib/plaza.ts`, `app/api/plaza/shared.ts` — 값은 Supabase 의 publishable 키다 |
+| `SUPABASE_TOKEN` | 앱은 쓰지 않는다 | `scripts/clean-test-data.mjs` 만 쓴다(dev 데이터 · 자동화 계정 지우기 — CLAUDE.md '시험 데이터'). Supabase 계정의 관리 토큰이다(대시보드 Account → Access Tokens). **Vercel 에 넣지 않는다** — 로컬의 환경변수나 `.env.local` 에만 둔다 |
 | `R2_ENDPOINT` · `R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY` | 공유 링크 만들기가 실패한다 | `lib/server/r2.ts` — 서버 전용 |
 | `R2_BUCKET` | `pinkbean-customize-shop` | 같음 |
 | `NEXT_PUBLIC_SEARCH_API` | `https://pinkbean-customize-shop-back.fly.dev` | `ShopContext.tsx` — AI 코디 검색·코디 평가 |

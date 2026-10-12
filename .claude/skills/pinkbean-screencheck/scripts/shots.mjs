@@ -1,7 +1,9 @@
 // 핑크빈 커마샵 폭별 캡처 — PC / 절반 / 태블릿(터치) / 모바일(터치)
-//   node shots.mjs <url> [--tab=plaza] [--out=<dir>] [--only=mobile,pc] [--wait=2500] [--click="표정"]
+//   node shots.mjs <url> [--tab=plaza] [--out=<dir>] [--only=mobile,pc] [--wait=2500] [--click="표정"] [--auth]
 // 태블릿·모바일은 hasTouch 로 (pointer:coarse) 를 만들어야 useBreakpoint 가 제대로 잡힌다.
 // CDN 은 localhost(80)·dev·운영 출처만 허용한다. 다른 포트의 로컬 서버에서도 아이템이 뜨도록 CDN 응답에 허용 헤더를 끼워 준다.
+// Supabase 의 익명 로그인은 **막는다** — 사이트를 열 때마다 계정이 하나씩 생겨 DB 에 남는다(CLAUDE.md '시험 데이터').
+// 등록 · 좋아요 · 댓글처럼 세션이 있어야 하는 화면을 찍을 때만 --auth 로 푼다(끝나면 scripts/clean-test-data.mjs 로 지운다).
 
 import { chromium, devices } from 'playwright'
 import { mkdirSync } from 'node:fs'
@@ -16,6 +18,7 @@ const wait = Number(opt('wait', 2500))
 const tab = opt('tab', '')
 const only = opt('only', '').split(',').filter(Boolean)
 const click = opt('click', '') // 찍기 전에 누를 버튼(aria-label 또는 글자) — 팝오버·시트를 연 모습을 찍을 때
+const auth = args.includes('--auth')
 
 const MODES = [
   { name: 'pc', width: 1440, height: 900, touch: false },
@@ -45,6 +48,7 @@ for (const m of MODES) {
       await route.fulfill({ response: r, headers: { ...r.headers(), 'access-control-allow-origin': '*' } })
     } catch { await route.abort().catch(() => {}) }
   })
+  if (!auth) await page.route((u) => u.host.endsWith('supabase.co') && u.pathname.startsWith('/auth/'), (route) => route.abort())
   await page.goto(url, { waitUntil: 'networkidle' }).catch(() => page.goto(url))
   // 탭 전환(코디 광장 등) — 하단 탭 버튼 이름으로 누른다.
   if (tab) {

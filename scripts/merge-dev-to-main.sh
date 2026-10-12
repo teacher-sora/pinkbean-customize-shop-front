@@ -59,3 +59,4 @@ for p in $DEV_ONLY; do
 done
 
 echo "· 병합 완료(개발 전용 경로 없음 확인). 확인 후 'git push origin main' 하세요."
+echo "· dev 데이터를 지웠는지 확인하세요: node scripts/clean-test-data.mjs (지우기는 --apply — CLAUDE.md '시험 데이터')"

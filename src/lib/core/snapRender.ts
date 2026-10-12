@@ -26,13 +26,12 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const rideItem: ListItem | null = rideId
     ? await loadSlot(RIDING_FILE).then((l) => l.find((x) => x.id === rideId) ?? null).catch(() => null)
     : null
-  const [bodyMeta, headMeta] = await Promise.all([loadMeta(te.body), loadMeta(te.head)])
-  const equipMetas: { slot: string; meta: ItemMeta }[] = []
-  for (const [slot, id] of Object.entries(snap.equipped)) {
-    if (snap.hidden?.[slot] || !id) continue
-    const m = await loadMeta(id).catch(() => null)
-    if (m) equipMetas.push({ slot, meta: m })
-  }
+  const baseP = Promise.all([loadMeta(te.body), loadMeta(te.head)])
+  // 착용 아이템의 meta 는 **한꺼번에** 받는다(순서는 스냅샷 그대로). 하나씩 기다리면 아이템이 열 개인 코디는 왕복 열 번이
+  // 줄을 서서, 카드 한 장에 1초 가까이 걸렸다(광장 한 쪽이 다 뜨는 데 5초).
+  const wornIds = Object.entries(snap.equipped).filter(([slot, id]) => !snap.hidden?.[slot] && id)
+  const [[bodyMeta, headMeta], got] = await Promise.all([baseP, Promise.all(wornIds.map(([, id]) => loadMeta(id).catch(() => null)))])
+  const equipMetas: { slot: string; meta: ItemMeta }[] = wornIds.flatMap(([slot], i) => (got[i] ? [{ slot, meta: got[i]! }] : []))
   // 표정 얼굴장식(fixedEmotion)이 프리셋에 들어있으면 그 표정으로 굳는다. 없으면 종전대로 THUMB_VIEW.
   // 프리셋 스냅샷은 id 만 담으므로 표정은 meta 에서 읽는다.
   const snapExpr = equipMetas.find(({ meta }) => meta.fixedEmotion)?.meta.fixedEmotion
@@ -72,6 +71,8 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
     ...animaLayers(spv.form, animaRaces), // 형상변이 — 프리셋에 저장된 값
   ]
   const { placed, anchors } = assemble(items, index.zmap, index.smap)
+  // 그릴 그림을 지금 받기 시작한다(그리는 쪽 renderCharacter 가 같은 캐시를 쓴다) — 아래의 염색 · 이펙트를 기다리는 동안 함께 온다.
+  for (const p of placed) void loadImage(p.png, true).catch(() => {})
   // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (오래된 프리셋엔 dye 키가 없을 수 있어 방어)
   // 염색 비활성화(dyeOff) 슬롯은 수치가 있어도 렌더에서 뺀다.
   const off = snap.dyeOff || {}

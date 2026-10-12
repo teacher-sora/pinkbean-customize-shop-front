@@ -32,20 +32,21 @@ export async function collectWornEffects(
 ): Promise<WornEff[]> {
   if (!worn.length) return []
   const idx = await loadEffectIndex().catch(() => new Set<string>())
-  const out: WornEff[] = []
-  for (const { slot, id, dyeable } of worn) {
-    if (!effectEnabled(slot, pv)) continue                       // 토글 꺼짐 → 카드에서도 안 보인다
-    if (!idx.has(String(parseInt(id, 10)))) continue             // 이펙트 없는 아이템
+  // 아이템마다 따로(한꺼번에) 받는다 — 하나씩 기다리면 이펙트 있는 아이템 수만큼 왕복이 줄을 선다. 결과 순서는 worn 그대로.
+  const each = await Promise.all(worn.map(async ({ slot, id, dyeable }): Promise<WornEff | null> => {
+    if (!effectEnabled(slot, pv)) return null                    // 토글 꺼짐 → 카드에서도 안 보인다
+    if (!idx.has(String(parseInt(id, 10)))) return null          // 이펙트 없는 아이템
     const em = await loadEffect(id).catch(() => null)
-    if (!em) continue
-    out.push({ slot, em })
-    if (dyeable === false) continue                              // 염색 불가 아이템 → 이펙트도 원본 색
+    if (!em) return null
+    if (dyeable === false) return { slot, em }                   // 염색 불가 아이템 → 이펙트도 원본 색
     const h = dyeHsb[slot]
-    if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue     // 염색 없음 → 원본 그대로
+    if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) return { slot, em } // 염색 없음 → 원본 그대로
     // 프레임 png 는 병렬 로드(순차면 프레임 많은 망토에서 줄줄이 늘어져 느리다).
     const pngs = Object.values(em.groups).flatMap((g) => g.frames.slice(0, 1).map((fr) => fr.png))
     const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
     for (const e of loaded) { if (e) { try { override.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} } }
-  }
+    return { slot, em }
+  }))
+  const out = each.filter((x): x is WornEff => x !== null)
   return out
 }
