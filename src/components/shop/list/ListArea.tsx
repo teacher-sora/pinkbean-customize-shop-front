@@ -236,7 +236,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
               <button key={q} type="button" onClick={() => runAi(q)} className={clsx('pb-soft', styles.chip)}>{q}</button>
             ))}
           </div>
-          <span className={mobile ? styles.betaM : styles.beta}>분위기를 문장으로 적으면 어울리는 아이템을 찾아줘요</span>
+          <span className={mobile ? styles.betaM : styles.beta}>원하는 코디 형태를 적어보아요</span>
         </div>
       ) : loading ? skeletons : emptyTitle ? (
         <div className={mobile ? styles.emptyM : styles.empty}>
