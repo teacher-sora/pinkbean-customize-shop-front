@@ -745,7 +745,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 프리셋 카드와 광장 첫 쪽을 **탭을 누르기 전에** 미리 합성해 둔다. 합성 결과와 그림이 캐시에 있으면 탭을 누른 순간
   // 카드가 뼈대 없이 그 자리에서 그려진다(SnapThumb 의 composePeek). 첫 화면이 자리를 잡고 한가해진 뒤에, 보이는 카드가
   // 하나도 줄을 서 있지 않을 때만 돈다(lib/thumbQueue 의 낮은 순위). 데이터 절약 모드면 하지 않는다.
-  const warmPosts = useMemo(() => plazaList.slice(0, 24).map((p) => p.snapshot), [plazaList])
+  // 광장 첫 쪽: 가장 넓은 화면의 한 쪽(9열 × 3줄 = 27장)을 덮게 30장
+  const warmPosts = useMemo(() => plazaList.slice(0, 30).map((p) => p.snapshot), [plazaList])
   useEffect(() => {
     if (!index || dataLoading) return
     if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return
