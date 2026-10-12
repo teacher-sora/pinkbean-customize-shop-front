@@ -155,7 +155,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     <div className={mobile ? styles.pageChipM : styles.pageChip}>
       {!mobile && (
         <>
-          <span title="이 부위·조건의 아이템 수" className={styles.count}>{`${list.length.toLocaleString()}개`}</span>
+          <span title="이 부위, 조건의 아이템 수" className={styles.count}>{`${list.length.toLocaleString()}개`}</span>
           <span className={styles.chipDiv} />
         </>
       )}
@@ -236,7 +236,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
               <button key={q} type="button" onClick={() => runAi(q)} className={clsx('pb-soft', styles.chip)}>{q}</button>
             ))}
           </div>
-          <span className={mobile ? styles.betaM : styles.beta}>아직 베타 기능이라 결과가 정확하지 않을 수 있어요!</span>
+          <span className={mobile ? styles.betaM : styles.beta}>분위기를 문장으로 적으면 어울리는 아이템을 찾아줘요</span>
         </div>
       ) : loading ? skeletons : emptyTitle ? (
         <div className={mobile ? styles.emptyM : styles.empty}>
@@ -281,7 +281,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       <div className={styles.hr} />
       {viewport}
       <div className={clsx('pb-hintbar', styles.hintBar)}>
-        <span className={styles.hintText}>스크롤 · 스와이프 · ← → 로 페이지를 넘겨요</span>
+        <span className={styles.hintText}>스크롤, 스와이프, ← → 로 페이지를 넘겨요</span>
       </div>
     </section>
   )

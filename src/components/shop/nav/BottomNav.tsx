@@ -14,7 +14,7 @@ const PARTS = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, {
 export const TABS = [
   { id: 'codi', label: '코디' },
   { id: 'search', label: 'AI 코디 검색' },
-  { id: 'info', label: '코디 정보 · 염색' },
+  { id: 'info', label: '코디 정보 / 염색' },
   { id: 'preset', label: '프리셋' },
   { id: 'share', label: '코디 광장' },
   { id: 'notice', label: '공지 및 건의함' },

@@ -72,7 +72,7 @@ export default function LookDialog() {
             <div style={css('display:flex; flex-direction:column; gap:4px; min-width:0;')}>
               <span style={css('font-size:15px; font-weight:700; color:#2a2521;')}>가져올 코디 선택</span>
               <span style={css('font-size:12px; color:#a89e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>
-                {multiLook ? `'${lp.nick}' 은(는) 코디가 두 벌이에요 · 프리셋을 골라 주세요` : `'${lp.nick}' 의 치장 프리셋을 골라 주세요`}
+                {multiLook ? `'${lp.nick}' 은(는) 코디가 두 벌이에요, 프리셋을 골라 주세요` : `'${lp.nick}' 의 치장 프리셋을 골라 주세요`}
               </span>
             </div>
             {closeBtn}

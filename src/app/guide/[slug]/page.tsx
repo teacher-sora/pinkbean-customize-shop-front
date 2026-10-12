@@ -2,10 +2,10 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { SEO_PAGES, getSeoPage, seoSlugs } from '@/lib/seoPages'
 import { SITE_URL } from '@/lib/siteUrl'
-import GuideShell, { GuideList, OpenShop } from '../GuideShell'
+import GuideShell, { GuideList, GuideNote, Lines, OpenShop } from '../GuideShell'
 import styles from '../guide.module.css'
 
-// 안내 글 한 편(lib/seoPages). 홈의 요약(ShopHome) · /guide · sitemap 에서 이어진다.
+// 안내 글 한 편(lib/seoPages). 검색엔진이 읽으라고 둔 글이고 앱 어디에서도 이어지지 않는다(sitemap 으로만 알린다).
 // 정적 생성(SSG): 빌드 시 모든 slug 를 프리렌더한다.
 export const dynamicParams = false
 export function generateStaticParams() {
@@ -21,8 +21,8 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
     description: p.description,
     keywords: p.keywords,
     alternates: { canonical: path },
-    openGraph: { type: 'article', url: `${SITE_URL}${path}`, title: p.title, description: p.description },
-    twitter: { card: 'summary_large_image', title: p.title, description: p.description },
+    openGraph: { type: 'article', url: `${SITE_URL}${path}`, title: `핑크빈 커마샵 - ${p.title}`, description: p.description },
+    twitter: { card: 'summary_large_image', title: `핑크빈 커마샵 - ${p.title}`, description: p.description },
   }
 }
 
@@ -77,13 +77,14 @@ export default function GuidePage({ params }: { params: { slug: string } }) {
         <a href="/">핑크빈 커마샵</a><span aria-hidden>›</span><a href="/guide">가이드</a><span aria-hidden>›</span><span>{p.h1}</span>
       </nav>
       <h1 className={styles.h1}>{p.h1}</h1>
-      <p className={styles.lead}>{p.lead}</p>
+      <p className={styles.lead}><Lines text={p.lead} /></p>
+      <GuideNote />
       <hr className={styles.hr} />
 
       {p.sections.map((sec) => (
         <section key={sec.h2} className={styles.sec}>
           <h2 className={styles.h2}>{sec.h2}</h2>
-          {sec.body.map((para, i) => <p key={i} className={styles.p}>{para}</p>)}
+          {sec.body.map((para, i) => <p key={i} className={styles.p}><Lines text={para} /></p>)}
         </section>
       ))}
       <hr className={styles.hr} />
@@ -94,7 +95,7 @@ export default function GuidePage({ params }: { params: { slug: string } }) {
           {p.faq.map((f) => (
             <li key={f.q}>
               <h3 className={styles.q}>{f.q}</h3>
-              <p className={styles.a}>{f.a}</p>
+              <p className={styles.a}><Lines text={f.a} /></p>
             </li>
           ))}
         </ul>

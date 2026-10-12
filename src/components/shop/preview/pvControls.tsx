@@ -48,8 +48,8 @@ export function usePvFields(): PvFieldDef[] {
   const pv = s.pv
   return [
     { key: 'zoom', title: '배율', short: '배율', def: '2', hint: '미리보기 캐릭터 크기', options: ZOOMS, value: String(pv.zoom), set: (v) => s.setPv('zoom', Number(v)) },
-    { key: 'action', title: '액션', short: '액션', def: 'basic', hint: '캐릭터 동작 (서기·걷기·점프 등)', options: PV_ACTIONS_FLAT, value: pv.action, set: (v) => s.setPv('action', v), disabled: disabledActions },
-    { key: 'weapon', title: '무기 모션', short: '모션', def: 'basic', hint: '무기를 든 자세 (스윙·찌르기·사격 등)', options: PV_WEAPONS, value: pv.weapon, set: (v) => s.setPv('weapon', v) },
+    { key: 'action', title: '액션', short: '액션', def: 'basic', hint: '캐릭터 동작 (서기, 걷기, 점프 등)', options: PV_ACTIONS_FLAT, value: pv.action, set: (v) => s.setPv('action', v), disabled: disabledActions },
+    { key: 'weapon', title: '무기 모션', short: '모션', def: 'basic', hint: '무기를 든 자세 (스윙, 찌르기, 사격 등)', options: PV_WEAPONS, value: pv.weapon, set: (v) => s.setPv('weapon', v) },
     { key: 'expr', title: '표정', short: '표정', def: 'default', hint: '얼굴 표정', options: PV_EXPRS, value: pv.expr, set: (v) => s.setPv('expr', v) },
   ]
 }
@@ -99,7 +99,7 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
     { key: 'wEffect', label: '무기 이펙트' }, { key: 'cEffect', label: '망토 이펙트' }, { key: 'capEffect', label: '모자 이펙트' },
   ]
   const groups: { key: PvGroup; label: string; summary: string }[] = [
-    { key: 'char', label: '캐릭터', summary: `${lb(PV_FORMS, pv.form)} · ${lb(PV_EARS, pv.ear)} · ${lb(PV_GAZES, pv.gaze)}` },
+    { key: 'char', label: '캐릭터', summary: `${lb(PV_FORMS, pv.form)} / ${lb(PV_EARS, pv.ear)} / ${lb(PV_GAZES, pv.gaze)}` },
     { key: 'effect', label: '이펙트', summary: `${[pv.wEffect, pv.cEffect, pv.capEffect].filter(Boolean).length} / 3 켜짐` },
   ]
   const slides = (

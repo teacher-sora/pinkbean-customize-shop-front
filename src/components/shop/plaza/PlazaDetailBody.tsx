@@ -226,7 +226,7 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
             ) : (
               <div className={clsx(surf.partGrid, mobile && surf.partGridM)}>
                 {items.map((w) => (
-                  <span key={w.slot} title={`${w.label} · ${w.name}${w.dyed ? (w.off ? ' (염색 꺼짐)' : ' (염색)') : ''}`}
+                  <span key={w.slot} title={`${w.label} - ${w.name}${w.dyed ? (w.off ? ' (염색 꺼짐)' : ' (염색)') : ''}`}
                     className={clsx(surf.partChip, styles.wornChip)}>
                     <span className={surf.partThumb}>
                       <span className={surf.partSprite}>

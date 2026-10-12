@@ -1,9 +1,14 @@
-/* 안내 페이지(/guide · /guide/[slug]). 앱과 같은 배경 장면 위에 흰 패널 하나를 놓고 그 안에서 읽는다.
-   색 · 테두리 · 로고 칸 · 버튼은 앱(frame.module.css · globals.css)의 값을 그대로 쓴다. */
+/* 안내 글(/guide, /guide/[slug]). 15번가 거리 그림 위에 흰 패널 하나를 놓는다.
+   색, 테두리, 로고 칸, 버튼은 앱(frame.module.css, globals.css)의 값을 그대로 쓴다. */
 
-/* body 는 스크롤하지 않으므로(globals.css) 이 칸이 스크롤한다. 터치 기기는 문서가 스크롤한다(주소창이 접히게) */
-.page { position: relative; height: 100svh; overflow-y: auto; }
-@media (pointer: coarse) { .page { height: auto; min-height: 100svh; overflow: visible; } }
+/* 앱은 문서가 스크롤하지 않는다(globals.css 의 body). 안내 글만 예외로 문서 스크롤을 푼다 */
+:global(html):has(.page) { height: auto; }
+:global(html):has(.page) :global(body) { height: auto; overflow: visible; }
+.page { position: relative; min-height: 100svh; }
+
+/* 배경: 정오의 하늘색 위에 거리 그림 석 장(먼 빌딩, 탑, 거리)을 화면 아래 가운데에 맞춰 고정한다 */
+.street { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: linear-gradient(180deg, #4fa9f2, #7cc4f8, #aedcfc, #dff3ff); }
+.still { position: absolute; max-width: none; user-select: none; }
 
 .col { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 12px; }
 
@@ -15,6 +20,9 @@
 .openBig { align-self: flex-start; height: 40px; padding: 0 16px; margin-top: 28px; }
 
 .panel { background: #fff; border: 1px solid #e7ded4; border-radius: 14px; padding: 28px 32px 32px; display: flex; flex-direction: column; }
+
+.note { margin: 16px 0 0; padding: 10px 12px; background: #faf7f3; border-radius: 8px; font-size: 12.5px; font-weight: 500; line-height: 1.7; color: #8a8075; }
+.note a { font-weight: 600; color: #c85d8a; }
 
 .crumb { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; font-size: 12.5px; font-weight: 500; color: #a89e93; }
 .crumb a { color: #8a8075; }
@@ -33,7 +41,7 @@
 .q { margin: 0 0 4px; font-size: 14.5px; font-weight: 600; color: #3d372f; }
 .a { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.7; color: #5c534b; }
 
-/* 안내 글 목록(가이드 첫 화면 · 글 아래의 다른 안내) */
+/* 안내 글 목록(가이드 첫 화면, 글 아래의 다른 안내) */
 .list { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .item { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 12px 16px; background: #fff; border: 1px solid #eee6dc; border-radius: 10px; transition: border-color .2s ease, background-color .22s ease; }
 .itemT { font-size: 14.5px; font-weight: 600; color: #3d372f; transition: color .22s ease; }
@@ -48,9 +56,10 @@
 }
 .logo:focus-visible, .open:focus-visible, .item:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
 
-/* 모바일: 앱처럼 배경 장면 없이 흰 화면 하나로 */
+/* 모바일: 앱처럼 배경 없이 흰 화면 하나로(그림은 늦게 받게 해 두어 가려지면 받지 않는다) */
 @media (max-width: 520px) {
   .page { background: #fff; }
+  .street { display: none; }
   .col { padding: 0 0 32px; gap: 0; }
   .head { padding: 0 14px; border-bottom: 1px solid #f4efe8; }
   .logo { gap: 7px; padding: 0; border: none; }

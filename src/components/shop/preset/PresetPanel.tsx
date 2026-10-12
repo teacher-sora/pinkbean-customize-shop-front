@@ -75,7 +75,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <>
         <div className={styles.headerM}>
           {chip}
-          <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임 · 공유 링크" className={clsx('pb-input', styles.importInputM)} />
+          <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임 / 공유 링크" className={clsx('pb-input', styles.importInputM)} />
           <button type="button" onClick={s.importFetch} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconImport /></button>
         </div>
         <div className={styles.hrM} />

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: '핑크빈 커마샵 — 메이플스토리 코디 미리보기',
     short_name: '핑크빈 커마샵',
-    description: '메이플스토리 캐릭터 외형(코디)을 웹에서 미리보기 · 착용 · 염색 · 프리셋 · AI 코디 검색.',
+    description: '메이플스토리 캐릭터 외형(코디)을 웹에서 미리보기, 착용, 염색, 프리셋, AI 코디 검색.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

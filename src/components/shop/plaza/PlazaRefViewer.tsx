@@ -168,7 +168,7 @@ export default function PlazaRefViewer({ src, initial, edit, onChange }: {
       style={{ touchAction: edit || overY ? 'none' : 'pan-y' }}
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
       onDoubleClick={reset}
-      title={edit ? '끌어서 옮기고, 휠·두 손가락으로 확대해요' : '휠·두 손가락으로 확대, 끌어서 이동 · 두 번 누르면 처음 화면'}>
+      title={edit ? '끌어서 옮기고, 휠이나 두 손가락으로 확대해요' : '휠이나 두 손가락으로 확대, 끌어서 이동, 두 번 누르면 처음 화면'}>
       {/* next/image 로 보낸다(보기) — 원본 대신 지금 크기에 맞는 WebP/AVIF. 확대하면 sizes 가 커져 더 큰 그림으로 바꿔 받는다
           (256px 단위로 올려 휠 한 칸마다 새로 받지 않게). 편집기는 아직 올리지 않은 로컬 파일(blob:)이라 그대로 쓴다.
           배율 계산은 가로세로 비만 쓰므로, 줄인 그림의 크기(naturalWidth)로 재도 결과가 같다. */}
