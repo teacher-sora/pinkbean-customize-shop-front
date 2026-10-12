@@ -158,6 +158,9 @@
 .sayIn { position: relative; display: flex; align-items: center; gap: 7px; padding: 6px 10px 6px 6px; background: #fff; border: 1.5px solid #f4b8d0; border-radius: 12px; box-shadow: 0 5px 16px rgba(200,90,150,.22); will-change: transform; backface-visibility: hidden; }
 .say[data-on] .sayIn { animation: sayBob 2.2s ease-in-out infinite; }
 @keyframes sayBob { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -3px, 0); } }
+/* 아이템 그림은 여기서만 부드럽게 보간한다. 캔버스의 기본값(pixelated)은 가장 가까운 픽셀을 골라 그려서, 말풍선이 반 픽셀씩 오르내릴 때
+   그림만 한 픽셀씩 뚝뚝 끊겨 움직인다. 캔버스는 화면 픽셀과 1:1 로 그려져 있어 멈춰 있을 때의 선명함은 같다 */
+.sayItem canvas { image-rendering: auto !important; }
 .sayItem { position: relative; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; background: #fdf4f8; overflow: hidden; }
 .sayText { min-width: 0; padding-left: 4px; font-size: 12px; font-weight: 600; line-height: 1.4; color: #c05a94; }
 .sayItem + .sayText { padding-left: 0; }
