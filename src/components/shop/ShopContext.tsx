@@ -26,7 +26,9 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
+import { enqueueThumb } from '@/lib/thumbQueue'
 import { confirmTwice } from '@/lib/confirmTwice'
 import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
 
@@ -740,6 +742,28 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     plazaOrder.current = { key, ids: out.map((p) => p.id) }
     return out
   }, [plazaPosts, plazaFilter, plazaQ, plazaSort, plazaGen])
+  // 프리셋 카드와 광장 첫 쪽을 **탭을 누르기 전에** 미리 합성해 둔다. 합성 결과와 그림이 캐시에 있으면 탭을 누른 순간
+  // 카드가 뼈대 없이 그 자리에서 그려진다(SnapThumb 의 composePeek). 첫 화면이 자리를 잡고 한가해진 뒤에, 보이는 카드가
+  // 하나도 줄을 서 있지 않을 때만 돈다(lib/thumbQueue 의 낮은 순위). 데이터 절약 모드면 하지 않는다.
+  // 광장 첫 쪽: 가장 넓은 화면의 한 쪽(9열 × 3줄 = 27장)을 덮게 30장
+  const warmPosts = useMemo(() => plazaList.slice(0, 30).map((p) => p.snapshot), [plazaList])
+  useEffect(() => {
+    if (!index || dataLoading) return
+    if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return
+    const jobs: { cancel: () => void }[] = []
+    const t = window.setTimeout(() => {
+      animaOnce().then((races) => {
+        const seen = new Set<string>()
+        for (const snap of [...Object.values(presetData), ...warmPosts]) {
+          const key = snapKey(snap)
+          if (seen.has(key) || composePeek(key, index, races) !== undefined) continue
+          seen.add(key)
+          jobs.push(enqueueThumb(2, () => composeSnapshotCached(key, snap, index, races).then(() => undefined)))
+        }
+      }).catch(() => {})
+    }, 1500)
+    return () => { window.clearTimeout(t); for (const j of jobs) j.cancel() }
+  }, [index, dataLoading, presetData, warmPosts])
   const pagedList = primary === 'search' ? searchResultsView : activeList
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
   //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다

@@ -101,7 +101,9 @@ scripts/merge-dev-to-main.sh
 - **귀**: `humanEar` 기본 · `ear` 엘프 · `lefEar` 우든 레프 · `highlefEar` 하이 레프(머리 `front` 프레임의 레이어 이름).
 - **카드가 반영하는 연출은 종류마다 다르다**: 기본 캐릭터 카드 = 아이템 + 피부 + 무기 모션 + 시선. '내 캐릭터' 카드 = 거기에 형상 변이·귀·무기와 망토의 이펙트. 프리셋 카드(`SnapThumb`) = 저장된 스냅샷의 연출 그대로, 시선은 왼쪽 고정. 미리보기 = 전부 + 액션·표정. **미리보기의 그리는 규칙을 바꾸면 목록·AI 검색 카드에도 같이 반영한다**(다르게 하라는 말이 없으면).
 - **스냅샷 카드**(`snapRender.composeSnapshot`)는 프리셋·광장·상세·가져오기·공유 카드 이미지가 함께 쓴다. 미리보기(`PreviewModel`)와 규칙이 달라지면 안 된다(이펙트 끔, 무기 모션 자세 포함). 결과는 캐시한다(`composeSnapshotCached`, LRU 120). 왜: 필터를 오갈 때마다 다시 합성하면 점점 느려진다.
-- **썸네일 합성 순서**(`thumbQueue`): 보이는 것 먼저 동시에 6개까지, 앞뒤 쪽 미리 그리기는 보이는 것이 다 끝난 뒤 4개까지. 아직 시작하지 않은 작업은 취소된다.
+- **썸네일 합성 순서**(`thumbQueue`): 보이는 것 먼저 동시에 12개까지, 앞뒤 쪽 미리 그리기는 보이는 것이 다 끝난 뒤 4개까지. 아직 시작하지 않은 작업은 취소된다.
+- **스냅샷 카드는 필요한 것을 한꺼번에 받는다**(`snapRender.composeSnapshot`): 피부와 착용 아이템의 meta, 이펙트 메타를 동시에 요청하고, 조립이 끝나면 그릴 그림도 염색을 기다리지 않고 받기 시작한다. 왜: 하나씩 기다리면 아이템이 열 개인 코디는 왕복 열 번이 줄을 서서 카드 한 장에 1초 가까이 걸렸다(광장 한 쪽이 다 뜨는 데 5초).
+- **프리셋 카드와 광장 첫 쪽(30장)은 탭을 누르기 전에 미리 합성한다**(`ShopContext` — 첫 화면이 자리를 잡고 1.5초 뒤, `thumbQueue` 의 가장 낮은 순위로. 보이는 카드가 줄을 서 있으면 돌지 않는다). 합성 결과와 그림이 캐시에 있으면 탭을 누른 순간 뼈대 없이 그 자리에서 그려진다(탭 누름 → 다 그려짐: 광장 4.9초 → 0.45초, 프리셋 2.4초 → 0.35초, 잰 값). 데이터 절약 모드(`navigator.connection.saveData`)에서는 하지 않는다. 그만큼 광장에 가지 않는 방문자도 그림을 미리 받는다(1~2MB) — 속도를 먼저 둔 선택이다.
 - **복사·저장 이미지**(`canvasExport.modelShotBlob`)는 모든 곳이 이 함수 하나를 쓴다. 합성 입력으로 게임 픽셀 ×4 정수 배율로 다시 그리고, 몸통을 가운데 둔 채 그림이 닿는 데까지 자른 뒤 사방 12% 여백. **배경은 투명.** 투명을 모르는 곳(그림판·일부 메신저)에 붙여 넣으면 바탕이 검게 나올 수 있다.
 
 ### 2-4. 염색
@@ -254,6 +256,7 @@ Vercel 프로젝트의 환경변수에 있고, 로컬에서는 `.env.local`(커�
 |---|---|---|
 | `NEXON_API_KEY` | 닉네임 불러오기가 500 | `app/api/nick/route.ts` — 서버 전용. 운영에는 **서비스 키**여야 한다(개발 키는 초당 5건·하루 1,000건이라 금방 막힌다) |
 | `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 코디 광장이 꺼진다(목록 503) | `lib/plaza.ts`, `app/api/plaza/shared.ts` — 값은 Supabase 의 publishable 키다 |
+| `SUPABASE_TOKEN` | 앱은 쓰지 않는다 | `scripts/clean-test-data.mjs` 만 쓴다(dev 데이터 · 자동화 계정 지우기 — CLAUDE.md '시험 데이터'). Supabase 계정의 관리 토큰이다(대시보드 Account → Access Tokens). **Vercel 에 넣지 않는다** — 로컬의 환경변수나 `.env.local` 에만 둔다 |
 | `R2_ENDPOINT` · `R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY` | 공유 링크 만들기가 실패한다 | `lib/server/r2.ts` — 서버 전용 |
 | `R2_BUCKET` | `pinkbean-customize-shop` | 같음 |
 | `NEXT_PUBLIC_SEARCH_API` | `https://pinkbean-customize-shop-back.fly.dev` | `ShopContext.tsx` — AI 코디 검색·코디 평가 |
