@@ -47,3 +47,5 @@
 @media (hover: hover) and (pointer: fine) {
   .logoBtn:hover { border-color: #ec86ac; }
 }
+/* 못 누르는 동안(코디 평가가 진행 중) */
+.tool:disabled, .rateBtnM:disabled { opacity: .4; cursor: not-allowed; }

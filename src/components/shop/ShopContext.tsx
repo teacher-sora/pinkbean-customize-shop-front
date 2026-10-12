@@ -309,6 +309,8 @@ export interface ShopCtx {
   applySharedToPreset: (snap: Snapshot, targetId: string) => void
   rateCodi: () => void
   rating: boolean                  // 평가를 받아 오는 중(핑크빈이 살펴보고 있다)
+  rateBusy: boolean                // 평가가 진행 중이다(받아 오는 중 + 핑크빈이 말하고 나갈 때까지). 그동안 평가 버튼을 못 누른다
+  endRate: () => void              // 핑크빈이 나갔다(preview/PinkbeanRate 가 부른다)
   rateResult: { lines: RateLine[]; nonce: number } | null
   takeRate: () => RateLine[] | null // 아직 안 띄운 평가만 한 번 내준다(두 번째부터는 null)
   // toast
@@ -641,6 +643,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return r.lines
   }, [])
   const [rating, setRating] = useState(false)
+  // 평가는 한 번에 하나만: 누른 때부터 핑크빈이 걸어 나갈 때까지 잠근다. 상태(버튼을 못 누르게)와 ref(함수가 다시 들어오지 못하게) 둘 다 둔다.
+  // 핑크빈이 끝을 알리지 못하는 경우(무대가 화면에서 사라짐)에도 풀리도록 한도를 둔다.
+  const [rateShow, setRateShow] = useState(false)
+  const rateLock = useRef(false), rateLockTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const endRate = useCallback(() => {
+    if (rateLockTimer.current) { clearTimeout(rateLockTimer.current); rateLockTimer.current = null }
+    rateLock.current = false; setRateShow(false)
+  }, [])
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
   const loadSlotRaw = useCallback(async (slot: string): Promise<ListItem[]> => {
     if (searchRaw.current[slot]) return searchRaw.current[slot]
@@ -1654,9 +1664,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const rateNonce = useRef(0)
   const rateHistory = useRef<string[]>([]) // 핑크빈이 최근에 한 말(반복 방지용으로 백엔드에 전달)
   const rateCodi = async () => {
-    if (rating) return
-    // 미리보기가 화면에 없으면(핑크빈이 나올 무대가 없다) 받는 중임을 토스트로 알린다
-    if (!document.querySelector('[data-pb-rate]')) notify('핑크빈이 코디를 살펴보고 있어요')
+    if (rating || rateLock.current) return
+    rateLock.current = true
+    // 미리보기가 화면에 없으면(핑크빈이 나올 무대가 없다) 받는 중임을 토스트로 알리고, 답을 받으면 바로 푼다
+    const staged = !!document.querySelector('[data-pb-rate]')
+    if (staged) { setRateShow(true); rateLockTimer.current = setTimeout(endRate, 40000) } else notify('핑크빈이 코디를 살펴보고 있어요')
     setRating(true)
     try {
       // id 도 함께 → 백엔드가 그 아이템의 캡션(생김새)을 붙여 "이름"이 아니라 "모습"을 보고 말하게 한다.
@@ -1675,7 +1687,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setRateResult({ lines, nonce: ++rateNonce.current })
     } catch {
       setRateResult({ lines: [{ text: '뀨…? 지금은 딴청 부리는 중이야!', slot: '' }], nonce: ++rateNonce.current })
-    } finally { setRating(false) }
+    } finally { setRating(false); if (!staged) endRate() }
   }
   // 프리셋 삭제 = 코디 기본값 + 기본 이름으로 되돌림(칸 수는 고정). 선택된 프리셋이면 라이브 모델도 즉시 적용.
   const resetPreset = (id: string) => {
@@ -1873,7 +1885,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     dotPos, setDot, resetDot,
     pv, setPv,
     presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, commitPresetName, snapshot,
-    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rating, rateResult, takeRate,
+    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rating, rateBusy: rating || rateShow, endRate, rateResult, takeRate,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText, notify,
   }
