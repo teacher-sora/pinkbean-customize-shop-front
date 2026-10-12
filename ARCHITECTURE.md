@@ -40,7 +40,7 @@ src/app/
   (shop)/layout.tsx     앱 본문(여기 한 번만 놓는다)
   (shop)/page.tsx · search · info · preset · plaza     탭 주소(내용은 비어 있다)
   (shop)/share/         공유 링크의 메타(카톡 카드). 주소로 직접 들어오지 않고 middleware 가 rewrite 해 온다
-  guide/ · guide/[slug] 검색용 안내 페이지 4개(lib/seoPages.ts)
+  guide/, guide/[slug]  검색엔진용 안내 글. 정식 페이지가 아니다(2-5 의 '안내 글'). 내용은 lib/seoPages.ts, 틀은 guide/GuideShell
   suggestion/           운영자용 건의함(주소로만 들어간다. 검색 제외)
   viewer/               개발용 화면 뷰어 — dev 전용, main 에 없다(CONTRIBUTING.md)
   not-found.tsx         없는 주소는 404 를 내면서 브라우저를 `/` 로 보낸다
@@ -127,6 +127,13 @@ scripts/merge-dev-to-main.sh
 - **보던 자리 기억**(`lib/uiState`): `sessionStorage` 에 부위·검색어·쪽·광장 필터·AI 검색 결과(탭은 주소가 기억한다), `localStorage` 에는 광장 정렬 하나만. 되살리기는 페인트 전에 한다.
 - **공유 링크** = `/?c=PB-xxxxxxxx&n=<이름>`. 긴 코드(압축 스냅샷)를 `POST /api/share` 가 R2 `share/<id>` 에 영구 저장하고, id 는 긴 코드의 해시라 같은 코디는 같은 id 다. **코드를 먼저 저장하고 카드 이미지는 뒤에** 올린다. 왜: 이미지를 기다리면 방금 복사한 링크가 죽어 있다. dev 는 `share-dev/`.
 - **카톡 카드**: `middleware` 가 `c` 가 있는 `/` 만 `/share` 로 rewrite 해 프리셋 기준 메타를 만든다(홈은 정적 유지). `og:url`·canonical 은 비운다. 공유 링크는 noindex 이고, robots 로 막지 않는다(막으면 noindex 를 읽지 못한다). `c` 없이 `/share` 를 열면 `/` 로 308.
+- **제목은 깔끔하게, 이름이 맨 앞.** 홈의 `<title>` 은 `핑크빈 커마샵` 뿐이고, 다른 주소는 `핑크빈 커마샵 - <그 화면>` 이다(`app/layout.tsx` 의 template, 탭을 옮길 때는 `ShopContext` 가 같은 꼴로 바꾼다). 찾는 말(메이플 코디, 메이플 커마)을 제목에 늘어놓지 않는다. 왜: 제목에 넣는다고 상위 노출이 보장되지 않고, 제목은 탭과 검색 결과에서 사람이 직접 보는 글자다. 찾는 말은 설명(`description`), 화면에 보이지 않는 요약(`ShopHome` 의 `sr-only`), 구조화 데이터, 안내 글에 문장으로 넣는다.
+- **안내 글(`/guide`, `/guide/*`)은 검색엔진이 읽으라고 둔 글이다. 정식 페이지가 아니다.**
+  - **앱 어디에서도 안내 글로 이어지지 않는다.** 보이는 링크도, 보이지 않는 요약 속 링크도 두지 않는다. 들어오는 길은 sitemap 과 검색 결과뿐이고, 글에서 나가는 길은 홈(`/`)뿐이다.
+  - 글마다 "정식 페이지가 아니며 기능은 모두 핑크빈 커마샵에서 쓴다"는 알림(`GuideNote`)을 둔다.
+  - 가볍게 둔다: 배경은 15번가 거리의 움직이지 않는 그림(`sceneSrc` 의 `STILL.sky`)이고 WebGL 장면을 띄우지 않는다. 앱의 상태(`ShopContext`)나 데이터를 쓰지 않는다.
+  - **문서 스크롤을 푸는 곳은 여기뿐이다**(`guide.module.css` 의 `html:has(.page)`). 앱은 문서가 스크롤하지 않는다.
+  - 문단은 문장마다 줄을 바꾼다(`Lines`). 주제가 겹치는 얇은 글을 늘리지 않는다(검색엔진이 같은 내용의 문 여러 개로 본다). 기능이 바뀌면 그 글도 고친다.
 
 ### 2-6. 화면 규칙
 

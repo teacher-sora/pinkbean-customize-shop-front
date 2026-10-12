@@ -117,7 +117,7 @@ function NoticeComments({ notice, mobile, notify }: { notice: PlazaNotice; mobil
   return (
     <div className={styles.ntCmt}>
       <div ref={headRef} className={styles.cmtHead}>
-        <span className={styles.descLabel}>건의 · 신고</span>
+        <span className={styles.descLabel}>건의 / 신고</span>
         {data && <span className={styles.cmtCount}>{data.total}</span>}
       </div>
       <div className={styles.cmtForm}>

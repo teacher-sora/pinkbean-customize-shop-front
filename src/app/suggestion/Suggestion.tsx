@@ -118,7 +118,7 @@ function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
           <div key={c.id} className={styles.item}>
             <div className={styles.row}>
               <span className={styles.who}>{plazaAlias(c.owner)}</span>
-              <span className={clsx(styles.time, styles.grow)}>{plazaWhen(c.createdAt)} · {new Date(c.createdAt).toLocaleString('ko-KR')}</span>
+              <span className={clsx(styles.time, styles.grow)}>{plazaWhen(c.createdAt)} | {new Date(c.createdAt).toLocaleString('ko-KR')}</span>
               <button type="button" onClick={() => { setReplyTo(replyTo === c.id ? null : c.id); setText('') }} className={clsx(styles.ghost, replyTo === c.id && styles.ghostOn)}>답변</button>
               {del(c.id)}
             </div>

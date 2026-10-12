@@ -65,8 +65,8 @@ export default function PreviewColumn() {
 
         <div className={styles.ctrlRow}>
           <PvInlineFields mobile={false} narrow={narrow} />
-          <button type="button" onClick={() => setPvAll((v) => !v)} title={pvAll ? '연출 설정 접기' : '연출 설정 더 보기 (형상 변이 · 귀 · 시선 · 이펙트)'}
-            aria-label={pvAll ? '연출 설정 접기' : '연출 설정 더 보기 (형상 변이 · 귀 · 시선 · 이펙트)'} aria-expanded={pvAll}
+          <button type="button" onClick={() => setPvAll((v) => !v)} title={pvAll ? '연출 설정 접기' : '연출 설정 더 보기 (형상 변이, 귀, 시선, 이펙트)'}
+            aria-label={pvAll ? '연출 설정 접기' : '연출 설정 더 보기 (형상 변이, 귀, 시선, 이펙트)'} aria-expanded={pvAll}
             className={clsx('pb-soft', styles.pvAll, narrow && styles.pvAllNarrow, pvAll && styles.pvAllOn)}>
             <span className={styles.pvAllText}>연출 설정</span>
             <IconCaretDown className={clsx(styles.pvCaret, pvAll && styles.pvCaretOn)} />

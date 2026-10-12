@@ -328,7 +328,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const titled = useRef(false)
   useEffect(() => {
     if (!titled.current) { titled.current = true; return } // 처음 제목은 서버가 낸 것(공유 링크는 프리셋 이름)을 둔다
-    document.title = TAB_TITLE[primary] ? `${TAB_TITLE[primary]} · 핑크빈 커마샵` : '핑크빈 커마샵'
+    document.title = TAB_TITLE[primary] ? `핑크빈 커마샵 - ${TAB_TITLE[primary]}` : '핑크빈 커마샵'
   }, [primary])
   const [searchQuery, setSearchQuery] = useState<string | null>(null) // AI 코디 검색어(null=미검색)
   const [aiQ, setAiQ] = useState('')

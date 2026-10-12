@@ -105,7 +105,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
     </div>
   )
   const search = (
-    <input value={s.plazaQ} onChange={(e) => s.setPlazaQ(e.target.value)} placeholder={mobile ? '이름 · 태그' : '이름 · 태그 검색'}
+    <input value={s.plazaQ} onChange={(e) => s.setPlazaQ(e.target.value)} placeholder={mobile ? '이름, 태그' : '이름, 태그 검색'}
       aria-label="코디 검색" className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
   )
 
@@ -115,7 +115,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
     : s.plazaFilter === 'contest' ? '대회 출품 코디가 없어요'
       : s.plazaFilter === 'mine' ? '등록한 코디가 없어요'
         : s.plazaFilter === 'liked' ? '찜한 코디가 없어요' : '아직 등록된 코디가 없어요'
-  const emptyHint = searching ? '다른 이름 · 설명 · 태그로 찾아주세요.'
+  const emptyHint = searching ? '다른 이름, 설명, 태그로 찾아주세요.'
     : s.plazaFilter === 'contest' ? `${PLAZA_CONTEST} 출품작이 아직 없어요.`
       : s.plazaFilter === 'mine' ? '내 프리셋의 코디를 등록해보세요.'
         : s.plazaFilter === 'liked' ? '마음에 드는 코디에 하트를 눌러주세요.'
@@ -197,8 +197,8 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
       <div className={clsx('pb-hintbar', styles.hintBar)}>
         {/* 대회 필터에서는 조작 안내 대신 대회 기간을 알린다(규칙 안내는 기간이면 충분). */}
         <span className={styles.hintText}>{s.plazaFilter === 'contest'
-          ? `${PLAZA_CONTEST} · ${plazaContestClosed() ? '마감됐어요' : PLAZA_CONTEST_PERIOD ?? '기간은 곧 안내돼요'}`
-          : '스크롤 · 스와이프 · ← → 로 페이지를 넘겨요'}</span>
+          ? `${PLAZA_CONTEST} | ${plazaContestClosed() ? '마감됐어요' : PLAZA_CONTEST_PERIOD ?? '기간은 곧 안내돼요'}`
+          : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'}</span>
       </div>
     </section>
   )

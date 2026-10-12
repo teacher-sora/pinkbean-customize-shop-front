@@ -17,7 +17,7 @@ export default function PlazaTakeBody({ snap, mobile }: { snap: Snapshot; mobile
         <div className={styles.takeThumb}><SnapThumb snap={snap} /></div>
         <div className={styles.takeHint}>
           <div className={styles.takeName}>{snap.name || '공유받은 코디'}</div>
-          <div className={styles.takeSub}>{mobile ? '저장할 프리셋을 골라주세요' : '저장할 프리셋을 고르면 바로 적용돼요 · 되돌리기 가능'}</div>
+          <div className={styles.takeSub}>{mobile ? '저장할 프리셋을 골라주세요' : '저장할 프리셋을 고르면 바로 적용돼요 (되돌리기 가능)'}</div>
         </div>
       </div>
       <div className={clsx(styles.takeGrid, mobile && styles.takeGridM)}>
