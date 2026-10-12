@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { SEO_PAGES, getSeoPage, seoSlugs } from '@/lib/seoPages'
 import { SITE_URL } from '@/lib/siteUrl'
+import GuideShell, { GuideList, OpenShop } from '../GuideShell'
+import styles from '../guide.module.css'
 
-// SEO/AEO 콘텐츠 페이지. 앱 UI 에서 링크하지 않고 sitemap 에만 게재 → 크롤러 전용 진입점.
+// 안내 글 한 편(lib/seoPages). 홈의 요약(ShopHome) · /guide · sitemap 에서 이어진다.
 // 정적 생성(SSG): 빌드 시 모든 slug 를 프리렌더한다.
 export const dynamicParams = false
 export function generateStaticParams() {
@@ -68,56 +70,42 @@ export default function GuidePage({ params }: { params: { slug: string } }) {
   }
 
   return (
-    <main style={{ maxWidth: 760, margin: '0 auto', padding: '40px 20px 72px', fontFamily: 'inherit', color: '#2a2521', lineHeight: 1.75 }}>
+    <GuideShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <nav aria-label="breadcrumb" style={{ fontSize: 13, color: '#a89e93', marginBottom: 18 }}>
-        <a href="/" style={{ color: '#c76fa0', textDecoration: 'none' }}>핑크빈 커마샵</a>
-        <span> · </span>
-        <a href="/guide" style={{ color: '#c76fa0', textDecoration: 'none' }}>가이드</a>
+      <nav aria-label="현재 위치" className={styles.crumb}>
+        <a href="/">핑크빈 커마샵</a><span aria-hidden>›</span><a href="/guide">가이드</a><span aria-hidden>›</span><span>{p.h1}</span>
       </nav>
-
-      <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 14px', color: '#c05a94' }}>{p.h1}</h1>
-      <p style={{ fontSize: 16, color: '#4a423b', margin: '0 0 28px' }}>{p.lead}</p>
-
-      <a href="/"
-        style={{ display: 'inline-block', margin: '0 0 32px', padding: '11px 20px', background: '#ec86ac', color: '#fff', fontWeight: 700, borderRadius: 10, textDecoration: 'none' }}>
-        커마샵에서 직접 해보기 →
-      </a>
+      <h1 className={styles.h1}>{p.h1}</h1>
+      <p className={styles.lead}>{p.lead}</p>
+      <hr className={styles.hr} />
 
       {p.sections.map((sec) => (
-        <section key={sec.h2} style={{ marginBottom: 28 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 10px', color: '#2a2521' }}>{sec.h2}</h2>
-          {sec.body.map((para, i) => (
-            <p key={i} style={{ margin: '0 0 10px', color: '#4a423b' }}>{para}</p>
-          ))}
+        <section key={sec.h2} className={styles.sec}>
+          <h2 className={styles.h2}>{sec.h2}</h2>
+          {sec.body.map((para, i) => <p key={i} className={styles.p}>{para}</p>)}
         </section>
       ))}
+      <hr className={styles.hr} />
 
-      <section style={{ marginTop: 40 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 16px', color: '#c05a94' }}>자주 묻는 질문</h2>
-        {p.faq.map((f) => (
-          <div key={f.q} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #f0e9e1' }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px', color: '#2a2521' }}>{f.q}</h3>
-            <p style={{ margin: 0, color: '#4a423b' }}>{f.a}</p>
-          </div>
-        ))}
-      </section>
-
-      <section style={{ marginTop: 36 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 10px', color: '#8a8075' }}>관련 가이드</h2>
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
-          {others.map((o) => (
-            <li key={o.slug} style={{ marginBottom: 6 }}>
-              <a href={`/guide/${o.slug}`} style={{ color: '#c76fa0' }}>{o.h1}</a>
+      <section className={styles.sec}>
+        <h2 className={styles.h2}>자주 묻는 질문</h2>
+        <ul className={styles.faq}>
+          {p.faq.map((f) => (
+            <li key={f.q}>
+              <h3 className={styles.q}>{f.q}</h3>
+              <p className={styles.a}>{f.a}</p>
             </li>
           ))}
         </ul>
       </section>
 
-      <p style={{ marginTop: 40 }}>
-        <a href="/" style={{ color: '#ec86ac', fontWeight: 700 }}>→ 핑크빈 커마샵으로 이동</a>
-      </p>
-    </main>
+      <section className={styles.sec}>
+        <h2 className={styles.h2}>다른 안내</h2>
+        <GuideList pages={others} />
+      </section>
+
+      <OpenShop big />
+    </GuideShell>
   )
 }

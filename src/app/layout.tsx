@@ -8,10 +8,12 @@ import NoNativeZoom from './NoNativeZoom'
 import { SITE_URL } from '@/lib/siteUrl'
 
 const SITE_NAME = '핑크빈 커마샵'
-const TITLE = '핑크빈 커마샵'
-// 사이트/OG 설명 — 네이버 검색 노출용으로 80자 이내. 웹 코디 + AI 코디 검색을 알리고 키워드(메이플 커마·코디)를 자연스럽게 포함.
+// 홈의 <title>. 검색 결과의 제목이 되므로 찾는 말(메이플 코디 · 메이플 커마)을 앞에, 이름을 뒤에 둔다 — 이름만 두면
+// 이름으로 찾을 때만 걸린다. 공유 카드(og:title)는 이름만 쓴다(카톡 · 디스코드에 붙였을 때 보이는 제목).
+const TITLE = '메이플 코디·메이플 커마 미리보기 - 핑크빈 커마샵'
+// 사이트/OG 설명 — 네이버 검색 노출용으로 80자 이내. 찾는 말(메이플 코디 · 메이플 커마)을 문장 안에 그대로 넣는다.
 const DESC =
-  '메이플 커마를 웹에서 바로 미리 해보고, 원하는 코디는 AI 검색으로 찾아봐요. 헤어·성형·염색·프리셋도 한 번에.'
+  '메이플 코디와 메이플 커마를 웹에서 무료로 미리 해봐요. 헤어·성형·염색 시뮬레이터, AI 코디 검색, 코디 광장까지 한 번에.'
 // og:image — 넓은 임베드 이미지(Vercel Blob CDN). 카톡/디스코드/트위터/구글 미리보기에 사용.
 const OG_IMAGE = 'https://qg2tk4czk48x6wl4.public.blob.vercel-storage.com/pinkbean_embed.png'
 const OG_W = 1536, OG_H = 1024
@@ -23,7 +25,8 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   keywords: [
     '메이플스토리', '메이플 커마', '커마샵', '커마', '코디', '외형', '코디 미리보기',
-    '메이플 코디', '메이플 코디 미리보기', '메이플 외형', '메이플 드레스룸', '드레스룸', '메이플 커마 사이트',
+    '메이플 코디', '메이플 코디 미리보기', '메이플 코디 추천', '메이플 코디 사이트', '메이플 외형', '메이플 드레스룸', '드레스룸', '메이플 커마 사이트',
+    '메이플 염색', '메이플 믹스 염색', '메이플 헤어', '메이플 성형', '메이플 코디 시뮬레이터',
     '염색', '발색', '헤어', '성형', '프리셋', '코디 공유', 'AI 코디 검색', '핑크빈', '핑크빈 커마샵',
     'MapleStory', 'MapleStory cosmetic', 'MapleStory dressroom', 'avatar', 'character customization',
   ],
@@ -41,14 +44,14 @@ export const metadata: Metadata = {
     type: 'website',
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: TITLE,
+    title: SITE_NAME,
     description: DESC,
     locale: 'ko_KR',
     images: [{ url: OG_IMAGE, width: OG_W, height: OG_H, alt: `${SITE_NAME} 미리보기`, type: 'image/png' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: TITLE,
+    title: SITE_NAME,
     description: DESC,
     images: [OG_IMAGE],
   },
@@ -97,10 +100,10 @@ const JSON_LD = {
       '@id': `${SITE_URL}/#website`,
       url: SITE_URL,
       name: SITE_NAME,
-      alternateName: ['메이플 커마', '메이플 코디', '메이플 드레스룸', '핑크빈 커마샵'],
+      alternateName: ['메이플 코디', '메이플 커마', '메이플 드레스룸', '핑크빈 커마'],
       description: DESC,
       // 구조화 데이터의 keywords 는 meta keywords(구글이 무시)와 달리 검색엔진이 읽는 유효 신호.
-      keywords: '메이플 커마, 메이플 코디, 메이플 드레스룸, 커마샵, 코디 미리보기, 염색, 프리셋, 핑크빈 커마샵',
+      keywords: '메이플 코디, 메이플 커마, 메이플 드레스룸, 메이플 염색, 메이플 헤어, 메이플 성형, 코디 미리보기, 코디 추천, 핑크빈 커마샵',
       inLanguage: 'ko-KR',
       publisher: { '@id': `${SITE_URL}/#org` },
     },
@@ -126,7 +129,7 @@ const JSON_LD = {
       inLanguage: 'ko-KR',
       isAccessibleForFree: true,
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW' },
-      featureList: ['아이템 착용 미리보기', '염색(발색)', '프리셋 저장·공유', 'AI 코디 검색', '핑크빈 코디 평가'],
+      featureList: ['메이플 코디 미리보기', '헤어·성형 미리보기', '믹스 염색·캐시 아이템 염색', '프리셋 저장·공유', '코디 광장', 'AI 코디 검색', '닉네임으로 코디 불러오기', '핑크빈 코디 평가'],
       screenshot: OG_IMAGE,
       publisher: { '@id': `${SITE_URL}/#org` },
     },

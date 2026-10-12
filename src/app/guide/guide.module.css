@@ -1,0 +1,67 @@
+/* 안내 페이지(/guide · /guide/[slug]). 앱과 같은 배경 장면 위에 흰 패널 하나를 놓고 그 안에서 읽는다.
+   색 · 테두리 · 로고 칸 · 버튼은 앱(frame.module.css · globals.css)의 값을 그대로 쓴다. */
+
+/* body 는 스크롤하지 않으므로(globals.css) 이 칸이 스크롤한다. 터치 기기는 문서가 스크롤한다(주소창이 접히게) */
+.page { position: relative; height: 100svh; overflow-y: auto; }
+@media (pointer: coarse) { .page { height: auto; min-height: 100svh; overflow: visible; } }
+
+.col { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 12px; }
+
+.head { flex: 0 0 auto; height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.logo { display: flex; align-items: center; gap: 8px; min-width: 0; height: 100%; padding: 0 16px 0 8px; background: #fff; border: 1px solid #efe6dc; border-radius: 12px; transition: border-color .22s ease; }
+.logoImg { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
+.logoText { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; background: linear-gradient(100deg,#e5699a,#e894bb 55%,#b978d6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.open { display: flex; align-items: center; height: 34px; padding: 0 12px; background: #ec86ac; border-radius: 8px; font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; transition: background-color .22s ease; }
+.openBig { align-self: flex-start; height: 40px; padding: 0 16px; margin-top: 28px; }
+
+.panel { background: #fff; border: 1px solid #e7ded4; border-radius: 14px; padding: 28px 32px 32px; display: flex; flex-direction: column; }
+
+.crumb { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; font-size: 12.5px; font-weight: 500; color: #a89e93; }
+.crumb a { color: #8a8075; }
+.h1 { margin: 0 0 12px; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.35; color: #2a2521; }
+.lead { margin: 0; font-size: 15px; font-weight: 500; line-height: 1.75; color: #5c534b; }
+.hr { height: 1px; margin: 24px 0; border: none; background: #f2ebe3; }
+
+.sec + .sec { margin-top: 24px; }
+.h2 { margin: 0 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.015em; color: #2a2521; }
+.p { margin: 0; font-size: 14.5px; font-weight: 500; line-height: 1.75; color: #3d372f; }
+.p + .p { margin-top: 8px; }
+
+.faq { margin: 0; padding: 0; list-style: none; border: 1px solid #eee6dc; border-radius: 10px; }
+.faq li { padding: 12px 16px; }
+.faq li + li { border-top: 1px solid #f0e9e1; }
+.q { margin: 0 0 4px; font-size: 14.5px; font-weight: 600; color: #3d372f; }
+.a { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.7; color: #5c534b; }
+
+/* 안내 글 목록(가이드 첫 화면 · 글 아래의 다른 안내) */
+.list { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.item { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 12px 16px; background: #fff; border: 1px solid #eee6dc; border-radius: 10px; transition: border-color .2s ease, background-color .22s ease; }
+.itemT { font-size: 14.5px; font-weight: 600; color: #3d372f; transition: color .22s ease; }
+.itemD { font-size: 12.5px; font-weight: 500; line-height: 1.6; color: #8a8075; }
+
+@media (hover: hover) and (pointer: fine) {
+  .logo:hover { border-color: #ec86ac; }
+  .open:hover { color: #fff; }
+  .crumb a:hover { color: #c85d8a; }
+  .item:hover { border-color: #ec86ac; background: #fdf4f8; }
+  .item:hover .itemT { color: #c85d8a; }
+}
+.logo:focus-visible, .open:focus-visible, .item:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
+
+/* 모바일: 앱처럼 배경 장면 없이 흰 화면 하나로 */
+@media (max-width: 520px) {
+  .page { background: #fff; }
+  .col { padding: 0 0 32px; gap: 0; }
+  .head { padding: 0 14px; border-bottom: 1px solid #f4efe8; }
+  .logo { gap: 7px; padding: 0; border: none; }
+  .logoImg { width: 24px; height: 24px; }
+  .logoText { font-size: 15px; }
+  .open { height: 28px; padding: 0 10px; border-radius: 9px; font-size: 11.5px; }
+  .openBig { height: 38px; padding: 0 16px; font-size: 13px; }
+  .panel { padding: 20px 16px 0; border: none; border-radius: 0; }
+  .h1 { font-size: 21px; }
+  .lead { font-size: 14px; }
+  .h2 { font-size: 16px; }
+  .p { font-size: 14px; }
+  .list { grid-template-columns: minmax(0, 1fr); }
+}
