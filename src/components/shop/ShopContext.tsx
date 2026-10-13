@@ -17,7 +17,7 @@ import { CATS, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
-import { preloadPaletteVariant, type HsbParams, type PaletteParams } from '@/lib/core/dye'
+import { preloadPaletteVariant, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
@@ -781,6 +781,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return
     const jobs: { cancel: () => void }[] = []
     const t = window.setTimeout(() => {
+      warmDye()   // 염색 연산의 WebAssembly 조각도 한가할 때 받아 둔다(첫 염색부터 빠르게)
       animaOnce().then((races) => {
         const seen = new Set<string>()
         for (const snap of [...Object.values(presetData), ...warmPosts]) {
@@ -1663,6 +1664,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 받는 동안과 받은 뒤의 연출은 preview/PinkbeanRate 가 한다(핑크빈이 무대로 나와 말한다).
   const rateNonce = useRef(0)
   const rateHistory = useRef<string[]>([]) // 핑크빈이 최근에 한 말(반복 방지용으로 백엔드에 전달)
+  const rateSlots = useRef<string[]>([])   // 바로 앞 평가에서 본 부위(이번에는 다른 부위를 보게 한다)
   const rateCodi = async () => {
     if (rating || rateLock.current) return
     rateLock.current = true
@@ -1674,7 +1676,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // id 도 함께 → 백엔드가 그 아이템의 캡션(생김새)을 붙여 "이름"이 아니라 "모습"을 보고 말하게 한다.
       // history(최근 발언) → 같은 코디를 여러 번 눌러도 매번 다른 얘기가 나오게 한다.
       const items = Object.entries(equipped).filter(([, it]) => it).map(([slot, it]) => ({ slot, id: it!.id, name: it!.name || it!.id }))
-      const res = await fetch(`${searchApi()}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone, history: rateHistory.current }) })
+      const res = await fetch(`${searchApi()}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone, history: rateHistory.current, recent_slots: rateSlots.current }) })
       const data = await res.json()
       // 말은 모델이 짓는다 → 성적·폭력적 표현이 섞여 나오는 경우를 화면에 붙이기 직전에 버린다(lib/safeText).
       // 서버에서도 같은 규칙으로 거르지만 백엔드는 따로 배포되므로, 여기서 한 번 더 본다.
@@ -1684,6 +1686,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const worn = (sl: unknown) => (typeof sl === 'string' && equipped[sl] ? sl : '')
       const lines = bubbles.map((text) => { const i = raw.findIndex((b) => String(b ?? '').trim() === text); return { text, slot: worn(slots[i]) || rateSlotOf(text, equipped) } })
       rateHistory.current = [...bubbles, ...rateHistory.current].slice(0, 6) // 최근 6개만 기억(거른 뒤 것만)
+      rateSlots.current = lines.map((l) => l.slot).filter(Boolean)
       setRateResult({ lines, nonce: ++rateNonce.current })
     } catch {
       setRateResult({ lines: [{ text: '뀨…? 지금은 딴청 부리는 중이야!', slot: '' }], nonce: ++rateNonce.current })

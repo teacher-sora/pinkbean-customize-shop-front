@@ -125,9 +125,12 @@ export default function PinkbeanRate() {
       for (let i = 0; i < lines.length && alive(); i++) {
         if (i > 0) { setSay(false); await sleep(260); if (!alive()) break }
         if (i > 0 || Math.abs(pos.current) < TALK) { await walk(pick(TALK), alive); if (!alive()) break }
-        await sleep(320)                                           // 멈춰 서고 한 박자 뒤에 말한다
+        // 멈춰 서고 한 박자 뒤에 말한다. 말의 내용은 그 한 박자 **전에** 바꿔 둔다 — 아이템 그림은 받아서 그리는 데 시간이 걸려,
+        // 보이는 순간에 바꾸면 앞 말의 그림이 잠깐 남아 보인다(그림 칸도 아이템마다 새로 만든다. 아래 key)
+        setLine(lines[i])
+        await sleep(360)
         if (!alive()) break
-        setLine(lines[i]); setAct('chat'); setSay(true)
+        setAct('chat'); setSay(true)
         await sleep(Math.min(4200, 1900 + lines[i].text.length * 75))
       }
       if (alive()) { setSay(false); setAct('love'); await sleep(1400) }
@@ -174,7 +177,7 @@ export default function PinkbeanRate() {
           <div ref={bubble} className={styles.say} data-on={say || undefined} style={{ left, bottom: `calc(100% - ${foot}px)`, maxWidth: Math.min(230, geo.w - 16) }}>
             {/* 오르내리는 것은 안쪽 한 겹이다: 글자 · 아이템 그림 · 꼬리가 한 장으로 함께 움직인다 */}
             <div className={styles.sayIn} style={{ ['--bob' as string]: `${-snap(3)}px` }}>
-              {item && <span className={styles.sayItem}><BookmarkSprite item={item} /></span>}
+              {item && <span key={item.id} className={styles.sayItem}><BookmarkSprite item={item} /></span>}
               <span className={styles.sayText}>{line?.text}</span>
               <i className={styles.sayTail} style={{ left: Math.max(12, Math.min(bw - 12, px - left)) }} />
             </div>
