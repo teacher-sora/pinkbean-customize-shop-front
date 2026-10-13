@@ -16,13 +16,36 @@ export interface PaletteParams { baseColor: number; mixColor: number | null; rat
 import { LRU } from './lru'
 const cache = new LRU<HTMLCanvasElement>(400)
 
-function toCanvas(img: CanvasImageSource, w: number, h: number): HTMLCanvasElement {
+// read = 픽셀을 읽을 캔버스다. `willReadFrequently` 로 만들어 픽셀을 메모리에 두게 한다 — 기본(가속) 캔버스는 픽셀이 GPU 에 있어
+// getImageData 한 번에 1ms 안팎이 든다(작은 스프라이트에서는 염색 연산보다 길다. 재 보니 68x81 한 장에 0.85ms → 0.02ms).
+// 이 캔버스를 다른 캔버스에 그리는 시간은 가속 캔버스와 같다(재 봄). 컨텍스트는 처음 만든 설정으로 굳으므로 뒤에 읽는 쪽도 같은 설정으로 부른다.
+const READ: CanvasRenderingContext2DSettings = { willReadFrequently: true }
+function toCanvas(img: CanvasImageSource, w: number, h: number, read = false): HTMLCanvasElement {
   const c = document.createElement('canvas')
   c.width = w; c.height = h
-  const ctx = c.getContext('2d')!
+  const ctx = c.getContext('2d', read ? READ : undefined)!
   ctx.imageSmoothingEnabled = false
   ctx.drawImage(img, 0, 0)
   return c
+}
+
+// ─── 픽셀 연산의 WebAssembly ───────────────────────────────────────────────────────────────
+// 아래 두 루프(색조 · 채도 · 명도, 믹스)를 C 로 옮긴 것(wasm/dye.c → dyeWasmBin.ts)을 메인 스레드에서 그대로 부른다.
+// 같은 결과를 2.5배쯤 빨리 낸다(wasm/check.cjs 가 바이트까지 같은지 검사한다). **JS 루프가 정본이다**: WASM 이 아직 안 왔거나
+// 못 쓰는 브라우저, 자리(cap)보다 큰 그림은 JS 가 맡는다 → 염색 함수는 지금처럼 바로 답하고(동기), 결과가 달라지는 일이 없다.
+// 워커로 보내지 않는다: 그림이 작아 왕복이 연산보다 길다(재 보니 메인 스레드 WASM 0.03~0.26ms, 워커 0.09~0.35ms).
+// 조각은 염색을 처음 쓸 때 받는다(warmDye). 첫 화면의 묶음에는 들어가지 않는다.
+interface DyeWasm { memory: WebAssembly.Memory; a: number; b: number; cap: number; hsb: (p: number, len: number, hue: number, sat: number, bri: number, type: number, edge: number) => void; blend: (a: number, b: number, len: number, t: number) => void }
+let wasm: DyeWasm | null = null
+let wasmAsked = false
+export function warmDye(): void {
+  if (wasmAsked || typeof WebAssembly === 'undefined' || typeof window === 'undefined') return
+  wasmAsked = true
+  import('./dyeWasmBin').then(async ({ DYE_WASM }) => {
+    const bytes = Uint8Array.from(atob(DYE_WASM), (ch) => ch.charCodeAt(0))
+    const ex = (await WebAssembly.instantiate(bytes, {})).instance.exports as unknown as { memory: WebAssembly.Memory; slotA: () => number; slotB: () => number; cap: () => number; hsb: DyeWasm['hsb']; blend: DyeWasm['blend'] }
+    wasm = { memory: ex.memory, a: ex.slotA(), b: ex.slotB(), cap: ex.cap(), hsb: ex.hsb, blend: ex.blend }
+  }).catch(() => {})   // 못 받으면 JS 로 계속 간다
 }
 
 // ─── Faithful port of MapleStory's dye/recolor (WcR2 AvatarCommon/Prism.cs) ───────────────
@@ -113,13 +136,19 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
   const edge = !!p.edge
   const ck = `prism|${key}|${type}|${hue}|${saturation}|${brightness}|${edge ? 'e' : ''}`
   const hit = cache.get(ck); if (hit) return hit
-  const c = toCanvas(img, img.width, img.height)
-  const ctx = c.getContext('2d')!
+  const c = toCanvas(img, img.width, img.height, true)
+  const ctx = c.getContext('2d', READ)!
   const valid = type >= 0 && type <= 6 && saturation >= 1 && saturation <= 199 && brightness >= 1 && brightness <= 199 &&
     !(hue === 0 && saturation === 100 && brightness === 100)
   if (!valid) { cache.set(ck, c); return c }
   const data = ctx.getImageData(0, 0, c.width, c.height)
   const a = data.data
+  warmDye()
+  if (wasm && a.length <= wasm.cap) {
+    const m = new Uint8Array(wasm.memory.buffer, wasm.a, a.length)
+    m.set(a); wasm.hsb(wasm.a, a.length, hue, saturation, brightness, type, edge ? 1 : 0); a.set(m)
+  } else {
+  // [hsb 루프 시작] — wasm/dye.c 의 hsb 와 같은 식이다. 고치면 그쪽도 고친다
   for (let i = 0; i < a.length; i += 4) {
     const alpha = a[i + 3]
     const rgb: Rgb = { r: a[i], g: a[i + 1], b: a[i + 2], gap: 0, min: 0, max: 0, gray: false }
@@ -146,6 +175,8 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
     }
     a[i] = rgb.r; a[i + 1] = rgb.g; a[i + 2] = rgb.b
   }
+  // [hsb 루프 끝]
+  }
   ctx.putImageData(data, 0, 0)
   cache.set(ck, c)
   return c
@@ -165,18 +196,27 @@ export function blendPalette(base: HTMLImageElement, mix: HTMLImageElement, rati
   const ck = `pal|${key}|${ratio}`
   const hit = cache.get(ck); if (hit) return hit
   const w = base.width, h = base.height
-  const c = toCanvas(base, w, h)
-  const ctx = c.getContext('2d')!
+  const c = toCanvas(base, w, h, true)
+  const ctx = c.getContext('2d', READ)!
   const bd = ctx.getImageData(0, 0, w, h)
-  const mc = toCanvas(mix, w, h)
-  const md = mc.getContext('2d')!.getImageData(0, 0, w, h)
+  const mc = toCanvas(mix, w, h, true)
+  const md = mc.getContext('2d', READ)!.getImageData(0, 0, w, h)
   const t = Math.max(0, Math.min(100, ratio)) / 100
   const A = bd.data, B = md.data
+  warmDye()
+  if (wasm && A.length <= wasm.cap) {
+    const m = new Uint8Array(wasm.memory.buffer, wasm.a, A.length)
+    m.set(A); new Uint8Array(wasm.memory.buffer, wasm.b, B.length).set(B)
+    wasm.blend(wasm.a, wasm.b, A.length, t); A.set(m)
+  } else {
+  // [blend 루프 시작] — wasm/dye.c 의 blend 와 같은 식이다. 고치면 그쪽도 고친다
   for (let i = 0; i < A.length; i += 4) {
     if (A[i + 3] === 0) continue
     A[i] = A[i] * (1 - t) + B[i] * t
     A[i + 1] = A[i + 1] * (1 - t) + B[i + 1] * t
     A[i + 2] = A[i + 2] * (1 - t) + B[i + 2] * t
+  }
+  // [blend 루프 끝]
   }
   ctx.putImageData(bd, 0, 0)
   cache.set(ck, c)
