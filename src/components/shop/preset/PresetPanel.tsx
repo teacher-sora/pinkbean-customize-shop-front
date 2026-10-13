@@ -23,18 +23,14 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   //     "선택됨" 카드에만 반영이 안 되는 버그가 난다(과거 dotPos 누락 사례).
   const liveSnap: Snapshot = useMemo(() => s.snapshot(), [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos, s.pv])
 
-  // 고른 칸이 **가운데**에 오도록 탭을 열자마자 스크롤한다(연출 설정 고르기와 같다 — 끝에 걸쳐 있거나 화면 밖이면 찾기 어렵다).
-  // 탭을 열 때 한 번만 한다(칸을 누를 때마다 움직이면 누른 자리가 달아난다). 저장된 선택은 첫 그리기 뒤에 오므로 그때까지 기다린다.
-  // scrollIntoView 를 쓰지 않는다 — 모바일은 문서가 스크롤이라 페이지까지 같이 움직인다. PC 는 세로, 모바일은 가로만 넘쳐 한 식으로 둘 다 맞는다.
+  // 고른 칸이 **가운데**에 오도록 탭을 열자마자 스크롤한다(연출 설정 고르기와 같다). 탭을 열 때 한 번만 — 저장된 선택은 첫 그리기 뒤에 온다.
   const boxRef = useRef<HTMLDivElement>(null)
   const centered = useRef(false)
   useLayoutEffect(() => {
-    if (centered.current || !s.selectedPreset) return
-    const box = boxRef.current, el = box?.querySelector('.pb-preset-sel')?.closest<HTMLElement>('.pb-presetwrap')   // 칸으로 잰다(카드는 고르면 5px 뜬다)
-    if (!box || !el) return
+    const el = boxRef.current?.querySelector('.pb-preset-sel')
+    if (centered.current || !el) return
     centered.current = true
-    const b = box.getBoundingClientRect(), r = el.getBoundingClientRect()
-    box.scrollTo({ left: box.scrollLeft + r.left - b.left - (b.width - r.width) / 2, top: box.scrollTop + r.top - b.top - (b.height - r.height) / 2, behavior: 'instant' as ScrollBehavior })
+    el.scrollIntoView({ block: 'center', inline: 'center' })
   }, [s.selectedPreset])
 
   // 삭제는 2단계 확인: 3초 안에, 다른 상호작용 없이 연속으로 한 번 더 누르면 삭제(lib/confirmTwice).
