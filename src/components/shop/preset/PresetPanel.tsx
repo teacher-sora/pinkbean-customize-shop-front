@@ -30,7 +30,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const centered = useRef(false)
   useLayoutEffect(() => {
     if (centered.current || !s.selectedPreset) return
-    const box = boxRef.current, el = box?.querySelector<HTMLElement>('.pb-preset-sel')
+    const box = boxRef.current, el = box?.querySelector('.pb-preset-sel')?.closest<HTMLElement>('.pb-presetwrap')   // 칸으로 잰다(카드는 고르면 5px 뜬다)
     if (!box || !el) return
     centered.current = true
     const b = box.getBoundingClientRect(), r = el.getBoundingClientRect()
