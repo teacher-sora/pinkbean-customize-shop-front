@@ -3,7 +3,7 @@
 // 프리셋 30칸. 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import type { Preset } from '@/lib/catalog'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
@@ -22,6 +22,20 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   //  ⚠️ 반드시 context 의 snapshot() 을 그대로 쓴다 — 필드를 직접 나열하면 새 상태(점 위치·염색 등)를 빠뜨려
   //     "선택됨" 카드에만 반영이 안 되는 버그가 난다(과거 dotPos 누락 사례).
   const liveSnap: Snapshot = useMemo(() => s.snapshot(), [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos, s.pv])
+
+  // 고른 칸이 **가운데**에 오도록 탭을 열자마자 스크롤한다(연출 설정 고르기와 같다 — 끝에 걸쳐 있거나 화면 밖이면 찾기 어렵다).
+  // 탭을 열 때 한 번만 한다(칸을 누를 때마다 움직이면 누른 자리가 달아난다). 저장된 선택은 첫 그리기 뒤에 오므로 그때까지 기다린다.
+  // scrollIntoView 를 쓰지 않는다 — 모바일은 문서가 스크롤이라 페이지까지 같이 움직인다. PC 는 세로, 모바일은 가로만 넘쳐 한 식으로 둘 다 맞는다.
+  const boxRef = useRef<HTMLDivElement>(null)
+  const centered = useRef(false)
+  useLayoutEffect(() => {
+    if (centered.current || !s.selectedPreset) return
+    const box = boxRef.current, el = box?.querySelector<HTMLElement>('.pb-preset-sel')
+    if (!box || !el) return
+    centered.current = true
+    const b = box.getBoundingClientRect(), r = el.getBoundingClientRect()
+    box.scrollTo({ left: box.scrollLeft + r.left - b.left - (b.width - r.width) / 2, top: box.scrollTop + r.top - b.top - (b.height - r.height) / 2, behavior: 'instant' as ScrollBehavior })
+  }, [s.selectedPreset])
 
   // 삭제는 2단계 확인: 3초 안에, 다른 상호작용 없이 연속으로 한 번 더 누르면 삭제(lib/confirmTwice).
   const remove = (p: Preset) => {
@@ -80,7 +94,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         </div>
         <div className={styles.hrM} />
         {/* 모바일: 코디 리스트처럼 가로 스크롤(열 단위 스냅, 스크롤바 숨김) — 2줄 × 폭에 따라 2열/3열 */}
-        <div className={clsx('pb-norail', styles.hscrollM)}>{grid}</div>
+        <div ref={boxRef} className={clsx('pb-norail', styles.hscrollM)}>{grid}</div>
       </>
     )
   }
@@ -102,7 +116,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         </div>
       </div>
       <div className={styles.hr} />
-      <div className={clsx('pb-scroll', styles.scroll)}>{grid}</div>
+      <div ref={boxRef} className={clsx('pb-scroll', styles.scroll)}>{grid}</div>
     </section>
   )
 }
