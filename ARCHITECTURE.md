@@ -152,6 +152,18 @@ scripts/merge-dev-to-main.sh
 - **닉네임 불러오기**(`api/nick`): 넥슨 `item-equipment` 에서 `item_shape_name || item_name` 으로 읽는다. 왜: 모루로 덮은 외형은 `item_shape_name` 에 있다.
 - **신규 표시**: CDN `catalog/new.json` 의 id 에 NEW 라벨과 '신규' 필터.
 
+- **코디 평가는 핑크빈이 무대에 나와서 한다**(`preview/PinkbeanRate`). 평가를 누르면 핑크빈이 무대 왼쪽에서 걸어 들어와 답을 기다리는 동안 **캐릭터 둘레를 이리저리 다닌다**(오래 걸릴수록 더 많이). 멈춰 서서 한 마디 하고 다른 자리로 가서 다음 마디를 하며, 말은 핑크빈 머리 위에 뜨고 그 말이 가리키는 부위의 착용 아이템을 말 앞에 그린다. 다 말하면 좋아하는 동작(하트)을 하고 가까운 쪽으로 걸어 나간다. 왜: 말풍선만 캐릭터 둘레에 흩어 놓으면 누가 무엇을 보고 하는 말인지 보이지 않는다(사용자 지적).
+  - **서는 자리는 정해 두지 않는다.** 닿을 수 있는 폭 안에서 그때그때 고르고 캐릭터와 조금 겹쳐 서도 된다(정해진 두 자리만 오가면 기계처럼 보인다는 지적). 말할 때만 얼굴이 가려지지 않을 만큼 떨어진다.
+  - **걷기는 걷는 그림 한 바퀴의 배수만큼만 한다.** 그래야 걸음이 땅에 닿는 장면에서 끝나 서 있는 그림으로 이어진다 — 도중에 끊으면 뛰어오른 그림에서 갑자기 내려앉는다. 말은 멈춰 서고 한 박자 뒤에 한다.
+  - 캐릭터 곁을 지날 때 오른쪽으로 가면 캐릭터 뒤로, 왼쪽으로 가면 앞으로 지난다. 그래서 `PinkbeanRate` 는 캐릭터(`PreviewModel`)보다 **먼저** 놓고 z-index 를 주지 않으며, 앞에 있을 때와 말만 z-index 로 올린다. 순서를 바꾸거나 칸에 z-index 를 주면 뒤로 지나가지 못한다.
+  - 말은 둥둥 오르내린다. 오르내리는 것은 안쪽 한 겹(`.sayIn`)이고 글자 · 아이템 그림 · 꼬리가 그 안에서 함께 `transform` 으로 움직인다. **아이템 그림(캔버스)은 말 안에서만 `image-rendering: auto` 로 둔다** — 기본값 `pixelated` 는 가장 가까운 픽셀을 골라 그려서, 반 픽셀씩 움직일 때 그림만 한 픽셀씩 끊겨 보인다. 말의 자리와 오르내리는 폭은 **화면 픽셀 격자에 맞추고**(`snap`), 줄 높이도 정수 px 다 — 도트 그림이 반 픽셀에 걸치면 오르내리는 동안 흐려졌다 또렷해졌다 하며 떨려 보인다. 맨 아래와 맨 위에서 잠깐 쉬고, 그 두 자리에서는 그림이 또렷하다(화면 배율 100% · 200% 에서 확인. 125% · 150% 에서는 쉬는 자리에서도 조금 무르다).
+  - **평가는 한 번에 하나만**: 누른 때부터 핑크빈이 걸어 나갈 때까지 평가 버튼을 못 누르고(`rateBusy`), `rateCodi` 도 다시 들어오지 못한다(`rateLock`). 핑크빈이 끝을 알리지 못해도 40초 뒤에는 풀린다.
+  - 자리와 도트 크기는 캐릭터가 딛고 선 바닥(`lib/stageFloor`)에 맞춘다. 칸이 좁아 설 자리가 없으면(태블릿) 핑크빈만 정수 배율을 낮춘다.
+  - 부위는 back 의 `/rate` 가 말과 함께 준다(`slots`). 없거나 비어 있으면 말에 든 낱말로 짐작한다(`ShopContext` 의 `rateSlotOf`). 입고 있지 않은 부위는 그리지 않는다.
+  - 그림은 게임의 펫 '핑크빈'이고 parser 가 만든다(`src/assets/pinkbean.png` + `preview/pinkbeanData.ts`). 손으로 고치지 않는다.
+  - WebGL 을 쓰지 않는다(DOM 과 CSS). 배경 장면을 못 띄우는 기기에서도 그대로 나온다(무대 배경은 움직이지 않는 그림으로 깔린다).
+  - 미리보기가 화면에 없을 때만 받는 중임을 토스트로 알린다(핑크빈이 나올 무대가 없다).
+
 ### 2-7. 배경 장면 (`shop/scene`)
 
 앱 배경과 미리보기 무대는 **게임 맵(메이플 15번가)에서 뽑은 그림을 층으로 겹친 것**이다. WebGL 은 시각에 따른 색과 작은 움직임만 입힌다. 광장 상세·등록·VS·공유 카드는 옛 일러스트(`assets/pinkbean-bg.webp` — 품질 90, PNG 2.4MB → 0.35MB. 공유 카드는 이 파일을 통째로 받아 그리므로 가벼워야 한다)를 그대로 쓴다.
@@ -266,7 +278,7 @@ Vercel 프로젝트의 환경변수에 있고, 로컬에서는 `.env.local`(커�
 | `SUPABASE_TOKEN` | 앱은 쓰지 않는다 | `scripts/clean-test-data.mjs` 만 쓴다(dev 데이터 · 자동화 계정 지우기 — CLAUDE.md '시험 데이터'). Supabase 계정의 관리 토큰이다(대시보드 Account → Access Tokens). **Vercel 에 넣지 않는다** — 로컬의 환경변수나 `.env.local` 에만 둔다 |
 | `R2_ENDPOINT` · `R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY` | 공유 링크 만들기가 실패한다 | `lib/server/r2.ts` — 서버 전용 |
 | `R2_BUCKET` | `pinkbean-customize-shop` | 같음 |
-| `NEXT_PUBLIC_SEARCH_API` | `https://pinkbean-customize-shop-back.fly.dev` | `ShopContext.tsx` — AI 코디 검색·코디 평가 |
+| `NEXT_PUBLIC_SEARCH_API` · `NEXT_PUBLIC_SEARCH_API_DEV` | `https://pinkbean-customize-shop-back.fly.dev` · `https://pinkbean-customize-shop-back-dev.fly.dev` | `ShopContext.tsx` — AI 코디 검색·코디 평가. 없어도 된다(기본값이 코드에 있다). **운영 도메인이면 운영 서버, 그 밖(dev 사이트 · 로컬)이면 dev 서버**를 쓴다(호스트로 고른다) |
 | `NEXT_PUBLIC_DATA_BASE` | `https://cdn.pinkbean-customize.com` | `lib/core/data.ts` — parser 의 캡션 도구도 이 파일을 불러 쓰므로 CDN 이 아닌 값으로 바꾸면 캡션 도구의 캐시가 안 걸린다 |
 | `NEXT_PUBLIC_SITE_URL` | apex | `lib/siteUrl.ts` — canonical. `www.` 는 떼어 낸다 |
 | `NEXT_PUBLIC_PLAZA_TARGET` | 호스트로 판단 | `lib/plaza.ts` — `prod` 면 운영 스키마를 강제. 평소에는 두지 않는다 |
@@ -315,6 +327,7 @@ Vercel 프로젝트의 환경변수에 있고, 로컬에서는 `.env.local`(커�
 - **닉네임 불러오기의 날짜 고르기.** 화면에서 뺐고 서버의 처리도 없다.
 - **PPR**(보류 — Next 16 이 필요하고 얻는 것이 공유 링크 한 곳뿐이다).
 - **계정·로그인.** 코디 광장은 기기 귀속(익명 세션)이다.
+- **염색 연산을 WASM 으로 옮기기**(재 보고 접었다). 픽셀을 도는 연산은 염색(`lib/core/dye.ts`)뿐이고 스프라이트가 작다: 같은 식을 C 로 옮겨 emsdk 로 만든 WASM 이 2.5~2.8배 빠르지만(결과는 바이트까지 같다) 절대 시간이 가장 큰 그림 한 장에 0.46ms → 0.18ms, 그림이 가장 많은 무기 하나(75장)를 통째로 다시 칠해도 4.6ms → 1.7ms 다. 결과는 캐시되고, 캔버스에서 픽셀을 읽고 쓰는 시간은 줄지 않으며, 워커로 보내면 왕복과 비동기 처리가 더 든다. 한 프레임(16ms) 안에서 3ms 를 아끼는 일이라 얻는 것이 없다. 배경 장면은 이미 GPU(WebGL)와 워커에서 돈다.
 
 ## 6. 이 문서를 고치는 법
 

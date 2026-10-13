@@ -43,7 +43,7 @@ Supabase(프로젝트 `pinkbean-customize`)에는 **운영 데이터만** 남긴
 - **비밀값을 출력하지 않는다.** `.env.local`, 토큰, 관리 API 의 응답 전체(Supabase 는 평범한 조회에도 `jwt_secret` 을 돌려준다). 필요한 필드만 골라 낸다. 저장소와 Vercel 에 서비스 키·비밀번호를 넣지 않는다.
 - **운영 DB·운영 사이트에 시험 데이터를 만들지 않는다**(위 '시험 데이터'). 스키마 변경은 dev 먼저, 운영에 올릴 때는 DB 를 코드보다 먼저.
 - **R2 버킷을 통째로 비우지 않는다**(공유 코드가 같은 버킷에 있다).
-- `scene/sceneData.ts`·`src/assets/scene/*`·`public/riding/*` 를 손으로 고치지 않는다(parser 가 만든다).
+- `scene/sceneData.ts`·`src/assets/scene/*`·`public/riding/*`·`src/assets/pinkbean.png`·`preview/pinkbeanData.ts` 를 손으로 고치지 않는다(parser 가 만든다).
 - ARCHITECTURE §5 의 "하지 않기로 한 것"을 묻지 않고 되살리지 않는다.
 - 코디 광장의 식별 방식은 사용자에게 "기기 귀속"이라고 설명한다("익명 로그인"이라고 하지 않는다).
 

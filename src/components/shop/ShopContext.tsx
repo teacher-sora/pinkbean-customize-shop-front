@@ -41,8 +41,12 @@ const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
 // 여러 부위를 합친 목록 필터(전체·신규·즐겨찾기) — 활성 슬롯이 없어 아이템 자신의 슬롯으로 판단한다.
 export const isMultiCat = (cat: string) => cat === 'all' || cat === 'new' || cat === 'fav'
 
-// AI 코디 검색 백엔드(Fly.io). 로컬/배포에서 NEXT_PUBLIC_SEARCH_API 로 덮어쓸 수 있음.
-const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
+// AI 코디 검색 · 코디 평가 서버(back 레포, Fly.io). 운영과 dev 가 따로 있다 — 고르는 기준은 광장(lib/plaza 의 plazaTarget)처럼 **호스트**다:
+// 운영 도메인이면 운영 서버, 그 밖(dev 사이트 · 로컬)이면 dev 서버(back 의 dev 브랜치가 자동 배포된다).
+// 주소는 환경변수로 덮어쓸 수 있다(운영 NEXT_PUBLIC_SEARCH_API, dev NEXT_PUBLIC_SEARCH_API_DEV).
+const SEARCH_API_PROD = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
+const SEARCH_API_DEV = process.env.NEXT_PUBLIC_SEARCH_API_DEV || 'https://pinkbean-customize-shop-back-dev.fly.dev'
+const searchApi = () => (typeof window !== 'undefined' && /^(www\.)?pinkbean-customize\.com$/.test(window.location.hostname) ? SEARCH_API_PROD : SEARCH_API_DEV)
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김. (공유 코드/영속에 이 형태 그대로 저장)
 // 프리셋에 저장하는 연출설정 일부(형상변이·귀·무기모션·이펙트토글·배율). 시선/액션/표정은 "보는 순간의 상태"라 저장 안 함.
 // 프리셋에 담기는 연출 설정은 두 갈래다.
@@ -56,6 +60,20 @@ export const PV_VIEW_DEFAULT = { gaze: 'left', action: 'basic', expr: 'default',
 export const PV_SNAP_DEFAULT: PvSnap = { ...PV_LOOK_DEFAULT, ...PV_VIEW_DEFAULT }
 // 점(애교점) 위치 오프셋: 레이어이름(accessoryEye/accessoryEye2) → 월드 오프셋. 사소한 변경점/쩜 전용.
 export type DotOffsets = Record<string, Vec>
+// 핑크빈이 하는 말 한 마디와, 그 말을 할 때 보고 있는 부위('' = 코디 전체).
+export type RateLine = { text: string; slot: string }
+// 말에서 부위를 짐작한다(서버가 부위를 주지 않았을 때). 입고 있는 부위만 돌려준다.
+const RATE_WORDS: [RegExp, string[]][] = [
+  [/헤어|머리카락|머리|앞머리|단발|양갈래|포니테일/, ['hair']], [/모자|리본|머리띠|왕관|헬멧|후드/, ['cap']], [/눈동자|눈빛|눈매|표정|얼굴|성형/, ['face']],
+  [/안경|선글라스|눈장식/, ['eyeAcc']], [/얼굴장식|마스크|수염/, ['faceAcc']], [/귀고리|귀걸이/, ['earring']], [/신발|구두|부츠|운동화|슬리퍼/, ['shoes']],
+  [/장갑/, ['glove']], [/망토|날개|꼬리/, ['cape']], [/방패/, ['shield']], [/무기|검|칼|지팡이|활|총|창|도끼/, ['weapon']],
+  [/치마|바지|하의|스커트|반바지/, ['pants', 'longcoat']], [/원피스|드레스|한벌옷|교복|정장|옷|상의|셔츠|재킷|자켓|코트|티셔츠/, ['longcoat', 'coat']],
+]
+function rateSlotOf(text: string, equipped: Record<string, ListItem | null>): string {
+  for (const [re, slots] of RATE_WORDS) if (re.test(text)) { const hit = slots.find((sl) => equipped[sl]); if (hit) return hit }
+  return ''
+}
+
 export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; dotPos?: Record<string, DotOffsets>; dyeOff?: Record<string, boolean>; pv?: PvSnap; name?: string }
 // 공유·광장에서 받은 코디는 메타 정보(연출·시선·액션·표정·배율)를 **전부 그 코디의 값**으로 가져온다.
 // 담겨 있지 않은 칸은 기본값이다 — 공유 코드는 기본값과 같은 칸을 아예 빼고 싣고(shareCode.minPv), 오래된 광장 글엔
@@ -290,8 +308,11 @@ export interface ShopCtx {
   shareCurrentLink: () => void
   applySharedToPreset: (snap: Snapshot, targetId: string) => void
   rateCodi: () => void
-  rateResult: { bubbles: string[]; nonce: number } | null
-  takeRate: () => string[] | null // 아직 안 띄운 평가만 한 번 내준다(두 번째부터는 null)
+  rating: boolean                  // 평가를 받아 오는 중(핑크빈이 살펴보고 있다)
+  rateBusy: boolean                // 평가가 진행 중이다(받아 오는 중 + 핑크빈이 말하고 나갈 때까지). 그동안 평가 버튼을 못 누른다
+  endRate: () => void              // 핑크빈이 나갔다(preview/PinkbeanRate 가 부른다)
+  rateResult: { lines: RateLine[]; nonce: number } | null
+  takeRate: () => RateLine[] | null // 아직 안 띄운 평가만 한 번 내준다(두 번째부터는 null)
   // toast
   toast: boolean; toastText: string
   notify: (msg: string) => void
@@ -608,20 +629,28 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     })
   }, [uiReady, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
   useEffect(() => { if (uiReady) writeUiPref({ plazaSort }) }, [uiReady, plazaSort])
-  const [rateResult, setRateResult] = useState<{ bubbles: string[]; nonce: number } | null>(null) // 코디 평가 말풍선
-  // 말풍선은 **평가를 눌러 받은 그 한 번만** 뜬다(광장처럼 미리보기가 없는 탭에
-  // 갔다 와도 지난 평가가 다시 뜨지 않는다). RateBubbles 는 미리보기와 함께 언마운트됐다가 다시 붙으면서
+  const [rateResult, setRateResult] = useState<{ lines: RateLine[]; nonce: number } | null>(null) // 코디 평가(핑크빈이 하는 말)
+  // 평가는 **눌러 받은 그 한 번만** 나온다(광장처럼 미리보기가 없는 탭에
+  // 갔다 와도 지난 평가가 다시 나오지 않는다). PinkbeanRate 는 미리보기와 함께 언마운트됐다가 다시 붙으면서
   // 남아 있던 rateResult 로 effect 가 또 돈다. 그래서 '띄웠다'는 표시를 **컴포넌트 밖**(여기)에 둔다.
   const rateSeen = useRef(0)
-  const rateLive = useRef<{ bubbles: string[]; nonce: number } | null>(null)
+  const rateLive = useRef<{ lines: RateLine[]; nonce: number } | null>(null)
   rateLive.current = rateResult
-  const takeRate = useCallback((): string[] | null => {
+  const takeRate = useCallback((): RateLine[] | null => {
     const r = rateLive.current
     if (!r || r.nonce <= rateSeen.current) return null
     rateSeen.current = r.nonce
-    return r.bubbles
+    return r.lines
   }, [])
   const [rating, setRating] = useState(false)
+  // 평가는 한 번에 하나만: 누른 때부터 핑크빈이 걸어 나갈 때까지 잠근다. 상태(버튼을 못 누르게)와 ref(함수가 다시 들어오지 못하게) 둘 다 둔다.
+  // 핑크빈이 끝을 알리지 못하는 경우(무대가 화면에서 사라짐)에도 풀리도록 한도를 둔다.
+  const [rateShow, setRateShow] = useState(false)
+  const rateLock = useRef(false), rateLockTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const endRate = useCallback(() => {
+    if (rateLockTimer.current) { clearTimeout(rateLockTimer.current); rateLockTimer.current = null }
+    rateLock.current = false; setRateShow(false)
+  }, [])
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
   const loadSlotRaw = useCallback(async (slot: string): Promise<ListItem[]> => {
     if (searchRaw.current[slot]) return searchRaw.current[slot]
@@ -646,7 +675,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         setSearchResults(got.filter((x): x is ListItem => !!x))
         return
       }
-      const res = await fetch(`${SEARCH_API}/search`, {
+      const res = await fetch(`${searchApi()}/search`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: t, slot: null, topK: 100 }),
       })
@@ -1630,27 +1659,35 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const shareCurrentLink = () => {
     copyShareLink(curSnapNamed())
   }
-  // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말풍선을 받는다.
+  // 핑크빈 코디 평가: 착용 아이템(텍스트)을 백엔드 /rate(qwen-flash + 핑크빈 페르소나)로 보내 짧은 말 두세 마디를 받는다.
+  // 받는 동안과 받은 뒤의 연출은 preview/PinkbeanRate 가 한다(핑크빈이 무대로 나와 말한다).
   const rateNonce = useRef(0)
   const rateHistory = useRef<string[]>([]) // 핑크빈이 최근에 한 말(반복 방지용으로 백엔드에 전달)
   const rateCodi = async () => {
-    if (rating) return
-    notify('핑크빈이 코디를 살펴보고 있어요…')
+    if (rating || rateLock.current) return
+    rateLock.current = true
+    // 미리보기가 화면에 없으면(핑크빈이 나올 무대가 없다) 받는 중임을 토스트로 알리고, 답을 받으면 바로 푼다
+    const staged = !!document.querySelector('[data-pb-rate]')
+    if (staged) { setRateShow(true); rateLockTimer.current = setTimeout(endRate, 40000) } else notify('핑크빈이 코디를 살펴보고 있어요')
     setRating(true)
     try {
       // id 도 함께 → 백엔드가 그 아이템의 캡션(생김새)을 붙여 "이름"이 아니라 "모습"을 보고 말하게 한다.
       // history(최근 발언) → 같은 코디를 여러 번 눌러도 매번 다른 얘기가 나오게 한다.
       const items = Object.entries(equipped).filter(([, it]) => it).map(([slot, it]) => ({ slot, id: it!.id, name: it!.name || it!.id }))
-      const res = await fetch(`${SEARCH_API}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone, history: rateHistory.current }) })
+      const res = await fetch(`${searchApi()}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone, history: rateHistory.current }) })
       const data = await res.json()
       // 말은 모델이 짓는다 → 성적·폭력적 표현이 섞여 나오는 경우를 화면에 붙이기 직전에 버린다(lib/safeText).
       // 서버에서도 같은 규칙으로 거르지만 백엔드는 따로 배포되므로, 여기서 한 번 더 본다.
-      const bubbles = safeBubbles(data.bubbles)
+      // slots = 말마다 핑크빈이 보고 있는 부위(없거나 비어 있으면 말에서 짐작한다 — rateSlotOf).
+      const raw: unknown[] = Array.isArray(data.bubbles) ? data.bubbles : [], slots: unknown[] = Array.isArray(data.slots) ? data.slots : []
+      const bubbles = safeBubbles(raw)
+      const worn = (sl: unknown) => (typeof sl === 'string' && equipped[sl] ? sl : '')
+      const lines = bubbles.map((text) => { const i = raw.findIndex((b) => String(b ?? '').trim() === text); return { text, slot: worn(slots[i]) || rateSlotOf(text, equipped) } })
       rateHistory.current = [...bubbles, ...rateHistory.current].slice(0, 6) // 최근 6개만 기억(거른 뒤 것만)
-      setRateResult({ bubbles, nonce: ++rateNonce.current })
+      setRateResult({ lines, nonce: ++rateNonce.current })
     } catch {
-      setRateResult({ bubbles: ['뀨…? 지금은 딴청 부리는 중이야!'], nonce: ++rateNonce.current })
-    } finally { setRating(false) }
+      setRateResult({ lines: [{ text: '뀨…? 지금은 딴청 부리는 중이야!', slot: '' }], nonce: ++rateNonce.current })
+    } finally { setRating(false); if (!staged) endRate() }
   }
   // 프리셋 삭제 = 코디 기본값 + 기본 이름으로 되돌림(칸 수는 고정). 선택된 프리셋이면 라이브 모델도 즉시 적용.
   const resetPreset = (id: string) => {
@@ -1848,7 +1885,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     dotPos, setDot, resetDot,
     pv, setPv,
     presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, commitPresetName, snapshot,
-    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rateResult, takeRate,
+    nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rating, rateBusy: rating || rateShow, endRate, rateResult, takeRate,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText, notify,
   }
