@@ -449,6 +449,10 @@ function create(kind: SceneKind, canvas: SceneCanvasLike, src: string[], soft: b
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다. 그때는 움직이지 않는 그림만 남는다. (soft = ?skygl=soft — GPU 없는 확인 환경에서 강제로 켠다)
   const gl = (canvas as HTMLCanvasElement).getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft }) as WebGLRenderingContext | null
   if (!gl) { sc.failed = true; emit({ t: 'failed', kind, retry: true }); return sc }
+  // 브라우저에 따라 소프트웨어 렌더러인데도 컨텍스트를 내준다(위의 조건을 지키지 않는다) → 이름으로 한 번 더 거른다.
+  // 소프트웨어로 장면을 그리면 CPU 코어 여러 개를 통째로 쓴다(재 보니 SwiftShader 로 코어 열 개 가까이)
+  const dbg = soft ? null : gl.getExtension('WEBGL_debug_renderer_info')
+  if (dbg && /swiftshader|llvmpipe|softpipe|software|basic render|warp/i.test(String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)))) { sc.failed = true; emit({ t: 'failed', kind, retry: false }); return sc }
   sc.gl = gl
   // 컨텍스트를 잃으면(메모리가 모자란 기기 · 그래픽 드라이버 재시작) 캔버스가 검게 남는다 → 감춰서 아래의 그림이 보이게 하고, 되찾으면 다시 올려 나타난다
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sc.quad = null; sc.sky = null; sc.tex = []; sc.pending = []; sc.shown = false; emit({ t: 'hidden', kind }) })

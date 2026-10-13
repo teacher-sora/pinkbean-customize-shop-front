@@ -36,6 +36,7 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
   const veil = useRef<HTMLDivElement>(null)
   const lone = useRef(false)                                      // 앱 배경인데 WebGL 을 못 쓴다
   const repaint = useRef<() => void>()
+  const tooSlow = useRef(false)                                   // 움직여 보니 화면이 밀린다 → 이 화면에서는 다시 움직이지 않는다
   const [ready, setReady] = useState(false)                       // 화면이 떴다 → 그림을 넣는다
   const [sprites, setSprites] = useState<StillSprite[] | null>(null)   // WebGL 을 못 쓴다 → 구름(과, 움직이지 않을 때는 지나가는 것들)을 그림으로 놓는다
   const [movers, setMovers] = useState<{ rows: MoverRow[]; first: number } | null>(null)   // WebGL 을 못 쓴다 → 지나가는 것들을 장면 없이 움직인다
@@ -55,7 +56,7 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
     let dead = false
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)')
     const place = () => {
-      const moving = !calm.matches, rows = moving ? moverRows() : []
+      const moving = !calm.matches && !tooSlow.current, rows = moving ? moverRows() : []
       setSprites(stillSprites(host.clientWidth || window.innerWidth, moving))
       setMovers(moving ? { rows, first: Math.floor(Math.random() * rows.filter((r) => r.type === 2).length) } : null)
     }
@@ -75,6 +76,29 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
     }
   }, [kind])
   useEffect(() => { repaint.current?.() }, [ready, kind])
+  // 느린 기기 보호(장면의 watchPace 와 같은 기준): 움직이기 시작하고 5초 뒤부터 화면이 그려지는 간격을 재서, 90프레임 가운데 절반 넘게
+  // 28ms 를 넘기는 일이 두 번 이어지면 멈춘 그림으로 바꾼다(덜컥거리는 것보다 멈춘 쪽이 낫다). 한번 멈추면 그 화면에서는 다시 움직이지 않는다.
+  // 1분쯤 부드러웠으면 그만 잰다(재는 동안에만 프레임마다 코드가 돈다).
+  useEffect(() => {
+    if (!movers) return
+    const t0 = performance.now()
+    let raf = 0, last = 0, n = 0, bad = 0, badRuns = 0, okRuns = 0
+    const tick = (t: number) => {
+      const dt = t - last
+      last = t
+      if (t - t0 > 5000 && dt > 0 && dt < 250 && document.visibilityState === 'visible') { n++; if (dt > 28) bad++ }
+      if (n >= 90) { if (bad > 45) { badRuns++; okRuns = 0 } else { okRuns++; badRuns = 0 } n = bad = 0 }
+      if (badRuns >= 2) {
+        tooSlow.current = true
+        setMovers(null)
+        setSprites(stillSprites(ref.current?.clientWidth || window.innerWidth, false))
+        return
+      }
+      if (okRuns < 40) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [movers])
   const at = (layer: number) => sprites?.filter((s) => s.layer === layer).map((s) => <Sprite key={s.key} s={s} />)
   const mv = (layer: 0 | 1 | 2) => movers && <SceneMovers rows={movers.rows} layer={layer} first={movers.first} />
   // 무대의 그림은 캐릭터가 서는 자리와 배율(미리보기 배율 설정)에 맞춰 놓는다 — 장면(sceneGl 의 layout)과 같은 계산.
