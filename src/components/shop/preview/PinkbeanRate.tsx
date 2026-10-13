@@ -40,7 +40,8 @@ export default function PinkbeanRate() {
   const host = useRef<HTMLDivElement>(null)
   const bubble = useRef<HTMLDivElement>(null)
   // 바닥: 이 칸 안에서의 캐릭터 가운데 x · 발 높이 y(CSS px) · 핑크빈의 게임 픽셀 1칸의 CSS 크기
-  const [geo, setGeo] = useState<{ x: number; y: number; k: number; w: number } | null>(null)
+  // hx · hy = 이 칸이 화면에서 놓인 자리(말을 화면 픽셀 격자에 맞출 때 쓴다)
+  const [geo, setGeo] = useState<{ x: number; y: number; k: number; w: number; hx: number; hy: number } | null>(null)
   const [on, setOn] = useState(false)                       // 무대에 나와 있다
   const [at, setAt] = useState({ gx: 0, ms: 0, right: true, front: true })   // 자리(게임 픽셀) · 거기까지 걷는 시간 · 오른쪽을 본다 · 캐릭터 앞에 그린다
   const [act, setAct] = useState<Act>('stand1')
@@ -56,7 +57,7 @@ export default function PinkbeanRate() {
       const wr = f.wrap.getBoundingClientRect(), hr = el.getBoundingClientRect()
       const dpr = window.devicePixelRatio || 1, cx = wr.left - hr.left + f.cx
       const k = Math.max(1, Math.min(f.scale, Math.floor((Math.min(cx, hr.width - cx) * dpr) / (SIDE + EDGE)))) / dpr
-      setGeo((g) => { const n = { x: cx, y: wr.top - hr.top + f.footY, k, w: hr.width }; return g && g.x === n.x && g.y === n.y && g.k === n.k && g.w === n.w ? g : n })
+      setGeo((g) => { const n = { x: cx, y: wr.top - hr.top + f.footY, k, w: hr.width, hx: hr.left, hy: hr.top }; return g && g.x === n.x && g.y === n.y && g.k === n.k && g.w === n.w && g.hx === n.hx && g.hy === n.hy ? g : n })
     }
     read()
     const off = onStageFloor(read)
@@ -150,8 +151,13 @@ export default function PinkbeanRate() {
   const f = PINKBEAN[act][Math.min(frame, PINKBEAN[act].length - 1)]
   const k = geo?.k ?? 1
   const px = geo ? geo.x + at.gx * k : 0
-  // 말은 핑크빈 머리 위 가운데에. 칸 밖으로 나가지 않게 밀어 넣고, 꼬리는 핑크빈을 따라간다
-  const left = geo ? Math.max(8, Math.min(geo.w - bw - 8, px - bw / 2)) : 0
+  // 말은 핑크빈 머리 위 가운데에. 칸 밖으로 나가지 않게 밀어 넣고, 꼬리는 핑크빈을 따라간다.
+  // 자리와 오르내리는 폭은 **화면 픽셀 격자에 맞춘다**(snap): 말 속 아이템 그림은 도트라, 반 픽셀에 걸쳐 놓이면 흐려지고
+  // 오르내리는 동안 어떤 높이에서만 또렷해져 떨리는 것처럼 보인다. 격자에 맞추면 쉬는 자리(맨 아래 · 맨 위)에서는 늘 또렷하다.
+  const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1
+  const snap = (v: number) => Math.round(v * dpr) / dpr
+  const left = geo ? snap(geo.hx + Math.max(8, Math.min(geo.w - bw - 8, px - bw / 2))) - geo.hx : 0
+  const foot = geo ? snap(geo.hy + geo.y - HEAD * k - 10) - geo.hy : 0   // 말의 아랫변
   const item = line?.slot ? s.equipped[line.slot] : null
   return (
     <div ref={host} data-pb-rate aria-live="polite" className={styles.rate}>
@@ -165,9 +171,9 @@ export default function PinkbeanRate() {
               }} />
             </div>
           </div>
-          <div ref={bubble} className={styles.say} data-on={say || undefined} style={{ left, bottom: `calc(100% - ${geo.y - HEAD * k - 10}px)`, maxWidth: Math.min(230, geo.w - 16) }}>
+          <div ref={bubble} className={styles.say} data-on={say || undefined} style={{ left, bottom: `calc(100% - ${foot}px)`, maxWidth: Math.min(230, geo.w - 16) }}>
             {/* 오르내리는 것은 안쪽 한 겹이다: 글자 · 아이템 그림 · 꼬리가 한 장으로 함께 움직인다 */}
-            <div className={styles.sayIn}>
+            <div className={styles.sayIn} style={{ ['--bob' as string]: `${-snap(3)}px` }}>
               {item && <span className={styles.sayItem}><BookmarkSprite item={item} /></span>}
               <span className={styles.sayText}>{line?.text}</span>
               <i className={styles.sayTail} style={{ left: Math.max(12, Math.min(bw - 12, px - left)) }} />

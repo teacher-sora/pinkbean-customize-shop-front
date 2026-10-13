@@ -156,12 +156,14 @@
 /* 말하는 동안 둥둥 오르내린다. 안쪽 한 겹을 따로 합성되는 층으로 올려(will-change) 글자 · 아이템 그림 · 꼬리가 한 장으로 움직이게 한다 —
    층으로 올리지 않으면 도트로 그리는 아이템 그림만 픽셀 단위로 뚝뚝 끊겨 움직인다 */
 .sayIn { position: relative; display: flex; align-items: center; gap: 7px; padding: 6px 10px 6px 6px; background: #fff; border: 1.5px solid #f4b8d0; border-radius: 12px; box-shadow: 0 5px 16px rgba(200,90,150,.22); will-change: transform; backface-visibility: hidden; }
-.say[data-on] .sayIn { animation: sayBob 2.2s ease-in-out infinite; }
-@keyframes sayBob { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -3px, 0); } }
+.say[data-on] .sayIn { animation: sayBob 2.6s ease-in-out infinite; }
+/* 맨 아래와 맨 위에서 잠깐 쉰다. 쉬는 두 자리는 화면 픽셀 격자 위다(--bob 은 PinkbeanRate 가 격자에 맞춰 준다) → 쉬는 동안 아이템 그림이 또렷하다 */
+@keyframes sayBob { 0%, 14%, 100% { transform: translate3d(0, 0, 0); } 50%, 64% { transform: translate3d(0, var(--bob, -3px), 0); } }
 /* 아이템 그림은 여기서만 부드럽게 보간한다. 캔버스의 기본값(pixelated)은 가장 가까운 픽셀을 골라 그려서, 말풍선이 반 픽셀씩 오르내릴 때
    그림만 한 픽셀씩 뚝뚝 끊겨 움직인다. 캔버스는 화면 픽셀과 1:1 로 그려져 있어 멈춰 있을 때의 선명함은 같다 */
 .sayItem canvas { image-rendering: auto !important; }
 .sayItem { position: relative; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; background: #fdf4f8; overflow: hidden; }
-.sayText { min-width: 0; padding-left: 4px; font-size: 12px; font-weight: 600; line-height: 1.4; color: #c05a94; }
+/* 줄 높이는 정수 px 로 둔다: 소수면 말의 높이가 소수가 되어 가운데 맞춘 아이템 그림이 반 픽셀에 걸친다 */
+.sayText { min-width: 0; padding-left: 4px; font-size: 12px; font-weight: 600; line-height: 17px; color: #c05a94; }
 .sayItem + .sayText { padding-left: 0; }
 .sayTail { position: absolute; bottom: -6px; width: 10px; height: 10px; margin-left: -5px; background: #fff; border-right: 1.5px solid #f4b8d0; border-bottom: 1.5px solid #f4b8d0; transform: rotate(45deg); }
