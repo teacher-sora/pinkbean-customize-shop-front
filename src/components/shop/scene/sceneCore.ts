@@ -26,7 +26,7 @@
 //    탭을 오가며 다시 붙을 때는 그 자리에서 바로 보인다(전환이 밀리지 않게).
 
 import { ROOM, STREET } from './sceneData'
-import { BOB, MOVE, PAUSE, pickSome, rnd, spread, stillCount, walkFps } from './sceneMath'
+import { pickSome, spread, stillCount } from './sceneMath'
 import { applySkyMode, setSkyFixed, skyNow, type SkyMode, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
@@ -237,6 +237,15 @@ interface Scene {
 
 // 지나가는 것 하나. type 0 열기구 · 1 헬리콥터 · 2 걷는 이
 interface Mover { type: number; w: number; mult: number; frames: number; x: number; dir: number; speed: number; wait: number; jit: number; ph: number; walk: number; pauseAt: number; pause: number }
+// 종류별 범위: 빠르기(그림 칸/초) · 화면에서 사라진 뒤 쉬는 시간(초) · 나타날 때마다 높이를 바꾸는 폭(칸).
+// 열기구는 핑크빈 열기구가 기준이고 주황버섯은 그 0.75배, 슈피겔만은 1.25배다(mult). 걷는 이는 핑크빈이 느리고(mult 0.75) 아이돌이 빠르다.
+const MOVE = [
+  { speed: [4.2, 6], gap: [4, 26], jit: 26 },
+  { speed: [9, 16], gap: [14, 60], jit: 24 },
+  { speed: [26, 42], gap: [25, 95], jit: 0 },   // 걷는 이는 여섯이라 저마다 오래 쉰다 — 거리에 한둘만 보이게
+]
+const PAUSE = { chance: 0.5, sec: [3, 6] }    // 걷는 이가 도중에 멈춰 서는 비율과 시간
+const rnd = (r: number[]) => r[0] + Math.random() * (r[1] - r[0])
 let moverDefs: Omit<Mover, 'x' | 'dir' | 'speed' | 'wait' | 'jit' | 'walk' | 'pauseAt' | 'pause'>[] = []
 
 function spawn(m: Mover, left: number, right: number) {
@@ -299,8 +308,8 @@ function stepMovers(sc: Scene, dt: number, s: number, left: number, right: numbe
     }
     const o = i * 4
     out[o] = m.wait > 0 ? -1e5 : m.x
-    out[o + 1] = m.type < 2 ? m.jit + Math.sin((s * 6.283) / BOB[m.type].sec + m.ph * 6.283) * BOB[m.type].amp : 0
-    out[o + 2] = m.type === 2 ? (m.pause > 0 ? 0 : Math.floor(m.walk * walkFps(m.frames)) % m.frames) : 0
+    out[o + 1] = m.type === 0 ? m.jit + Math.sin(s * 0.55 + m.ph * 6.283) * 5 : m.type === 1 ? m.jit + Math.sin(s * 1.3 + m.ph * 6.283) * 2.5 : 0
+    out[o + 2] = m.type === 2 ? (m.pause > 0 ? 0 : Math.floor(m.walk * (m.frames > 4 ? 8.33 : 5)) % m.frames) : 0
     out[o + 3] = m.dir * (m.type === 2 && m.pause > 0 ? 2 : 1)   // 크기 2 = 멈춰 서 있다
   })
 }
@@ -449,10 +458,6 @@ function create(kind: SceneKind, canvas: SceneCanvasLike, src: string[], soft: b
   // 소프트웨어 렌더러(GPU 없음)면 쓰지 않는다. 그때는 움직이지 않는 그림만 남는다. (soft = ?skygl=soft — GPU 없는 확인 환경에서 강제로 켠다)
   const gl = (canvas as HTMLCanvasElement).getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: !soft }) as WebGLRenderingContext | null
   if (!gl) { sc.failed = true; emit({ t: 'failed', kind, retry: true }); return sc }
-  // 브라우저에 따라 소프트웨어 렌더러인데도 컨텍스트를 내준다(위의 조건을 지키지 않는다) → 이름으로 한 번 더 거른다.
-  // 소프트웨어로 장면을 그리면 CPU 코어 여러 개를 통째로 쓴다(재 보니 SwiftShader 로 코어 열 개 가까이)
-  const dbg = soft ? null : gl.getExtension('WEBGL_debug_renderer_info')
-  if (dbg && /swiftshader|llvmpipe|softpipe|software|basic render|warp/i.test(String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)))) { sc.failed = true; emit({ t: 'failed', kind, retry: false }); return sc }
   sc.gl = gl
   // 컨텍스트를 잃으면(메모리가 모자란 기기 · 그래픽 드라이버 재시작) 캔버스가 검게 남는다 → 감춰서 아래의 그림이 보이게 하고, 되찾으면 다시 올려 나타난다
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sc.quad = null; sc.sky = null; sc.tex = []; sc.pending = []; sc.shown = false; emit({ t: 'hidden', kind }) })

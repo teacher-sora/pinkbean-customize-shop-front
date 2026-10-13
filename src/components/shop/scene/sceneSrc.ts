@@ -9,7 +9,7 @@ import streetGlow from '@/assets/scene/street-glow.webp'
 import streetMain from '@/assets/scene/street-main.webp'
 import streetTower from '@/assets/scene/street-tower.webp'
 import { ROOM, STREET } from './sceneData'
-import { MOVE, pickSome, spread, stillCount } from './sceneMath'
+import { pickSome, spread, stillCount } from './sceneMath'
 
 // 자리 번호가 곧 텍스처 번호다(sceneCore 의 part()).
 export const SCENE_SRC = {
@@ -34,44 +34,34 @@ export const STILL: Record<'sky' | 'room', StillLayer[]> = {
   ],
 }
 
-// WebGL 을 못 쓰는 기기에서: 지나가는 것들을 장면 없이 놓는다. 구름은 제자리에 그림으로(stillSprites),
-// 열기구 · 헬리콥터 · 걷는 이는 움직이게(SceneMovers — moverRows) 놓고, '동작 줄이기'에서는 그들도 멈춘 그림으로 놓는다(stillSprites).
+// WebGL 을 못 쓰는 기기에서: 지나가는 것들(구름 · 열기구 · 헬리콥터 · 걷는 이)을 움직이지 않는 그림으로 놓는다.
+// 구름은 제자리에, 나머지는 화면에 보이는 폭 안에 고루 흩어 놓고 저마다 가는 쪽을 뽑아 그쪽을 보게 한다.
 // 자리와 보는 쪽의 규칙은 장면(sceneCore 의 mesh)과 같다. layer = 쌓는 자리: 0 먼 빌딩 뒤 · 1 탑과 거리 사이 · 2 거리 앞.
 // back = 뒤쪽 그림(street-back: 구름 · 핑크빈/페페 열기구 · 헬리콥터)에 있다. 나머지는 street-air 에 있다.
 export interface StillSprite { key: string; layer: 0 | 1 | 2; back: boolean; ax: number; ay: number; w: number; h: number; x: number; y: number; scale: number; flip: boolean }
-// 지나가는 것 하나. type 0 열기구 · 1 헬리콥터 · 2 걷는 이. face = 그림이 보는 쪽(-1 왼쪽 · 1 오른쪽 · 0 앞 — 뒤집지 않는다).
-// frames · step = 걷는 그림의 장수와 아틀라스에서 장 사이의 간격. n / of = 같은 종류 가운데 몇째 / 모두 몇.
-export interface MoverRow { key: string; layer: 0 | 1 | 2; back: boolean; type: 0 | 1 | 2; ax: number; ay: number; w: number; h: number; y: number; scale: number; face: number; mult: number; frames: number; step: number; ph: number; n: number; of: number }
 const HELI = { up: 150, size: 0.75 }   // sceneCore 의 HELI_UP · HELI_SIZE 와 같은 값
-export function moverRows(): MoverRow[] {
-  const rows: MoverRow[] = [], seen = new Set<string>(), count = [0, 0, 0]
+export function stillSprites(viewW: number): StillSprite[] {
+  const out: StillSprite[] = [], seen = new Set<string>()
+  const lo = STREET.w / 2 - viewW / 2, hi = STREET.w / 2 + viewW / 2
+  type Row = { layer: 0 | 1 | 2; back: boolean; group: number; ax: number; ay: number; w: number; h: number; y: number; scale: number; face: number; jit: number }
+  const rows: Row[] = []
   let helis = 0
-  STREET.sprites.forEach(([k, ax, ay, w, h, , y, extra, b]) => {
-    if (k === 0 || k === 11) return            // 구름은 제자리의 것이고, 열기구의 밤 그림은 장면에서만 쓴다
+  STREET.sprites.forEach(([k, ax, ay, w, h, x, y, extra, b], i) => {
+    if (k === 0) { out.push({ key: 'c' + i, layer: 0, back: true, ax, ay, w, h, x, y, scale: 1, flip: false }); return }
+    if (k === 11) return                       // 열기구의 밤 그림은 장면에서만 쓴다
     const art = `${ax},${ay}`
     if (seen.has(art)) return                  // 같은 그림은 하나만
     seen.add(art)
-    const base = { key: 'm' + rows.length, ax, ay, w, h, ph: (rows.length * 0.618034) % 1, of: 0 }
-    if (k === 1) rows.push({ ...base, layer: b >= 0 ? 1 : 0, back: b < 0, type: 0, y, scale: 1, face: extra < 0 ? -1 : b >= 0 ? 1 : 0, mult: Math.abs(extra), frames: 1, step: 0, n: count[0]++ })
-    else if (k === 2) rows.push({ ...base, layer: 0, back: true, type: 1, y: y - HELI.up, scale: HELI.size, face: helis++ ? -1 : 1, mult: 1, frames: 1, step: 0, n: count[1]++ })
-    else rows.push({ ...base, layer: 2, back: false, type: 2, y, scale: 1, face: k === 9 ? 1 : -1, mult: k === 9 ? 0.75 : 1, frames: extra, step: b, n: count[2]++ })
+    if (k === 1) rows.push({ layer: b >= 0 ? 1 : 0, back: b < 0, group: 0, ax, ay, w, h, y, scale: 1, face: extra < 0 ? -1 : b >= 0 ? 1 : 0, jit: 26 })
+    else if (k === 2) rows.push({ layer: 0, back: true, group: 0, ax, ay, w, h, y: y - HELI.up, scale: HELI.size, face: helis++ ? -1 : 1, jit: 24 })
+    else rows.push({ layer: 2, back: false, group: 2, ax, ay, w, h, y, scale: 1, face: k === 9 ? 1 : -1, jit: 0 })   // 걷는 이: 첫 장(서 있는 모습)
   })
-  for (const r of rows) r.of = count[r.type]
-  return rows
-}
-// 구름(제자리)과, moving 이 아니면 지나가는 것들도 멈춘 그림으로: 화면에 보이는 폭 안에 고루 흩어 놓고 저마다 가는 쪽을 뽑아 그쪽을 보게 한다.
-export function stillSprites(viewW: number, moving: boolean): StillSprite[] {
-  const out: StillSprite[] = []
-  const lo = STREET.w / 2 - viewW / 2, hi = STREET.w / 2 + viewW / 2
-  STREET.sprites.forEach(([k, ax, ay, w, h, x, y], i) => { if (k === 0) out.push({ key: 'c' + i, layer: 0, back: true, ax, ay, w, h, x, y, scale: 1, flip: false }) })
-  if (moving) return out
-  const rows = moverRows()
-  for (const sky of [true, false]) {   // 하늘의 것들(열기구 · 헬리콥터)끼리, 걷는 이들끼리 겹치지 않게 흩는다
-    const all = rows.filter((r) => (r.type < 2) === sky), keep = pickSome(all.length, stillCount(all.length, viewW))
+  for (const g of [0, 2]) {   // 하늘의 것들(열기구 · 헬리콥터)끼리, 걷는 이들끼리 겹치지 않게 흩는다
+    const all = rows.filter((r) => r.group === g), keep = pickSome(all.length, stillCount(all.length, viewW))
     const list = all.filter((_, i) => keep.has(i)), xs = spread(list.length, lo, hi)
     list.forEach((r, i) => {
       const half = (r.w * r.scale) / 2, cx = Math.min(hi - half, Math.max(lo + half, xs[i])), dir = Math.random() < 0.5 ? -1 : 1
-      out.push({ key: `s${r.key}`, layer: r.layer, back: r.back, ax: r.ax, ay: r.ay, w: r.w, h: r.h, x: Math.round(cx - half), y: Math.round(r.y + (Math.random() * 2 - 1) * MOVE[r.type].jit), scale: r.scale, flip: r.face !== 0 && dir !== r.face })
+      out.push({ key: `m${g}-${i}`, layer: r.layer, back: r.back, ax: r.ax, ay: r.ay, w: r.w, h: r.h, x: Math.round(cx - half), y: Math.round(r.y + (Math.random() * 2 - 1) * r.jit), scale: r.scale, flip: r.face !== 0 && dir !== r.face })
     })
   }
   return out
