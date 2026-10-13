@@ -170,6 +170,7 @@ function allow(v: View, host: HTMLElement) {
 // host 안에 장면을 붙인다. 돌려주는 함수로 뗀다(캔버스·컨텍스트는 남겨 두었다가 다시 쓴다).
 // onFail = WebGL 을 못 쓰는 기기다(그때는 SceneCanvas 가 지나가는 것들도 그림으로 놓는다). 나중에 불릴 수도 있다.
 export function mountScene(kind: SceneKind, host: HTMLElement, onFail?: () => void, forceMain = false): () => void {
+  if (/[?&]skygl=off/.test(search())) { onFail?.(); return () => {} }   // 확인용: WebGL 을 못 쓰는 기기처럼
   const v = views[kind] ?? (views[kind] = make(kind, forceMain))
   if (v.failed) { onFail?.(); return () => {} }
   v.cleanup?.()

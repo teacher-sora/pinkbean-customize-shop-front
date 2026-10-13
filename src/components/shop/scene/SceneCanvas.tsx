@@ -4,7 +4,8 @@
 //   ① 지금 시각의 바탕색(하늘빛) ② 움직이지 않는 그림(<img>, next/image) ③ WebGL 장면(scene/sceneGl → 워커의 sceneCore)
 // ②까지는 WebGL 없이 뜨고 **늘 깔려 있다** — GPU 가 없거나 장면을 못 띄워도, 띄웠다가 잃어도 배경이 보인다.
 // ③은 화면이 뜨자마자 시작한다 — 워커에서 돌아 첫 화면 로딩과 조작을 막지 않는다. ③은 ②와 같은 주소의 그림을 쓴다(한 번만 받는다).
-// WebGL 을 아예 못 쓰는 기기에서는 지나가는 것들(구름 · 열기구 · 헬리콥터 · 걷는 이)도 ②에 움직이지 않는 그림으로 놓는다.
+// WebGL 을 아예 못 쓰는 기기에서는 구름을 ②에 그림으로 놓고, 열기구 · 헬리콥터 · 걷는 이는 장면 없이 움직인다(SceneMovers).
+// '동작 줄이기'에서는 그들도 움직이지 않는 그림으로 놓는다.
 // ②의 그림은 화면이 뜬 뒤에 넣는다: 서버는 화면 폭을 몰라, 미리 넣으면 배경을 안 쓰는 모바일도 받는다.
 
 import clsx from 'clsx'
@@ -13,7 +14,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import { ROOM, STREET } from './sceneData'
 import { mountScene } from './sceneGl'
-import { SCENE_SRC, STILL, stillSprites, type StillSprite } from './sceneSrc'
+import SceneMovers from './SceneMovers'
+import { moverRows, SCENE_SRC, STILL, stillSprites, type MoverRow, type StillSprite } from './sceneSrc'
 import { onSkyChange, sceneFallback, sceneVeil } from './skyTime'
 import styles from './scene.module.css'
 
@@ -35,7 +37,8 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
   const lone = useRef(false)                                      // 앱 배경인데 WebGL 을 못 쓴다
   const repaint = useRef<() => void>()
   const [ready, setReady] = useState(false)                       // 화면이 떴다 → 그림을 넣는다
-  const [sprites, setSprites] = useState<StillSprite[] | null>(null)   // WebGL 을 못 쓴다 → 지나가는 것들을 그림으로 놓는다
+  const [sprites, setSprites] = useState<StillSprite[] | null>(null)   // WebGL 을 못 쓴다 → 구름(과, 움직이지 않을 때는 지나가는 것들)을 그림으로 놓는다
+  const [movers, setMovers] = useState<{ rows: MoverRow[]; first: number } | null>(null)   // WebGL 을 못 쓴다 → 지나가는 것들을 장면 없이 움직인다
   useEffect(() => {
     const host = ref.current
     if (!host) return
@@ -50,7 +53,15 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
     const iv = window.setInterval(paint, 120000)
     const off = onSkyChange(paint)
     let dead = false
-    const noGl = () => { if (dead || kind !== 'sky') return; lone.current = true; repaint.current?.(); setSprites(stillSprites(host.clientWidth || window.innerWidth)) }
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const place = () => {
+      const moving = !calm.matches, rows = moving ? moverRows() : []
+      setSprites(stillSprites(host.clientWidth || window.innerWidth, moving))
+      setMovers(moving ? { rows, first: Math.floor(Math.random() * rows.filter((r) => r.type === 2).length) } : null)
+    }
+    const onCalm = () => { if (lone.current) place() }
+    calm.addEventListener?.('change', onCalm)
+    const noGl = () => { if (dead || kind !== 'sky') return; lone.current = true; repaint.current?.(); place() }
     // 한 프레임 뒤에 붙인다: 첫 렌더는 화면 폭을 모르고 PC 로 그려졌다가 곧바로 고쳐지므로(useBreakpoint), 바로 붙이면
     // 모바일에서도 안 보이는 앱 배경이 잠깐 붙어 그림을 받기 시작한다. 가려진 탭에서는 보일 때까지 시작하지 않는다.
     let unmount: (() => void) | undefined
@@ -58,12 +69,14 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
     return () => {
       dead = true
       window.clearInterval(iv); off()
+      calm.removeEventListener?.('change', onCalm)
       cancelAnimationFrame(raf)
       unmount?.()
     }
   }, [kind])
   useEffect(() => { repaint.current?.() }, [ready, kind])
   const at = (layer: number) => sprites?.filter((s) => s.layer === layer).map((s) => <Sprite key={s.key} s={s} />)
+  const mv = (layer: 0 | 1 | 2) => movers && <SceneMovers rows={movers.rows} layer={layer} first={movers.first} />
   // 무대의 그림은 캐릭터가 서는 자리와 배율(미리보기 배율 설정)에 맞춰 놓는다 — 장면(sceneGl 의 layout)과 같은 계산.
   // 그래야 처음 깔리는 그림과 그 위로 나타나는 장면의 크기 · 자리가 같다. 칸을 그대로 키운다(장면도 정수 배율에서는 그렇게 그린다).
   useLayoutEffect(() => {
@@ -97,9 +110,11 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
     <div ref={ref} aria-hidden className={clsx(styles.host, className)}>
       {ready && (kind === 'sky' ? (
         // 쌓는 순서는 장면과 같다: 구름 · 열기구 · 헬리콥터 → 먼 빌딩 → 탑 → 이벤트 열기구 → 거리 → 걷는 이
-        <>{at(0)}{img(1)}{img(4)}{at(1)}{img(2)}{at(2)}</>
+        <>{at(0)}{mv(0)}{img(1)}{img(4)}{at(1)}{mv(1)}{img(2)}{at(2)}</>
       ) : STILL.room.map((l) => img(l.i)))}
       {ready && <div ref={veil} className={clsx(styles.veil, sprites && styles.mask)} />}
+      {/* 걷는 이들은 막 위에 둔다 — 장면에서도 어두운 막을 씌우지 않는다 */}
+      {ready && kind === 'sky' && mv(2)}
     </div>
   )
 }

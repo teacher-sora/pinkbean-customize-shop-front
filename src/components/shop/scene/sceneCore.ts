@@ -26,7 +26,7 @@
 //    탭을 오가며 다시 붙을 때는 그 자리에서 바로 보인다(전환이 밀리지 않게).
 
 import { ROOM, STREET } from './sceneData'
-import { pickSome, spread, stillCount } from './sceneMath'
+import { BOB, MOVE, PAUSE, pickSome, rnd, spread, stillCount, walkFps } from './sceneMath'
 import { applySkyMode, setSkyFixed, skyNow, type SkyMode, type SkyState } from './skyTime'
 
 export type SceneKind = 'sky' | 'room'
@@ -237,15 +237,6 @@ interface Scene {
 
 // 지나가는 것 하나. type 0 열기구 · 1 헬리콥터 · 2 걷는 이
 interface Mover { type: number; w: number; mult: number; frames: number; x: number; dir: number; speed: number; wait: number; jit: number; ph: number; walk: number; pauseAt: number; pause: number }
-// 종류별 범위: 빠르기(그림 칸/초) · 화면에서 사라진 뒤 쉬는 시간(초) · 나타날 때마다 높이를 바꾸는 폭(칸).
-// 열기구는 핑크빈 열기구가 기준이고 주황버섯은 그 0.75배, 슈피겔만은 1.25배다(mult). 걷는 이는 핑크빈이 느리고(mult 0.75) 아이돌이 빠르다.
-const MOVE = [
-  { speed: [4.2, 6], gap: [4, 26], jit: 26 },
-  { speed: [9, 16], gap: [14, 60], jit: 24 },
-  { speed: [26, 42], gap: [25, 95], jit: 0 },   // 걷는 이는 여섯이라 저마다 오래 쉰다 — 거리에 한둘만 보이게
-]
-const PAUSE = { chance: 0.5, sec: [3, 6] }    // 걷는 이가 도중에 멈춰 서는 비율과 시간
-const rnd = (r: number[]) => r[0] + Math.random() * (r[1] - r[0])
 let moverDefs: Omit<Mover, 'x' | 'dir' | 'speed' | 'wait' | 'jit' | 'walk' | 'pauseAt' | 'pause'>[] = []
 
 function spawn(m: Mover, left: number, right: number) {
@@ -308,8 +299,8 @@ function stepMovers(sc: Scene, dt: number, s: number, left: number, right: numbe
     }
     const o = i * 4
     out[o] = m.wait > 0 ? -1e5 : m.x
-    out[o + 1] = m.type === 0 ? m.jit + Math.sin(s * 0.55 + m.ph * 6.283) * 5 : m.type === 1 ? m.jit + Math.sin(s * 1.3 + m.ph * 6.283) * 2.5 : 0
-    out[o + 2] = m.type === 2 ? (m.pause > 0 ? 0 : Math.floor(m.walk * (m.frames > 4 ? 8.33 : 5)) % m.frames) : 0
+    out[o + 1] = m.type < 2 ? m.jit + Math.sin((s * 6.283) / BOB[m.type].sec + m.ph * 6.283) * BOB[m.type].amp : 0
+    out[o + 2] = m.type === 2 ? (m.pause > 0 ? 0 : Math.floor(m.walk * walkFps(m.frames)) % m.frames) : 0
     out[o + 3] = m.dir * (m.type === 2 && m.pause > 0 ? 2 : 1)   // 크기 2 = 멈춰 서 있다
   })
 }
