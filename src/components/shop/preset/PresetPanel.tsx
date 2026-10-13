@@ -24,13 +24,22 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const liveSnap: Snapshot = useMemo(() => s.snapshot(), [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos, s.pv])
 
   // 고른 칸이 **가운데**에 오도록 탭을 열자마자 스크롤한다(연출 설정 고르기와 같다). 탭을 열 때 한 번만 — 저장된 선택은 첫 그리기 뒤에 온다.
+  // 스크롤 영역만 움직인다(scrollIntoView 는 모바일에서 문서까지 같이 끌고 간다).
+  // 탭을 눌러 들어올 때는 칸 폭(cqw)이 자리 잡기 전에 불릴 수 있어, 그린 뒤 두 프레임 동안 다시 맞춘다(이미 맞으면 아무 일도 없다).
   const boxRef = useRef<HTMLDivElement>(null)
   const centered = useRef(false)
   useLayoutEffect(() => {
-    const el = boxRef.current?.querySelector('.pb-preset-sel')
-    if (centered.current || !el) return
+    if (centered.current || !s.selectedPreset) return
     centered.current = true
-    el.scrollIntoView({ block: 'center', inline: 'center' })
+    const go = () => {
+      const box = boxRef.current, el = box?.querySelector('.pb-preset-sel')?.closest('.pb-presetwrap')
+      if (!box || !el) return
+      const b = box.getBoundingClientRect(), r = el.getBoundingClientRect()
+      box.scrollTo({ left: box.scrollLeft + r.left - b.left - (b.width - r.width) / 2, top: box.scrollTop + r.top - b.top - (b.height - r.height) / 2 })
+    }
+    go()
+    let raf = requestAnimationFrame(() => { go(); raf = requestAnimationFrame(go) })
+    return () => cancelAnimationFrame(raf)
   }, [s.selectedPreset])
 
   // 삭제는 2단계 확인: 3초 안에, 다른 상호작용 없이 연속으로 한 번 더 누르면 삭제(lib/confirmTwice).
