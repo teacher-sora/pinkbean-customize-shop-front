@@ -11,6 +11,3 @@
 /* WebGL 없이 지나가는 것들(SceneMovers). 자리는 transform 애니메이션으로만 옮긴다. 쉬는 동안은 감춘다 */
 .mover { position: absolute; left: 50%; visibility: hidden; }
 .clip { overflow: hidden; }
-/* 열기구 · 헬리콥터가 위아래로 떤다(폭 --amp, 사인 곡선에 가까운 곡선으로 오르내린다) */
-.bob { animation: pbSceneBob 6s cubic-bezier(.37, 0, .63, 1) infinite alternate; }
-@keyframes pbSceneBob { from { transform: translateY(calc(var(--amp) * -1)); } to { transform: translateY(var(--amp)); } }
