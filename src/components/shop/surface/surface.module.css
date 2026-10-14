@@ -15,12 +15,13 @@
 
 .handle { flex: 0 0 auto; display: flex; justify-content: center; padding: 10px 0 4px; touch-action: none; }
 .handleBar { width: 40px; height: 4px; border-radius: 99px; background: #e7ded4; }
-.head { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid #f0e9e1; }
+.head { flex: 0 0 auto; padding: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid #f0e9e1; }
+.panelM .head { padding: 8px 12px; }   /* 모바일 시트는 옆 여백 12px 그대로 */
 .headL { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .title { font-size: 15px; font-weight: 700; color: #2a2521; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { flex: 0 0 auto; font-size: 11.5px; color: #a89e93; }
 .close { flex: 0 0 auto; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 6px; background: #faf7f3; color: #8a8075; cursor: pointer; }
-.foot { flex: 0 0 auto; padding: 10px 16px; border-top: 1px solid #f0e9e1; display: flex; justify-content: flex-end; gap: 8px; }
+.foot { flex: 0 0 auto; padding: 8px; border-top: 1px solid #f0e9e1; display: flex; justify-content: flex-end; gap: 8px; }
 .btnClose { height: 38px; padding: 0 18px; border: 1px solid #ddd4ca; border-radius: 6px; background: #fff; font-family: inherit; font-size: 13.5px; font-weight: 500; letter-spacing: -0.01em; color: #5c534b; cursor: pointer; }
 /* 본문 슬라이드 래퍼(부위 염색 ↔ 염색/점 위치) */
 .slide { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
@@ -32,7 +33,14 @@
 .btnApply { height: 38px; padding: 0 22px; border: none; border-radius: 6px; background: #ec86ac; font-family: inherit; font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; color: #fff; cursor: pointer; }
 
 /* ── 염색: 발색표(믹스) ── */
-.mixScroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; }
+/* 스크롤이 생길 수 있는 본문은 스크롤바 자리를 늘 잡아 둔다(양쪽). 그 자리가 곧 옆 여백(8px)이라 옆 패딩은 두지 않는다.
+   크롬 · 사파리는 scrollbar-width: thin 이 10px 라 8px 로 못 맞춘다 — 여기서는 ::-webkit-scrollbar 로 8px 를 준다(파이어폭스는 thin 그대로).
+   스크롤바가 자리를 차지하지 않는 터치 기기에서는 여백으로 채운다 */
+.mixScroll, .partBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; padding: 8px 0; }
+@supports selector(::-webkit-scrollbar) { .mixScroll.mixScroll, .partBody.partBody { scrollbar-width: auto; scrollbar-color: auto; } }
+.mixScroll.mixScroll::-webkit-scrollbar, .partBody.partBody::-webkit-scrollbar { width: 8px; }
+.mixScroll.mixScroll::-webkit-scrollbar-thumb, .partBody.partBody::-webkit-scrollbar-thumb { border-width: 2px; }
+@media (hover: none), (pointer: coarse) { .mixScroll, .partBody { scrollbar-gutter: auto; padding: 12px; } }
 .mixGrid { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 8px; }
 .mixGridM { grid-template-columns: repeat(3, minmax(0,1fr)); }
 .cell { position: relative; width: 100%; padding: 0; display: flex; flex-direction: column; align-items: stretch; gap: 0; border: 2px solid #eee6dc; border-radius: 8px; background: #fff; overflow: hidden; cursor: pointer; transition: border-color .18s ease, transform .16s ease; }
@@ -43,7 +51,7 @@
 .cellDot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0,0,0,0.12); }
 
 /* ── 염색: HSB ── */
-.hsvPc { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; padding: 16px; overflow: hidden; }
+.hsvPc { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; padding: 8px; overflow: hidden; }
 .hsvLeft { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .pvBox { flex: 1 1 auto; width: 100%; min-height: 0; border: 1px solid #eee6dc; border-radius: 8px; background: #faf7f3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .zoomRow { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 5px; }
@@ -65,7 +73,7 @@
 .resetIcon { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; white-space: nowrap; border: 1px solid #e7ded4; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #8a8075; cursor: pointer; }
 
 /* ── 점 위치 ── */
-.dotBody { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 16px; display: flex; gap: 16px; }
+.dotBody { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 8px; display: flex; gap: 16px; }
 /* 모바일: 본문 세로 스크롤(염색표와 동일). 줄어들지 않게 해야 캔버스·확대 게이지·위치 초기화가 겹치지 않는다(작은 화면에서 압축돼 겹침). */
 .dotBodyM { padding: 12px; flex-direction: column; gap: 12px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .dotLeft { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -94,10 +102,7 @@
 .offOn { background: #fdf1f6; border-color: #f5c6da; color: #d76d9a; }
 
 /* ── 부위 염색(부위 고르기) ── */
-/* 스크롤이 생길 수 있는 칸은 스크롤바 자리를 늘 잡아 둔다(양쪽) — 자리가 9px 라 옆 여백은 3px 만(합쳐 12px).
-   스크롤바가 자리를 차지하지 않는 터치 기기에서는 여백으로 12px 를 채운다 */
-.partBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; padding: 12px 3px; container-type: inline-size; }
-@media (hover: none), (pointer: coarse) { .partBody { scrollbar-gutter: auto; padding: 12px; } }
+.partBody { container-type: inline-size; }
 .partEmpty { height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
 .partEmptyTitle { font-size: 13px; font-weight: 600; color: #8a8075; }
 .partEmptyHint { font-size: 11.5px; color: #b7ada2; }
