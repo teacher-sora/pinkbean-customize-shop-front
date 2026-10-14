@@ -63,7 +63,7 @@
 | 토스트 | 아래 가운데 26px 위, radius 8, 12.5px, `max-width: min(275px, 75vw)`(모바일 `width: 75vw`), 2.2초, z-index 10000 |
 | 되묻는 말풍선 | 누른 버튼 위 8px, 흰 바탕 + 테두리 `#e7ded4`, radius 6, `8px 12px`, 12/600 `#d1735f`, 꼬리 8px, 아래에 남은 시간 막대(높이 3, 3초) |
 | 스크롤바 | `.pb-scroll` 9px · `.pb-scroll-thin` 8px · `.pb-norail` 숨김 · 창 본문 8px. 스크롤이 생길 수 있는 칸은 `scrollbar-gutter: stable` |
-| 가장자리 흐림 `pb-fade` | 더 볼 것이 남은 쪽에만, 흰색. 세로 24 · 가로 32(칸 위의 층 `.pb-fadeov`), 떠 있는 목록 `pb-fadepop` 은 22. 전환 `.6s cubic-bezier(.45,0,.55,1)` |
+| 가장자리 흐림 `pb-fade` | 더 볼 것이 남은 쪽에만, 흰색. 세로 24 · 가로 32(칸 위의 층 `.pb-fadeov`), 떠 있는 목록 `pb-fadepop` 은 22. 전환 `.6s linear`(곡선 없이) |
 
 ## hover (전부 `(hover:hover) and (pointer:fine)` 안)
 
@@ -90,7 +90,7 @@
 
 - focus: 입력은 테두리 `#ec86ac`, 버튼은 `:focus-visible` 에서 `outline: 2px solid #f8e0ea; outline-offset: 2px`. Esc 로 창을 닫으면 포커스를 놓아 테두리가 남지 않는다.
 - 선택: 테두리 `#ec86ac` + 바탕 `#fef5f8` + (카드면) `translateY(-5px)`. hover 규칙 뒤에 둔다(선택이 이긴다).
-- 못 누름: 진짜 `disabled` + `opacity .4`(또는 흐린 글자) + `cursor: not-allowed` + 왜 못 누르는지 `title`.
+- 못 누름: 진짜 `disabled`(모양만 흐리게 두고 누르면 아무 일도 없게 하지 않는다) + `opacity .4`(또는 흐린 글자) + 왜 못 누르는지 `title`. 커서는 `globals.css` 의 `button:disabled { cursor: not-allowed }` 가 모든 버튼에 준다. hover 는 `:not(:disabled)` 에만.
 - 불러오는 중: `.pb-skel` 셔머를 실제 내용과 같은 자리·크기로. 처음 불러올 때만 깐다.
 
 ## 모션
