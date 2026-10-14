@@ -32,7 +32,9 @@
 
 | 무엇 | 어디 |
 |---|---|
-| 창(PC) / 하단 시트(모바일) | `surface/Surface.tsx` — 종류 `pv` `bm` `dye` `dot` `part` `vs` `plaza` `ptake` `notice`. 발의 버튼은 `SurfaceFooter({ onApply, applyLabel, onBack })` |
+| 창(PC) / 하단 시트(모바일) | `surface/Surface.tsx` — 종류 `pv` `bm` `dye` `dot` `part` `bg` `vs` `plaza` `ptake` `notice`. 발의 버튼은 `SurfaceFooter({ onApply, applyLabel, onBack })` |
+| 막 닫기 | `ui/useMaskClose.ts` — 누름과 뗌이 모두 막일 때만 닫고, 닫은 뒤 따라오는 click 은 버린다 |
+| 미리보기 배경 | `lib/stageBg.ts`(`useStageBg`·`setStageBg`·`addStageBg`·`removeStageBg`) + `preview/StageBg.tsx`(미리보기 칸에 까는 것) + `surface/StageBgBody.tsx`(고르는 격자) |
 | 펼침·접힘 움직임 | `surface/glide.ts`(`place`·`glideTo`·`release`), `surface/sheetMotion.ts` |
 | 창 안에서 옆으로 바꿔 끼우기 | `surface/innerSlide.ts` — `useInnerSlide` |
 | 격자에서 하나 고르기(액션·무기 모션·표정) | `preview/PvPicker.tsx` — PC 는 작은 팝오버, 모바일은 시트 안 슬라이드 |
@@ -51,12 +53,13 @@
 | 무엇 | 이름 |
 |---|---|
 | 알약·나뉜 탭 | `Seg` — `pc` / `mobileFlex` / `mobileFit` |
+| 접어 둔 보기 · 성별 | `list/ListArea.tsx` 의 `FilterM` — '보기 설정' 버튼 + 바로 아래 펼침 칸(모바일 · 좁은 폭) |
 | 스위치 | `Switch` |
 | 색 고르기 | `FamilyDots`(색상 계열), `Swatch` |
 | 숫자 증감 | `Stepper` |
 | 슬라이더 + 증감 한 줄 | `DyeRow` — 전역 `.pb-slider` `.pb-track-h/-s/-v` `.pb-dyerow` |
 | 고르기(select 대신) | `ui/Dropdown.tsx` — `row` / `rowM` / `field` / `fieldM` |
-| 아이콘 | `ui/Icons.tsx`(인라인 SVG 30여 개, `IconTab`) — 새 아이콘도 여기에 같은 굵기로 |
+| 아이콘 | `ui/Icons.tsx`(인라인 SVG 30여 개, `IconTab`) — 새 아이콘도 여기에 같은 굵기로. 염색은 팔레트(`IconDrop` 과 탭 아이콘 `info` — 이름은 예전 그대로), 더하기는 `IconAdd` |
 
 ## 전역 클래스 (`app/globals.css`)
 
@@ -65,6 +68,7 @@
 - 카드: `pb-cardwrap > pb-card`(+ `pb-card-sel`) · `pb-presetwrap > pb-preset`(+ `pb-preset-sel`)
 - hover 로 드러나는 것(터치에서는 늘 보임): `pb-slot` / `pb-slot-x` · `pb-presetacts` · `pb-ribbon`
 - 스크롤바: `pb-scroll` · `pb-scroll-thin` · `pb-norail`
+- 가장자리 흐림: `pb-fade`(스크롤 칸에 단다 — `ui/useScrollFade.ts` 가 남은 쪽을 `data-fade` 로 적고 칸 위에 흰 층 `.pb-fadeov` 를 붙인다) · `pb-fadepop`(그림자 있는 떠 있는 목록에 함께)
 - 움직임: `pb-drawer` · `pb-slide`
 - 그 밖: `pb-skel` · `sr-only` · 속성 `[data-pb-panel]` `[data-pb-body]`, `html[data-pb-bgonly]`(배경 보기)
 

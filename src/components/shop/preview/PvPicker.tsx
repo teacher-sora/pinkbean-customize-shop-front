@@ -72,7 +72,7 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
     const icon = iconOf(o.v)
     const snap = snaps?.get(o.v)
     return (
-      <button key={o.v} ref={on ? onCurrentCell : undefined} type="button" role="option" aria-selected={on} aria-disabled={dis || undefined}
+      <button key={o.v} ref={on ? onCurrentCell : undefined} type="button" role="option" aria-selected={on} disabled={dis}
         title={dis ? disabledTitle : (field === 'expr' && !icon ? `${o.l} — 짝이 되는 표정 아이템이 없어 그림은 없어요` : o.l)}
         onClick={() => { if (dis) return; onChange(o.v) }}
         className={clsx(styles.pvCell, on && styles.pvCellOn, dis && styles.pvCellOff)}>
@@ -182,7 +182,7 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
         <span className={clsx(ui.caret, open && ui.caretOpen)}>▾</span>
       </button>
       {open && typeof document !== 'undefined' && createPortal(
-        <div ref={panelRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-scroll-thin', styles.pvPanel, shown && styles.pvPanelOn)}
+        <div ref={panelRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', 'pb-fadepop', styles.pvPanel, shown && styles.pvPanelOn)}
           style={{ left: pos!.left, bottom: pos!.bottom, width: pos!.w, maxHeight: pos!.maxH }}>
           <PvGrid field={field} options={options} groups={groups} value={value} disabledValues={disabledValues} disabledTitle={disabledTitle}
             onChange={(v) => { onChange(v); close() }} />

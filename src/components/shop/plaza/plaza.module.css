@@ -2,7 +2,7 @@
 
 /* ── 목록 패널 ── */
 .panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
-.header { flex: 0 0 auto; padding: 10px 16px 0; display: flex; align-items: center; column-gap: 10px; row-gap: 10px; flex-wrap: wrap; }
+.header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; row-gap: 10px; flex-wrap: wrap; }
 .sortWrap { flex: 0 0 98px; display: flex; }
 .sortWrapNarrow { flex: 0 0 92px; }
 .sortWrap :global(.pb-ddbtn) { flex: 1 1 auto; height: 34px; padding: 0 8px 0 11px; font-size: 12.5px; }
@@ -10,24 +10,24 @@
 .searchWrap { flex: 1 1 0; min-width: 96px; max-width: 200px; position: relative; display: flex; align-items: center; }
 .searchIcon { position: absolute; left: 10px; color: #b7ada2; pointer-events: none; }
 .searchInput { height: 34px; width: 100%; min-width: 0; padding: 0 12px 0 30px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-size: 13px; color: #3d372f; outline: none; }
-.hr { flex: 0 0 auto; height: 1px; margin: 10px 16px 0; background: #f2ebe3; }
+.hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: #f2ebe3; }
 .hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f2ebe3; }
 
-/* 모바일: 정렬+검색 / 페이지 칩+등록 두 줄 */
-.controlsM { flex: 0 0 auto; display: flex; flex-direction: column; }
-.rowM1 { padding: 8px 12px 0; display: flex; align-items: center; gap: 8px; }
-.rowM2 { padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sortWrapM { flex: 0 0 84px; display: flex; }
-.sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; height: 34px; padding: 0 8px 0 10px; font-size: 12px; }
-.searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
+/* 모바일: 한 줄 — 정렬 · 쪽 번호 · 검색 · 등록(다른 탭의 머리와 같은 높이 · 간격) */
+.controlsM { flex: 0 0 auto; height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+.sortWrapM { flex: 0 1 72px; min-width: 62px; display: flex; }
+.sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; min-width: 0; height: 32px; padding: 0 8px 0 10px; font-size: 12px; }
+.searchWrapM { flex: 1 1 0; min-width: 64px; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; color: #b7ada2; pointer-events: none; }
-.searchInputM { width: 100%; min-width: 0; height: 34px; padding: 0 10px 0 31px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-size: 13px; color: #3d372f; outline: none; }
-.upBtn { flex: 0 0 auto; height: 32px; padding: 0 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #f4cfdf; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.searchInputM { width: 100%; min-width: 0; height: 32px; text-overflow: ellipsis; padding: 0 10px 0 31px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-size: 13px; color: #3d372f; outline: none; }
+.upBtn { flex: 0 0 auto; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 
 /* ── 페이지 칩 ── */
 .pageChip { flex: 0 0 auto; margin-left: auto; height: 34px; padding: 0 4px 0 12px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
-/* 모바일은 등록 버튼과 양끝 정렬이라 margin-left:auto 를 쓰지 않는다(쓰면 space-between 이 무력화된다) */
-.pageChipM { flex: 0 0 auto; height: 34px; padding: 0 4px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+/* 광장은 쪽수가 세 자리를 넘지 않는다 — 번호 칸을 한 자리 줄여 검색 칸에 폭을 준다 */
+.pageChipM .pageInput { width: calc(3ch + 14px); }
+.pageChipM .total { min-width: calc(3ch + 14px); }
+.pageChipM { flex: 0 0 auto; height: 32px; padding: 0 5px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
 .count { font-size: 12px; font-weight: 600; color: #8a8075; line-height: 1; }
 .chipDiv { width: 1px; height: 14px; margin: 0 8px; background: #e7ded4; }
 .arrow { flex: 0 0 auto; width: 22px; height: 24px; margin: 0 2px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 4px; background: transparent; color: #ded5cb; cursor: default; transition: background-color .2s ease, color .2s ease; }
@@ -47,7 +47,7 @@
    움직일 수 없어 같은 몸짓이 탭마다 다르게 먹는다. */
 .viewportM { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y; container-type: inline-size; }
 .track { position: relative; height: 100%; width: 100%; will-change: transform; }
-.page { position: absolute; top: 0; width: 100%; height: 100%; padding: 10px 16px; overflow: hidden; }
+.page { position: absolute; top: 0; width: 100%; height: 100%; padding: 8px; overflow: hidden; }
 .pageM { position: absolute; top: 0; width: 100cqw; height: 100%; padding: 10px 12px; overflow: hidden; } /* 모바일 트랙은 페이지 수만큼 넓다 — width:100% 면 한 페이지가 트랙 전체 폭이 된다 */
 .grid { display: grid; height: 100%; }
 .empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 0 24px; }
@@ -70,9 +70,9 @@
 .railLeft.railM { left: 5px; right: auto; top: 5px; }
 /* 대회 수상 배지 — 좌상단. 날짜 칩(.contestNo)과 같은 높이·글자, 내리기 버튼이 있으면 그 위에 온다(왼쪽 맞춤). */
 .railLeftAward { align-items: flex-start; }
-.award { flex: 0 0 auto; height: 20px; padding: 0 8px; display: flex; align-items: center; border: 1px solid #f4cfdf; border-radius: 20px; background: #fff; font-size: 10.5px; font-weight: 700; color: #d76d9a; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.award { flex: 0 0 auto; height: 20px; padding: 0 8px; display: flex; align-items: center; border: 1px solid #f8e0ea; border-radius: 20px; background: #fff; font-size: 10.5px; font-weight: 700; color: #d76d9a; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .awardRank { border-color: #ec86ac; background: #ec86ac; color: #fff; }
-.awardPick { background: #fce9f1; }
+.awardPick { background: #fdf1f6; }
 .awardLucky { background: #fff; }
 .railBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #efe8e0; border-radius: 50%; background: rgba(255,255,255,0.94); color: #a89e93; cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
 .railBtnM { width: 26px; height: 26px; }
@@ -80,12 +80,12 @@
 .likeWrap { position: absolute; right: 6px; bottom: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .likeWrapM { right: 5px; bottom: 5px; }
 /* 대회 출품 날짜(M.D) — 썸네일 왼쪽 아래. 하트는 오른쪽 아래라 겹치지 않는다. */
-.contestNo { position: absolute; left: 6px; bottom: 6px; z-index: 4; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid #f4cfdf; border-radius: 20px; background: #fff; font-size: 10.5px; font-weight: 700; color: #d76d9a; font-variant-numeric: tabular-nums; }
+.contestNo { position: absolute; left: 6px; bottom: 6px; z-index: 4; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid #f8e0ea; border-radius: 20px; background: #fff; font-size: 10.5px; font-weight: 700; color: #d76d9a; font-variant-numeric: tabular-nums; }
 .contestNoM { left: 5px; bottom: 5px; }
 .likeCount { font-size: 10px; font-weight: 700; color: #8a8075; line-height: 1; font-variant-numeric: tabular-nums; }
 .likeBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #efe8e0; border-radius: 50%; background: rgba(255,255,255,0.94); color: #a89e93; cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
 .likeBtnM { width: 26px; height: 26px; }
-.likeOn { border-color: #f4cfdf; background: #fce9f1; color: #ec86ac; }
+.likeOn { border-color: #f8e0ea; background: #fdf1f6; color: #ec86ac; }
 
 /* ── 상세(서피스 본문) ── */
 .detail { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 16px; }
@@ -104,8 +104,8 @@
    안쪽 V 홈은 빗변에서도 테두리가 1px 로 보이게 수직으로 조금 더 올린다(빗변 기울기 ≈ 35° → 1px ÷ cos). */
 .ribbon { --rb-line: #ec86ac; --rb-bg: #ec86ac; position: absolute; left: 12px; top: -3px; z-index: 2; width: 48px; height: 62px; padding: 0 0 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--rb-line); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); font-size: 15px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; color: #fff; text-align: center; white-space: nowrap; }
 .ribbon::before { content: ''; position: absolute; inset: 1px 1px 0; z-index: -1; background: var(--rb-bg); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 1.9px), 50% calc(72% - 1.5px), 0 calc(100% - 1.9px)); }
-.ribbonPick { --rb-line: #f4cfdf; --rb-bg: #fce9f1; color: #d76d9a; }
-.ribbonLucky { --rb-line: #f4cfdf; --rb-bg: #fff; color: #d76d9a; }
+.ribbonPick { --rb-line: #f8e0ea; --rb-bg: #fdf1f6; color: #d76d9a; }
+.ribbonLucky { --rb-line: #f8e0ea; --rb-bg: #fff; color: #d76d9a; }
 .ribbonTwo { font-size: 11px; }
 .ribbonM { left: 8px; width: 42px; height: 54px; font-size: 13px; }
 .ribbonM.ribbonTwo { font-size: 10.5px; }
@@ -125,7 +125,7 @@
 .refViewPan { cursor: grab; }
 .refViewDrag { cursor: grabbing; }
 .refViewImg { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; transition: opacity .22s ease; }
-.refReset { position: absolute; right: 8px; bottom: 8px; z-index: 2; height: 26px; padding: 0 10px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fff; font-family: inherit; font-size: 11px; font-weight: 600; color: #d76d9a; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); opacity: 0; pointer-events: none; transition: opacity .22s ease, background-color .22s ease, border-color .22s ease; }
+.refReset { position: absolute; right: 8px; bottom: 8px; z-index: 2; height: 26px; padding: 0 10px; border: 1px solid #f8e0ea; border-radius: 20px; background: #fff; font-family: inherit; font-size: 11px; font-weight: 600; color: #d76d9a; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); opacity: 0; pointer-events: none; transition: opacity .22s ease, background-color .22s ease, border-color .22s ease; }
 .refResetOn { opacity: 1; pointer-events: auto; }
 /* 착용 아이템 — 아코디언. 칩은 부위 염색 칩(surface .partChip)과 같은 모양이되 누르는 요소가 아니라 읽는 칩이다.
    막대는 라벨 위치가 다른 구역 라벨과 맞도록 음수 여백(6px — 상세 본문 패딩과 같게, 넘치면 스크롤 칸에 잘린다)으로 hover 면만 넓힌다. 창(overflow:hidden) 안에서 칩이 translateY 로 드러난다. */
@@ -153,11 +153,11 @@
 .upColHalf { flex: 0 0 312px; }
 .upColTablet { flex: 0 0 330px; }
 .upPanel { flex: 1 1 auto; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
-.upHead { flex: 0 0 auto; height: 44px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0e9e1; }
+.upHead { flex: 0 0 auto; height: 46px; padding: 0 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0e9e1; }
 .upTitle { font-size: 14px; font-weight: 700; color: #2a2521; }
-.upBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable; padding: 12px 16px; display: flex; flex-direction: column; gap: 22px; }
+.upBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable; padding: 8px; display: flex; flex-direction: column; gap: 22px; }
 .upBodyM { padding: 10px 12px 12px; scrollbar-gutter: auto; }
-.upFoot { flex: 0 0 auto; padding: 10px 16px; border-top: 1px solid #f0e9e1; }
+.upFoot { flex: 0 0 auto; padding: 8px; border-top: 1px solid #f0e9e1; }
 .label { font-size: 11px; font-weight: 700; color: #a89e93; margin-bottom: 6px; }
 .labelWide { margin-bottom: 7px; }
 .star { color: #ec86ac; }
@@ -171,31 +171,31 @@
 .textareaM { font-size: 13px; }
 .pickWrap { position: relative; }
 .pickBtn { width: 100%; height: 34px; padding: 0 9px 0 11px; display: flex; align-items: center; gap: 7px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
-.pickOpen { border-color: #eeb2ce; background: #fdf4f8; }
+.pickOpen { border-color: #eeb2ce; background: #fef8fa; }
 .pickText { flex: 1 1 0; min-width: 0; font-size: 12.5px; font-weight: 500; color: #3d372f; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pickCaret { flex: 0 0 auto; color: #a89e93; transition: transform .22s cubic-bezier(.45,0,.55,1); transform: rotate(0deg); }
 .caretOpen { transform: rotate(180deg); }
-.pickPanel { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; padding: 8px; background: #fff; border: 1px solid #f0dde7; border-radius: 8px; box-shadow: 0 10px 26px rgba(42,37,33,.14); transform-origin: top center; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none; }
+.pickPanel { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; padding: 8px; background: #fff; border: 1px solid #f5e8ee; border-radius: 8px; box-shadow: 0 10px 26px rgba(42,37,33,.14); transform-origin: top center; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none; }
 .panelOn { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
 /* 아래로 자리가 없는 하단 항목(등록할 곳)은 위로 펼친다 */
 .pickPanelUp { top: auto; bottom: calc(100% + 6px); transform-origin: bottom center; transform: translateY(6px) scale(.98); }
 .pickPanelUp.panelOn { transform: translateY(0) scale(1); }
-.pickContest { border-color: #f4cfdf; background: #fce9f1; }
+.pickContest { border-color: #f8e0ea; background: #fdf1f6; }
 .pickList { display: flex; flex-direction: column; gap: 2px; max-height: 196px; overflow: hidden auto; }
 .pickGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: 296px; overflow: hidden auto; }
 .pickGridM { max-height: 256px; }
 .pickCell { display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid #eee6dc; border-radius: 6px; background: #fff; overflow: hidden; font-family: inherit; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
-.pickCellOn { border-color: #ec86ac; background: #fdf4f8; }
+.pickCellOn { border-color: #ec86ac; background: #fef8fa; }
 .pickThumb { position: relative; display: block; flex: 0 0 auto; height: 88px; background: #f7f2ec; }
 .pickName { display: block; padding: 4px 6px 6px; font-size: 11.5px; font-weight: 600; color: #5c534b; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pickCellOn .pickName { color: #d76d9a; }
 .pickEmpty { grid-column: 1 / -1; margin: 0; padding: 12px 4px; font-size: 12px; color: #a89e93; text-align: center; }
 .pickOpt { width: 100%; height: 32px; padding: 0 10px; display: flex; align-items: center; border: none; border-radius: 4px; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 500; color: #5c534b; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: background-color .18s ease, color .18s ease; }
-.pickOptOn { background: #fce9f1; font-weight: 700; color: #d76d9a; }
+.pickOptOn { background: #fdf1f6; font-weight: 700; color: #d76d9a; }
 .upStage { position: relative; flex: 0 0 auto; height: 164px; border: 1px solid #eee6dc; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .tagChips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .tagDel { flex: 0 0 auto; padding: 0; border: none; background: transparent; font-family: inherit; cursor: pointer; } /* 자리(hover 판정)는 고정 */
-.tagDelPill { display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border: 1px solid #f4cfdf; border-radius: 20px; background: #fce9f1; font-size: 11px; font-weight: 600; color: #d76d9a; transition: transform .2s ease, border-color .22s ease, background-color .24s ease, color .22s ease; }
+.tagDelPill { display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border: 1px solid #f8e0ea; border-radius: 20px; background: #fdf1f6; font-size: 11px; font-weight: 600; color: #d76d9a; transition: transform .2s ease, border-color .22s ease, background-color .24s ease, color .22s ease; }
 .tagDelX { font-size: 10px; }
 /* 태그 입력 + 옆 '추가' 버튼 — AI 코디 검색(heroRow·heroBtn)과 같은 모양, 높이는 이 폼 입력칸(34px)에 맞춘다. */
 .tagField { display: flex; align-items: center; gap: 6px; }
@@ -224,31 +224,31 @@
 .upSubmitM { flex: 1 1 0; min-width: 0; } /* 닫기 : 등록 = 1 : 1 */
 
 @media (hover: hover) and (pointer: fine) {
-  /* hover 는 코디 탭 띠지 수준으로 진하게 — 핑크 배경 #fce9f1 + 보더 #ec86ac, 솔리드는 #d5578e(pb-solid 와 같게). */
-  .railBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
-  .delBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #e0533e; } /* 내리기: 핑크로 채우고 아이콘은 위험색 */
-  .likeBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #ec86ac; }
-  .upBtn:hover { border-color: #ec86ac; background: #fce9f1; }
-  .tagChip:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
-  .pickOpt:hover { background: #fce9f1; color: #d76d9a; }
-  .imgBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
-  .arrowOn:hover { background: #fce9f1; color: #d76d9a; }
-  .pickCell:hover { border-color: #ec86ac; background: #fce9f1; }
+  /* hover 는 코디 탭 띠지 수준으로 진하게 — 핑크 배경 #fdf1f6 + 보더 #ec86ac, 솔리드는 #d5578e(pb-solid 와 같게). */
+  .railBtn:hover { border-color: #ec86ac; background: #fdf1f6; color: #d76d9a; }
+  .delBtn:hover { border-color: #ec86ac; background: #fdf1f6; color: #e0533e; } /* 내리기: 핑크로 채우고 아이콘은 위험색 */
+  .likeBtn:hover { border-color: #ec86ac; background: #fdf1f6; color: #ec86ac; }
+  .upBtn:hover { border-color: #ec86ac; background: #fdf1f6; }
+  .tagChip:hover { border-color: #ec86ac; background: #fdf1f6; color: #d76d9a; }
+  .pickOpt:hover { background: #fdf1f6; color: #d76d9a; }
+  .imgBtn:hover { border-color: #ec86ac; background: #fdf1f6; color: #d76d9a; }
+  .arrowOn:hover { background: #fdf1f6; color: #d76d9a; }
+  .pickCell:hover { border-color: #ec86ac; background: #fdf1f6; }
   /* 태그 지우기: 바깥 자리는 그대로, 알약만 줄며 위험색 — '누르면 사라진다' */
-  .tagDel:hover .tagDelPill { transform: scale(.92); border-color: #e0533e; background: #fce9f1; color: #e0533e; }
-  .refReset:hover { border-color: #ec86ac; background: #fce9f1; }
-  .upRefBtn:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
-  .upRefDel:hover { border-color: #e0533e; background: #fce9f1; color: #e0533e; }
+  .tagDel:hover .tagDelPill { transform: scale(.92); border-color: #e0533e; background: #fdf1f6; color: #e0533e; }
+  .refReset:hover { border-color: #ec86ac; background: #fdf1f6; }
+  .upRefBtn:hover { border-color: #ec86ac; background: #fdf1f6; color: #d76d9a; }
+  .upRefDel:hover { border-color: #e0533e; background: #fdf1f6; color: #e0533e; }
   /* 상세 행동 줄 — 누른 결과를 미리 보여 준다 */
-  .actLike:hover { border-color: #ec86ac; background: #fce9f1; color: #ec86ac; }   /* 하트가 켜질 색 */
+  .actLike:hover { border-color: #ec86ac; background: #fdf1f6; color: #ec86ac; }   /* 하트가 켜질 색 */
   .actLike.actBtnOn:hover { border-color: #e7ded4; background: #fff; color: #a89e93; } /* 취소하면 꺼진다 */
-  .actLink:hover { border-color: #ec86ac; background: #fce9f1; color: #d76d9a; }
+  .actLink:hover { border-color: #ec86ac; background: #fdf1f6; color: #d76d9a; }
   .actTake:hover { background: #d5578e; }
   /* 댓글 */
-  .cmtDel:hover { border-color: #e0533e; background: #fce9f1; color: #e0533e; }
-  .cmtReplyBtn:hover { background: #fce9f1; color: #c85d8a; }
+  .cmtDel:hover { border-color: #e0533e; background: #fdf1f6; color: #e0533e; }
+  .cmtReplyBtn:hover { background: #fdf1f6; color: #c85d8a; }
   .cmtSend:not(.cmtSendOff):hover { background: #d5578e; }
-  .wornBar:hover { background: #fce9f1; }
+  .wornBar:hover { background: #fdf1f6; }
   .wornBar:hover .descLabel, .wornBar:hover .wornCaret { color: #d76d9a; }
   .wornBarM:hover { background: transparent; } /* 모바일 배치(좁은 창 마우스)에서는 면 없이 색만 — 면이 본문 폭에 붙어 보인다 */
 }
@@ -259,8 +259,8 @@
 /* 좋아요 수 — 자릿수만큼 **고정 폭**(ch)으로 잡아 같은 자릿수 안에서는 숫자가 바뀌어도 버튼이 움직이지 않는다.
    tabular-nums 를 지원하지 않는 글꼴이거나 숫자가 뚱뚱해도 폭은 그대로다(가운데 정렬, 넘치면 넘친 채로). */
 .actNum { display: inline-block; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.actBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #f0d3e0; border-radius: 6px; background: #fff; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #8a8075; cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
-.actBtnOn { border-color: #f4cfdf; background: #fce9f1; color: #d76d9a; }
+.actBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #f5e2eb; border-radius: 6px; background: #fff; font-family: inherit; font-size: 11.5px; font-weight: 600; color: #8a8075; cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
+.actBtnOn { border-color: #f8e0ea; background: #fdf1f6; color: #d76d9a; }
 .actTake { margin-left: auto; border-color: transparent; background: #ec86ac; color: #fff; }
 
 /* ── 댓글(상세 오른쪽 열 / 모바일은 설명 아래) ── */
@@ -293,7 +293,7 @@
 .cmtWho { flex: 0 1 auto; min-width: 0; font-size: 11px; font-weight: 600; color: #8a8075; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cmtWhoAuthor { color: #d76d9a; }
 .cmtWhoMine { color: #3d372f; }
-.cmtChip { flex: 0 0 auto; height: 16px; padding: 0 5px; display: flex; align-items: center; border-radius: 4px; background: #fce9f1; font-size: 9.5px; font-weight: 700; color: #d76d9a; }
+.cmtChip { flex: 0 0 auto; height: 16px; padding: 0 5px; display: flex; align-items: center; border-radius: 4px; background: #fdf1f6; font-size: 9.5px; font-weight: 700; color: #d76d9a; }
 .cmtChipMine { background: #f2ebe3; color: #8a8075; }
 /* 건의글에 붙는 운영자 답변 — 들여쓰기 + 왼쪽 선으로 딸린 글임을 보인다. */
 .ntReply { margin: 8px 0 0 10px; padding-left: 10px; border-left: 2px solid #f0e9e1; display: flex; flex-direction: column; gap: 4px; }
@@ -339,7 +339,7 @@
 .ntPager { display: flex; justify-content: center; }
 .ntPageNum { min-width: 56px; font-size: 12px; font-weight: 600; color: #8a8075; text-align: center; }
 @media (hover: hover) and (pointer: fine) {
-  .ntRow:hover { border-color: #ec86ac; background: #fdf4f8; }
+  .ntRow:hover { border-color: #ec86ac; background: #fef8fa; }
 }
 
 /* 가져오기(프리셋 칸 고르기) — 광장 상세와 같은 다이얼로그 안에서 슬라이드로 바뀐다(PlazaTakeBody). */

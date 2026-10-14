@@ -4,8 +4,18 @@
 //  - click 으로 판정하면 마스크에서 눌러 패널에서 떼도(또는 반대) click 대상이 공통 조상인 마스크가 되어 닫힌다.
 //  - 터치는 누른 요소로 포인터가 암묵 캡처돼 pointerup 의 target 이 항상 마스크 → 실제 뗀 위치의 요소로 확인한다.
 //  - 8px 넘게 움직였으면(끌기) 닫지 않는다. ignore() 가 true 면(예: 시트 드래그 직후) 닫지 않는다.
+//  - 닫은 뒤 따라오는 click 은 버린다. 닫히면 마스크가 곧바로 터치를 통과시켜(다시 바로 열 수 있게), 뗌 뒤에 오는 click 이
+//    마스크 아래의 버튼(예: 미리보기의 배경 버튼)에 떨어져 다른 창이 열렸다.
 
 import { useRef } from 'react'
+
+// 마스크를 뗀 뒤 곧 오는 click 한 번(터치는 뗌 직후, 늦어도 수백 ms 안)을 캡처 단계에서 버린다.
+function swallowNextClick() {
+  const eat = (ev: MouseEvent) => { ev.preventDefault(); ev.stopPropagation(); done() }
+  const done = () => { window.removeEventListener('click', eat, true); clearTimeout(t) }
+  window.addEventListener('click', eat, true)
+  const t = setTimeout(done, 600)
+}
 
 export function useMaskClose(onClose: () => void, ignore?: () => boolean) {
   const down = useRef<{ x: number; y: number } | null>(null)
@@ -19,6 +29,7 @@ export function useMaskClose(onClose: () => void, ignore?: () => boolean) {
       if (!d || document.elementFromPoint(e.clientX, e.clientY) !== e.currentTarget) return
       if (Math.abs(e.clientX - d.x) > 8 || Math.abs(e.clientY - d.y) > 8) return
       if (ignore?.()) return
+      swallowNextClick()
       onClose()
     },
     onPointerCancel: () => { down.current = null },

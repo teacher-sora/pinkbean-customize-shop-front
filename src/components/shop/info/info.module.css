@@ -1,10 +1,10 @@
 /* 코디 정보 · 염색. */
 
 .panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
-.header { flex: 0 0 auto; padding: 10px 16px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
-.hr { flex: 0 0 auto; height: 1px; margin: 10px 16px 0; background: #f2ebe3; }
-.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 6px; }
-.hrM { flex: 0 0 auto; height: 1px; background: #f2ebe3; }
+.header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
+.hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: #f2ebe3; }
+.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 8px; }
+.hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f2ebe3; }
 
 /* 착용 n / 16 칩 */
 .chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
@@ -23,7 +23,7 @@
 
 /* 부위 행 */
 .slot { display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 7px 9px; overflow: hidden; border: 1px dashed #e7ded4; border-radius: 8px; background: #fbf8f4; cursor: default; text-align: left; font-family: inherit; transition: background-color .22s ease, border-color .22s ease; }
-.slotOn { border-style: solid; border-color: #f4cfdf; background: #fdf7fa; cursor: pointer; }
+.slotOn { border-style: solid; border-color: #f8e0ea; background: #fdf7fa; cursor: pointer; }
 .slotHidden { background: #f7f3ee; }
 .slotSel { border-color: #ec86ac; }
 .slotThumb { position: relative; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 6px; background: #f4efe8; display: flex; align-items: center; justify-content: center; }
@@ -39,7 +39,7 @@
 .slotPart { font-size: 10.5px; font-weight: 600; color: #a89e93; letter-spacing: -0.01em; }
 .slotName { font-size: 12px; font-weight: 500; color: #c3b9ad; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .slotNameOn { font-weight: 600; color: #2a2521; }
-.toggle { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #f4cfdf; border-radius: 6px; background: #fce9f1; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+.toggle { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fdf1f6; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
 .toggleHidden { border-color: #e7ded4; background: #f4efe8; color: #a89e93; }
 
 /* ── 하단 인라인 염색(PC) ── */
@@ -74,7 +74,7 @@
    → 넘치면 아랫줄로 접는다(밖으로 삐져나오지 않게). */
 .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 /* 염색 비활성화 토글 — 켜짐 상태 */
-.btnOn { background: #fce9f1; border-color: #f5c6da; color: #d76d9a; }
+.btnOn { background: #fdf1f6; border-color: #f5c6da; color: #d76d9a; }
 /* '테두리 포함' 체크 — 염색 다이얼로그의 같은 버튼과 같은 모양. */
 .tickBtn { display: inline-flex; align-items: center; gap: 6px; }
 .tick { flex: 0 0 auto; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e0d7cd; border-radius: 4px; background: #fff; color: #fff; transition: background-color .2s cubic-bezier(.45,0,.55,1), border-color .2s cubic-bezier(.45,0,.55,1); }

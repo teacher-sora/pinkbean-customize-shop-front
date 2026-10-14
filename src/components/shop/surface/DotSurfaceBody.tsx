@@ -50,7 +50,7 @@ export default function DotSurfaceBody({ item, mobile }: { item: ListItem; mobil
 
   return (
     <>
-      <div className={clsx('pb-scroll', styles.dotBody, mobile && styles.dotBodyM)}>
+      <div className={clsx('pb-scroll', 'pb-fade', styles.dotBody, mobile && styles.dotBodyM)}>
         <div className={clsx(styles.dotLeft, mobile && styles.dotLeftM)}>
           {!mobile && <div className={styles.tools}>{tools}</div>}
           <div className={styles.canvasRow}>

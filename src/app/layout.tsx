@@ -139,9 +139,9 @@ const JSON_LD = {
 // 앱 전체 글꼴 Wanted Sans(가변, OFL — src/assets/fonts). 사이트의 정적 파일로 함께 내보낸다(주소에 해시가 붙어 캐시가 알아서 맞는다).
 // 파일은 둘로 나눠 두었다(scripts/font-subset.py): 자주 쓰는 글자(0.38MB)는 글자가 그려질 때 받고, 드문 한글 음절(0.95MB)은
 // 화면에 그 글자가 나올 때만 받는다(fonts.css 의 "Wanted Sans Rest"). 통째로 받으면 1.26MB 가 목록 · 스프라이트와 회선을 나눠 쓴다.
-// 미리 받기(preload)는 끈다 — 켜면 글꼴이 CSS · 앱 코드보다 먼저 회선을 차지해 첫 그리기가 늦어진다(재 보니 0.1~0.2초).
-// 대체 글꼴의 폭 보정은 끈다 — 글꼴이 오기 전후로 글자 폭이 달라지는 것은 그대로다.
-const wanted = localFont({ src: '../assets/fonts/WantedSansVariable-common.woff2', weight: '400 1000', style: 'normal', display: 'swap', variable: '--font-wanted', adjustFontFallback: false, preload: false })
+// 자주 쓰는 쪽은 미리 받고(preload) 글꼴이 올 때까지 글자를 그리지 않는다(display: block) — 대체 글꼴로 먼저 그렸다가 바꿔치면
+// 글자 폭 · 굵기가 달라 화면이 한 번 움찔한다(사용자 지시: 나중에 대체하지 않고 처음부터 이 글꼴로).
+const wanted = localFont({ src: '../assets/fonts/WantedSansVariable-common.woff2', weight: '400 1000', style: 'normal', display: 'block', variable: '--font-wanted', adjustFontFallback: false, preload: true })
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

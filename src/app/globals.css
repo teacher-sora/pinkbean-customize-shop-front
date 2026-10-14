@@ -37,6 +37,38 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-norail { scrollbar-width: none; }
 .pb-norail::-webkit-scrollbar { display: none; }
 
+/* 스크롤 칸의 가장자리 흐림(ui/useScrollFade) — 더 볼 것이 남은 쪽에만, 흰 흐림(패널 바탕으로 녹아든다 — 하단 부위 줄과 같다).
+   어두운 흐림은 테두리가 없거나 얇은 자리에서 그림자처럼 떠 보여 쓰지 않는다. data-fade = 남은 쪽(t b l r).
+   칸 위에 얹는 층(.pb-fadeov) 하나에 네 겹을 깔고, 쪽마다 진하기(--pb-fa*)만 0.35초에 걸쳐 고르게(linear) 바꾼다 — 생길 때도 사라질 때도 같다. */
+@property --pb-fat { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --pb-fab { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --pb-fal { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --pb-far { syntax: '<number>'; inherits: false; initial-value: 0; }
+.pb-fadeov {
+  --pb-fc: 255, 255, 255; --pb-fmax: 1;
+  position: absolute; z-index: 4; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(var(--pb-fc), calc(var(--pb-fat) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) top / 100% 24px no-repeat,
+    linear-gradient(to top, rgba(var(--pb-fc), calc(var(--pb-fab) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) bottom / 100% 24px no-repeat,
+    linear-gradient(to right, rgba(var(--pb-fc), calc(var(--pb-fal) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) left / 32px 100% no-repeat,
+    linear-gradient(to left, rgba(var(--pb-fc), calc(var(--pb-far) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) right / 32px 100% no-repeat;
+  transition: --pb-fat .35s linear, --pb-fab .35s linear, --pb-fal .35s linear, --pb-far .35s linear;
+}
+.pb-fadeov[data-fade~="t"] { --pb-fat: 1; }
+.pb-fadeov[data-fade~="b"] { --pb-fab: 1; }
+.pb-fadeov[data-fade~="l"] { --pb-fal: 1; }
+.pb-fadeov[data-fade~="r"] { --pb-far: 1; }
+/* 떠 있는 목록: 안쪽에 붙어 다니는 흐림. --pb-fpad = 그 목록의 안쪽 여백 */
+.pb-fadepop { --pb-fpad: 8px; }
+.pb-ddmenu.pb-fadepop { --pb-fpad: 5px; }
+.pb-fadepop::before, .pb-fadepop::after { content: ''; position: sticky; z-index: 2; display: block; height: 22px; pointer-events: none; opacity: 0; transition: opacity .35s linear; }
+.pb-fadepop::before { top: calc(-1 * var(--pb-fpad)); margin: calc(-1 * var(--pb-fpad)) calc(-1 * var(--pb-fpad)) calc(var(--pb-fpad) - 22px); background: linear-gradient(#fff, rgba(255,255,255,0)); }
+.pb-fadepop::after { bottom: calc(-1 * var(--pb-fpad)); margin: -22px calc(-1 * var(--pb-fpad)) 0; background: linear-gradient(rgba(255,255,255,0), #fff); }
+.pb-fadepop[data-fade~="t"]::before, .pb-fadepop[data-fade~="b"]::after { opacity: 1; }
+
+/* 못 누르는 버튼은 늘 진짜 disabled 로 두고, 커서는 금지 표시다(모든 버튼 공통 — 칸마다 따로 적지 않는다) */
+button:disabled { cursor: not-allowed; }
+
 button, input, select { transition: background-color .24s ease, border-color .22s ease, color .22s ease, transform .2s ease, opacity .22s ease, filter .2s ease; }
 .pb-card { border: 1px solid #eee6dc; position: relative; transition: transform .18s ease, border-color .2s ease, background-color .22s ease; }
 .pb-cardwrap { display: grid; min-width: 0; min-height: 0; cursor: pointer; }
@@ -46,18 +78,18 @@ button, input, select { transition: background-color .24s ease, border-color .22
   .pb-cardwrap:hover > .pb-card { transform: translateY(-4px); border-color: #ec86ac; }
   .pb-slot:hover .pb-slot-x { opacity: 1; }
   .pb-solid:hover:not(:disabled) { background-color: #d5578e !important; }
-  .pb-ghost:hover:not(:disabled) { background-color: #fbe0ec !important; border-color: #ec86ac !important; color: #c05a94 !important; }
-  .pb-soft:hover:not(:disabled) { background-color: #f6dbe8 !important; color: #c85d8a !important; }
-  .pb-cardact:hover { background-color: #fce9f1 !important; color: #d76d9a !important; }
-  .pb-icon:hover:not(:disabled) { background-color: #f7ecf1 !important; color: #c85d8a !important; }
-  .pb-ddbtn:hover { border-color: #eeb2ce !important; background-color: #fff !important; }
-  .pb-ddrow:hover { background-color: #fdf1f6 !important; color: #c85d8a !important; }
-  .pb-accbar:hover { background-color: #fbf0f5 !important; }
-  .pb-arrow:hover:not(:disabled) { background-color: #fce9f1 !important; color: #d76d9a !important; }
+  .pb-ghost:hover:not(:disabled) { background-color: #fcebf3 !important; border-color: #ec86ac !important; color: #c05a94 !important; }
+  .pb-soft:hover:not(:disabled) { background-color: #f9e8f0 !important; color: #c85d8a !important; }
+  .pb-cardact:hover:not(:disabled) { background-color: #fdf1f6 !important; color: #d76d9a !important; }
+  .pb-icon:hover:not(:disabled) { background-color: #faf3f6 !important; color: #c85d8a !important; }
+  .pb-ddbtn:hover:not(:disabled) { border-color: #eeb2ce !important; background-color: #fff !important; }
+  .pb-ddrow:hover:not(:disabled) { background-color: #fef6f9 !important; color: #c85d8a !important; }
+  .pb-accbar:hover:not(:disabled) { background-color: #fbf0f5 !important; }
+  .pb-arrow:hover:not(:disabled) { background-color: #fdf1f6 !important; color: #d76d9a !important; }
   .pb-input:hover { border-color: #eeb2ce !important; }
-  .pb-step:hover { background-color: #f7ecf1 !important; color: #d76d9a !important; }
-  .pb-slotrow:hover { background: #fce9f1 !important; border-color: #eeb2ce !important; }
-  .pb-partchip:hover { background: #fdf4f8 !important; border-color: #eeb2ce !important; }
+  .pb-step:hover:not(:disabled) { background-color: #faf3f6 !important; color: #d76d9a !important; }
+  .pb-slotrow:hover:not(:disabled) { background: #fdf1f6 !important; border-color: #eeb2ce !important; }
+  .pb-partchip:hover:not(:disabled) { background: #fef8fa !important; border-color: #eeb2ce !important; }
   .pb-pageinput:hover { background: #ead9e2 !important; color: #a1657f !important; }
   .pb-presetname:hover { background: #ead9e2 !important; color: #a1657f !important; }
 }
@@ -68,7 +100,7 @@ button, input, select { transition: background-color .24s ease, border-color .22
 .pb-input:focus { border-color: #ec86ac !important; outline: none; }
 .pb-presetname:focus { background: #fff !important; border-color: #ec86ac !important; color: #ec86ac !important; }
 .pb-pageinput:focus { background: #fff !important; border-color: #ec86ac !important; color: #ec86ac !important; }
-button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
+button:focus-visible { outline: 2px solid #f8e0ea; outline-offset: 2px; }
 
 .pb-drawer { position: absolute; left: 0; right: 0; z-index: 4; display: flex; flex-direction: column; background: #fff; border-top: 1px solid #f0e9e1; transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
 .pb-slide { position: absolute; inset: 0; overflow: hidden auto; scrollbar-gutter: stable; transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
@@ -88,8 +120,8 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
   .pb-presetwrap:hover > .pb-preset { transform: translateY(-4px); border-color: #ec86ac; }
 }
 /* 선택 상태는 hover 이동(-4px)보다 우선(-5px 고정) — hover 규칙 뒤에 둔다. */
-.pb-cardwrap > .pb-card.pb-card-sel { border-color: #ec86ac; background: #fdf0f5; transform: translateY(-5px); }
-.pb-presetwrap > .pb-preset.pb-preset-sel { border-color: #ec86ac; background: #fdf0f5; transform: translateY(-5px); }
+.pb-cardwrap > .pb-card.pb-card-sel { border-color: #ec86ac; background: #fef5f8; transform: translateY(-5px); }
+.pb-presetwrap > .pb-preset.pb-preset-sel { border-color: #ec86ac; background: #fef5f8; transform: translateY(-5px); }
 
 /* 염색 조절 인라인(공용): 컨테이너 폭에 따라 한 줄 ↔ 두 줄 */
 .pb-dyecol { container-type: inline-size; }
@@ -161,7 +193,7 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
   .pb-tabnav { height: 40px !important; }
   .pb-tabnav button { height: 32px !important; }
   .pb-hintbar { height: 24px !important; }
-  .pb-pinbox { padding: 7px 12px 9px !important; }
+  .pb-pinbox { padding: 7px 8px 8px !important; }
   .pb-page { padding-top: 10px !important; padding-bottom: 10px !important; }
 }
 @media (max-height: 620px) {

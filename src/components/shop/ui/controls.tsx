@@ -69,6 +69,7 @@ export function Stepper({ label, valueStr, placeholder, onNum, onBlur, onStep, d
     if (hold.current.i) { clearInterval(hold.current.i); hold.current.i = null }
   }
   useEffect(() => stop, [])
+  useEffect(() => { if (decOff || incOff) stop() }, [decOff, incOff])
   const start = (d: number) => (e: React.PointerEvent) => {
     if (e.button != null && e.button !== 0) return
     e.preventDefault() // 길게 누를 때 텍스트 선택/확대 방지
@@ -80,11 +81,11 @@ export function Stepper({ label, valueStr, placeholder, onNum, onBlur, onStep, d
   const btn = clsx('pb-step', styles.stepBtn, size === 'lg' && styles.stepBtnLg)
   return (
     <div className={styles.stepWrap}>
-      <button type="button" tabIndex={-1} aria-label="1 감소" className={clsx(btn, decOff && styles.stepOff)}
+      <button type="button" tabIndex={-1} aria-label="1 감소" disabled={decOff} className={clsx(btn, decOff && styles.stepOff)}
         onPointerDown={start(-1)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onClick={key(-1)}>−</button>
       <input inputMode="numeric" aria-label={label} value={valueStr} placeholder={placeholder}
         onChange={(e) => onNum(e.target.value)} onBlur={onBlur} className={clsx(styles.stepNum, size === 'lg' && styles.stepNumLg)} />
-      <button type="button" tabIndex={-1} aria-label="1 증가" className={clsx(btn, incOff && styles.stepOff)}
+      <button type="button" tabIndex={-1} aria-label="1 증가" disabled={incOff} className={clsx(btn, incOff && styles.stepOff)}
         onPointerDown={start(1)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onClick={key(1)}>+</button>
     </div>
   )

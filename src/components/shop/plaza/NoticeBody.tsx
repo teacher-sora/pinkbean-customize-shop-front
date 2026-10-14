@@ -34,7 +34,7 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
 
   const open = notices?.find((n) => n.id === openId) || null
   return (
-    <div className={clsx('pb-scroll', styles.detail, styles.ntBody, mobile && styles.ntBodyM)}>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.detail, styles.ntBody, mobile && styles.ntBodyM)}>
       {!notices && (
         <div className={styles.cmtSkel}>
           <span className="pb-skel" style={{ width: '48%' }} />
@@ -171,9 +171,9 @@ function NoticeComments({ notice, mobile, notify }: { notice: PlazaNotice; mobil
       {pages > 1 && (
         <div className={styles.ntPager}>
           <div className={styles.pageChipM}>
-            <button type="button" onClick={() => go(page - 1)} title="이전 쪽" aria-label="이전 쪽" className={clsx('pb-arrow', styles.arrow, page > 0 && styles.arrowOn)}><IconChevronLeft /></button>
+            <button type="button" onClick={() => go(page - 1)} disabled={page <= 0} title="이전 쪽" aria-label="이전 쪽" className={clsx('pb-arrow', styles.arrow, page > 0 && styles.arrowOn)}><IconChevronLeft /></button>
             <span className={styles.ntPageNum}>{page + 1} / {pages}</span>
-            <button type="button" onClick={() => go(page + 1)} title="다음 쪽" aria-label="다음 쪽" className={clsx('pb-arrow', styles.arrow, page < pages - 1 && styles.arrowOn)}><IconChevronRight /></button>
+            <button type="button" onClick={() => go(page + 1)} disabled={page >= pages - 1} title="다음 쪽" aria-label="다음 쪽" className={clsx('pb-arrow', styles.arrow, page < pages - 1 && styles.arrowOn)}><IconChevronRight /></button>
           </div>
         </div>
       )}

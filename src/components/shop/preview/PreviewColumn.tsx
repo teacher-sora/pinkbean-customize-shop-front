@@ -1,18 +1,18 @@
 'use client'
 
-// 코디 미리보기(PC·절반·태블릿): 헤더(좌 부위 염색 · 우 되돌리기/다시실행) · 스테이지(피팅룸 장면 + PreviewModel + 점 위치) ·
+// 코디 미리보기(PC·절반·태블릿): 헤더(좌 부위 염색 · 배경 / 우 되돌리기 · 다시실행) · 스테이지(피팅룸 장면 + PreviewModel + 점 위치) ·
 // 연출 설정 드로어 · 상시 필드 행 · 북마크 박스.  모바일은 MobileHero.
 
 import clsx from 'clsx'
 import { useState } from 'react'
 import { DOT_MOVER_IDS } from '@/lib/shopData'
 import PreviewModel from '../PreviewModel'
-import SceneCanvas from '../scene/SceneCanvas'
 import { useShop } from '../ShopContext'
-import { IconBookmark, IconCaretDown, IconDot, IconDrop, IconRedo, IconUndo } from '../ui/Icons'
+import { IconBookmark, IconCaretDown, IconDot, IconDrop, IconRedo, IconScene, IconUndo } from '../ui/Icons'
 import PinkbeanRate from './PinkbeanRate'
 import { BookmarkBox } from './PreviewParts'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
+import StageBg from './StageBg'
 import styles from './preview.module.css'
 
 function useDotEquipped() {
@@ -27,32 +27,36 @@ export default function PreviewColumn() {
   const [pvAll, setPvAll] = useState(false)
   const [group, setGroup] = useState<PvGroup>('char')
   const dotItem = useDotEquipped()
-  const histCls = (on: boolean) => clsx('pb-icon', narrow ? styles.iconBtn : styles.histBtn, on && styles.histOn)
+  const histCls = (on: boolean) => clsx('pb-icon', styles.iconBtn, on && styles.histOn)
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
+  const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
 
   return (
     <section className={clsx(styles.col, s.bp === 'half' && styles.colHalf, s.bp === 'tablet' && styles.colTablet)}>
       <div className={styles.card}>
         <div className={styles.head}>
-          {/* 부위 염색. 절반·태블릿은 아이콘만. */}
-          <button type="button" onClick={() => s.openSheet('part')} title="부위를 골라 염색하기" aria-label="부위 염색"
-            className={clsx('pb-ghost', styles.partBtn, narrow && styles.partBtnNarrow, partOpen && styles.partBtnOn)}>
-            <IconDrop size={14} />{!narrow && <span>부위 염색</span>}
-          </button>
+          {/* 꾸미는 도구 둘(부위 염색 · 배경)은 어느 폭에서나 이름을 적어 나란히 둔다 — 아이콘만 두면 있는 줄 모르고 지나친다.
+              되돌리기 · 다시실행은 그림만으로 통하는 것이라 아이콘으로 줄여 그 자리를 내준다. */}
+          <div className={styles.tools}>
+            <button type="button" onClick={() => s.openSheet('part')} title="부위를 골라 염색하기" aria-label="부위 염색"
+              className={clsx('pb-ddbtn', styles.partBtn, partOpen && styles.partBtnOn)}>
+              <IconDrop size={14} /><span>부위 염색</span>
+            </button>
+            <button type="button" onClick={() => s.openSheet('bg')} title="미리보기 배경 바꾸기" aria-label="미리보기 배경"
+              className={clsx('pb-ddbtn', styles.partBtn, bgOpen && styles.partBtnOn)}>
+              <IconScene size={14} /><span>배경</span>
+            </button>
+          </div>
           <div className={styles.hist}>
-            <button type="button" onClick={s.undo} title="되돌리기" className={histCls(s.canUndo)}>
-              <IconUndo />{!narrow && <span>되돌리기</span>}
-            </button>
-            <button type="button" onClick={s.redo} title="다시실행" className={histCls(s.canRedo)}>
-              <IconRedo />{!narrow && <span>다시실행</span>}
-            </button>
+            <button type="button" onClick={s.undo} disabled={!s.canUndo} title={s.canUndo ? '되돌리기' : '되돌릴 것이 없어요'} aria-label="되돌리기" className={histCls(s.canUndo)}><IconUndo /></button>
+            <button type="button" onClick={s.redo} disabled={!s.canRedo} title={s.canRedo ? '다시실행' : '다시 실행할 것이 없어요'} aria-label="다시실행" className={histCls(s.canRedo)}><IconRedo /></button>
           </div>
         </div>
 
         {/* data-pv-stage: 연출 설정 고르기(PvPicker)가 이 영역 안 가운데에 뜬다 — 미리보기 밖으로 나가지 않게. */}
         <div data-pv-stage className={styles.stage}>
-          <SceneCanvas kind="room" />
-          <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} title="점 위치 변경" tabIndex={dotItem ? 0 : -1}
+          <StageBg />
+          <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경"
             className={clsx('pb-ghost', styles.dotBtn, dotItem && styles.dotBtnOn)}>
             <IconDot />점 위치
           </button>
@@ -85,23 +89,27 @@ export function MobileHero() {
   const dotItem = useDotEquipped()
   const bmOpen = s.surface?.kind === 'bm' && !s.surfaceClosing
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
+  const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
   const n = s.bookmarks.length
   return (
     <div className={styles.hero}>
-      <SceneCanvas kind="room" />
+      <StageBg />
       <PinkbeanRate />
       <div className={styles.heroModel}><PreviewModel /></div>
       <div className={styles.heroHist}>
-        <button type="button" onClick={s.undo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
-        <button type="button" onClick={s.redo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>
+        <button type="button" onClick={s.undo} disabled={!s.canUndo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
+        <button type="button" onClick={s.redo} disabled={!s.canRedo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>
       </div>
       <div className={styles.heroLeft}>
         <button type="button" onClick={() => s.openSheet('pv')} title="연출 설정" className={styles.pvOpenBtn}>
           연출 설정<IconCaretDown />
         </button>
+        <button type="button" onClick={() => s.openSheet('bg')} title="미리보기 배경 바꾸기" aria-label="미리보기 배경" className={clsx(styles.pvOpenBtn, styles.pvOpenIcon, bgOpen && styles.pvOpenBtnOn)}>
+          <IconScene size={15} />
+        </button>
       </div>
       <div className={styles.heroRight}>
-        <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} title="점 위치 변경" aria-label="점 위치 변경" tabIndex={dotItem ? 0 : -1}
+        <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경" aria-label="점 위치 변경"
           className={clsx(styles.dotBtnM, dotItem && styles.dotBtnMOn)}>
           <IconDot size={15} />
         </button>

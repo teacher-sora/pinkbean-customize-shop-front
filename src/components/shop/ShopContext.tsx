@@ -30,7 +30,7 @@ import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/co
 import { warmItem } from '@/lib/core/warm'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { confirmTwice } from '@/lib/confirmTwice'
-import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
+import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, dropUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
@@ -87,7 +87,7 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'vs' | 'plaza' | 'ptake' | 'notice'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'vs' | 'plaza' | 'ptake' | 'notice'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
@@ -275,7 +275,7 @@ export interface ShopCtx {
   isMixSlot: (slot: string) => boolean
   // 단일 서피스(연출 설정 · 북마크 · 염색 · 점 위치)
   surface: Surface | null; surfaceClosing: boolean
-  openSheet: (kind: 'pv' | 'bm' | 'part') => void
+  openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg') => void
   openDye: (item: ListItem) => void
   openDot: (item: ListItem) => void
   closeSurface: () => void
@@ -509,16 +509,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const savedPv = loadPv()
       if (savedPv) setPvState((prev) => ({ ...prev, ...savedPv }))
       else applyPvSnap(snap.pv)
-      // 되돌리기 스택 복원(새로고침까지). 코디 자체는 localStorage 로 살아남는데 스택만 비어 있어
-      // 새로고침 뒤엔 되돌릴 수 없었다. 맨 위 항목을 '마지막 기록'으로 잡아 두면 아래 기록 effect 가
-      // 같은 상태를 한 번 더 쌓지 않는다.
-      const savedHist = readUiHistory<Snapshot>()
-      if (savedHist) {
-        histRef.current = savedHist
-        const cur = savedHist.stack[savedHist.idx]
-        histLast.current = histKey(cur.snap, cur.sel, cur.names ?? Object.fromEntries(PRESET_IDS.map((id, i) => [id, store?.names[id] || defaultPresetName(i)])))
-        setHistVer((v) => v + 1)
-      }
+      // 되돌리기 기록은 새로고침하면 비운다(사용자 지시) — 이 화면에서 한 일만 되돌린다. 쌓는 것은 쉰 개까지다.
+      dropUiHistory()
       initedRef.current = true
     }).catch((e) => console.error('[shop] index 로드 실패', e))
       .finally(() => { if (alive) setDataLoading(false) })
@@ -1312,7 +1304,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPlazaFilter('all'); setPlazaQState('')
     setPageByCat({}) // 부위별로 따로 기억하던 페이지까지 전부 1페이지로
   }
-  const openSheet = (kind: 'pv' | 'bm' | 'part') => {
+  const openSheet = (kind: 'pv' | 'bm' | 'part' | 'bg') => {
     if (surface?.kind === kind && !surfaceClosing) { closeSurface(); return }
     openSurface({ kind, item: null })
   }
@@ -1790,14 +1782,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pushHistory()
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, dyeInteracting])
 
-  // 스택을 sessionStorage 에 남긴다(새로고침까지). 변경이 몰아칠 수 있어 한 박자 묶어서 쓴다.
-  const histSaveT = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    if (!initedRef.current || !histVer) return
-    if (histSaveT.current) clearTimeout(histSaveT.current)
-    histSaveT.current = setTimeout(() => writeUiHistory(histRef.current), 300)
-    return () => { if (histSaveT.current) clearTimeout(histSaveT.current) }
-  }, [histVer])
 
   const applyHistory = (e: { snap: Snapshot; sel: string | null; names?: Record<string, string> }) => {
     // 이름 전체도 그 시점으로(오래된 기록엔 없으면 지금 이름 유지). 코디가 같아도 이름만 바뀌는 기록이 있다.

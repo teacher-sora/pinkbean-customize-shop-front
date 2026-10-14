@@ -85,21 +85,7 @@ export function writeUiSession(v: UiSession): void {
 export type PresetOver<S> = { id: string; prev: S; prevName: string; next: S; nextName: string }
 // names = 그때의 **프리셋 이름 전체**(id → 이름). 되돌리기가 이름까지 되살린다. 오래된 기록엔 없을 수 있다.
 export type UiHistory<S> = { stack: { snap: S; sel: string | null; names?: Record<string, string>; over?: PresetOver<S> }[]; idx: number }
-export function readUiHistory<S>(): UiHistory<S> | null {
-  const h = read<UiHistory<S>>('sessionStorage', HIST_KEY)
-  if (!Array.isArray(h.stack) || !h.stack.length || typeof h.idx !== 'number') return null
-  if (h.idx < 0 || h.idx >= h.stack.length) return null
-  if (h.stack.some((e) => !e || typeof e !== 'object' || !e.snap)) return null
-  return { stack: h.stack, idx: h.idx }
-}
-export function writeUiHistory<S>(h: UiHistory<S>): void {
-  if (!h.stack.length) { try { window.sessionStorage.removeItem(HIST_KEY) } catch {} ; return }
-  // 스냅샷 50개가 저장 한도를 넘을 수 있다 → 오래된 것부터 잘라 가며 다시 시도(현재 위치는 보존).
-  for (let keep = h.stack.length; keep >= 1; keep = Math.floor(keep / 2)) {
-    const cut = Math.min(h.stack.length - keep, h.idx)
-    if (write('sessionStorage', HIST_KEY, { stack: h.stack.slice(cut), idx: h.idx - cut })) return
-  }
-  try { window.sessionStorage.removeItem(HIST_KEY) } catch {}
-}
+// 되돌리기 기록은 저장하지 않는다(새로고침하면 비운다). 예전 판이 남긴 것이 있으면 지운다.
+export function dropUiHistory(): void { try { window.sessionStorage.removeItem(HIST_KEY) } catch { /* 못 지워도 쓰지 않는다 */ } }
 export const readUiPref = (): UiPref => read<UiPref>('localStorage', PREF_KEY)
 export const writeUiPref = (v: UiPref): void => { write('localStorage', PREF_KEY, v) }

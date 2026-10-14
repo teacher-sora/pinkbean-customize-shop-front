@@ -90,12 +90,13 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
           <span className={styles.chipDiv} />
         </>
       )}
-      <button type="button" onClick={() => s.step(-1)} title="이전 페이지" aria-label="이전 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx > 0 && styles.arrowOn)}><IconChevronLeft /></button>
+      {/* 모바일에는 화살표를 두지 않는다(목록과 같다) — 옆으로 밀어 넘기고, 멀리 갈 때는 번호를 적는다 */}
+      {!mobile && <button type="button" onClick={() => s.step(-1)} disabled={s.curIdx <= 0} title="이전 페이지" aria-label="이전 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx > 0 && styles.arrowOn)}><IconChevronLeft /></button>}
       <input value={s.pageEditing ? s.pageInput : `${s.curIdx + 1}`} onFocus={s.onPageFocus} onChange={s.onPageChange} onKeyDown={s.onPageKey} onBlur={s.commitPage}
         inputMode="numeric" aria-label="현재 페이지" className={clsx('pb-input', 'pb-pageinput', styles.pageInput)} />
       <span className={styles.slash}>/</span>
       <span className={styles.total}>{s.pageCount}</span>
-      <button type="button" onClick={() => s.step(1)} title="다음 페이지" aria-label="다음 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx < s.pageCount - 1 && styles.arrowOn)}><IconChevronRight /></button>
+      {!mobile && <button type="button" onClick={() => s.step(1)} disabled={s.curIdx >= s.pageCount - 1} title="다음 페이지" aria-label="다음 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx < s.pageCount - 1 && styles.arrowOn)}><IconChevronRight /></button>}
     </div>
   )
 
@@ -105,7 +106,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
     </div>
   )
   const search = (
-    <input value={s.plazaQ} onChange={(e) => s.setPlazaQ(e.target.value)} placeholder={mobile ? '이름, 태그' : '이름, 태그 검색'}
+    <input value={s.plazaQ} onChange={(e) => s.setPlazaQ(e.target.value)} placeholder="이름, 태그 검색"
       aria-label="코디 검색" className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
   )
 
@@ -166,17 +167,14 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   if (mobile) {
     return (
       <>
+        {/* 한 줄(다른 탭의 머리와 같은 높이 48): 정렬 · 쪽 번호 · 검색 · 등록 */}
         <div className={styles.controlsM}>
-          <div className={styles.rowM1}>
-            {sortDd}
-            <div className={styles.searchWrapM}><IconSearch className={styles.searchIconM} />{search}</div>
-          </div>
-          <div className={styles.rowM2}>
-            {pageChip}
-            <button type="button" onClick={() => s.setPlazaUpload(!s.plazaUpload)} title="내 코디 등록" className={styles.upBtn}>
-              {s.plazaUpload ? <IconCloseSmall /> : <IconPlus />}{s.plazaUpload ? '닫기' : '등록'}
-            </button>
-          </div>
+          {sortDd}
+          {pageChip}
+          <div className={styles.searchWrapM}><IconSearch className={styles.searchIconM} />{search}</div>
+          <button type="button" onClick={() => s.setPlazaUpload(!s.plazaUpload)} title={s.plazaUpload ? '닫기' : '내 코디 등록'} aria-label={s.plazaUpload ? '닫기' : '내 코디 등록'} className={styles.upBtn}>
+            {s.plazaUpload ? <IconCloseSmall /> : <IconPlus />}
+          </button>
         </div>
         <div className={styles.hrM} />
         {s.plazaUpload ? <PlazaUpload mobile /> : viewport}

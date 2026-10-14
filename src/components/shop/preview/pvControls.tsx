@@ -104,7 +104,7 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
   ]
   const slides = (
     <>
-      <div className={clsx('pb-slide', 'pb-scroll', 'pb-scroll-thin', styles.slide, group === 'char' && styles.slideOn)}>
+      <div className={clsx('pb-slide', 'pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.slide, group === 'char' && styles.slideOn)}>
         <div className={styles.slidePad}>
           {selects.map((r) => (
             <div key={r.key} className={styles.pvRow}>
@@ -115,7 +115,7 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
           ))}
         </div>
       </div>
-      <div className={clsx('pb-slide', 'pb-scroll', 'pb-scroll-thin', styles.slide, group === 'effect' && styles.slideOn)}>
+      <div className={clsx('pb-slide', 'pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.slide, group === 'effect' && styles.slideOn)}>
         <div className={styles.slidePad}>
           {switches.map((r) => (
             <div key={r.key} className={styles.pvRow}>

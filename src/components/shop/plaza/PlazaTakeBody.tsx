@@ -12,7 +12,7 @@ import styles from './plaza.module.css'
 export default function PlazaTakeBody({ snap, mobile }: { snap: Snapshot; mobile: boolean }) {
   const s = useShop()
   return (
-    <div className={clsx('pb-scroll', styles.takeBody)}>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.takeBody)}>
       <div className={styles.takeTop}>
         <div className={styles.takeThumb}><SnapThumb snap={snap} /></div>
         <div className={styles.takeHint}>

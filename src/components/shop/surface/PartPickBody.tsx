@@ -29,7 +29,7 @@ export default function PartPickBody({ mobile }: { mobile: boolean }) {
   }
 
   return (
-    <div className={clsx('pb-scroll', styles.partBody)}>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.partBody)}>
       {chips.length === 0 ? (
         <div className={styles.partEmpty}>
           <span className={styles.partEmptyTitle}>염색할 수 있는 부위가 없어요</span>

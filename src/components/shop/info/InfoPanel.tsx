@@ -122,7 +122,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
       <>
         <div className={styles.headerM}>{chip}<div className={styles.right}>{unequip}</div></div>
         <div className={styles.hrM} />
-        <div className={clsx('pb-scroll', 'pb-norail', styles.scrollM)}>
+        <div className={clsx('pb-scroll', 'pb-norail', 'pb-fade', styles.scrollM)}>
           <div ref={slotsRef}>{grid}</div>
         </div>
       </>
@@ -132,7 +132,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
     <section className={styles.panel}>
       <div className={styles.header}>{chip}<div className={styles.right}>{unequip}</div></div>
       <div className={styles.hr} />
-      <div className={clsx('pb-scroll', styles.scroll)}>
+      <div className={clsx('pb-scroll', 'pb-fade', styles.scroll)}>
         <div ref={slotsRef} className={styles.slots}>{grid}</div>
         <div className={styles.dyeWrap}>
           <div className={styles.dyeHr} />

@@ -12,12 +12,12 @@ import styles from './nav.module.css'
 
 const PARTS = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }, ...CATS]
 export const TABS = [
-  { id: 'codi', label: '코디' },
-  { id: 'search', label: 'AI 코디 검색' },
-  { id: 'info', label: '코디 정보 / 염색' },
-  { id: 'preset', label: '프리셋' },
-  { id: 'share', label: '코디 광장' },
-  { id: 'notice', label: '공지 및 건의함' },
+  { id: 'codi', label: '코디', short: '코디' },
+  { id: 'search', label: 'AI 코디 검색', short: 'AI 검색' },
+  { id: 'info', label: '코디 정보 / 염색', short: '염색' },
+  { id: 'preset', label: '프리셋', short: '프리셋' },
+  { id: 'share', label: '코디 광장', short: '광장' },
+  { id: 'notice', label: '공지 및 건의함', short: '공지' },
 ]
 const READY = new Set(['codi', 'search', 'info', 'preset', 'share'])
 
@@ -98,7 +98,8 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
             const on = s.primary === t.id
             return (
               <button key={t.id} type="button" onClick={() => pickTab(t)} title={t.label} aria-label={t.label} className={clsx(!on && 'pb-icon', styles.tabM, on && styles.tabMOn)}>
-                <IconTab id={t.id} size={21} />
+                <IconTab id={t.id} size={19} />
+                <span className={styles.tabMLabel}>{t.short}</span>
               </button>
             )
           })}
