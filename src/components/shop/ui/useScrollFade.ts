@@ -1,7 +1,10 @@
 'use client'
 
-// 스크롤 칸의 가장자리 흐림. 더 볼 것이 남은 쪽(위 · 아래 · 왼쪽 · 오른쪽)에만 옅은 검은 흐림을 깔아, 내용이 더 있다는 것을 알린다
-// (하단 부위 줄의 흐림과 같은 역할). 끝까지 가면 그쪽 흐림은 천천히 사라진다.
+// 스크롤 칸의 가장자리 흐림. 더 볼 것이 남은 쪽(위 · 아래 · 왼쪽 · 오른쪽)에만 옅은 검은 흐림을 깔아, 내용이 더 있다는 것을 알린다.
+// 끝까지 가면 그쪽 흐림은 천천히 사라진다.
+//  - **스크롤바가 보이지 않는 칸에서만** 흐린다(사용자 지시). 스크롤바가 자리를 차지하는 칸(마우스로 쓰는 PC 의 보통 스크롤 칸)은
+//    막대가 이미 더 있음을 알리므로 흐리지 않는다. 막대를 숨긴 칸(`pb-norail` — 하단 부위 줄 등)과 막대가 자리를 차지하지 않는
+//    기기(휴대폰 · 터치)에서만 흐림이 생긴다. 방향마다 따로 본다(세로 막대가 보여도 가로 막대가 없으면 가로는 흐린다).
 //  - 붙이는 법: 스크롤하는 요소에 클래스 `pb-fade` 를 단다. 앱(PinkbeanShop)이 이 훅 하나로 화면의 `.pb-fade` 를 찾아 지켜본다
 //    (창 · 시트 · 떠 있는 목록이 열리고 닫혀도 따라간다).
 //  - 남은 쪽은 `data-fade="t b l r"` 로 적는다. 흐림은 칸 위에 얹는 층(`.pb-fadeov`, 칸 바로 뒤의 형제)이 그린다 — 칸 안에 두면
@@ -53,7 +56,10 @@ function watch(el: HTMLElement): () => void {
     const cs = getComputedStyle(el)
     const x = el.scrollLeft, y = el.scrollTop
     const mx = scrolls(cs.overflowX) ? el.scrollWidth - el.clientWidth : 0, my = scrolls(cs.overflowY) ? el.scrollHeight - el.clientHeight : 0
-    const v = [y > 1 && 't', my > 1 && y < my - 1 && 'b', x > 1 && 'l', mx > 1 && x < mx - 1 && 'r'].filter(Boolean).join(' ')
+    // 그 방향의 스크롤바가 자리를 차지하고 있으면(보이면) 그 방향은 흐리지 않는다
+    const barV = el.offsetWidth - el.clientWidth - Math.round(parseFloat(cs.borderLeftWidth) || 0) - Math.round(parseFloat(cs.borderRightWidth) || 0) > 0
+    const barH = el.offsetHeight - el.clientHeight - Math.round(parseFloat(cs.borderTopWidth) || 0) - Math.round(parseFloat(cs.borderBottomWidth) || 0) > 0
+    const v = [!barV && y > 1 && 't', !barV && my > 1 && y < my - 1 && 'b', !barH && x > 1 && 'l', !barH && mx > 1 && x < mx - 1 && 'r'].filter(Boolean).join(' ')
     if (v !== last) { last = v; el.dataset.fade = v; ov.dataset.fade = v }
   }
   const all = () => { sync(); place() }
