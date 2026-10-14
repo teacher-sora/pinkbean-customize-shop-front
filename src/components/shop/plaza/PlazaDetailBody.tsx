@@ -15,9 +15,8 @@
 //    접혀 있는 동안은 스프라이트를 하나도 받지 않는다.
 
 import clsx from 'clsx'
-import Image from 'next/image'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import bg from '@/assets/pinkbean-bg.webp'
+import StageBg from '../preview/StageBg'
 import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
 import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
@@ -56,8 +55,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
           </span>
         )}
         <div className={styles.stage}>
-          <Image src={bg} alt="" fill sizes="300px" className={styles.stageImg} />
-          <div className={styles.stageTone} />
+          <StageBg still />
           <SnapThumb snap={post.snapshot} fraction={DETAIL_FRACTION} />
         </div>
         {post.imageUrl && (

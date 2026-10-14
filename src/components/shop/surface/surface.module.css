@@ -154,8 +154,6 @@
 .vsName { min-width: 0; font-size: 11.5px; font-weight: 500; color: #3d372f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vsNameM { font-size: 11px; }
 .vsStage { position: relative; flex: 1 1 auto; min-height: 0; border: 1px solid #eee6dc; border-radius: 8px; overflow: hidden; }
-.vsStageImg { object-fit: cover; object-position: center 78%; }
-.vsStageTone { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.45)); }
 .vsHr { flex: 0 0 auto; height: 1px; background: #f0e9e1; }
 .vsPick { flex: 0 0 auto; }
 .vsPickLabel { display: flex; align-items: baseline; gap: 7px; font-size: 11px; font-weight: 700; color: #a89e93; margin-bottom: 7px; }

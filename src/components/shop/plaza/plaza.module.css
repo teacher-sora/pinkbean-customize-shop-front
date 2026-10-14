@@ -109,8 +109,6 @@
 .ribbonTwo { font-size: 11px; }
 .ribbonM { left: 8px; width: 42px; height: 54px; font-size: 13px; }
 .ribbonM.ribbonTwo { font-size: 10.5px; }
-.stageImg { object-fit: cover; object-position: center 78%; }
-.stageTone { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.45)); }
 .stageRef { border: 1px dashed #e4dcd2; background: #fbf8f4; }
 .stageRef { cursor: default; }
 /* 참고 이미지 칸은 PC·모바일 모두 정사각형 — 올린 사람이 편집기의 정사각형 점선으로 고른 범위가 그대로 보인다.
