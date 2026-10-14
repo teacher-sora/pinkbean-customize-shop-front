@@ -24,10 +24,12 @@
 .dotBtnOn { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
 /* 연출 설정 드로어(PC) */
-.drawer { bottom: 46px; height: 166px; max-height: calc(100% - 124px); transform: translateY(calc(100% + 46px)); }
+.drawer { bottom: 46px; max-height: calc(100% - 124px); /* 높이는 내용(칸 + 선 + 막대)에서 온다 */ transform: translateY(calc(100% + 46px)); }
 .drawerOpen { transform: translateY(0); }
-.slides { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }
-.slidesM { flex: 0 0 auto; position: relative; height: 132px; overflow: hidden; } /* 윗선은 시트 헤더(border-bottom)가 담당 — 겹치면 두 줄 */
+/* 두 칸(캐릭터 · 이펙트)은 겹쳐 놓고 미끄러지므로(절대 위치) 칸 높이를 내용에 맞춰 적어 둔다 — 줄 셋(30) + 사이 둘(6) + 위아래 여백(8).
+   줄 수가 바뀌면 같이 바꾼다. 남는 높이가 있으면 아래가 비어 보인다. 낮은 화면에서는 줄어들고 칸 안이 스크롤된다 */
+.slides { flex: 0 1 auto; min-height: 0; height: calc(3 * 30px + 2 * 6px + 16px); position: relative; overflow: hidden; }
+.slidesM { flex: 0 0 auto; position: relative; height: calc(3 * 30px + 2 * 6px + 16px); overflow: hidden; } /* 윗선은 시트 헤더(border-bottom)가 담당 — 겹치면 두 줄 */
 .slide { transform: translateY(100%); }
 .slideOn { transform: translateY(0); }
 .slidePad { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
