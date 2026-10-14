@@ -94,6 +94,8 @@
 .hero { flex: 0 0 auto; position: relative; height: 216px; /* 리스트에 여유를 주려고 낮게 잡는다 */ border-bottom: 1px solid #f4efe8; overflow: hidden; }
 .heroModel { position: absolute; inset: 0; }
 .heroHist { margin-left: 4px; display: flex; gap: 6px; }
+/* 아주 좁은 폭(320 남짓)에서는 아래 줄 양쪽이 맞닿지 않게 사이를 좁힌다 */
+@media (max-width: 360px) { .heroLeft, .heroHist, .heroRight { gap: 4px; } .heroHist { margin-left: 0; } }
 .heroIcon { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: pointer; }
 .heroIconOn { border-color: #eeb2ce; background: #fff; color: #d76d9a; cursor: pointer; }
 .heroLeft { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px; }
@@ -101,7 +103,7 @@
 /* 모바일의 배경 버튼: 아이콘만 */
 .pvOpenIcon { width: 30px; padding: 0; justify-content: center; }
 .pvOpenBtnOn { border-color: #ec86ac; background: #fdf1f6; }
-.heroRight { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; height: 32px; max-width: calc(100% - 24px); }
+.heroRight { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; height: 30px; max-width: calc(100% - 24px); }
 .dotBtnM { flex: 0 0 auto; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; color: #d76d9a; cursor: pointer; transition: opacity .24s ease, transform .24s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: scale(.9); pointer-events: none; }
 .dotBtnMOn { opacity: 1; transform: scale(1); pointer-events: auto; }
 .fab { position: relative; flex: 0 0 auto; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f8e0ea; border-radius: 8px; background: #fff; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
