@@ -94,8 +94,11 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <>
         <div className={styles.headerM}>
           {chip}
-          <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임 / 공유 링크" className={clsx('pb-input', styles.importInputM)} />
-          <button type="button" onClick={s.importFetch} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconImport /></button>
+          {/* 불러오기: 입력과 버튼을 한 칸에 묶는다(아래 PC 와 같은 모양) */}
+          <div className={clsx(styles.importBox, styles.importBoxM)}>
+            <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임 / 공유 링크" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
+            <button type="button" onClick={s.importFetch} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconImport /></button>
+          </div>
         </div>
         <div className={styles.hrM} />
         {/* 모바일: 코디 리스트처럼 가로 스크롤(열 단위 스냅, 스크롤바 숨김) — 2줄 × 폭에 따라 2열/3열 */}
@@ -108,16 +111,18 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <div className={styles.header}>
         <div className={styles.groupA}>{chip}</div>
         <div className={styles.groupB}>
-          <div className={clsx(styles.importWrap, narrow && styles.importWrapNarrow)}>
-            <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임 또는 공유 링크" className={clsx('pb-input', styles.importInput)} />
+          {/* 불러오기: 이 탭의 주된 기능이라 머리의 남는 폭을 차지하는 한 칸으로 둔다 — 아이콘 + 입력 + 채운 버튼을 한 테두리 안에(높이는 다른 탭의 머리와 같은 34) */}
+          <div className={clsx(styles.importBox, narrow && styles.importBoxNarrow)}>
+            <span className={styles.importIcon} aria-hidden><IconImport /></span>
+            <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임 또는 공유 링크로 코디 불러오기" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
+            <button type="button" onClick={s.importFetch} title="닉네임 또는 공유 링크로 코디 불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtn, s.importing && styles.busy)}>
+              {/* 두 문구를 한 칸에 겹쳐 두어 폭 = 긴 쪽('불러오는 중') — 상태가 바뀌어도 버튼·입력칸이 밀리지 않는다. */}
+              <span className={styles.loadLabel}>
+                <span aria-hidden={s.importing || undefined} style={s.importing ? { visibility: 'hidden' } : undefined}>불러오기</span>
+                <span aria-hidden={!s.importing || undefined} style={s.importing ? undefined : { visibility: 'hidden' }}>불러오는 중</span>
+              </span>
+            </button>
           </div>
-          <button type="button" onClick={s.importFetch} title="닉네임 또는 공유 링크로 코디 불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtn, s.importing && styles.busy)}>
-            {/* 두 문구를 한 칸에 겹쳐 두어 폭 = 긴 쪽('불러오는 중') — 상태가 바뀌어도 버튼·입력칸이 밀리지 않는다. */}
-            <span className={styles.loadLabel}>
-              <span aria-hidden={s.importing || undefined} style={s.importing ? { visibility: 'hidden' } : undefined}>불러오기</span>
-              <span aria-hidden={!s.importing || undefined} style={s.importing ? undefined : { visibility: 'hidden' }}>불러오는 중</span>
-            </span>
-          </button>
         </div>
       </div>
       <div className={styles.hr} />

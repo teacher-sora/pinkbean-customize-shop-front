@@ -104,7 +104,7 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { ite
     return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
   }, [placed, item.name, item.id])
 
-  if (!placed) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 12 }} />
+  if (!placed) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 8 }} />
   // 캔버스 intrinsic = box×scale. CSS 로 늘리지 않고(1:1) 화면 픽셀 격자에 맞춰 배치(fitCanvas).
   return (
     <span style={{ position: 'relative', width: '100%', height: '100%', display: 'block' }}>

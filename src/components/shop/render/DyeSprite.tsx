@@ -139,7 +139,7 @@ export function SkinModel({ bodyId, headId, hsb, dyeable, family, zmap, smap, bo
     const { bw, bh } = canvasBitmap(pl)
     fitCanvas(canvas, wrapRef.current, bw, bh, box, box, dpr)
   }, [placed, hsb, dyeable, family, box, fraction])
-  if (!placed) return <div className="pb-skel" style={{ width: '60%', height: '60%', borderRadius: 10 }} />
+  if (!placed) return <div className="pb-skel" style={{ width: '60%', height: '60%', borderRadius: 8 }} />
   return (
     <span ref={wrapRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%' }}>
       <canvas ref={ref} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated' }} />

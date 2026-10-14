@@ -3,21 +3,21 @@
 .col { flex: 0 0 360px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .colHalf { flex-basis: 312px; }
 .colTablet { flex-basis: 330px; }
-.card { flex: 1 1 auto; min-height: 0; position: relative; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
+.card { flex: 1 1 auto; min-height: 0; position: relative; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
 .head { flex: 0 0 auto; height: 44px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0e9e1; }
 /* 부위 염색 칩(헤더 좌측) */
-.partBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border: 1px solid #f0d3e0; border-radius: 9px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; }
+.partBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border: 1px solid #f0d3e0; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; }
 .partBtnNarrow { padding: 0 8px; }
 .partBtnOn { border-color: #ec86ac; background: #fce9f1; }
 .hist { display: flex; align-items: center; gap: 4px; }
-.histBtn { flex: 0 0 auto; height: 30px; padding: 0 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; color: #b8ada2; font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; cursor: default; }
-.iconBtn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; color: #cdc2b7; cursor: default; }
+.histBtn { flex: 0 0 auto; height: 30px; padding: 0 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; color: #b8ada2; font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; cursor: default; }
+.iconBtn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; color: #cdc2b7; cursor: default; }
 .histOn { border-color: #eeb2ce; background: #fff; color: #d76d9a; cursor: pointer; }
 
 /* 스테이지: 피팅룸 장면(scene/) + 모델 */
 .stage { flex: 1 1 auto; min-height: 88px; position: relative; overflow: hidden; }
 .model { position: absolute; inset: 0; padding: 8px; }
-.dotBtn { position: absolute; right: 10px; top: 10px; z-index: 4; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #f4cfdf; border-radius: 9px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; cursor: pointer; transition: opacity .24s ease, transform .24s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); pointer-events: none; }
+.dotBtn { position: absolute; right: 10px; top: 10px; z-index: 4; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #f4cfdf; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; cursor: pointer; transition: opacity .24s ease, transform .24s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); pointer-events: none; }
 .dotBtnOn { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
 /* 연출 설정 드로어(PC) */
@@ -42,7 +42,7 @@
 .barSummary { font-size: 10.5px; color: #b7ada2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .barSummaryM { font-size: 11px; }
 .ctrlRow { flex: 0 0 auto; position: relative; z-index: 5; padding: 10px 16px; background: #fff; border-top: 1px solid #f0e9e1; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
-.pvAll { flex: 0 0 auto; height: 30px; padding: 0 7px 0 10px; display: flex; align-items: center; gap: 3px; border: 1px solid transparent; border-radius: 8px; background: #f4ecf3; color: #8a8075; cursor: pointer; }
+.pvAll { flex: 0 0 auto; height: 30px; padding: 0 7px 0 10px; display: flex; align-items: center; gap: 3px; border: 1px solid transparent; border-radius: 6px; background: #f4ecf3; color: #8a8075; cursor: pointer; }
 .pvAllNarrow { padding: 0 5px 0 7px; }
 .pvAllOn { border-color: #eeb2ce; background: #fce9f1; color: #d76d9a; }
 .pvAllText { font-size: 11.5px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
@@ -51,18 +51,18 @@
 .gridM { flex: 0 0 auto; padding: 10px 16px; border-top: 1px solid #f0e9e1; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
 
 /* 북마크 박스(PC) */
-.pinbox { flex: 0 0 auto; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; padding: 8px 12px 13px; }
+.pinbox { flex: 0 0 auto; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; padding: 8px 12px 13px; }
 .pinHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
 .pinTitle { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
 .count { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; padding: 0 6px; border-radius: 20px; background: #f2ece5; color: #b7ada2; font-size: 10.5px; font-weight: 700; }
 .countOn { background: #fce9f1; color: #d76d9a; }
-.clear { height: 26px; padding: 0 10px; border: 1px solid #f2ece5; border-radius: 8px; background: #fff; font-size: 11px; font-weight: 600; color: #cdc2b7; cursor: default; }
+.clear { height: 26px; padding: 0 10px; border: 1px solid #f2ece5; border-radius: 6px; background: #fff; font-size: 11px; font-weight: 600; color: #cdc2b7; cursor: default; }
 .clearOn { border-color: #f0d3e0; color: #c05a94; cursor: pointer; }
 .pinActs { display: flex; align-items: center; gap: 6px; }
-.vsBtn { flex: 0 0 auto; height: 26px; padding: 0 12px; border: 1px solid #f0d3e0; border-radius: 8px; background: #fff; font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.vsBtn { flex: 0 0 auto; height: 26px; padding: 0 12px; border: 1px solid #f0d3e0; border-radius: 6px; background: #fff; font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .vsBtnOn { border-color: #ec86ac; background: #fce9f1; }
 .pinGrid { display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); gap: 6px; }
-.slot { position: relative; aspect-ratio: 1/1; border-radius: 9px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; background: #fbf8f4; cursor: default; transition: border-color .22s ease, background-color .22s ease; }
+.slot { position: relative; aspect-ratio: 1/1; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; background: #fbf8f4; cursor: default; transition: border-color .22s ease, background-color .22s ease; }
 .slotFilled { border-style: solid; border-color: #efe8e0; background: #fff; cursor: pointer; }
 .slotWorn { border-color: #ec86ac; background: #fce9f1; }
 /* 스프라이트 캔버스 = 칸 거의 전체 */
@@ -81,8 +81,8 @@
 .bmTitle { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #2a2521; }
 .bmBody { flex: 0 0 auto; padding: 12px; border-top: 1px solid #f0e9e1; }
 .bmGrid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
-.chipEmpty { position: relative; aspect-ratio: 1/1; border: 1px dashed #e4dcd2; border-radius: 9px; background: #fbf8f4; }
-.chip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1.5px solid #f0e9e1; border-radius: 9px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.chipEmpty { position: relative; aspect-ratio: 1/1; border: 1px dashed #e4dcd2; border-radius: 6px; background: #fbf8f4; }
+.chip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1.5px solid #f0e9e1; border-radius: 6px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .chipWorn { border-color: #ec86ac; background: #fce9f1; }
 .chipSprite { width: calc(100% - 8px); height: calc(100% - 8px); display: flex; align-items: center; justify-content: center; }
 .chipX { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0d3e0; border-radius: 50%; background: #fff; color: #d76d9a; font-size: 10px; line-height: 1; }
@@ -91,22 +91,22 @@
 .hero { flex: 0 0 auto; position: relative; height: 216px; /* 리스트에 여유를 주려고 낮게 잡는다 */ border-bottom: 1px solid #f4efe8; overflow: hidden; }
 .heroModel { position: absolute; inset: 0; }
 .heroHist { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; }
-.heroIcon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 8px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: default; }
+.heroIcon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: default; }
 .heroIconOn { border-color: #eeb2ce; background: #fff; color: #d76d9a; cursor: pointer; }
 .heroLeft { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px; }
-.pvOpenBtn { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border: 1px solid #f4cfdf; border-radius: 9px; background: #fff; font-family: inherit; color: #d76d9a; font-size: 12px; font-weight: 600; cursor: pointer; }
+.pvOpenBtn { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border: 1px solid #f4cfdf; border-radius: 6px; background: #fff; font-family: inherit; color: #d76d9a; font-size: 12px; font-weight: 600; cursor: pointer; }
 .heroRight { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; height: 32px; max-width: calc(100% - 24px); }
-.dotBtnM { flex: 0 0 auto; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f4cfdf; border-radius: 9px; background: #fff; color: #d76d9a; cursor: pointer; transition: opacity .24s ease, transform .24s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: scale(.9); pointer-events: none; }
+.dotBtnM { flex: 0 0 auto; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f4cfdf; border-radius: 6px; background: #fff; color: #d76d9a; cursor: pointer; transition: opacity .24s ease, transform .24s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: scale(.9); pointer-events: none; }
 .dotBtnMOn { opacity: 1; transform: scale(1); pointer-events: auto; }
-.fab { position: relative; flex: 0 0 auto; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f4cfdf; border-radius: 10px; background: #fff; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.fab { position: relative; flex: 0 0 auto; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f4cfdf; border-radius: 8px; background: #fff; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .fabOn { border-color: #ec86ac; background: #fce9f1; }
-.partFab { border-radius: 9px; }
+.partFab { border-radius: 6px; }
 .fabCount { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; display: flex; align-items: center; justify-content: center; border-radius: 20px; background: #fff; border: 1px solid #f4cfdf; color: #d76d9a; font-size: 9.5px; font-weight: 700; }
 
 /* ── 연출 설정 고르기(PvPicker): 3열 격자 + 작은 미리보기 ─────────────────────
    버튼 위치를 재서 fixed 로 띄운다(Dropdown 과 같은 규칙). 폭은 3열 고정이라 버튼보다 넓다. */
 /* 미리보기 아래쪽에서 올라오는 작은 다이얼로그. 등장·퇴장 같은 곡선으로 짧게(.22s / .18s). */
-.pvPanel { position: fixed; z-index: 120; padding: 8px; border: 1px solid #f0dde7; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(42,37,33,.12); overflow: hidden auto; overscroll-behavior: contain;
+.pvPanel { position: fixed; z-index: 120; padding: 8px; border: 1px solid #f0dde7; border-radius: 8px; background: #fff; box-shadow: 0 12px 32px rgba(42,37,33,.12); overflow: hidden auto; overscroll-behavior: contain;
   transform: translateY(16px); opacity: 0; transition: opacity .18s ease, transform .18s cubic-bezier(.45,0,.55,1); }
 .pvPanelOn { transform: translateY(0); opacity: 1; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
 .pvGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
@@ -114,7 +114,7 @@
 .pvGroup { display: contents; }
 .pvGroupName { grid-column: 1 / -1; padding: 6px 2px 0; font-size: 11px; font-weight: 600; color: #a89e93; }
 .pvGroup:first-child .pvGroupName { padding-top: 0; }
-.pvCell { display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid #eee6dc; border-radius: 9px; background: #fff; overflow: hidden; font-family: inherit; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
+.pvCell { display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid #eee6dc; border-radius: 6px; background: #fff; overflow: hidden; font-family: inherit; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
 .pvCellOn { border-color: #ec86ac; background: #fdf4f8; }
 .pvCellOff { opacity: .4; cursor: not-allowed; }
 /* 칸 88px · fraction .62 → DPR 1·2·3 모두 정수 배율(프리셋 고르기와 같은 값). */
@@ -155,14 +155,14 @@
 .say[data-on] { opacity: 1; transform: translateY(0); }
 /* 말하는 동안 둥둥 오르내린다. 안쪽 한 겹을 따로 합성되는 층으로 올려(will-change) 글자 · 아이템 그림 · 꼬리가 한 장으로 움직이게 한다 —
    층으로 올리지 않으면 도트로 그리는 아이템 그림만 픽셀 단위로 뚝뚝 끊겨 움직인다 */
-.sayIn { position: relative; display: flex; align-items: center; gap: 7px; padding: 6px 10px 6px 6px; background: #fff; border: 1.5px solid #f4b8d0; border-radius: 12px; box-shadow: 0 5px 16px rgba(200,90,150,.22); will-change: transform; backface-visibility: hidden; }
+.sayIn { position: relative; display: flex; align-items: center; gap: 7px; padding: 6px 10px 6px 6px; background: #fff; border: 1.5px solid #f4b8d0; border-radius: 8px; box-shadow: 0 5px 16px rgba(200,90,150,.22); will-change: transform; backface-visibility: hidden; }
 .say[data-on] .sayIn { animation: sayBob 2.6s ease-in-out infinite; }
 /* 맨 아래와 맨 위에서 잠깐 쉰다. 쉬는 두 자리는 화면 픽셀 격자 위다(--bob 은 PinkbeanRate 가 격자에 맞춰 준다) → 쉬는 동안 아이템 그림이 또렷하다 */
 @keyframes sayBob { 0%, 14%, 100% { transform: translate3d(0, 0, 0); } 50%, 64% { transform: translate3d(0, var(--bob, -3px), 0); } }
 /* 아이템 그림은 여기서만 부드럽게 보간한다. 캔버스의 기본값(pixelated)은 가장 가까운 픽셀을 골라 그려서, 말풍선이 반 픽셀씩 오르내릴 때
    그림만 한 픽셀씩 뚝뚝 끊겨 움직인다. 캔버스는 화면 픽셀과 1:1 로 그려져 있어 멈춰 있을 때의 선명함은 같다 */
 .sayItem canvas { image-rendering: auto !important; }
-.sayItem { position: relative; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; background: #fdf4f8; overflow: hidden; }
+.sayItem { position: relative; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 6px; background: #fdf4f8; overflow: hidden; }
 /* 줄 높이는 정수 px 로 둔다: 소수면 말의 높이가 소수가 되어 가운데 맞춘 아이템 그림이 반 픽셀에 걸친다 */
 .sayText { min-width: 0; padding-left: 4px; font-size: 12px; font-weight: 600; line-height: 17px; color: #c05a94; }
 .sayItem + .sayText { padding-left: 0; }
