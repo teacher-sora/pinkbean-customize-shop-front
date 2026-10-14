@@ -32,22 +32,21 @@ const AI_EXAMPLES = [{ q: '동물 귀', keep: 2 }, { q: '한벌옷 스타킹', k
 // 버튼에는 지금 값이 적혀 있다(성별을 골랐으면 함께). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(둘을 이어서 고를 수 있게).
 function FilterM({ viewOpts, mode, onMode, gender, onGender }: { viewOpts: SegOpt<ListMode>[]; mode: ListMode; onMode: (v: ListMode) => void; gender: GenderFilter; onGender: (v: GenderFilter) => void }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
-    const onDown = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false) }
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); setOpen(false) } }
-    window.addEventListener('pointerdown', onDown, true)
     window.addEventListener('keydown', onKey, true)
-    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey, true) }
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [open])
   const label = (viewOpts.find((o) => o.v === mode)?.l ?? '') + (gender === 'all' ? '' : `, ${GENDERS.find((g) => g.v === gender)?.l}`)
   return (
-    <div ref={ref} className={styles.filterM}>
+    <div className={styles.filterM}>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기와 성별: ${label}`} className={clsx('pb-ddbtn', styles.filterBtnM, open && styles.filterBtnOn)}>
         <span className={styles.filterText}>{label}</span>
         <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
       </button>
+      {/* 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다 */}
+      {open && <div className={styles.filterShade} onClick={() => setOpen(false)} />}
       {/* 늘 붙여 두고 보임만 바꾼다 — 닫힐 때도 전환이 보이게 */}
       <div role="group" aria-label="보기와 성별" aria-hidden={!open} className={clsx(styles.filterPop, open && styles.filterPopOn)}>
         <span className={styles.filterLabel}>보기</span>
