@@ -29,7 +29,7 @@ const AI_EXAMPLES = [{ q: '동물 귀', keep: 2 }, { q: '한벌옷 스타킹', k
 
 // 모바일: 보기(아이템 / 기본 캐릭터 / 내 캐릭터)와 성별을 버튼 하나에 접어 둔다. 누르면 버튼 아래에 두 묶음이 펼쳐진다.
 // 왜: 둘 다 한번 정해 두고 쓰는 값인데 늘 펼쳐 두느라 목록 머리가 두 줄이었다(쪽 번호 · 검색은 매번 쓰는 것이라 그대로 내놓는다).
-// 버튼에는 지금 값이 적혀 있다(성별을 골랐으면 함께). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(둘을 이어서 고를 수 있게).
+// 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(둘을 이어서 고를 수 있게).
 function FilterM({ viewOpts, mode, onMode, gender, onGender }: { viewOpts: SegOpt<ListMode>[]; mode: ListMode; onMode: (v: ListMode) => void; gender: GenderFilter; onGender: (v: GenderFilter) => void }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -38,11 +38,11 @@ function FilterM({ viewOpts, mode, onMode, gender, onGender }: { viewOpts: SegOp
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [open])
-  const label = (viewOpts.find((o) => o.v === mode)?.l ?? '') + (gender === 'all' ? '' : `, ${GENDERS.find((g) => g.v === gender)?.l}`)
+  const now = (viewOpts.find((o) => o.v === mode)?.l ?? '') + (gender === 'all' ? '' : `, ${GENDERS.find((g) => g.v === gender)?.l}`)
   return (
     <div className={styles.filterM}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기와 성별: ${label}`} className={clsx('pb-ddbtn', styles.filterBtnM, open && styles.filterBtnOn)}>
-        <span className={styles.filterText}>{label}</span>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, open && styles.filterBtnOn)}>
+        <span className={styles.filterText}>보기 설정</span>
         <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
       </button>
       {/* 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다 */}
@@ -200,7 +200,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     </div>
   )
   const searchInput = isAi ? (
-    <input value={s.aiQ} onChange={(e) => s.setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi() }} placeholder="생김새로 검색"
+    <input value={s.aiQ} onChange={(e) => s.setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi() }} placeholder="생김새 검색"
       className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
   ) : (
     <input value={s.search} onChange={(e) => { s.setSearch(e.target.value); s.setIdx(0) }} placeholder="아이템 검색"

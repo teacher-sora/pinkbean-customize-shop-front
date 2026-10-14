@@ -13,21 +13,18 @@
 .hr { flex: 0 0 auto; height: 1px; margin: 10px 16px 0; background: #f2ebe3; }
 .hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f2ebe3; }
 
-/* 모바일: 정렬+검색 / 페이지 칩+등록 두 줄 */
-.controlsM { flex: 0 0 auto; display: flex; flex-direction: column; }
-.rowM1 { padding: 8px 12px 0; display: flex; align-items: center; gap: 8px; }
-.rowM2 { padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sortWrapM { flex: 0 0 84px; display: flex; }
-.sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; height: 34px; padding: 0 8px 0 10px; font-size: 12px; }
-.searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
+/* 모바일: 한 줄 — 정렬 · 쪽 번호 · 검색 · 등록(다른 탭의 머리와 같은 높이 · 간격) */
+.controlsM { flex: 0 0 auto; height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+.sortWrapM { flex: 0 1 80px; min-width: 62px; display: flex; }
+.sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; min-width: 0; height: 32px; padding: 0 8px 0 10px; font-size: 12px; }
+.searchWrapM { flex: 1 1 0; min-width: 64px; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; color: #b7ada2; pointer-events: none; }
-.searchInputM { width: 100%; min-width: 0; height: 34px; padding: 0 10px 0 31px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-size: 13px; color: #3d372f; outline: none; }
-.upBtn { flex: 0 0 auto; height: 32px; padding: 0 11px; display: flex; align-items: center; gap: 5px; border: 1px solid #f4cfdf; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.searchInputM { width: 100%; min-width: 0; height: 32px; text-overflow: ellipsis; padding: 0 10px 0 31px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-size: 13px; color: #3d372f; outline: none; }
+.upBtn { flex: 0 0 auto; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f4cfdf; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 
 /* ── 페이지 칩 ── */
 .pageChip { flex: 0 0 auto; margin-left: auto; height: 34px; padding: 0 4px 0 12px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
-/* 모바일은 등록 버튼과 양끝 정렬이라 margin-left:auto 를 쓰지 않는다(쓰면 space-between 이 무력화된다) */
-.pageChipM { flex: 0 0 auto; height: 34px; padding: 0 4px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+.pageChipM { flex: 0 0 auto; height: 32px; padding: 0 5px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
 .count { font-size: 12px; font-weight: 600; color: #8a8075; line-height: 1; }
 .chipDiv { width: 1px; height: 14px; margin: 0 8px; background: #e7ded4; }
 .arrow { flex: 0 0 auto; width: 22px; height: 24px; margin: 0 2px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 4px; background: transparent; color: #ded5cb; cursor: default; transition: background-color .2s ease, color .2s ease; }

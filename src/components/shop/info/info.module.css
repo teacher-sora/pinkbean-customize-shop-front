@@ -3,8 +3,8 @@
 .panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
 .header { flex: 0 0 auto; padding: 10px 16px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
 .hr { flex: 0 0 auto; height: 1px; margin: 10px 16px 0; background: #f2ebe3; }
-.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 6px; }
-.hrM { flex: 0 0 auto; height: 1px; background: #f2ebe3; }
+.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 8px; }
+.hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f2ebe3; }
 
 /* 착용 n / 16 칩 */
 .chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
