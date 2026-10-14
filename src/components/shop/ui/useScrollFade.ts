@@ -6,8 +6,9 @@
 //    (창 · 시트 · 떠 있는 목록이 열리고 닫혀도 따라간다).
 //  - 남은 쪽은 `data-fade="t b l r"` 로 적는다. 흐림은 칸 위에 얹는 층(`.pb-fadeov`, 칸 바로 뒤의 형제)이 그린다 — 칸 안에 두면
 //    내용과 함께 스크롤되고, 내용 아래에 두면 카드에 가려진다. 층은 칸의 자리를 따라다닌다(칸이 옆으로 미끄러질 때도).
-//    세로 스크롤바 자리는 덮지 않는다.
-//  - 떠 있는 목록(드롭다운 · 연출 고르기 칸)은 `pb-fadepop` 을 함께 단다 — 층 대신 안쪽에 붙어 다니는 흐림(::before · ::after).
+//    층은 칸의 안쪽 여백까지 덮는다 — 흐림이 내용(아이템)이 아니라 칸의 끝에 붙어야 한다. 세로 스크롤바 자리는 덮지 않는다.
+//  - 떠 있는 목록(드롭다운 · 연출 고르기 칸)은 `pb-fadepop` 을 함께 단다 — 목록이 화면에 고정된 채 떠 있으므로 층도 body 에
+//    고정으로 붙여 목록 바로 위에 놓는다(목록의 둥근 모서리 · 나타나고 사라지는 불투명도를 따라간다).
 //  - 쪽 번호가 있는 목록(코디 · AI 검색 · 광장의 카드 목록, 프리셋 목록)에는 달지 않는다 — 쪽 번호가 그 역할을 한다.
 import { useEffect } from 'react'
 
@@ -16,24 +17,33 @@ function watch(el: HTMLElement): () => void {
   const pop = el.classList.contains('pb-fadepop')
   const bothEdges = getComputedStyle(el).scrollbarGutter.includes('both')
   const parent = el.parentElement
-  let ov: HTMLDivElement | null = null, madeRelative = false
-  if (!pop && parent) {
-    // 층의 기준은 칸의 부모다. 부모가 자리 기준이 아니면 기준으로 만든다(층이 엉뚱한 조상을 기준으로 잡지 않게)
+  let madeRelative = false
+  const ov = document.createElement('div')
+  ov.className = pop ? 'pb-fadeov pb-fadeovfix' : 'pb-fadeov'
+  ov.setAttribute('aria-hidden', 'true')
+  if (pop) document.body.appendChild(ov)
+  else if (parent) {
+    // 층은 칸 바로 뒤에 둔다. 부모가 자리 기준이 아니면 기준으로 만든다(층이 엉뚱한 조상을 기준으로 잡지 않게)
     if (getComputedStyle(parent).position === 'static') { parent.style.position = 'relative'; madeRelative = true }
-    ov = document.createElement('div')
-    ov.className = 'pb-fadeov'
-    ov.setAttribute('aria-hidden', 'true')
     el.after(ov)
   }
   const place = () => {
-    if (!ov || !parent) return
-    const r = el.getBoundingClientRect(), p = parent.getBoundingClientRect()
+    const cs = getComputedStyle(el), r = el.getBoundingClientRect()
     const g = Math.max(0, (el.offsetWidth - el.clientWidth - el.clientLeft * 2) / (bothEdges ? 2 : 1))
-    const left = r.left - p.left - parent.clientLeft + parent.scrollLeft + el.clientLeft
-    const top = r.top - p.top - parent.clientTop + parent.scrollTop + el.clientTop
+    // 칸의 안쪽(여백 포함) 왼쪽 위 — 화면 기준
+    let left = r.left + el.clientLeft, top = r.top + el.clientTop
+    if (!pop) {
+      // 층이 실제로 기준 삼는 상자(offsetParent)의 안쪽 기준으로 옮긴다(부모가 display:contents 여도 맞는다)
+      const cb = ov.offsetParent as HTMLElement | null
+      if (cb) { const c = cb.getBoundingClientRect(); left += cb.scrollLeft - c.left - cb.clientLeft; top += cb.scrollTop - c.top - cb.clientTop }
+    }
     const s = ov.style
     s.left = `${left}px`; s.top = `${top}px`
     s.width = `${Math.max(0, el.clientWidth + (bothEdges ? g : 0))}px`; s.height = `${el.clientHeight}px`
+    // 칸이 둥글면 층도 같은 둥글기(테두리 두께만큼 안쪽)
+    const rad = parseFloat(cs.borderTopLeftRadius) || 0
+    s.borderRadius = rad ? `${Math.max(0, rad - el.clientLeft)}px` : ''
+    if (pop) { s.zIndex = String((parseInt(cs.zIndex) || 0) + 1); s.opacity = cs.opacity }
   }
   // 실제로 스크롤할 수 있는 방향만 본다. overflow 가 hidden 인 방향은 내용이 1~2px 넘쳐도(격자 반올림 등) 더 볼 것이 아니다
   const scrolls = (v: string) => v === 'auto' || v === 'scroll'
@@ -42,21 +52,23 @@ function watch(el: HTMLElement): () => void {
     const x = el.scrollLeft, y = el.scrollTop
     const mx = scrolls(cs.overflowX) ? el.scrollWidth - el.clientWidth : 0, my = scrolls(cs.overflowY) ? el.scrollHeight - el.clientHeight : 0
     const v = [y > 1 && 't', my > 1 && y < my - 1 && 'b', x > 1 && 'l', mx > 1 && x < mx - 1 && 'r'].filter(Boolean).join(' ')
-    if (v !== last) { last = v; el.dataset.fade = v; if (ov) ov.dataset.fade = v }
+    if (v !== last) { last = v; el.dataset.fade = v; ov.dataset.fade = v }
   }
   const all = () => { sync(); place() }
   // 칸이 옆으로 미끄러지는 동안(연출 설정의 두 칸 등)은 매 프레임 자리를 따라간다
   let raf = 0, moving = 0
   const follow = () => { place(); raf = moving > 0 ? requestAnimationFrame(follow) : 0 }
-  const onRun = (e: TransitionEvent) => { if (e.target !== el || e.propertyName !== 'transform') return; moving++; if (!raf) raf = requestAnimationFrame(follow) }
-  const onEnd = (e: TransitionEvent) => { if (e.target !== el || e.propertyName !== 'transform') return; moving = Math.max(0, moving - 1); place() }
+  // 떠 있는 목록은 나타나고 사라지는 불투명도도 따라간다
+  const tracked = (e: TransitionEvent) => e.target === el && (e.propertyName === 'transform' || (pop && e.propertyName === 'opacity'))
+  const onRun = (e: TransitionEvent) => { if (!tracked(e)) return; moving++; if (!raf) raf = requestAnimationFrame(follow) }
+  const onEnd = (e: TransitionEvent) => { if (!tracked(e)) return; moving = Math.max(0, moving - 1); place() }
   el.addEventListener('scroll', sync, { passive: true })
   el.addEventListener('transitionrun', onRun)
   el.addEventListener('transitionend', onEnd)
   el.addEventListener('transitioncancel', onEnd)
   // 칸의 크기나 안의 내용(바로 아래 자식들의 크기), 부모의 크기가 바뀌면 다시 잰다. 자식이 바뀌면 지켜볼 자식도 다시 고른다
   const ro = new ResizeObserver(all)
-  const observeKids = () => { ro.disconnect(); ro.observe(el); if (parent && ov) ro.observe(parent); for (const c of Array.from(el.children)) ro.observe(c) }
+  const observeKids = () => { ro.disconnect(); ro.observe(el); if (parent && !pop) ro.observe(parent); for (const c of Array.from(el.children)) ro.observe(c) }
   const mo = new MutationObserver(() => { observeKids(); all() })
   mo.observe(el, { childList: true })
   observeKids()
@@ -64,7 +76,7 @@ function watch(el: HTMLElement): () => void {
   return () => {
     el.removeEventListener('scroll', sync); el.removeEventListener('transitionrun', onRun); el.removeEventListener('transitionend', onEnd); el.removeEventListener('transitioncancel', onEnd)
     ro.disconnect(); mo.disconnect(); cancelAnimationFrame(raf)
-    ov?.remove()
+    ov.remove()
     if (madeRelative && parent) parent.style.position = ''
   }
 }

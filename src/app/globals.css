@@ -63,13 +63,8 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-fadeov[data-fade~="b"] { --pb-fab: 1; --pb-fdb: .7s; }
 .pb-fadeov[data-fade~="l"] { --pb-fal: 1; --pb-fdl: .7s; }
 .pb-fadeov[data-fade~="r"] { --pb-far: 1; --pb-fdr: .7s; }
-/* 떠 있는 목록: 안쪽에 붙어 다니는 흐림(같은 색 · 같은 시간). --pb-fpad = 그 목록의 안쪽 여백 */
-.pb-fadepop { --pb-fpad: 8px; }
-.pb-ddmenu.pb-fadepop { --pb-fpad: 5px; }
-.pb-fadepop::before, .pb-fadepop::after { content: ''; position: sticky; z-index: 2; display: block; height: 22px; pointer-events: none; opacity: 0; transition: opacity .9s ease-out; }
-.pb-fadepop::before { top: calc(-1 * var(--pb-fpad)); margin: calc(-1 * var(--pb-fpad)) calc(-1 * var(--pb-fpad)) calc(var(--pb-fpad) - 22px); background: linear-gradient(rgba(0,0,0,var(--pb-fmax)), rgba(0,0,0,0)); }
-.pb-fadepop::after { bottom: calc(-1 * var(--pb-fpad)); margin: -22px calc(-1 * var(--pb-fpad)) 0; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,var(--pb-fmax))); }
-.pb-fadepop[data-fade~="t"]::before, .pb-fadepop[data-fade~="b"]::after { opacity: 1; transition-duration: .7s; }
+/* 떠 있는 목록의 층은 body 에 고정으로 붙는다(자리 · 둥글기 · 불투명도는 useScrollFade 가 목록을 따라 넣는다) */
+.pb-fadeovfix { position: fixed; }
 
 /* 못 누르는 버튼은 늘 진짜 disabled 로 두고, 커서는 금지 표시다(모든 버튼 공통 — 칸마다 따로 적지 않는다) */
 button:disabled { cursor: not-allowed; }
