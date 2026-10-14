@@ -93,8 +93,8 @@
 /* 모바일 히어로 */
 .hero { flex: 0 0 auto; position: relative; height: 216px; /* 리스트에 여유를 주려고 낮게 잡는다 */ border-bottom: 1px solid #f4efe8; overflow: hidden; }
 .heroModel { position: absolute; inset: 0; }
-.heroHist { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; }
-.heroIcon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: pointer; }
+.heroHist { margin-left: 4px; display: flex; gap: 6px; }
+.heroIcon { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: pointer; }
 .heroIconOn { border-color: #eeb2ce; background: #fff; color: #d76d9a; cursor: pointer; }
 .heroLeft { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px; }
 .pvOpenBtn { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; color: #d76d9a; font-size: 12px; font-weight: 600; cursor: pointer; }

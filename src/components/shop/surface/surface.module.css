@@ -122,8 +122,8 @@
 @container (max-width: 760px) { .bgGrid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
 @container (max-width: 540px) { .bgGrid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
 /* 모바일: 북마크 시트처럼 두 줄까지만 보이고 그 뒤는 스크롤. 칸 높이 = 테두리 2 + 위 여백 6 + 그림(칸 폭 - 14, 4:3) + 이름 30
-   칸 폭 = (화면 폭 - 옆 여백 24 - 칸 사이 16) / 3. 위아래 여백 24 + 두 줄 + 줄 사이 8 */
-.bgBodyM { flex: 0 1 auto; max-height: calc(24px + 8px + 2 * (38px + (((100vw - 40px) / 3) - 14px) * .75)); }
+   칸 폭 = (화면 폭 - 옆 여백 24 - 칸 사이 16) / 3. 위 여백 12 + 두 줄 + 줄 사이 8 + 8(셋째 줄 윗선이 비치지 않는 데까지) */
+.bgBodyM { flex: 0 1 auto; max-height: calc(20px + 8px + 2 * (38px + (((100vw - 40px) / 3) - 14px) * .75)); }
 .bgCell { position: relative; min-width: 0; display: flex; }
 .bgTile { flex: 1 1 0; min-width: 0; padding: 6px 6px 0; display: flex; flex-direction: column; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-family: inherit; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .bgTileOn { border-color: #ec86ac; background: #fef5f8; }
