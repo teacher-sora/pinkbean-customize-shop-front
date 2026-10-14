@@ -34,7 +34,7 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
 
   const open = notices?.find((n) => n.id === openId) || null
   return (
-    <div className={clsx('pb-scroll', styles.detail, styles.ntBody, mobile && styles.ntBodyM)}>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.detail, styles.ntBody, mobile && styles.ntBodyM)}>
       {!notices && (
         <div className={styles.cmtSkel}>
           <span className="pb-skel" style={{ width: '48%' }} />

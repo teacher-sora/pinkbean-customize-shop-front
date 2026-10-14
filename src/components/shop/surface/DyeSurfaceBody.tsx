@@ -152,7 +152,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   const preview = <DyeModelPreview item={item} hsb={NO_HSB} palette={off || cleared ? undefined : commit} zoom={zoom} box={box} />
 
   const custom = mobile ? (
-    <div className={clsx('pb-scroll', styles.hsvM)}>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.hsvM)}>
       <div className={styles.topM}>
         <div ref={ref} className={styles.pvBoxM}>{preview}</div>
         <div className={styles.zoomCol}>{pills}</div>
@@ -168,7 +168,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
         <div ref={ref} className={styles.pvBox}>{preview}</div>
         <div className={styles.zoomRow}>{pills}</div>
       </div>
-      <div className={clsx('pb-scroll', styles.hsvRight)}>
+      <div className={clsx('pb-scroll', 'pb-fade', styles.hsvRight)}>
         <div className={styles.rows}>{swatchRows}</div>
         <div className={styles.hr} />
         <div className={styles.rows}>{ratioRow}</div>
@@ -178,7 +178,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   )
 
   const table = (
-    <div className={clsx('pb-scroll', styles.mixScroll)}>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.mixScroll)}>
       <div className={clsx(styles.mixGrid, mobile && styles.mixGridM)}>
         {MIX_PALETTE.map((_, r) => MIX_PALETTE.map((__, c) => {
           const on = pal.baseColor === r && bIdx === c
@@ -270,7 +270,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   if (mobile) {
     return (
       <>
-        <div className={clsx('pb-scroll', styles.hsvM)}>
+        <div className={clsx('pb-scroll', 'pb-fade', styles.hsvM)}>
           <div className={styles.topM}>
             <div ref={ref} className={styles.pvBoxM}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} box={box} /></div>
             <div className={styles.zoomCol}>{pills}</div>
@@ -295,7 +295,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
           <div ref={ref} className={styles.pvBox}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} box={box} /></div>
           <div className={styles.zoomRow}>{pills}</div>
         </div>
-        <div className={clsx('pb-scroll', styles.hsvRight)}>
+        <div className={clsx('pb-scroll', 'pb-fade', styles.hsvRight)}>
           <div className={styles.famRow}>{families}</div>
           <div className={styles.hr} />
           <div className={styles.rows}>{rows()}</div>

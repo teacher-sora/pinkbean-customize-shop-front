@@ -130,7 +130,7 @@ export default function PlazaComments({ post, mobile }: { post: PlazaPost; mobil
         {list && <span className={styles.cmtCount}>{n}</span>}
       </div>
 
-      <div ref={listRef} className={clsx('pb-scroll', styles.cmtList, mobile && styles.cmtListM)}>
+      <div ref={listRef} className={clsx('pb-scroll', 'pb-fade', styles.cmtList, mobile && styles.cmtListM)}>
         {!list && (
           <div className={styles.cmtSkel}>
             <span className="pb-skel" style={{ width: '62%' }} />

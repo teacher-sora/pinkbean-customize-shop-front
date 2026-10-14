@@ -264,7 +264,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
               <IconSearchBold size={mobile ? 14 : 15} />찾기
             </button>
           </div>
-          <div className={mobile ? clsx('pb-norail', styles.chipsM) : styles.chips}>
+          <div className={mobile ? clsx('pb-norail', 'pb-fade', styles.chipsM) : styles.chips}>
             {AI_EXAMPLES.filter((e) => e.keep < (mobile ? 2 : narrow ? 3 : 4)).map(({ q }) => (
               <button key={q} type="button" onClick={() => runAi(q)} className={clsx('pb-soft', styles.chip)}>{q}</button>
             ))}

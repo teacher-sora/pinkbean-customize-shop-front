@@ -105,7 +105,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
 
   if (mobile) {
     return (
-      <div className={clsx('pb-scroll', styles.detail)}>
+      <div className={clsx('pb-scroll', 'pb-fade', styles.detail)}>
         {main}
         <div className={styles.secHr} />
         <PlazaComments post={post} mobile />
@@ -114,7 +114,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
   }
   return (
     <div className={styles.detailPc}>
-      <div className={clsx('pb-scroll', styles.detailMain)}>{main}</div>
+      <div className={clsx('pb-scroll', 'pb-fade', styles.detailMain)}>{main}</div>
       <PlazaComments post={post} mobile={false} />
     </div>
   )

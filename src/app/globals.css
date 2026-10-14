@@ -37,6 +37,34 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-norail { scrollbar-width: none; }
 .pb-norail::-webkit-scrollbar { display: none; }
 
+/* 스크롤 칸의 가장자리 흐림(ui/useScrollFade) — 더 볼 것이 남은 쪽에만. data-fade = 남은 쪽(t b l r).
+   mask 세 겹: 맨 위는 세로 스크롤바 자리(흐리지 않는다, 폭은 --pb-fsb), 그 아래 세로 흐림과 가로 흐림을 겹친 것. */
+@property --pb-ft { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --pb-fb { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --pb-fl { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --pb-fr { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.pb-fade[data-fade]:not(.pb-fadepop) {
+  -webkit-mask-image: linear-gradient(#000, #000), linear-gradient(to bottom, transparent, #000 var(--pb-ft), #000 calc(100% - var(--pb-fb)), transparent), linear-gradient(to right, transparent, #000 var(--pb-fl), #000 calc(100% - var(--pb-fr)), transparent); mask-image: linear-gradient(#000, #000), linear-gradient(to bottom, transparent, #000 var(--pb-ft), #000 calc(100% - var(--pb-fb)), transparent), linear-gradient(to right, transparent, #000 var(--pb-fl), #000 calc(100% - var(--pb-fr)), transparent);
+  -webkit-mask-size: var(--pb-fsb, 0px) 100%, 100% 100%, 100% 100%; mask-size: var(--pb-fsb, 0px) 100%, 100% 100%, 100% 100%;
+  -webkit-mask-position: 100% 0, 0 0, 0 0; mask-position: 100% 0, 0 0, 0 0;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-composite: source-over, source-in; mask-composite: add, intersect;
+}
+/* 흐림 전환. 특이도 0(:where) — 요소에 제 전환이 있으면 그것이 이기고, 그런 요소는 아래처럼 둘을 합쳐 적는다 */
+:where(.pb-fade[data-fade]:not(.pb-fadepop)) { transition: --pb-ft .2s ease, --pb-fb .2s ease, --pb-fl .2s ease, --pb-fr .2s ease; }
+.pb-slide.pb-fade[data-fade] { transition: transform .3s cubic-bezier(.45, 0, .55, 1), --pb-ft .2s ease, --pb-fb .2s ease, --pb-fl .2s ease, --pb-fr .2s ease; }
+.pb-fade[data-fade~="t"] { --pb-ft: 24px; }
+.pb-fade[data-fade~="b"] { --pb-fb: 24px; }
+.pb-fade[data-fade~="l"] { --pb-fl: 32px; }
+.pb-fade[data-fade~="r"] { --pb-fr: 32px; }
+/* 떠 있는 목록: 그림자가 잘리지 않게 mask 대신 안쪽에 붙어 다니는 흰 흐림. --pb-fpad = 그 목록의 안쪽 여백 */
+.pb-fadepop { --pb-fpad: 8px; }
+.pb-ddmenu.pb-fadepop { --pb-fpad: 5px; }
+.pb-fadepop::before, .pb-fadepop::after { content: ''; position: sticky; z-index: 2; display: block; height: 20px; pointer-events: none; opacity: 0; transition: opacity .2s ease; }
+.pb-fadepop::before { top: calc(-1 * var(--pb-fpad)); margin: calc(-1 * var(--pb-fpad)) calc(-1 * var(--pb-fpad)) calc(var(--pb-fpad) - 20px); background: linear-gradient(#fff, rgba(255,255,255,0)); }
+.pb-fadepop::after { bottom: calc(-1 * var(--pb-fpad)); margin: -20px calc(-1 * var(--pb-fpad)) 0; background: linear-gradient(rgba(255,255,255,0), #fff); }
+.pb-fadepop[data-fade~="t"]::before, .pb-fadepop[data-fade~="b"]::after { opacity: 1; }
+
 button, input, select { transition: background-color .24s ease, border-color .22s ease, color .22s ease, transform .2s ease, opacity .22s ease, filter .2s ease; }
 .pb-card { border: 1px solid #eee6dc; position: relative; transition: transform .18s ease, border-color .2s ease, background-color .22s ease; }
 .pb-cardwrap { display: grid; min-width: 0; min-height: 0; cursor: pointer; }

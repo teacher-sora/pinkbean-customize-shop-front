@@ -66,7 +66,7 @@ export default function Dropdown({ options, value, onChange, variant, title, ari
         <span className={clsx(styles.caret, open && styles.caretOpen)}>▾</span>
       </button>
       {open && typeof document !== 'undefined' && createPortal(
-        <div ref={menuRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-ddmenu', styles.ddMenu)}
+        <div ref={menuRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-ddmenu', 'pb-fade', 'pb-fadepop', styles.ddMenu)}
           style={{ left: pos!.left, width: pos!.width, maxHeight: pos!.maxH, top: pos!.top ?? undefined, bottom: pos!.bottom ?? undefined }}>
           {options.map((o) => {
             const dis = !!disabledValues?.has(o.v)

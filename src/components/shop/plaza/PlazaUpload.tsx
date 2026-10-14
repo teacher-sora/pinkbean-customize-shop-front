@@ -180,7 +180,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   )
 
   const body = (
-    <div className={clsx('pb-scroll', styles.upBody, mobile && styles.upBodyM)}>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.upBody, mobile && styles.upBodyM)}>
       {/* 올릴 프리셋 */}
       <div>
         <div className={clsx(styles.label, styles.labelWide)}>올릴 프리셋</div>
@@ -192,7 +192,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
           </button>
           <div className={clsx(styles.pickPanel, pickOpen && styles.panelOn)}>
             {/* 3열 격자 — 꾸민 프리셋이 한눈에 들어오게. 썸네일 + 이름(좁으면 이름은 한 줄 말줄임). */}
-            <div className={clsx('pb-scroll', 'pb-scroll-thin', styles.pickGrid, mobile && styles.pickGridM)}>
+            <div className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.pickGrid, mobile && styles.pickGridM)}>
               {options.length === 0 && <p className={styles.pickEmpty}>프리셋 탭에서 코디를 꾸미면 여기에 나와요.</p>}
               {options.map((p) => {
                 const sn = snapOf(p.id)
@@ -289,7 +289,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
             </button>
             {/* 폼 맨 아래에 있는 항목이라 위(빈 공간이 많은 쪽)로 펼친다. */}
             <div className={clsx(styles.pickPanel, styles.pickPanelUp, scopeOpen && styles.panelOn)}>
-              <div className={styles.pickList}>
+              <div className={clsx('pb-fade', styles.pickList)}>
                 {([{ v: 'all', label: PLAZA_OPEN }, { v: 'contest', label: PLAZA_CONTEST }] as const).filter((o) => o.v !== 'contest' || contestOpen).map((o) => (
                   <button key={o.v} type="button" onClick={() => { setScope(o.v); setScopeOpen(false) }}
                     className={clsx(styles.pickOpt, (o.v === 'contest') === contest && styles.pickOptOn)}>

@@ -141,6 +141,7 @@
 .sheetWrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 /* 내용 가로 슬라이드 + 페이드(염색 다이얼로그의 innerSlide 와 같은 값). */
 .sheetSlide { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
+.sheetSlide.sheetSlide[data-fade] { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease, --pb-ft .2s ease, --pb-fb .2s ease, --pb-fl .2s ease, --pb-fr .2s ease; }   /* 가장자리 흐림 전환과 합친다 */
 
 /* 모바일 시트 안 '고르기' 화면(액션 · 무기 모션 · 표정) — 시트 본문을 가득 채우고 격자만 스크롤한다. */
 .pickPage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }

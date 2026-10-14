@@ -182,7 +182,7 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
         <span className={clsx(ui.caret, open && ui.caretOpen)}>▾</span>
       </button>
       {open && typeof document !== 'undefined' && createPortal(
-        <div ref={panelRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-scroll-thin', styles.pvPanel, shown && styles.pvPanelOn)}
+        <div ref={panelRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', 'pb-fadepop', styles.pvPanel, shown && styles.pvPanelOn)}
           style={{ left: pos!.left, bottom: pos!.bottom, width: pos!.w, maxHeight: pos!.maxH }}>
           <PvGrid field={field} options={options} groups={groups} value={value} disabledValues={disabledValues} disabledTitle={disabledTitle}
             onChange={(v) => { onChange(v); close() }} />

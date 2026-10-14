@@ -19,6 +19,7 @@ import PlazaPanel from './shop/plaza/PlazaPanel'
 import PlazaUpload from './shop/plaza/PlazaUpload'
 import PreviewColumn, { MobileHero } from './shop/preview/PreviewColumn'
 import { useRidingGuards } from './shop/preview/pvControls'
+import { useScrollFades } from './shop/ui/useScrollFade'
 import Surface from './shop/surface/Surface'
 import LookDialog from './shop/LookDialog'
 import Toast from './shop/ui/Toast'
@@ -28,6 +29,7 @@ import styles from './shop/frame/frame.module.css'
 function Shell() {
   const s = useShop()
   useRidingGuards()
+  useScrollFades()   // 스크롤 칸(.pb-fade)의 남은 쪽에만 가장자리 흐림
   // Esc 로 창 · 펼친 칸을 닫으면, 그것을 열었던 버튼에 포커스가 남아 테두리(focus-visible)가 생긴다 — Esc 는 키보드 입력이라
   // 브라우저가 그때부터 포커스를 그려 준다. 닫는 Esc 에서는 버튼의 포커스를 놓는다(Tab 으로 옮겨 다닐 때의 테두리는 그대로다).
   useEffect(() => {
