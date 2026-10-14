@@ -3,9 +3,9 @@
 .panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ── 리스트 헤더(PC) ── */
-.header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
+.header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; }
 .groupA { flex: 0 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
-.groupB { flex: 1 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
+.groupB { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
 .pageChip { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; height: 34px; padding: 0 4px 0 12px; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
 .pageChipNarrow { padding: 0 4px; }
 .count { font-size: 12px; font-weight: 600; color: #8a8075; white-space: nowrap; }
