@@ -37,9 +37,12 @@
    크롬 · 사파리는 scrollbar-width: thin 이 10px 라 8px 로 못 맞춘다 — 여기서는 ::-webkit-scrollbar 로 8px 를 준다(파이어폭스는 thin 그대로).
    스크롤바가 자리를 차지하지 않는 터치 기기에서는 여백으로 채운다 */
 .mixScroll, .partBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; padding: 8px 0; }
-@supports selector(::-webkit-scrollbar) { .mixScroll.mixScroll, .partBody.partBody { scrollbar-width: auto; scrollbar-color: auto; } }
-.mixScroll.mixScroll::-webkit-scrollbar, .partBody.partBody::-webkit-scrollbar { width: 8px; }
-.mixScroll.mixScroll::-webkit-scrollbar-thumb, .partBody.partBody::-webkit-scrollbar-thumb { border-width: 2px; }
+/* 8px 막대는 마우스로 쓰는 화면에서만 — 휴대폰 · 터치에 걸면 떠 있는 가상 스크롤바 대신 자리를 차지하는 막대가 나온다 */
+@media (hover: hover) and (pointer: fine) {
+  @supports selector(::-webkit-scrollbar) { .mixScroll.mixScroll, .partBody.partBody { scrollbar-width: auto; scrollbar-color: auto; } }
+  .mixScroll.mixScroll::-webkit-scrollbar, .partBody.partBody::-webkit-scrollbar { width: 8px; }
+  .mixScroll.mixScroll::-webkit-scrollbar-thumb, .partBody.partBody::-webkit-scrollbar-thumb { border-width: 2px; }
+}
 @media (hover: none), (pointer: coarse) { .mixScroll, .partBody { scrollbar-gutter: auto; padding: 12px; } }
 .mixGrid { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 8px; }
 .mixGridM { grid-template-columns: repeat(3, minmax(0,1fr)); }
@@ -121,9 +124,10 @@
 .bgGrid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; }
 @container (max-width: 760px) { .bgGrid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
 @container (max-width: 540px) { .bgGrid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
-/* 모바일: 북마크 시트처럼 두 줄까지만 보이고 그 뒤는 스크롤. 칸 높이 = 테두리 2 + 위 여백 6 + 그림(칸 폭 - 14, 4:3) + 이름 30
-   칸 폭 = (화면 폭 - 옆 여백 24 - 칸 사이 16) / 3. 위 여백 12 + 두 줄 + 줄 사이 8 + 8(셋째 줄 윗선이 비치지 않는 데까지) */
-.bgBodyM { flex: 0 1 auto; max-height: calc(20px + 8px + 2 * (38px + (((100vw - 40px) / 3) - 14px) * .75)); }
+/* 모바일: 높이는 늘 두 줄이 다 들어가는 만큼으로 고정한다 — 두 줄까지는 스크롤이 생기지 않고, 세 줄부터 스크롤된다(overflow-y 는 auto 그대로).
+   시트는 이 높이 그대로 translateY 로만 오르내린다. 칸 높이 = 테두리 2 + 위 여백 6 + 그림(칸 폭 - 14, 4:3) + 이름 30,
+   칸 폭 = (화면 폭 - 옆 여백 24 - 칸 사이 16) / 3. 위아래 여백 24 + 두 줄 + 줄 사이 8 + 1(반 픽셀 반올림으로 넘치지 않게) */
+.bgBodyM { flex: 0 1 auto; height: calc(24px + 8px + 1px + 2 * (38px + (((100vw - 40px) / 3) - 14px) * .75)); }
 .bgCell { position: relative; min-width: 0; display: flex; }
 .bgTile { flex: 1 1 0; min-width: 0; padding: 6px 6px 0; display: flex; flex-direction: column; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-family: inherit; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .bgTileOn { border-color: #ec86ac; background: #fef5f8; }

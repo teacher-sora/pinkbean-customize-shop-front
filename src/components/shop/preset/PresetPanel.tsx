@@ -102,7 +102,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         </div>
         <div className={styles.hrM} />
         {/* 모바일: 코디 리스트처럼 가로 스크롤(열 단위 스냅, 스크롤바 숨김) — 2줄 × 폭에 따라 2열/3열 */}
-        <div ref={boxRef} className={clsx('pb-norail', 'pb-fade', styles.hscrollM)}>{grid}</div>
+        <div ref={boxRef} className={clsx('pb-norail', styles.hscrollM)}>{grid}</div>
       </>
     )
   }
@@ -126,7 +126,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         </div>
       </div>
       <div className={styles.hr} />
-      <div ref={boxRef} className={clsx('pb-scroll', 'pb-fade', styles.scroll)}>{grid}</div>
+      <div ref={boxRef} className={clsx('pb-scroll', styles.scroll)}>{grid}</div>
     </section>
   )
 }

@@ -8,10 +8,6 @@
 .rail { height: 100%; padding: 0 5px 1px; /* 아래 1px = 구분선(partLine) 몫. 버튼 둘레의 빈 곳은 위아래 · 좌우 모두 5px */ display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
 .part { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 12.5px; font-weight: 500; white-space: nowrap; color: #8a8075; background: transparent; }
 :global(html:not([data-pb-csr])) .partOn { font-weight: 600; color: #fff; background: #ec86ac; }
-.fadeL, .fadeR { position: absolute; top: 0; bottom: 0; width: 56px; pointer-events: none; z-index: 2; transition: opacity .2s ease; opacity: 0; }
-.fadeL { left: 0; background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); }
-.fadeR { right: 0; background: linear-gradient(270deg, #fff, rgba(255,255,255,0)); }
-.fadeShow { opacity: 1; }
 .partLine { position: absolute; left: 5px; right: 5px; bottom: 0; height: 1px; background: #f0e9e1; }
 .tabBox { position: relative; width: 100%; background: #fff; border: 1px solid #e7ded4; border-radius: 8px; }
 .tabNav { width: 100%; height: 42px; /* 테두리까지 44 — 헤더의 칸과 같다 */ padding: 0 5px; /* 버튼 둘레의 빈 곳은 위아래 · 좌우 모두 5px */ display: flex; align-items: center; gap: 4px; }
@@ -25,7 +21,6 @@
 /* 코디 광장 분류는 4개뿐이라 폭을 나눠 채운다 */
 .partWideM { flex: 1 1 0; min-width: 0; padding: 0 4px; }
 :global(html:not([data-pb-csr])) .partM.partOn { font-weight: 600; color: #fff; background: #ec86ac; }
-.fadeM { width: 44px; }
 .tabNavM { flex: 0 0 auto; height: 56px; padding: 0 4px; display: flex; align-items: stretch; border-top: 1px solid #f0e9e1; background: #fff; }
 /* 아이콘 아래에 짧은 이름을 단다 — 아이콘만으로는 눌러 봐야 무엇인지 안다. 높이는 그대로(56px) */
 .tabM { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: none; border-top: 2px solid transparent; background: transparent; cursor: pointer; color: #c3b9ad; }
