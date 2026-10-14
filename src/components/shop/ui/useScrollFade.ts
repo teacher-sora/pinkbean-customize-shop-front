@@ -29,9 +29,11 @@ function watch(el: HTMLElement): () => void {
   }
   const place = () => {
     const cs = getComputedStyle(el), r = el.getBoundingClientRect()
-    const g = Math.max(0, (el.offsetWidth - el.clientWidth - el.clientLeft * 2) / (bothEdges ? 2 : 1))
-    // 칸의 안쪽(여백 포함) 왼쪽 위 — 화면 기준
-    let left = r.left + el.clientLeft, top = r.top + el.clientTop
+    // 소수점까지 맞춘다(clientWidth 는 정수라 칸이 반 픽셀 걸치면 층이 1px 모자란다)
+    const bl = parseFloat(cs.borderLeftWidth) || 0, br = parseFloat(cs.borderRightWidth) || 0, bt = parseFloat(cs.borderTopWidth) || 0, bb = parseFloat(cs.borderBottomWidth) || 0
+    const sbV = Math.max(0, el.offsetWidth - el.clientWidth - Math.round(bl) - Math.round(br)), sbH = Math.max(0, el.offsetHeight - el.clientHeight - Math.round(bt) - Math.round(bb))
+    // 칸의 안쪽(여백 포함) 왼쪽 위 — 화면 기준. 양쪽 스크롤바 자리는 왼쪽은 덮고 오른쪽(막대)은 비운다
+    let left = r.left + bl, top = r.top + bt
     if (!pop) {
       // 층이 실제로 기준 삼는 상자(offsetParent)의 안쪽 기준으로 옮긴다(부모가 display:contents 여도 맞는다)
       const cb = ov.offsetParent as HTMLElement | null
@@ -39,7 +41,7 @@ function watch(el: HTMLElement): () => void {
     }
     const s = ov.style
     s.left = `${left}px`; s.top = `${top}px`
-    s.width = `${Math.max(0, el.clientWidth + (bothEdges ? g : 0))}px`; s.height = `${el.clientHeight}px`
+    s.width = `${Math.max(0, r.width - bl - br - (bothEdges ? sbV / 2 : sbV))}px`; s.height = `${Math.max(0, r.height - bt - bb - sbH)}px`
     // 칸이 둥글면 층도 같은 둥글기(테두리 두께만큼 안쪽)
     const rad = parseFloat(cs.borderTopLeftRadius) || 0
     s.borderRadius = rad ? `${Math.max(0, rad - el.clientLeft)}px` : ''
@@ -61,7 +63,9 @@ function watch(el: HTMLElement): () => void {
   // 떠 있는 목록은 나타나고 사라지는 불투명도도 따라간다
   const tracked = (e: TransitionEvent) => e.target === el && (e.propertyName === 'transform' || (pop && e.propertyName === 'opacity'))
   const onRun = (e: TransitionEvent) => { if (!tracked(e)) return; moving++; if (!raf) raf = requestAnimationFrame(follow) }
-  const onEnd = (e: TransitionEvent) => { if (!tracked(e)) return; moving = Math.max(0, moving - 1); place() }
+  const onEnd = (e: TransitionEvent) => { if (!tracked(e) || pop) return; moving = Math.max(0, moving - 1); place() }
+  // 떠 있는 목록은 잠깐 떠 있는 동안 늘 따라간다(열리는 움직임이 전환이 아니라 애니메이션인 것도 있다)
+  if (pop) { moving = 1; raf = requestAnimationFrame(follow) }
   el.addEventListener('scroll', sync, { passive: true })
   el.addEventListener('transitionrun', onRun)
   el.addEventListener('transitionend', onEnd)

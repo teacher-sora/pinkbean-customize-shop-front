@@ -52,7 +52,7 @@ export default function StageBgBody() {
   }
 
   return (
-    <div className={clsx('pb-scroll', 'pb-fade', styles.partBody, s.bp === 'mobile' && styles.bgBodyM)}>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.partBody, s.bp === 'mobile' && styles.bgBodyM, s.bp === 'mobile' && 4 + bg.images.length <= 6 && styles.bgBodyFit)}>
       <div className={styles.bgGrid}>
         <div className={styles.bgCell}>
           <button type="button" onClick={() => file.current?.click()} disabled={full} title={full ? `그림은 ${STAGE_BG_MAX}장까지 올릴 수 있어요` : '내 그림을 배경으로 올리기'}
