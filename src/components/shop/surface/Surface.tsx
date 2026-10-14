@@ -21,6 +21,7 @@ import { useShop, type Surface as SurfaceState } from '../ShopContext'
 import { BookmarkSheetBody, PvSheetBody } from '../preview/PreviewParts'
 import { BM_SHEET_H, SHEET_EASE } from './sheetMotion'
 import PartPickBody from './PartPickBody'
+import StageBgBody from './StageBgBody'
 import PlazaDetailBody from '../plaza/PlazaDetailBody'
 import PlazaTakeBody from '../plaza/PlazaTakeBody'
 import NoticeBody from '../plaza/NoticeBody'
@@ -62,7 +63,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const hidden = s.surfaceClosing || !entered
   // 모바일 시트 높이: 연출 설정 = 내용 높이(최대 85%), 북마크 = 명시값 376↔624(VS 확장 — 전환은 sheetMotion FLIP), 그 외 85%.
   // 어느 시트든 뷰포트가 줄면(내비게이션 바 등) max-height 85% 로 줄고 본문이 스크롤된다.
-  const tall = sf.kind !== 'pv' && sf.kind !== 'bm'
+  const tall = sf.kind !== 'pv' && sf.kind !== 'bm' && sf.kind !== 'bg'   // 배경 고르기는 내용 높이만큼만 — 고르는 동안 미리보기가 보여야 한다
   const bmH = sf.kind === 'bm' ? (s.vsOn ? BM_SHEET_H.vs : BM_SHEET_H.base) : null
 
   // 등장 전환이 보이도록 마운트 후 한 프레임 뒤 위치를 바꾼다.
@@ -165,9 +166,9 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   })
 
   const k = sf.kind
-  const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'vs' ? '코디 비교'
+  const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'vs' ? '코디 비교'
     : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? '공유받은 코디' : k === 'notice' ? '공지 및 건의함' : (sf.item?.name || sf.item?.id || '')
-  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' ? '' : k === 'notice' ? '신고 / 건의는 댓글로 남겨 주세요'
+  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' || k === 'bg' ? '' : k === 'notice' ? '신고 / 건의는 댓글로 남겨 주세요'
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
 
@@ -207,6 +208,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'pv' && <PvSheetBody />}
             {k === 'bm' && <><BookmarkSheetBody /><SurfaceFooter /></>}
             {k === 'part' && <><PartPickBody mobile={mobile} /><SurfaceFooter /></>}
+            {k === 'bg' && <><StageBgBody /><SurfaceFooter /></>}
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
             {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다. */}
             {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
