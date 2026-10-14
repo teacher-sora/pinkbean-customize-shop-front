@@ -30,7 +30,7 @@
   transform: translate(-50%, -50%);
   width: 46%;
   height: clamp(180px, 38vh, 380px);
-  border-radius: 16px;
+  border-radius: 12px;
   background: linear-gradient(100deg, #f6edf2 30%, #fbe3ec 48%, #f6edf2 66%);
   background-size: 220% 100%;
   animation: pbShimmer 1.25s ease-in-out infinite;

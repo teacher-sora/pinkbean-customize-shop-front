@@ -83,7 +83,7 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
 /* 단일 칸 그리드 — 칸 폭을 minmax(0,1fr) 로 묶는다. auto 면 줄바꿈 없는 긴 이름 폭만큼 칸이 늘어나 말줄임이 안 걸리고
    옆 카드를 덮는다(광장 카드 이름). */
 .pb-presetwrap { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; padding-top: 3px; }
-.pb-presetwrap > .pb-preset { border: 1.5px solid #eee6dc; border-radius: 12px; overflow: visible; background: #fff; display: flex; flex-direction: column; position: relative; transition: transform .18s ease, border-color .22s ease, background-color .24s ease; }
+.pb-presetwrap > .pb-preset { border: 1.5px solid #eee6dc; border-radius: 8px; overflow: visible; background: #fff; display: flex; flex-direction: column; position: relative; transition: transform .18s ease, border-color .22s ease, background-color .24s ease; }
 @media (hover: hover) and (pointer: fine) {
   .pb-presetwrap:hover > .pb-preset { transform: translateY(-4px); border-color: #ec86ac; }
 }
@@ -134,7 +134,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 [data-pb-panel] { display: contents; }
 [data-pb-stub] { display: none; }
 html[data-pb-csr] [data-pb-panel] { display: none; }
-html[data-pb-csr] [data-pb-stub] { display: block; background: #fff; border: 1px solid #e7ded4; border-radius: 14px; }
+html[data-pb-csr] [data-pb-stub] { display: block; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; }
 html[data-pb-csr] [data-pb-stub='main'] { flex: 1 1 auto; min-width: 0; min-height: 0; }
 /* 오른쪽 칸 = 미리보기(코디·프리셋·정보) 또는 등록 폼(광장). 둘의 폭이 같아 한 상자로 덮인다.
    폭은 JS(useBreakpoint) 가 아니라 미디어쿼리로 잡는다 — 하이드레이션 전에도 정확해야 하므로. */

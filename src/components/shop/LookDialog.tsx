@@ -59,14 +59,14 @@ export default function LookDialog() {
 
   const closeBtn = (
     <button onClick={() => close()} title="닫기 (Esc)"
-      style={css('flex:0 0 auto; width:34px; height:34px; border:1px solid #e7ded4; background:#faf7f3; border-radius:8px; cursor:pointer; font-family:inherit; font-size:15px; color:#8a8075; transition:border-color .14s ease, color .14s ease;')}>✕</button>
+      style={css('flex:0 0 auto; width:34px; height:34px; border:1px solid #e7ded4; background:#faf7f3; border-radius:6px; cursor:pointer; font-family:inherit; font-size:15px; color:#8a8075; transition:border-color .14s ease, color .14s ease;')}>✕</button>
   )
 
   return (
     <div {...mask} className={clsx('pb-dlg-mask', hidden && 'pb-dlg-hidden')}
       style={css(`position:fixed; inset:0; z-index:60; background:rgba(42,37,33,0.42); display:flex; align-items:center; justify-content:center; padding:${stacked ? 14 : 32}px;`)}>
       <div onClick={(e) => e.stopPropagation()} className={clsx('pb-dlg-panel', hidden && 'pb-dlg-hidden')}
-        style={css('width:100%; max-width:560px; height:min(620px, 88svh); background:#fff; border-radius:18px; display:flex; flex-direction:column; overflow:hidden;')}>
+        style={css('width:100%; max-width:560px; height:min(620px, 88svh); background:#fff; border-radius:12px; display:flex; flex-direction:column; overflow:hidden;')}>
         <div style={css('display:flex; flex-direction:column; min-height:0; flex:1 1 auto;')}>
           <div style={css('flex:0 0 auto; padding:18px 22px 0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;')}>
             <div style={css('display:flex; flex-direction:column; gap:4px; min-width:0;')}>
@@ -80,12 +80,12 @@ export default function LookDialog() {
 
           {multiLook && (
             <div style={css('flex:0 0 auto; padding:12px 22px 0;')}>
-              <div style={css('display:flex; align-items:center; gap:4px; padding:3px; background:#f4ecf3; border-radius:10px;')}>
+              <div style={css('display:flex; align-items:center; gap:4px; padding:3px; background:#f4ecf3; border-radius:8px;')}>
                 {lp.options.map((o) => {
                   const on = o.key === look.key
                   return (
                     <button key={o.key} onClick={() => setLookKey(o.key)}
-                      style={css(`flex:1 1 auto; height:32px; padding:0 12px; border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{o.label}</button>
+                      style={css(`flex:1 1 auto; height:32px; padding:0 12px; border:none; border-radius:6px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{o.label}</button>
                   )
                 })}
               </div>
@@ -100,7 +100,7 @@ export default function LookDialog() {
               return (
                 <button key={hk} onClick={() => close(() => s.chooseLook(look.key, p.key))}
                   onMouseEnter={() => setHover(hk)} onMouseLeave={() => setHover(null)}
-                  style={css(`display:flex; flex-direction:column; align-items:stretch; height:100%; min-height:0; gap:0; padding:0; border-radius:12px; cursor:pointer; overflow:hidden; font-family:inherit; background:#faf7f3; border:2px solid ${on ? '#ec86ac' : '#e7ded4'}; transition:border-color .14s ease, transform .14s ease; transform:translateY(${on ? -2 : 0}px);`)}>
+                  style={css(`display:flex; flex-direction:column; align-items:stretch; height:100%; min-height:0; gap:0; padding:0; border-radius:8px; cursor:pointer; overflow:hidden; font-family:inherit; background:#faf7f3; border:2px solid ${on ? '#ec86ac' : '#e7ded4'}; transition:border-color .14s ease, transform .14s ease; transform:translateY(${on ? -2 : 0}px);`)}>
                   <div style={css('position:relative; flex:1 1 0; min-height:0; width:100%; background:#f7f2ec; overflow:hidden;')}>
                     <SnapThumb snap={p.snap} />
                     {p.active && (
