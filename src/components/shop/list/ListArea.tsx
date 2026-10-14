@@ -52,7 +52,7 @@ function FilterM({ viewOpts, mode, onMode, gender, onGender, mobile }: { mobile:
         <span className={styles.filterLabel}>보기</span>
         <Seg variant="mobileFlex" title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={mode} onPick={onMode} />
         <span className={styles.filterLabel}>성별</span>
-        <Seg variant="mobileFlex" tone="sub" title="성별" opts={GENDERS} value={gender} onPick={onGender} />
+        <Seg variant="mobileFlex" title="성별" opts={GENDERS} value={gender} onPick={onGender} />
       </div>
     </div>
   )
@@ -225,7 +225,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
         : (
           <div className={styles.groupA}>
             <Seg title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={thumbs.mode} onPick={s.setListMode} />
-            <Seg tone="sub" title="성별" opts={GENDERS} value={s.genderFilter} onPick={s.setGenderFilter} />
+            <Seg title="성별" opts={GENDERS} value={s.genderFilter} onPick={s.setGenderFilter} />
           </div>
         )}
       <div className={styles.groupB}>

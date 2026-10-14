@@ -9,9 +9,8 @@ import styles from './ui.module.css'
 
 /* ── 세그먼트 ── */
 export type SegOpt<T extends string> = { v: T; l: string; t?: string; disabled?: boolean; disabledTitle?: string }
-// tone = 'sub': 같은 줄에 묶음이 둘일 때 덜 중요한 쪽. 고른 칸을 채운 핑크 대신 흰 면 + 핑크 글자로 둔다(채운 핑크는 한 줄에 하나만)
-export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', title, tone = 'main' }: {
-  opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: 'pc' | 'mobileFlex' | 'mobileFit'; title?: string; tone?: 'main' | 'sub'
+export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', title }: {
+  opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: 'pc' | 'mobileFlex' | 'mobileFit'; title?: string
 }) {
   const track = variant === 'pc' ? styles.segTrack : variant === 'mobileFlex' ? styles.segTrackM : styles.segTrackMFit
   const btn = variant === 'mobileFlex' ? styles.segFlex : styles.seg
@@ -22,7 +21,7 @@ export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', tit
         return (
           <button key={o.v} type="button" disabled={o.disabled} title={o.disabled ? o.disabledTitle : o.t}
             onClick={() => { if (!o.disabled) onPick(o.v) }}
-            className={clsx(on ? (tone === 'sub' ? undefined : 'pb-solid') : 'pb-soft', btn, on && (tone === 'sub' ? styles.segOnSub : styles.segOn), o.disabled && styles.segDisabled)}>{o.l}</button>
+            className={clsx(on ? 'pb-solid' : 'pb-soft', btn, on && styles.segOn, o.disabled && styles.segDisabled)}>{o.l}</button>
         )
       })}
     </div>
