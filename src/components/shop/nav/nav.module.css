@@ -14,8 +14,8 @@
 .fadeShow { opacity: 1; }
 .partLine { position: absolute; left: 8px; right: 8px; bottom: 0; height: 1px; background: #f0e9e1; }
 .tabBox { position: relative; width: 100%; background: #fff; border: 1px solid #e7ded4; border-radius: 8px; }
-.tabNav { width: 100%; height: 44px; padding: 0 6px; display: flex; align-items: center; gap: 4px; }
-.tab { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; color: #8a8075; background: transparent; }
+.tabNav { width: 100%; height: 42px; /* 테두리까지 44 — 헤더의 칸과 같다 */ padding: 0 6px; display: flex; align-items: center; gap: 4px; }
+.tab { flex: 1 1 0; min-width: 0; height: 32px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; color: #8a8075; background: transparent; }
 :global(html:not([data-pb-csr])) .tabOn { font-weight: 600; color: #fff; background: #ec86ac; }
 
 /* ── 모바일 ── */
