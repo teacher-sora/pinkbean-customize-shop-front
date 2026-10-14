@@ -10,7 +10,7 @@
 .input:focus, .area:focus { border-color: #ec86ac; }
 .area { width: 100%; min-height: 64px; padding: 8px 12px; border: 1px solid #e7ded4; border-radius: 8px; background: #faf7f3; font-family: inherit; font-size: 16px; line-height: 1.5; color: #3d372f; outline: none; resize: vertical; }
 .btn { flex: 0 0 auto; height: 36px; padding: 0 16px; border: none; border-radius: 8px; background: #ec86ac; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; transition: opacity .24s ease; }
-.btn:disabled { opacity: .45; cursor: default; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
 .ghost { flex: 0 0 auto; height: 28px; padding: 0 10px; border: 1px solid #e7ded4; border-radius: 8px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; cursor: pointer; transition: border-color .22s ease, color .22s ease, background-color .24s ease; }
 .ghostOn { border-color: #ec86ac; color: #d9608e; background: #fdf1f6; }
 /* 지우기: 글자가 바뀌어도 자리가 밀리지 않게 폭을 잡아 둔다 */

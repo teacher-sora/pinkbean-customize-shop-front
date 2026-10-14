@@ -59,7 +59,7 @@ export default function Dropdown({ options, value, onChange, variant, title, ari
 
   return (
     <>
-      <button ref={btnRef} type="button" onClick={toggle} title={blocked ? blockedTitle : (title ?? ariaLabel)} aria-label={ariaLabel} aria-expanded={open} aria-disabled={blocked || undefined} className={cls}>
+      <button ref={btnRef} type="button" onClick={toggle} title={blocked ? blockedTitle : (title ?? ariaLabel)} aria-label={ariaLabel} aria-expanded={open} disabled={blocked} className={cls}>
         {isField
           ? <span className={clsx(styles.ddFieldText, isDefault && styles.ddFieldTextDef)}>{isDefault ? shortLabel : current}</span>
           : <span className={styles.ddRowText}>{current}</span>}
@@ -72,7 +72,7 @@ export default function Dropdown({ options, value, onChange, variant, title, ari
             const dis = !!disabledValues?.has(o.v)
             const on = o.v === value
             return (
-              <button key={o.v} type="button" role="option" aria-selected={on} aria-disabled={dis || undefined} title={dis ? disabledTitle : undefined}
+              <button key={o.v} type="button" role="option" aria-selected={on} disabled={dis} title={dis ? disabledTitle : undefined}
                 onClick={() => { if (dis) return; onChange(o.v); setPos(null) }}
                 className={clsx('pb-ddrow', styles.ddItem, on && styles.ddItemOn, dis && styles.ddItemDisabled)}>{o.l}</button>
             )

@@ -72,7 +72,7 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
     const icon = iconOf(o.v)
     const snap = snaps?.get(o.v)
     return (
-      <button key={o.v} ref={on ? onCurrentCell : undefined} type="button" role="option" aria-selected={on} aria-disabled={dis || undefined}
+      <button key={o.v} ref={on ? onCurrentCell : undefined} type="button" role="option" aria-selected={on} disabled={dis}
         title={dis ? disabledTitle : (field === 'expr' && !icon ? `${o.l} — 짝이 되는 표정 아이템이 없어 그림은 없어요` : o.l)}
         onClick={() => { if (dis) return; onChange(o.v) }}
         className={clsx(styles.pvCell, on && styles.pvCellOn, dis && styles.pvCellOff)}>

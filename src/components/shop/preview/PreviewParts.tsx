@@ -46,7 +46,7 @@ export function BookmarkBox() {
         <span className={styles.pinTitle}>북마크<PinCount n={n} /></span>
         <span className={styles.pinActs}>
           <button type="button" onClick={s.openVs} title="북마크한 아이템을 나란히 비교하기" className={clsx('pb-ghost', styles.vsBtn, s.surface?.kind === 'vs' && styles.vsBtnOn)}>VS</button>
-          <button type="button" onClick={s.clearBookmarks} title="북마크 전체 비우기" className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
+          <button type="button" onClick={s.clearBookmarks} disabled={n === 0} title={n ? '북마크 전체 비우기' : '비울 북마크가 없어요'} className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
         </span>
       </div>
       <div className={styles.pinGrid}>
@@ -88,7 +88,7 @@ export function BookmarkSheetBody() {
         <span className={styles.bmTitle}>북마크<PinCount n={n} /></span>
         <span className={styles.pinActs}>
           <button type="button" onClick={flip.toggle} title="북마크한 아이템을 나란히 비교하기" aria-pressed={s.vsOn} className={clsx('pb-ghost', styles.vsBtn, s.vsOn && styles.vsBtnOn)}>VS</button>
-          <button type="button" onClick={s.clearBookmarks} title="북마크 전체 비우기" className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
+          <button type="button" onClick={s.clearBookmarks} disabled={n === 0} title={n ? '북마크 전체 비우기' : '비울 북마크가 없어요'} className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
         </span>
       </div>
       <div className={styles.bmBody}>

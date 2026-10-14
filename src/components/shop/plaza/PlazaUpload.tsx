@@ -272,8 +272,8 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
         )}
         <div className={clsx(styles.upRefFoot, !imageUrl && styles.upRefFootOff)} aria-hidden={!imageUrl}>
           <span className={styles.upRefHint}>처음 보일 부분을 맞춰 주세요</span>
-          <button type="button" tabIndex={imageUrl ? 0 : -1} onClick={() => fileRef.current?.click()} className={styles.upRefBtn}>변경</button>
-          <button type="button" tabIndex={imageUrl ? 0 : -1} onClick={clearImage} className={clsx(styles.upRefBtn, styles.upRefDel)}>제거</button>
+          <button type="button" disabled={!imageUrl} onClick={() => fileRef.current?.click()} className={styles.upRefBtn}>변경</button>
+          <button type="button" disabled={!imageUrl} onClick={clearImage} className={clsx(styles.upRefBtn, styles.upRefDel)}>제거</button>
         </div>
       </div>
 

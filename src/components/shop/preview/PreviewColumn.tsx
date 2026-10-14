@@ -56,7 +56,7 @@ export default function PreviewColumn() {
         {/* data-pv-stage: 연출 설정 고르기(PvPicker)가 이 영역 안 가운데에 뜬다 — 미리보기 밖으로 나가지 않게. */}
         <div data-pv-stage className={styles.stage}>
           <StageBg />
-          <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} title="점 위치 변경" tabIndex={dotItem ? 0 : -1}
+          <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경"
             className={clsx('pb-ghost', styles.dotBtn, dotItem && styles.dotBtnOn)}>
             <IconDot />점 위치
           </button>
@@ -109,7 +109,7 @@ export function MobileHero() {
         </button>
       </div>
       <div className={styles.heroRight}>
-        <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} title="점 위치 변경" aria-label="점 위치 변경" tabIndex={dotItem ? 0 : -1}
+        <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경" aria-label="점 위치 변경"
           className={clsx(styles.dotBtnM, dotItem && styles.dotBtnMOn)}>
           <IconDot size={15} />
         </button>

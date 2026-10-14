@@ -191,12 +191,12 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
         </>
       )}
       {/* 모바일에는 화살표를 두지 않는다 — 쪽은 목록을 옆으로 밀어 넘기고, 멀리 갈 때는 번호를 적는다 */}
-      {!mobile && <button type="button" onClick={() => s.step(-1)} title="이전 페이지 (←)" aria-label="이전 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx > 0 && styles.arrowOn)}><IconChevronLeft /></button>}
+      {!mobile && <button type="button" onClick={() => s.step(-1)} disabled={s.curIdx <= 0} title="이전 페이지 (←)" aria-label="이전 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx > 0 && styles.arrowOn)}><IconChevronLeft /></button>}
       <input value={s.pageEditing ? s.pageInput : `${s.curIdx + 1}`} onFocus={s.onPageFocus} onChange={s.onPageChange} onKeyDown={s.onPageKey} onBlur={s.commitPage}
         inputMode="numeric" aria-label="현재 페이지" title={mobile ? undefined : '번호를 입력해 이동'} className={clsx('pb-input', 'pb-pageinput', styles.pageInput)} />
       <span className={mobile ? styles.slashM : styles.slash}>/</span>
       <span className={styles.total}>{s.pageCount}</span>
-      {!mobile && <button type="button" onClick={() => s.step(1)} title="다음 페이지 (→)" aria-label="다음 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx < s.pageCount - 1 && styles.arrowOn)}><IconChevronRight /></button>}
+      {!mobile && <button type="button" onClick={() => s.step(1)} disabled={s.curIdx >= s.pageCount - 1} title="다음 페이지 (→)" aria-label="다음 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx < s.pageCount - 1 && styles.arrowOn)}><IconChevronRight /></button>}
     </div>
   )
   const searchInput = isAi ? (
