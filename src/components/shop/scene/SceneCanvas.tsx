@@ -29,7 +29,8 @@ function Sprite({ s }: { s: StillSprite }) {
   )
 }
 
-export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room'; className?: string }) {
+// still: 움직이지 않는 그림(②)만 깐다. 장면(③)은 종류마다 캔버스가 하나라, 미리보기 밖의 칸(광장 · VS)이 가져가면 미리보기에서 빠진다.
+export default function SceneCanvas({ kind, className, still }: { kind: 'sky' | 'room'; className?: string; still?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   const veil = useRef<HTMLDivElement>(null)
   const lone = useRef(false)                                      // 앱 배경인데 WebGL 을 못 쓴다
@@ -54,14 +55,14 @@ export default function SceneCanvas({ kind, className }: { kind: 'sky' | 'room';
     // 한 프레임 뒤에 붙인다: 첫 렌더는 화면 폭을 모르고 PC 로 그려졌다가 곧바로 고쳐지므로(useBreakpoint), 바로 붙이면
     // 모바일에서도 안 보이는 앱 배경이 잠깐 붙어 그림을 받기 시작한다. 가려진 탭에서는 보일 때까지 시작하지 않는다.
     let unmount: (() => void) | undefined
-    const raf = requestAnimationFrame(() => { unmount = mountScene(kind, host, noGl) })
+    const raf = still ? 0 : requestAnimationFrame(() => { unmount = mountScene(kind, host, noGl) })
     return () => {
       dead = true
       window.clearInterval(iv); off()
       cancelAnimationFrame(raf)
       unmount?.()
     }
-  }, [kind])
+  }, [kind, still])
   useEffect(() => { repaint.current?.() }, [ready, kind])
   const at = (layer: number) => sprites?.filter((s) => s.layer === layer).map((s) => <Sprite key={s.key} s={s} />)
   // 무대의 그림은 캐릭터가 서는 자리와 배율(미리보기 배율 설정)에 맞춰 놓는다 — 장면(sceneGl 의 layout)과 같은 계산.

@@ -7,9 +7,8 @@
 //  - 모바일: 북마크 시트 안에서 VsPanes 만 확장 영역(고정 236px)에 쓴다(PreviewParts.BookmarkSheetBody).
 
 import clsx from 'clsx'
-import Image from 'next/image'
 import { useMemo } from 'react'
-import bg from '@/assets/pinkbean-bg.webp'
+import StageBg from '../preview/StageBg'
 import type { ListItem } from '@/lib/core/data'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
@@ -33,8 +32,7 @@ function Pane({ label, name, snap, mobile }: { label: string; name: string; snap
         <span className={clsx(styles.vsName, mobile && styles.vsNameM)}>{name}</span>
       </div>
       <div className={styles.vsStage}>
-        <Image src={bg} alt="" fill sizes="440px" className={styles.vsStageImg} />
-        <div className={styles.vsStageTone} />
+        <StageBg still />
         {snap && <SnapThumb snap={snap} fraction={VS_FRACTION} />}
       </div>
     </div>

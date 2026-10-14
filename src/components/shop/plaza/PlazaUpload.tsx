@@ -6,9 +6,8 @@
 // 필수값이 비면 등록 버튼은 비활성(연한 핑크). `*` 는 라벨에만 붙이고 placeholder 에는 넣지 않는다.
 
 import clsx from 'clsx'
-import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import bg from '@/assets/pinkbean-bg.webp'
+import StageBg from '../preview/StageBg'
 import { contestCandidates, plazaContestClosed, plazaMe, PLAZA_CONTEST, PLAZA_CONTEST_MAX, PLAZA_OPEN, PLAZA_TAG_MAX, type RefView } from '@/lib/plaza'
 import { shrinkPlazaImage } from '@/lib/plazaImage'
 import { isNarrow } from '@/lib/useBreakpoint'
@@ -212,8 +211,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
 
       {/* 미리보기 */}
       <div className={styles.upStage}>
-        <Image src={bg} alt="" fill sizes="360px" className={styles.stageImg} />
-        <div className={styles.stageTone} />
+        <StageBg still />
         {snap && <SnapThumb snap={snap} fraction={STAGE_FRACTION} />}
       </div>
 
