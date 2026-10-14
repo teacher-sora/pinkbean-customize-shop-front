@@ -126,7 +126,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         </div>
       </div>
       <div className={styles.hr} />
-      <div ref={boxRef} className={clsx('pb-scroll', 'pb-fade', styles.scroll)}>{grid}</div>
+      <div ref={boxRef} className={clsx('pb-scroll', styles.scroll)}>{grid}</div>
     </section>
   )
 }

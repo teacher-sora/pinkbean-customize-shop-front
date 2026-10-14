@@ -37,16 +37,19 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-norail { scrollbar-width: none; }
 .pb-norail::-webkit-scrollbar { display: none; }
 
-/* 스크롤 칸의 가장자리 흐림(ui/useScrollFade) — 더 볼 것이 남은 쪽에만, 옅은 검은 흐림(최대 10%). data-fade = 남은 쪽(t b l r).
+/* 스크롤 칸의 가장자리 흐림(ui/useScrollFade) — 더 볼 것이 남은 쪽에만, 옅은 검은 흐림(최대 10%, PC 14%). data-fade = 남은 쪽(t b l r).
    칸 위에 얹는 층(.pb-fadeov) 하나에 네 겹을 깔고, 쪽마다 진하기(--pb-fa*)만 바꾼다. 생길 때 0.7초 · 사라질 때 0.9초, ease-out.
    쪽마다 따로 전환 시간을 쓰려고 시간을 변수(--pb-fd*)로 두고, 켜진 쪽만 0.7초로 바꾼다 — 전환은 바뀐 뒤의 값을 쓰므로
    켜질 때는 0.7초, 꺼질 때는 0.9초가 된다. 하단 부위 줄도 같은 흐림이다. */
+/* 진하기: 모바일 · 터치 10%, 마우스로 쓰는 화면(PC · 절반) 14% — 넓은 화면에서는 같은 진하기가 연하게 느껴진다 */
+:root { --pb-fmax: .1; }
+@media (hover: hover) and (pointer: fine) { :root { --pb-fmax: .14; } }
 @property --pb-fat { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-fab { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-fal { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-far { syntax: '<number>'; inherits: false; initial-value: 0; }
 .pb-fadeov {
-  --pb-fc: 0, 0, 0; --pb-fmax: .1;
+  --pb-fc: 0, 0, 0;
   --pb-fdt: .9s; --pb-fdb: .9s; --pb-fdl: .9s; --pb-fdr: .9s;
   position: absolute; z-index: 4; pointer-events: none;
   background:
@@ -64,8 +67,8 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-fadepop { --pb-fpad: 8px; }
 .pb-ddmenu.pb-fadepop { --pb-fpad: 5px; }
 .pb-fadepop::before, .pb-fadepop::after { content: ''; position: sticky; z-index: 2; display: block; height: 22px; pointer-events: none; opacity: 0; transition: opacity .9s ease-out; }
-.pb-fadepop::before { top: calc(-1 * var(--pb-fpad)); margin: calc(-1 * var(--pb-fpad)) calc(-1 * var(--pb-fpad)) calc(var(--pb-fpad) - 22px); background: linear-gradient(rgba(0,0,0,.1), rgba(0,0,0,0)); }
-.pb-fadepop::after { bottom: calc(-1 * var(--pb-fpad)); margin: -22px calc(-1 * var(--pb-fpad)) 0; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.1)); }
+.pb-fadepop::before { top: calc(-1 * var(--pb-fpad)); margin: calc(-1 * var(--pb-fpad)) calc(-1 * var(--pb-fpad)) calc(var(--pb-fpad) - 22px); background: linear-gradient(rgba(0,0,0,var(--pb-fmax)), rgba(0,0,0,0)); }
+.pb-fadepop::after { bottom: calc(-1 * var(--pb-fpad)); margin: -22px calc(-1 * var(--pb-fpad)) 0; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,var(--pb-fmax))); }
 .pb-fadepop[data-fade~="t"]::before, .pb-fadepop[data-fade~="b"]::after { opacity: 1; transition-duration: .7s; }
 
 /* 못 누르는 버튼은 늘 진짜 disabled 로 두고, 커서는 금지 표시다(모든 버튼 공통 — 칸마다 따로 적지 않는다) */
