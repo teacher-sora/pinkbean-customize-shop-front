@@ -12,5 +12,5 @@ export default function StageBg() {
   const bg = useStageBg()
   if (bg.sel === 'room') return <SceneCanvas kind="room" />
   const img = bg.images.find((i) => i.id === bg.sel)
-  return <div aria-hidden className={styles.stageBg} style={img ? { backgroundImage: `url("${img.src}")` } : { background: STAGE_COLORS[bg.sel] }} />
+  return <div aria-hidden data-stage-bg className={styles.stageBg} style={img ? { backgroundImage: `url("${img.src}")`, backgroundPosition: `${img.x ?? 50}% ${img.y ?? 50}%` } : { background: STAGE_COLORS[bg.sel] }} />
 }

@@ -4,7 +4,7 @@
 //  · 여덟 장까지. 담지 못하면(용량) 없던 일로 하고 알린다.
 import { useSyncExternalStore } from 'react'
 
-export interface StageBgImage { id: string; src: string }
+export interface StageBgImage { id: string; src: string; x?: number; y?: number }   // x · y = 가운데에 보일 자리(0~100%, 없으면 한가운데)
 export interface StageBg { sel: string; images: StageBgImage[] }   // sel = 'room' | 'white' | 'black' | 올린 그림의 id
 export const STAGE_BG_MAX = 8
 const KEY = 'pb_stage_bg_v1'
@@ -24,9 +24,9 @@ function read(): StageBg {
   } catch { /* 저장소를 못 쓰면 기본 배경 */ }
   return state
 }
-// 담지 못하면 false(그때는 바꾸지 않는다)
-function write(next: StageBg): boolean {
-  try { localStorage.setItem(KEY, JSON.stringify(next)) } catch { return false }
+// 담지 못하면 false(그때는 바꾸지 않는다). keep = false 면 화면에만 반영한다(끄는 동안 — 놓을 때 한 번 담는다)
+function write(next: StageBg, keep = true): boolean {
+  if (keep) { try { localStorage.setItem(KEY, JSON.stringify(next)) } catch { return false } }
   state = next
   subs.forEach((fn) => fn())
   return true
@@ -39,6 +39,11 @@ export function setStageBg(sel: string) { const s = read(); if (s.sel !== sel) w
 export function removeStageBg(id: string) {
   const s = read()
   write({ sel: s.sel === id ? 'room' : s.sel, images: s.images.filter((i) => i.id !== id) })
+}
+// 올린 그림에서 가운데에 보일 자리를 옮긴다. 끄는 동안은 keep = false 로 부르고 놓을 때 true 로 한 번 담는다
+export function setStageBgPos(id: string, x: number, y: number, keep: boolean) {
+  const s = read()
+  write({ ...s, images: s.images.map((i) => (i.id === id ? { ...i, x, y } : i)) }, keep)
 }
 
 function shrink(file: File): Promise<string> {

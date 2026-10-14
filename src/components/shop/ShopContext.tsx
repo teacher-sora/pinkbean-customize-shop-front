@@ -30,7 +30,7 @@ import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/co
 import { warmItem } from '@/lib/core/warm'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { confirmTwice } from '@/lib/confirmTwice'
-import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, readUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiHistory, writeUiPref, writeUiSession } from '@/lib/uiState'
+import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, dropUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
@@ -509,16 +509,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const savedPv = loadPv()
       if (savedPv) setPvState((prev) => ({ ...prev, ...savedPv }))
       else applyPvSnap(snap.pv)
-      // 되돌리기 스택 복원(새로고침까지). 코디 자체는 localStorage 로 살아남는데 스택만 비어 있어
-      // 새로고침 뒤엔 되돌릴 수 없었다. 맨 위 항목을 '마지막 기록'으로 잡아 두면 아래 기록 effect 가
-      // 같은 상태를 한 번 더 쌓지 않는다.
-      const savedHist = readUiHistory<Snapshot>()
-      if (savedHist) {
-        histRef.current = savedHist
-        const cur = savedHist.stack[savedHist.idx]
-        histLast.current = histKey(cur.snap, cur.sel, cur.names ?? Object.fromEntries(PRESET_IDS.map((id, i) => [id, store?.names[id] || defaultPresetName(i)])))
-        setHistVer((v) => v + 1)
-      }
+      // 되돌리기 기록은 새로고침하면 비운다(사용자 지시) — 이 화면에서 한 일만 되돌린다. 쌓는 것은 쉰 개까지다.
+      dropUiHistory()
       initedRef.current = true
     }).catch((e) => console.error('[shop] index 로드 실패', e))
       .finally(() => { if (alive) setDataLoading(false) })
@@ -1790,14 +1782,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pushHistory()
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, dyeInteracting])
 
-  // 스택을 sessionStorage 에 남긴다(새로고침까지). 변경이 몰아칠 수 있어 한 박자 묶어서 쓴다.
-  const histSaveT = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    if (!initedRef.current || !histVer) return
-    if (histSaveT.current) clearTimeout(histSaveT.current)
-    histSaveT.current = setTimeout(() => writeUiHistory(histRef.current), 300)
-    return () => { if (histSaveT.current) clearTimeout(histSaveT.current) }
-  }, [histVer])
 
   const applyHistory = (e: { snap: Snapshot; sel: string | null; names?: Record<string, string> }) => {
     // 이름 전체도 그 시점으로(오래된 기록엔 없으면 지금 이름 유지). 코디가 같아도 이름만 바뀌는 기록이 있다.

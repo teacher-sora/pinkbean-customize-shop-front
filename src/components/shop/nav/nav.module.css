@@ -6,7 +6,7 @@
 .bottom { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
 .partNav { position: relative; height: 42px; width: fit-content; max-width: 95%; margin-bottom: -1px; background: #fff; border: 1px solid #e7ded4; border-bottom: none; border-radius: 7px 7px 0 0; overflow: hidden; z-index: 2; }
 .rail { height: 100%; padding: 0 5px 1px; /* 아래 1px = 구분선(partLine) 몫. 버튼 둘레의 빈 곳은 위아래 · 좌우 모두 5px */ display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
-.part { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 12.5px; font-weight: 500; white-space: nowrap; color: #7a7066; background: transparent; }
+.part { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 12.5px; font-weight: 500; white-space: nowrap; color: #8a8075; background: transparent; }
 :global(html:not([data-pb-csr])) .partOn { font-weight: 600; color: #fff; background: #ec86ac; }
 .fadeL, .fadeR { position: absolute; top: 0; bottom: 0; width: 56px; pointer-events: none; z-index: 2; transition: opacity .2s ease; opacity: 0; }
 .fadeL { left: 0; background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); }
@@ -21,7 +21,7 @@
 /* ── 모바일 ── */
 .partNavM { flex: 0 0 auto; position: relative; height: 42px; border-top: 1px solid #f0e9e1; background: #fff; }
 .railM { height: 100%; padding: 0 10px; display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
-.partM { flex: 0 0 auto; height: 28px; padding: 0 11px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; color: #7a7066; background: transparent; }
+.partM { flex: 0 0 auto; height: 28px; padding: 0 11px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; color: #8a8075; background: transparent; }
 /* 코디 광장 분류는 4개뿐이라 폭을 나눠 채운다 */
 .partWideM { flex: 1 1 0; min-width: 0; padding: 0 4px; }
 :global(html:not([data-pb-csr])) .partM.partOn { font-weight: 600; color: #fff; background: #ec86ac; }

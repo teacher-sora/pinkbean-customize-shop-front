@@ -9,18 +9,16 @@
 .tools { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .partBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; }
 .partBtn svg { color: #d76d9a; }
-/* 올리면 테두리만 옅은 핑크로(입력 칸과 같다) — 면까지 핑크로 채우면 머리에서 혼자 튄다 */
-@media (hover: hover) and (pointer: fine) { .partBtn:hover { border-color: #f4cdde; } }
-.partBtnOn { border-color: #f4cdde; background: #fef5f8; color: #c85d8a; }
+.partBtnOn { border-color: #eeb2ce; background: #fef5f8; color: #c85d8a; }
 .hist { display: flex; align-items: center; gap: 4px; }
 .iconBtn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; color: #cdc2b7; cursor: pointer; }
 .iconBtn:disabled, .heroIcon:disabled { cursor: not-allowed; }
-.histOn { border-color: #f4cdde; background: #fff; color: #d76d9a; cursor: pointer; }
+.histOn { border-color: #eeb2ce; background: #fff; color: #d76d9a; cursor: pointer; }
 
 /* 스테이지: 피팅룸 장면(scene/) + 모델 */
 .stage { flex: 1 1 auto; min-height: 88px; position: relative; overflow: hidden; }
 /* 고른 배경(흰색 · 검은색 · 올린 그림). 그림은 칸을 꽉 채우게 놓는다 */
-.stageBg { position: absolute; inset: 0; background-position: center; background-size: cover; background-repeat: no-repeat; }
+.stageBg { position: absolute; inset: 0; background-position: center; /* 올린 그림은 고른 자리로(인라인) */ background-size: cover; background-repeat: no-repeat; }
 .model { position: absolute; inset: 0; padding: 8px; }
 .dotBtn { position: absolute; right: 10px; top: 10px; z-index: 4; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; cursor: pointer; transition: opacity .24s ease, transform .24s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); pointer-events: none; }
 .dotBtnOn { opacity: 1; transform: translateY(0); pointer-events: auto; }
@@ -34,7 +32,7 @@
 .slideOn { transform: translateY(0); }
 .slidePad { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .pvRow { height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.pvLabel { font-size: 11.5px; font-weight: 500; color: #5c534b; flex: 0 0 auto; }
+.pvLabel { font-size: 11.5px; font-weight: 500; color: #8a8075; flex: 0 0 auto; }
 .pvLabelM { font-size: 12px; }
 .line { flex: 0 0 auto; height: 1px; background: #f0e9e1; }
 .bars { flex: 0 0 auto; display: flex; align-items: stretch; }
@@ -49,7 +47,7 @@
 .ctrlRow { flex: 0 0 auto; position: relative; z-index: 5; padding: 8px; background: #fff; border-top: 1px solid #f0e9e1; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
 .pvAll { flex: 0 0 auto; height: 30px; padding: 0 7px 0 10px; display: flex; align-items: center; gap: 3px; border: 1px solid transparent; border-radius: 6px; background: #f4ecf3; color: #8a8075; cursor: pointer; }
 .pvAllNarrow { padding: 0 5px 0 7px; }
-.pvAllOn { border-color: #f4cdde; background: #fdf1f6; color: #d76d9a; }
+.pvAllOn { border-color: #eeb2ce; background: #fdf1f6; color: #d76d9a; }
 .pvAllText { font-size: 11.5px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
 .pvCaret { flex: 0 0 auto; transition: transform .24s cubic-bezier(.22,.61,.36,1); transform: rotate(0deg); }
 .pvCaretOn { transform: rotate(180deg); }
@@ -97,9 +95,11 @@
 .heroModel { position: absolute; inset: 0; }
 .heroHist { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; }
 .heroIcon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: pointer; }
-.heroIconOn { border-color: #f4cdde; background: #fff; color: #d76d9a; cursor: pointer; }
+.heroIconOn { border-color: #eeb2ce; background: #fff; color: #d76d9a; cursor: pointer; }
 .heroLeft { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px; }
 .pvOpenBtn { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; color: #d76d9a; font-size: 12px; font-weight: 600; cursor: pointer; }
+/* 모바일의 배경 버튼: 아이콘만 */
+.pvOpenIcon { width: 30px; padding: 0; justify-content: center; }
 .pvOpenBtnOn { border-color: #ec86ac; background: #fdf1f6; }
 .heroRight { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; height: 32px; max-width: calc(100% - 24px); }
 .dotBtnM { flex: 0 0 auto; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; color: #d76d9a; cursor: pointer; transition: opacity .24s ease, transform .24s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: scale(.9); pointer-events: none; }

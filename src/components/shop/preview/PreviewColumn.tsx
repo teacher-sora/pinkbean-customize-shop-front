@@ -39,11 +39,11 @@ export default function PreviewColumn() {
               되돌리기 · 다시실행은 그림만으로 통하는 것이라 아이콘으로 줄여 그 자리를 내준다. */}
           <div className={styles.tools}>
             <button type="button" onClick={() => s.openSheet('part')} title="부위를 골라 염색하기" aria-label="부위 염색"
-              className={clsx(styles.partBtn, partOpen && styles.partBtnOn)}>
+              className={clsx('pb-ddbtn', styles.partBtn, partOpen && styles.partBtnOn)}>
               <IconDrop size={14} /><span>부위 염색</span>
             </button>
             <button type="button" onClick={() => s.openSheet('bg')} title="미리보기 배경 바꾸기" aria-label="미리보기 배경"
-              className={clsx(styles.partBtn, bgOpen && styles.partBtnOn)}>
+              className={clsx('pb-ddbtn', styles.partBtn, bgOpen && styles.partBtnOn)}>
               <IconScene size={14} /><span>배경</span>
             </button>
           </div>
@@ -104,8 +104,8 @@ export function MobileHero() {
         <button type="button" onClick={() => s.openSheet('pv')} title="연출 설정" className={styles.pvOpenBtn}>
           연출 설정<IconCaretDown />
         </button>
-        <button type="button" onClick={() => s.openSheet('bg')} title="미리보기 배경 바꾸기" className={clsx(styles.pvOpenBtn, bgOpen && styles.pvOpenBtnOn)}>
-          <IconScene size={14} />배경
+        <button type="button" onClick={() => s.openSheet('bg')} title="미리보기 배경 바꾸기" aria-label="미리보기 배경" className={clsx(styles.pvOpenBtn, styles.pvOpenIcon, bgOpen && styles.pvOpenBtnOn)}>
+          <IconScene size={15} />
         </button>
       </div>
       <div className={styles.heroRight}>

@@ -33,9 +33,9 @@
 /* 보기와 성별을 접어 둔 버튼과, 그 아래에 펼쳐지는 칸(드롭다운 메뉴와 같은 테두리 · 그림자) */
 .filterM { flex: 0 0 auto; position: relative; display: flex; }
 .filterShade { position: fixed; inset: 0; z-index: 29; }
-.filterBtnM { position: relative; z-index: 30; flex: 0 0 auto; height: 32px; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 12px; font-weight: 600; color: #5c534b; letter-spacing: -0.01em; cursor: pointer; }
+.filterBtnM { position: relative; z-index: 30; flex: 0 0 auto; height: 32px; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; letter-spacing: -0.01em; cursor: pointer; }
 .filterBtnPc { height: 34px; font-size: 12.5px; }
-.filterBtnOn { border-color: #f4cdde; background: #fef8fa; }
+.filterBtnOn { border-color: #eeb2ce; background: #fef8fa; }
 .filterText { white-space: nowrap; }
 .filterCaret { flex: 0 0 auto; color: #b7ada2; transition: transform .22s ease; }
 .filterCaretOn { transform: rotate(180deg); }

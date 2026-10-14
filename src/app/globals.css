@@ -50,14 +50,14 @@ button, input, select { transition: background-color .24s ease, border-color .22
   .pb-soft:hover:not(:disabled) { background-color: #f9e8f0 !important; color: #c85d8a !important; }
   .pb-cardact:hover { background-color: #fdf1f6 !important; color: #d76d9a !important; }
   .pb-icon:hover:not(:disabled) { background-color: #faf3f6 !important; color: #c85d8a !important; }
-  .pb-ddbtn:hover { border-color: #f4cdde !important; background-color: #fff !important; }
+  .pb-ddbtn:hover { border-color: #eeb2ce !important; background-color: #fff !important; }
   .pb-ddrow:hover { background-color: #fef6f9 !important; color: #c85d8a !important; }
   .pb-accbar:hover { background-color: #fbf0f5 !important; }
   .pb-arrow:hover:not(:disabled) { background-color: #fdf1f6 !important; color: #d76d9a !important; }
-  .pb-input:hover { border-color: #f4cdde !important; }
+  .pb-input:hover { border-color: #eeb2ce !important; }
   .pb-step:hover { background-color: #faf3f6 !important; color: #d76d9a !important; }
-  .pb-slotrow:hover { background: #fdf1f6 !important; border-color: #f4cdde !important; }
-  .pb-partchip:hover { background: #fef8fa !important; border-color: #f4cdde !important; }
+  .pb-slotrow:hover { background: #fdf1f6 !important; border-color: #eeb2ce !important; }
+  .pb-partchip:hover { background: #fef8fa !important; border-color: #eeb2ce !important; }
   .pb-pageinput:hover { background: #ead9e2 !important; color: #a1657f !important; }
   .pb-presetname:hover { background: #ead9e2 !important; color: #a1657f !important; }
 }

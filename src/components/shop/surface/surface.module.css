@@ -124,6 +124,15 @@
 .bgDel { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 4px; background: #fff; color: #a89e93; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); }
 @media (hover: hover) and (pointer: fine) { .bgDel:hover { border-color: #f5e2eb; color: #d1735f; } }
 
+/* 올린 그림에서 보일 부분 맞추기: 그림 전체 위에, 미리보기에 보이는 넓이만큼의 점선 틀 */
+.bgFocus { max-width: 660px; margin: 12px auto 0; display: flex; flex-direction: column; gap: 6px; }
+.bgFocusHint { font-size: 11.5px; font-weight: 500; color: #a89e93; }
+.bgFocusBox { display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; overflow: hidden; }
+.bgFocusImg { position: relative; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+.bgFocusImg:active { cursor: grabbing; }
+.bgFocusImg img { display: block; width: 100%; height: 100%; pointer-events: none; }
+.bgFocusFrame { position: absolute; border: 1.5px dashed #fff; box-shadow: 0 0 0 999px rgba(42,37,33,.45); pointer-events: none; }
+
 /* ── 북마크 VS(코디 비교) ── */
 .vsBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 12px; gap: 10px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .vsRow { flex: 1 1 auto; min-height: 230px; display: flex; gap: 10px; }
