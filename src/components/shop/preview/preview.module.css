@@ -37,9 +37,11 @@
    글자 왼쪽 끝이 아래 줄의 배율 버튼 왼쪽 끝과, 고르기 칸 오른쪽 끝이 연출 설정 버튼 오른쪽 끝과 같은 선에 온다(둘 다 패널 안쪽 8px).
    크롬 · 사파리의 thin 은 10px 라 ::-webkit-scrollbar 로 8px 를 준다. 스크롤바가 자리를 차지하지 않는 터치 기기는 여백으로 채운다 */
 .slide { scrollbar-gutter: stable both-edges; }
-@supports selector(::-webkit-scrollbar) { .slide.slide { scrollbar-width: auto; scrollbar-color: auto; } }
-.slide.slide::-webkit-scrollbar { width: 8px; }
-.slide.slide::-webkit-scrollbar-thumb { border-width: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  @supports selector(::-webkit-scrollbar) { .slide.slide { scrollbar-width: auto; scrollbar-color: auto; } }
+  .slide.slide::-webkit-scrollbar { width: 8px; }
+  .slide.slide::-webkit-scrollbar-thumb { border-width: 2px; }
+}
 .slide .slidePad { padding: 8px 0; }
 @media (hover: none), (pointer: coarse) { .slide { scrollbar-gutter: auto; } .slide .slidePad { padding: 8px; } }
 .pvRow { height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
