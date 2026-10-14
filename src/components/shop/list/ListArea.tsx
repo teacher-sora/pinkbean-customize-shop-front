@@ -27,10 +27,10 @@ const GENDERS: SegOpt<GenderFilter>[] = [
 // 보이는 순서대로 적는다. keep = 자리가 좁아 줄일 때 남기는 순서(작을수록 끝까지 남는다) — 모바일은 둘, 좁은 화면은 셋만 보인다
 const AI_EXAMPLES = [{ q: '동물 귀', keep: 2 }, { q: '한벌옷 스타킹', keep: 0 }, { q: '귀여운 얼굴', keep: 3 }, { q: '단발 헤어', keep: 1 }]
 
-// 모바일: 보기(아이템 / 기본 캐릭터 / 내 캐릭터)와 성별을 버튼 하나에 접어 둔다. 누르면 버튼 아래에 두 묶음이 펼쳐진다.
+// 모바일 · 절반 · 태블릿: 보기(아이템 / 기본 캐릭터 / 내 캐릭터)와 성별을 버튼 하나에 접어 둔다(넓은 PC 는 펼쳐 둔다). 누르면 버튼 아래에 두 묶음이 펼쳐진다.
 // 왜: 둘 다 한번 정해 두고 쓰는 값인데 늘 펼쳐 두느라 목록 머리가 두 줄이었다(쪽 번호 · 검색은 매번 쓰는 것이라 그대로 내놓는다).
 // 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(둘을 이어서 고를 수 있게).
-function FilterM({ viewOpts, mode, onMode, gender, onGender }: { viewOpts: SegOpt<ListMode>[]; mode: ListMode; onMode: (v: ListMode) => void; gender: GenderFilter; onGender: (v: GenderFilter) => void }) {
+function FilterM({ viewOpts, mode, onMode, gender, onGender, mobile }: { mobile: boolean; viewOpts: SegOpt<ListMode>[]; mode: ListMode; onMode: (v: ListMode) => void; gender: GenderFilter; onGender: (v: GenderFilter) => void }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     if (!open) return
@@ -41,7 +41,7 @@ function FilterM({ viewOpts, mode, onMode, gender, onGender }: { viewOpts: SegOp
   const now = (viewOpts.find((o) => o.v === mode)?.l ?? '') + (gender === 'all' ? '' : `, ${GENDERS.find((g) => g.v === gender)?.l}`)
   return (
     <div className={styles.filterM}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, open && styles.filterBtnOn)}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, open && styles.filterBtnOn)}>
         <span className={styles.filterText}>보기 설정</span>
         <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
       </button>
@@ -183,8 +183,8 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const runAi = (q?: string) => { const t = (q ?? s.aiQ).trim(); if (!t) return; if (q !== undefined) s.setAiQ(q); s.runSearch(t) }
 
   const pageChip = (
-    <div className={mobile ? styles.pageChipM : styles.pageChip}>
-      {!mobile && (
+    <div className={mobile ? styles.pageChipM : clsx(styles.pageChip, narrow && styles.pageChipNarrow)}>
+      {!mobile && !narrow && (
         <>
           <span title="이 부위, 조건의 아이템 수" className={styles.count}>{`${list.length.toLocaleString()}개`}</span>
           <span className={styles.chipDiv} />
@@ -210,7 +210,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const controls = mobile ? (
     // 한 줄: 보기와 성별(접어 둔 버튼) · 쪽 번호 · 검색. 높이는 프리셋 · 코디 정보의 머리와 같다(48)
     <div className={styles.controlsM}>
-      <FilterM viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} />
+      <FilterM mobile viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} />
       {pageChip}
       <div className={styles.searchWrapM}>
         <IconSearch className={styles.searchIconM} />
@@ -219,11 +219,16 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     </div>
   ) : (
     <div className={styles.header}>
-      <div className={styles.groupA}>
-        <Seg title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={thumbs.mode} onPick={s.setListMode} />
-        <Seg title="성별" opts={GENDERS} value={s.genderFilter} onPick={s.setGenderFilter} />
-      </div>
-      <div className={clsx(styles.groupB, narrow && styles.groupBWrap)}>
+      {/* 좁은 폭(절반 · 태블릿)에서는 보기와 성별을 접어 한 줄로 둔다 — 펼쳐 두면 머리가 두 줄이 된다 */}
+      {narrow
+        ? <FilterM mobile={false} viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} />
+        : (
+          <div className={styles.groupA}>
+            <Seg title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={thumbs.mode} onPick={s.setListMode} />
+            <Seg title="성별" opts={GENDERS} value={s.genderFilter} onPick={s.setGenderFilter} />
+          </div>
+        )}
+      <div className={styles.groupB}>
         {pageChip}
         <div className={clsx(styles.searchWrap, narrow && styles.searchWrapNarrow)}>
           <IconSearch className={styles.searchIcon} />

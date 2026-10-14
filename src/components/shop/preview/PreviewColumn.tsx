@@ -48,8 +48,8 @@ export default function PreviewColumn() {
             </button>
           </div>
           <div className={styles.hist}>
-            <button type="button" onClick={s.undo} title="되돌리기" aria-label="되돌리기" className={histCls(s.canUndo)}><IconUndo /></button>
-            <button type="button" onClick={s.redo} title="다시실행" aria-label="다시실행" className={histCls(s.canRedo)}><IconRedo /></button>
+            <button type="button" onClick={s.undo} disabled={!s.canUndo} title={s.canUndo ? '되돌리기' : '되돌릴 것이 없어요'} aria-label="되돌리기" className={histCls(s.canUndo)}><IconUndo /></button>
+            <button type="button" onClick={s.redo} disabled={!s.canRedo} title={s.canRedo ? '다시실행' : '다시 실행할 것이 없어요'} aria-label="다시실행" className={histCls(s.canRedo)}><IconRedo /></button>
           </div>
         </div>
 
@@ -97,8 +97,8 @@ export function MobileHero() {
       <PinkbeanRate />
       <div className={styles.heroModel}><PreviewModel /></div>
       <div className={styles.heroHist}>
-        <button type="button" onClick={s.undo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
-        <button type="button" onClick={s.redo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>
+        <button type="button" onClick={s.undo} disabled={!s.canUndo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
+        <button type="button" onClick={s.redo} disabled={!s.canRedo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>
       </div>
       <div className={styles.heroLeft}>
         <button type="button" onClick={() => s.openSheet('pv')} title="연출 설정" className={styles.pvOpenBtn}>

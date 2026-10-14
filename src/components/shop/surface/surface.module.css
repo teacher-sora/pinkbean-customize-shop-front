@@ -39,7 +39,7 @@
 .cellOn { border-color: #ec86ac; transform: translateY(-3px); }
 .cellSprite { display: block; width: 100%; aspect-ratio: 1/1; background: #f7f2ec; }
 .cellDots { flex: 0 0 auto; height: 22px; display: flex; align-items: center; justify-content: center; gap: 4px; background: #faf7f3; border-top: 1px solid #f2ebe3; }
-.cellOn .cellDots { background: #fdf0f5; }
+.cellOn .cellDots { background: #fef5f8; }
 .cellDot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0,0,0,0.12); }
 
 /* ── 염색: HSB ── */
@@ -73,7 +73,7 @@
 .tools { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; }
 .toolsSide { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
 .tool { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 500; color: #8a8075; background: #f4ecf3; }
-.toolOn { border-color: #ec86ac; font-weight: 600; color: #d76d9a; background: #fce9f1; }
+.toolOn { border-color: #ec86ac; font-weight: 600; color: #d76d9a; background: #fdf1f6; }
 .canvasRow { flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; gap: 10px; }
 .canvasArea { position: relative; flex: 1 1 auto; min-height: 260px; border: 1px solid #eee6dc; border-radius: 8px; background: #faf7f3; overflow: hidden; cursor: grab; touch-action: none; }
 .canvasAreaM { flex: 1 1 auto; height: 260px; min-height: 260px; }
@@ -91,7 +91,7 @@
 .dotRightM { flex: 0 0 auto; gap: 10px; padding-left: 0; border-left: none; }
 
 /* 염색 비활성화 토글 — 켜짐 상태(문구는 그대로) */
-.offOn { background: #fce9f1; border-color: #f5c6da; color: #d76d9a; }
+.offOn { background: #fdf1f6; border-color: #f5c6da; color: #d76d9a; }
 
 /* ── 부위 염색(부위 고르기) ── */
 .partBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; }
@@ -110,19 +110,19 @@
 .partName { width: 100%; min-width: 0; display: block; font-size: 12px; font-weight: 500; color: #3d372f; line-height: 1.3; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── 미리보기 배경 고르기: 세 칸씩. 첫 칸은 그림 올리기 ── */
-.bgGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.bgGrid { max-width: 660px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
 .bgCell { position: relative; min-width: 0; display: flex; }
 .bgTile { flex: 1 1 0; min-width: 0; padding: 6px 6px 0; display: flex; flex-direction: column; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-family: inherit; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
-.bgTileOn { border-color: #ec86ac; background: #fdf0f5; }
-.bgThumb { display: block; width: 100%; aspect-ratio: 4 / 3; border: 1px solid #f0e9e1; border-radius: 4px; background-color: #f7f2ec; background-position: center; background-size: cover; }
-.bgName { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #5c534b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bgTileOn { border-color: #ec86ac; background: #fef5f8; }
+.bgThumb { display: block; width: 100%; aspect-ratio: 16 / 10; border: 1px solid #f0e9e1; border-radius: 4px; background-color: #f7f2ec; background-position: center; background-size: cover; }
+.bgName { height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #5c534b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bgTileOn .bgName { font-weight: 600; color: #d76d9a; }
-.bgAdd { border-style: dashed; border-color: #f4cfdf; }
-.bgAddThumb { display: flex; align-items: center; justify-content: center; border: none; background-color: #fdf4f8; color: #d76d9a; }
+.bgAdd { border-style: dashed; border-color: #f8e0ea; }
+.bgAddThumb { display: flex; align-items: center; justify-content: center; border: none; background-color: #fef8fa; color: #d76d9a; }
 .bgAdd .bgName { font-weight: 600; color: #d76d9a; }
 .bgAddOff { opacity: .4; cursor: not-allowed; }
 .bgDel { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 4px; background: #fff; color: #a89e93; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); }
-@media (hover: hover) and (pointer: fine) { .bgDel:hover { border-color: #f0d3e0; color: #d1735f; } }
+@media (hover: hover) and (pointer: fine) { .bgDel:hover { border-color: #f5e2eb; color: #d1735f; } }
 
 /* ── 북마크 VS(코디 비교) ── */
 .vsBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 12px; gap: 10px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
@@ -146,7 +146,7 @@
 .vsChips { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 7px; }
 .vsChipsM { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
 .vsChip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1.5px solid #f0e9e1; border-radius: 6px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
-.vsChipOn { border-color: #ec86ac; background: #fce9f1; }
+.vsChipOn { border-color: #ec86ac; background: #fdf1f6; }
 .vsChipSprite { width: calc(100% - 8px); height: calc(100% - 8px); display: flex; align-items: center; justify-content: center; }
 
 /* 염색 다이얼로그 안에서 화면만 바뀌는 슬라이드(색 조절 ↔ 염색표) — 서피스 본문 슬라이드와 같은 곡선·시간. */

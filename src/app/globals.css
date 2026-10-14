@@ -46,18 +46,18 @@ button, input, select { transition: background-color .24s ease, border-color .22
   .pb-cardwrap:hover > .pb-card { transform: translateY(-4px); border-color: #ec86ac; }
   .pb-slot:hover .pb-slot-x { opacity: 1; }
   .pb-solid:hover:not(:disabled) { background-color: #d5578e !important; }
-  .pb-ghost:hover:not(:disabled) { background-color: #fbe0ec !important; border-color: #ec86ac !important; color: #c05a94 !important; }
-  .pb-soft:hover:not(:disabled) { background-color: #f6dbe8 !important; color: #c85d8a !important; }
-  .pb-cardact:hover { background-color: #fce9f1 !important; color: #d76d9a !important; }
-  .pb-icon:hover:not(:disabled) { background-color: #f7ecf1 !important; color: #c85d8a !important; }
-  .pb-ddbtn:hover { border-color: #eeb2ce !important; background-color: #fff !important; }
-  .pb-ddrow:hover { background-color: #fdf1f6 !important; color: #c85d8a !important; }
+  .pb-ghost:hover:not(:disabled) { background-color: #fcebf3 !important; border-color: #ec86ac !important; color: #c05a94 !important; }
+  .pb-soft:hover:not(:disabled) { background-color: #f9e8f0 !important; color: #c85d8a !important; }
+  .pb-cardact:hover { background-color: #fdf1f6 !important; color: #d76d9a !important; }
+  .pb-icon:hover:not(:disabled) { background-color: #faf3f6 !important; color: #c85d8a !important; }
+  .pb-ddbtn:hover { border-color: #f4cdde !important; background-color: #fff !important; }
+  .pb-ddrow:hover { background-color: #fef6f9 !important; color: #c85d8a !important; }
   .pb-accbar:hover { background-color: #fbf0f5 !important; }
-  .pb-arrow:hover:not(:disabled) { background-color: #fce9f1 !important; color: #d76d9a !important; }
-  .pb-input:hover { border-color: #eeb2ce !important; }
-  .pb-step:hover { background-color: #f7ecf1 !important; color: #d76d9a !important; }
-  .pb-slotrow:hover { background: #fce9f1 !important; border-color: #eeb2ce !important; }
-  .pb-partchip:hover { background: #fdf4f8 !important; border-color: #eeb2ce !important; }
+  .pb-arrow:hover:not(:disabled) { background-color: #fdf1f6 !important; color: #d76d9a !important; }
+  .pb-input:hover { border-color: #f4cdde !important; }
+  .pb-step:hover { background-color: #faf3f6 !important; color: #d76d9a !important; }
+  .pb-slotrow:hover { background: #fdf1f6 !important; border-color: #f4cdde !important; }
+  .pb-partchip:hover { background: #fef8fa !important; border-color: #f4cdde !important; }
   .pb-pageinput:hover { background: #ead9e2 !important; color: #a1657f !important; }
   .pb-presetname:hover { background: #ead9e2 !important; color: #a1657f !important; }
 }
@@ -68,7 +68,7 @@ button, input, select { transition: background-color .24s ease, border-color .22
 .pb-input:focus { border-color: #ec86ac !important; outline: none; }
 .pb-presetname:focus { background: #fff !important; border-color: #ec86ac !important; color: #ec86ac !important; }
 .pb-pageinput:focus { background: #fff !important; border-color: #ec86ac !important; color: #ec86ac !important; }
-button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
+button:focus-visible { outline: 2px solid #f8e0ea; outline-offset: 2px; }
 
 .pb-drawer { position: absolute; left: 0; right: 0; z-index: 4; display: flex; flex-direction: column; background: #fff; border-top: 1px solid #f0e9e1; transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
 .pb-slide { position: absolute; inset: 0; overflow: hidden auto; scrollbar-gutter: stable; transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
@@ -88,8 +88,8 @@ button:focus-visible { outline: 2px solid #f4cfdf; outline-offset: 2px; }
   .pb-presetwrap:hover > .pb-preset { transform: translateY(-4px); border-color: #ec86ac; }
 }
 /* 선택 상태는 hover 이동(-4px)보다 우선(-5px 고정) — hover 규칙 뒤에 둔다. */
-.pb-cardwrap > .pb-card.pb-card-sel { border-color: #ec86ac; background: #fdf0f5; transform: translateY(-5px); }
-.pb-presetwrap > .pb-preset.pb-preset-sel { border-color: #ec86ac; background: #fdf0f5; transform: translateY(-5px); }
+.pb-cardwrap > .pb-card.pb-card-sel { border-color: #ec86ac; background: #fef5f8; transform: translateY(-5px); }
+.pb-presetwrap > .pb-preset.pb-preset-sel { border-color: #ec86ac; background: #fef5f8; transform: translateY(-5px); }
 
 /* 염색 조절 인라인(공용): 컨테이너 폭에 따라 한 줄 ↔ 두 줄 */
 .pb-dyecol { container-type: inline-size; }
@@ -161,7 +161,7 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
   .pb-tabnav { height: 40px !important; }
   .pb-tabnav button { height: 32px !important; }
   .pb-hintbar { height: 24px !important; }
-  .pb-pinbox { padding: 7px 12px 9px !important; }
+  .pb-pinbox { padding: 7px 8px 8px !important; }
   .pb-page { padding-top: 10px !important; padding-bottom: 10px !important; }
 }
 @media (max-height: 620px) {

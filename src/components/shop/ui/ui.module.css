@@ -15,16 +15,16 @@
 .ddField { flex: 1 1 0; min-width: 50px; height: 30px; padding: 0 5px 0 9px; display: flex; align-items: center; gap: 3px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; cursor: pointer; }
 .ddFieldNarrow { min-width: 42px; padding: 0 4px 0 7px; }
 .ddFieldM { width: 100%; min-width: 0; height: 36px; padding: 0 7px 0 11px; display: flex; align-items: center; gap: 4px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; cursor: pointer; }
-.ddOpen { border-color: #eeb2ce; background: #fdf4f8; }
+.ddOpen { border-color: #f4cdde; background: #fef8fa; }
 .ddDisabled { opacity: .4; cursor: not-allowed; }
 .ddRowText { flex: 1 1 0; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ddFieldText { flex: 1 1 0; min-width: 0; font-size: 11.5px; font-weight: 600; color: #3d372f; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ddFieldTextDef { font-weight: 500; color: #a89e93; }
 .caret { flex: 0 0 auto; font-size: 9px; color: #a89e93; transition: transform .2s ease; transform: rotate(0deg); }
 .caretOpen { transform: rotate(180deg); }
-.ddMenu { position: fixed; z-index: 120; overflow: hidden auto; padding: 5px; background: #fff; border: 1px solid #f0dde7; border-radius: 8px; box-shadow: 0 10px 26px rgba(42,37,33,.14); }
+.ddMenu { position: fixed; z-index: 120; overflow: hidden auto; padding: 5px; background: #fff; border: 1px solid #f5e8ee; border-radius: 8px; box-shadow: 0 10px 26px rgba(42,37,33,.14); }
 .ddItem { display: block; width: 100%; height: 28px; padding: 0 9px; text-align: left; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #5c534b; background: transparent; transition: background-color .16s ease, color .16s ease; }
-.ddItemOn { font-weight: 600; color: #d76d9a; background: #fce9f1; }
+.ddItemOn { font-weight: 600; color: #d76d9a; background: #fdf1f6; }
 .ddItemDisabled { opacity: .4; cursor: not-allowed; }
 
 /* ── 스위치 ── */
@@ -45,7 +45,7 @@
 .fam { flex: 0 0 auto; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; padding: 0; border: 2px solid #efe6dc; border-radius: 50%; background: #fff; cursor: pointer; transition: border-color .18s ease, background-color .2s ease; }
 .famLg { width: 30px; height: 30px; }
 .famLgMin { min-width: 30px; }
-.famOn { border-color: #ec86ac; background: #fce9f1; }
+.famOn { border-color: #ec86ac; background: #fdf1f6; }
 .famDot { display: block; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); }
 .famLg .famDot { width: 18px; height: 18px; }
 .hue0 { background: conic-gradient(#ff6f8f,#ffd36b,#7fd88a,#6bb8ff,#c79bff,#ff6f8f); }

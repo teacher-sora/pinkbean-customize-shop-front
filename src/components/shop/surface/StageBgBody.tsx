@@ -1,6 +1,6 @@
 'use client'
 
-// 미리보기 배경 고르기. 세 칸씩 놓는다: 첫 칸은 늘 '그림 올리기'이고, 그 뒤로 피팅룸 · 흰색 · 검은색, 올린 그림은 올린 순서대로 맨 뒤에 붙는다.
+// 미리보기 배경 고르기. 세 칸씩 놓는다: 첫 칸은 늘 '커스텀 배경'(그림 올리기)이고, 그 뒤로 피팅룸 · 흰색 · 검은색, 올린 그림은 올린 순서대로 맨 뒤에 붙는다.
 // 고르면 곧바로 미리보기에 깔린다(창은 닫지 않는다 — 여러 개를 대 볼 수 있게). 올린 그림은 이 브라우저에만 남는다(lib/stageBg).
 
 import clsx from 'clsx'
@@ -58,7 +58,7 @@ export default function StageBgBody() {
           <button type="button" onClick={() => { if (!full) file.current?.click() }} aria-disabled={full || undefined} title={full ? `그림은 ${STAGE_BG_MAX}장까지 올릴 수 있어요` : '내 그림을 배경으로 올리기'}
             className={clsx('pb-partchip', styles.bgTile, styles.bgAdd, full && styles.bgAddOff)}>
             <span className={clsx(styles.bgThumb, styles.bgAddThumb)}><IconPlus size={18} /></span>
-            <span className={styles.bgName}>{busy ? '올리는 중' : '그림 올리기'}</span>
+            <span className={styles.bgName}>{busy ? '올리는 중' : '커스텀 배경'}</span>
           </button>
           <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files?.[0]); e.target.value = '' }} />
         </div>

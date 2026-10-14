@@ -3,11 +3,11 @@
 .panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; border: 1px solid #e7ded4; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ── 리스트 헤더(PC) ── */
-.header { flex: 0 0 auto; padding: 10px 16px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
+.header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
 .groupA { flex: 0 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
 .groupB { flex: 1 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
-.groupBWrap { flex-basis: 100%; }
 .pageChip { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; height: 34px; padding: 0 4px 0 12px; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+.pageChipNarrow { padding: 0 4px; }
 .count { font-size: 12px; font-weight: 600; color: #8a8075; white-space: nowrap; }
 .chipDiv { width: 1px; height: 16px; margin: 0 12px; background: #e7ded4; }
 .arrow { flex: 0 0 auto; width: 22px; height: 24px; margin: 0 2px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 4px; background: transparent; color: #ded5cb; cursor: default; transition: background-color .2s ease, color .2s ease; }
@@ -20,22 +20,23 @@
 .slash { font-size: 12px; color: #ccc2b8; margin: 0 4px; }
 .total { min-width: calc(4ch + 16px); text-align: center; font-size: 12px; font-weight: 600; color: #8a8075; }
 .searchWrap { flex: 0 1 200px; min-width: 148px; position: relative; display: flex; align-items: center; }
-.searchWrapNarrow { flex: 1 1 200px; min-width: 160px; }
+.searchWrapNarrow { flex: 1 1 200px; min-width: 110px; }
 .searchIcon { position: absolute; left: 10px; pointer-events: none; }
 .searchInput { height: 34px; width: 100%; min-width: 0; padding: 0 12px 0 30px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-size: 13px; letter-spacing: -0.01em; outline: none; }
-.hr { flex: 0 0 auto; height: 1px; margin: 10px 16px 0; background: #f2ebe3; }
+.hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: #f2ebe3; }
 
 /* ── 리스트 컨트롤(모바일) ── */
 .controlsM { flex: 0 0 auto; position: relative; height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
 /* 보기와 성별을 접어 둔 버튼과, 그 아래에 펼쳐지는 칸(드롭다운 메뉴와 같은 테두리 · 그림자) */
-.filterM { flex: 0 0 auto; display: flex; }
+.filterM { flex: 0 0 auto; position: relative; display: flex; }
 .filterShade { position: fixed; inset: 0; z-index: 29; }
 .filterBtnM { position: relative; z-index: 30; flex: 0 0 auto; height: 32px; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 12px; font-weight: 600; color: #5c534b; letter-spacing: -0.01em; cursor: pointer; }
-.filterBtnOn { border-color: #eeb2ce; background: #fdf4f8; }
+.filterBtnPc { height: 34px; font-size: 12.5px; }
+.filterBtnOn { border-color: #f4cdde; background: #fef8fa; }
 .filterText { white-space: nowrap; }
 .filterCaret { flex: 0 0 auto; color: #b7ada2; transition: transform .22s ease; }
 .filterCaretOn { transform: rotate(180deg); }
-.filterPop { position: absolute; left: 12px; top: 45px; z-index: 30; width: min(300px, calc(100% - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1px solid #f0dde7; border-radius: 8px; box-shadow: 0 10px 26px rgba(42,37,33,.14); opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
+.filterPop { position: absolute; left: 0; top: calc(100% + 5px); z-index: 30; width: min(300px, calc(100vw - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1px solid #f5e8ee; border-radius: 8px; box-shadow: 0 10px 26px rgba(42,37,33,.14); opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
 .filterPopOn { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
 .filterLabel { font-size: 11px; font-weight: 600; color: #a89e93; }
 .filterLabel:not(:first-child) { margin-top: 4px; }
@@ -53,7 +54,7 @@
 /* 자유 가로 스크롤(스냅 없음). 페이지 좌우 패딩 5px + 뷰포트 들임 7px = 화면 가장자리 12px, 페이지 경계 간격(5+5)=카드 간격 10px 이라 열이 끊김 없이 이어진다.
    ⚠️ 열 스냅을 넣었었지만 카드의 스크롤 컨테이너가 overflow:hidden 페이지라 실제로 동작하지 않았고, 사용자는 이 자유 스크롤을 원해 제거. */
 .track { position: relative; height: 100%; width: 100%; will-change: transform; backface-visibility: hidden; }
-.page { position: absolute; top: 0; width: 100%; height: 100%; padding: 10px 16px; overflow: hidden; }
+.page { position: absolute; top: 0; width: 100%; height: 100%; padding: 8px; overflow: hidden; }
 .pageM { position: absolute; top: 0; width: 100cqw; height: 100%; padding: 8px 5px; overflow: hidden; } /* 세로 스크롤 없음 — 좌우 넘기기 전용 */
 .grid { display: grid; gap: 10px; height: 100%; }
 /* 모바일 3×2: 남는 높이를 두 줄이 나눠 가진다. 최소 높이를 두지 않아 어떤 화면에서도 세로 스크롤이 생기지 않는다
@@ -61,7 +62,7 @@
 .gridM { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); grid-template-rows: repeat(2,minmax(0,1fr)); gap: 10px; height: 100%; }
 .skel { border-radius: 8px; }
 .skelM { min-height: 0; }
-.loadWrap { width: 100%; height: 100%; padding: 10px 16px; }
+.loadWrap { width: 100%; height: 100%; padding: 8px; }
 .loadWrapM { height: 100%; padding: 8px 5px; } /* 뷰포트 들임 7px 과 합쳐 가장자리 12px */
 
 /* 빈 상태 */
@@ -126,5 +127,5 @@
 }
 .act { flex: 1 1 0; min-width: 0; width: 50%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: transparent; color: #8a8075; font-size: 12px; font-weight: 500; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
 .actM { font-size: 11px; }
-.actPinned { background: #fce9f1; color: #d76d9a; }
+.actPinned { background: #fdf1f6; color: #d76d9a; }
 .actDye { border-left: 1px solid #f4efe8; }
