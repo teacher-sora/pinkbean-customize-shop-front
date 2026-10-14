@@ -68,7 +68,7 @@
 - 카드: `pb-cardwrap > pb-card`(+ `pb-card-sel`) · `pb-presetwrap > pb-preset`(+ `pb-preset-sel`)
 - hover 로 드러나는 것(터치에서는 늘 보임): `pb-slot` / `pb-slot-x` · `pb-presetacts` · `pb-ribbon`
 - 스크롤바: `pb-scroll` · `pb-scroll-thin` · `pb-norail`
-- 가장자리 흐림: `pb-fade`(스크롤 칸에 단다 — `ui/useScrollFade.ts` 가 남은 쪽을 `data-fade` 로 적는다) · `pb-fadepop`(그림자 있는 떠 있는 목록에 함께)
+- 가장자리 흐림: `pb-fade`(스크롤 칸에 단다 — `ui/useScrollFade.ts` 가 남은 쪽을 `data-fade` 로 적고 칸 위에 흰 층 `.pb-fadeov` 를 붙인다) · `pb-fadepop`(그림자 있는 떠 있는 목록에 함께)
 - 움직임: `pb-drawer` · `pb-slide`
 - 그 밖: `pb-skel` · `sr-only` · 속성 `[data-pb-panel]` `[data-pb-body]`, `html[data-pb-bgonly]`(배경 보기)
 
