@@ -15,7 +15,7 @@
 
 /* 모바일: 한 줄 — 정렬 · 쪽 번호 · 검색 · 등록(다른 탭의 머리와 같은 높이 · 간격) */
 .controlsM { flex: 0 0 auto; height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
-.sortWrapM { flex: 0 1 80px; min-width: 62px; display: flex; }
+.sortWrapM { flex: 0 1 72px; min-width: 62px; display: flex; }
 .sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; min-width: 0; height: 32px; padding: 0 8px 0 10px; font-size: 12px; }
 .searchWrapM { flex: 1 1 0; min-width: 64px; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; color: #b7ada2; pointer-events: none; }
@@ -24,6 +24,9 @@
 
 /* ── 페이지 칩 ── */
 .pageChip { flex: 0 0 auto; margin-left: auto; height: 34px; padding: 0 4px 0 12px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+/* 광장은 쪽수가 세 자리를 넘지 않는다 — 번호 칸을 한 자리 줄여 검색 칸에 폭을 준다 */
+.pageChipM .pageInput { width: calc(3ch + 14px); }
+.pageChipM .total { min-width: calc(3ch + 14px); }
 .pageChipM { flex: 0 0 auto; height: 32px; padding: 0 5px; display: flex; align-items: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
 .count { font-size: 12px; font-weight: 600; color: #8a8075; line-height: 1; }
 .chipDiv { width: 1px; height: 14px; margin: 0 8px; background: #e7ded4; }
