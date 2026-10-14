@@ -58,7 +58,7 @@ export default function StageBgBody() {
           <button type="button" onClick={() => { if (!full) file.current?.click() }} aria-disabled={full || undefined} title={full ? `그림은 ${STAGE_BG_MAX}장까지 올릴 수 있어요` : '내 그림을 배경으로 올리기'}
             className={clsx('pb-partchip', styles.bgTile, styles.bgAdd, full && styles.bgAddOff)}>
             <span className={clsx(styles.bgThumb, styles.bgAddThumb)}><IconAdd size={18} /></span>
-            <span className={styles.bgName}>{busy ? '올리는 중' : '커스텀 배경'}</span>
+            <span className={styles.bgName}>커스텀 배경</span>
           </button>
           <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files?.[0]); e.target.value = '' }} />
         </div>

@@ -68,5 +68,5 @@ make(common, 'WantedSansVariable-common.woff2')
 make(rest, 'WantedSansVariable-rest.woff2')
 io.open('src/app/fonts.css', 'w', encoding='utf-8', newline='\n').write(
     '/* scripts/font-subset.py 가 만든다. 손으로 고치지 않는다. 자주 쓰지 않는 한글 음절 — 화면에 나올 때만 받는다. */\n'
-    '@font-face { font-family: "Wanted Sans Rest"; font-style: normal; font-display: swap; font-weight: 400 1000; '
+    '@font-face { font-family: "Wanted Sans Rest"; font-style: normal; font-display: block; font-weight: 400 1000; '
     'src: url("../assets/fonts/WantedSansVariable-rest.woff2") format("woff2"); unicode-range: ' + ranges(rest) + '; }\n')
