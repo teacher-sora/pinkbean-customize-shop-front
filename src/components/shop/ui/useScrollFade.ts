@@ -1,6 +1,6 @@
 'use client'
 
-// 스크롤 칸의 가장자리 흐림. 더 볼 것이 남은 쪽(위 · 아래 · 왼쪽 · 오른쪽)에만 어두운 흐림을 깔아, 내용이 더 있다는 것을 알린다
+// 스크롤 칸의 가장자리 흐림. 더 볼 것이 남은 쪽(위 · 아래 · 왼쪽 · 오른쪽)에만 흰 흐림을 깔아, 내용이 더 있다는 것을 알린다
 // (하단 부위 줄의 흐림과 같은 역할). 끝까지 가면 그쪽 흐림은 천천히 사라진다.
 //  - 붙이는 법: 스크롤하는 요소에 클래스 `pb-fade` 를 단다. 앱(PinkbeanShop)이 이 훅 하나로 화면의 `.pb-fade` 를 찾아 지켜본다
 //    (창 · 시트 · 떠 있는 목록이 열리고 닫혀도 따라간다).
@@ -35,9 +35,12 @@ function watch(el: HTMLElement): () => void {
     s.left = `${left}px`; s.top = `${top}px`
     s.width = `${Math.max(0, el.clientWidth + (bothEdges ? g : 0))}px`; s.height = `${el.clientHeight}px`
   }
+  // 실제로 스크롤할 수 있는 방향만 본다. overflow 가 hidden 인 방향은 내용이 1~2px 넘쳐도(격자 반올림 등) 더 볼 것이 아니다
+  const scrolls = (v: string) => v === 'auto' || v === 'scroll'
   const sync = () => {
+    const cs = getComputedStyle(el)
     const x = el.scrollLeft, y = el.scrollTop
-    const mx = el.scrollWidth - el.clientWidth, my = el.scrollHeight - el.clientHeight
+    const mx = scrolls(cs.overflowX) ? el.scrollWidth - el.clientWidth : 0, my = scrolls(cs.overflowY) ? el.scrollHeight - el.clientHeight : 0
     const v = [y > 1 && 't', my > 1 && y < my - 1 && 'b', x > 1 && 'l', mx > 1 && x < mx - 1 && 'r'].filter(Boolean).join(' ')
     if (v !== last) { last = v; el.dataset.fade = v; if (ov) ov.dataset.fade = v }
   }

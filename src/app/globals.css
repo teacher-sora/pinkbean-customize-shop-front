@@ -37,20 +37,21 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-norail { scrollbar-width: none; }
 .pb-norail::-webkit-scrollbar { display: none; }
 
-/* 스크롤 칸의 가장자리 흐림(ui/useScrollFade) — 더 볼 것이 남은 쪽에만, 어두운 흐림. data-fade = 남은 쪽(t b l r).
+/* 스크롤 칸의 가장자리 흐림(ui/useScrollFade) — 더 볼 것이 남은 쪽에만, 흰 흐림(패널 바탕으로 녹아든다 — 하단 부위 줄과 같다).
+   어두운 흐림은 테두리가 없거나 얇은 자리에서 그림자처럼 떠 보여 쓰지 않는다. data-fade = 남은 쪽(t b l r).
    칸 위에 얹는 층(.pb-fadeov) 하나에 네 겹을 깔고, 쪽마다 진하기(--pb-fa*)만 천천히 바꾼다(생길 때도 사라질 때도 같은 곡선). */
 @property --pb-fat { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-fab { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-fal { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-far { syntax: '<number>'; inherits: false; initial-value: 0; }
 .pb-fadeov {
-  --pb-fc: 0, 0, 0; --pb-fmax: .16;
+  --pb-fc: 255, 255, 255; --pb-fmax: 1;
   position: absolute; z-index: 4; pointer-events: none;
   background:
-    linear-gradient(to bottom, rgba(var(--pb-fc), calc(var(--pb-fat) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) top / 100% 28px no-repeat,
-    linear-gradient(to top, rgba(var(--pb-fc), calc(var(--pb-fab) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) bottom / 100% 28px no-repeat,
-    linear-gradient(to right, rgba(var(--pb-fc), calc(var(--pb-fal) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) left / 36px 100% no-repeat,
-    linear-gradient(to left, rgba(var(--pb-fc), calc(var(--pb-far) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) right / 36px 100% no-repeat;
+    linear-gradient(to bottom, rgba(var(--pb-fc), calc(var(--pb-fat) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) top / 100% 24px no-repeat,
+    linear-gradient(to top, rgba(var(--pb-fc), calc(var(--pb-fab) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) bottom / 100% 24px no-repeat,
+    linear-gradient(to right, rgba(var(--pb-fc), calc(var(--pb-fal) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) left / 32px 100% no-repeat,
+    linear-gradient(to left, rgba(var(--pb-fc), calc(var(--pb-far) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) right / 32px 100% no-repeat;
   transition: --pb-fat .6s cubic-bezier(.45, 0, .55, 1), --pb-fab .6s cubic-bezier(.45, 0, .55, 1), --pb-fal .6s cubic-bezier(.45, 0, .55, 1), --pb-far .6s cubic-bezier(.45, 0, .55, 1);
 }
 .pb-fadeov[data-fade~="t"] { --pb-fat: 1; }
@@ -61,8 +62,8 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-fadepop { --pb-fpad: 8px; }
 .pb-ddmenu.pb-fadepop { --pb-fpad: 5px; }
 .pb-fadepop::before, .pb-fadepop::after { content: ''; position: sticky; z-index: 2; display: block; height: 22px; pointer-events: none; opacity: 0; transition: opacity .6s cubic-bezier(.45, 0, .55, 1); }
-.pb-fadepop::before { top: calc(-1 * var(--pb-fpad)); margin: calc(-1 * var(--pb-fpad)) calc(-1 * var(--pb-fpad)) calc(var(--pb-fpad) - 22px); background: linear-gradient(rgba(0,0,0,.16), rgba(0,0,0,0)); }
-.pb-fadepop::after { bottom: calc(-1 * var(--pb-fpad)); margin: -22px calc(-1 * var(--pb-fpad)) 0; background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.16)); }
+.pb-fadepop::before { top: calc(-1 * var(--pb-fpad)); margin: calc(-1 * var(--pb-fpad)) calc(-1 * var(--pb-fpad)) calc(var(--pb-fpad) - 22px); background: linear-gradient(#fff, rgba(255,255,255,0)); }
+.pb-fadepop::after { bottom: calc(-1 * var(--pb-fpad)); margin: -22px calc(-1 * var(--pb-fpad)) 0; background: linear-gradient(rgba(255,255,255,0), #fff); }
 .pb-fadepop[data-fade~="t"]::before, .pb-fadepop[data-fade~="b"]::after { opacity: 1; }
 
 button, input, select { transition: background-color .24s ease, border-color .22s ease, color .22s ease, transform .2s ease, opacity .22s ease, filter .2s ease; }
