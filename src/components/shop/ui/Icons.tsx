@@ -52,7 +52,7 @@ export const IconCaretDown = ({ size = 12, className }: P) => (
 )
 // 염색(팔레트). 물방울은 물 · 흐림으로 읽혀 염색인 줄 바로 알기 어려웠다
 export const IconDrop = ({ size = 14 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.6a8.4 8.4 0 1 0 0 16.8c1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.4-.7-.4-1.1 0-1 .8-1.7 1.7-1.7h2a4 4 0 0 0 3.9-4c0-3.9-3.8-7.1-8.4-7.1zM7.7 12.2h.01M9.7 8.3h.01M14.3 7.8h.01" /></svg>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.6a8.4 8.4 0 1 0 0 16.8c1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.4-.7-.4-1.1 0-1 .8-1.7 1.7-1.7h2a4 4 0 0 0 3.9-4c0-3.9-3.8-7.1-8.4-7.1zM7.5 11.6a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0zM12 7.7a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0z" /></svg>
 )
 export const IconBookmark = ({ filled }: { filled: boolean }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M6 3h12v11l-6 4-6-4z" /></svg>
@@ -112,7 +112,7 @@ export const IconEye = ({ hidden }: { hidden: boolean }) => (
 export const TAB_ICONS: Record<string, string> = {
   codi: 'M12 3.4a2.2 2.2 0 0 0-2.2 2.2c0 .9.6 1.7 1.4 2L4 12.6V18h16v-5.4l-7.2-5a2.2 2.2 0 0 0 1.4-2A2.2 2.2 0 0 0 12 3.4z',
   search: 'M10.5 4.2a6.3 6.3 0 1 0 0 12.6 6.3 6.3 0 0 0 0-12.6zM19.8 19.8l-4.4-4.4',
-  info: 'M12 3.6a8.4 8.4 0 1 0 0 16.8c1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.4-.7-.4-1.1 0-1 .8-1.7 1.7-1.7h2a4 4 0 0 0 3.9-4c0-3.9-3.8-7.1-8.4-7.1zM7.7 12.2h.01M9.7 8.3h.01M14.3 7.8h.01',
+  info: 'M12 3.6a8.4 8.4 0 1 0 0 16.8c1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.4-.7-.4-1.1 0-1 .8-1.7 1.7-1.7h2a4 4 0 0 0 3.9-4c0-3.9-3.8-7.1-8.4-7.1zM7.5 11.6a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0zM12 7.7a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0z',
   preset: 'M4.2 4.2h6.2v6.2H4.2zM13.6 4.2h6.2v6.2h-6.2zM4.2 13.6h6.2v6.2H4.2zM13.6 13.6h6.2v6.2h-6.2z',
   share: 'M8.4 9.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2zM16.4 10.4a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4zM3.4 19.2c0-2.8 2.2-5 5-5s5 2.2 5 5M14.4 14.6c2.2.3 3.9 2.1 3.9 4.4',
   notice: 'M3.6 10.6v3.2l15.8 4.4V6.2L3.6 10.6zM7.2 14.8v2a2.4 2.4 0 0 0 4.7.7',

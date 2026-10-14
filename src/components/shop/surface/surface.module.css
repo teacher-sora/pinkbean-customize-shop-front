@@ -94,7 +94,10 @@
 .offOn { background: #fdf1f6; border-color: #f5c6da; color: #d76d9a; }
 
 /* ── 부위 염색(부위 고르기) ── */
-.partBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; }
+/* 스크롤이 생길 수 있는 칸은 스크롤바 자리를 늘 잡아 둔다(양쪽) — 자리가 9px 라 옆 여백은 3px 만(합쳐 12px).
+   스크롤바가 자리를 차지하지 않는 터치 기기에서는 여백으로 12px 를 채운다 */
+.partBody { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; padding: 12px 3px; container-type: inline-size; }
+@media (hover: none), (pointer: coarse) { .partBody { scrollbar-gutter: auto; padding: 12px; } }
 .partEmpty { height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
 .partEmptyTitle { font-size: 13px; font-weight: 600; color: #8a8075; }
 .partEmptyHint { font-size: 11.5px; color: #b7ada2; }
@@ -109,13 +112,15 @@
 .partSlot { font-size: 10.5px; font-weight: 600; color: #a89e93; line-height: 1.2; }
 .partName { width: 100%; min-width: 0; display: block; font-size: 12px; font-weight: 500; color: #3d372f; line-height: 1.3; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ── 미리보기 배경 고르기: 세 칸씩. 첫 칸은 그림 올리기 ── */
-.bgGrid { max-width: 660px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+/* ── 미리보기 배경 고르기: 창 폭에 따라 다섯 · 네 · 세 칸(모바일). 첫 칸은 그림 올리기 ── */
+.bgGrid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; }
+@container (max-width: 760px) { .bgGrid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+@container (max-width: 540px) { .bgGrid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
 .bgCell { position: relative; min-width: 0; display: flex; }
 .bgTile { flex: 1 1 0; min-width: 0; padding: 6px 6px 0; display: flex; flex-direction: column; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-family: inherit; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .bgTileOn { border-color: #ec86ac; background: #fef5f8; }
-.bgThumb { display: block; width: 100%; aspect-ratio: 16 / 10; border: 1px solid #f0e9e1; border-radius: 4px; background-color: #f7f2ec; background-position: center; background-size: cover; }
-.bgName { height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #5c534b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bgThumb { display: block; width: 100%; aspect-ratio: 4 / 3; border: 1px solid #f0e9e1; border-radius: 4px; background-color: #f7f2ec; background-position: center; background-size: cover; }
+.bgName { height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #5c534b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bgTileOn .bgName { font-weight: 600; color: #d76d9a; }
 .bgAdd { border-style: dashed; border-color: #f8e0ea; }
 .bgAddThumb { display: flex; align-items: center; justify-content: center; border: none; background-color: #fef8fa; color: #d76d9a; }
@@ -123,15 +128,6 @@
 .bgAddOff { opacity: .4; cursor: not-allowed; }
 .bgDel { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 4px; background: #fff; color: #a89e93; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); }
 @media (hover: hover) and (pointer: fine) { .bgDel:hover { border-color: #f5e2eb; color: #d1735f; } }
-
-/* 올린 그림에서 보일 부분 맞추기: 그림 전체 위에, 미리보기에 보이는 넓이만큼의 점선 틀 */
-.bgFocus { max-width: 660px; margin: 12px auto 0; display: flex; flex-direction: column; gap: 6px; }
-.bgFocusHint { font-size: 11.5px; font-weight: 500; color: #a89e93; }
-.bgFocusBox { display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; overflow: hidden; }
-.bgFocusImg { position: relative; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
-.bgFocusImg:active { cursor: grabbing; }
-.bgFocusImg img { display: block; width: 100%; height: 100%; pointer-events: none; }
-.bgFocusFrame { position: absolute; border: 1.5px dashed #fff; box-shadow: 0 0 0 999px rgba(42,37,33,.45); pointer-events: none; }
 
 /* ── 북마크 VS(코디 비교) ── */
 .vsBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 12px; gap: 10px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
