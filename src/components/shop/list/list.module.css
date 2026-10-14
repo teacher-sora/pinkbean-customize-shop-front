@@ -26,9 +26,19 @@
 .hr { flex: 0 0 auto; height: 1px; margin: 10px 16px 0; background: #f2ebe3; }
 
 /* ── 리스트 컨트롤(모바일) ── */
-.controlsM { flex: 0 0 auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
-.rowM { display: flex; align-items: center; min-height: 32px; gap: 6px; }
-.pageChipM { flex: 0 0 auto; display: flex; align-items: center; height: 32px; padding: 0 4px; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
+.controlsM { flex: 0 0 auto; position: relative; height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 6px; }
+/* 보기와 성별을 접어 둔 버튼과, 그 아래에 펼쳐지는 칸(드롭다운 메뉴와 같은 테두리 · 그림자) */
+.filterM { flex: 0 1 116px; min-width: 76px; display: flex; }
+.filterBtnM { flex: 1 1 0; min-width: 0; height: 32px; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 12px; font-weight: 600; color: #5c534b; letter-spacing: -0.01em; cursor: pointer; }
+.filterBtnOn { border-color: #eeb2ce; background: #fdf4f8; }
+.filterText { flex: 1 1 0; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.filterCaret { flex: 0 0 auto; color: #b7ada2; transition: transform .22s ease; }
+.filterCaretOn { transform: rotate(180deg); }
+.filterPop { position: absolute; left: 12px; top: 45px; z-index: 30; width: min(300px, calc(100% - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1px solid #f0dde7; border-radius: 8px; box-shadow: 0 10px 26px rgba(42,37,33,.14); opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
+.filterPopOn { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
+.filterLabel { font-size: 11px; font-weight: 600; color: #a89e93; }
+.filterLabel:not(:first-child) { margin-top: 4px; }
+.pageChipM { flex: 0 0 auto; display: flex; align-items: center; height: 32px; padding: 0 5px; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
 .slashM { font-size: 12px; color: #ccc2b8; margin: 0 3px; }
 .searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; pointer-events: none; }

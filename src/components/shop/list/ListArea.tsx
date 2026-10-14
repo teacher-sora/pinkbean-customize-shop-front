@@ -4,12 +4,12 @@
 //  PC(절반·태블릿 포함) = 패널(section) + 헤더 + 뷰포트 + 힌트 바 / 모바일 = 컨트롤 2줄 + 뷰포트.
 
 import clsx from 'clsx'
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop, type GenderFilter, type ListMode } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
-import { IconChevronLeft, IconChevronRight, IconSearch, IconSearchBold } from '../ui/Icons'
+import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconSearchBold } from '../ui/Icons'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
 import styles from './list.module.css'
@@ -26,6 +26,38 @@ const GENDERS: SegOpt<GenderFilter>[] = [
 ]
 // 보이는 순서대로 적는다. keep = 자리가 좁아 줄일 때 남기는 순서(작을수록 끝까지 남는다) — 모바일은 둘, 좁은 화면은 셋만 보인다
 const AI_EXAMPLES = [{ q: '동물 귀', keep: 2 }, { q: '한벌옷 스타킹', keep: 0 }, { q: '귀여운 얼굴', keep: 3 }, { q: '단발 헤어', keep: 1 }]
+
+// 모바일: 보기(아이템 / 기본 캐릭터 / 내 캐릭터)와 성별을 버튼 하나에 접어 둔다. 누르면 버튼 아래에 두 묶음이 펼쳐진다.
+// 왜: 둘 다 한번 정해 두고 쓰는 값인데 늘 펼쳐 두느라 목록 머리가 두 줄이었다(쪽 번호 · 검색은 매번 쓰는 것이라 그대로 내놓는다).
+// 버튼에는 지금 값이 적혀 있다(성별을 골랐으면 함께). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(둘을 이어서 고를 수 있게).
+function FilterM({ viewOpts, mode, onMode, gender, onGender }: { viewOpts: SegOpt<ListMode>[]; mode: ListMode; onMode: (v: ListMode) => void; gender: GenderFilter; onGender: (v: GenderFilter) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); setOpen(false) } }
+    window.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('keydown', onKey, true)
+    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey, true) }
+  }, [open])
+  const label = (viewOpts.find((o) => o.v === mode)?.l ?? '') + (gender === 'all' ? '' : `, ${GENDERS.find((g) => g.v === gender)?.l}`)
+  return (
+    <div ref={ref} className={styles.filterM}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기와 성별: ${label}`} className={clsx('pb-ddbtn', styles.filterBtnM, open && styles.filterBtnOn)}>
+        <span className={styles.filterText}>{label}</span>
+        <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
+      </button>
+      {/* 늘 붙여 두고 보임만 바꾼다 — 닫힐 때도 전환이 보이게 */}
+      <div role="group" aria-label="보기와 성별" aria-hidden={!open} className={clsx(styles.filterPop, open && styles.filterPopOn)}>
+        <span className={styles.filterLabel}>보기</span>
+        <Seg variant="mobileFlex" title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={mode} onPick={onMode} />
+        <span className={styles.filterLabel}>성별</span>
+        <Seg variant="mobileFlex" title="성별" opts={GENDERS} value={gender} onPick={onGender} />
+      </div>
+    </div>
+  )
+}
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
   const { primary } = useShop()
@@ -159,12 +191,13 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
           <span className={styles.chipDiv} />
         </>
       )}
-      <button type="button" onClick={() => s.step(-1)} title={mobile ? '이전 페이지' : '이전 페이지 (←)'} aria-label="이전 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx > 0 && styles.arrowOn)}><IconChevronLeft /></button>
+      {/* 모바일에는 화살표를 두지 않는다 — 쪽은 목록을 옆으로 밀어 넘기고, 멀리 갈 때는 번호를 적는다 */}
+      {!mobile && <button type="button" onClick={() => s.step(-1)} title="이전 페이지 (←)" aria-label="이전 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx > 0 && styles.arrowOn)}><IconChevronLeft /></button>}
       <input value={s.pageEditing ? s.pageInput : `${s.curIdx + 1}`} onFocus={s.onPageFocus} onChange={s.onPageChange} onKeyDown={s.onPageKey} onBlur={s.commitPage}
         inputMode="numeric" aria-label="현재 페이지" title={mobile ? undefined : '번호를 입력해 이동'} className={clsx('pb-input', 'pb-pageinput', styles.pageInput)} />
       <span className={mobile ? styles.slashM : styles.slash}>/</span>
       <span className={styles.total}>{s.pageCount}</span>
-      <button type="button" onClick={() => s.step(1)} title={mobile ? '다음 페이지' : '다음 페이지 (→)'} aria-label="다음 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx < s.pageCount - 1 && styles.arrowOn)}><IconChevronRight /></button>
+      {!mobile && <button type="button" onClick={() => s.step(1)} title="다음 페이지 (→)" aria-label="다음 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx < s.pageCount - 1 && styles.arrowOn)}><IconChevronRight /></button>}
     </div>
   )
   const searchInput = isAi ? (
@@ -176,17 +209,13 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const controls = mobile ? (
+    // 한 줄: 보기와 성별(접어 둔 버튼) · 쪽 번호 · 검색. 높이는 프리셋 · 코디 정보의 머리와 같다(48)
     <div className={styles.controlsM}>
-      <div className={styles.rowM}>
-        <Seg variant="mobileFlex" title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={thumbs.mode} onPick={s.setListMode} />
-        <Seg variant="mobileFit" title="성별" opts={GENDERS} value={s.genderFilter} onPick={s.setGenderFilter} />
-      </div>
-      <div className={styles.rowM}>
-        {pageChip}
-        <div className={styles.searchWrapM}>
-          <IconSearch className={styles.searchIconM} />
-          {searchInput}
-        </div>
+      <FilterM viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} />
+      {pageChip}
+      <div className={styles.searchWrapM}>
+        <IconSearch className={styles.searchIconM} />
+        {searchInput}
       </div>
     </div>
   ) : (
