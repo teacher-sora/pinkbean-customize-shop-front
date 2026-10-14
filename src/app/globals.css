@@ -39,7 +39,7 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 
 /* 스크롤 칸의 가장자리 흐림(ui/useScrollFade) — 더 볼 것이 남은 쪽에만, 흰 흐림(패널 바탕으로 녹아든다 — 하단 부위 줄과 같다).
    어두운 흐림은 테두리가 없거나 얇은 자리에서 그림자처럼 떠 보여 쓰지 않는다. data-fade = 남은 쪽(t b l r).
-   칸 위에 얹는 층(.pb-fadeov) 하나에 네 겹을 깔고, 쪽마다 진하기(--pb-fa*)만 0.6초에 걸쳐 고르게(linear) 바꾼다 — 생길 때도 사라질 때도 같다. */
+   칸 위에 얹는 층(.pb-fadeov) 하나에 네 겹을 깔고, 쪽마다 진하기(--pb-fa*)만 0.35초에 걸쳐 고르게(linear) 바꾼다 — 생길 때도 사라질 때도 같다. */
 @property --pb-fat { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-fab { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-fal { syntax: '<number>'; inherits: false; initial-value: 0; }
@@ -52,7 +52,7 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
     linear-gradient(to top, rgba(var(--pb-fc), calc(var(--pb-fab) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) bottom / 100% 24px no-repeat,
     linear-gradient(to right, rgba(var(--pb-fc), calc(var(--pb-fal) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) left / 32px 100% no-repeat,
     linear-gradient(to left, rgba(var(--pb-fc), calc(var(--pb-far) * var(--pb-fmax))), rgba(var(--pb-fc), 0)) right / 32px 100% no-repeat;
-  transition: --pb-fat .6s linear, --pb-fab .6s linear, --pb-fal .6s linear, --pb-far .6s linear;
+  transition: --pb-fat .35s linear, --pb-fab .35s linear, --pb-fal .35s linear, --pb-far .35s linear;
 }
 .pb-fadeov[data-fade~="t"] { --pb-fat: 1; }
 .pb-fadeov[data-fade~="b"] { --pb-fab: 1; }
@@ -61,7 +61,7 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 /* 떠 있는 목록: 안쪽에 붙어 다니는 흐림. --pb-fpad = 그 목록의 안쪽 여백 */
 .pb-fadepop { --pb-fpad: 8px; }
 .pb-ddmenu.pb-fadepop { --pb-fpad: 5px; }
-.pb-fadepop::before, .pb-fadepop::after { content: ''; position: sticky; z-index: 2; display: block; height: 22px; pointer-events: none; opacity: 0; transition: opacity .6s linear; }
+.pb-fadepop::before, .pb-fadepop::after { content: ''; position: sticky; z-index: 2; display: block; height: 22px; pointer-events: none; opacity: 0; transition: opacity .35s linear; }
 .pb-fadepop::before { top: calc(-1 * var(--pb-fpad)); margin: calc(-1 * var(--pb-fpad)) calc(-1 * var(--pb-fpad)) calc(var(--pb-fpad) - 22px); background: linear-gradient(#fff, rgba(255,255,255,0)); }
 .pb-fadepop::after { bottom: calc(-1 * var(--pb-fpad)); margin: -22px calc(-1 * var(--pb-fpad)) 0; background: linear-gradient(rgba(255,255,255,0), #fff); }
 .pb-fadepop[data-fade~="t"]::before, .pb-fadepop[data-fade~="b"]::after { opacity: 1; }
