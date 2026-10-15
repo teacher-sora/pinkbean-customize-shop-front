@@ -21,13 +21,19 @@ export function loadImage(pngRel: string, cors = false): Promise<HTMLImageElemen
   const src = cors ? base + (base.includes('?') ? '&' : '?') + 'cors=1' : base
   let p = imageCache.get(src)
   if (!p) {
-    p = new Promise((resolve, reject) => {
+    const once = () => new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image()
       if (cors) img.crossOrigin = 'anonymous' // src 설정 전에 지정해야 적용됨
       img.onload = () => resolve(img)
       img.onerror = () => reject(new Error(`load ${src}`))
       img.src = src
     })
+    // 한 번 실패하면 잠깐 뒤 한 번 더 받는다. 그래도 실패하면 캐시에서 뺀다 — 실패한 Promise 를 캐시에 남기면
+    // 순간적인 네트워크 끊김 한 번으로 그 그림이 든 코디가 새로고침 전까지 계속 빈 칸이 됐다(닉네임 불러오기의 빈 '기본' 카드).
+    const made: Promise<HTMLImageElement> = once()
+      .catch(() => new Promise((r) => setTimeout(r, 400)).then(once))
+      .catch((e) => { if (imageCache.peek(src) === made) imageCache.delete(src); throw e })
+    p = made
     imageCache.set(src, p)
   }
   return p
@@ -100,7 +106,8 @@ export async function renderCharacter(
 ): Promise<void> {
   const cors = opts.cors ?? true // 기본 CORS → 코디 카드/미리보기/염색이 한 캐시 공유(장착·염색 재fetch 없음)
   const imgs = new Map<string, HTMLImageElement>()
-  await Promise.all(placed.map(async (p) => imgs.set(p.png, await loadImage(p.png, cors))))
+  // 레이어 그림 하나를 못 받았다고 캐릭터 전체를 비우지 않는다 — 그 레이어만 빠진다(아래 그리기가 없는 것을 건너뛴다).
+  await Promise.all(placed.map(async (p) => { const img = await loadImage(p.png, cors).catch(() => null); if (img) imgs.set(p.png, img) }))
   // Ultimate fallback only: item has neither a body sprite nor an extracted effect.
   const back = opts.backImage ? await loadImage(opts.backImage, cors).catch(() => null) : null
   // Item effects (망토 등): real Effect/ItemEff sprites composited around the body.
