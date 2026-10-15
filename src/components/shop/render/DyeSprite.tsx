@@ -99,7 +99,7 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
   }, [meta, id, thumb, mix, palette, hsb, zmap, frac, box.w, box.h])
   // 바깥 span = 칸(크기 측정 기준), 캔버스 = 그린 그림 크기로 화면 픽셀 격자에 맞춰 가운데(fitCanvas).
   return (
-    <span ref={boxRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%' }}>
+    <span ref={boxRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%', overflow: 'hidden' }}>
       <canvas ref={ref} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated', ...(grayscale ? { filter: 'grayscale(1)' } : {}) }} />
     </span>
   )
@@ -141,7 +141,7 @@ export function SkinModel({ bodyId, headId, hsb, dyeable, family, zmap, smap, bo
   }, [placed, hsb, dyeable, family, box, fraction])
   if (!placed) return <div className="pb-skel" style={{ width: '60%', height: '60%', borderRadius: 8 }} />
   return (
-    <span ref={wrapRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%' }}>
+    <span ref={wrapRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%', overflow: 'hidden' }}>
       <canvas ref={ref} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated' }} />
     </span>
   )

@@ -23,7 +23,7 @@ export default function DyeCellCanvas({ meta, base, mixC, zmap }: { meta: ItemMe
       .catch(() => {})
   }, [meta, base, mixC, zmap])
   return (
-    <span ref={wrapRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%' }}>
+    <span ref={wrapRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%', overflow: 'hidden' }}>
       <canvas ref={ref} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated' }} />
     </span>
   )
