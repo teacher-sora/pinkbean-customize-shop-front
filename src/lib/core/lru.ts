@@ -9,6 +9,8 @@ export class LRU<V> {
     return v
   }
   has(k: string): boolean { return this.m.has(k) }
+  delete(k: string): void { this.m.delete(k) }
+  peek(k: string): V | undefined { return this.m.get(k) }
   set(k: string, v: V): V {
     if (this.m.has(k)) this.m.delete(k)
     this.m.set(k, v)
