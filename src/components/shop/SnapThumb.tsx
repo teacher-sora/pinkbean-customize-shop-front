@@ -92,7 +92,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   }, [])
 
   return (
-    <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
+    <div ref={wrapRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       {!placed && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '58%', height: '58%', borderRadius: 8 }} />}
       <canvas ref={canvasRef} style={{ position: 'absolute', transform: 'translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
     </div>

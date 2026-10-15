@@ -247,7 +247,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
   }, [item.name, item.id])
 
   return (
-    <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
+    <div ref={wrapRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       {!placed && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '62%', height: '62%', borderRadius: 8 }} />}
       {/* 셀보다 큰 캔버스를 절대배치 중앙정렬 → 셀 overflow:hidden 으로만 잘린다. */}
       {/* 우클릭/롱프레스 → 복사/저장 메뉴(bindImageMenu, 위 effect). 그 시점에만 같은 입력으로 다시 그린다. */}

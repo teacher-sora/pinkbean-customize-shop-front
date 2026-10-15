@@ -22,6 +22,9 @@ body { font-family: var(--font-wanted), "Wanted Sans Rest", -apple-system, Blink
 a { color: #ec86ac; text-decoration: none; }
 @media (hover: hover) and (pointer: fine) { a:hover { color: #d76d9a; } }
 input, select, button { font-family: inherit; color: #2a2521; }
+/* 입력칸만 드문 한글 음절을 swap 글꼴로 — 조합 중에 생기는 드문 음절(얔·밐 …)을 block 글꼴로 그리면 파일이 올 때까지 글자가 사라져 깜빡인다. */
+/* !important: 입력칸마다 모듈 CSS 가 font-family: inherit 를 줘서(부모의 block 글꼴을 물려받는다) 이것이 밀린다. */
+input, textarea { font-family: var(--font-wanted), "Wanted Sans Rest Swap", -apple-system, BlinkMacSystemFont, sans-serif !important; }
 input, textarea, select, button { -webkit-text-fill-color: currentColor; } /* iOS 가 폼 글자색을 덮어쓰는 것 방지 */
 /* textarea 도 포함 — 빠지면 설명·댓글 칸만 브라우저 기본(진한 회색)으로 보인다. */
 input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }

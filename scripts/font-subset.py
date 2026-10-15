@@ -66,7 +66,10 @@ def ranges(cps):
 
 make(common, 'WantedSansVariable-common.woff2')
 make(rest, 'WantedSansVariable-rest.woff2')
+# 같은 파일을 두 이름으로 선언한다. "Rest" 는 block(본문 — 대체 글꼴로 그렸다 바꿔 끼우는 움찔을 막는다),
+# "Rest Swap" 은 swap(입력칸 — 한글을 조합하는 도중 드문 음절이 생기면 block 은 파일이 올 때까지 글자를 지워 입력이 깜빡인다).
+face = lambda fam, disp: ('@font-face { font-family: "' + fam + '"; font-style: normal; font-display: ' + disp + '; font-weight: 400 1000; '
+    'src: url("../assets/fonts/WantedSansVariable-rest.woff2") format("woff2"); unicode-range: ' + ranges(rest) + '; }\n')
 io.open('src/app/fonts.css', 'w', encoding='utf-8', newline='\n').write(
     '/* scripts/font-subset.py 가 만든다. 손으로 고치지 않는다. 자주 쓰지 않는 한글 음절 — 화면에 나올 때만 받는다. */\n'
-    '@font-face { font-family: "Wanted Sans Rest"; font-style: normal; font-display: block; font-weight: 400 1000; '
-    'src: url("../assets/fonts/WantedSansVariable-rest.woff2") format("woff2"); unicode-range: ' + ranges(rest) + '; }\n')
+    + face('Wanted Sans Rest', 'block') + face('Wanted Sans Rest Swap', 'swap'))
