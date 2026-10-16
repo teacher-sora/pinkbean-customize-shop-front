@@ -88,21 +88,19 @@
 .confirmBarFill { display: block; height: 100%; border-radius: 999px; background: #d1735f; transform-origin: left center; animation: confirmBarShrink 3s linear forwards; }
 @keyframes confirmBarShrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .confirmBubble, .confirmBubbleBelow { transform: none; transition: opacity .2s ease; } .confirmBar { display: none; } }
-/* 헤어 · 성형 염색(MixDye): 베이스 · 비율 · 믹스. 라벨(38) + 비율 칸(40)이 고정 폭이라 두 팔레트가 같은 열에서 시작한다. */
+/* 헤어 · 성형 염색(MixDye): 팔레트 두 줄 → 베이스 → 믹스 그라데이션 막대 → 막대 아래 양끝에 베이스 · 믹스 조절 칸. */
 .mix { display: flex; flex-direction: column; gap: 8px; }
 .mixRow { display: flex; align-items: center; gap: 9px; }
 .mixLabel { flex: 0 0 38px; font-size: 11px; font-weight: 600; color: #a89e93; }
 .mixLg .mixLabel { flex-basis: 42px; font-size: 11.5px; }
-.pct { flex: 0 0 auto; width: 40px; height: 28px; padding: 0 2px; border: 1px solid #e7ded4; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; text-align: center; color: #3d372f; outline: none; font-variant-numeric: tabular-nums; transition: border-color .22s ease; }
-.pct:focus { border-color: #ec86ac; }
-.pctLg { width: 44px; font-size: 12.5px; }
 .mixSw { flex: 1 1 0; min-width: 0; display: flex; gap: 5px; flex-wrap: nowrap; }
 .mixLg .mixSw { justify-content: space-between; gap: 6px; }
-/* 비율 줄: 슬라이더가 비율 칸 + 팔레트 자리를 함께 쓴다. */
-.mixSlideRow { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; }
-.mixSlider { flex: 1 1 auto; min-width: 0; }
-.mixTrack { background: linear-gradient(90deg, var(--mix-a, #2f2b27), var(--mix-b, #2f2b27)); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
-.mixStep { flex: 0 0 auto; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; color: #a2786f; font-family: inherit; font-size: 13px; font-weight: 700; line-height: 1; cursor: pointer; }
-.mixStep:disabled { opacity: .4; cursor: default; }
-/* 좁은 칸(PC 염색 창의 오른쪽 열 ≈ 290px)에서는 비율 칸이 들어온 만큼 색 동그라미가 줄어든다 — 잘리지 않게. */
+/* 좁은 칸에서는 색 동그라미가 줄어든다 — 잘리지 않게. */
 .mixSw > .swatch { flex: 0 1 22px; width: auto; height: auto; min-width: 14px; aspect-ratio: 1; }
+.mixSlider { margin-top: 4px; }
+/* 막대: 왼쪽 끝 = 베이스 색, 오른쪽 끝 = 믹스 색. 사이는 그라데이션(사용자 지시). 흰 색 · 옅은 색도 보이게 테두리를 얇게 둔다. */
+.mixTrack { background: linear-gradient(90deg, var(--mix-a, #2f2b27), var(--mix-b, #2f2b27)); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); }
+.mixFoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mixSide { display: flex; align-items: center; gap: 7px; }
+.mixSideLabel { font-size: 11px; font-weight: 600; color: #a89e93; }
+.mixLg .mixSideLabel { font-size: 11.5px; }

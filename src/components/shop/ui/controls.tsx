@@ -149,10 +149,11 @@ export function DyeRow({ label, track, min, max, value, onRange, onDragStart, st
   )
 }
 
-/* ── 헤어 · 성형 염색: 베이스 · 비율 · 믹스(게임의 믹스 염색 화면과 같은 배치) ──
+/* ── 헤어 · 성형 염색: 베이스 · 믹스(게임의 믹스 염색 화면을 따른다) ──
    저장 값은 그대로다 — ratio = 믹스 색의 비율(0~100), 베이스 비율은 100 - ratio. 넥슨 API 의 mix_rate 도 믹스 비율이다.
-   왜 두 칸인가: '비율' 한 칸만 있으면 무엇의 비율인지 알 수 없어, 게임의 '검정 70 · 노랑 30' 을 70 으로 넣으면 노랑 70 이 됐다(건의함).
-   라벨과 비율 칸의 폭이 고정이라 베이스 · 믹스 팔레트가 같은 열에서 시작한다. 슬라이더 트랙은 베이스 색 → 믹스 색이다. */
+   왜: '비율' 한 칸만 있으면 무엇의 비율인지 알 수 없어, 게임의 '검정 70 · 노랑 30' 을 70 으로 넣으면 노랑 70 이 됐다(건의함).
+   배치(사용자 지시): 팔레트 두 줄(라벨 폭이 같아 같은 열에서 시작) → 막대(왼쪽 끝 = 베이스 색, 오른쪽 끝 = 믹스 색, 사이는 그라데이션)
+   → 막대 아래 왼쪽에 베이스, 오른쪽에 믹스 조절 칸. 한쪽을 바꾸면 다른 쪽이 합 100 에 맞춰 바뀐다. */
 export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragStart, size = 'sm' }: {
   pal: { hex: string; name: string }[]; base: number; mix: number; ratio: number
   onBase: (i: number) => void; onMix: (i: number) => void; onRatio: (v: number) => void; onDragStart?: () => void
@@ -160,62 +161,53 @@ export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragSt
 }) {
   const r = Math.max(0, Math.min(100, ratio))
   const set = (v: number) => onRatio(Math.max(0, Math.min(100, Math.round(v))))
+  const [raw, setRaw] = useState<{ b?: string; m?: string }>({})
+  const rRef = useRef(r) // 버튼을 누르고 있으면 Stepper 가 처음 함수를 반복해 부르므로, 최신 값은 여기서 읽는다
+  rRef.current = r
   const pick = (el: HTMLElement, clientX: number) => {
     const b = el.getBoundingClientRect()
     const f = Math.max(0, Math.min(1, (clientX - b.left - 9) / Math.max(1, b.width - 18)))
     const v = Math.round(f * 100)
     if (v !== r) set(v)
   }
-  const row = (label: string, value: number, onValue: (v: number) => void, on: number, onPick: (i: number) => void) => (
+  const swRow = (label: string, on: number, onPick: (i: number) => void) => (
     <div className={styles.mixRow}>
       <span className={styles.mixLabel}>{label}</span>
-      <PctBox label={`${label} 비율`} value={value} onValue={onValue} size={size} />
       <div className={styles.mixSw}>{pal.map((p, i) => <Swatch key={i} hex={p.hex} name={p.name} on={on === i} onPick={() => onPick(i)} />)}</div>
     </div>
+  )
+  // 한쪽 칸: 입력 중에는 빈 값도 받아 두고, 숫자가 들어오면 그 쪽 비율로 맞춘다(다른 쪽은 100 - 그 값).
+  const side = (k: 'b' | 'm', label: string, value: number, toRatio: (v: number) => number, now: () => number) => (
+    <Stepper label={`${label} 비율`} size={size} valueStr={raw[k] ?? String(value)}
+      onNum={(v) => { if (!/^\d{0,3}$/.test(v)) return; setRaw((x) => ({ ...x, [k]: v })); if (v !== '') set(toRatio(Math.min(100, parseInt(v, 10)))) }}
+      onBlur={() => setRaw((x) => ({ ...x, [k]: undefined }))}
+      onStep={(d) => { setRaw({}); onRatio(Math.max(0, Math.min(100, toRatio(now() + d)))) }}
+      decOff={value <= 0} incOff={value >= 100} />
   )
   return (
     <div className={clsx(styles.mix, size === 'lg' && styles.mixLg)}
       style={{ ['--mix-a' as string]: pal[base]?.hex, ['--mix-b' as string]: pal[mix]?.hex }}>
-      {row('베이스', 100 - r, (v) => set(100 - v), base, onBase)}
-      <div className={styles.mixRow}>
-        <span className={styles.mixLabel}>비율</span>
-        <div className={styles.mixSlideRow}>
-          <button type="button" aria-label="믹스 1 감소" disabled={r <= 0} className={clsx('pb-step', styles.mixStep)} onClick={() => set(r - 1)}>−</button>
-          <div className={clsx('pb-slider', styles.mixSlider)}
-            onPointerDown={(e) => {
-              if (e.pointerType === 'mouse' && e.button !== 0) return
-              e.preventDefault()
-              const el = e.currentTarget
-              el.setPointerCapture(e.pointerId)
-              el.querySelector('input')?.focus({ preventScroll: true })
-              onDragStart?.()
-              pick(el, e.clientX)
-            }}
-            onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) pick(e.currentTarget, e.clientX) }}>
-            <div className={clsx('pb-track', styles.mixTrack)} />
-            <input type="range" tabIndex={-1} className="pb-range" min={0} max={100} value={r} aria-label="믹스 비율"
-              onChange={(e) => set(parseInt(e.target.value, 10) || 0)} />
-          </div>
-          <button type="button" aria-label="믹스 1 증가" disabled={r >= 100} className={clsx('pb-step', styles.mixStep)} onClick={() => set(r + 1)}>+</button>
-        </div>
+      {swRow('베이스', base, onBase)}
+      {swRow('믹스', mix, onMix)}
+      <div className={clsx('pb-slider', styles.mixSlider)}
+        onPointerDown={(e) => {
+          if (e.pointerType === 'mouse' && e.button !== 0) return
+          e.preventDefault()
+          const el = e.currentTarget
+          el.setPointerCapture(e.pointerId)
+          el.querySelector('input')?.focus({ preventScroll: true })
+          setRaw({}); onDragStart?.()
+          pick(el, e.clientX)
+        }}
+        onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) pick(e.currentTarget, e.clientX) }}>
+        <div className={clsx('pb-track', styles.mixTrack)} />
+        <input type="range" tabIndex={-1} className="pb-range" min={0} max={100} value={r} aria-label="믹스 비율"
+          onChange={(e) => set(parseInt(e.target.value, 10) || 0)} />
       </div>
-      {row('믹스', r, set, mix, onMix)}
+      <div className={styles.mixFoot}>
+        <div className={styles.mixSide}><span className={styles.mixSideLabel}>베이스</span>{side('b', '베이스', 100 - r, (v) => 100 - v, () => 100 - rRef.current)}</div>
+        <div className={styles.mixSide}>{side('m', '믹스', r, (v) => v, () => rRef.current)}<span className={styles.mixSideLabel}>믹스</span></div>
+      </div>
     </div>
-  )
-}
-
-/* 0~100 숫자 칸. 입력하는 동안은 빈 값도 받아 두고(지우고 다시 칠 수 있게), 칸을 벗어나면 실제 값으로 돌아간다. */
-function PctBox({ label, value, onValue, size }: { label: string; value: number; onValue: (v: number) => void; size: 'sm' | 'lg' }) {
-  const [raw, setRaw] = useState<string | null>(null)
-  return (
-    <input inputMode="numeric" aria-label={label} value={raw ?? String(value)}
-      onChange={(e) => {
-        const v = e.target.value
-        if (!/^\d{0,3}$/.test(v)) return
-        setRaw(v)
-        if (v !== '') onValue(Math.min(100, parseInt(v, 10)))
-      }}
-      onBlur={() => setRaw(null)}
-      className={clsx(styles.pct, size === 'lg' && styles.pctLg)} />
   )
 }
