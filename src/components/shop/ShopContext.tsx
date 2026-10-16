@@ -1249,15 +1249,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         .catch(() => notify('내리지 못했어요. 다시 시도해 주세요'))
     }
   }
+  // 광장의 링크 복사도 누를 때마다 지금 규칙으로 만든다 — 글에 적어 둔 공유 코드(share_code)는 등록 때의 카드라,
+  // 카드 모양이 바뀐 뒤(ID_SALT)에도 그것을 쓰면 옛 카드가 나간다. 같은 코디는 같은 id 라 링크가 늘어나지 않고, 옛 링크는 그대로 열린다.
   const plazaCopyLink = (post: PlazaPost) => {
-    if (post.shareCode) {
-      const name = post.name ? `&n=${encodeURIComponent(post.name)}` : ''
-      const url = `${location.origin}/?c=${post.shareCode}${name}`
-      void copyAsyncText(async () => url)
-      notify('공유 링크를 복사했어요')
-      return
-    }
-    copyShareLink({ ...post.snapshot, name: post.name })
+    copyShareLink({ ...plazaSnapshot(post.snapshot), name: post.name }, '공유 링크를 복사했어요')
   }
   const plazaSubmit = async (draft: Omit<PlazaDraft, 'shareCode'>): Promise<boolean> => {
     if (plazaSubmitting) return false
@@ -1657,10 +1652,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (opt) await applyImported(opt.snap, lp.nick)
   }
   // 공유 링크 복사: 링크는 로컬에서 즉시 만들어 바로 클립보드에 넣고, 카드 이미지·서버 저장은 뒤에서 한다(shareCode).
-  const copyShareLink = (snap: Snapshot) => {
+  const copyShareLink = (snap: Snapshot, done = '프리셋을 복사했어요') => {
     const prep = prepareShare(location.origin, snap)
     void copyAsyncText(() => prep.then((x) => x.url))
-    notify('프리셋을 복사했어요')
+    notify(done)
     prep.then((x) => uploadShare(x, snap))
       .then((r) => { if (r === 'stale') notify('사이트가 바뀌었어요. 새로고침한 뒤 다시 복사해 주세요'); else if (r === 'fail') notify('링크 저장에 실패했어요. 다시 복사해 주세요') })
       .catch(() => {})
