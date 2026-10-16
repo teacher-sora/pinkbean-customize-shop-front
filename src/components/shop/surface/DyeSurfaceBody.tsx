@@ -16,7 +16,7 @@ import type { HsbParams, PaletteParams } from '@/lib/core/dye'
 import { useShop } from '../ShopContext'
 import DyeCellCanvas from '../render/DyeCellCanvas'
 import DyeModelPreview from '../render/DyeModelPreview'
-import { DyeRow, FamilyDots, MixDye, Stepper } from '../ui/controls'
+import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/controls'
 import { IconCheck, IconReset } from '../ui/Icons'
 import { useInnerSlide } from './innerSlide'
 import { SurfaceFooter } from './Surface'
@@ -113,7 +113,9 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   }
   const reset = () => { setCleared(true); setPal(DEF_PAL()) }
 
-  const mixRows = <MixDye size="lg" hrClass={styles.hr} pal={PAL} base={pal.baseColor} mix={bIdx} ratio={pal.ratio} onBase={setBase} onMix={setMixC} onRatio={(v) => setRatio(() => v)} />
+  // 일반 아이템(색 계열 줄 / 가로선 / 조절 줄)과 같은 구조 — 가로선은 바깥 칸의 형제로, 그 칸의 간격으로 나뉜다
+  const swatchRows = <MixSwatches size="lg" pal={PAL} base={pal.baseColor} mix={bIdx} onBase={setBase} onMix={setMixC} />
+  const ratioRows = <MixRatio size="lg" pal={PAL} base={pal.baseColor} mix={bIdx} ratio={pal.ratio} onRatio={(v) => setRatio(() => v)} />
   // 버튼 줄은 **일반 아이템(HSB)과 같은 모양**이다 — 염색표 보기까지 한 줄에 양끝 정렬.
   const actsRow = (big: boolean) => (
     <div className={styles.resetRow}>
@@ -136,7 +138,9 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
         <div ref={ref} className={styles.pvBoxM}>{preview}</div>
         <div className={styles.zoomCol}>{pills}</div>
       </div>
-      <div className={styles.rowsCol}>{mixRows}</div>
+      <div className={styles.rowsCol}>{swatchRows}</div>
+      <div className={styles.hr} />
+      <div className={styles.rowsCol}>{ratioRows}</div>
       {actsRow(true)}
     </div>
   ) : (
@@ -146,7 +150,9 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
         <div className={styles.zoomRow}>{pills}</div>
       </div>
       <div className={clsx('pb-scroll', 'pb-fade', styles.hsvRight)}>
-        <div className={styles.rows}>{mixRows}</div>
+        <div className={styles.rows}>{swatchRows}</div>
+        <div className={styles.hr} />
+        <div className={styles.rows}>{ratioRows}</div>
         {actsRow(false)}
       </div>
     </div>

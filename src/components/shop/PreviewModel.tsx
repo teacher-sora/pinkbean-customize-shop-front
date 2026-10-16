@@ -149,14 +149,23 @@ export default function PreviewModel() {
     const refNav = bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel
     // 형상변이(정적 파츠) — 프레임 공통. 공용 헬퍼(리스트 카드와 동일 로직).
     const animaParts = animaLayers(pv.form, animaRaces)
+    // '기본'(정지)에서도 머리에 붙는 아이템이 그 액션의 프레임을 따로 가지면(액션 헤어 · 움직이는 모자) 그것만 돈다 — 망토 · 무기
+    // 이펙트가 정지 화면에서도 도는 것과 같다(사용자 지시). 캐릭터(몸 · 머리)와 몸에 붙는 옷 · 탈것은 0번 프레임에 그대로 둔다:
+    // 옷은 몸과 함께 숨 쉬는 프레임이라 몸이 멈춘 채 돌리면 어긋나고, 재규어는 통짜 그림이라 돌리면 1px 씩 떨린다.
+    // 박자는 게임처럼 몸의 그 액션 박자(delays)를 따른다.
+    const itemMotion = viewInfo.isStatic && pv.action === 'basic' && pv.gaze !== 'back'
+    const ownMotion = (m: ItemMeta, action: string) => !!m.frames['base'] && ((m.frames as Record<string, unknown[]>)[action]?.length ?? 0) > 1
+    let itemAnimated = false
     const frames = Array.from({ length: N }, (_, fi) => {
+      // 정지 + 아이템만 돌 때: 캐릭터는 0번 프레임(지금까지의 정지 화면과 같다), 아이템만 fi.
+      const ci = itemMotion ? 0 : fi
       // 이 프레임만 뒷모습인가(두손/한손 스윙 마무리) — 맞으면 머리·헤어도 뒷프레임을 쓰고 얼굴은 숨긴다.
       // (사다리·밧줄은 액션 자체가 뒷모습이라 이 판단 없이도 같은 결과가 나온다.)
-      const backFrame = isBackFrame(bodyMeta, charV, fi)
+      const backFrame = isBackFrame(bodyMeta, charV, ci)
       const items: AssembleInput[] = [
         // 몸통/머리/코스튬은 charV(앉는 액션이면 sit, 아니면 선택 액션). 탈것만 V(자기 액션으로 애니메이션).
-        { itemId: bodyId, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, charV, fi) },
-        { itemId: headId, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, charV, fi, backFrame) },
+        { itemId: bodyId, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, charV, ci) },
+        { itemId: headId, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, charV, ci, backFrame) },
       ]
       for (const [slot, it] of Object.entries(equipped)) {
         if (!it || hidden[slot]) continue
@@ -166,7 +175,9 @@ export default function PreviewModel() {
         const itemV = slot === 'riding' ? jagV : charV // 탈것은 자기(매핑된) 액션, 나머지는 캐릭터 포즈(sit/선택)를 따른다
         // 탈것(riding)은 자기 액션을 도는 별도 모델이라 캐릭터의 뒷프레임 판단을 붙이지 않는다.
         // 정지('기본' 액션)면 프레임 번호를 넘기지 않는다 → 머리부착 아이템은 대표 그림(카드와 같은 규칙, assemble.stillIndex).
-        let layers = getFrameLayers(m, itemV, viewInfo.isStatic ? undefined : fi, slot === 'riding' ? false : backFrame)
+        const moves = itemMotion && slot !== 'riding' && ownMotion(m, itemV.action)
+        if (moves) itemAnimated = true
+        let layers = getFrameLayers(m, itemV, moves ? fi : viewInfo.isStatic ? undefined : fi, slot === 'riding' ? false : backFrame)
         if (slot === 'weapon' && !pv.wEffect) layers = layers.filter((l) => l.name !== 'effect')
         items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace, name: m.name, dotOffsets: dotPos[m.id] })
       }
@@ -197,7 +208,7 @@ export default function PreviewModel() {
     // 바닥에 닿는 높이(navel 기준). 맨몸은 발, 탑승 중이면 탈것의 원점 — 배경 장면이 이 높이에 바닥을 깐다(lib/stageFloor).
     const mount = riding ? frames[0]?.placed.find((p) => p.name.startsWith('mount')) : undefined
     const ground = mount ? mount.y + mount.origin.y : frames[0]?.foot.y ?? 21
-    return { frames, delays, N, riding, centerMount, ground, animated: !viewInfo.isStatic && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action) }
+    return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action) }
   }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, V, viewInfo.isStatic])
 
   const effList = useMemo(() => {
