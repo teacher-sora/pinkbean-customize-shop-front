@@ -102,8 +102,10 @@ function normFrames(v: any): Frame[] {
 // 사다리·밧줄은 액션 전체가 뒷모습이라 BACK_ACTIONS 로 이미 처리되고 있었고, 이 두 프레임만 빠져 있었다.
 // 판단은 **베이스 몸의 그 프레임 z** 하나로만 한다 — 액션 이름 목록을 따로 두면 패치로 액션이 늘 때 또 빠진다.
 // 부위의 기본 z(zmap 이름). z 가 정수로 들어온 레이어를 이 자리에 그린다(zOf).
+// 모자는 `cap` 이 아니라 `capOverHair` 다 — `cap`(45)은 헤어 윗부분 `hairOverHead`(42)보다 뒤라, 헤어 윗부분(H1)을 가리지 않는
+// 모자(아메지스트 바니 vslot CpH5)는 귀가 헤어 뒤로 숨는다. 게임에서는 헤어 위에 보인다.
 const SLOT_Z: Record<string, string> = {
-  cap: 'cap', hair: 'hair', face: 'face', faceAcc: 'accessoryFace', eyeAcc: 'accessoryEye', earring: 'accessoryEar',
+  cap: 'capOverHair', hair: 'hair', face: 'face', faceAcc: 'accessoryFace', eyeAcc: 'accessoryEye', earring: 'accessoryEar',
   coat: 'mailChest', longcoat: 'mailChest', pants: 'pants', shoes: 'shoes', glove: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
 }
 const isBackBody =(fr: Frame | undefined) => !!fr?.layers.some((l) => l.name === 'body' && l.z.startsWith('back'))
@@ -303,11 +305,14 @@ export function assemble(
     return i < 0 ? 9999 : i
   }
   // root 레이어의 z 는 zmap 이름이 아니라 정수일 수 있다(이펙트와 같은 규칙: 0 이상 = 캐릭터 앞, 음수 = 뒤).
-  // root 가 아닌 레이어의 정수 z 는 그 부위의 기본 z 로 그린다. 왜: zmap 에 없는 이름이라 9999(맨 뒤)가 되어
-  // 아메지스트 레이스·바니(z "0"~"3")가 헤어 뒤로 숨었다(같은 꼴: 모자 20개, 망토 6개). 같은 부위 안에서는 숫자가 클수록 앞이다.
+  // root 가 아닌 레이어의 정수 z 는 zmap 에 없는 이름이라 그대로 두면 9999(맨 뒤)가 되어 아메지스트 레이스 · 바니(z "0"~"3")가
+  // 헤어 뒤로 숨었다(같은 꼴: 모자 20개, 망토 6개 — 망토 쪽은 1x1 빈 그림이다). 자리는 이렇게 정한다:
+  //  1) 레이어 이름이 zmap 이름이면 그것 — 군단장 매그너스 탈은 이름 `hairBelowBody`, z "0" 인 꼬리 머리가 있다(몸 뒤가 맞다).
+  //  2) 아니면 그 부위의 기본 자리(SLOT_Z). 같은 부위 안에서는 숫자가 클수록 앞이다.
   const zOf = (p: PlacedLayer) => {
     if (!/^-?\d+$/.test(String(p.z))) return zIndex(p.z)
     if (p.root) return Number(p.z) >= 0 ? -1 : 10000
+    if (zmap.includes(p.name)) return zIndex(p.name)
     return zIndex(SLOT_Z[p.slot] ?? p.z) - Number(p.z) / 1000
   }
   placed.sort((a, b) => zOf(b) - zOf(a))
