@@ -77,6 +77,7 @@ export interface ListItem {
   ridingCenterMount?: boolean // 라이딩 아이템: 캐릭터가 아니라 마운트(메카)를 중앙정렬(메탈아머).
   ridingBackSit?: boolean     // 라이딩 아이템: 뒷쪽 시선에도 캐릭터 sit 강제(탱크: 뒤=줄타기 프레임+앉은 조종사).
   metaUrl?: string            // 라이딩 아이템: 프론트 public 의 meta.json 경로(CDN 밖)
+  dupOf?: number              // 헤어 · 성형: 같은 그림 · 같은 이름의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
 }
 
 export interface SlotSummary {
@@ -196,6 +197,20 @@ const fixIcon = <T extends { id: string; icon?: string | null }>(it: T): T => (I
 
 // 라이딩(프론트 public) 아이템의 meta 경로를 id→url 로 등록. 슬롯 로드 시 채워지고 loadMeta 가 이걸 우선 쓴다.
 const ridingMetaUrl = new Map<string, string>()
+
+// 헤어 · 성형의 복제 묶음 표(parser scripts/beauty-dups.py → CDN catalog/beauty-dups.json) = { slot: { 복제 colorGroup: 원본 colorGroup } }.
+// 넥슨은 같은 그림을 반대 성별 id 로 다시 냈고, (남)/(여) 는 id 규칙으로 붙어 복제는 이름의 성별이 그림과 반대다
+// (차차 얼굴 (여) 54036 = 남자 그림 50037). 목록에서 빼고(foldList), 저장된 코디의 복제 id 는 원본으로 읽는다(ShopContext).
+// 목록에서 지우지 않고 표시만 하는 것은 그 id 로 저장된 프리셋 · 광장 글이 비지 않게 하려는 것이다. 없거나 실패하면 빈 표.
+type BeautyDups = Record<string, Record<string, number>>
+let beautyDupsPromise: Promise<BeautyDups> | null = null
+export function loadBeautyDups(): Promise<BeautyDups> {
+  if (!beautyDupsPromise) {
+    beautyDupsPromise = pre<BeautyDups>('catalog/beauty-dups.json', () => fetch(url('catalog/beauty-dups.json'), FRESH).then((r) => (r.ok ? r.json() : {})))
+      .catch(() => ({}))
+  }
+  return beautyDupsPromise
+}
 const slotCache = new Map<string, Promise<ListItem[]>>()
 export function loadSlot(file: string): Promise<ListItem[]> {
   let p = slotCache.get(file)
@@ -203,6 +218,11 @@ export function loadSlot(file: string): Promise<ListItem[]> {
     p = pre<ListItem[]>(file, () => fetch(url(file), FRESH).then((r) => r.json())).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
       return items.map((it) => fixIcon(fixSlotCodes(it)))
+    }).then(async (items) => {
+      const first = items[0]
+      if (!first || (first.slot !== 'hair' && first.slot !== 'face') || first.colorGroup == null) return items
+      const dup = (await loadBeautyDups())[first.slot] || {}
+      return items.map((it) => (it.colorGroup != null && dup[it.colorGroup] != null ? { ...it, dupOf: dup[it.colorGroup] } : it))
     })
     slotCache.set(file, p)
   }
