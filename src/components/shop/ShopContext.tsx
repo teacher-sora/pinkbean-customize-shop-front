@@ -1485,10 +1485,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 헤어·성형: 넥슨 이름에는 (남)/(여) 가 없고, 같은 이름의 묶음이 여럿이며 그림도 다를 수 있다(차차 얼굴).
   // 후보가 여럿이면 캐릭터 이미지로 고르고(lib/lookMatch), 가려지지 않으면 이름 규칙(matchByName)으로 돌아간다.
-  const matchBeauty = async (list: ListItem[], name: string, gender: string | null, look: ImageData | null, color: number): Promise<ListItem | null> => {
+  const matchBeauty = async (list: ListItem[], name: string, gender: string | null, look: ImageData | null, pal: PaletteParams): Promise<ListItem | null> => {
     const target = nrmName(name)
     const ms = list.filter((it) => nrmName(it.name || '') === target)
-    if (ms.length > 1 && look) { const g = await pickBySprite(look, ms, color); if (g) return g }
+    if (ms.length > 1 && look) { const g = await pickBySprite(look, ms, pal); if (g) return g }
     return matchByName(list, name, gender)
   }
   // 넥슨 헤어/성형 색상 → 내부 믹스 팔레트(baseColor/mixColor 인덱스 + 비율).
@@ -1528,14 +1528,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 헤어(색 접두어 제거 + 염색색상)
     if (look.hair?.name) {
       const pal = colorPalette(look.hair)
-      const found = await matchBeauty(await loadSlotFolded('hair'), stripColorPrefix(look.hair.name, look.hair.baseColor), gender, lookPx, pal.baseColor)
+      const found = await matchBeauty(await loadSlotFolded('hair'), stripColorPrefix(look.hair.name, look.hair.baseColor), gender, lookPx, pal)
       if (found) { equipped.hair = found.id; dyePalette.hair = pal; matched++ }
     }
     if (!equipped.hair && DEFAULT_EQUIP.hair) equipped.hair = DEFAULT_EQUIP.hair.id
     // 성형(염색색상)
     if (look.face?.name) {
       const pal = colorPalette(look.face, true)
-      const found = await matchBeauty(await loadSlotFolded('face'), stripColorPrefix(look.face.name, look.face.baseColor), gender, lookPx, pal.baseColor)
+      const found = await matchBeauty(await loadSlotFolded('face'), stripColorPrefix(look.face.name, look.face.baseColor), gender, lookPx, pal)
       if (found) { equipped.face = found.id; dyePalette.face = pal; matched++ }
     }
     if (!equipped.face && DEFAULT_EQUIP.face) equipped.face = DEFAULT_EQUIP.face.id
