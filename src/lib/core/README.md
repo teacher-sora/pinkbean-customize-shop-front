@@ -6,7 +6,7 @@
 - `data.ts` — 데이터 접근 계층. 모든 리소스를 CDN(`https://cdn.pinkbean-customize.com`)에서 받는다. 타입(`ItemMeta`·`Index`·`Layer`·`Frame`)의 단일 출처. 자리 코드(islot·vslot)가 잘못 들어간 아이템을 여기서 보정한다.
 - `assemble.ts` — 캐릭터 조립. 몸통 `navel` 을 원점으로 부위별 앵커를 이어 붙여, 어떤 액션·프레임에서도 캐릭터가 같은 자리에 선다. zmap 순으로 그린다. 뒷모습 프레임 판정(`isBackFrame`)도 여기.
 - `occlusion.ts` — smap·vslot 기반 가림(모자 ↔ 헤어 등).
-- `dye.ts` — 염색. 헤어·성형은 팔레트 혼합(색 A·B·비율), 그 밖의 캐시 아이템은 HSB(게임 클라이언트 `Prism.cs` 를 그대로 옮긴 것 — 추측으로 고치지 않는다).
+- `dye.ts` — 염색. 헤어·성형은 팔레트 혼합(색 A·B·비율, 16단계 그림은 4비트로 내림), 그 밖의 캐시 아이템은 HSB(seotbeo/WzComparerR2 `Prism.cs` v2 를 그대로 옮긴 것 — 추측으로 고치지 않는다).
 - `render.ts` — 조립 결과를 캔버스에 그리기, 이펙트.
 - `modelPlacement.ts` — 칸에 맞춘 정수 배율과 캔버스 크기(`computeModelPlacement`·`canvasBitmap`·`fitCanvas`).
 - `snapRender.ts` — 스냅샷(저장된 코디) 한 장을 합성한다. 프리셋·광장·상세·공유 카드가 함께 쓰고, 결과를 캐시한다.

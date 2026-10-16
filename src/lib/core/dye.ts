@@ -6,10 +6,8 @@
 
 // Game dye params (faithful to MapleStory). h = 색조 0..359, s = 채도, b = 명도 (both -99..+99,
 // 0 = neutral), t = 색상 계열 type 0..6 (0 전체/1 빨강/2 노랑/3 초록/4 청록/5 파랑/6 자주).
-// edge = 테두리(순수 검정) 포함. 게임 로직상 검정은 채도가 0이라 색조·채도가 수학적으로
-// 무효라서 **명도로만, 회색으로만** 바뀐다(실측: 명도 +50 → 119 회색, +99 → 238). 색을 띠지는 않는다.
-// 또 검정은 색조 0·채도 0 이라 '전체'가 아닌 색상 계열 필터에 전부 걸린다 → 테두리는 계열을 건너뛰게 한다
-// (안 그러면 계열을 고른 순간 토글이 아무 일도 안 해 고장으로 보인다).
+// edge = 테두리 포함(인게임 '순수 검정 포함'). 켜면 무채색(검정 · 회색)도 색상 계열과 상관없이 바뀐다 — 무채색은 색조 · 채도가
+// 없어 **명도로만, 회색으로만** 바뀐다(명도 +50 → 검정이 119 회색). 흰색은 늘 그대로다.
 export interface HsbParams { h: number; s: number; b: number; t?: number; edge?: boolean }
 export interface PaletteParams { baseColor: number; mixColor: number | null; ratio: number } // ratio 0..100
 
@@ -35,7 +33,7 @@ function toCanvas(img: CanvasImageSource, w: number, h: number, read = false): H
 // 못 쓰는 브라우저, 자리(cap)보다 큰 그림은 JS 가 맡는다 → 염색 함수는 지금처럼 바로 답하고(동기), 결과가 달라지는 일이 없다.
 // 워커로 보내지 않는다: 그림이 작아 왕복이 연산보다 길다(재 보니 메인 스레드 WASM 0.03~0.26ms, 워커 0.09~0.35ms).
 // 조각은 염색을 처음 쓸 때 받는다(warmDye). 첫 화면의 묶음에는 들어가지 않는다.
-interface DyeWasm { memory: WebAssembly.Memory; a: number; b: number; cap: number; hsb: (p: number, len: number, hue: number, sat: number, bri: number, type: number, edge: number) => void; blend: (a: number, b: number, len: number, t: number) => void }
+interface DyeWasm { memory: WebAssembly.Memory; a: number; b: number; cap: number; hsb: (p: number, len: number, hue: number, sat: number, bri: number, type: number, edge: number, fine: number) => void; blend: (a: number, b: number, len: number, ratio: number, q4: number) => void }
 let wasm: DyeWasm | null = null
 let wasmAsked = false
 export function warmDye(): void {
@@ -48,93 +46,47 @@ export function warmDye(): void {
   }).catch(() => {})   // 못 받으면 JS 로 계속 간다
 }
 
-// ─── Faithful port of MapleStory's dye/recolor (WcR2 AvatarCommon/Prism.cs) ───────────────
-// RGB↔HSL, per-color-family hue gate, exact 채도/명도 math, 16-bit color stepping(÷17), 238 cap.
-interface Rgb { r: number; g: number; b: number; gap: number; min: number; max: number; gray: boolean }
-interface Hsv { h: number; s: number; v: number } // v = HSL lightness
-
-function setHsvFromRgb(rgb: Rgb, hsv: Hsv): void {
-  const r = rgb.r / 255, g = rgb.g / 255, b = rgb.b / 255
-  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min
-  rgb.gap = d * 255; rgb.max = max * 255; rgb.min = min * 255; rgb.gray = max === min
-  hsv.v = (max + min) / 2
-  hsv.s = hsv.v > 0 && hsv.v < 1 ? d / (1 - Math.abs(2 * hsv.v - 1)) : 0
-  if (rgb.r === rgb.g && rgb.g === rgb.b) hsv.h = 0
-  else {
-    if (r === max) hsv.h = (g - b) / d
-    else if (g === max) hsv.h = 2 + (b - r) / d
-    else hsv.h = 4 + (r - g) / d
-    hsv.h *= 60; if (hsv.h < 0) hsv.h += 360
-  }
-}
-const customRound = (v: number, t: number) => (v - Math.floor(v) >= t ? Math.ceil(v) : Math.floor(v))
-const applyStep = (v: number, step = 17, threshold = 0.985) => customRound(v / step, threshold) * step
-function setRgbFromHsv(rgb: Rgb, hsv: Hsv, step: boolean, doRounding = true): void {
-  let r = 0, g = 0, b = 0
-  const c = (1 - Math.abs(2 * hsv.v - 1)) * hsv.s
-  const x = c * (1 - Math.abs(((hsv.h / 60) % 2) - 1))
-  const m = hsv.v - c / 2
-  switch (Math.floor(hsv.h / 60)) {
-    case 0: r = c; g = x; break
-    case 1: r = x; g = c; break
-    case 2: g = c; b = x; break
-    case 3: g = x; b = c; break
-    case 4: b = c; r = x; break
-    case 5: b = x; r = c; break
-  }
-  if (doRounding) {
-    rgb.r = applyStep((r + m) * 255, step ? 1 : 17)
-    rgb.g = applyStep((g + m) * 255, step ? 1 : 17)
-    rgb.b = applyStep((b + m) * 255, step ? 1 : 17)
-  } else { rgb.r = (r + m) * 255; rgb.g = (g + m) * 255; rgb.b = (b + m) * 255 }
-}
-function calcBrightness(rgb: Rgb, brightness: number): [number, number, number] {
-  const color = [rgb.r, rgb.g, rgb.b]
-  const max = Math.max(...color), min = Math.min(...color)
-  const gray = rgb.gray, gap = rgb.gap
-  const add: [number, number, number] = [0, 0, 0]
-  if (brightness < 100) {
-    if (gray) return add
-    const adjustedGap = (gap / rgb.max) * max
-    for (let i = 0; i < 3; i++) {
-      const c = color[i]
-      if (c <= 0) { add[i] = -255; continue }
-      add[i] = min === 0 ? (c * (brightness - 100)) / 100 : (adjustedGap * (brightness - 100)) / 100
-    }
-  } else {
-    for (let i = 0; i < 3; i++) {
-      const c = color[i]
-      if (max === 255 || gray) add[i] = ((255 - c) * (brightness - 100)) / 100
-      else {
-        const amount = ((255 - max) * (15 - (12 * gap) / (rgb.min + gap))) / 15 + max
-        add[i] = ((amount - c) * (brightness - 100)) / 100
-      }
-    }
-  }
-  return add
-}
-// 색상 계열(type) 별 색조 범위 안의 픽셀만 변환.
-function checkColorType(type: number, hsv: Hsv): boolean {
-  const hue = Math.floor(hsv.h)
-  switch (type) {
-    case 1: return !((hue >= 30 && hue <= 330) || hsv.s === 0) // 빨강
-    case 2: return !(hue < 30 || hue > 90)   // 노랑
-    case 3: return !(hue < 90 || hue > 150)  // 초록
-    case 4: return !(hue < 150 || hue > 210) // 청록
-    case 5: return !(hue < 210 || hue > 270) // 파랑
-    case 6: return !(hue < 270 || hue > 330) // 자주
-    default: return true                     // 0 전체
-  }
-}
+// ─── Faithful port of MapleStory's dye/recolor (seotbeo/WzComparerR2 AvatarCommon/Prism.cs, 2026-07 "v2") ───
+// HSV 공간에서 색조를 돌리고 채도 · 명도를 옮긴다. 픽셀 하나씩 float(32비트)으로 계산한다 — 원본(C#)이 float 라 같은 자리에서
+// 같은 값으로 잘리게 Math.fround 로 맞췄다(wasm/dye.c 도 float).
+// 2026-10 사용자 지시로 넥슨 캐릭터 이미지와 픽셀로 견줘 바꿨다: 캐시 아이템 28벌 · 1만 5천여 칸에서 옛 공식(v1, HSL + 238 상한)은
+// 69%, 이 공식은 89% 가 정확히 같았다(나머지는 다른 아이템에 가린 칸). 특히 명도를 낮춘 염색 · 풀컬러 그림에서 옛 공식이 틀렸다.
+// 추측으로 고치지 않는다 — 원본이 바뀌면 원본을 다시 옮긴다.
+const fr = Math.fround
 const clampN = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
+// 색상 계열(type) 별 색조 범위 안의 픽셀만 변환.
+function checkColorType(type: number, hue: number, sat: number): boolean {
+  const h = Math.floor(hue)
+  switch (type) {
+    case 1: return !((h >= 30 && h <= 330) || sat === 0) // 빨강
+    case 2: return !(h < 30 || h > 90)   // 노랑
+    case 3: return !(h < 90 || h > 150)  // 초록
+    case 4: return !(h < 150 || h > 210) // 청록
+    case 5: return !(h < 210 || h > 270) // 파랑
+    case 6: return !(h < 270 || h > 330) // 자주
+    default: return true                 // 0 전체
+  }
+}
+// 0.985f 이상이면 올리고 아니면 내린다(원본 CustomRound — 문턱은 float 값 그대로). step 17 = 16단계 그림, 1 = 풀컬러 그림 · 이펙트.
+const STEP_UP = fr(0.985)
+function applyStep(v: number, step: number): number {
+  const q = fr(v / step)
+  return (q - Math.floor(q) >= STEP_UP ? Math.ceil(q) : Math.floor(q)) * step
+}
+// 16단계 그림인가(원본은 그림 전체에서 한 번 판단한다). 불투명 칸만 본다 — 반투명 칸은 캔버스의 곱한 알파를 거치며 값이 흔들린다.
+function is16Image(a: Uint8ClampedArray): boolean {
+  for (let i = 0; i < a.length; i += 4) if (a[i + 3] === 255 && (a[i] % 17 || a[i + 1] % 17 || a[i + 2] % 17)) return false
+  return true
+}
 
 // Recolor one sprite exactly like the game. UI passes h(0..359), s/b(-99..+99), t(0..6);
 // game space is saturation/brightness 1..199 (100 = neutral).
+// 이펙트 그림(effects/…)은 16단계로 자르지 않는다(원본 isEffect).
 export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTMLCanvasElement {
   const hue = (((p.h | 0) % 360) + 360) % 360
   const saturation = 100 + p.s, brightness = 100 + p.b, type = p.t ?? 0
   const edge = !!p.edge
-  const ck = `prism|${key}|${type}|${hue}|${saturation}|${brightness}|${edge ? 'e' : ''}`
+  const ck = `prism2|${key}|${type}|${hue}|${saturation}|${brightness}|${edge ? 'e' : ''}`
   const hit = cache.get(ck); if (hit) return hit
   const c = toCanvas(img, img.width, img.height, true)
   const ctx = c.getContext('2d', READ)!
@@ -143,37 +95,50 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
   if (!valid) { cache.set(ck, c); return c }
   const data = ctx.getImageData(0, 0, c.width, c.height)
   const a = data.data
+  const fine = key.includes('effects/') || !is16Image(a)   // true = 1 단위(풀컬러 · 이펙트), false = 17 단위
   warmDye()
   if (wasm && a.length <= wasm.cap) {
     const m = new Uint8Array(wasm.memory.buffer, wasm.a, a.length)
-    m.set(a); wasm.hsb(wasm.a, a.length, hue, saturation, brightness, type, edge ? 1 : 0); a.set(m)
+    m.set(a); wasm.hsb(wasm.a, a.length, hue, saturation, brightness, type, edge ? 1 : 0, fine ? 1 : 0); a.set(m)
   } else {
   // [hsb 루프 시작] — wasm/dye.c 의 hsb 와 같은 식이다. 고치면 그쪽도 고친다
+  const st = fine ? 1 : 17
+  const sk = fr((saturation - 100) / 100), bk = fr((brightness - 100) / 100)
   for (let i = 0; i < a.length; i += 4) {
-    const alpha = a[i + 3]
-    const rgb: Rgb = { r: a[i], g: a[i + 1], b: a[i + 2], gap: 0, min: 0, max: 0, gray: false }
-    const hsv: Hsv = { h: 0, s: 0, v: 0 }
-    setHsvFromRgb(rgb, hsv)
-    const black = a[i] === 0 && a[i + 1] === 0 && a[i + 2] === 0
-    const white = a[i] === 255 && a[i + 1] === 255 && a[i + 2] === 255
-    // 테두리 포함이면 검정만 계열 필터를 건너뛴다. 흰색은 어떤 값에도 결과가 같아(계산상 무변화) 늘 제외한다.
-    let convert = edge && black ? true : checkColorType(type, hsv)
-    if ((black && !edge) || white || alpha === 0) convert = false
-    if (convert) {
-      const not16 = a[i] % 17 !== 0 || a[i + 1] % 17 !== 0 || a[i + 2] % 17 !== 0
-      if (hue > 0) { hsv.h = (hsv.h + hue) % 360; setRgbFromHsv(rgb, hsv, not16) }
-      const breakUpper = [not16 || rgb.r > 238, not16 || rgb.g > 238, not16 || rgb.b > 238]
-      if (saturation !== 100 && hsv.s !== 0) {
-        hsv.s = saturation > 100 ? clampN(hsv.s + (saturation - 100) / 100, 0, 1) : (hsv.s * saturation) / 100
-        setRgbFromHsv(rgb, hsv, false, false)
-      }
-      const add = brightness !== 100 ? calcBrightness(rgb, brightness) : [0, 0, 0]
-      rgb.r = clampN(rgb.r + add[0], 0, breakUpper[0] ? 255 : 238)
-      rgb.g = clampN(rgb.g + add[1], 0, breakUpper[1] ? 255 : 238)
-      rgb.b = clampN(rgb.b + add[2], 0, breakUpper[2] ? 255 : 238)
-      if (!not16) { rgb.r = applyStep(rgb.r); rgb.g = applyStep(rgb.g); rgb.b = applyStep(rgb.b) }
+    const R = a[i], G = a[i + 1], B = a[i + 2]
+    if (a[i + 3] === 0 || (R === 255 && G === 255 && B === 255) || (!edge && R === 0 && G === 0 && B === 0)) continue
+    const r = fr(R / 255), g = fr(G / 255), b = fr(B / 255)
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = fr(max - min)
+    const v0 = max, s0 = v0 > 0 ? fr(d / v0) : 0
+    let h = 0
+    if (!(R === G && G === B)) {
+      h = r === max ? fr(fr(g - b) / d) : g === max ? fr(2 + fr(fr(b - r) / d)) : fr(4 + fr(fr(r - g) / d))
+      h = fr(h * 60); if (h < 0) h = fr(h + 360)
     }
-    a[i] = rgb.r; a[i + 1] = rgb.g; a[i + 2] = rgb.b
+    // 테두리 포함이면 무채색(채도 0 — 검정 · 회색)은 계열을 건너뛰고 바뀐다. 흰색은 늘 그대로.
+    if (!(edge && s0 === 0) && !checkColorType(type, h, s0)) continue
+    h = fr(fr(h + hue) % 360)
+    let ds = 0, dv = 0
+    if (saturation < 100) { ds = fr(sk * s0); dv = fr(fr(fr(sk * s0) * v0) / 2) }
+    else if (s0 > 0 && v0 < 1) { ds = fr(fr(sk * fr(2 - s0)) * fr(1 - v0)); dv = fr(fr(sk * fr(1 - s0)) * v0) }
+    const ts = clampN(fr(s0 + ds), 0, 1), tv = clampN(fr(v0 + dv), 0, 1)
+    let ds2 = 0, dv2 = 0
+    if (brightness < 100) dv2 = fr(fr(bk * s0) * tv)
+    else { ds2 = fr(bk * -ts); dv2 = fr(fr(fr(bk * fr(15 - fr(12 * s0))) / 15) * fr(1 - tv)) }
+    const S = clampN(fr(ts + ds2), 0, 1), V = clampN(fr(tv + dv2), 0, 1)
+    const cc = fr(V * S), x = fr(cc * fr(1 - Math.abs(fr(fr(fr(h / 60) % 2) - 1)))), m = fr(V - cc)
+    let rr = 0, gg = 0, bb = 0
+    switch (Math.floor(h / 60)) {
+      case 0: rr = cc; gg = x; break
+      case 1: rr = x; gg = cc; break
+      case 2: gg = cc; bb = x; break
+      case 3: gg = x; bb = cc; break
+      case 4: bb = cc; rr = x; break
+      case 5: bb = x; rr = cc; break
+    }
+    a[i] = applyStep(fr(fr(rr + m) * 255), st)
+    a[i + 1] = applyStep(fr(fr(gg + m) * 255), st)
+    a[i + 2] = applyStep(fr(fr(bb + m) * 255), st)
   }
   // [hsb 루프 끝]
   }
@@ -182,16 +147,55 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
   return c
 }
 
-// 피부 염색 HSB. 스프라이트 실측(00002042/43 body·head): 컬러라인 = 순청 (0,0,255) 하나, 피부 음영 = 연분홍
-// (255,238,255)·(255,221,238) 등 — HSL 채도 1.0 인 '유채색'이다(무채색 아님). 그래서 '전체 색상 계열'로 적용하면
-// 피부 음영까지 색조·채도가 돌아 회색(238,238,238)으로 뭉개진다(인게임은 라인만 바뀐다).
-// → 계열을 고르지 않았으면 그 피부의 **포인트 색 계열**로 적용한다(shopData.skinDyeFamily 가 실측으로 정한다).
-//   컬러라인·비비드·블루 팬더는 파랑, 좀비는 청록, 삼색 냥이는 노랑. 계열을 직접 고르면 그대로 쓴다.
-// ⚠️ 커스텀 피부는 **테두리 포함을 쓰지 않는다**.
-// 버튼을 감추는 것만으로는 이미 저장된 값이 남아 그려질 수 있어, 피부로 가는 유일한 길목인 여기서 끈다.
-export const skinHsb = (h: HsbParams, family = 5): HsbParams => ({ ...h, t: h.t ? h.t : family, edge: false })
+// 피부 염색 HSB — **고른 색상 계열 그대로** 건다. '전체 색상 계열'(t=0)이면 피부 전체가 바뀐다(인게임과 같다).
+// 근거: 넥슨 캐릭터 이미지 38명(커스텀 피부 염색 중)과 머리 그림을 픽셀로 맞춰 봤다. 컬러라인 피부를 '전체 색상 계열'로 염색한
+// 4명은 전체로 건 것이 가장 잘 맞고(예: 307칸 / 파랑만 264 / 염색 없음 244), '파란색 계열' 사람들은 파랑만 건 것이 맞는다.
+// 예전에는 0 을 '고르지 않음'으로 보고 그 피부의 포인트 색 계열(shopData.skinDyeFamily)로 바꿔 걸어, 전체를 골라도 라인만 바뀌었다(건의함).
+// family 는 계열 값이 아예 없는 옛 데이터에만 쓴다.
+// ⚠️ 커스텀 피부는 **테두리 포함을 쓰지 않는다**. 버튼을 감추는 것만으로는 이미 저장된 값이 남아 그려질 수 있어, 피부로 가는 유일한 길목인 여기서 끈다.
+export const skinHsb = (h: HsbParams, family = 5): HsbParams => ({ ...h, t: h.t ?? family, edge: false })
 
-// Blend base sprite toward mix sprite by ratio% (per-pixel lerp on RGB; alpha from base).
+// Blend base sprite toward mix sprite by ratio% (alpha from base). 게임과 같은 식이다 — 넥슨 캐릭터 이미지(믹스염색 12명)와 픽셀로 맞춰 정했다:
+//  · 보통 그림: 채널마다 base·(1-t) + mix·t 를 반올림.
+//  · **16단계 그림**(두 장의 보이는 칸이 전부 17의 배수 = 게임 안에서 채널당 4비트로 저장된 그림. 예전 헤어 대부분):
+//    4비트 값으로 섞고 **내림**한다 → 결과도 17 단위에 머문다. 이렇게 하지 않으면 그 사이 색이 나와 인게임과 미묘하게 다르다
+//    (건의함 · 조용한 단발 검노 7030). 맞춘 비율: 16단계 헤어 4명에서 정확히 같은 칸 65~85%(나머지는 모자 · 얼굴에 가린 칸),
+//    반올림 섞기는 3% 안팎.
+export function is16Step(A: Uint8ClampedArray, B: Uint8ClampedArray): boolean {
+  // 불투명 칸만 본다 — 반투명 칸은 캔버스의 곱한 알파를 거치며 17 단위에서 흔들린다(그림 형식은 불투명 칸으로 충분히 가린다).
+  for (let i = 0; i < A.length; i += 4) {
+    if (A[i + 3] === 255 && (A[i] % 17 || A[i + 1] % 17 || A[i + 2] % 17)) return false
+    if (B[i + 3] === 255 && (B[i] % 17 || B[i + 1] % 17 || B[i + 2] % 17)) return false
+  }
+  return true
+}
+// A 를 그 자리에서 바꾼다. ratio 는 0..100 정수(믹스 색의 비율).
+export function blendPixels(A: Uint8ClampedArray, B: Uint8ClampedArray, ratio: number): void {
+  const r = Math.max(0, Math.min(100, Math.round(ratio)))
+  const q4 = is16Step(A, B)
+  warmDye()
+  if (wasm && A.length <= wasm.cap) {
+    const m = new Uint8Array(wasm.memory.buffer, wasm.a, A.length)
+    m.set(A); new Uint8Array(wasm.memory.buffer, wasm.b, B.length).set(B)
+    wasm.blend(wasm.a, wasm.b, A.length, r, q4 ? 1 : 0); A.set(m)
+    return
+  }
+  // [blend 루프 시작] — wasm/dye.c 의 blend 와 같은 식이다. 고치면 그쪽도 고친다
+  const t = r / 100
+  for (let i = 0; i < A.length; i += 4) {
+    if (A[i + 3] === 0) continue
+    if (q4) {
+      A[i] = 17 * Math.floor(((A[i] / 17) * (100 - r) + (B[i] / 17) * r) / 100)
+      A[i + 1] = 17 * Math.floor(((A[i + 1] / 17) * (100 - r) + (B[i + 1] / 17) * r) / 100)
+      A[i + 2] = 17 * Math.floor(((A[i + 2] / 17) * (100 - r) + (B[i + 2] / 17) * r) / 100)
+    } else {
+      A[i] = A[i] * (1 - t) + B[i] * t
+      A[i + 1] = A[i + 1] * (1 - t) + B[i + 1] * t
+      A[i + 2] = A[i + 2] * (1 - t) + B[i + 2] * t
+    }
+  }
+  // [blend 루프 끝]
+}
 export function blendPalette(base: HTMLImageElement, mix: HTMLImageElement, ratio: number, key: string): HTMLCanvasElement {
   const ck = `pal|${key}|${ratio}`
   const hit = cache.get(ck); if (hit) return hit
@@ -201,23 +205,7 @@ export function blendPalette(base: HTMLImageElement, mix: HTMLImageElement, rati
   const bd = ctx.getImageData(0, 0, w, h)
   const mc = toCanvas(mix, w, h, true)
   const md = mc.getContext('2d', READ)!.getImageData(0, 0, w, h)
-  const t = Math.max(0, Math.min(100, ratio)) / 100
-  const A = bd.data, B = md.data
-  warmDye()
-  if (wasm && A.length <= wasm.cap) {
-    const m = new Uint8Array(wasm.memory.buffer, wasm.a, A.length)
-    m.set(A); new Uint8Array(wasm.memory.buffer, wasm.b, B.length).set(B)
-    wasm.blend(wasm.a, wasm.b, A.length, t); A.set(m)
-  } else {
-  // [blend 루프 시작] — wasm/dye.c 의 blend 와 같은 식이다. 고치면 그쪽도 고친다
-  for (let i = 0; i < A.length; i += 4) {
-    if (A[i + 3] === 0) continue
-    A[i] = A[i] * (1 - t) + B[i] * t
-    A[i + 1] = A[i + 1] * (1 - t) + B[i + 1] * t
-    A[i + 2] = A[i + 2] * (1 - t) + B[i + 2] * t
-  }
-  // [blend 루프 끝]
-  }
+  blendPixels(bd.data, md.data, ratio)
   ctx.putImageData(bd, 0, 0)
   cache.set(ck, c)
   return c
