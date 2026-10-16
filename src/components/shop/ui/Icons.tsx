@@ -46,8 +46,9 @@ export const IconRedo = () => (
 )
 // 점 위치: 가운데 점 + 네 방향 삼각형(점을 옮긴다). 눈금만 있던 옛 모양은 과녁 · 조준으로 읽혔다(사용자 지적).
 // 선 화살표는 13~15px 에서 머리가 뭉개져, 채운 삼각형으로 그린다.
+// 점 위치: 조준점(원 + 네 방향 눈금) 가운데에 점. "점을 원하는 자리에 놓는다". 선 굵기와 원 크기는 염색(팔레트)과 같다
 export const IconDot = ({ size = 13 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3.2" /><path d="M12 1.8 16 6.4H8zM12 22.2 8 17.6h8zM1.8 12 6.4 8v8zM22.2 12 17.6 16V8z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" /></svg>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="12" cy="12" r="8.4" /><path d="M12 3.6v2.6M12 17.8v2.6M3.6 12h2.6M17.8 12h2.6" /><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" /></svg>
 )
 export const IconCaretDown = ({ size = 12, className }: P) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9.5l6 6 6-6" /></svg>
