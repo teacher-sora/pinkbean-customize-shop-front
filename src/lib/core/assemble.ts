@@ -101,7 +101,12 @@ function normFrames(v: any): Frame[] {
 // `backBody`(140)보다 앞이라 **몸·다리·옷이 통째로 가려져** 머리만 떠 있었다.
 // 사다리·밧줄은 액션 전체가 뒷모습이라 BACK_ACTIONS 로 이미 처리되고 있었고, 이 두 프레임만 빠져 있었다.
 // 판단은 **베이스 몸의 그 프레임 z** 하나로만 한다 — 액션 이름 목록을 따로 두면 패치로 액션이 늘 때 또 빠진다.
-const isBackBody = (fr: Frame | undefined) => !!fr?.layers.some((l) => l.name === 'body' && l.z.startsWith('back'))
+// 부위의 기본 z(zmap 이름). z 가 정수로 들어온 레이어를 이 자리에 그린다(zOf).
+const SLOT_Z: Record<string, string> = {
+  cap: 'cap', hair: 'hair', face: 'face', faceAcc: 'accessoryFace', eyeAcc: 'accessoryEye', earring: 'accessoryEar',
+  coat: 'mailChest', longcoat: 'mailChest', pants: 'pants', shoes: 'shoes', glove: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
+}
+const isBackBody =(fr: Frame | undefined) => !!fr?.layers.some((l) => l.name === 'body' && l.z.startsWith('back'))
 export function isBackFrame(bodyMeta: ItemMeta, opts: ViewOpts, i = 0): boolean {
   const seq = getFrameSeq(bodyMeta, opts)
   return isBackBody(seq[Math.min(i, seq.length - 1)])
@@ -298,7 +303,13 @@ export function assemble(
     return i < 0 ? 9999 : i
   }
   // root 레이어의 z 는 zmap 이름이 아니라 정수일 수 있다(이펙트와 같은 규칙: 0 이상 = 캐릭터 앞, 음수 = 뒤).
-  const zOf = (p: PlacedLayer) => (p.root && /^-?\d+$/.test(String(p.z)) ? (Number(p.z) >= 0 ? -1 : 10000) : zIndex(p.z))
+  // root 가 아닌 레이어의 정수 z 는 그 부위의 기본 z 로 그린다. 왜: zmap 에 없는 이름이라 9999(맨 뒤)가 되어
+  // 아메지스트 레이스·바니(z "0"~"3")가 헤어 뒤로 숨었다(같은 꼴: 모자 20개, 망토 6개). 같은 부위 안에서는 숫자가 클수록 앞이다.
+  const zOf = (p: PlacedLayer) => {
+    if (!/^-?\d+$/.test(String(p.z))) return zIndex(p.z)
+    if (p.root) return Number(p.z) >= 0 ? -1 : 10000
+    return zIndex(SLOT_Z[p.slot] ?? p.z) - Number(p.z) / 1000
+  }
   placed.sort((a, b) => zOf(b) - zOf(a))
   // `anchors` holds every resolved named reference point (navel/neck/brow/hand/…) in
   // world coords (navel = 0,0). Item effects use it to pick their attach point by `pos`.
