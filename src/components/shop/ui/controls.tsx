@@ -53,8 +53,13 @@ export function FamilyDots({ value, onPick, size }: { value: number; onPick: (i:
 }
 
 /* ── 믹스 스와치(팔레트 색은 데이터라 CSS 변수로만 주입) ── */
+// 생김새는 색 계열 점(FamilyDots)과 같다 — 연한 테두리 링 안에 색 원, 고르면 링이 핑크로 바뀐다(양방향 전환). 크기는 칸에 맞춰 줄어든다.
 export function Swatch({ hex, name, on, onPick }: { hex: string; name: string; on: boolean; onPick: () => void }) {
-  return <button type="button" onClick={onPick} title={name} className={clsx(styles.swatch, on && styles.swatchOn)} style={{ ['--sw' as string]: hex }} />
+  return (
+    <button type="button" onClick={onPick} title={name} aria-label={name} aria-pressed={on} className={clsx(styles.swatch, on && styles.swatchOn)}>
+      <span className={styles.swatchDot} style={{ ['--sw' as string]: hex }} />
+    </button>
+  )
 }
 
 /* ── [−][값][+] 스테퍼: 누르고 있으면 400ms 뒤부터 70ms 간격 반복(onStep 은 함수형 갱신이어야 최신값 누적) ── */
@@ -152,14 +157,24 @@ export function DyeRow({ label, track, min, max, value, onRange, onDragStart, st
 /* ── 헤어 · 성형 염색: 베이스 · 믹스(게임의 믹스 염색 화면을 따른다) ──
    저장 값은 그대로다 — ratio = 믹스 색의 비율(0~100), 베이스 비율은 100 - ratio. 넥슨 API 의 mix_rate 도 믹스 비율이다.
    왜: '비율' 한 칸만 있으면 무엇의 비율인지 알 수 없어, 게임의 '검정 70 · 노랑 30' 을 70 으로 넣으면 노랑 70 이 됐다(건의함).
-   배치(사용자 지시): 팔레트 두 줄(라벨 폭이 같아 같은 열에서 시작) → 왼쪽 베이스, 오른쪽 믹스 조절 칸 → 막대(왼쪽 끝 = 베이스 색,
-   오른쪽 끝 = 믹스 색, 사이는 그라데이션). 조절 칸에는 라벨을 달지 않는다 — 바로 아래 막대 양끝의 색이 어느 쪽인지 알려 준다.
+   배치(사용자 지시): 팔레트 두 줄(MixSwatches — 라벨 폭이 같아 같은 열에서 시작) / 가로선 / 조절(MixRatio — 왼쪽 베이스, 오른쪽 믹스
+   조절 칸 → 막대: 왼쪽 끝 = 베이스 색, 오른쪽 끝 = 믹스 색, 사이는 그라데이션). 두 부품으로 나눈 것은 가로선이 다른 염색 화면처럼
+   바깥 칸의 형제로 놓여 그 칸의 간격(gap)으로 나뉘게 하려는 것이다. 조절 칸에는 라벨을 달지 않는다 — 막대 양끝 색이 알려 준다.
    한쪽을 바꾸면 다른 쪽이 합 100 에 맞춰 바뀐다. */
-export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragStart, size = 'sm', hrClass }: {
-  pal: { hex: string; name: string }[]; base: number; mix: number; ratio: number
-  onBase: (i: number) => void; onMix: (i: number) => void; onRatio: (v: number) => void; onDragStart?: () => void
-  size?: 'sm' | 'lg'
-  hrClass?: string // 팔레트와 수치 조절 사이 가로선 — 놓는 곳(코디 정보 탭 · 염색 창)의 다른 염색 화면과 같은 선을 쓴다
+type MixPal = { hex: string; name: string }[]
+export function MixSwatches({ pal, base, mix, onBase, onMix, size = 'sm' }: {
+  pal: MixPal; base: number; mix: number; onBase: (i: number) => void; onMix: (i: number) => void; size?: 'sm' | 'lg'
+}) {
+  const row = (label: string, on: number, onPick: (i: number) => void) => (
+    <div className={styles.mixRow}>
+      <span className={styles.mixLabel}>{label}</span>
+      <div className={styles.mixSw}>{pal.map((p, i) => <Swatch key={i} hex={p.hex} name={p.name} on={on === i} onPick={() => onPick(i)} />)}</div>
+    </div>
+  )
+  return <div className={clsx(styles.mix, size === 'lg' && styles.mixLg)}>{row('베이스', base, onBase)}{row('믹스', mix, onMix)}</div>
+}
+export function MixRatio({ pal, base, mix, ratio, onRatio, onDragStart, size = 'sm' }: {
+  pal: MixPal; base: number; mix: number; ratio: number; onRatio: (v: number) => void; onDragStart?: () => void; size?: 'sm' | 'lg'
 }) {
   const r = Math.max(0, Math.min(100, ratio))
   const set = (v: number) => onRatio(Math.max(0, Math.min(100, Math.round(v))))
@@ -172,12 +187,6 @@ export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragSt
     const v = Math.round(f * 100)
     if (v !== r) set(v)
   }
-  const swRow = (label: string, on: number, onPick: (i: number) => void) => (
-    <div className={styles.mixRow}>
-      <span className={styles.mixLabel}>{label}</span>
-      <div className={styles.mixSw}>{pal.map((p, i) => <Swatch key={i} hex={p.hex} name={p.name} on={on === i} onPick={() => onPick(i)} />)}</div>
-    </div>
-  )
   // 한쪽 칸: 입력 중에는 빈 값도 받아 두고, 숫자가 들어오면 그 쪽 비율로 맞춘다(다른 쪽은 100 - 그 값).
   const side = (k: 'b' | 'm', label: string, value: number, toRatio: (v: number) => number, now: () => number) => (
     <Stepper label={`${label} 비율`} size={size} valueStr={raw[k] ?? String(value)}
@@ -189,9 +198,6 @@ export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragSt
   return (
     <div className={clsx(styles.mix, size === 'lg' && styles.mixLg)}
       style={{ ['--mix-a' as string]: pal[base]?.hex, ['--mix-b' as string]: pal[mix]?.hex }}>
-      {swRow('베이스', base, onBase)}
-      {swRow('믹스', mix, onMix)}
-      {hrClass && <div className={clsx(hrClass, styles.mixHr)} />}
       <div className={styles.mixFoot}>
         {side('b', '베이스', 100 - r, (v) => 100 - v, () => 100 - rRef.current)}
         {side('m', '믹스', r, (v) => v, () => rRef.current)}

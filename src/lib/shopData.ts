@@ -164,7 +164,8 @@ export const MOVE_POSTURE_ACTIONS = new Set(['basic', 'stand', 'alert', 'proneSt
 export function resolveAction(a: string, w: string): string {
   const two = w === 'two'
   switch (a) {
-    case 'basic': return two ? 'stand2' : 'stand1' // 기본 = 서기 프레임(단, 애니메이션 정지)
+    case 'basic': return two ? 'stand2' : 'stand1' // 기본 = 서기(움직인다)
+    case 'still': return two ? 'stand2' : 'stand1' // 고정 = 서기 프레임 하나(이펙트까지 멈춘다 — PreviewModel)
     case 'stand': return two ? 'stand2' : 'stand1'
     case 'walk': return two ? 'walk2' : 'walk1'
     default: return a
@@ -178,8 +179,9 @@ export function buildView(pv: { action: string; weapon: string; expr: string; ea
   const effectiveAction = pv.gaze === 'back' ? 'rope' : resolveAction(pv.action, pv.weapon)
   return {
     view: { action: effectiveAction, expression: pv.expr, ear: pv.ear, weaponMotion: pv.weapon },
-    // 뒷쪽 = 밧줄(rope) "첫 프레임 정지"(뒷모습). 애니메이션 액션이어도 뒷쪽이면 정지.
-    isStatic: pv.action === 'basic' || pv.gaze === 'back',
+    // 뒷쪽 = 밧줄(rope) "첫 프레임 정지"(뒷모습). 애니메이션 액션이어도 뒷쪽이면 정지. 고정도 정지.
+    // 기본은 서기로 움직인다(사용자 지시 — 헤어 · 모자의 액션 프레임이 기본 상태에서도 보이게). 라이딩의 기본은 PreviewModel 이 멈춘다.
+    isStatic: pv.action === 'still' || pv.gaze === 'back',
     flip: pv.gaze === 'right', // 오른쪽 = 좌우 반전(스프라이트 기본은 왼쪽 향)
     baseAction: pv.action,
   }

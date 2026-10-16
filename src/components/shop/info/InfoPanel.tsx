@@ -12,7 +12,7 @@ import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
-import { DyeRow, FamilyDots, MixDye, Stepper } from '../ui/controls'
+import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/controls'
 import { IconCheck, IconEye } from '../ui/Icons'
 import { SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
@@ -248,9 +248,13 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
         <div className={clsx('pb-dyecol', styles.ctrlCol, cardsFit && styles.ctrlColFit)}>
           {mix ? (
             <>
+              {/* 일반 아이템(색 계열 점 / 가로선 / 색조 · 채도 · 명도)과 같은 구조 — 가로선은 첫 묶음 안의 형제로, 묶음의 간격으로 나뉜다 */}
               <div className={styles.group}>
-                <MixDye hrClass={styles.groupHr} pal={PAL} base={pal.baseColor} mix={pal.mixColor ?? pal.baseColor} ratio={pal.ratio}
-                  onBase={setBase} onMix={setMixC} onDragStart={beginDrag}
+                <MixSwatches pal={PAL} base={pal.baseColor} mix={pal.mixColor ?? pal.baseColor} onBase={setBase} onMix={setMixC} />
+                <div className={styles.groupHr} />
+              </div>
+              <div className={styles.group}>
+                <MixRatio pal={PAL} base={pal.baseColor} mix={pal.mixColor ?? pal.baseColor} ratio={pal.ratio} onDragStart={beginDrag}
                   onRatio={(v) => setPal((cur) => ({ ...cur, ratio: v }))} />
                 {/* 헤어·성형은 여기까지다 — 베이스 · 믹스 색과 그 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다. */}
                 <div className={styles.acts}>

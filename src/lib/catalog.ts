@@ -78,7 +78,9 @@ export const PV_ACTION_GROUPS: { group: string; items: Opt[] }[] = [
   {
     group: '이동/자세',
     items: [
-      { v: 'basic', l: '기본' }, { v: 'stand', l: '서기' }, { v: 'walk', l: '걷기' },
+      // 기본 = 서기 움직임(헤어 · 모자의 액션 프레임도 돈다). 고정 = 캐릭터와 망토 · 무기 이펙트까지 한 프레임으로 멈춘다(사용자 지시).
+      // '서기'는 기본과 같아져 뺐다 — 저장된 'stand' 는 'basic' 으로 읽는다(ShopContext normAction).
+      { v: 'basic', l: '기본' }, { v: 'still', l: '고정' }, { v: 'walk', l: '걷기' },
       { v: 'alert', l: '전투 대기' }, { v: 'proneStab', l: '엎드리기' }, { v: 'sit', l: '앉기' },
       { v: 'jump', l: '점프' }, { v: 'fly', l: '날기' }, { v: 'ladder', l: '사다리' }, { v: 'rope', l: '밧줄' },
     ],
