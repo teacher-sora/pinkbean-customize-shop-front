@@ -35,6 +35,7 @@ const subscribe = (fn: () => void) => { subs.add(fn); return () => { subs.delete
 
 // 서버와 첫 그리기에서는 기본 배경이고, 화면이 뜬 뒤에 저장된 것으로 바뀐다.
 export function useStageBg(): StageBg { return useSyncExternalStore(subscribe, read, () => DEFAULT) }
+export function getStageBg(): StageBg { return read() }
 export function setStageBg(sel: string) { const s = read(); if (s.sel !== sel) write({ ...s, sel }) }
 export function removeStageBg(id: string) {
   const s = read()
