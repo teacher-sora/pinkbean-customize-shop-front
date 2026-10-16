@@ -23,6 +23,10 @@ function intersects(a: string[], b: string[]): boolean {
 // 유지되어야 한다(모자를 벗으면 다시 보임). Hr/Fc 를 빼면 "모자→헤어 벗김"과 "헤어→모자 벗김" 양방향이 함께
 // 해결된다. 진짜 배타 충돌(한벌옷 MaPn⇒상하의, 두손무기 WpSi⇒방패)은 Ma/Pn/Wp/Si 라 영향 없음.
 const CONFLICT_IGNORE = new Set(['Hr', 'Fc'])
+// 상의와 하의는 서로 벗기지 않는다 — 옷끼리는 한벌옷만 상하의를 벗긴다(사용자 지시).
+// 원본에 상하의를 함께 차지하는(islot MaPn) 상의 7개(꾸러기 티셔츠 등 공용)와 하의 1개(와이드 디스트로이드 진 (남))가 있어,
+// islot 만 보면 이 옷을 입을 때 반대쪽 옷이 벗겨졌다(여자 상의 + 남자 바지가 함께 안 입히던 원인).
+const TOP_BOTTOM = new Set(['coat', 'pants'])
 export function conflictSlots(
   equipped: Record<string, ListItem | null>,
   newSlot: string,
@@ -32,6 +36,7 @@ export function conflictSlots(
   const clear: string[] = []
   for (const [slot, it] of Object.entries(equipped)) {
     if (!it || slot === newSlot) continue
+    if (TOP_BOTTOM.has(slot) && TOP_BOTTOM.has(newSlot)) continue
     if (intersects(codes, parseCodes(it.islot))) clear.push(slot)
   }
   return clear
