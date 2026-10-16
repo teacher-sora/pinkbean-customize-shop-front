@@ -211,15 +211,18 @@ export async function GET(req: NextRequest) {
     if (!cr.ok) return nexonFail(cr, { error: '코디 정보를 불러오지 못했어요' }, 502)
     const data: Cash = await cr.json()
     // 통과했으면 뷰티와 일반 장비를 병렬로.
-    const [br, ir] = await Promise.all([
+    // 기본 정보는 캐릭터 이미지 주소 하나 때문에 받는다 — 이름이 같은 헤어·성형을 그림으로 가려낸다(lib/lookMatch). 실패해도 된다.
+    const [br, ir, bi] = await Promise.all([
       fetchNexon(`${BASE}/character/beauty-equipment?ocid=${encodeURIComponent(ocid)}`, init),
       fetchNexon(`${BASE}/character/item-equipment?ocid=${encodeURIComponent(ocid)}`, init),
+      fetchNexon(`${BASE}/character/basic?ocid=${encodeURIComponent(ocid)}`, init),
     ])
     // ⚠️ 뷰티(헤어·성형·피부)는 "필수"다. 여기서 실패한 걸 무시하고 진행하면 헤어가 null → 기본(검은) 머리로 잘못
     //    렌더된다(예: 레이트리밋으로 뷰티만 429일 때 8/23 미리보기가 검은머리로 나오던 버그). 실패면 통째로 실패시킨다.
     if (br.status === 429) return NextResponse.json(RATE, { status: 429 })
     if (!br.ok) return nexonFail(br, { error: '코디 정보를 불러오지 못했어요' }, 502)
     const beauty: Record<string, NexonBeautyPart & NexonSkinPart> | null = await br.json().catch(() => null)
+    const image: string | null = bi.ok ? ((await bi.json().catch(() => null))?.character_image as string) || null : null
     const itemData: Cash | null = ir.ok ? await ir.json().catch(() => null) : null // 일반 장비는 실패해도 치명적이지 않다
     const reg = regularVisible(itemData) // 아바타에 보이는 일반 장비(캐시의 베이스 레이어)
     const charClass = (data.character_class as string) ?? null
@@ -270,6 +273,7 @@ export async function GET(req: NextRequest) {
       gender: (data.character_gender as string) ?? null,
       charClass,
       lookMode: (data.character_look_mode as string) ?? null,
+      image,
       looks,
     }, {
       headers: { 'Cache-Control': 'no-store' }, // 항상 지금의 코디를 준다 — 캐시하지 않는다

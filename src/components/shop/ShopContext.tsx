@@ -28,6 +28,7 @@ import { safeBubbles } from '@/lib/safeText'
 import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
+import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { confirmTwice } from '@/lib/confirmTwice'
 import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, dropUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiPref, writeUiSession } from '@/lib/uiState'
@@ -1482,6 +1483,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (suffix) { const g = ms.find((it) => (it.name || '').includes(suffix)); if (g) return g }
     return ms[0]
   }
+  // 헤어·성형: 넥슨 이름에는 (남)/(여) 가 없고, 같은 이름의 묶음이 여럿이며 그림도 다를 수 있다(차차 얼굴).
+  // 후보가 여럿이면 캐릭터 이미지로 고르고(lib/lookMatch), 가려지지 않으면 이름 규칙(matchByName)으로 돌아간다.
+  const matchBeauty = async (list: ListItem[], name: string, gender: string | null, look: ImageData | null, pal: PaletteParams): Promise<ListItem | null> => {
+    const target = nrmName(name)
+    const ms = list.filter((it) => nrmName(it.name || '') === target)
+    if (ms.length > 1 && look) { const g = await pickBySprite(look, ms, pal); if (g) return matchByName(g, name, gender) } // 같은 그림끼리는 이름 규칙으로
+    return matchByName(list, name, gender)
+  }
   // 넥슨 헤어/성형 색상 → 내부 믹스 팔레트(baseColor/mixColor 인덱스 + 비율).
   const colorPalette = (b: NexonBeauty, isFace = false): PaletteParams => {
     const idx = isFace ? FACE_COLOR_IDX : COLOR_IDX  // 성형은 눈 색 순서(FACE_PALETTE)로 매핑
@@ -1509,7 +1518,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   })
   // 넥슨 코디 1벌(= 코디 × 프리셋) → 내부 스냅샷(착용 + 톤 + 염색). 매칭이 0건이면 null(=보여줄 게 없는 코디).
   // 헤어/성형/피부는 프리셋과 무관하게 코디(look) 단위로 하나다 → 프리셋만 items 로 갈아끼운다.
-  const lookToSnapshot = async (look: NexonLook, items: NexonItem[], gender: string | null): Promise<Snapshot | null> => {
+  const lookToSnapshot = async (look: NexonLook, items: NexonItem[], gender: string | null, lookPx: ImageData | null = null): Promise<Snapshot | null> => {
     const equipped: Record<string, string> = {}
     const dyePalette: Record<string, PaletteParams> = {}
     const dyeHsb: Record<string, HsbParams> = {}
@@ -1518,14 +1527,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     let matched = 0
     // 헤어(색 접두어 제거 + 염색색상)
     if (look.hair?.name) {
-      const found = matchByName(await loadSlotFolded('hair'), stripColorPrefix(look.hair.name, look.hair.baseColor), gender)
-      if (found) { equipped.hair = found.id; dyePalette.hair = colorPalette(look.hair); matched++ }
+      const pal = colorPalette(look.hair)
+      const found = await matchBeauty(await loadSlotFolded('hair'), stripColorPrefix(look.hair.name, look.hair.baseColor), gender, lookPx, pal)
+      if (found) { equipped.hair = found.id; dyePalette.hair = pal; matched++ }
     }
     if (!equipped.hair && DEFAULT_EQUIP.hair) equipped.hair = DEFAULT_EQUIP.hair.id
     // 성형(염색색상)
     if (look.face?.name) {
-      const found = matchByName(await loadSlotFolded('face'), stripColorPrefix(look.face.name, look.face.baseColor), gender)
-      if (found) { equipped.face = found.id; dyePalette.face = colorPalette(look.face, true); matched++ }
+      const pal = colorPalette(look.face, true)
+      const found = await matchBeauty(await loadSlotFolded('face'), stripColorPrefix(look.face.name, look.face.baseColor), gender, lookPx, pal)
+      if (found) { equipped.face = found.id; dyePalette.face = pal; matched++ }
     }
     if (!equipped.face && DEFAULT_EQUIP.face) equipped.face = DEFAULT_EQUIP.face.id
     // 피부(톤 이름 매칭)
@@ -1574,13 +1585,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (!r.ok) { notify(j?.error || '불러오기에 실패했어요'); return null }
       const gender: string | null = j?.gender ?? null
       const looks: NexonLook[] = Array.isArray(j?.looks) ? j.looks : []
+      // 캐릭터 이미지는 지금 모습(제로 · 엔버는 지금 쓰는 쪽) 하나다. 그 코디의 헤어 · 성형을 고를 때만 쓴다.
+      const imgKey = j?.lookMode === '1' ? 'additional' : 'normal'
+      const lookPx = typeof j?.image === 'string' ? await loadLookPixels(j.image) : null
       const out: LookOption[] = []
       for (const lk of looks) {
         // 코디별 성별 우선(제로 알파=남/베타=여). 없으면 캐릭터 성별로 폴백.
         const g = lk.gender ?? gender
         const presets: PresetOption[] = []
         for (const pr of lk.presets || []) {
-          const snap = await lookToSnapshot(lk, pr.items, g)
+          const snap = await lookToSnapshot(lk, pr.items, g, lk.key === imgKey ? lookPx : null)
           if (snap) presets.push({ key: pr.key, label: pr.label, active: pr.active, snap })
         }
         if (presets.length) out.push({ key: lk.key, label: lk.label, presets })
