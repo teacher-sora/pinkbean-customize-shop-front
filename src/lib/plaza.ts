@@ -392,13 +392,13 @@ const toComment = (r: CRow, uid: string | null, post: PlazaPost): PlazaComment =
 
 // ── 익명 이름 ──
 // 로그인을 받지 않으므로 **모두 익명**이다. 다만 '익명 1' 같은 번호는 대화를 따라가기 어렵고 심심하다.
-// 익명 uid 를 해시해 메이플다운 이름을 고정으로 뽑는다 — 같은 사람은 어느 글에서나 같은 이름이고,
-// 이름에서 uid 를 되짚을 수는 없다. 낱말 조합이 1,600 가지라 드물게 겹치는데,
-// 그때만 화면에서 짧은 꼬리표를 붙인다(plazaAliasTag) — 평소에는 이름만 깔끔하게 보인다.
-// 이름 = 수식어 + 메이플 캐릭터.
-//  · 명사는 **실제 메이플 몬스터·캐릭터만**. 과자·날씨 같은 일반 명사는 뺐다.
-//  · 수식어는 절반은 담백한 성격 형용사, 절반은 **메이플 지명**('커닝시티의 루팡'). 달달한 신조어('몽글한')는 쓰지 않는다.
-//  ⚠️ 목록을 바꾸면 모든 사람의 이름이 바뀐다(uid → 해시 → 인덱스). 순서·길이를 함부로 건드리지 않는다.
+// 이름은 DB 가 사람마다 한 번 정해 plaza_alias 에 적는다(supabase/0017) — **겹치지 않는다**(alias unique).
+//  · 수식어 324 × 실제 메이플 몬스터 997 = 약 32만 가지, 0.5% 확률로 몬스터 자리에 보스(이스터에그).
+//    낱말 목록은 DB(plaza_priv.alias_adj / alias_noun / alias_boss)에만 있다.
+//  · 처음 댓글을 다는 순간 트리거가 정한다. 화면은 댓글을 받을 때 그 사람들의 이름을 함께 받아 aliasCache 에 둔다.
+//  · 표에 없는 사람(이름을 정하지 못한 드문 경우)만 예전 방식으로 uid 해시에서 뽑는다(plazaLegacyAlias). 그래서 아주 드물게
+//    겹칠 수 있고, 그때는 화면이 꼬리표를 붙인다(plazaAliasTag).
+//  ⚠️ 아래 두 목록은 예전 이름 계산용이다. DB 의 plaza_priv.alias_legacy 와 같아야 하므로 바꾸지 않는다.
 const ALIAS_ADJ = [
   '씩씩한', '느긋한', '수줍은', '다정한', '조용한', '반짝이는', '상냥한', '엉뚱한',
   '야무진', '명랑한', '차분한', '당당한', '날렵한', '든든한', '의젓한', '재빠른',
@@ -418,9 +418,21 @@ const hash32 = (s: string) => {
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) }
   return h >>> 0
 }
-export function plazaAlias(uid: string): string {
+export function plazaLegacyAlias(uid: string): string {
   const h = hash32(uid)
   return `${ALIAS_ADJ[h % ALIAS_ADJ.length]} ${ALIAS_NOUN[(h >>> 11) % ALIAS_NOUN.length]}`
+}
+const aliasCache = new Map<string, string>()
+export const plazaAlias = (uid: string): string => aliasCache.get(uid) || plazaLegacyAlias(uid)
+// 아직 모르는 사람들의 이름을 한 번에 받아 둔다. 실패해도 화면은 예전 이름으로 보인다.
+async function fillAliases(owners: string[]): Promise<void> {
+  const c = sb()
+  const need = Array.from(new Set(owners)).filter((o) => o && !aliasCache.has(o))
+  if (!c || !need.length) return
+  for (let i = 0; i < need.length; i += 200) {
+    const { data } = await c.from('plaza_alias').select('owner,alias').in('owner', need.slice(i, i + 200))
+    for (const r of (data || []) as { owner: string; alias: string }[]) aliasCache.set(r.owner, r.alias)
+  }
 }
 // 같은 이름이 한 글에 둘 이상 나올 때만 붙이는 꼬리표.
 export const plazaAliasTag = (uid: string) => hash32(`#${uid}`).toString(36).slice(-2).toUpperCase()
@@ -432,6 +444,7 @@ export async function loadComments(post: PlazaPost): Promise<PlazaComment[]> {
   const { data, error } = await c.from('plaza_comments').select('*')
     .eq('post_id', post.id).order('created_at', { ascending: true }).limit(COMMENT_LIMIT)
   if (error) throw error
+  await fillAliases((data as CRow[]).map((r) => r.owner)).catch(() => undefined)
   return (data as CRow[]).map((r) => toComment(r, uid, post))
 }
 
@@ -445,6 +458,7 @@ export async function addComment(post: PlazaPost, body: string, parentId: string
   const { data, error } = await c.from('plaza_comments')
     .insert({ post_id: post.id, parent_id: parentId, owner: uid, body: text }).select('*').single()
   if (error) throw error
+  await fillAliases([uid]).catch(() => undefined)   // 첫 댓글이면 방금 트리거가 이름을 정했다
   return toComment(data as CRow, uid, post)
 }
 
@@ -550,6 +564,7 @@ export async function loadNoticeComments(noticeId: string, page: number): Promis
       byParent.set(r.parent_id, arr)
     }
   }
+  await fillAliases(rows.map((r) => r.owner)).catch(() => undefined)
   return {
     total: count ?? 0,
     list: rows.map((r) => {
@@ -595,6 +610,7 @@ export async function opLoadComments(noticeId: string): Promise<OpComment[]> {
     .eq('notice_id', noticeId).order('created_at', { ascending: true }).limit(2000)
   if (error) throw error
   const rows = (data || []) as { id: string; owner: string; body: string; created_at: string; parent_id: string | null }[]
+  await fillAliases(rows.map((r) => r.owner)).catch(() => undefined)
   const top = new Map<string, OpComment>()
   for (const r of rows) if (!r.parent_id) top.set(r.id, { id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, replies: [] })
   for (const r of rows) if (r.parent_id) top.get(r.parent_id)?.replies.push({ id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, replies: [] })

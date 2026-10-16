@@ -5,7 +5,7 @@
 //   node scripts/clean-test-data.mjs --apply    지운다. 끝나면 다시 세어 0 인지 보여 준다
 //
 // 지우는 것은 셋이다.
-//   1) dev 사이트의 광장 데이터 — `plaza_dev` 스키마의 모든 표(글 · 댓글 · 좋아요 · 대회 · 공지 · 관리자)
+//   1) dev 사이트의 광장 데이터 — `plaza_dev` 스키마의 모든 표(글 · 댓글 · 좋아요 · 대회 · 공지 · 관리자 · 익명 이름)
 //   2) dev 사이트가 올린 그림 — 저장소 버킷 `plaza-dev` 의 모든 파일
 //   3) 자동화로 생긴 익명 계정 — 접속 기록이 **전부** 자동화인 계정만:
 //        화면 없는 브라우저(HeadlessChrome) · 스크립트 요청(python · curl) ·
@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url'
 const REF = 'vymkoklwautdxzgzccef'           // Supabase 프로젝트 pinkbean-customize
 const DEV_SCHEMA = 'plaza_dev', DEV_BUCKET = 'plaza-dev'
 // 자식 표부터 지운다(외래키)
-const DEV_TABLES = ['plaza_notice_comments', 'plaza_comments', 'plaza_likes', 'plaza_like_keys', 'plaza_post_keys', 'plaza_contest_entries', 'plaza_awards', 'plaza_posts', 'plaza_notices', 'plaza_admins']
+const DEV_TABLES = ['plaza_alias', 'plaza_notice_comments', 'plaza_comments', 'plaza_likes', 'plaza_like_keys', 'plaza_post_keys', 'plaza_contest_entries', 'plaza_awards', 'plaza_posts', 'plaza_notices', 'plaza_admins']
 const OWNED = [['plaza_posts', 'owner'], ['plaza_comments', 'owner'], ['plaza_likes', 'owner'], ['plaza_like_keys', 'owner'], ['plaza_notice_comments', 'owner'], ['plaza_admins', 'uid']]
 
 const apply = process.argv.includes('--apply')
