@@ -155,10 +155,11 @@ export function DyeRow({ label, track, min, max, value, onRange, onDragStart, st
    배치(사용자 지시): 팔레트 두 줄(라벨 폭이 같아 같은 열에서 시작) → 왼쪽 베이스, 오른쪽 믹스 조절 칸 → 막대(왼쪽 끝 = 베이스 색,
    오른쪽 끝 = 믹스 색, 사이는 그라데이션). 조절 칸에는 라벨을 달지 않는다 — 바로 아래 막대 양끝의 색이 어느 쪽인지 알려 준다.
    한쪽을 바꾸면 다른 쪽이 합 100 에 맞춰 바뀐다. */
-export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragStart, size = 'sm' }: {
+export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragStart, size = 'sm', hrClass }: {
   pal: { hex: string; name: string }[]; base: number; mix: number; ratio: number
   onBase: (i: number) => void; onMix: (i: number) => void; onRatio: (v: number) => void; onDragStart?: () => void
   size?: 'sm' | 'lg'
+  hrClass?: string // 팔레트와 수치 조절 사이 가로선 — 놓는 곳(코디 정보 탭 · 염색 창)의 다른 염색 화면과 같은 선을 쓴다
 }) {
   const r = Math.max(0, Math.min(100, ratio))
   const set = (v: number) => onRatio(Math.max(0, Math.min(100, Math.round(v))))
@@ -190,6 +191,7 @@ export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragSt
       style={{ ['--mix-a' as string]: pal[base]?.hex, ['--mix-b' as string]: pal[mix]?.hex }}>
       {swRow('베이스', base, onBase)}
       {swRow('믹스', mix, onMix)}
+      {hrClass && <div className={clsx(hrClass, styles.mixHr)} />}
       <div className={styles.mixFoot}>
         {side('b', '베이스', 100 - r, (v) => 100 - v, () => 100 - rRef.current)}
         {side('m', '믹스', r, (v) => v, () => rRef.current)}

@@ -113,7 +113,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   }
   const reset = () => { setCleared(true); setPal(DEF_PAL()) }
 
-  const mixRows = <MixDye size="lg" pal={PAL} base={pal.baseColor} mix={bIdx} ratio={pal.ratio} onBase={setBase} onMix={setMixC} onRatio={(v) => setRatio(() => v)} />
+  const mixRows = <MixDye size="lg" hrClass={styles.hr} pal={PAL} base={pal.baseColor} mix={bIdx} ratio={pal.ratio} onBase={setBase} onMix={setMixC} onRatio={(v) => setRatio(() => v)} />
   // 버튼 줄은 **일반 아이템(HSB)과 같은 모양**이다 — 염색표 보기까지 한 줄에 양끝 정렬.
   const actsRow = (big: boolean) => (
     <div className={styles.resetRow}>

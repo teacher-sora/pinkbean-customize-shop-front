@@ -249,7 +249,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
           {mix ? (
             <>
               <div className={styles.group}>
-                <MixDye pal={PAL} base={pal.baseColor} mix={pal.mixColor ?? pal.baseColor} ratio={pal.ratio}
+                <MixDye hrClass={styles.groupHr} pal={PAL} base={pal.baseColor} mix={pal.mixColor ?? pal.baseColor} ratio={pal.ratio}
                   onBase={setBase} onMix={setMixC} onDragStart={beginDrag}
                   onRatio={(v) => setPal((cur) => ({ ...cur, ratio: v }))} />
                 {/* 헤어·성형은 여기까지다 — 베이스 · 믹스 색과 그 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다. */}
