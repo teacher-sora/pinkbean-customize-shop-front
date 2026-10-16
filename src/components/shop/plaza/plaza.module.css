@@ -333,7 +333,7 @@
 .ntHr { flex: 0 0 auto; height: 1px; background: #f0e9e1; }
 .ntCmt { display: flex; flex-direction: column; gap: 12px; }
 .ntCmt .cmtHead, .ntCmt .cmtForm { padding: 0; }
-.ntCmtList { display: flex; flex-direction: column; gap: 16px; }
+.ntCmtList { display: flex; flex-direction: column; gap: 30px; }
 .ntPager { display: flex; justify-content: center; }
 .ntPageNum { min-width: 56px; font-size: 12px; font-weight: 600; color: #8a8075; text-align: center; }
 @media (hover: hover) and (pointer: fine) {
