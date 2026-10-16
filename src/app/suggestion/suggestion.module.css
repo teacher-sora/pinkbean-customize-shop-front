@@ -1,4 +1,7 @@
 /* 운영자용 건의함(/suggestion). 운영자 한 사람만 쓰는 화면이라 기능 위주로 단순하게 둔다. */
+/* 앱은 문서가 스크롤하지 않는다(globals.css 의 body). 건의함은 글이 쌓이면 화면보다 길어지므로 안내 글처럼 문서 스크롤을 푼다 */
+:global(html):has(.page) { height: auto; }
+:global(html):has(.page) :global(body) { height: auto; overflow: visible; }
 .page { min-height: 100svh; padding: 24px 16px; background: #faf7f3; color: #3d372f; }
 .box { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 .card { padding: 16px; border: 1px solid #e7ded4; border-radius: 12px; background: #fff; display: flex; flex-direction: column; gap: 10px; }
