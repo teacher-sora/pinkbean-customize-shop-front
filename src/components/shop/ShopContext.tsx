@@ -1488,7 +1488,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const matchBeauty = async (list: ListItem[], name: string, gender: string | null, look: ImageData | null, pal: PaletteParams): Promise<ListItem | null> => {
     const target = nrmName(name)
     const ms = list.filter((it) => nrmName(it.name || '') === target)
-    if (ms.length > 1 && look) { const g = await pickBySprite(look, ms, pal); if (g) return g }
+    if (ms.length > 1 && look) { const g = await pickBySprite(look, ms, pal); if (g) return matchByName(g, name, gender) } // 같은 그림끼리는 이름 규칙으로
     return matchByName(list, name, gender)
   }
   // 넥슨 헤어/성형 색상 → 내부 믹스 팔레트(baseColor/mixColor 인덱스 + 비율).

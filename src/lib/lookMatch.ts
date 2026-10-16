@@ -52,8 +52,8 @@ function bestScore(look: ImageData, spr: ImageData): number {
 
 // pal = 넥슨 염색을 옮긴 팔레트. 섞은 염색이면 두 색 그림을 그 비율로 섞어 견준다(하늘과땅차이: 검정 + 초록 50% — 한 색만으로는 눈이 맞지 않는다). 그림이 같은 후보끼리는 점수가 같아 고르지 않는다(어느 쪽이든 모습이 같다).
 // 한 코디의 프리셋마다 같은 헤어 · 성형을 다시 고르지 않게 이미지별로 기억한다.
-const memo = new WeakMap<ImageData, Map<string, Promise<ListItem | null>>>()
-export function pickBySprite(look: ImageData, cands: ListItem[], pal: PaletteParams): Promise<ListItem | null> {
+const memo = new WeakMap<ImageData, Map<string, Promise<ListItem[] | null>>>()
+export function pickBySprite(look: ImageData, cands: ListItem[], pal: PaletteParams): Promise<ListItem[] | null> {
   let m = memo.get(look); if (!m) memo.set(look, (m = new Map()))
   const k = `${pal.baseColor}/${pal.mixColor}/${pal.ratio}|${cands.map((c) => c.id).join(',')}`
   let p = m.get(k); if (!p) m.set(k, (p = pick(look, cands, pal)))
@@ -64,7 +64,7 @@ async function spriteOf(c: ListItem, thumb: string, color: number): Promise<Imag
   const img = await loadImage(png, true)
   return pixelsOf(img, img.naturalWidth, img.naturalHeight)
 }
-async function pick(look: ImageData, cands: ListItem[], pal: PaletteParams): Promise<ListItem | null> {
+async function pick(look: ImageData, cands: ListItem[], pal: PaletteParams): Promise<ListItem[] | null> {
   const scored = await Promise.all(cands.map(async (c) => {
     try {
       const m = await loadMeta(c.id)
@@ -80,10 +80,11 @@ async function pick(look: ImageData, cands: ListItem[], pal: PaletteParams): Pro
       return { c, s: spr ? bestScore(look, spr) : 0 }
     } catch { return { c, s: 0 } }
   }))
-  scored.sort((a, b) => b.s - a.s)
-  const [a, b] = scored
-  // 먹음쟁이(차차 얼굴, 안경을 씀)에서 잰 값: 맞는 그림 72, 다른 그림 66. 같은 그림끼리는 0 차이다.
-  if (!a || a.s < 15) return null
-  if (b && a.s - b.s < 3) return null
-  return a.c
+  // 같은 그림의 후보는 점수가 똑같다(차차 얼굴 50037 과 54036). 가장 높은 점수의 후보들을 함께 돌려주고,
+  // 그 다음 점수(다른 그림)보다 뚜렷이 높을 때만 고른다. 먹음쟁이(안경을 씀)에서 잰 값: 맞는 그림 72, 다른 그림 66.
+  const top = Math.max(...scored.map((x) => x.s))
+  const rest = scored.filter((x) => x.s < top).map((x) => x.s)
+  if (top < 15) return null
+  if (rest.length && top - Math.max(...rest) < 3) return null
+  return scored.filter((x) => x.s === top).map((x) => x.c)
 }
