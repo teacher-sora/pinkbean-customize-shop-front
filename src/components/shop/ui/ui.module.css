@@ -88,3 +88,18 @@
 .confirmBarFill { display: block; height: 100%; border-radius: 999px; background: #d1735f; transform-origin: left center; animation: confirmBarShrink 3s linear forwards; }
 @keyframes confirmBarShrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .confirmBubble, .confirmBubbleBelow { transform: none; transition: opacity .2s ease; } .confirmBar { display: none; } }
+/* 헤어 · 성형 염색(MixDye): 팔레트 두 줄 → 양끝에 베이스 · 믹스 조절 칸 → 베이스 → 믹스 그라데이션 막대. */
+.mix { display: flex; flex-direction: column; gap: 8px; }
+.mixRow { display: flex; align-items: center; gap: 9px; }
+.mixLabel { flex: 0 0 38px; font-size: 11px; font-weight: 600; color: #a89e93; }
+.mixLg .mixLabel { flex-basis: 42px; font-size: 11.5px; }
+.mixSw { flex: 1 1 0; min-width: 0; display: flex; gap: 5px; flex-wrap: nowrap; }
+.mixLg .mixSw { justify-content: space-between; gap: 6px; }
+/* 좁은 칸에서는 색 동그라미가 줄어든다 — 잘리지 않게. */
+.mixSw > .swatch { flex: 0 1 22px; width: auto; height: auto; min-width: 14px; aspect-ratio: 1; }
+/* 막대: 왼쪽 끝 = 베이스 색, 오른쪽 끝 = 믹스 색. 사이는 그라데이션(사용자 지시). 흰 색 · 옅은 색도 보이게 테두리를 얇게 둔다. */
+.mixTrack { background: linear-gradient(90deg, var(--mix-a, #2f2b27), var(--mix-b, #2f2b27)); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); }
+/* 팔레트와 수치 조절 사이 가로선(색 계열 줄 아래의 선과 같은 자리). 염색 창은 칸 사이가 넓어 위아래를 더 띄운다. */
+.mixHr { flex: 0 0 auto; margin: 2px 0; }
+.mixLg .mixHr { margin: 6px 0; }
+.mixFoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

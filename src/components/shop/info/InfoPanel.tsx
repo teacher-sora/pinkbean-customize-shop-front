@@ -12,7 +12,7 @@ import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
-import { DyeRow, FamilyDots, Stepper, Swatch } from '../ui/controls'
+import { DyeRow, FamilyDots, MixDye, Stepper } from '../ui/controls'
 import { IconCheck, IconEye } from '../ui/Icons'
 import { SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
@@ -203,7 +203,6 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
     else s.setDyeHsb((p) => { const d = { ...p }; delete d[target]; return d })
     setRaw({})
   }
-  const isDot = DOT_MOVER_IDS.has(it.id)
   const off = !!s.dyeOff[target]
   // 염색 비활성화 토글 — 문구는 고정, 눌림 상태(aria-pressed + 강조 스타일)로만 구분. 수치는 유지된다.
   const offBtn = (
@@ -250,25 +249,10 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
           {mix ? (
             <>
               <div className={styles.group}>
-                <div className={styles.swRow}>
-                  <span className={styles.swLabel}>색상 A</span>
-                  <div className={styles.swList}>{PAL.map((p, i) => <Swatch key={i} hex={p.hex} name={p.name} on={pal.baseColor === i} onPick={() => setBase(i)} />)}</div>
-                </div>
-                <div className={styles.swRow}>
-                  <span className={styles.swLabel}>색상 B</span>
-                  <div className={styles.swList}>{PAL.map((p, i) => <Swatch key={i} hex={p.hex} name={p.name} on={(pal.mixColor ?? pal.baseColor) === i} onPick={() => setMixC(i)} />)}</div>
-                </div>
-                <div className={styles.groupHr} />
-              </div>
-              <div className={styles.group}>
-                <DyeRow label="비율" track="s" min={0} max={100} value={pal.ratio} onDragStart={beginDrag}
-                  onRange={(v) => { clearRaw('ratio'); setPal((cur) => ({ ...cur, ratio: Math.max(0, Math.min(100, v)) })) }}
-                  stepper={<Stepper label="혼합 비율" size="sm" valueStr={raw.ratio ?? String(pal.ratio)}
-                    onNum={(v) => { if (!/^\d*$/.test(v)) return; setRaw((r) => ({ ...r, ratio: v })); if (v !== '') setPal((cur) => ({ ...cur, ratio: Math.max(0, Math.min(100, parseInt(v, 10))) })) }}
-                    onBlur={() => clearRaw('ratio')}
-                    onStep={(d) => { clearRaw('ratio'); setPal((cur) => ({ ...cur, ratio: Math.max(0, Math.min(100, cur.ratio + d)) })) }}
-                    decOff={pal.ratio <= 0} incOff={pal.ratio >= 100} />} />
-                {/* 헤어·성형은 여기까지다 — 색 A·B 와 그 사이 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다. */}
+                <MixDye hrClass={styles.groupHr} pal={PAL} base={pal.baseColor} mix={pal.mixColor ?? pal.baseColor} ratio={pal.ratio}
+                  onBase={setBase} onMix={setMixC} onDragStart={beginDrag}
+                  onRatio={(v) => setPal((cur) => ({ ...cur, ratio: v }))} />
+                {/* 헤어·성형은 여기까지다 — 베이스 · 믹스 색과 그 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다. */}
                 <div className={styles.acts}>
                   <button type="button" onClick={() => s.openDye(it)} title="발색표 보기" className={clsx('pb-ghost', styles.btn)}>염색표 보기</button>
                   {offBtn}
@@ -295,7 +279,6 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
                       decOff={hsb[f] <= lo} incOff={hsb[f] >= hi} />} />
                 ))}
                 <div className={styles.acts}>
-                  {isDot && <button type="button" onClick={() => s.openDot(it)} title="점 위치 조절" className={clsx('pb-ghost', styles.btn)}>점 위치</button>}
                   {!isSkin && edgeBtn}
                   {offBtn}
                   <button type="button" onClick={resetDye} title="이 아이템 염색 초기화" className={clsx('pb-ghost', styles.btn)}>수치 초기화</button>

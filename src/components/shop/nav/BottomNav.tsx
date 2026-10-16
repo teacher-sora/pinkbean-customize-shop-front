@@ -29,10 +29,12 @@ function useRail() {
   useEffect(() => {
     const el = railRef.current; if (!el) return
     let target = el.scrollLeft, raf = 0
+    // ⚠️ scrollLeft 는 정수로 반올림된다. 남은 거리의 20% 가 1px 이 안 되면(남은 거리 < 5px) 그 걸음이 반올림으로 사라져
+    //    끝에서 2px 모자란 채 멈췄다 — 양끝 흐림이 끝까지 넘겨도 남았고, 프레임 루프도 멈추지 않았다. 그때는 목표에 바로 붙인다.
     const tick = () => {
       const cur = el.scrollLeft
       const diff = target - cur
-      if (Math.abs(diff) < 0.5) { el.scrollTo({ left: target, behavior: 'instant' as ScrollBehavior }); raf = 0; return }
+      if (Math.abs(diff * 0.2) < 1) { el.scrollTo({ left: target, behavior: 'instant' as ScrollBehavior }); raf = 0; return }
       el.scrollTo({ left: cur + diff * 0.2, behavior: 'instant' as ScrollBehavior })
       raf = requestAnimationFrame(tick)
     }

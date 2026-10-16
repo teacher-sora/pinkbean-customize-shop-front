@@ -54,7 +54,8 @@
 .cellDot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0,0,0,0.12); }
 
 /* ── 염색: HSB ── */
-.hsvPc { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; padding: 8px; overflow: hidden; }
+/* 바깥 여백 · 가운데 간격 · 오른쪽 열의 왼쪽 여백을 모두 16px 로 맞춘다 — 세로 구분선 양쪽과 바깥의 여유가 같아 보인다(사용자 지시). */
+.hsvPc { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; padding: 16px; overflow: hidden; }
 .hsvLeft { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .pvBox { flex: 1 1 auto; width: 100%; min-height: 0; border: 1px solid #eee6dc; border-radius: 8px; background: #faf7f3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .zoomRow { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 5px; }
@@ -76,7 +77,8 @@
 .resetIcon { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; white-space: nowrap; border: 1px solid #e7ded4; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #8a8075; cursor: pointer; }
 
 /* ── 점 위치 ── */
-.dotBody { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 8px; display: flex; gap: 16px; }
+/* 바깥 여백은 가운데 간격과 같은 16px(염색 창 .hsvPc 와 같은 값 — 사용자 지시) */
+.dotBody { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 16px; display: flex; gap: 16px; }
 /* 모바일: 본문 세로 스크롤(염색표와 동일). 줄어들지 않게 해야 캔버스·확대 게이지·위치 초기화가 겹치지 않는다(작은 화면에서 압축돼 겹침). */
 .dotBodyM { padding: 12px; flex-direction: column; gap: 12px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .dotLeft { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -172,8 +174,3 @@
 .tick svg { opacity: 0; transition: opacity .2s cubic-bezier(.45,0,.55,1); }
 .tickOn { background: #ec86ac; border-color: #ec86ac; }
 .tickOn svg { opacity: 1; }
-/* 색상 A · 색상 B 줄(헤어·성형) — 코디 정보 염색 탭과 같은 배치, 다이얼로그라 조금 크다. */
-.swRow { display: flex; align-items: center; gap: 10px; }
-.swLabel { flex: 0 0 42px; font-size: 11.5px; font-weight: 600; color: #a89e93; }
-/* 색 동그라미는 줄 전체에 고르게 편다(색 계열 줄 .famRow 와 같은 배치). gap 은 좁은 폭에서의 최소 간격. */
-.swList { flex: 1 1 0; min-width: 0; display: flex; justify-content: space-between; gap: 6px; flex-wrap: nowrap; }
