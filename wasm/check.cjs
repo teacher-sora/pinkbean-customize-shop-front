@@ -9,9 +9,9 @@ const ts = require('typescript')
 const root = path.join(__dirname, '..')
 const src = fs.readFileSync(path.join(root, 'src/lib/core/dye.ts'), 'utf8')
 const cut = (a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i); if (i < 0 || j < 0) throw new Error('dye.ts 에서 자리를 찾지 못했다: ' + a); return src.slice(i, j) }
-const code = cut('interface Rgb', '// Recolor one sprite exactly like the game') +
-  'function hsbJs(a: Uint8ClampedArray, hue: number, saturation: number, brightness: number, type: number, edge: boolean) {\n' + cut('// [hsb 루프 시작]', '// [hsb 루프 끝]') + '}\n' +
-  'function blendJs(A: Uint8ClampedArray, B: Uint8ClampedArray, t: number) {\n' + cut('// [blend 루프 시작]', '// [blend 루프 끝]') + '}\nmodule.exports = { hsbJs, blendJs }\n'
+const code = cut('// ─── Faithful port', '// Recolor one sprite exactly like the game') +
+  'function hsbJs(a: Uint8ClampedArray, hue: number, saturation: number, brightness: number, type: number, edge: boolean, fine: boolean) {\n' + cut('// [hsb 루프 시작]', '// [hsb 루프 끝]') + '}\n' +
+  'function blendJs(A: Uint8ClampedArray, B: Uint8ClampedArray, r: number, q4: boolean) {\n' + cut('// [blend 루프 시작]', '// [blend 루프 끝]') + '}\nmodule.exports = { hsbJs, blendJs }\n'
 const m = { exports: {} }
 new Function('module', 'exports', ts.transpileModule(code, { compilerOptions: { target: 'ES2020', module: 'CommonJS' } }).outputText)(m, m.exports)
 const { hsbJs, blendJs } = m.exports
@@ -35,22 +35,26 @@ const base = Uint8ClampedArray.from(px), other = Uint8ClampedArray.from(px.map((
 
 let bad = 0, runs = 0
 const cases = [[0, 100, 150, 0, false], [0, 100, 50, 0, true], [359, 199, 199, 6, true], [1, 1, 1, 1, false], [180, 100, 100, 3, false]]
-for (let i = 0; i < 400; i++) cases.push([ri(0, 359), ri(1, 199), ri(1, 199), ri(0, 6), rnd() < 0.3])
+for (let i = 0; i < 400; i++) cases.push([ri(0, 359), ri(1, 199), ri(1, 199), ri(0, 6), rnd() < 0.3, rnd() < 0.5])
+for (const c of cases.slice(0, 5)) cases.push([...c, true])   // 1 단위(풀컬러 · 이펙트)로도
 for (const p of cases) {
   const a = new Uint8ClampedArray(base)
   hsbJs(a, ...p)
   const w = new Uint8Array(ex.memory.buffer, pa, base.length)
-  w.set(base); ex.hsb(pa, base.length, p[0], p[1], p[2], p[3], p[4] ? 1 : 0)
+  w.set(base); ex.hsb(pa, base.length, p[0], p[1], p[2], p[3], p[4] ? 1 : 0, p[5] ? 1 : 0)
   runs++
   for (let k = 0; k < a.length; k++) if (a[k] !== w[k]) { if (bad++ < 5) console.error(`✗ hsb ${JSON.stringify(p)} 칸 ${k >> 2}(${[...base.subarray(k & ~3, (k & ~3) + 4)]}): JS ${a[k]} WASM ${w[k]}`); break }
 }
-for (let r = 0; r <= 100; r++) {
-  const a = new Uint8ClampedArray(base)
-  blendJs(a, other, r / 100)
-  const w = new Uint8Array(ex.memory.buffer, pa, base.length)
-  w.set(base); new Uint8Array(ex.memory.buffer, pb, base.length).set(other); ex.blend(pa, pb, base.length, r / 100)
+// 16단계 그림끼리(q4)와 보통 그림, 둘 다
+const base16 = Uint8ClampedArray.from(base.subarray(0, 4096 * 4)), other16 = Uint8ClampedArray.from(base16.map((v, k) => (k % 4 === 3 ? 255 : 17 * ri(0, 15))))
+for (const [A0, B0, q4] of [[base, other, false], [base16, other16, true]]) for (let r = 0; r <= 100; r++) {
+  const a = new Uint8ClampedArray(A0)
+  blendJs(a, B0, r, q4)
+  const w = new Uint8Array(ex.memory.buffer, pa, A0.length)
+  w.set(A0); new Uint8Array(ex.memory.buffer, pb, A0.length).set(B0); ex.blend(pa, pb, A0.length, r, q4 ? 1 : 0)
   runs++
-  for (let k = 0; k < a.length; k++) if (a[k] !== w[k]) { if (bad++ < 5) console.error(`✗ blend ${r}% 칸 ${k >> 2}: JS ${a[k]} WASM ${w[k]}`); break }
+  for (let k = 0; k < a.length; k++) if (a[k] !== w[k]) { if (bad++ < 5) console.error(`✗ blend ${r}% q4=${q4} 칸 ${k >> 2}: JS ${a[k]} WASM ${w[k]}`); break }
+  if (q4) for (let k = 0; k < a.length; k++) if (a[k] % 17) { if (bad++ < 5) console.error(`✗ blend ${r}% q4 칸 ${k >> 2} 가 17 단위를 벗어났다: ${a[k]}`); break }
 }
 if (bad) { console.error(`✗ ${runs}번 가운데 ${bad}번이 다르다`); process.exit(1) }
 console.log(`· WASM 과 JS 의 결과가 같다(${runs}번, 한 번에 ${base.length / 4}칸)`)

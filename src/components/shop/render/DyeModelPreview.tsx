@@ -11,7 +11,7 @@ import { canvasBitmap, computeModelPlacement, fitCanvas, zoomStepScale } from '@
 import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
-import { THUMB_VIEW, skinDyeFamily } from '@/lib/shopData'
+import { DEFAULT_TONE, THUMB_VIEW, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { useLiveRedraw } from '../useLiveRedraw'
 
@@ -49,7 +49,8 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { ite
         if (alive) setPlaced(p)
         return
       }
-      const te = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
+      // 마네킹은 아이템 카드의 기본 캐릭터처럼 **엘프 피부로 고정**한다(지금 입은 피부를 따르지 않는다 — 사용자 지시).
+      const te = idx.base.tones.find((t) => t.tone === DEFAULT_TONE) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
       const [body, head, im] = await Promise.all([loadMeta(te.body), loadMeta(te.head), loadMeta(item.id)])
       if (!alive) return
       setItemMeta(im)
@@ -71,7 +72,7 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { ite
       } else if (alive) setEffs([])
     })().catch(() => {})
     return () => { alive = false }
-  }, [s.index, s.tone, item.id])
+  }, [s.index, item.id])
 
   // 슬라이더 드래그 중에도 렉 없이 바로바로 발색(single-flight + 최신값 수렴).
   useLiveRedraw(async () => {

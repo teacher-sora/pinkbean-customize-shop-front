@@ -7,7 +7,7 @@
 // 방법: 후보마다 그 색의 정면 그림 한 장(meta.thumb)을 넥슨 캐릭터 이미지(서기, 기본 표정) 위에서 밀어 보며
 // 색이 같은 픽셀 수가 가장 많은 자리를 찾는다. 가장 잘 맞는 후보가 뚜렷하게 앞설 때만 고르고, 아니면 null(이름 규칙으로 돌아간다).
 import { loadMeta, type ListItem } from '@/lib/core/data'
-import { variantId, type PaletteParams } from '@/lib/core/dye'
+import { blendPixels, variantId, type PaletteParams } from '@/lib/core/dye'
 import { loadImage } from '@/lib/core/render'
 
 const pixelsOf = (img: CanvasImageSource, w: number, h: number): ImageData | null => {
@@ -73,8 +73,7 @@ async function pick(look: ImageData, cands: ListItem[], pal: PaletteParams): Pro
       if (spr && pal.mixColor != null && pal.ratio > 0) {
         const mix = await spriteOf(c, m.thumb, pal.mixColor).catch(() => null)
         if (mix && mix.width === spr.width && mix.height === spr.height) {
-          const r = pal.ratio / 100
-          for (let i = 0; i < spr.data.length; i++) spr.data[i] = Math.round(spr.data[i] * (1 - r) + mix.data[i] * r)
+          blendPixels(spr.data, mix.data, pal.ratio)   // 게임과 같은 섞기(16단계 그림은 4비트로 내림)
         }
       }
       return { c, s: spr ? bestScore(look, spr) : 0 }
