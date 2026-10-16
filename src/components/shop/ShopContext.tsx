@@ -1662,7 +1662,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     void copyAsyncText(() => prep.then((x) => x.url))
     notify('프리셋을 복사했어요')
     prep.then((x) => uploadShare(x, snap))
-      .then((ok) => { if (!ok) notify('링크 저장에 실패했어요. 다시 복사해 주세요') })
+      .then((r) => { if (r === 'stale') notify('사이트가 바뀌었어요. 새로고침한 뒤 다시 복사해 주세요'); else if (r === 'fail') notify('링크 저장에 실패했어요. 다시 복사해 주세요') })
       .catch(() => {})
   }
   // 프리셋 카드의 복사 띠지. 이름까지 담아, 접속하면 '공유받은 코디' 화면이 뜬다.
