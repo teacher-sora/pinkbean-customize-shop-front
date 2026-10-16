@@ -59,7 +59,9 @@ git config core.hooksPath .githooks      # /viewer 가 main 에 섞이지 않게
 
 `.env.local` 에 넣을 이름은 ARCHITECTURE §4-2. 타입 검사는 `next dev`·`next build` 를 한 번 돌린 뒤에 된다(`next-env.d.ts` 가 그때 생긴다).
 
-`git push` 가 403 / Repository not found 로 실패하면 `gh auth status` 를 본다. 이 PC 에는 GitHub 계정이 여럿이고, 활성 계정이 `teacher-sora` 가 아니면 그렇다. **계정을 바꾸거나 우회하지 말고 사용자에게 알린다.**
+**GitHub 작업은 `teacher-sora` 계정으로 한다.** 이 PC 에는 GitHub 계정이 여럿이다. push 전에 `gh auth status` 로 지금 활성 계정을 적어 두고, `teacher-sora` 가 아니면 `gh auth switch -u teacher-sora` 로 바꿔 작업한 뒤, **끝나면 `gh auth switch -u <적어 둔 계정>` 으로 원래대로 되돌린다**(사용자 지시). `git push` 가 403 / Repository not found 로 실패하는 것도 대개 활성 계정이 다른 탓이다.
+
+**dev · main 에 push 하면 자동으로 배포된다.** Vercel 이 이 GitHub 저장소에 연결돼 있어 `dev` → dev 사이트, `main` → 운영 사이트다(GitHub Actions 가 아니다 — `.github/workflows/guard-dev-only.yml` 은 배포가 아니라 dev 전용 경로를 막는 검사다). `main` 병합이 곧 운영 배포다.
 
 ## 문서를 고칠 때
 
