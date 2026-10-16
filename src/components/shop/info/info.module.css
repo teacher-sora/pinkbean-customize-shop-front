@@ -65,9 +65,6 @@
 .ctrlCol { flex: 1 1 auto; min-width: 0; width: 100%; align-self: stretch; padding: 5px 14px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
 .ctrlColFit { flex: 0 0 482px; width: 482px; }
 .group { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.swRow { display: flex; align-items: center; gap: 10px; }
-.swLabel { flex: 0 0 38px; font-size: 11px; font-weight: 600; color: #a89e93; }
-.swList { flex: 1 1 0; min-width: 0; display: flex; gap: 5px; flex-wrap: nowrap; }
 .groupHr { height: 1px; margin: 2px 0 0; background: #f2ebe3; }
 .famRow { display: flex; align-items: center; gap: 9px; }
 /* 염색 버튼 줄. 점 아이템처럼 버튼이 하나 더 붙으면 좁은 폭(≈291px)에서 한 줄에 못 담는다

@@ -1,7 +1,7 @@
 'use client'
 
 // 염색 서피스 본문.
-//  · 헤어·성형(mix) = **색상 A · 색상 B · 그 둘 사이의 비율**. 그 외 아이템의 HSB 와는 다른 체계다.
+//  · 헤어·성형(mix) = **베이스 · 믹스 색과 믹스의 비율**. 그 외 아이템의 HSB 와는 다른 체계다.
 //    8×8 염색표는 '염색표 보기'로 같은 다이얼로그 안에서 가로 슬라이드로 오간다(크기가 같아 내용만 움직인다).
 //    표의 한 칸을 고르면 그 두 색이 1:1 로 들어오며 곧바로 조절 화면으로 돌아온다.
 //  · 그 외 = HSB(미리보기 + 색상 계열 + 색조·채도·명도).
@@ -16,7 +16,7 @@ import type { HsbParams, PaletteParams } from '@/lib/core/dye'
 import { useShop } from '../ShopContext'
 import DyeCellCanvas from '../render/DyeCellCanvas'
 import DyeModelPreview from '../render/DyeModelPreview'
-import { DyeRow, FamilyDots, Stepper, Swatch } from '../ui/controls'
+import { DyeRow, FamilyDots, MixDye, Stepper } from '../ui/controls'
 import { IconCheck, IconReset } from '../ui/Icons'
 import { useInnerSlide } from './innerSlide'
 import { SurfaceFooter } from './Surface'
@@ -69,7 +69,7 @@ export default function DyeSurfaceBody({ item, mobile }: { item: ListItem; mobil
     : <HsbBody item={item} mobile={mobile} name={name} />
 }
 
-// ── 헤어·성형: 색상 A · 색상 B · 비율 ↔ 염색표 ─────────────────────────────
+// ── 헤어·성형: 베이스 · 믹스 · 비율 ↔ 염색표 ─────────────────────────────
 function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name: string }) {
   const s = useShop()
   const slot = item.slot
@@ -77,7 +77,6 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   const zmap = s.index?.zmap || []
   const [meta, setMeta] = useState<ItemMeta | null>(null)
   const [pal, setPal] = useState<PaletteParams>(() => ({ ...(s.dyePalette[slot] ?? DEF_PAL()) }))
-  const [raw, setRaw] = useState<string | null>(null) // 비율 입력 중 문자열 버퍼(빈값 허용)
   const [off, setOff] = useState(() => !!s.dyeOff[slot]) // 염색 비활성화(적용 시 커밋) — 일반 아이템과 같다
   // '염색 초기화' = 염색을 지운다(코디 정보 탭의 '수치 초기화'와 같은 뜻 — 원래 색으로 돌아간다).
   // 헤어·성형은 '염색 없음'을 색 조합으로 표현할 수 없어(검정 A·B 도 엄연한 염색이다) 따로 표시해 두고,
@@ -94,8 +93,8 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
     return () => { alive = false }
   }, [item.id])
 
-  const bIdx = pal.mixColor ?? pal.baseColor // 화면에 보이는 '색상 B'(A 와 같으면 단색)
-  // A·B·비율은 서로 독립 — A 를 바꿀 때 B(현재 표시값)를 명시적으로 고정해 따라오지 않게 한다(코디 정보 탭과 같은 규칙).
+  const bIdx = pal.mixColor ?? pal.baseColor // 화면에 보이는 '믹스'(베이스와 같으면 단색)
+  // 베이스 · 믹스 · 비율은 서로 독립 — 베이스를 바꿀 때 믹스(현재 표시값)를 명시적으로 고정해 따라오지 않게 한다(코디 정보 탭과 같은 규칙).
   const edit = (fn: (c: PaletteParams) => PaletteParams) => { setCleared(false); setPal(fn) }
   const setBase = (i: number) => edit((c) => ({ baseColor: i, mixColor: c.mixColor ?? c.baseColor, ratio: c.ratio }))
   const setMixC = (i: number) => edit((c) => ({ ...c, mixColor: i }))
@@ -112,29 +111,9 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
     s.closeSurface()
     s.notify(`${name} 염색을 적용했어요`)
   }
-  const reset = () => { setCleared(true); setPal(DEF_PAL()); setRaw(null) }
+  const reset = () => { setCleared(true); setPal(DEF_PAL()) }
 
-  const swatchRows = (
-    <>
-      <div className={styles.swRow}>
-        <span className={styles.swLabel}>색상 A</span>
-        <div className={styles.swList}>{PAL.map((p, i) => <Swatch key={i} hex={p.hex} name={p.name} on={pal.baseColor === i} onPick={() => setBase(i)} />)}</div>
-      </div>
-      <div className={styles.swRow}>
-        <span className={styles.swLabel}>색상 B</span>
-        <div className={styles.swList}>{PAL.map((p, i) => <Swatch key={i} hex={p.hex} name={p.name} on={bIdx === i} onPick={() => setMixC(i)} />)}</div>
-      </div>
-    </>
-  )
-  const ratioRow = (
-    <DyeRow label="비율" track="s" min={0} max={100} value={pal.ratio}
-      onRange={(v) => { setRaw(null); setRatio(() => v) }}
-      stepper={<Stepper label="혼합 비율" size="lg" valueStr={raw ?? String(pal.ratio)}
-        onNum={(v) => { if (!/^\d*$/.test(v)) return; setRaw(v); if (v !== '') setRatio(() => parseInt(v, 10)) }}
-        onBlur={() => setRaw(null)}
-        onStep={(d) => { setRaw(null); setRatio((cur) => cur + d) }}
-        decOff={pal.ratio <= 0} incOff={pal.ratio >= 100} />} />
-  )
+  const mixRows = <MixDye size="lg" pal={PAL} base={pal.baseColor} mix={bIdx} ratio={pal.ratio} onBase={setBase} onMix={setMixC} onRatio={(v) => setRatio(() => v)} />
   // 버튼 줄은 **일반 아이템(HSB)과 같은 모양**이다 — 염색표 보기까지 한 줄에 양끝 정렬.
   const actsRow = (big: boolean) => (
     <div className={styles.resetRow}>
@@ -157,9 +136,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
         <div ref={ref} className={styles.pvBoxM}>{preview}</div>
         <div className={styles.zoomCol}>{pills}</div>
       </div>
-      <div className={styles.rowsCol}>{swatchRows}</div>
-      <div className={styles.hr} />
-      <div className={clsx('pb-dyecol', styles.rowsCol)}>{ratioRow}</div>
+      <div className={styles.rowsCol}>{mixRows}</div>
       {actsRow(true)}
     </div>
   ) : (
@@ -169,9 +146,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
         <div className={styles.zoomRow}>{pills}</div>
       </div>
       <div className={clsx('pb-scroll', 'pb-fade', styles.hsvRight)}>
-        <div className={styles.rows}>{swatchRows}</div>
-        <div className={styles.hr} />
-        <div className={styles.rows}>{ratioRow}</div>
+        <div className={styles.rows}>{mixRows}</div>
         {actsRow(false)}
       </div>
     </div>
@@ -184,7 +159,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
           const on = pal.baseColor === r && bIdx === c
           return (
             <button key={`${r}-${c}`} type="button"
-              onClick={() => { setRaw(null); setCleared(false); setPal({ baseColor: r, mixColor: r === c ? null : c, ratio: 50 }); go('custom', -1) }}
+              onClick={() => { setCleared(false); setPal({ baseColor: r, mixColor: r === c ? null : c, ratio: 50 }); go('custom', -1) }}
               title={r === c ? `${PAL[r].name} (단색)` : `${PAL[r].name} × ${PAL[c].name} (1 : 1)`}
               className={clsx(styles.cell, on && styles.cellOn)}>
               <span className={styles.cellSprite}>{meta ? <DyeCellCanvas meta={meta} base={r} mixC={c} zmap={zmap} /> : null}</span>

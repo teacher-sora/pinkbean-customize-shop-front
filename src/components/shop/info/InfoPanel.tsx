@@ -12,7 +12,7 @@ import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
-import { DyeRow, FamilyDots, Stepper, Swatch } from '../ui/controls'
+import { DyeRow, FamilyDots, MixDye, Stepper } from '../ui/controls'
 import { IconCheck, IconEye } from '../ui/Icons'
 import { SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
@@ -250,25 +250,10 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
           {mix ? (
             <>
               <div className={styles.group}>
-                <div className={styles.swRow}>
-                  <span className={styles.swLabel}>색상 A</span>
-                  <div className={styles.swList}>{PAL.map((p, i) => <Swatch key={i} hex={p.hex} name={p.name} on={pal.baseColor === i} onPick={() => setBase(i)} />)}</div>
-                </div>
-                <div className={styles.swRow}>
-                  <span className={styles.swLabel}>색상 B</span>
-                  <div className={styles.swList}>{PAL.map((p, i) => <Swatch key={i} hex={p.hex} name={p.name} on={(pal.mixColor ?? pal.baseColor) === i} onPick={() => setMixC(i)} />)}</div>
-                </div>
-                <div className={styles.groupHr} />
-              </div>
-              <div className={styles.group}>
-                <DyeRow label="비율" track="s" min={0} max={100} value={pal.ratio} onDragStart={beginDrag}
-                  onRange={(v) => { clearRaw('ratio'); setPal((cur) => ({ ...cur, ratio: Math.max(0, Math.min(100, v)) })) }}
-                  stepper={<Stepper label="혼합 비율" size="sm" valueStr={raw.ratio ?? String(pal.ratio)}
-                    onNum={(v) => { if (!/^\d*$/.test(v)) return; setRaw((r) => ({ ...r, ratio: v })); if (v !== '') setPal((cur) => ({ ...cur, ratio: Math.max(0, Math.min(100, parseInt(v, 10))) })) }}
-                    onBlur={() => clearRaw('ratio')}
-                    onStep={(d) => { clearRaw('ratio'); setPal((cur) => ({ ...cur, ratio: Math.max(0, Math.min(100, cur.ratio + d)) })) }}
-                    decOff={pal.ratio <= 0} incOff={pal.ratio >= 100} />} />
-                {/* 헤어·성형은 여기까지다 — 색 A·B 와 그 사이 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다. */}
+                <MixDye pal={PAL} base={pal.baseColor} mix={pal.mixColor ?? pal.baseColor} ratio={pal.ratio}
+                  onBase={setBase} onMix={setMixC} onDragStart={beginDrag}
+                  onRatio={(v) => setPal((cur) => ({ ...cur, ratio: v }))} />
+                {/* 헤어·성형은 여기까지다 — 베이스 · 믹스 색과 그 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다. */}
                 <div className={styles.acts}>
                   <button type="button" onClick={() => s.openDye(it)} title="발색표 보기" className={clsx('pb-ghost', styles.btn)}>염색표 보기</button>
                   {offBtn}
