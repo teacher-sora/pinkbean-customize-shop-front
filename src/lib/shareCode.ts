@@ -190,8 +190,9 @@ export async function prepareShare(origin: string, snap: Snapshot): Promise<Shar
   return { url: `${origin}/?c=${code}${n}${tail}`, long, id }
 }
 
-// 백그라운드 저장: 카드 이미지(프리셋 캐릭터)를 그려 긴 코드와 함께 올린다. 서버가 돌려준 id 가 로컬 계산과 다르면
-// (해시 충돌로 더 긴 id 발급 — 사실상 없음) 복사된 링크가 틀리므로 false.
+// 백그라운드 저장: 카드 이미지(프리셋 캐릭터)를 그려 긴 코드와 함께 올린다. 서버가 돌려준 id 가 로컬 계산과 다르면 복사된 링크가 틀리다:
+//  · 'stale' — 열어 둔 화면이 배포 전 코드라 솔트(ID_SALT)가 다르다. 새로고침해야 맞는 링크와 지금의 카드가 나온다.
+//  · 'fail' — 저장 실패, 또는 해시 충돌로 더 긴 id 가 발급됐다(사실상 없음).
 // 저장은 두 번이다. ① 코드만 **곧바로** — 링크·불러오기는 이것만 있으면 된다.
 // ② 카드 이미지는 렌더(수백 ms~수 초)가 끝나는 대로 따로 — 서버는 코드가 이미 있으면 이미지만 붙인다(없을 때만 저장).
 // ①이 이미지 렌더를 기다리면 복사 직후 붙여 넣었을 때 '없는 코디'가 뜬다. 카톡 카드 쪽은 공유 페이지 메타가 이미지를 최대 5초 기다린다.
@@ -206,12 +207,12 @@ async function postShare(long: string, image?: string | null): Promise<string | 
   }
   return null
 }
-export async function uploadShare(prep: SharePrep, snap: Snapshot): Promise<boolean> {
-  if (!prep.id) return true // 긴 코드 링크는 저장할 게 없다
+export async function uploadShare(prep: SharePrep, snap: Snapshot): Promise<'ok' | 'fail' | 'stale'> {
+  if (!prep.id) return 'ok' // 긴 코드 링크는 저장할 게 없다
   const image = renderShareImage(snap).catch(() => null) // 코드 저장과 동시에 그리기 시작
   const id = await postShare(prep.long)
-  if (id !== prep.id) return false
+  if (id !== prep.id) return typeof id === 'string' && id.length === prep.id.length ? 'stale' : 'fail'
   const img = await image
   if (img) void postShare(prep.long, img)
-  return true
+  return 'ok'
 }
