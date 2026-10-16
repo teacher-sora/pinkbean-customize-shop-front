@@ -152,8 +152,9 @@ export function DyeRow({ label, track, min, max, value, onRange, onDragStart, st
 /* ── 헤어 · 성형 염색: 베이스 · 믹스(게임의 믹스 염색 화면을 따른다) ──
    저장 값은 그대로다 — ratio = 믹스 색의 비율(0~100), 베이스 비율은 100 - ratio. 넥슨 API 의 mix_rate 도 믹스 비율이다.
    왜: '비율' 한 칸만 있으면 무엇의 비율인지 알 수 없어, 게임의 '검정 70 · 노랑 30' 을 70 으로 넣으면 노랑 70 이 됐다(건의함).
-   배치(사용자 지시): 팔레트 두 줄(라벨 폭이 같아 같은 열에서 시작) → 막대(왼쪽 끝 = 베이스 색, 오른쪽 끝 = 믹스 색, 사이는 그라데이션)
-   → 막대 아래 왼쪽에 베이스, 오른쪽에 믹스 조절 칸. 한쪽을 바꾸면 다른 쪽이 합 100 에 맞춰 바뀐다. */
+   배치(사용자 지시): 팔레트 두 줄(라벨 폭이 같아 같은 열에서 시작) → 왼쪽 베이스, 오른쪽 믹스 조절 칸 → 막대(왼쪽 끝 = 베이스 색,
+   오른쪽 끝 = 믹스 색, 사이는 그라데이션). 조절 칸에는 라벨을 달지 않는다 — 바로 아래 막대 양끝의 색이 어느 쪽인지 알려 준다.
+   한쪽을 바꾸면 다른 쪽이 합 100 에 맞춰 바뀐다. */
 export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragStart, size = 'sm' }: {
   pal: { hex: string; name: string }[]; base: number; mix: number; ratio: number
   onBase: (i: number) => void; onMix: (i: number) => void; onRatio: (v: number) => void; onDragStart?: () => void
@@ -189,6 +190,10 @@ export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragSt
       style={{ ['--mix-a' as string]: pal[base]?.hex, ['--mix-b' as string]: pal[mix]?.hex }}>
       {swRow('베이스', base, onBase)}
       {swRow('믹스', mix, onMix)}
+      <div className={styles.mixFoot}>
+        {side('b', '베이스', 100 - r, (v) => 100 - v, () => 100 - rRef.current)}
+        {side('m', '믹스', r, (v) => v, () => rRef.current)}
+      </div>
       <div className={clsx('pb-slider', styles.mixSlider)}
         onPointerDown={(e) => {
           if (e.pointerType === 'mouse' && e.button !== 0) return
@@ -203,10 +208,6 @@ export function MixDye({ pal, base, mix, ratio, onBase, onMix, onRatio, onDragSt
         <div className={clsx('pb-track', styles.mixTrack)} />
         <input type="range" tabIndex={-1} className="pb-range" min={0} max={100} value={r} aria-label="믹스 비율"
           onChange={(e) => set(parseInt(e.target.value, 10) || 0)} />
-      </div>
-      <div className={styles.mixFoot}>
-        <div className={styles.mixSide}><span className={styles.mixSideLabel}>베이스</span>{side('b', '베이스', 100 - r, (v) => 100 - v, () => 100 - rRef.current)}</div>
-        <div className={styles.mixSide}>{side('m', '믹스', r, (v) => v, () => rRef.current)}<span className={styles.mixSideLabel}>믹스</span></div>
       </div>
     </div>
   )

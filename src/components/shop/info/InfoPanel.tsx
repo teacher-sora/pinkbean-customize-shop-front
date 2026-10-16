@@ -203,7 +203,6 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
     else s.setDyeHsb((p) => { const d = { ...p }; delete d[target]; return d })
     setRaw({})
   }
-  const isDot = DOT_MOVER_IDS.has(it.id)
   const off = !!s.dyeOff[target]
   // 염색 비활성화 토글 — 문구는 고정, 눌림 상태(aria-pressed + 강조 스타일)로만 구분. 수치는 유지된다.
   const offBtn = (
@@ -280,7 +279,6 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
                       decOff={hsb[f] <= lo} incOff={hsb[f] >= hi} />} />
                 ))}
                 <div className={styles.acts}>
-                  {isDot && <button type="button" onClick={() => s.openDot(it)} title="점 위치 조절" className={clsx('pb-ghost', styles.btn)}>점 위치</button>}
                   {!isSkin && edgeBtn}
                   {offBtn}
                   <button type="button" onClick={resetDye} title="이 아이템 염색 초기화" className={clsx('pb-ghost', styles.btn)}>수치 초기화</button>

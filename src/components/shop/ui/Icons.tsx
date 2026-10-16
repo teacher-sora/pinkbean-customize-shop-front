@@ -44,8 +44,9 @@ export const IconUndo = () => (
 export const IconRedo = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14l5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
 )
+// 점 위치: 가운데 점 + 네 방향 화살표(점을 옮긴다). 눈금만 있던 옛 모양은 과녁 · 조준으로 읽혔다(사용자 지적).
 export const IconDot = ({ size = 13 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none" /><path d="M12 3.6v3M12 17.4v3M3.6 12h3M17.4 12h3" /></svg>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none" /><path d="M12 8V3M9.6 5.4 12 3l2.4 2.4M12 16v5M9.6 18.6 12 21l2.4-2.4M8 12H3M5.4 9.6 3 12l2.4 2.4M16 12h5M18.6 9.6 21 12l-2.4 2.4" /></svg>
 )
 export const IconCaretDown = ({ size = 12, className }: P) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9.5l6 6 6-6" /></svg>
