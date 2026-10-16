@@ -17,7 +17,7 @@ import { CATS, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
-import { preloadPaletteVariant, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
+import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
@@ -645,6 +645,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     rateLock.current = false; setRateShow(false)
   }, [])
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
+  // 헤어 · 성형의 복제 묶음(dupOf) 아이템 → 같은 색의 원본 아이템. 같은 그림이라 보이는 것은 같고, 목록에 있는 카드와 맞춰진다.
+  const toOriginal = (raw: ListItem[], it: ListItem): ListItem => {
+    if (it.dupOf == null) return it
+    const vid = variantId(it.dupOf, colorOf(parseInt(it.id, 10), it.slot), it.slot)
+    return raw.find((x) => x.id === vid) ?? it
+  }
   const loadSlotRaw = useCallback(async (slot: string): Promise<ListItem[]> => {
     if (searchRaw.current[slot]) return searchRaw.current[slot]
     // ⚠️ 라이딩도 여기서 해석된다(shopData.slotFile). CDN index 만 뒤지면 빈 목록이 나오고,
@@ -675,9 +681,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json()
       const hits: { id: string; slot: string }[] = data.results || []
       const slots = Array.from(new Set(hits.map((h) => h.slot)))
-      const maps = new Map(await Promise.all(slots.map(async (sl) =>
-        [sl, new Map((await loadSlotRaw(sl)).map((it) => [it.id, it]))] as const)))
-      const list = hits.map((h) => maps.get(h.slot)?.get(h.id)).filter((x): x is ListItem => !!x)
+      const raws = new Map(await Promise.all(slots.map(async (sl) => [sl, await loadSlotRaw(sl)] as const)))
+      const maps = new Map([...raws].map(([sl, raw]) => [sl, new Map(raw.map((it) => [it.id, it]))] as const))
+      // 복제 묶음은 원본으로 바꾸고, 그래서 겹친 것은 한 번만 낸다.
+      const seen = new Set<string>()
+      const list = hits.map((h) => { const it = maps.get(h.slot)?.get(h.id); return it && toOriginal(raws.get(h.slot) || [], it) })
+        .filter((x): x is ListItem => !!x && !seen.has(x.id) && !!seen.add(x.id))
       setSearchResults(list)
     } catch { setSearchResults([]) } finally { setSearchLoading(false) }
   }, [loadSlotRaw])
@@ -1409,7 +1418,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     await Promise.all(entries.map(async ([sl, id]) => {
       // 원본(비폴딩) 리스트에서 정확한 id 로 해석 → 폴딩 대표가 아닌 id(검색/색변형)도 반드시 찾아 유지.
       const raw = await loadSlotRaw(sl)
-      eq[sl] = raw.find((x) => x.id === id) ?? null
+      const it = raw.find((x) => x.id === id)
+      eq[sl] = it ? toOriginal(raw, it) : null
     }))
     return eq
   }
