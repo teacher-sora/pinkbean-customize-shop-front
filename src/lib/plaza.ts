@@ -393,7 +393,8 @@ const toComment = (r: CRow, uid: string | null, post: PlazaPost): PlazaComment =
 // ── 익명 이름 ──
 // 로그인을 받지 않으므로 **모두 익명**이다. 다만 '익명 1' 같은 번호는 대화를 따라가기 어렵고 심심하다.
 // 이름은 DB 가 사람마다 한 번 정해 plaza_alias 에 적는다(supabase/0017) — **겹치지 않는다**(alias unique).
-//  · 수식어 324 × 실제 메이플 몬스터 1,014 = 약 33만 가지. 낱말 목록은 DB(plaza_priv.alias_adj / alias_noun)에만 있다.
+//  · 수식어 324 × 실제 메이플 몬스터 997 = 약 32만 가지, 0.5% 확률로 몬스터 자리에 보스(이스터에그).
+//    낱말 목록은 DB(plaza_priv.alias_adj / alias_noun / alias_boss)에만 있다.
 //  · 처음 댓글을 다는 순간 트리거가 정한다. 화면은 댓글을 받을 때 그 사람들의 이름을 함께 받아 aliasCache 에 둔다.
 //  · 표에 없는 사람(이름을 정하지 못한 드문 경우)만 예전 방식으로 uid 해시에서 뽑는다(plazaLegacyAlias). 그래서 아주 드물게
 //    겹칠 수 있고, 그때는 화면이 꼬리표를 붙인다(plazaAliasTag).
