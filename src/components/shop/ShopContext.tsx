@@ -152,15 +152,8 @@ const BOOKMARK_MAX = 8
 // 연출설정(pv) 전체 영속 — 새로고침 후에도 마지막 상태(무기모션·액션·표정·형상·시선·이펙트·배율)를 그대로 유지.
 // 프리셋 스냅샷엔 일부(pv 서브셋)만 담기므로, 전체 pv 는 프리셋과 별개의 전역 키에 저장해 정확히 복원한다.
 const PV_KEY = 'pb_pv_v1'
-// '서기'(stand)는 '기본'과 같아져 메뉴에서 뺐다 — 저장된 값은 기본으로 읽는다.
-const normAction = (a: string | undefined) => (a === 'stand' ? 'basic' : a)
 const loadPv = (): Partial<Pv> | null => {
-  try {
-    const raw = localStorage.getItem(PV_KEY); if (!raw) return null; const v = JSON.parse(raw)
-    if (!v || typeof v !== 'object') return null
-    if (v.action) v.action = normAction(v.action)
-    return v as Partial<Pv>
-  } catch { return null }
+  try { const raw = localStorage.getItem(PV_KEY); if (!raw) return null; const v = JSON.parse(raw); return v && typeof v === 'object' ? v as Partial<Pv> : null } catch { return null }
 }
 type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null; v?: number }
 const PRESET_STORE_V = 2 // 2 = 녹셀→레아 기본 헤어 이관을 마친 저장소
@@ -1404,7 +1397,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const s = v ?? PV_LOOK_DEFAULT
     setPvState((prev) => ({ ...prev,
       form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true,
-      gaze: v?.gaze ?? prev.gaze, action: normAction(v?.action) ?? prev.action, expr: v?.expr ?? prev.expr, zoom: v?.zoom ?? prev.zoom }))
+      gaze: v?.gaze ?? prev.gaze, action: v?.action ?? prev.action, expr: v?.expr ?? prev.expr, zoom: v?.zoom ?? prev.zoom }))
   }
   // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
   const loadSlotFolded = async (slot: string): Promise<ListItem[]> => {
