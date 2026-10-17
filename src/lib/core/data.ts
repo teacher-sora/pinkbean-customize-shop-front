@@ -181,7 +181,13 @@ const BASE_ISLOT: Record<string, string> = {
   hair: 'Hr', face: 'Fc', cap: 'Cp', faceAcc: 'Af', eyeAcc: 'Ay', earring: 'Ae',
   coat: 'Ma', longcoat: 'MaPn', pants: 'Pn', shoes: 'So', glove: 'Gv', cape: 'Sr', weapon: 'Wp', shield: 'Si',
 }
-function fixSlotCodes<T extends { slot?: string; islot?: string | null; vslot?: string | null }>(it: T): T {
+// 원본 vslot 이 인게임 모습과 다른 아이템 → 인게임대로 바꾼다(사용자가 인게임에서 확인한 것만 넣는다).
+//  · 아메지스트 레이스 01006971: 원본 vslot CpH1H3H4H5H6HfHbHcAe(앞 · 윗머리 · 뒷머리를 모두 가리는 두건 꼴)인데 그림은 가는 머리띠이고,
+//    인게임에서는 흑발 버블리 · 데이즈 헤어의 옆머리가 그대로 보인다 = 머리 위에 얹기만 한다(아메지스트 바니와 같은 결).
+//    그대로 쓰면 헤어 윗부분(H1) · 몸 아래 머리(Hb)가 사라져 단발처럼 보였다(건의함). WzComparerR2 도 원본대로 가린다.
+const VSLOT_FIX: Record<string, string> = { '01006971': 'Cp' }
+function fixSlotCodes<T extends { id?: string; slot?: string; islot?: string | null; vslot?: string | null }>(it: T): T {
+  if (it.id && VSLOT_FIX[it.id] != null && it.vslot !== VSLOT_FIX[it.id]) it = { ...it, vslot: VSLOT_FIX[it.id] }
   const slot = it.slot || ''
   const ok = OK_ISLOT[slot]
   if (!ok || !it.islot || ok.includes(it.islot)) return it
