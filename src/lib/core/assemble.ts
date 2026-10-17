@@ -227,13 +227,28 @@ export function frameDelays(meta: ItemMeta, opts: ViewOpts): number[] {
   return getFrameSeq(meta, opts).map((fr) => fr.delay)
 }
 
+// 머리에 얹는 장식형 모자: **그림 레이어의 z 가 전부 정수**인 모자는 원본 vslot 과 상관없이 헤어를 아메지스트 바니(CpH5)만큼만 가린다.
+// 근거(사용자 인게임 확인): 아메지스트 레이스(vslot CpH1H3H4H5H6HfHbHcAe)와 머리 위에 버섯 셋(CpH1H5)은 인게임에서 헤어 위에 얹히기만 한다.
+// 같은 vslot 의 코지 윈터 햇 · 숲속의 마법사 모자 · 소금빵 고양이 모자 · 이덴/티스크 해달 모자는 긴머리 · 옆머리를 가린다 —
+// 이들은 z 가 `cap` · `capOverHair` · `backCap` 같은 이름이고, 레이스 · 버섯 셋은 z 가 "0" 이다. 정수 z 모자 16개 가운데
+// 13개는 원래 CpH5 라 그대로이고, 군단장 매그너스 탈은 본체 z 가 이름(capOverHair)이라 해당하지 않는다(머리를 덮는 탈이 맞다).
+// 헤어가 아닌 자리(Ae 귀고리 등)와 머리(Hd)는 원본 그대로 둔다. WzComparerR2 는 원본 vslot 대로 가린다.
+const isIntZ = (z: unknown) => /^-?\d+$/.test(String(z))
+function capVslot(i: AssembleInput): string | null {
+  const v = i.vslot
+  if (!v || !i.layers.length || !i.layers.every((l) => isIntZ(l.z))) return v
+  let out = ''
+  for (let k = 0; k + 2 <= v.length; k += 2) { const c = v.slice(k, k + 2); if (c[0] !== 'H' || c === 'Hd') out += c }
+  return out + 'H5'
+}
+
 export function assemble(
   items: AssembleInput[],
   zmap: Index['zmap'],
   smap: Index['smap'],
 ): { placed: PlacedLayer[]; anchors: Record<string, Vec> } {
   // 투명 아이템은 vslot 을 null 로 취급 → 헤어/얼굴을 가리지 않는다(안 그리는데 가리면 구멍 생김).
-  const equipped: Equipped[] = items.map((i) => ({ id: i.itemId, slot: i.slot, vslot: isTransparent(i.name) ? null : i.vslot }))
+  const equipped: Equipped[] = items.map((i) => ({ id: i.itemId, slot: i.slot, vslot: isTransparent(i.name) ? null : i.slot === 'cap' ? capVslot(i) : i.vslot }))
   const isVisible = buildVisibility(equipped, smap)
   // an equipped invisibleFace accessory (e.g. 신비주의) hides the 성형(face) slot. 단, 투명 아이템은 제외.
   const hideFace = items.some((i) => i.invisibleFace && !isTransparent(i.name))
