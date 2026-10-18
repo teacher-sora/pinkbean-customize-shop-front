@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
-import { assemble, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
+import { assemble, dropWeaponEffects, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, buildOverrides, skinHsb as skinHsb2 } from '@/lib/core/dye'
 import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
@@ -178,7 +178,7 @@ export default function PreviewModel() {
         const moves = itemMotion && slot !== 'riding' && ownMotion(m, itemV.action)
         if (moves) itemAnimated = true
         let layers = getFrameLayers(m, itemV, moves ? fi : viewInfo.isStatic ? undefined : fi, slot === 'riding' ? false : backFrame)
-        if (slot === 'weapon' && !pv.wEffect) layers = layers.filter((l) => l.name !== 'effect')
+        layers = dropWeaponEffects(slot, layers, pv.wEffect)
         items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace, name: m.name, dotOffsets: dotPos[m.id] })
       }
       items.push(...animaParts)

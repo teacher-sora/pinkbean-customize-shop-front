@@ -1,6 +1,6 @@
 // 스냅샷(착용+톤+염색+점 위치+연출설정 일부) → 합성 결과(placed·염색 override·이펙트). 렌더 캔버스와 무관한 순수 조립.
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
-import { assemble, getFrameLayers, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
+import { assemble, dropWeaponEffects, getFrameLayers, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
 import { loadMeta, loadAnima, loadSlot, type AnimaRace, type Index, type ItemMeta, type ListItem } from './data'
 import { LRU } from './lru'
 import { applyHsb, buildOverrides, skinHsb as skinHsbFor } from './dye'
@@ -55,13 +55,13 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   // 정지 프레임(0번)이 하필 뒷모습인 액션이 있다 — 두손 스윙(마무리) 0번. 미리보기와 같은 규칙으로 판단한다
   // (안 하면 긴 헤어가 backBody 를 덮어 카드가 '머리만' 나온다 — assemble.isBackFrame 주석 참고).
   const backFrame = isBackFrame(bodyMeta, charTV)
-  // 무기 이펙트를 끄면 **무기 자신의 'effect' 레이어**도 뺀다 — 미리보기(PreviewModel)와 같은 규칙.
+  // 무기 이펙트를 끄면 **무기 자신의 이펙트 레이어**도 뺀다 — 미리보기(PreviewModel)와 같은 규칙(assemble.dropWeaponEffects).
   //   이펙트는 ItemEff(별도 png)뿐 아니라 무기 프레임 안에 레이어로 박혀 있기도 해서(예 01703646: effect 90장),
   //   ItemEff 만 걸러서는 꺼지지 않는다.
   const wornLayers = (slot: string, meta: ItemMeta) => {
     // 탈것만 자기 액션(TV)을 돈다 — 캐릭터의 뒷프레임 판단도 붙이지 않는다(별도 모델).
     const ls = slot === 'riding' ? getFrameLayers(meta, rideTV) : getFrameLayers(meta, charTV, undefined, backFrame) // 정지 화면 = 대표 프레임
-    return slot === 'weapon' && !spv.wEffect ? ls.filter((l) => l.name !== 'effect') : ls
+    return dropWeaponEffects(slot, ls, spv.wEffect)
   }
   const items: AssembleInput[] = [
     { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, charTV) },

@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { assemble, getFrameLayers, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
+import { assemble, dropWeaponEffects, getFrameLayers, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
@@ -184,7 +184,9 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       // 내 모델: 후보 아이템과 "같은 슬롯"은 배경(내 착용)에서 빼야 그 부위가 후보로 대체된 장착샷이 된다.
       //   (특정 부위 탭은 목록 쪽(list/thumbCtx)이 이미 제외하지만 '전체' 탭·검색은 카드마다 슬롯이 달라 여기서 처리.)
       const bgF = item.slot === 'skin' ? bg : bg.filter((ci) => ci.slot !== item.slot)
-      const { placed: p, anchors } = assemble([...bgF, ...self], zmap, smap)
+      // 무기 이펙트를 끄면 무기(후보든 내 착용이든)의 이펙트 레이어도 뺀다 — 미리보기와 같은 규칙.
+      const wOn = !pvEff || pvEff.wEffect
+      const { placed: p, anchors } = assemble([...bgF, ...self].map((ci) => ({ ...ci, layers: dropWeaponEffects(ci.slot, ci.layers, wOn) })), zmap, smap)
       setPlaced(p)
       // 이펙트(망토 오라 등) = 배경(내 착용)의 것 + 이 아이템 자신의 것. 둘 다 같은 앵커로 배치한다.
       const bp = p.find((x) => x.name === 'body')
