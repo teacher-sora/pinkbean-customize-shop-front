@@ -210,6 +210,13 @@ function stillIndex(meta: ItemMeta, seq: Frame[]): number {
   return k < 0 ? 0 : k
 }
 
+// 무기 프레임 안에 박힌 이펙트 레이어. 이름이 effect·effect1~3·effect2·effect_back·weaponEffect·'weapon eff' 로
+// 여러 갈래라 'eff' 가 들어간 이름을 모두 이펙트로 본다(무기 본체 레이어 이름에는 'eff' 가 없다).
+// 무기 이펙트를 끄면 ItemEff(별도 그림)와 함께 이 레이어도 빠져야 한다(예 책가방 속 러브레터: 하트가 effect2).
+export const isWeaponEffectLayer = (name: string) => /eff/i.test(name)
+export const dropWeaponEffects = <T extends { name: string }>(slot: string, layers: T[], wEffect: boolean): T[] =>
+  slot === 'weapon' && !wEffect ? layers.filter((l) => !isWeaponEffectLayer(l.name)) : layers
+
 // i 를 주지 않으면 **정지 화면**이다(대표 프레임, stillIndex). 애니메이션은 프레임 번호를 넘긴다.
 export function getFrameLayers(meta: ItemMeta, opts: ViewOpts, i?: number, backFrame = false): Layer[] {
   const seq = getFrameSeq(meta, opts, backFrame)
