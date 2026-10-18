@@ -8,16 +8,16 @@
 // 적용 = 보던 아이템 착용 + 염색 커밋. 카드의 염색 버튼 자체는 착용을 바꾸지 않는다.
 
 import clsx from 'clsx'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MIX_PALETTE, paletteFor } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import type { HsbParams, PaletteParams } from '@/lib/core/dye'
-import { useShop } from '../ShopContext'
+import { useShop, type ListMode } from '../ShopContext'
 import DyeCellCanvas from '../render/DyeCellCanvas'
 import DyeModelPreview from '../render/DyeModelPreview'
 import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/controls'
-import { IconCheck, IconReset } from '../ui/Icons'
+import { IconCheck, IconReset, IconViewModel } from '../ui/Icons'
 import { useInnerSlide } from './innerSlide'
 import { SurfaceFooter } from './Surface'
 import styles from './surface.module.css'
@@ -28,37 +28,39 @@ const RANGE: Record<F, [number, number]> = { h: [0, 359], s: [-99, 99], b: [-99,
 const NO_HSB: HsbParams = { h: 0, s: 0, b: 0, t: 0 } // 헤어·성형은 HSB 를 쓰지 않는다
 const DEF_PAL = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 }) // 코디 정보 탭과 같은 기본값
 
-// 표시 영역 크기 측정(미리보기 캔버스 박스).
-// ⚠️ **콜백 ref** 여야 한다(아니면 염색표에 갔다 오면 미리보기가 빈 칸이 된다).
-//  · 화면이 바뀌면(염색표 ↔ 색 조절) 상자 DOM 자체가 갈린다. useEffect([]) 로 한 번만 붙이면
-//    ① 상자가 빠질 때 ResizeObserver 가 **크기 0** 을 보고해 box 가 0 이 되고,
-//    ② 돌아와 새 상자가 생겨도 다시 재지 않아 0 인 채로 굳는다 → DyeModelPreview 가 그리기를 멈춘다.
-//  · 노드가 바뀔 때마다 다시 재고 다시 관찰한다. 상자가 없어진 순간(el=null)은 마지막 크기를 그대로 둔다.
-function useBox() {
-  const [box, setBox] = useState({ w: 0, h: 0 })
-  const roRef = useRef<ResizeObserver | null>(null)
-  const ref = useCallback((el: HTMLDivElement | null) => {
-    roRef.current?.disconnect()
-    roRef.current = null
-    if (!el) return
-    const m = () => {
-      const w = el.clientWidth, h = el.clientHeight
-      if (!w || !h) return // 떼어지는 중의 0 은 무시(그릴 수 없는 크기다)
-      setBox((b) => (b.w === w && b.h === h ? b : { w, h }))
-    }
-    m()
-    if (typeof ResizeObserver !== 'undefined') { const ro = new ResizeObserver(m); ro.observe(el); roRef.current = ro }
-  }, [])
-  return { ref, box }
-}
-
-// 배율 알약(1x·2x·3x) — 두 본문이 함께 쓴다.
-function useZoomPills() {
+// 보기 모델(아이템 · 기본 캐릭터 · 내 캐릭터)과 배율(1x·2x·3x) 알약 — 두 본문이 함께 쓴다.
+// 보기 모델은 내 캐릭터가 기본이다(사용자 지시). 피부는 '아이템' 그림이 곧 피부라 목록처럼 '아이템'을 잠근다.
+// pills = 보기 모델 묶음 + 배율 묶음. PC 는 미리보기 아래 한 줄에 나란히, 모바일은 미리보기 오른쪽 세로줄 아래에 배율, 그 위에 간격을 두고 보기 모델(styles.zoomCol).
+const VIEW_MODELS: { v: ListMode; l: string }[] = [
+  { v: 'sprite', l: '아이템' },
+  { v: 'model', l: '기본 캐릭터' },
+  { v: 'mymodel', l: '내 캐릭터' },
+]
+function useViewPills(skin: boolean) {
   const [zoom, setZoom] = useState(2)
-  const pills = [1, 2, 3].map((z) => (
-    <button key={z} type="button" onClick={() => setZoom(z)} className={clsx(zoom === z ? 'pb-solid' : 'pb-soft', styles.zoom, zoom === z && styles.zoomOn)}>{z}x</button>
-  ))
-  return { zoom, pills }
+  const [model, setModel] = useState<ListMode>('mymodel')
+  const on = (v: boolean) => clsx(v ? 'pb-solid' : 'pb-soft', styles.zoom, v && styles.zoomOn)
+  const pills = (
+    <>
+      <div className={styles.pillGroup} role="group" aria-label="보기 모델">
+        {VIEW_MODELS.map(({ v, l }) => {
+          const locked = skin && v === 'sprite'
+          return (
+            <button key={v} type="button" onClick={() => setModel(v)} disabled={locked} aria-pressed={model === v} aria-label={l}
+              title={locked ? '피부는 아이템 그림이 캐릭터예요' : l} className={clsx(on(model === v), styles.viewPill)}>
+              <IconViewModel mode={v} />
+            </button>
+          )
+        })}
+      </div>
+      <div className={styles.pillGroup} role="group" aria-label="배율">
+        {[1, 2, 3].map((z) => (
+          <button key={z} type="button" onClick={() => setZoom(z)} aria-pressed={zoom === z} className={on(zoom === z)}>{z}x</button>
+        ))}
+      </div>
+    </>
+  )
+  return { zoom, model, pills }
 }
 
 export default function DyeSurfaceBody({ item, mobile }: { item: ListItem; mobile: boolean }) {
@@ -83,8 +85,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   // 색이나 비율을 다시 건드리면 풀린다.
   // 아직 염색하지 않은 아이템은 '지워진' 상태로 연다 — 일반 아이템(HSB)이 0·0·0 으로 열리는 것과 같다.
   const [cleared, setCleared] = useState(() => !s.dyePalette[slot])
-  const { zoom, pills } = useZoomPills()
-  const { ref, box } = useBox()
+  const { zoom, model, pills } = useViewPills(false)
   const { view, go, style } = useInnerSlide<'custom' | 'table'>('custom')
 
   useEffect(() => {
@@ -130,12 +131,12 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
         : <button type="button" onClick={reset} className={clsx('pb-ghost', styles.resetBtn)}>염색 초기화</button>}
     </div>
   )
-  const preview = <DyeModelPreview item={item} hsb={NO_HSB} palette={off || cleared ? undefined : commit} zoom={zoom} box={box} />
+  const preview = <DyeModelPreview item={item} hsb={NO_HSB} palette={off || cleared ? undefined : commit} zoom={zoom} model={model} />
 
   const custom = mobile ? (
     <div className={clsx('pb-scroll', 'pb-fade', styles.hsvM)}>
       <div className={styles.topM}>
-        <div ref={ref} className={styles.pvBoxM}>{preview}</div>
+        <div className={styles.pvBoxM}>{preview}</div>
         <div className={styles.zoomCol}>{pills}</div>
       </div>
       <div className={styles.rowsCol}>{swatchRows}</div>
@@ -146,7 +147,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   ) : (
     <div className={styles.hsvPc}>
       <div className={styles.hsvLeft}>
-        <div ref={ref} className={styles.pvBox}>{preview}</div>
+        <div className={styles.pvBox}>{preview}</div>
         <div className={styles.zoomRow}>{pills}</div>
       </div>
       <div className={clsx('pb-scroll', 'pb-fade', styles.hsvRight)}>
@@ -196,9 +197,8 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   const slot = item.slot
   const [hsb, setHsb] = useState<HsbParams>(() => ({ ...(s.dyeHsb[slot] ?? { h: 0, s: 0, b: 0, t: 0 }) }))
   const [raw, setRaw] = useState<Partial<Record<F, string>>>({})
-  const { zoom, pills } = useZoomPills()
+  const { zoom, model, pills } = useViewPills(slot === 'skin')
   const [off, setOff] = useState(() => !!s.dyeOff[slot]) // 염색 비활성화(적용 시 커밋)
-  const { ref, box } = useBox()
 
   const setF = (f: F, fn: (v: number) => number) => setHsb((h) => ({ ...h, [f]: clampDye(f, fn(h[f] ?? 0)) }))
   const clearRaw = (f: F) => setRaw((r) => { if (!(f in r)) return r; const n = { ...r }; delete n[f]; return n })
@@ -253,7 +253,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
       <>
         <div className={clsx('pb-scroll', 'pb-fade', styles.hsvM)}>
           <div className={styles.topM}>
-            <div ref={ref} className={styles.pvBoxM}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} box={box} /></div>
+            <div className={styles.pvBoxM}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} model={model} /></div>
             <div className={styles.zoomCol}>{pills}</div>
           </div>
           <div className={styles.famRow}>{families}</div>
@@ -273,7 +273,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
     <>
       <div className={styles.hsvPc}>
         <div className={styles.hsvLeft}>
-          <div ref={ref} className={styles.pvBox}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} box={box} /></div>
+          <div className={styles.pvBox}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} model={model} /></div>
           <div className={styles.zoomRow}>{pills}</div>
         </div>
         <div className={clsx('pb-scroll', 'pb-fade', styles.hsvRight)}>

@@ -1,115 +1,78 @@
 'use client'
 
-// 염색(HSB) 미리보기 캔버스.
-// 베이스 모델(몸+머리)에 이 아이템을 입힌 뒤 HSB 발색을 실시간 적용. box 는 표시 영역 크기(측정값).
+// 염색 미리보기. 보기 모델(model)은 목록의 보기 방식과 같은 세 가지다.
+//  - mymodel(기본): 지금 착용한 코디(숨긴 부위 제외, 그 염색 포함)에 이 아이템을 입힌다. 피부는 내 착용을 이 피부에 입힌다.
+//  - model: 엘프 마네킹에 이 아이템만 입힌다(아이템 카드의 기본 캐릭터와 같다). 형상 변이 · 귀는 내 캐릭터에만.
+//  - sprite: 몸 없이 아이템 그림만(DyeSprite — 헤어·성형은 모든 파츠 합성, 그 외는 아이콘). 피부는 '아이템'을 잠근다.
+// 캐릭터 보기는 우측 미리보기(PreviewModel)를 그대로 쓴다 — 연출 설정의 액션 · 표정 · 무기 모션 · 이펙트 토글과
+// 애니메이션이 미리보기와 똑같이 나온다(사용자 지시). 착용 · 피부 · 염색 · 배율만 이 창의 값으로 바꿔 넘긴다.
 
-import { useEffect, useRef, useState } from 'react'
-import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
-import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
-import { applyHsb, buildOverrides, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from '@/lib/core/dye'
-import { canvasBitmap, computeModelPlacement, fitCanvas, zoomStepScale } from '@/lib/core/modelPlacement'
-import { effectDraws, loadImage, renderCharacter, type EffectDraw } from '@/lib/core/render'
-import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
-import { bindImageMenu } from '@/lib/canvasMenu'
-import { DEFAULT_TONE, THUMB_VIEW, skinDyeFamily } from '@/lib/shopData'
-import { useShop } from '../ShopContext'
-import { useLiveRedraw } from '../useLiveRedraw'
+import { useEffect, useMemo, useState } from 'react'
+import type { ListItem } from '@/lib/core/data'
+import type { HsbParams, PaletteParams } from '@/lib/core/dye'
+import { conflictSlots } from '@/lib/core/slots'
+import { DEFAULT_TONE } from '@/lib/shopData'
+import PreviewModel, { type PreviewSource } from '../PreviewModel'
+import { useShop, type ListMode } from '../ShopContext'
+import { DyeSprite } from './DyeSprite'
 
-// 우측 미리보기/카드와 동일한 computeModelPlacement 공식 사용(마네킹 중앙 고정 + 정수 스냅으로 항상 선명).
-// 배율(1x/2x/3x)은 fraction 에 곱하는 월드 배율.
-const DIALOG_FRACTION = 0.33
-// 모바일 시트처럼 낮은 미리보기 상자(≈150~260px)에선 높이의 1/3이면 캐릭터가 50px 안팎으로 작다 → 낮은 상자는 비율을 올린다.
-const fractionFor = (h: number) => (h < 300 ? 0.5 : DIALOG_FRACTION)
+// 마네킹 높이 비율. 모바일 시트처럼 낮은 상자(≈150~260px)에선 높이의 1/3이면 캐릭터가 50px 안팎으로 작다 → 낮은 상자는 비율을 올린다.
+const fractionFor = (h: number) => (h < 300 ? 0.5 : 0.33)
 const DIALOG_ZOOM: Record<number, number> = { 1: 0.6, 2: 1.0, 3: 1.6 }
+// '아이템' 보기의 배율 = 그림이 칸에서 차지하는 큰-변 비율.
+const SPRITE_FRAC: Record<number, number> = { 1: 0.25, 2: 0.4, 3: 0.6 }
+// 발색을 바꾸는 동안은 애니메이션을 멈추고 보이는 프레임만 칠한다(우측 미리보기의 dyeInteracting 과 같다). 손을 떼고 이만큼 지나면 다시 돈다.
+const SETTLE_MS = 260
 
-// palette = 헤어·성형(발색표) 선택. 있으면 그 색을 바탕으로 깔고 그 위에 커스텀 HSB 를 입힌다
-// (lib/core/dye.buildOverrides 와 같은 순서 — 미리보기와 실제 모델이 같은 색이어야 한다).
-export default function DyeModelPreview({ item, hsb, palette, zoom, box }: { item: ListItem; hsb: HsbParams; palette?: PaletteParams; zoom: number; box: { w: number; h: number } }) {
+type Props = { item: ListItem; hsb: HsbParams; palette?: PaletteParams; zoom: number; model: ListMode }
+
+export default function DyeModelPreview({ item, hsb, palette, zoom, model }: Props) {
   const s = useShop()
-  const ref = useRef<HTMLCanvasElement>(null)
-  const shotRef = useRef<ModelShot | null>(null)
-  const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
-  const [itemMeta, setItemMeta] = useState<ItemMeta | null>(null)
-  const [effs, setEffs] = useState<EffectDraw[]>([]) // 이 아이템의 이펙트(정적 대표 프레임)
+  const isSkin = item.slot === 'skin'
+  const mix = s.isMixSlot(item.slot)
+  const mine = model === 'mymodel'
 
+  // 발색 조절 중 표시: 값이 바뀌면 켜고, 잠시 조용하면 끈다.
+  const dyeSig = JSON.stringify([hsb, palette ?? null])
+  const [interacting, setInteracting] = useState(false)
+  const [firstSig] = useState(dyeSig)
   useEffect(() => {
-    const idx = s.index; if (!idx) return
-    let alive = true
-    ;(async () => {
-      // 피부(컬러라인) 염색: 오버레이 아이템 없이 이 피부의 body+head 자체를 그린다. 라인만 HSB 로 변한다.
-      if (item.slot === 'skin') {
-        const [body, head] = await Promise.all([loadMeta(item.id), loadMeta(item.headId!)])
-        if (!alive) return
-        setItemMeta(null); setEffs([])
-        const items: AssembleInput[] = [
-          { itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, THUMB_VIEW) },
-          { itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, THUMB_VIEW) },
-        ]
-        const { placed: p } = assemble(items, idx.zmap, idx.smap)
-        if (alive) setPlaced(p)
-        return
-      }
-      // 마네킹은 아이템 카드의 기본 캐릭터처럼 **엘프 피부로 고정**한다(지금 입은 피부를 따르지 않는다 — 사용자 지시).
-      const te = idx.base.tones.find((t) => t.tone === DEFAULT_TONE) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
-      const [body, head, im] = await Promise.all([loadMeta(te.body), loadMeta(te.head), loadMeta(item.id)])
-      if (!alive) return
-      setItemMeta(im)
-      const items: AssembleInput[] = [
-        { itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, THUMB_VIEW) },
-        { itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, THUMB_VIEW) },
-        { itemId: im.id, slot: im.slot, vslot: im.vslot ?? null, layers: getFrameLayers(im, THUMB_VIEW), invisibleFace: im.invisibleFace, name: im.name },
-      ]
-      const { placed: p, anchors } = assemble(items, idx.zmap, idx.smap)
-      setPlaced(p)
-      // 아이템 이펙트(망토/무기 등) — 정적 대표 프레임. 있으면 합성해서 보여준다.
-      const bare = String(parseInt(item.id, 10))
-      const eidx = await loadEffectIndex().catch(() => new Set<string>())
-      if (alive && eidx.has(bare)) {
-        const em = await loadEffect(item.id).catch(() => null)
-        const bp = p.find((x) => x.name === 'body')
-        const foot = bp ? { x: bp.x + bp.origin.x, y: bp.y + bp.origin.y } : { x: 8, y: 21 }
-        setEffs(em ? effectDraws(em, THUMB_VIEW.action, { foot, brow: anchors.brow ?? foot }, 0) : [])
-      } else if (alive) setEffs([])
-    })().catch(() => {})
-    return () => { alive = false }
-  }, [s.index, item.id])
+    if (dyeSig === firstSig) return
+    setInteracting(true)
+    const t = setTimeout(() => setInteracting(false), SETTLE_MS)
+    return () => clearTimeout(t)
+  }, [dyeSig, firstSig])
 
-  // 슬라이더 드래그 중에도 렉 없이 바로바로 발색(single-flight + 최신값 수렴).
-  useLiveRedraw(async () => {
-    const canvas = ref.current; if (!canvas || !placed || !box.w || !box.h) return
-    const dyed = hsb.h !== 0 || hsb.s !== 0 || hsb.b !== 0
-    let ov: Map<string, HTMLCanvasElement>
-    if (item.slot === 'skin') {
-      // 피부: 그려진 모든 레이어(body/arm/head/ear…)를 HSB 로 리컬러 → 라인만 시각적으로 변한다.
-      ov = new Map()
-      if (dyed) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), skinHsbFor(hsb, skinDyeFamily(item.name) ?? 5), p.png)) } catch (_) {} }
-    } else {
-      if (!itemMeta) return
-      ov = await buildOverrides([itemMeta], { palette: palette ? { [itemMeta.slot]: palette } : {}, hsb: { [itemMeta.slot]: hsb } }, THUMB_VIEW)
-      // 이펙트도 같은 HSB 로 염색해서 보여준다.
-      if (dyed) for (const ed of effs) { try { ov.set(ed.png, applyHsb(await loadImage(ed.png, true), hsb, ed.png)) } catch (_) {} }
+  const src = useMemo((): PreviewSource | null => {
+    const idx = s.index
+    if (!idx) return null
+    const skinTone = isSkin ? idx.base.tones.find((t) => t.body === item.id)?.tone : undefined
+    const tone = skinTone ?? (mine ? s.tone : DEFAULT_TONE)
+    // 착용: 내 캐릭터는 지금 코디에 이 아이템을 입힌다(장착과 같은 규칙 — 겹치는 부위는 벗긴다).
+    const equipped: Record<string, ListItem | null> = {}
+    if (mine) for (const [sl, it] of Object.entries(s.equipped)) if (it) equipped[sl] = it
+    const hidden: Record<string, boolean> = mine ? { ...s.hidden } : {}
+    if (!isSkin) {
+      for (const c of conflictSlots(equipped, item.slot, item)) delete equipped[c]
+      equipped[item.slot] = item
+      delete hidden[item.slot]
     }
-    // 우측 미리보기/카드와 동일 공식: 마네킹 중앙 고정 + 정수 스냅(선명). 배율은 fraction 에 곱.
-    const dpr = window.devicePixelRatio || 1
-    const pl = computeModelPlacement({ divW: box.w, divH: box.h, dpr, margin: 1, fraction: fractionFor(box.h), scale: zoomStepScale({ fraction: fractionFor(box.h), divH: box.h, dpr, level: zoom, mults: DIALOG_ZOOM }), snap: true, drop: true })
-    const { bw, bh } = canvasBitmap(pl)
-    fitCanvas(canvas, canvas.parentElement, bw, bh, box.w, box.h, dpr)
-    await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov, effects: effs })
-    shotRef.current = { placed, override: ov, effects: effs } // 우클릭 복사용 입력(지금 그린 염색 그대로)
-  }, [placed, itemMeta, hsb, palette, effs, zoom, item.slot, box.w, box.h])
+    // 염색: 내 착용의 염색 위에 이 아이템(또는 피부)의 지금 값을 얹는다.
+    const pal: Record<string, PaletteParams> = mine ? { ...s.renderPalette } : {}
+    const hs: Record<string, HsbParams> = mine ? { ...s.renderHsb } : {}
+    const key = isSkin ? 'skin' : item.slot
+    delete pal[key]; delete hs[key]
+    if (mix) { if (palette) pal[key] = palette } else hs[key] = hsb
+    return {
+      equipped, hidden, tone, palette: pal, hsb: hs, dotPos: mine ? s.dotPos : {},
+      pv: mine ? { ...s.pv, zoom } : { ...s.pv, zoom, form: 'none', ear: 'humanEar' },
+      interacting, zoomMults: DIALOG_ZOOM, fraction: fractionFor,
+    }
+  }, [s.index, s.tone, s.equipped, s.hidden, s.renderPalette, s.renderHsb, s.dotPos, s.pv, item, isSkin, mix, mine, hsb, palette, zoom, interacting])
 
-  // 우클릭/롱프레스 이미지 메뉴 바인딩.
-  useEffect(() => {
-    const el = ref.current
-    if (!el || !placed) return
-    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
-  }, [placed, item.name, item.id])
-
-  if (!placed) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 8 }} />
-  // 캔버스 intrinsic = box×scale. CSS 로 늘리지 않고(1:1) 화면 픽셀 격자에 맞춰 배치(fitCanvas).
-  return (
-    <span style={{ position: 'relative', width: '100%', height: '100%', display: 'block', overflow: 'hidden' }}>
-      <canvas ref={ref} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated' }} />
-    </span>
-  )
+  if (model === 'sprite' && !isSkin) {
+    return <DyeSprite id={item.id} thumb={item.icon || `sprites/${item.id}/icon.png`} mix={mix} palette={mix ? palette : undefined} hsb={mix ? undefined : hsb} zmap={s.index?.zmap || []} frac={SPRITE_FRAC[zoom] ?? SPRITE_FRAC[2]} />
+  }
+  if (!src) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 8 }} />
+  return <PreviewModel src={src} />
 }

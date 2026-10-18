@@ -13,17 +13,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, dropWeaponEffects, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
-import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta } from '@/lib/core/data'
-import { applyHsb, buildOverrides, skinHsb as skinHsb2 } from '@/lib/core/dye'
+import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { applyHsb, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
-import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS } from '@/lib/catalog'
+import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
 import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
-import { peekSavedZoom, useShop } from './ShopContext'
+import { peekSavedZoom, useShop, type DotOffsets } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
 
@@ -31,16 +31,31 @@ import styles from './PreviewModel.module.css'
 // 미리보기·부위 카드·프리셋/광장 카드가 같은 답을 내야 한다.
 
 
-export default function PreviewModel() {
-  const { index, equipped, hidden, tone, pv, renderPalette: dyePalette, renderHsb: dyeHsb, dotPos, dyeInteracting, bp } = useShop() // 염색 비활성화 슬롯은 제외된 렌더용 값
-  // 세로 스택(태블릿+모바일)은 미리보기 영역이 낮고 넓다 → PC 비율(0.25)이면 모델이 콩알만 해진다.
-  const fraction = isStacked(bp) ? PREVIEW_FRACTION_MOBILE : PREVIEW_FRACTION
+// 미리보기를 코디 상태 대신 주어진 값으로 그린다(염색 창의 보기 모델 — render/DyeModelPreview).
+// 그리는 규칙(액션 · 표정 · 무기 모션 · 이펙트 · 애니메이션 · 염색)은 그대로이고, 배경 바닥(stageFloor)은 알리지 않는다.
+export type PreviewSource = {
+  equipped: Record<string, ListItem | null>; hidden: Record<string, boolean>; tone: number
+  palette: Record<string, PaletteParams>; hsb: Record<string, HsbParams>; dotPos: Record<string, DotOffsets>
+  pv: Pv; interacting: boolean                       // interacting = 발색 조절 중(애니메이션을 멈추고 보이는 프레임만 칠한다)
+  zoomMults: Record<number, number>; fraction: (h: number) => number
+}
+
+export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
+  const shop = useShop()
+  const { index, bp } = shop
+  // 염색 비활성화 슬롯은 제외된 렌더용 값
+  const equipped = src?.equipped ?? shop.equipped, hidden = src?.hidden ?? shop.hidden, tone = src?.tone ?? shop.tone, pv = src?.pv ?? shop.pv
+  const dyePalette = src?.palette ?? shop.renderPalette, dyeHsb = src?.hsb ?? shop.renderHsb, dotPos = src?.dotPos ?? shop.dotPos
+  const dyeInteracting = src ? src.interacting : shop.dyeInteracting
+  const zoomMults = src?.zoomMults ?? ZOOM_WORLD
   const [metas, setMetas] = useState<Map<string, ItemMeta>>(new Map())
   const [dyeOverrides, setDyeOverrides] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effectIndex, setEffectIndex] = useState<Set<string>>(new Set())
   const [effMetas, setEffMetas] = useState<Map<string, EffectMeta | null>>(new Map()) // null = 로드 실패(대기 해제용)
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
+  // 세로 스택(태블릿+모바일)은 미리보기 영역이 낮고 넓다 → PC 비율(0.25)이면 모델이 콩알만 해진다.
+  const fraction = src ? src.fraction(dims.h) : isStacked(bp) ? PREVIEW_FRACTION_MOBILE : PREVIEW_FRACTION
   const [dyeSettling, setDyeSettling] = useState(false) // 이펙트/피부 전 프레임 염색 중(애니메이션 잠깐 정지 → 점멸 방지)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -372,13 +387,13 @@ export default function PreviewModel() {
   // 발 높이 21 은 서 있는 캐릭터의 값이다(spec 의 ground 기본값과 같다).
   useEffect(() => {
     const wrapEl = wrapRef.current
-    if (spec || !wrapEl || !dims.w || !dims.h) return
-    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: index ? pv.zoom : peekSavedZoom() ?? pv.zoom, mults: ZOOM_WORLD }), centerDx: MODEL_REF.centerDx, centerDy: MODEL_REF.centerDy, snap: true, drop: true })
+    if (src || spec || !wrapEl || !dims.w || !dims.h) return
+    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: index ? pv.zoom : peekSavedZoom() ?? pv.zoom, mults: zoomMults }), centerDx: MODEL_REF.centerDx, centerDy: MODEL_REF.centerDy, snap: true, drop: true })
     const bw = Math.round(pl.box.w * pl.scale), bh = Math.round(pl.box.h * pl.scale)
     const rect = wrapEl.getBoundingClientRect()
     const leftDev = Math.round((dims.w * dims.dpr - bw) / 2) - ((rect.left * dims.dpr) % 1), topDev = Math.round((dims.h * dims.dpr - bh) / 2) - ((rect.top * dims.dpr) % 1)
     setStageFloor({ wrap: wrapEl, cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((pl.anchor.y + 21) * pl.scale)) / dims.dpr, scale: pl.scale, shadow: 13 })
-  }, [spec, dims, pv.zoom, fraction, index])
+  }, [src, spec, dims, pv.zoom, fraction, index, zoomMults])
 
   // 명령형 rAF: 프리로드 후 캔버스에 직접 그림(React state 갱신 없음 → 부드럽고 렉 없음).
   useEffect(() => {
@@ -395,7 +410,7 @@ export default function PreviewModel() {
     // 뒷쪽 시선(rope 첫프레임)이 previewBack* 로 중앙에 오는 것과 동일하게, 비라이딩 사다리/밧줄도 previewBack* 사용.
     const climbCenter = back || (!riding && (pv.action === 'ladder' || pv.action === 'rope'))
     // snap:true — 정수 배율로 렌더해 도트(애교점 등)가 픽셀에 딱 맞고 선명하다(카드 썸네일·내보내기와 동일 규칙).
-    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: pv.zoom, mults: ZOOM_WORLD }), centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true, drop: true })
+    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: pv.zoom, mults: zoomMults }), centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true, drop: true })
     // 캔버스를 화면 픽셀 격자에 정확히 맞춘다: CSS 크기 = 비트맵 ÷ dpr, 위치는 translate(-50%) 대신 디바이스 픽셀 단위로
     // 반올림한 left/top(+ wrap 자신의 소수 px 위치 보정). 소수 px 크기·위치면 재샘플링돼 세로줄이 찢겨 보였다.
     const bw = Math.round(pl.box.w * pl.scale), bh = Math.round(pl.box.h * pl.scale)
@@ -407,7 +422,7 @@ export default function PreviewModel() {
     const leftDev = Math.round((dims.w * dims.dpr - bw) / 2) - fx, topDev = Math.round((dims.h * dims.dpr - bh) / 2) - fy
     canvas.style.left = leftDev / dims.dpr + 'px'
     canvas.style.top = topDev / dims.dpr + 'px'
-    if (wrapEl) setStageFloor({ wrap: wrapEl, cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((pl.anchor.y + ground) * pl.scale)) / dims.dpr, scale: pl.scale, shadow: riding ? 30 : 13 })
+    if (wrapEl && !src) setStageFloor({ wrap: wrapEl, cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((pl.anchor.y + ground) * pl.scale)) / dims.dpr, scale: pl.scale, shadow: riding ? 30 : 13 })
     const pngs = new Set<string>()
     frames.forEach((f) => f.placed.forEach((p) => pngs.add(p.png)))
     effList.forEach((em) => Object.values(em.groups).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
@@ -474,7 +489,7 @@ export default function PreviewModel() {
       cancelled = true; cancelAnimationFrame(raf)
       if (clock.running) { clock.elapsed = nowElapsed(); clock.since = performance.now(); clock.running = false }
     }
-  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
+  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, zoomMults, src, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
 
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.
