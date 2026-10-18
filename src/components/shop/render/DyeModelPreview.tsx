@@ -27,7 +27,7 @@ const DIALOG_FRACTION = 0.33
 const fractionFor = (h: number) => (h < 300 ? 0.5 : DIALOG_FRACTION)
 const DIALOG_ZOOM: Record<number, number> = { 1: 0.6, 2: 1.0, 3: 1.6 }
 // '아이템' 보기의 배율 = 그림이 칸에서 차지하는 큰-변 비율.
-const SPRITE_FRAC: Record<number, number> = { 1: 0.4, 2: 0.6, 3: 0.82 }
+const SPRITE_FRAC: Record<number, number> = { 1: 0.25, 2: 0.4, 3: 0.6 }
 
 type Props = { item: ListItem; hsb: HsbParams; palette?: PaletteParams; zoom: number; box: { w: number; h: number }; model: ListMode }
 type Bg = { ov: Map<string, HTMLCanvasElement>; effs: EffectDraw[] } // 내 착용의 염색(override)과 이펙트
