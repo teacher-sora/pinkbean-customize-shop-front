@@ -92,10 +92,10 @@ export interface SlotSummary {
 // Item effect (Effect/ItemEff.wz). Drawn as an overlay behind/in front of the body;
 // see parser 레포의 scripts/extract-effects.cjs. `repFrame` indexes the representative static frame.
 // 캐시 이펙트(이펙트 부위, parser scripts/cashfx-build.py)도 같은 모양이고, 몇 가지가 더 붙는다.
-//   frame.z  = 프레임마다 다른 앞뒤(없으면 묶음의 z)
+//   frame.z  = 프레임마다 다른 앞뒤(없으면 묶음의 z). 캐시 이펙트는 loadEffect 가 모두 맨 뒤(-1)로 바꾼다.
 //   trail    = 여러 겹이 캐릭터를 따라다니는 이펙트의 묶음들(반짝반짝 스타). 함께 그린다.
 //   cycle    = 묶음을 ms 마다 차례로 돌린다(사원증의 카드 세 장).
-//   extra    = 두 번째 층(effect2 — 대개 캐릭터 앞). 함께 그린다.
+//   extra    = 두 번째 층(effect2). 함께 그린다.
 export interface EffectFrame { png: string; origin: Vec; delay: number; z?: number }
 export interface EffectGroup { z: number; pos: number; repFrame: number; frames: EffectFrame[] }
 export interface EffectMeta {
@@ -266,12 +266,20 @@ export function loadEffectIndex(): Promise<Set<string>> {
   return effectIndexPromise
 }
 const effectCache = new Map<string, Promise<EffectMeta | null>>()
+// 캐시 이펙트(이펙트 부위, 501xxxx)는 게임처럼 언제나 캐릭터 맨 뒤에 그린다 — 원본 z 와 상관없이 모든 묶음 · 프레임 · 두 번째 층을 뒤로.
+const isCashFx = (bare: string) => /^501\d{4}$/.test(bare)
+function toBack(m: EffectMeta): EffectMeta {
+  const groups: Record<string, EffectGroup> = {}
+  for (const [k, g] of Object.entries(m.groups)) groups[k] = { ...g, z: -1, frames: g.frames.map((f) => ({ ...f, z: -1 })) }
+  return { ...m, z: -1, groups, extra: m.extra && toBack(m.extra) }
+}
 // id may be padded (meta id "01104029") or bare ("1104029"); effects are keyed bare.
 export function loadEffect(id: string): Promise<EffectMeta | null> {
   const bare = String(parseInt(id, 10))
   let p = effectCache.get(bare)
   if (!p) {
-    p = fetch(url(`effects/${bare}.json`)).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    p = fetch(url(`effects/${bare}.json`)).then((r) => (r.ok ? r.json() : null))
+      .then((m: EffectMeta | null) => (m && isCashFx(bare) ? toBack(m) : m)).catch(() => null)
     effectCache.set(bare, p)
   }
   return p
