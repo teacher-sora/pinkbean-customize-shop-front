@@ -130,6 +130,8 @@ export async function renderCharacter(
   const effs = opts.effects?.length
     ? (await Promise.all(opts.effects.map(async (e) => ({ e, img: (opts.override?.get(e.png) ?? await loadImage(e.png, cors).catch(() => null)) as CanvasImageSource | null })))).filter((x) => x.img)
     : []
+  // 이펙트끼리는 z 순서로 쌓는다(작을수록 뒤) — 캐시 이펙트는 원본 z 를 그대로 쓴다(parser cashfx-build.layer_z). 같은 z 는 들어온 순서.
+  effs.sort((a, b) => a.e.z - b.e.z)
 
   // Image loads above are async; if a newer render started while we awaited (fast item
   // swaps), bail BEFORE touching the canvas so this stale pass can't overwrite it.
