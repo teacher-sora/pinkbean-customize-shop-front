@@ -1,6 +1,6 @@
 'use client'
 
-// 코디 정보 · 염색. 16부위 행 그리드 + (PC) 하단 인라인 염색. 모바일은 부위를 누르면 염색/점 위치 서피스를 연다.
+// 코디 정보 · 염색. 17부위 행 그리드 + (PC) 하단 인라인 염색. 모바일은 부위를 누르면 염색/점 위치 서피스를 연다.
 
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
@@ -71,6 +71,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
     s.setDyeTarget(r.slot)
     if (!mobile) return
     if (r.isSkin && !isDyeableSkin(toneName)) { s.notify('이 피부는 염색할 수 없어요'); return }
+    if (!r.isSkin && r.item.dyeMode === 'none' && !DOT_MOVER_IDS.has(r.item.id)) { s.notify('이 아이템은 염색할 수 없어요'); return }
     if (DOT_MOVER_IDS.has(r.item.id)) s.openDot(r.item); else s.openDye(r.item)
   }
 
@@ -186,6 +187,18 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
         <div className={styles.dyeOff}>
           <span className={styles.dyeOffTitle}>이 피부는 염색할 수 없어요</span>
           <span className={styles.dyeOffHint}>&quot;컬러라인&quot; 커스텀 피부만 라인 염색이 가능해요</span>
+        </div>
+      </div>
+    )
+  }
+
+  // 염색할 수 없는 아이템(이펙트 · 일반 아이템). 점 위치를 옮기는 아이템은 점 편집이 있으므로 그대로 둔다.
+  if (!isSkin && it.dyeMode === 'none' && !DOT_MOVER_IDS.has(it.id)) {
+    return (
+      <div className={areaCls}>
+        <div className={styles.dyeOff}>
+          <span className={styles.dyeOffTitle}>이 아이템은 염색할 수 없어요</span>
+          <span className={styles.dyeOffHint}>{cat?.label === '이펙트' ? '이펙트는 원래 색으로만 보여요' : '색을 바꿀 수 없는 아이템이에요'}</span>
         </div>
       </div>
     )
