@@ -21,6 +21,11 @@
 /* 코디 광장 분류는 4개뿐이라 폭을 나눠 채운다 */
 .partWideM { flex: 1 1 0; min-width: 0; padding: 0 4px; }
 :global(html:not([data-pb-csr])) .partM.partOn { font-weight: 600; color: #fff; background: #ec86ac; }
+/* 모바일 목록 머리의 부위 탭: 미리보기 바로 밑에 붙이고, 고른 탭은 글자색 + 밑줄. 탭 높이 40(손가락 터치 높이) */
+.catTabsM { flex: 0 0 auto; height: 40px; padding: 0 6px; display: flex; align-items: stretch; overflow-x: auto; overflow-y: hidden; border-bottom: 1px solid #f2ebe3; }
+.catTabM { flex: 0 0 auto; position: relative; padding: 0 11px; border: 0; background: transparent; font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; color: #8a8075; cursor: pointer; }
+.catTabMOn { font-weight: 600; color: #e0709a; }
+.catTabMOn::after { content: ''; position: absolute; left: 9px; right: 9px; bottom: 0; height: 2px; border-radius: 2px; background: #ec86ac; }
 .tabNavM { flex: 0 0 auto; height: 56px; padding: 0 4px; display: flex; align-items: stretch; border-top: 1px solid #f0e9e1; background: #fff; }
 /* 아이콘 아래에 짧은 이름을 단다 — 아이콘만으로는 눌러 봐야 무엇인지 안다. 높이는 그대로(56px) */
 .tabM { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: none; border-top: 2px solid transparent; background: transparent; cursor: pointer; color: #c3b9ad; }

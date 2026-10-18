@@ -10,6 +10,7 @@ import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop, type GenderFilter, type ListMode } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconSearchBold } from '../ui/Icons'
+import { CatTabsM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
 import styles from './list.module.css'
@@ -302,6 +303,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   if (mobile) {
     return (
       <>
+        <CatTabsM />
         {controls}
         <div className={styles.hrM} />
         {viewport}

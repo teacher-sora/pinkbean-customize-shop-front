@@ -1,6 +1,7 @@
 'use client'
 
 // 하단 부위 바(전체·즐겨찾기 + 16부위) + 탭 바(6탭). 부위 바는 AI 코디 검색에서도 결과 필터로 작동한다.
+// 모바일의 코디 · AI 코디 검색은 부위를 하단이 아니라 목록 머리 첫 줄(CatTabsM)에 둔다 — 하단 탭 바와 붙어 있어 잘못 눌렸다(사용자 지시).
 
 import clsx from 'clsx'
 import { useEffect, useRef } from 'react'
@@ -55,6 +56,32 @@ function useRail() {
   return { railRef }
 }
 
+// 모바일 목록 머리의 부위 탭(밑줄 탭). 미리보기 위 둥근 버튼들과 다른 모양이라 '이 목록에서 무엇을 볼지'로 읽힌다.
+// 부위를 바꾸면(다른 곳에서 바뀌어도) 고른 탭이 보이도록 가로로 당겨 온다.
+export function CatTabsM() {
+  const s = useShop()
+  const { railRef } = useRail()
+  useEffect(() => {
+    const el = railRef.current
+    const on = el?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!el || !on) return
+    const l = on.offsetLeft - 8, r = on.offsetLeft + on.offsetWidth + 8
+    if (l < el.scrollLeft) el.scrollTo({ left: l })
+    else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth })
+  }, [s.activeCat, railRef])
+  return (
+    <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label="부위">
+      {PARTS.map((p) => {
+        const on = s.activeCat === p.id
+        return (
+          <button key={p.id} type="button" onClick={() => s.setActiveCat(p.id)} aria-pressed={on} title={p.label}
+            className={clsx(styles.catTabM, on && styles.catTabMOn)}>{p.label}</button>
+        )
+      })}
+    </nav>
+  )
+}
+
 export default function BottomNav({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const { railRef } = useRail()
@@ -71,16 +98,17 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   }
 
   if (mobile) {
+    const listTab = s.primary === 'codi' || s.primary === 'search' // 부위는 목록 머리(CatTabsM)에 있다
     return (
       <>
-        <div className={styles.partNavM}>
+        {!listTab && <div className={styles.partNavM}>
           <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.railM)} aria-label={plaza ? '분류' : '부위'}>
             {chips.map((c) => (
               <button key={c.id} type="button" onClick={c.pick} title={c.label}
                 className={clsx(c.on ? 'pb-solid' : 'pb-soft', styles.partM, plaza && styles.partWideM, c.on && styles.partOn)}>{c.label}</button>
             ))}
           </nav>
-        </div>
+        </div>}
         <nav className={styles.tabNavM} aria-label="메뉴">
           {TABS.map((t) => {
             const on = s.primary === t.id
