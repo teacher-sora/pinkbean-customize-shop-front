@@ -93,7 +93,7 @@ export interface SlotSummary {
 // see parser 레포의 scripts/extract-effects.cjs. `repFrame` indexes the representative static frame.
 // 캐시 이펙트(이펙트 부위, parser scripts/cashfx-build.py)도 같은 모양이고, 몇 가지가 더 붙는다.
 //   frame.z  = 프레임마다 다른 앞뒤(없으면 묶음의 z).
-//   앞뒤: 캐시 이펙트는 거의 다 맨 뒤(z -1)이고, 원본에 붙는 자리(pos)가 없고 z 가 0 이상인 묶음만 모든 레이어 앞(z 2)이다 — parser 가 정해 쓴다.
+//   앞뒤: 캐시 이펙트는 pos 가 있으면 캐릭터 뒤(음수), pos 가 없으면 원본 z 그대로(0 이상 = 모든 레이어 앞) — parser 가 정해 쓴다. 이펙트끼리는 z 순서(render).
 //   trail    = 여러 겹이 캐릭터를 따라다니는 이펙트의 묶음들(반짝반짝 스타). 함께 그린다.
 //   cycle    = 묶음을 ms 마다 차례로 돌린다(사원증의 카드 세 장).
 //   extra    = 두 번째 층(effect2). 함께 그린다.
