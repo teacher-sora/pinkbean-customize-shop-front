@@ -213,7 +213,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       const bnav = curBody?.map?.navel
       const foot = { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
       const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
-      return { placed, foot, brow }
+      return { placed, foot, brow, navel: stab } // navel = 배꼽(월드 원점) + 같은 보정 — 허리에 붙는 이펙트(pos 4)
     })
     // 핑퐁(왕복)은 "캐릭터가 클럭"일 때(전투대기 등 일어선 액션)만. 앉은 채(seated)는 재규어가 클럭이고 4족
     // 보행은 루프여야 뒷발이 되돌아가며 움찔하지 않는다. (전투대기가 중간에 툭 끊기던 건 라이딩 전체를 loop 로
@@ -441,7 +441,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       if (cancelled) return
       const fi = animated ? (pingpong ? frameAtElapsedAlt : frameAtElapsed)(delays, elapsed) : 0
       const f = frames[Math.min(fi, frames.length - 1)]
-      const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow }, elapsed)) : []
+      const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow, navel: f.navel }, elapsed)) : []
       if (!f.placed.every((p) => loaded.has(p.png)) || !effects.every((d) => loaded.has(d.png))) return // 아직 로드 중 → 직전 프레임 유지
       // ⚠️ 매 rAF(60fps)마다 재합성하지 않는다 — 메이플 스프라이트/이펙트 프레임 delay 는 ~100~180ms(≈6~10fps)라
       //   60fps 로 그리면 "같은 프레임"을 5~6번 덧그리는 순수 낭비다(착용·이펙트가 많을수록 비용↑). 캐릭터 프레임
@@ -465,7 +465,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     copyRef.current = f0
       ? {
           placed: f0.placed,
-          effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow }, 0)) : [],
+          effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow, navel: f0.navel }, 0)) : [],
           flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides,
           cDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx,
           cDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy,
@@ -473,7 +473,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       : null
     const essential = new Set<string>()
     fNow?.placed.forEach((p) => essential.add(p.png))
-    if (hasEff && fNow) effList.flatMap((em) => effectDraws(em, V.action, { foot: fNow.foot, brow: fNow.brow }, e0)).forEach((d) => essential.add(d.png))
+    if (hasEff && fNow) effList.flatMap((em) => effectDraws(em, V.action, { foot: fNow.foot, brow: fNow.brow, navel: fNow.navel }, e0)).forEach((d) => essential.add(d.png))
     track(essential).then(() => {
       if (cancelled) return
       draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)

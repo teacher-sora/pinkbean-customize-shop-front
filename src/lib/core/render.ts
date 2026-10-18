@@ -5,7 +5,7 @@
 // (world 0,0) is nailed to a FIXED canvas coordinate inside a fixed world box,
 // so the body never shifts when hair/hats/weapons change extent. All scaling is
 // integer (x1/x2/x3) with smoothing off and integer pixel snapping -> crisp dots.
-import { spriteUrl, type EffectMeta, type Vec } from './data'
+import { spriteUrl, type EffectGroup, type EffectMeta, type Vec } from './data'
 import type { PlacedLayer } from './assemble'
 import { LRU } from './lru'
 
@@ -46,7 +46,7 @@ export interface EffectDraw { png: string; origin: { x: number; y: number }; z: 
 
 // Character reference points an effect can attach to (world coords; navel = (0,0)).
 // foot = body sprite origin (-navel); brow = resolved head brow anchor.
-export interface EffectAnchors { foot: Vec; brow: Vec }
+export interface EffectAnchors { foot: Vec; brow: Vec; navel?: Vec }
 
 // Pick the STATIC representative effect frame for a given action (falls back to the
 // `default` group, then repGroup). One frame only — effects never animate.
@@ -64,15 +64,30 @@ function frameAtElapsed(delays: number[], elapsed: number): number {
   for (let i = 0; i < ds.length; i++) { t -= ds[i]; if (t < 0) return i }
   return ds.length - 1
 }
-export function effectDraws(meta: EffectMeta | null | undefined, action: string, anchors: EffectAnchors, elapsed = 0): EffectDraw[] {
-  if (!meta) return []
-  const g = meta.groups[action] || meta.groups['default'] || meta.groups[meta.repGroup]
-  if (!g || !g.frames.length) return []
+// 캐시 이펙트(이펙트 부위)는 pos 4 도 쓴다 — 허리(배꼽)에 붙는다(호영 꼬리). pos 3 은 발과 같다(땅 위 동반자).
+function groupDraw(g: EffectGroup | undefined, anchors: EffectAnchors, elapsed: number): EffectDraw | null {
+  if (!g || !g.frames.length) return null
   // animate: pick the frame for the current time (single frame → static rep frame).
   const idx = g.frames.length > 1 ? frameAtElapsed(g.frames.map((f) => f.delay), elapsed) : g.repFrame
   const fr = g.frames[idx] || g.frames[g.repFrame] || g.frames[0]
-  const pt = g.pos === 1 ? anchors.brow : anchors.foot
-  return [{ png: fr.png, origin: fr.origin, z: g.z, ox: pt.x, oy: pt.y }]
+  const pt = g.pos === 1 ? anchors.brow : g.pos === 4 ? (anchors.navel ?? { x: 0, y: 0 }) : anchors.foot
+  return { png: fr.png, origin: fr.origin, z: fr.z ?? g.z, ox: pt.x, oy: pt.y }
+}
+export function effectDraws(meta: EffectMeta | null | undefined, action: string, anchors: EffectAnchors, elapsed = 0): EffectDraw[] {
+  if (!meta) return []
+  const out: EffectDraw[] = []
+  if (meta.cycle?.groups.length) {
+    // 묶음을 차례로 돌린다(사원증 카드). 정지 화면(elapsed 0)은 첫 묶음.
+    const k = Math.floor(Math.max(0, elapsed) / meta.cycle.ms) % meta.cycle.groups.length
+    const d = groupDraw(meta.groups[meta.cycle.groups[k]], anchors, elapsed); if (d) out.push(d)
+  } else if (meta.trail?.length) {
+    // 따라다니는 겹들 — 멈춰 서 있으면 모두 캐릭터 자리로 모인다.
+    for (const key of meta.trail) { const d = groupDraw(meta.groups[key], anchors, elapsed); if (d) out.push(d) }
+  } else {
+    const d = groupDraw(meta.groups[action] || meta.groups['default'] || meta.groups[meta.repGroup], anchors, elapsed); if (d) out.push(d)
+  }
+  if (meta.extra) out.push(...effectDraws(meta.extra, action, anchors, elapsed))
+  return out
 }
 
 export interface RenderOpts {

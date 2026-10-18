@@ -67,7 +67,7 @@ export type RateLine = { text: string; slot: string }
 const RATE_WORDS: [RegExp, string[]][] = [
   [/헤어|머리카락|머리|앞머리|단발|양갈래|포니테일/, ['hair']], [/모자|리본|머리띠|왕관|헬멧|후드/, ['cap']], [/눈동자|눈빛|눈매|표정|얼굴|성형/, ['face']],
   [/안경|선글라스|눈장식/, ['eyeAcc']], [/얼굴장식|마스크|수염/, ['faceAcc']], [/귀고리|귀걸이/, ['earring']], [/신발|구두|부츠|운동화|슬리퍼/, ['shoes']],
-  [/장갑/, ['glove']], [/망토|날개|꼬리/, ['cape']], [/방패/, ['shield']], [/무기|검|칼|지팡이|활|총|창|도끼/, ['weapon']],
+  [/장갑/, ['glove']], [/망토|날개|꼬리/, ['cape']], [/방패/, ['shield']], [/이펙트/, ['effect']], [/무기|검|칼|지팡이|활|총|창|도끼/, ['weapon']],
   [/치마|바지|하의|스커트|반바지/, ['pants', 'longcoat']], [/원피스|드레스|한벌옷|교복|정장|옷|상의|셔츠|재킷|자켓|코트|티셔츠/, ['longcoat', 'coat']],
 ]
 function rateSlotOf(text: string, equipped: Record<string, ListItem | null>): string {

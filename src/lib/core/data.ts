@@ -91,7 +91,12 @@ export interface SlotSummary {
 
 // Item effect (Effect/ItemEff.wz). Drawn as an overlay behind/in front of the body;
 // see parser 레포의 scripts/extract-effects.cjs. `repFrame` indexes the representative static frame.
-export interface EffectFrame { png: string; origin: Vec; delay: number }
+// 캐시 이펙트(이펙트 부위, parser scripts/cashfx-build.py)도 같은 모양이고, 몇 가지가 더 붙는다.
+//   frame.z  = 프레임마다 다른 앞뒤(없으면 묶음의 z)
+//   trail    = 여러 겹이 캐릭터를 따라다니는 이펙트의 묶음들(반짝반짝 스타). 함께 그린다.
+//   cycle    = 묶음을 ms 마다 차례로 돌린다(사원증의 카드 세 장).
+//   extra    = 두 번째 층(effect2 — 대개 캐릭터 앞). 함께 그린다.
+export interface EffectFrame { png: string; origin: Vec; delay: number; z?: number }
 export interface EffectGroup { z: number; pos: number; repFrame: number; frames: EffectFrame[] }
 export interface EffectMeta {
   id: string
@@ -99,6 +104,9 @@ export interface EffectMeta {
   z: number
   repGroup: string
   groups: Record<string, EffectGroup>
+  trail?: string[]
+  cycle?: { groups: string[]; ms: number }
+  extra?: EffectMeta
 }
 
 export interface Index {
@@ -243,13 +251,17 @@ export function loadMeta(id: string): Promise<ItemMeta> {
 }
 
 // --- item effects (Effect/ItemEff.wz) ---
+// 이펙트 부위(캐시 이펙트)의 목록. 목록의 아이템은 모두 이펙트가 있으므로 이 목록이 곧 그 색인이다 —
+// effects/index.json(parser extract-effects 가 다시 쓴다)에 섞지 않고 여기서 합친다.
+export const CASHFX_FILE = 'cashfx/list.json'
 let effectIndexPromise: Promise<Set<string>> | null = null
 // Set of item ids (non-padded, as stored in ItemEff) that have an extracted effect.
 export function loadEffectIndex(): Promise<Set<string>> {
   if (!effectIndexPromise) {
-    effectIndexPromise = pre<string[]>('effects/index.json', () => fetch(url('effects/index.json'), FRESH).then((r) => (r.ok ? r.json() : [])))
-      .then((ids: string[]) => new Set(ids))
-      .catch(() => new Set<string>())
+    effectIndexPromise = Promise.all([
+      pre<string[]>('effects/index.json', () => fetch(url('effects/index.json'), FRESH).then((r) => (r.ok ? r.json() : []))).catch(() => [] as string[]),
+      loadSlot(CASHFX_FILE).catch(() => [] as ListItem[]),
+    ]).then(([ids, fx]) => new Set([...ids, ...fx.map((it) => String(parseInt(it.id, 10)))]))
   }
   return effectIndexPromise
 }
