@@ -58,7 +58,12 @@
 .hsvPc { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; padding: 16px; overflow: hidden; }
 .hsvLeft { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .pvBox { flex: 1 1 auto; width: 100%; min-height: 0; border: 1px solid #eee6dc; border-radius: 8px; background: #faf7f3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.zoomRow { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.zoomRow { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 16px; }
+/* 보기 모델 · 배율 묶음. PC 는 가로(.zoomRow 안), 모바일은 세로(.zoomCol 안) */
+.pillGroup { display: flex; align-items: center; gap: 5px; }
+.zoomCol .pillGroup { flex-direction: column; gap: 4px; }
+.viewPill { display: flex; align-items: center; justify-content: center; padding: 0; }
+.viewPill:disabled { opacity: .4; cursor: default; }
 .zoom { min-width: 36px; height: 28px; padding: 0 10px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; color: #8a8075; background: #f4ecf3; }
 .zoomOn { font-weight: 600; color: #fff; background: #ec86ac; }
 .hsvRight { flex: 0 0 300px; min-width: 0; overflow: hidden auto; padding-left: 16px; border-left: 1px solid #f0e9e1; display: flex; flex-direction: column; gap: 14px; }
@@ -73,7 +78,7 @@
 .hsvM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
 .topM { flex: 1 1 auto; min-height: 150px; display: flex; align-items: stretch; gap: 10px; }
 .pvBoxM { flex: 1 1 0; min-width: 0; border: 1px solid #eee6dc; border-radius: 8px; background: #faf7f3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.zoomCol { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+.zoomCol { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
 .resetIcon { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; white-space: nowrap; border: 1px solid #e7ded4; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #8a8075; cursor: pointer; }
 
 /* ── 점 위치 ── */

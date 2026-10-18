@@ -123,3 +123,12 @@ export const TAB_ICONS: Record<string, string> = {
 export const IconTab = ({ id, size }: { id: string; size: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={TAB_ICONS[id]} /></svg>
 )
+// 보기 모델: 아이템(옷걸이 — 입은 사람 없이 아이템만) · 기본 캐릭터(마네킹) · 내 캐릭터(사람 + 하트)
+const VIEW_PATHS: Record<string, JSX.Element> = {
+  sprite: <><path d="M10.1 6.1a1.9 1.9 0 1 1 2.8 1.7c-.6.3-.9.8-.9 1.4v.5" /><path d="M12 9.7 4.2 15.4c-.9.7-.4 2.1.7 2.1h14.2c1.1 0 1.6-1.4.7-2.1z" /></>,
+  model: <><circle cx="12" cy="5.6" r="2.4" /><path d="M8.3 10h7.4l-1 6.2H9.3z" /><path d="M12 16.2v3.9M8.8 20.1h6.4" /></>,
+  mymodel: <><circle cx="10.2" cy="7.4" r="3" /><path d="M3.8 19.8v-.6a6.4 6.4 0 0 1 9.6-5.6" /><path d="M17.6 20.4l-3-2.8a1.85 1.85 0 1 1 3-2.2 1.85 1.85 0 1 1 3 2.2z" fill="currentColor" strokeWidth="1.4" /></>,
+}
+export const IconViewModel = ({ mode, size = 16 }: P & { mode: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>{VIEW_PATHS[mode] ?? VIEW_PATHS.mymodel}</svg>
+)
