@@ -46,7 +46,8 @@
 | 토스트 | `ui/Toast.tsx` — `s.notify('…')` 로 띄운다 |
 | 캔버스 우클릭 메뉴와 그 알림 | `lib/canvasMenu.ts` — `bindImageMenu`, `flashToast`(React 밖에서 쓰는 것) |
 | 지우기 두 번 누르기 | `lib/confirmTwice.ts`(`confirmTwice`, `CONFIRM_ATTR`) + `ui/ConfirmBubble.tsx` — 누른 버튼 위에 말풍선, 3초 |
-| 기능 안내(질문에 맞는 기능을 목록에서 골라 보여 준다) | `lib/guide.ts`(`GUIDE` 목록 · `askGuide` · `guideSpot`) + `plaza/NoticeBody` 의 `GuideCard` — '열어 보기'는 `s.guideGo`, 가리킬 요소에는 `data-guide` |
+| 기능 안내(질문에 맞는 기능을 목록에서 골라 보여 준다) | `lib/guide.ts`(`GUIDE` 목록, PC · 휴대폰 글 `pc` · `m` 과 `guideFor`, `askGuide`, `guideSpot`) + `plaza/NoticeBody` 의 `GuideCard` — '열어 보기'는 `s.guideGo`, 가리킬 요소에는 `data-guide` |
+| 글 상자 목록 · 댓글 답글 나무(깊이별 왼쪽 줄) · 글 입력칸 | `plaza/FeedbackThread`(`FeedbackBox` · `FeedbackPostBody` · `FeedbackThread` · `FeedbackComposer`) — 건의함과 운영자 화면이 함께 쓴다 |
 | 코디 평가(핑크빈이 무대에 나와 말한다) | `preview/PinkbeanRate.tsx` + `preview.module.css` 의 `.rate` `.bean` `.say` |
 
 ## 컨트롤 (`ui/controls.tsx`, `ui/ui.module.css`)
@@ -90,7 +91,7 @@
 
 ## 광장에서 가져다 쓸 수 있는 것
 
-`plaza/PlazaComments.tsx`(댓글 + 입력), `plaza/PlazaRefViewer.tsx`(그림 확대·이동, 보일 자리 고르기), `plaza/NoticeBody.tsx`(서피스 안의 쪽 목록 + 댓글), `plaza/PlazaTakeBody.tsx`(프리셋 칸 고르기).
+`plaza/PlazaComments.tsx`(댓글 + 입력), `plaza/PlazaRefViewer.tsx`(그림 확대·이동, 보일 자리 고르기), `plaza/NoticeBody.tsx`(서피스 안의 탭 넷 + 글 목록 ↔ 상세), `plaza/PlazaTakeBody.tsx`(프리셋 칸 고르기).
 
 ## 배경
 
