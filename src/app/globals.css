@@ -3,7 +3,8 @@
    - 컴포넌트 고유 스타일은 각 *.module.css, 여기엔 공용 클래스만 둔다. */
 
 * { box-sizing: border-box; word-break: keep-all; }
-/* 더블탭 확대 제거(단일 탭/스크롤/스와이프는 그대로). 핀치는 viewport + NoNativeZoom 이 막는다. */
+/* 더블탭 확대 제거(단일 탭/스크롤/스와이프 · 손가락 확대는 그대로). 입력칸 포커스 확대는 NoFocusZoom 이 막는다.
+   스크롤 칸에 touch-action 을 따로 줄 때는 pinch-zoom 을 넣어야 그 위에서도 손가락 확대가 된다. */
 /* 탭 하이라이트 끔 — 모바일 브라우저가 누르는 순간 요소 박스에 칠하는 회색·검은 막. 터치에는 hover 류 반응을 두지 않는다. */
 html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 

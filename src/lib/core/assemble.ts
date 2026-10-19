@@ -331,7 +331,10 @@ export function assemble(
   // 헤어 뒤로 숨었다(같은 꼴: 모자 20개, 망토 6개 — 망토 쪽은 1x1 빈 그림이다). 자리는 이렇게 정한다:
   //  1) 레이어 이름이 zmap 이름이면 그것 — 군단장 매그너스 탈은 이름 `hairBelowBody`, z "0" 인 꼬리 머리가 있다(몸 뒤가 맞다).
   //  2) 아니면 그 부위의 기본 자리(SLOT_Z). 같은 부위 안에서는 숫자가 클수록 앞이다.
-  const zOf = (p: PlacedLayer) => {
+  // 형상 변이의 귀 · 뿔은 모자와 같은 자리(capOverHair)라 들어온 순서로 모자 위에 덮였다 — 같은 자리면 모자 바로 뒤에 둔다(+0.5).
+  // 그래서 모자와 겹치는 부분은 모자가 덮고, 모자 밖으로 나온 부분만 보인다. 다른 자리의 부품(꼬리 등)은 그대로.
+  const zOf = (p: PlacedLayer) => zOfRaw(p) + (p.slot === 'anima' && p.z === SLOT_Z.cap ? 0.5 : 0)
+  const zOfRaw = (p: PlacedLayer) => {
     if (!/^-?\d+$/.test(String(p.z))) return zIndex(p.z)
     if (p.root) return Number(p.z) >= 0 ? -1 : 10000
     if (zmap.includes(p.name)) return zIndex(p.name)

@@ -4,7 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import localFont from 'next/font/local'
 import './fonts.css'
 import './globals.css'
-import NoNativeZoom from './NoNativeZoom'
+import NoFocusZoom from './NoFocusZoom'
 import { SITE_URL } from '@/lib/siteUrl'
 
 const SITE_NAME = '핑크빈 커마샵'
@@ -78,11 +78,9 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover', // 노치·홈 인디케이터 영역까지 화면을 쓴다
-  // 페이지 자체의 핀치/더블탭 확대를 막는다(모바일에서 얼굴 확대 편집 시 화면이 통째로 확대되던 문제).
-  // 확대가 필요한 곳은 점 위치 편집 캔버스(useDotEditor)뿐이고, 그건 pointer 기반 자체 핀치라 네이티브 확대에 의존하지 않는다.
-  // Android(Chrome) 는 이 설정을 존중. iOS Safari 는 무시하므로 NoNativeZoom 이 gesture 이벤트로 보강한다.
-  maximumScale: 1,
-  userScalable: false,
+  // 손가락(핀치)으로 페이지를 확대할 수 있다(사용자 요청). 입력칸 포커스 확대만 NoFocusZoom 이 막는다 — 그때 이 meta 에
+  // maximum-scale 을 더한다(iOS 는 늘, 그 밖은 포커스 동안). 미리보기 · 점 위치 캔버스는 touch-action:none 이라 그 위의 핀치는 캐릭터 배율이다.
+  // ⚠️ 이 값을 바꾸면 NoFocusZoom 의 BASE 도 같이 바꾼다(그 컴포넌트가 meta 를 다시 쓴다).
   colorScheme: 'light',
   themeColor: '#ec86ac',
   // 가상 키보드가 떠도 레이아웃 높이를 줄이지 않는다(키보드는 화면 위에 겹쳐 보이는 영역만 줄이고, 브라우저가 입력칸이 보이게 이동시킨다).
@@ -167,7 +165,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* NEXON Open API Analytics — 넥슨 콘솔 발급 스크립트 그대로. 연동 확인이 SSR HTML 의 태그를 보므로 next/script 대신 원형 태그. */}
         <script type="text/javascript" src="https://openapi.nexon.com/js/analytics.js?app_id=316464" async />
       </head>
-      <body><NoNativeZoom />{children}<Analytics /><SpeedInsights /></body>
+      <body><NoFocusZoom />{children}<Analytics /><SpeedInsights /></body>
     </html>
   )
 }
