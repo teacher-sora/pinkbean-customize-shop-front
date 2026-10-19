@@ -3,7 +3,7 @@
 // 건의 · 오류 글의 부품 — 공지 및 건의함(NoticeBody)과 운영자 화면(/suggestion)이 함께 쓴다.
 //  · FeedbackBox  = 목록의 글 하나(상자). 누르면 상세로 간다. 본문 두 줄, 댓글 수, 운영자 답변 여부.
 //  · FeedbackPost = 상세 맨 위의 글 본문.
-//  · FeedbackThread = 댓글 · 답글 나무. depth 1 = 글에 단 댓글, 2 ~ 4 = 답글(댓글 아래로 세 단까지).
+//  · FeedbackThread = 댓글 · 답글 나무. depth 1 = 글에 단 댓글, 2 · 3 = 답글(댓글부터 세 단까지).
 //    가장 깊은 단에는 '답글'이 없다(DB 트리거도 막는다). 답글 묶음의 왼쪽 줄은 깊이마다 진해진다(--fb-line 을 인라인으로).
 //    답글 칸은 한 번에 하나만 열린다. 지운 글은 답글이 달려 있을 때만 자리가 남는다('지운 글이에요').
 //  · FeedbackComposer = 글 · 댓글 · 답글 입력칸(글자 수 + 버튼). PC 는 Enter 로 보낸다(Shift+Enter 줄바꿈).
@@ -14,8 +14,8 @@ import { FEEDBACK_DEPTH, PLAZA_COMMENT_MAX, plazaAlias, plazaWhen, type Feedback
 import { IconBubble } from '../ui/Icons'
 import styles from './plaza.module.css'
 
-// 답글 묶음 왼쪽 줄: 부모 깊이 1(댓글) → 2단, 2 → 3단, 3 → 4단
-const LINE: Record<number, string> = { 1: '#f4cfdf', 2: '#eeb2ce', 3: '#ec86ac' }
+// 답글 묶음 왼쪽 줄: 부모 깊이 1(댓글) 아래 2단은 옅게, 2 아래 3단은 진하게
+const LINE: Record<number, string> = { 1: '#f4cfdf', 2: '#ec86ac' }
 type Who = { owner: string; op: boolean; mine: boolean }
 
 function WhoLine({ n, time, del }: { n: Who; time: string; del?: ReactNode }) {
@@ -104,7 +104,7 @@ export function FeedbackThread({ nodes, mobile, canDelete, del, onReply }: {
         </div>
       )}
       {n.children.length > 0 && (
-        <div className={clsx(styles.fbKids, mobile && styles.fbKidsM)} style={{ '--fb-line': LINE[n.depth] || LINE[3] } as React.CSSProperties}>
+        <div className={clsx(styles.fbKids, mobile && styles.fbKidsM)} style={{ '--fb-line': LINE[n.depth] || LINE[2] } as React.CSSProperties}>
           {n.children.map(node)}
         </div>
       )}

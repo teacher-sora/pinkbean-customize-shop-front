@@ -11,7 +11,7 @@ import { isNarrow } from '@/lib/useBreakpoint'
 import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, plazaContestClosed, type PlazaSort } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
-import { IconChevronLeft, IconChevronRight, IconCloseSmall, IconPlus, IconSearch } from '../ui/Icons'
+import { IconChevronLeft, IconChevronRight, IconClose, IconPlus, IconSearch } from '../ui/Icons'
 import PlazaCard from './PlazaCard'
 import PlazaUpload from './PlazaUpload'
 import styles from './plaza.module.css'
@@ -173,7 +173,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
           {pageChip}
           <div className={styles.searchWrapM}><IconSearch className={styles.searchIconM} />{search}</div>
           <button type="button" onClick={() => s.setPlazaUpload(!s.plazaUpload)} title={s.plazaUpload ? '닫기' : '내 코디 등록'} aria-label={s.plazaUpload ? '닫기' : '내 코디 등록'} className={styles.upBtn}>
-            {s.plazaUpload ? <IconCloseSmall /> : <IconPlus />}
+            {s.plazaUpload ? <IconClose /> : <IconPlus />}
           </button>
         </div>
         <div className={styles.hrM} />

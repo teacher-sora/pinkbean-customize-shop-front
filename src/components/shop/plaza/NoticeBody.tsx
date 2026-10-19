@@ -4,7 +4,7 @@
 //  · 공지는 운영자가 Supabase 대시보드(plaza_notices)에서 쓴다. 앱에는 쓰기 화면이 없다. 하나면 바로 그 공지를, 여럿이면 목록부터.
 //  · 건의 · 오류는 같은 표에 종류로 나눠 담는다(lib/plaza 의 loadFeedback · supabase/0018 · 0019). 목록은 글마다 상자 하나,
 //    한 쪽에 20개, 최신이 위, 쪽 넘김. 상자를 누르면 그 글의 상세(댓글 · 답글 나무, FeedbackThread)로 미끄러진다.
-//    누구나 댓글과 답글(댓글 아래로 세 단까지)을 단다. 이름은 광장 댓글과 같은 익명 이름, 운영자 글은 '운영자'(/suggestion 에서 단다).
+//    누구나 댓글과 답글(댓글부터 세 단까지)을 단다. 이름은 광장 댓글과 같은 익명 이름, 운영자 글은 '운영자'(/suggestion 에서 단다).
 //    지우기는 본인 것만(두 번 누르기). 답글이 달린 글을 지우면 자리만 남는다.
 //  · 질문은 기능 안내다(lib/guide 의 목록 + back 의 /guide). 모델은 목록에서 고르기만 하고, 화면은 목록에 적힌 글과
 //    '열어 보기'를 보여 준다. 대화는 이 창을 닫았다 열어도 이어진다(새로고침하면 비워진다).
@@ -19,7 +19,7 @@ import {
   type FeedbackKind, type FeedbackNode, type FeedbackPost, type PlazaNotice,
 } from '@/lib/plaza'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
-import { askGuide, guideById, guideFor, type GuideEntry, type GuideReply } from '@/lib/guide'
+import { askGuide, guideById, guideFor, guideOn, type GuideEntry, type GuideReply } from '@/lib/guide'
 import { useShop } from '../ShopContext'
 import { useInnerSlide } from '../surface/innerSlide'
 import { IconChevronLeft, IconChevronRight, IconHelpTab, IconTrashSolid } from '../ui/Icons'
@@ -361,7 +361,9 @@ function FeedbackDetail({ post: post0, label, mobile, notify, onBack, onGone }: 
 /* ── 기능 하나(목록에 적힌 글 그대로) ── */
 // 위치 · 쓰는 법 · '열어 보기'는 PC 와 휴대폰이 다르다(lib/guide 의 guideFor)
 function GuideCard({ g: g0, onGo }: { g: GuideEntry; onGo: (g: GuideEntry) => void }) {
-  const g = guideFor(g0, useShop().bp === 'mobile')
+  const mobile = useShop().bp === 'mobile'
+  if (!guideOn(g0, mobile)) return null   // 다른 기기에만 있는 기능(예: 휴대폰의 캐릭터 크게 보기)은 보여 주지 않는다
+  const g = guideFor(g0, mobile)
   return (
     <div className={styles.hpCard}>
       <div className={styles.hpCardHead}>

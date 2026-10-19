@@ -20,20 +20,15 @@ const SKY_PATHS: Record<string, JSX.Element> = {
 export const IconSky = ({ mode, size = 15 }: P & { mode: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{SKY_PATHS[mode] ?? SKY_PATHS.auto}</svg>
 )
-export const IconCopy = ({ size = 15 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="10.5" height="10.5" rx="2" /><path d="M15 6.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v7.5A1.5 1.5 0 0 0 6 15h.5" /></svg>
-)
 export const IconChevronLeft = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M14.5 5.5 8 12l6.5 6.5" /></svg>
 )
 export const IconChevronRight = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>
 )
-export const IconSearch = ({ size = 14, className }: P) => (
-  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#b7ada2" strokeWidth="2" strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15l4.5 4.5" /></svg>
-)
-export const IconSearchBold = ({ size = 15 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15l4.5 4.5" /></svg>
+// 검색(입력칸 머리 · 찾기 버튼 공용). 색은 currentColor, bold 는 버튼 글자 옆
+export const IconSearch = ({ size = 14, className, bold }: P & { bold?: boolean }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 2} strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15l4.5 4.5" /></svg>
 )
 export const IconStar = ({ size = 9, className }: P) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.6l2.5 5.1 5.6.8-4 3.9.95 5.6L12 16.3l-5.05 2.7.95-5.6-4-3.9 5.6-.8z" /></svg>
@@ -55,7 +50,7 @@ export const IconCaretDown = ({ size = 12, className }: P) => (
 )
 // 염색(팔레트). 물방울은 물 · 흐림으로 읽혀 염색인 줄 바로 알기 어려웠다
 export const IconDrop = ({ size = 14 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.6a8.4 8.4 0 1 0 0 16.8c1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.4-.7-.4-1.1 0-1 .8-1.7 1.7-1.7h2a4 4 0 0 0 3.9-4c0-3.9-3.8-7.1-8.4-7.1zM7.45 12.3a.45.45 0 1 0 .9 0 .45.45 0 1 0-.9 0zM9.55 8.2a.45.45 0 1 0 .9 0 .45.45 0 1 0-.9 0zM13.95 7.6a.45.45 0 1 0 .9 0 .45.45 0 1 0-.9 0z" /></svg>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={TAB_ICONS.info} /></svg>
 )
 export const IconBookmark = ({ filled }: { filled: boolean }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M6 3h12v11l-6 4-6-4z" /></svg>
@@ -90,23 +85,11 @@ export const IconPlus = ({ size = 14 }: P) => (
 export const IconAdd = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
 )
-export const IconCloseSmall = ({ size = 14 }: P) => (
+export const IconClose = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-)
-export const IconClose = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
 )
 export const IconPencil = ({ className }: P) => (
   <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c9a3b5" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 4.5l3 3L8 19H5v-3z" /></svg>
-)
-export const IconShare = () => (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V5m0 0L8.5 8.5M12 5l3.5 3.5" /><path d="M5.5 14v4.5h13V14" /></svg>
-)
-export const IconTrash = () => (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 7.5h13M9.5 7.5V5.5h5v2M7 7.5l1 12h8l1-12" /></svg>
-)
-export const IconImport = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4.5v10m0 0-3.5-3.5M12 14.5l3.5-3.5" /><path d="M5.5 15v4h13v-4" /></svg>
 )
 export const IconReset = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 5v6h-6" /></svg>
@@ -139,12 +122,13 @@ const VIEW_PATHS: Record<string, JSX.Element> = {
 export const IconViewModel = ({ mode, size = 16 }: P & { mode: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>{VIEW_PATHS[mode] ?? VIEW_PATHS.mymodel}</svg>
 )
-// 공지 및 건의함 탭: 공지(확성기) · 건의(전구) · 오류(느낌표 세모) · 질문(말풍선 속 물음표)
+// 공지 및 건의함 탭: 공지(하단 탭과 같은 확성기) · 건의(전구) · 오류(느낌표 세모) · 질문(말풍선 속 물음표).
+// 오류 · 질문은 테두리를 칸 가득 키우고 안의 기호를 작게 — 16px 에서도 테두리와 기호가 붙어 보이지 않게
 const HP_PATHS: Record<string, JSX.Element> = {
-  notice: <><path d="M4.5 10v4a1.5 1.5 0 0 0 1.5 1.5h2L14 19V5L8 8.5H6A1.5 1.5 0 0 0 4.5 10z" /><path d="M17.5 9.2a3.6 3.6 0 0 1 0 5.6" /><path d="M8.3 15.6l1 3.9" /></>,
+  notice: <path d={TAB_ICONS.notice} />,
   idea: <><path d="M9 17.5h6" /><path d="M10 20.5h4" /><path d="M12 3.5a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.3h5v-.3c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.5z" /></>,
-  bug: <><path d="M10.4 4.6 3.3 17a1.8 1.8 0 0 0 1.6 2.7h14.2a1.8 1.8 0 0 0 1.6-2.7L13.6 4.6a1.8 1.8 0 0 0-3.2 0z" /><path d="M12 9.5v4" /><path d="M12 16.6h.01" /></>,
-  ask: <><path d="M4.5 6.5A2 2 0 0 1 6.5 4.5h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h0a2 2 0 0 1-2-2z" /><path d="M10 8.9a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2v.3" /><path d="M12 14.4h.01" /></>,
+  bug: <><path d="M10.2 3.6 2.3 17.9a2.1 2.1 0 0 0 1.8 3.1h15.8a2.1 2.1 0 0 0 1.8-3.1L13.8 3.6a2.1 2.1 0 0 0-3.6 0z" /><path d="M12 10.6v2.9" /><path d="M12 16.9h.01" /></>,
+  ask: <><path d="M2.8 5.4A2.4 2.4 0 0 1 5.2 3h13.6a2.4 2.4 0 0 1 2.4 2.4v10.2a2.4 2.4 0 0 1-2.4 2.4h-7.2l-5 3.6V18h-1.4a2.4 2.4 0 0 1-2.4-2.4z" /><path d="M10.4 8.3a1.65 1.65 0 1 1 2.35 1.5c-.45.22-.75.58-.75 1.05v.3" /><path d="M12 13.8h.01" /></>,
 }
 export const IconHelpTab = ({ tab, size = 16 }: P & { tab: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>{HP_PATHS[tab]}</svg>

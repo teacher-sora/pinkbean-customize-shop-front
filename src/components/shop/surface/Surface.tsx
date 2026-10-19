@@ -201,7 +201,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
               <span className={styles.title}>{title}</span>
               {sub && <span className={styles.sub}>{sub}</span>}
             </div>
-            <button type="button" onClick={s.closeSurface} title="닫기 (Esc)" aria-label="닫기" className={clsx('pb-icon', styles.close)}><IconClose /></button>
+            <button type="button" onClick={s.closeSurface} title="닫기 (Esc)" aria-label="닫기" className={clsx('pb-icon', styles.close)}><IconClose size={15} /></button>
           </div>
           <div key={`${k}:${sf.item?.id ?? ''}`} className={styles.slide} style={slideStyle}>
             {/* 연출 설정은 자체 푸터를 쓴다 — 고르기 화면에서는 '이전'이 되어야 해서. */}

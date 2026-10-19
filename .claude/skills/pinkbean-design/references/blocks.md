@@ -61,7 +61,7 @@
 | 숫자 증감 | `Stepper` |
 | 슬라이더 + 증감 한 줄 | `DyeRow` — 전역 `.pb-slider` `.pb-track-h/-s/-v` `.pb-dyerow` |
 | 고르기(select 대신) | `ui/Dropdown.tsx` — `row` / `rowM` / `field` / `fieldM` |
-| 아이콘 | `ui/Icons.tsx`(인라인 SVG 30여 개, `IconTab`) — 새 아이콘도 여기에 같은 굵기로. 염색은 팔레트(`IconDrop` 과 탭 아이콘 `info` — 이름은 예전 그대로), 더하기는 `IconAdd` |
+| 아이콘 | `ui/Icons.tsx`(인라인 SVG, `IconTab`) — 새 아이콘도 여기에 같은 굵기로. **역할마다 하나만 둔다**: 복사 · 링크 복사 `IconLinkCopy`, 닫기 `IconClose`, 검색 `IconSearch`(버튼 옆은 `bold`), 지우기 `IconTrashSolid`, 받기 · 불러오기 · 저장 `IconTakeDown`, 염색은 팔레트(`IconDrop` = 탭 아이콘 `info` 와 같은 경로), 공지는 하단 탭의 확성기(`TAB_ICONS.notice`), 더하기는 `IconAdd` |
 
 ## 전역 클래스 (`app/globals.css`)
 

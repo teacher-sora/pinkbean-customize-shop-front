@@ -7,7 +7,7 @@ import { useShop } from '../ShopContext'
 import { resetHeroView, setHeroView, useHeroView, type HeroView } from '@/lib/heroView'
 import { SKY_MODES, getSkyMode, setSkyMode, type SkyMode } from '../scene/skyTime'
 import { Seg } from '../ui/controls'
-import { IconCopy, IconRate, IconScene, IconSky, IconViewBase, IconViewFull, IconViewWide } from '../ui/Icons'
+import { IconLinkCopy, IconRate, IconScene, IconSky, IconViewBase, IconViewFull, IconViewWide } from '../ui/Icons'
 import styles from './frame.module.css'
 
 // 글자가 바뀌는 버튼의 라벨. 나올 수 있는 글자를 모두 같은 자리에 겹쳐 두고 지금 것만 보인다 →
@@ -59,7 +59,7 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
             <IconRate size={13} />평가
           </button>
           <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" data-guide="copy" className={clsx('pb-solid', styles.copyBtnM)}>
-            <IconCopy size={13} />복사
+            <IconLinkCopy size={13} />복사
           </button>
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
           <IconRate />코디 평가
         </button>
         <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" data-guide="copy" className={clsx('pb-solid', styles.toolSolid)}>
-          <IconCopy />프리셋 복사
+          <IconLinkCopy size={15} />프리셋 복사
         </button>
       </div>
     </header>

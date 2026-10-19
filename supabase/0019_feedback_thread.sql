@@ -1,5 +1,5 @@
 -- 건의 · 오류 글에 댓글과 답글을 단다. 누구나(사용자 · 운영자) 글에 댓글을, 댓글에 답글을 달 수 있다.
---  · depth: 원글 0, 댓글 1, 답글 2 ~ 4(댓글 아래로 답글은 세 단까지). root_id = 원글(원글은 비워 둔다).
+--  · depth: 원글 0, 댓글 1, 답글 2 · 3(댓글부터 세 단까지). root_id = 원글(원글은 비워 둔다).
 --    깊이 · 원글 · 종류 · 공지는 앱이 보내지 않고 트리거가 부모에서 정한다(앱이 깊이를 속일 수 없게).
 --  · op: 운영자 글. 운영자 화면(/suggestion)의 plaza_op_reply 로만 켜진다 — 앱에서 오는 글은 op = false 만 받는다(사칭 방지).
 --    예전 답변(parent_id 가 있는 글)은 앱에서 달 수 없었으므로 모두 운영자 글이다.
@@ -20,7 +20,7 @@ begin
       update %1$I.plaza_notice_comments set op = true, depth = 1, root_id = parent_id where parent_id is not null and root_id is null;
 
       alter table %1$I.plaza_notice_comments drop constraint if exists plaza_notice_cmt_depth;
-      alter table %1$I.plaza_notice_comments add constraint plaza_notice_cmt_depth check (depth between 0 and 4);
+      alter table %1$I.plaza_notice_comments add constraint plaza_notice_cmt_depth check (depth between 0 and 3);
 
       create or replace function %1$I.plaza_fb_thread() returns trigger
       language plpgsql set search_path = '' as $$
@@ -29,7 +29,7 @@ begin
         if new.parent_id is null then new.depth := 0; new.root_id := null; return new; end if;
         select id, depth, root_id, kind, notice_id, deleted into par from %1$I.plaza_notice_comments where id = new.parent_id;
         if par.id is null or par.deleted then raise exception 'bad parent'; end if;
-        if par.depth >= 4 then raise exception 'too deep'; end if;
+        if par.depth >= 3 then raise exception 'too deep'; end if;
         new.depth := par.depth + 1;
         new.root_id := coalesce(par.root_id, par.id);
         new.kind := par.kind;

@@ -1311,14 +1311,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (surface?.kind === kind && !surfaceClosing) { closeSurface(); return }
     openSurface({ kind, item: null })
   }
-  // 기능 안내의 '열어 보기'(글은 lib/guide 의 guideFor 로 기기에 맞춘 것이 온다). 창이 닫히는 것을 기다렸다가 탭을 바꾸고,
+  // 기능 안내의 '열어 보기'(글은 lib/guide 의 guideFor 로 기기에 맞춘 것이 온다). **요청한 것만 바꾼다** — 보던 탭 · 상태는 그대로 두고,
+  // 미리보기 기능(tab 'preview')은 미리보기가 없는 코디 광장에서만 코디 탭으로 간다. 창이 닫히는 것을 기다렸다가 탭을 바꾸고(필요할 때만),
   // 창(sheet)이 있으면 연다 — 휴대폰 연출 설정은 고르기 화면(pick) · 칸(group)까지 정해 연다. PC 는 연출 설정이 미리보기 아래
   // 줄이라 창이 없다: 펼칠 칸이면 펼치고(drawer), 아니면 그 요소를 가리키고 필요하면 눌러 연다(spot · click).
   const guideGo = ({ go }: { go?: GuideGo }) => {
     if (!go) return
     closeSurface()
+    const tab = go.tab === 'preview' ? (primary === 'share' ? 'codi' : null) : go.tab
     setTimeout(() => {
-      if (go.tab) setPrimary(go.tab)
+      if (tab && tab !== primary) setPrimary(tab)
       const sheet = go.sheet && (go.sheet !== 'pv' || bp === 'mobile') ? go.sheet : null
       if (sheet) {
         if (sheet === 'pv') setPvIntent({ pick: go.pick, group: go.group })

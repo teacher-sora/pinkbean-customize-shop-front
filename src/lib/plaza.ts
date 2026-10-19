@@ -514,11 +514,11 @@ export function plazaWhen(iso: string): string {
 // ── 공지 및 건의함(supabase/0011 · 0013 · 0018 · 0019) ──
 // 공지는 운영자가 Supabase 대시보드(Table Editor → plaza_notices)에서 쓴다 — 앱에는 쓰기 화면이 없다. 공지에는 댓글이 없다.
 // 건의 · 오류는 같은 표(plaza_notice_comments)에 종류(kind)로 나눠 담는다. 목록은 원글만, 한 쪽에 20개, 최신이 위.
-// 글을 열면 그 글의 댓글 · 답글이 나무로 붙는다(depth 1 = 댓글, 2 ~ 4 = 답글. 깊이 · 원글은 DB 트리거가 정한다).
+// 글을 열면 그 글의 댓글 · 답글이 나무로 붙는다(depth 1 = 댓글, 2 · 3 = 답글 — 댓글부터 세 단까지. 깊이 · 원글은 DB 트리거가 정한다).
 // op = 운영자 글(/suggestion 에서만 켜진다), deleted = 답글이 달린 채 지운 글(자리만 남는다).
 export type PlazaNotice = { id: string; createdAt: string; title: string; body: string; pinned: boolean }
 export type FeedbackKind = 'idea' | 'bug'
-export const FEEDBACK_DEPTH = 4   // 답글은 댓글 아래로 세 단까지
+export const FEEDBACK_DEPTH = 3   // 댓글부터 세 단까지(댓글 → 답글 → 답글)
 export const NOTICE_PAGE = 20
 // 목록의 글 하나. count = 지우지 않은 댓글 · 답글 수, answered = 운영자 댓글이 있다
 export type FeedbackPost = { id: string; owner: string; body: string; createdAt: string; mine: boolean; op: boolean; deleted: boolean; count: number; answered: boolean }

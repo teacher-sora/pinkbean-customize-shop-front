@@ -9,7 +9,7 @@ import type { ListItem } from '@/lib/core/data'
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop, type GenderFilter, type ListMode } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
-import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconSearchBold } from '../ui/Icons'
+import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch } from '../ui/Icons'
 import { CatTabsM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
@@ -262,7 +262,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
             <input data-guide="ai" value={s.aiQ} onChange={(e) => s.setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi() }} placeholder="예: 동물 귀 모자" aria-label="생김새 묘사"
               className={clsx('pb-input', styles.heroInput, mobile && styles.heroInputM)} />
             <button type="button" onClick={() => runAi()} className={clsx('pb-solid', styles.heroBtn, mobile && styles.heroBtnM)}>
-              <IconSearchBold size={mobile ? 14 : 15} />찾기
+              <IconSearch size={mobile ? 14 : 15} bold />찾기
             </button>
           </div>
           <div className={mobile ? clsx('pb-norail', 'pb-fade', styles.chipsM) : styles.chips}>
