@@ -144,7 +144,7 @@ function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
         {shown && !shown.length && <p className={styles.empty}>{filter === 'wait' ? '답을 기다리는 글이 없어요.' : kind === 'idea' ? '건의글이 없어요.' : '오류 보고가 없어요.'}</p>}
         {shown?.map((p) => (
           <div key={p.id} className={clsx(styles.boxWrap, wide && p.id === openId && styles.boxOn)}>
-            <FeedbackBox p={p} onOpen={() => openPost(p)} />
+            <FeedbackBox p={p} onOpen={() => openPost(p)} del={delBtn(p.id, () => { if (p.id === openId) setOpenId(null); void loadKind(kind) })} />
           </div>
         ))}
       </div>

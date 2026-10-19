@@ -1,7 +1,8 @@
 'use client'
 
 // 건의 · 오류 글의 부품 — 공지 및 건의함(NoticeBody)과 운영자 화면(/suggestion)이 함께 쓴다.
-//  · FeedbackBox  = 목록의 글 하나(상자). 누르면 상세로 간다. 본문 두 줄, 댓글 수, 운영자 답변 여부.
+//  · FeedbackBox  = 목록의 글 하나(상자, 격자로 늘어선다). 누르면 상세로 간다. 본문은 몇 줄만(넘치면 말줄임), 댓글 수, 운영자 답변 여부.
+//    본인 글은 상자에서 바로 지운다(del). 상자 안에 버튼이 있어 상자는 button 이 아니라 role=button 이다.
 //  · FeedbackPost = 상세 맨 위의 글 본문.
 //  · FeedbackThread = 댓글 · 답글 나무. depth 1 = 글에 단 댓글, 2 · 3 = 답글(댓글부터 세 단까지).
 //    가장 깊은 단에는 '답글'이 없다(DB 트리거도 막는다). 답글 묶음의 왼쪽 줄은 깊이마다 진해진다(--fb-line 을 인라인으로).
@@ -30,16 +31,18 @@ function WhoLine({ n, time, del }: { n: Who; time: string; del?: ReactNode }) {
   )
 }
 
-export function FeedbackBox({ p, onOpen }: { p: FeedbackPost; onOpen: () => void }) {
+export function FeedbackBox({ p, onOpen, del }: { p: FeedbackPost; onOpen: () => void; del?: ReactNode }) {
   return (
-    <button type="button" onClick={onOpen} className={styles.fbBox}>
-      <WhoLine n={p} time={p.createdAt} />
+    <div role="button" tabIndex={0} onClick={onOpen} aria-label="글 열기"
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen() } }}
+      className={styles.fbBox}>
+      <WhoLine n={p} time={p.createdAt} del={p.deleted || !del ? undefined : <span onClick={(e) => e.stopPropagation()} className={styles.fbBoxDel}>{del}</span>} />
       <span className={clsx(styles.fbBoxBody, p.deleted && styles.fbGone)}>{p.deleted ? '지운 글이에요' : p.body}</span>
       <span className={styles.fbBoxFoot}>
         {p.answered && <span className={clsx(styles.cmtChip, styles.fbAnswered)}>운영자 답변</span>}
         <span className={clsx(styles.fbCount, p.count > 0 && styles.fbCountOn)} aria-label={`댓글 ${p.count}개`}><IconBubble />{p.count}</span>
       </span>
-    </button>
+    </div>
   )
 }
 

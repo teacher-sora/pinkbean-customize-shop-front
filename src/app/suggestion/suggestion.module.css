@@ -39,8 +39,8 @@
 .chipOn { border-color: #ec86ac; background: #fdf4f8; color: #d76d9a; font-weight: 600; }
 .chipN { font-size: 11px; font-variant-numeric: tabular-nums; color: inherit; opacity: .8; }
 /* 고른 글: 상자 테두리를 핑크로(목록에서 지금 열린 글) */
-.boxWrap { display: flex; }
-.boxOn > button { border-color: #ec86ac; background: #fdf4f8; }
+.boxWrap { display: flex; min-width: 0; }
+.boxOn > div { border-color: #ec86ac; background: #fdf4f8; }
 /* 상세는 화면에 붙어 따로 스크롤한다(넓은 화면) */
 .detailPane { min-width: 0; padding: 16px; border: 1px solid #eee6dc; border-radius: 12px; background: #fff; }
 .split .detailPane { position: sticky; top: 128px; max-height: calc(100svh - 144px); overflow: hidden auto; overscroll-behavior: contain; }
