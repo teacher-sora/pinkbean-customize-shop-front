@@ -227,7 +227,8 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 // 공용 푸터. 적용은 염색·점 위치만. 부위 염색을 거쳐 들어온 염색·점 위치는 '이전'(부위 고르기로 슬라이드 복귀), 그 외는 '닫기'(즉시 종료).
 // 모바일은 얇고 긴 34px(버튼 하나면 전체 폭, 닫기+적용이면 반씩).
 // onBack: 본문 안에서 화면만 바뀐 경우(염색표 보기 등) 그 화면이 직접 넘겨주는 '이전'. 서피스 종류를 바꾸지 않는다.
-export function SurfaceFooter({ onApply, applyLabel = '적용', onBack }: { onApply?: () => void; applyLabel?: string; onBack?: () => void }) {
+// closeToo: '이전'이 닫기 자리를 차지하지 않고 닫기 왼쪽에 따로 선다(공지 및 건의함의 상세 — 바로 닫고 싶을 수도 있다).
+export function SurfaceFooter({ onApply, applyLabel = '적용', onBack, closeToo }: { onApply?: () => void; applyLabel?: string; onBack?: () => void; closeToo?: boolean }) {
   const s = useShop()
   const mobile = s.bp === 'mobile'
   const sf = s.surface
@@ -236,7 +237,8 @@ export function SurfaceFooter({ onApply, applyLabel = '적용', onBack }: { onAp
   const goBack = onBack ?? s.partBack
   return (
     <div data-sheet-foot className={mobile ? styles.footM : styles.foot}>
-      <button type="button" onClick={back ? goBack : s.closeSurface} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>{back ? '이전' : '닫기'}</button>
+      {closeToo && back && <button type="button" onClick={goBack} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>이전</button>}
+      <button type="button" onClick={back && !closeToo ? goBack : s.closeSurface} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>{back && !closeToo ? '이전' : '닫기'}</button>
       {onApply && <button type="button" onClick={onApply} className={clsx('pb-solid', mobile ? styles.btnApplyM : styles.btnApply)}>{applyLabel}</button>}
     </div>
   )
