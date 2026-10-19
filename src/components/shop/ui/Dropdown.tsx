@@ -11,7 +11,7 @@ import styles from './ui.module.css'
 
 type Pos = { left: number; width: number; maxH: number; top: number | null; bottom: number | null }
 
-export default function Dropdown({ options, value, onChange, variant, title, ariaLabel, shortLabel, isDefault, narrow, disabledValues, disabledTitle, blocked, blockedTitle }: {
+export default function Dropdown({ options, value, onChange, variant, title, ariaLabel, shortLabel, isDefault, narrow, disabledValues, disabledTitle, blocked, blockedTitle, guide }: {
   options: Opt[]; value: string; onChange: (v: string) => void
   variant: 'row' | 'rowM' | 'field' | 'fieldM'
   title?: string; ariaLabel: string
@@ -19,6 +19,7 @@ export default function Dropdown({ options, value, onChange, variant, title, ari
   narrow?: boolean
   disabledValues?: Set<string>; disabledTitle?: string
   blocked?: boolean; blockedTitle?: string // 전체 비활성(라이딩 중 형상 변이 등)
+  guide?: string // 기능 안내가 가리킬 이름(data-guide)
 }) {
   const [pos, setPos] = useState<Pos | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -59,7 +60,7 @@ export default function Dropdown({ options, value, onChange, variant, title, ari
 
   return (
     <>
-      <button ref={btnRef} type="button" onClick={toggle} title={blocked ? blockedTitle : (title ?? ariaLabel)} aria-label={ariaLabel} aria-expanded={open} disabled={blocked} className={cls}>
+      <button ref={btnRef} type="button" data-guide={guide} onClick={toggle} title={blocked ? blockedTitle : (title ?? ariaLabel)} aria-label={ariaLabel} aria-expanded={open} disabled={blocked} className={cls}>
         {isField
           ? <span className={clsx(styles.ddFieldText, isDefault && styles.ddFieldTextDef)}>{isDefault ? shortLabel : current}</span>
           : <span className={styles.ddRowText}>{current}</span>}

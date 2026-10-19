@@ -22,7 +22,7 @@ import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
-import { guideSpot, type GuideGo } from '@/lib/guide'
+import { GUIDE_DRAWER_EVENT, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
 import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
@@ -1311,16 +1311,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (surface?.kind === kind && !surfaceClosing) { closeSurface(); return }
     openSurface({ kind, item: null })
   }
-  // 기능 안내의 '열어 보기'. 창이 닫히는 것을 기다렸다가 탭을 바꾸고, 창(sheet)이 있으면 열고, 없으면 그 요소를 가리킨다.
-  // PC 의 연출 설정은 창이 아니라 미리보기 아래 줄이라 열지 않고 가리키기만 한다.
+  // 기능 안내의 '열어 보기'(글은 lib/guide 의 guideFor 로 기기에 맞춘 것이 온다). 창이 닫히는 것을 기다렸다가 탭을 바꾸고,
+  // 창(sheet)이 있으면 연다 — 휴대폰 연출 설정은 고르기 화면(pick) · 칸(group)까지 정해 연다. PC 는 연출 설정이 미리보기 아래
+  // 줄이라 창이 없다: 펼칠 칸이면 펼치고(drawer), 아니면 그 요소를 가리키고 필요하면 눌러 연다(spot · click).
   const guideGo = ({ go }: { go?: GuideGo }) => {
     if (!go) return
     closeSurface()
     setTimeout(() => {
       if (go.tab) setPrimary(go.tab)
       const sheet = go.sheet && (go.sheet !== 'pv' || bp === 'mobile') ? go.sheet : null
-      if (sheet) { openSurface({ kind: sheet, item: null }); return }
-      if (go.spot) setTimeout(() => guideSpot(go.spot!), 260)
+      if (sheet) {
+        if (sheet === 'pv') setPvIntent({ pick: go.pick, group: go.group })
+        openSurface({ kind: sheet, item: null })
+        return
+      }
+      if (go.drawer) { setTimeout(() => window.dispatchEvent(new CustomEvent(GUIDE_DRAWER_EVENT, { detail: go.drawer })), 260); return }
+      if (go.spot) setTimeout(() => guideSpot(go.spot!, !!go.click), 260)
     }, SURFACE_UNMOUNT_MS + 20)
   }
   const openDye = (item: ListItem) => openSurface({ kind: 'dye', item })

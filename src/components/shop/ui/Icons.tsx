@@ -139,3 +139,17 @@ const VIEW_PATHS: Record<string, JSX.Element> = {
 export const IconViewModel = ({ mode, size = 16 }: P & { mode: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>{VIEW_PATHS[mode] ?? VIEW_PATHS.mymodel}</svg>
 )
+// 공지 및 건의함 탭: 공지(확성기) · 건의(전구) · 오류(느낌표 세모) · 질문(말풍선 속 물음표)
+const HP_PATHS: Record<string, JSX.Element> = {
+  notice: <><path d="M4.5 10v4a1.5 1.5 0 0 0 1.5 1.5h2L14 19V5L8 8.5H6A1.5 1.5 0 0 0 4.5 10z" /><path d="M17.5 9.2a3.6 3.6 0 0 1 0 5.6" /><path d="M8.3 15.6l1 3.9" /></>,
+  idea: <><path d="M9 17.5h6" /><path d="M10 20.5h4" /><path d="M12 3.5a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.3h5v-.3c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.5z" /></>,
+  bug: <><path d="M10.4 4.6 3.3 17a1.8 1.8 0 0 0 1.6 2.7h14.2a1.8 1.8 0 0 0 1.6-2.7L13.6 4.6a1.8 1.8 0 0 0-3.2 0z" /><path d="M12 9.5v4" /><path d="M12 16.6h.01" /></>,
+  ask: <><path d="M4.5 6.5A2 2 0 0 1 6.5 4.5h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h0a2 2 0 0 1-2-2z" /><path d="M10 8.9a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2v.3" /><path d="M12 14.4h.01" /></>,
+}
+export const IconHelpTab = ({ tab, size = 16 }: P & { tab: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>{HP_PATHS[tab]}</svg>
+)
+// 댓글 수(말풍선)
+export const IconBubble = ({ size = 13 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M4.5 6.5A2 2 0 0 1 6.5 4.5h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5a2 2 0 0 1-2-2z" /></svg>
+)

@@ -5,6 +5,7 @@
 import clsx from 'clsx'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
+import { takePvIntent } from '@/lib/guide'
 import { SLOT_TO_CAT } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { DyeSprite } from '../render/DyeSprite'
@@ -41,7 +42,7 @@ export function BookmarkBox() {
   const s = useShop()
   const n = s.bookmarks.length
   return (
-    <div className={clsx('pb-pinbox', styles.pinbox)}>
+    <div data-guide="bm" className={clsx('pb-pinbox', styles.pinbox)}>
       <div className={styles.pinHead}>
         <span className={styles.pinTitle}>북마크<PinCount n={n} /></span>
         <span className={styles.pinActs}>
@@ -126,9 +127,11 @@ export function BookmarkSheetBody() {
 // (부위 염색 → 염색과 같은 몸짓 — 좁은 화면에 시트 위 팝오버를 겹치지 않으려고).
 // 푸터는 고르는 중에는 '이전'이라 한 단계만 돌아온다.
 export function PvSheetBody() {
-  const [group, setGroup] = useState<PvGroup>('char')
-  const [pick, setPick] = useState<PvField | null>(null)
-  const { view, go, style } = useInnerSlide<'main' | 'pick'>('main')
+  // 기능 안내의 '열어 보기'로 열렸으면 그 칸 · 고르기 화면(표정 등)으로 바로 연다(lib/guide 의 setPvIntent)
+  const [intent] = useState(takePvIntent)
+  const [group, setGroup] = useState<PvGroup>(intent?.group ?? 'char')
+  const [pick, setPick] = useState<PvField | null>(intent?.pick ?? null)
+  const { view, go, style } = useInnerSlide<'main' | 'pick'>(intent?.pick ? 'pick' : 'main')
   const fields = usePvFields()
   const picked = pick ? fields.find((f) => pvFieldOf(f) === pick && f.key !== 'zoom') : undefined
   // 격자는 **시트가 다 오른 뒤에** 붙인다(움직임이 끝나고 조금 더 뒤). 움직이는 도중에 칸 31개를 마운트하면
@@ -137,7 +140,10 @@ export function PvSheetBody() {
   //    시트가 목표 위치로 툭 튄다.
   const [gridOn, setGridOn] = useState(false)
   const gridTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => () => { if (gridTimer.current) clearTimeout(gridTimer.current) }, [])
+  useEffect(() => {
+    if (intent?.pick) gridTimer.current = setTimeout(() => setGridOn(true), SHEET_MS + 40)   // 고르기 화면으로 열렸으면 시트가 다 오른 뒤에
+    return () => { if (gridTimer.current) clearTimeout(gridTimer.current) }
+  }, [])
   const open = (k: PvField) => {
     setPick(k); go('pick', 1)
     setGridOn(false)

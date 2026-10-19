@@ -67,14 +67,14 @@ export function PvInlineFields({ mobile, narrow, onPick }: { mobile: boolean; na
       {fields.map((f) => (f.key === 'zoom'
         ? (
           <Dropdown key={f.key} variant={variant} narrow={narrow} options={f.options} value={f.value} onChange={f.set}
-            title={`${f.title} — ${f.hint}`} ariaLabel={f.title} shortLabel={f.short} isDefault={f.value === f.def} />
+            title={`${f.title} — ${f.hint}`} ariaLabel={f.title} shortLabel={f.short} isDefault={f.value === f.def} guide={mobile ? undefined : f.key} />
         ) : (
           <PvPicker key={f.key} field={pvFieldOf(f)}
             variant={variant} narrow={narrow} options={f.options} groups={pvGroupsOf(f)}
             value={f.value} onChange={f.set}
             title={`${f.title} — ${f.hint}`} ariaLabel={f.title} shortLabel={f.short} isDefault={f.value === f.def}
             disabledValues={f.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요"
-            onOpenPage={onPick ? () => onPick(pvFieldOf(f)) : undefined} />
+            onOpenPage={onPick ? () => onPick(pvFieldOf(f)) : undefined} guide={mobile ? undefined : f.key} />
         )
       ))}
     </>
