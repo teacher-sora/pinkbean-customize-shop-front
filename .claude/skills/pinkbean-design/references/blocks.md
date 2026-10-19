@@ -46,13 +46,14 @@
 | 토스트 | `ui/Toast.tsx` — `s.notify('…')` 로 띄운다 |
 | 캔버스 우클릭 메뉴와 그 알림 | `lib/canvasMenu.ts` — `bindImageMenu`, `flashToast`(React 밖에서 쓰는 것) |
 | 지우기 두 번 누르기 | `lib/confirmTwice.ts`(`confirmTwice`, `CONFIRM_ATTR`) + `ui/ConfirmBubble.tsx` — 누른 버튼 위에 말풍선, 3초 |
+| 기능 안내(질문에 맞는 기능을 목록에서 골라 보여 준다) | `lib/guide.ts`(`GUIDE` 목록 · `askGuide` · `guideSpot`) + `plaza/NoticeBody` 의 `GuideCard` — '열어 보기'는 `s.guideGo`, 가리킬 요소에는 `data-guide` |
 | 코디 평가(핑크빈이 무대에 나와 말한다) | `preview/PinkbeanRate.tsx` + `preview.module.css` 의 `.rate` `.bean` `.say` |
 
 ## 컨트롤 (`ui/controls.tsx`, `ui/ui.module.css`)
 
 | 무엇 | 이름 |
 |---|---|
-| 알약·나뉜 탭 | `Seg` — `pc` / `mobileFlex` / `mobileFit` |
+| 알약·나뉜 탭 | `Seg` — `pc` / `mobileFlex` / `mobileFit`. 옵션에 `icon` 을 주면 아이콘 칸(모바일 헤더의 미리보기 크기 셋) |
 | 접어 둔 보기 · 성별 | `list/ListArea.tsx` 의 `FilterM` — '보기 설정' 버튼 + 바로 아래 펼침 칸(모바일 · 좁은 폭) |
 | 스위치 | `Switch` |
 | 색 고르기 | `FamilyDots`(색상 계열), `Swatch` |
