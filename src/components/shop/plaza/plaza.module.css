@@ -348,11 +348,14 @@
 
 /* ── 공지 및 건의함(NoticeBody): 탭 넷 + 가로로 미끄러지는 본문 ── */
 .hp { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* 탭 넷: 폭 가득 같은 너비. 고른 탭은 테두리 + 바탕 + 글자색이 함께 바뀐다(버튼이라 뜨지 않는다). 모바일은 그림 위 낱말 */
-.hpTabs { flex: 0 0 auto; padding: 12px 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; border-bottom: 1px solid #f0e9e1; }
+/* 탭 넷: 폭 가득 같은 너비, 높이는 PC 하단 탭과 같은 32(창 안의 버튼은 하단 탭보다 크지 않다). 고른 탭은 테두리 + 바탕 + 글자색이 함께 바뀐다.
+   아래 줄은 양 끝을 본문 여백만큼 띄워(닫히지 않은 줄) 탭과 아래 본문이 한 덩어리로 읽힌다 */
+.hpTabs { flex: 0 0 auto; position: relative; padding: 12px 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.hpTabs::after { content: ''; position: absolute; left: 16px; right: 16px; bottom: 0; height: 1px; background: #f0e9e1; }
 .hpTabsM { padding: 10px 12px; gap: 6px; }
-.hpTab { min-width: 0; height: 42px; padding: 0 8px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-family: inherit; font-size: 13px; font-weight: 500; color: #8a8075; white-space: nowrap; cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
-.hpTabM { height: 50px; flex-direction: column; gap: 3px; padding: 0 4px; font-size: 11.5px; }
+.hpTabsM::after { left: 12px; right: 12px; }
+.hpTab { min-width: 0; height: 32px; padding: 0 8px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #eee6dc; border-radius: 6px; background: #fff; font-family: inherit; font-size: 13px; font-weight: 500; color: #8a8075; white-space: nowrap; cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
+.hpTabM { padding: 0 4px; gap: 5px; font-size: 12.5px; }
 .hpTabOn { border-color: #ec86ac; background: #fdf4f8; color: #d76d9a; font-weight: 600; }
 /* 움직임은 서피스의 본문 슬라이드(surface.module.css .slide)와 같다 */
 .hpSlide { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
@@ -393,9 +396,14 @@
 .hpBotNone { padding: 12px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; }
 .hpBotNone .hpBotText { padding: 0; border: none; }
 .hpBotNone .hpGhost { align-self: flex-start; }
-.hpBar { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px; border-top: 1px solid #f0e9e1; }
-.hpBarM { padding: 8px 12px; }
-.hpInput { flex: 1 1 auto; min-width: 0; height: 36px; padding: 8px 12px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 12.5px; color: #3d372f; outline: none; }
+/* 아래 입력 띠(InputBar): 푸터 바로 위에 붙박인다. 따뜻한 바탕 + 윗줄로 본문과, 흰 푸터와 갈린다. 입력칸은 흰 바탕 */
+.hpBar { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; background: #faf7f3; border-top: 1px solid #f0e9e1; }
+.hpBarRow { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+.hpBarRow .hpGhost { height: 36px; }
+.hpBarLen { flex: 0 0 auto; width: 48px; line-height: 36px; text-align: right; font-size: 10.5px; color: #b7ada2; font-variant-numeric: tabular-nums; }
+.hpBar .hpFound { max-height: 38vh; overflow: hidden auto; overscroll-behavior: contain; background: #fff; }
+.hpBarM { padding: 10px 12px; gap: 8px; }
+.hpInput { flex: 1 1 auto; min-width: 0; height: 36px; padding: 8px 12px; border: 1px solid #e7ded4; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; outline: none; resize: none; overflow: hidden auto; overflow-wrap: anywhere; word-break: break-word; }
 .hpInputM { font-size: 13px; }
 .hpSend { height: 36px; }
 

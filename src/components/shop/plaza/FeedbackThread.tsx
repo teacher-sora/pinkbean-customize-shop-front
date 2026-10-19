@@ -7,10 +7,13 @@
 //  · FeedbackThread = 댓글 · 답글 나무. depth 1 = 글에 단 댓글, 2 · 3 = 답글(댓글부터 세 단까지).
 //    가장 깊은 단에는 '답글'이 없다(DB 트리거도 막는다). 답글 묶음의 왼쪽 줄은 깊이마다 진해진다(--fb-line 을 인라인으로).
 //    답글 칸은 한 번에 하나만 열린다. 지운 글은 답글이 달려 있을 때만 자리가 남는다('지운 글이에요').
-//  · FeedbackComposer = 글 · 댓글 · 답글 입력칸(글자 수 + 버튼). PC 는 Enter 로 보낸다(Shift+Enter 줄바꿈).
+//  · FeedbackComposer = 답글 입력칸(나무 안에 펼친다, 운영자 화면의 댓글 칸). PC 는 Enter 로 보낸다(Shift+Enter 줄바꿈).
+//  · InputBar = 창 아래, 푸터 바로 위에 붙박인 입력 띠. 건의 · 오류 글쓰기, 상세의 댓글 쓰기, 질문이 모두 이것이다 —
+//    목록을 아래위로 보는 중에도 언제든 쓸 수 있게(사용자 지시). 띠는 따뜻한 바탕 + 윗줄로 본문 · 푸터와 갈린다.
+//    입력칸은 한 줄에서 시작해 네 줄까지 늘고, 그 뒤로는 칸 안이 스크롤된다.
 
 import clsx from 'clsx'
-import { useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { FEEDBACK_DEPTH, PLAZA_COMMENT_MAX, plazaAlias, plazaWhen, type FeedbackNode, type FeedbackPost } from '@/lib/plaza'
 import { IconBubble } from '../ui/Icons'
 import styles from './plaza.module.css'
@@ -74,6 +77,38 @@ export function FeedbackComposer({ value, onChange, onSend, busy, ph, label, sen
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { if (can) onSend() }} disabled={!can}
             title={t0 ? undefined : '내용을 먼저 적어 주세요'} className={clsx(styles.cmtSend, !can && styles.cmtSendOff)}>{send}</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+const BAR_MIN = 36, BAR_MAX = 36 + 19.5 * 3   // 한 줄(36) ~ 네 줄
+export function InputBar({ value, onChange, onSend, busy, ph, label, send = '등록', mobile, max = PLAZA_COMMENT_MAX, enterSend, side, top }: {
+  value: string; onChange: (v: string) => void; onSend: () => void; busy: boolean; ph: string; label: string
+  send?: string; mobile: boolean; max?: number; enterSend?: boolean; side?: ReactNode; top?: ReactNode
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  // 쓴 만큼 늘린다(네 줄까지). 높이는 한 번에 바뀐다 — 전환하지 않는다
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = `${BAR_MIN}px`
+    el.style.height = `${Math.min(BAR_MAX, Math.max(BAR_MIN, el.scrollHeight + 2))}px`
+  }, [value])
+  const t0 = value.trim()
+  const can = !!t0 && !busy
+  const enter = enterSend ?? !mobile
+  return (
+    <div className={clsx(styles.hpBar, mobile && styles.hpBarM)}>
+      {top}
+      <div className={styles.hpBarRow}>
+        <textarea ref={ref} rows={1} value={value} maxLength={max} onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => { if (enter && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (can) onSend() } }}
+          placeholder={ph} aria-label={label} className={clsx('pb-input', 'pb-scroll', styles.hpInput, mobile && styles.hpInputM)} />
+        {!mobile && <span className={styles.hpBarLen}>{value.length}/{max}</span>}
+        {side}
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { if (can) onSend() }} disabled={!can}
+          title={t0 ? undefined : '내용을 먼저 적어 주세요'} className={clsx(styles.cmtSend, styles.hpSend, !can && styles.cmtSendOff)}>{send}</button>
       </div>
     </div>
   )

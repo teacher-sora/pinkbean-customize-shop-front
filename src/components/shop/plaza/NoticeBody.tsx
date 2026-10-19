@@ -24,7 +24,7 @@ import { useShop } from '../ShopContext'
 import { useInnerSlide } from '../surface/innerSlide'
 import { SurfaceFooter } from '../surface/Surface'
 import { IconChevronLeft, IconChevronRight, IconHelpTab, IconTrashSolid } from '../ui/Icons'
-import { FeedbackBox, FeedbackComposer, FeedbackPostBody, FeedbackThread } from './FeedbackThread'
+import { FeedbackBox, FeedbackPostBody, FeedbackThread, InputBar } from './FeedbackThread'
 import styles from './plaza.module.css'
 
 type Tab = 'notice' | 'idea' | 'bug' | 'ask'
@@ -100,7 +100,7 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
         {TABS.map((t) => (
           <button key={t.v} type="button" role="tab" aria-selected={tab === t.v} onClick={() => go(t.v)} title={t.t}
             className={clsx(styles.hpTab, mobile && styles.hpTabM, tab === t.v && styles.hpTabOn)}>
-            <IconHelpTab tab={t.v} size={mobile ? 17 : 16} /><span>{t.l}</span>
+            <IconHelpTab tab={t.v} size={15} /><span>{t.l}</span>
           </button>
         ))}
       </div>
@@ -264,20 +264,9 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk, setBack }: {
       {view === 'post' && post ? (
         <FeedbackDetail key={post.id} post={post} mobile={mobile} notify={notify} onGone={back} />
       ) : (
+        <>
         <div ref={listScroll} className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
           <div className={styles.hpCol}>
-            <FeedbackComposer value={draft} onChange={setDraft} onSend={send} busy={busy} ph={T.ph} label={`${T.label} 입력`} mobile={mobile}
-              send={hit.length ? '그래도 등록' : '등록'}
-              side={(
-                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onAsk} disabled={!text0}
-                  title={text0 ? '쓴 글로 기능 안내에 물어보기' : '물어볼 내용을 먼저 적어 주세요'} className={clsx('pb-ghost', styles.hpGhost)}>질문하기</button>
-              )} />
-            {hit.length > 0 && (
-              <div className={styles.hpFound}>
-                <p className={styles.hpFoundHead}>이미 있는 기능 같아요</p>
-                {hit.map((g) => <GuideCard key={g.id} g={g} onGo={s.guideGo} />)}
-              </div>
-            )}
             <div ref={headRef} className={clsx(styles.fbList, mobile && styles.fbListM)}>
               {!data && [0, 1, 2].map((i) => (
                 <div key={i} className={clsx(styles.fbBox, styles.fbBoxSkel)}>
@@ -299,6 +288,19 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk, setBack }: {
             )}
           </div>
         </div>
+        <InputBar value={draft} onChange={setDraft} onSend={send} busy={busy} ph={T.ph} label={`${T.label} 입력`} mobile={mobile}
+          send={hit.length ? '그래도 등록' : '등록'}
+          top={hit.length > 0 && (
+            <div className={clsx('pb-scroll', styles.hpFound)}>
+              <p className={styles.hpFoundHead}>이미 있는 기능 같아요</p>
+              {hit.map((g) => <GuideCard key={g.id} g={g} onGo={s.guideGo} />)}
+            </div>
+          )}
+          side={(
+            <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onAsk} disabled={!text0}
+              title={text0 ? '쓴 글로 기능 안내에 물어보기' : '물어볼 내용을 먼저 적어 주세요'} className={clsx('pb-ghost', styles.hpGhost)}>질문하기</button>
+          )} />
+        </>
       )}
     </div>
   )
@@ -311,8 +313,8 @@ const delButton = (id: string, onClick: () => void) => (
   </button>
 )
 
-// 글 하나: 글 → 줄 → 댓글 · 답글 나무 → 줄 → 댓글 입력칸. 세 덩어리는 줄과 넓은 간격으로 가른다(안은 좁게).
-// 돌아가기는 푸터의 '이전'(NoticeBody)이다.
+// 글 하나: 글 → 줄 → 댓글 · 답글 나무. 두 덩어리는 줄과 넓은 간격으로 가른다(안은 좁게).
+// 댓글 쓰기는 아래 띠(InputBar), 돌아가기는 푸터의 '이전'(NoticeBody)이다.
 function FeedbackDetail({ post: post0, mobile, notify, onGone }: {
   post: FeedbackPost; mobile: boolean; notify: (m: string) => void; onGone: () => void
 }) {
@@ -346,6 +348,7 @@ function FeedbackDetail({ post: post0, mobile, notify, onGone }: {
   }
 
   return (
+    <>
     <div className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
       <div className={clsx(styles.hpCol, styles.fbDetail)}>
         <FeedbackPostBody p={post} del={post.mine ? delButton(post.id, removePost) : undefined} />
@@ -361,13 +364,10 @@ function FeedbackDetail({ post: post0, mobile, notify, onGone }: {
             <FeedbackThread nodes={nodes} mobile={mobile} canDelete={(x) => x.mine} del={(x) => delButton(x.id, () => removeNode(x))} onReply={reply} />
           )}
         </section>
-        {!post.deleted && (
-          <section className={styles.fbSec} aria-label="댓글 쓰기">
-            <FeedbackComposer value={text} onChange={setText} onSend={sendTop} busy={busy} ph="댓글을 남겨 주세요" label="댓글 입력" mobile={mobile} />
-          </section>
-        )}
       </div>
     </div>
+    {!post.deleted && <InputBar value={text} onChange={setText} onSend={sendTop} busy={busy} ph="댓글을 남겨 주세요" label="댓글 입력" mobile={mobile} />}
+    </>
   )
 }
 
@@ -398,9 +398,7 @@ function Ask({ mobile, chat, busy, onAsk, onIdea, onGo }: {
   const logRef = useRef<HTMLDivElement>(null)
   // 새 말이 오면 맨 아래로
   useEffect(() => { const el = logRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: chat.length > 2 ? 'smooth' : 'auto' }) }, [chat])
-  const t0 = text.trim()
-  const can = !!t0 && !busy
-  const send = () => { if (!can) return; onAsk(t0); setText('') }
+  const send = () => { const t0 = text.trim(); if (!t0 || busy) return; onAsk(t0); setText('') }
   return (
     <div className={styles.hpAsk}>
       <div ref={logRef} className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
@@ -419,14 +417,8 @@ function Ask({ mobile, chat, busy, onAsk, onIdea, onGo }: {
             : <BotMsg key={m.id} m={m} q={chat[i - 1]?.text || ''} onIdea={onIdea} onGo={onGo} />))}
         </div>
       </div>
-      <div className={clsx(styles.hpBar, mobile && styles.hpBarM)}>
-        <input value={text} maxLength={300} onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send() } }}
-          placeholder="궁금한 기능을 물어보세요" aria-label="질문 입력"
-          className={clsx('pb-input', styles.hpInput, mobile && styles.hpInputM)} />
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={send} disabled={!can}
-          title={t0 ? undefined : '물어볼 내용을 먼저 적어 주세요'} className={clsx(styles.cmtSend, styles.hpSend, !can && styles.cmtSendOff)}>보내기</button>
-      </div>
+      <InputBar value={text} onChange={setText} onSend={send} busy={busy} ph="궁금한 기능을 물어보세요" label="질문 입력" mobile={mobile}
+        max={300} enterSend send="보내기" />
     </div>
   )
 }
