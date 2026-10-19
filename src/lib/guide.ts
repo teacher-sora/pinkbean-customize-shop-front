@@ -5,6 +5,7 @@
 //  · PC 와 휴대폰은 화면의 짜임이 다르다(PC 는 미리보기 아래 줄에 배율 · 액션 · 모션 · 표정이 늘 있고, 휴대폰은 연출 설정 시트 안에 있다).
 //    그래서 항목마다 휴대폰 글(m)과 PC 글(pc)을 따로 둘 수 있다. 없으면 공통 글을 쓴다(guideFor).
 //  · words = 사람들이 실제로 묻는 말투(건의함에 올라온 글에서 모았다). 모델이 고를 때 참고한다.
+//    화면의 버튼 이름과 같은 낱말은 **그 버튼의 항목에만** 둔다('모션' 은 [모션] 버튼인 weapon 에만 — action 에도 두었더니 둘 다 나왔다).
 //  · go = '열어 보기'. tab = 그 탭으로(preview 면 지금 탭 그대로 — 요청한 것 말고는 바꾸지 않는다), sheet = 그 창을 연다, pick = 휴대폰 연출 설정 시트를 그 고르기 화면(표정 등)으로 연다,
 //    group = 연출 설정의 캐릭터 / 이펙트 칸, drawer = PC 미리보기 아래 연출 설정을 펼친다,
 //    spot = 도착한 화면에서 그 요소(`data-guide`)를 잠깐 테두리로 가리키고(입력칸이면 커서를 둔다), click = 가리킨 뒤 눌러 연다.
@@ -26,10 +27,10 @@ export const GUIDE: GuideEntry[] = [
   { id: 'expr', title: '표정 바꾸기', words: '표정, 얼굴 표정, 웃는 얼굴, 윙크, 눈 감기, 화난 표정, 게슴츠레',
     how: '위쪽 캐릭터 화면 왼쪽 아래\n[연출 설정] 버튼을 누르면\n[표정]에서 바꿀 수 있어요.', go: { tab: 'preview', sheet: 'pv', pick: 'expr' },
     pc: { how: '오른쪽 캐릭터 화면 바로 아래\n[표정] 버튼에서 바꿀 수 있어요.', go: { tab: 'preview', spot: 'expr', click: true } } },
-  { id: 'action', title: '자세 바꾸기', words: '포즈, 자세, 걷기, 앉기, 점프, 누워, 모션, 움직이게, 액션',
+  { id: 'action', title: '자세 바꾸기', words: '액션, 포즈, 자세, 동작, 걷기, 앉기, 점프, 눕기, 춤',
     how: '위쪽 캐릭터 화면 왼쪽 아래\n[연출 설정] 버튼을 누르면\n[액션]에서 바꿀 수 있어요.', go: { tab: 'preview', sheet: 'pv', pick: 'action' },
     pc: { how: '오른쪽 캐릭터 화면 바로 아래\n[액션] 버튼에서 바꿀 수 있어요.', go: { tab: 'preview', spot: 'action', click: true } } },
-  { id: 'weapon', title: '무기 드는 자세', words: '무기 드는 자세, 건모션, 한손 두손, 무기 모션',
+  { id: 'weapon', title: '무기 모션 바꾸기', words: '모션, 무기 모션, 무기 드는 자세, 건모션, 한손 두손, 휘두르기, 찌르기, 사격',
     how: '위쪽 캐릭터 화면 왼쪽 아래\n[연출 설정] 버튼을 누르면\n[모션]에서 바꿀 수 있어요.', go: { tab: 'preview', sheet: 'pv', pick: 'weapon' },
     pc: { how: '오른쪽 캐릭터 화면 바로 아래\n[모션] 버튼에서 바꿀 수 있어요.', go: { tab: 'preview', spot: 'weapon', click: true } } },
   { id: 'zoom', title: '캐릭터 크기', words: '크기, 확대, 축소, 작게, 크게, 인게임 비율, 잘려요, 배율',
