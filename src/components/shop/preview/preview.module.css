@@ -106,6 +106,13 @@
 /* 모바일 히어로 */
 .hero { flex: 0 0 auto; position: relative; height: 216px; /* 리스트에 여유를 주려고 낮게 잡는다 */ border-bottom: 1px solid #f4efe8; overflow: hidden; }
 .heroModel { position: absolute; inset: 0; }
+/* 미리보기 크기(lib/heroView — 모바일 헤더의 보기 셋). 높이는 한 번에 바뀌고 아래 것들만 미끄러진다.
+   크게 = 화면의 56%(기본보다 작아지지 않게), 캐릭터만 = 헤더(46) 아래 전부. 100vh 는 주소창이 접혀도 그대로라 리플로우가 없다 */
+:global(html[data-pb-view='wide']) .hero { height: max(216px, 56vh); }
+:global(html[data-pb-view='full']) .hero { height: calc(max(100vh, var(--pb-min-h, 0px)) - 46px); }
+/* 왼쪽 위: 이미지 저장 · 링크 복사(광장 카드의 레일 버튼을 그대로 쓴다). 오른쪽 위의 되돌리기와 같은 높이 · 여백 */
+.heroRail.heroRail { left: 12px; right: auto; top: 10px; flex-direction: row; gap: 6px; opacity: 0; pointer-events: none; transition: opacity .22s cubic-bezier(.45,0,.55,1); }
+.heroRailOn.heroRailOn { opacity: 1; pointer-events: auto; }
 .heroHist { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; }
 .heroIcon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: pointer; }
 .heroIconOn { border-color: #eeb2ce; background: #fff; color: #d76d9a; cursor: pointer; }

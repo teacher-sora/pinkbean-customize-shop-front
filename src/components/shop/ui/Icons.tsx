@@ -64,6 +64,13 @@ export const IconCheck = ({ size = 10 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
 )
 // 코디 광장: 가져오기(아래로 받기) · 링크 복사 · 내리기(채운 휴지통) · 좋아요(하트)
+// 모바일 미리보기 크기(기본 · 크게 · 캐릭터만): 둥근 틀 안을 위에서부터 미리보기 몫만큼 채운다. 선 굵기는 다른 아이콘과 같다
+const ViewIcon = ({ size = 15, h }: P & { h: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="3.4" /><rect x="7" y="7" width="10" height={h} rx="1.2" fill="currentColor" stroke="none" /></svg>
+)
+export const IconViewBase = (p: P) => <ViewIcon {...p} h={3.4} />
+export const IconViewWide = (p: P) => <ViewIcon {...p} h={6.4} />
+export const IconViewFull = (p: P) => <ViewIcon {...p} h={10} />
 export const IconTakeDown = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 4.5v11m0 0l-4.2-4.2M12 15.5l4.2-4.2M5 19h14" /></svg>
 )

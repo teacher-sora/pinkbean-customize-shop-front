@@ -5,10 +5,13 @@
 
 import clsx from 'clsx'
 import { useState } from 'react'
+import { saveImage } from '@/lib/canvasExport'
+import { useHeroView } from '@/lib/heroView'
 import { DOT_MOVER_IDS } from '@/lib/shopData'
-import PreviewModel from '../PreviewModel'
+import PreviewModel, { previewShot } from '../PreviewModel'
+import plaza from '../plaza/plaza.module.css'
 import { useShop } from '../ShopContext'
-import { IconBookmark, IconCaretDown, IconDot, IconDrop, IconRedo, IconScene, IconUndo } from '../ui/Icons'
+import { IconBookmark, IconCaretDown, IconDot, IconDrop, IconLinkCopy, IconRedo, IconScene, IconTakeDown, IconUndo } from '../ui/Icons'
 import PinkbeanRate from './PinkbeanRate'
 import { BookmarkBox } from './PreviewParts'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
@@ -91,11 +94,18 @@ export function MobileHero() {
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
   const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
   const n = s.bookmarks.length
+  // 크게 · 캐릭터만일 때 왼쪽 위에 이미지 저장 · 링크 복사(코디 광장 카드의 레일과 같은 버튼). 기본 크기에서는 걷는다
+  const big = useHeroView() !== 'base'
+  const save = async () => { const r = await saveImage(previewShot, 'pinkbean-cody'); if (r === 'saved') s.notify('이미지를 저장했어요'); else if (r === 'error') s.notify('이미지 저장에 실패했어요') }
   return (
-    <div className={styles.hero}>
+    <div data-hero className={styles.hero}>
       <StageBg />
       <PinkbeanRate />
       <div className={styles.heroModel}><PreviewModel /></div>
+      <div aria-hidden={!big} className={clsx(plaza.rail, styles.heroRail, big && styles.heroRailOn)}>
+        <button type="button" onClick={() => void save()} tabIndex={big ? 0 : -1} title="캐릭터 이미지 저장" aria-label="이미지 저장" className={plaza.railBtn}><IconTakeDown /></button>
+        <button type="button" onClick={s.shareCurrentLink} tabIndex={big ? 0 : -1} title="현재 프리셋 공유 링크 복사" aria-label="링크 복사" className={plaza.railBtn}><IconLinkCopy /></button>
+      </div>
       <div className={styles.heroHist}>
         <button type="button" onClick={s.undo} disabled={!s.canUndo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
         <button type="button" onClick={s.redo} disabled={!s.canRedo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>

@@ -101,7 +101,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
     const listTab = s.primary === 'codi' || s.primary === 'search' // 부위는 목록 머리(CatTabsM)에 있다
     return (
       <>
-        {!listTab && <div className={styles.partNavM}>
+        {!listTab && <div data-hero-below className={styles.partNavM}>
           <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.railM)} aria-label={plaza ? '분류' : '부위'}>
             {chips.map((c) => (
               <button key={c.id} type="button" onClick={c.pick} title={c.label}
@@ -109,7 +109,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
             ))}
           </nav>
         </div>}
-        <nav className={styles.tabNavM} aria-label="메뉴">
+        <nav data-hero-below className={styles.tabNavM} aria-label="메뉴">
           {TABS.map((t) => {
             const on = s.primary === t.id
             return (

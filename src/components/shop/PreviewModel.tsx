@@ -40,6 +40,10 @@ export type PreviewSource = {
   zoomMults: Record<number, number>; fraction: (h: number) => number
 }
 
+// 지금 떠 있는 미리보기의 내보내기 이미지(우클릭 메뉴와 같은 것). 모바일 히어로의 '이미지 저장' 버튼이 쓴다.
+let liveShot: (() => Promise<Blob | null>) | null = null
+export const previewShot = () => (liveShot ? liveShot() : Promise.resolve(null))
+
 export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const shop = useShop()
   const { index, bp } = shop
@@ -504,8 +508,10 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    return bindImageMenu(el, makeBlob, 'pinkbean-cody')
-  }, [makeBlob])
+    if (!src) liveShot = makeBlob
+    const off = bindImageMenu(el, makeBlob, 'pinkbean-cody')
+    return () => { off(); if (liveShot === makeBlob) liveShot = null }
+  }, [makeBlob, src])
 
   return (
     <div ref={wrapRef} className={styles.wrap}>
