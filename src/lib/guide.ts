@@ -1,0 +1,104 @@
+// 기능 안내(건의함의 '질문' 탭과 건의 등록 전 확인)가 쓰는 기능 목록. **이 목록이 곧 안내의 전부다.**
+//  · AI(back 의 /guide)는 질문을 보고 이 목록에서 맞는 항목의 id 를 고르기만 한다. 화면에 보이는 설명 · 위치 · '열어 보기'는
+//    모두 여기 적힌 글이다 — 모델이 없는 메뉴나 틀린 위치를 지어낼 수 없다(ARCHITECTURE 3-6).
+//  · 기능을 더하거나 자리를 옮기면 **이 목록도 같이 고친다**. 고치지 않으면 안내가 옛 자리를 가리킨다.
+//  · words = 사람들이 실제로 묻는 말투(건의함에 올라온 글에서 모았다). 모델이 고를 때 참고한다.
+//  · go = '열어 보기'. tab = 그 탭으로, sheet = 그 창을 연다(모바일 연출 설정은 시트, PC 는 미리보기 아래 줄이라 열지 않고 가리킨다),
+//    spot = 도착한 화면에서 그 요소(`data-guide`)를 잠깐 테두리로 가리키고, 입력칸이면 커서를 둔다.
+
+import { backApi } from './backApi'
+import { safeBubble } from './safeText'
+
+export type GuideGo = { tab?: 'codi' | 'search' | 'info' | 'preset' | 'share'; sheet?: 'pv' | 'bg' | 'part' | 'bm'; spot?: string }
+export type GuideEntry = { id: string; title: string; where: string; how: string; words: string; go?: GuideGo }
+
+export const GUIDE: GuideEntry[] = [
+  { id: 'expr', title: '표정 바꾸기', where: '연출 설정 > 표정', how: '미리보기의 연출 설정에서 표정을 누르면 표정을 골라 입혀 볼 수 있어요.',
+    words: '표정, 얼굴 표정, 웃는 얼굴, 윙크, 눈 감기, 화난 표정, 게슴츠레', go: { tab: 'codi', sheet: 'pv', spot: 'pv' } },
+  { id: 'action', title: '자세(액션) 바꾸기', where: '연출 설정 > 액션', how: '연출 설정의 액션에서 걷기, 앉기, 점프 같은 자세를 고를 수 있어요.',
+    words: '포즈, 자세, 걷기, 앉기, 점프, 누워, 모션, 움직이게', go: { tab: 'codi', sheet: 'pv', spot: 'pv' } },
+  { id: 'weapon', title: '무기 모션', where: '연출 설정 > 무기 모션', how: '연출 설정의 무기 모션에서 한손, 두손, 건 같은 무기 드는 자세를 바꿀 수 있어요.',
+    words: '무기 드는 자세, 건모션, 한손 두손, 무기 모션', go: { tab: 'codi', sheet: 'pv', spot: 'pv' } },
+  { id: 'zoom', title: '캐릭터 크기(배율)', where: '연출 설정 > 배율', how: '연출 설정의 배율에서 캐릭터를 1배부터 3배까지 키우거나 줄일 수 있어요. 1배가 가장 작아요.',
+    words: '크기, 확대, 축소, 작게, 크게, 인게임 비율, 잘려요, 배율', go: { tab: 'codi', sheet: 'pv', spot: 'pv' } },
+  { id: 'form', title: '형상 변이, 귀, 시선', where: '연출 설정 > 캐릭터', how: '연출 설정을 펼치면 형상 변이(호영, 라라, 렌), 귀(엘프, 레프), 시선(보는 방향)을 바꿀 수 있어요.',
+    words: '아니마, 호영 꼬리, 라라 뿔, 렌, 엘프 귀, 레프 귀, 뒤돌기, 뒷모습, 방향, 시선', go: { tab: 'codi', sheet: 'pv', spot: 'pv' } },
+  { id: 'effect', title: '이펙트 끄고 켜기', where: '연출 설정 > 이펙트', how: '연출 설정을 펼쳐 이펙트에서 무기, 망토, 모자 이펙트를 각각 끄거나 켤 수 있어요.',
+    words: '이펙트 끄기, 무기 이펙트, 망토 이펙트, 반짝이 없애기, 효과 끄기', go: { tab: 'codi', sheet: 'pv', spot: 'pv' } },
+  { id: 'nick', title: '닉네임으로 코디 불러오기', where: '프리셋 탭 > 위쪽 입력칸', how: '프리셋 탭 위쪽 칸에 캐릭터 닉네임을 넣고 불러오기를 누르면 게임 속 코디와 염색을 그대로 가져와요.',
+    words: '닉네임 검색, 내 캐릭터, 인게임 코디 가져오기, 캐릭터 이름, 넥슨, 불러오기', go: { tab: 'preset', spot: 'nick' } },
+  { id: 'link-in', title: '공유 링크로 코디 받기', where: '프리셋 탭 > 위쪽 입력칸', how: '받은 공유 링크를 프리셋 탭 위쪽 칸에 붙여 넣고 불러오기를 누르거나, 링크를 그냥 열면 돼요.',
+    words: '링크 붙여넣기, 코드 입력, 받은 코디, 공유 코드', go: { tab: 'preset', spot: 'nick' } },
+  { id: 'link-out', title: '코디 공유하기', where: '위쪽 프리셋 복사 버튼', how: '맨 위의 프리셋 복사(휴대폰은 복사)를 누르면 지금 코디의 공유 링크가 복사돼요. 프리셋 카드의 복사 띠지로도 돼요.',
+    words: '공유, 링크 복사, 친구에게 보내기, 디스코드, 카톡', go: { spot: 'copy' } },
+  { id: 'preset', title: '프리셋 저장', where: '프리셋 탭', how: '프리셋은 30칸이고, 고른 칸에 지금 코디가 저절로 저장돼요. 이름은 카드에서 바로 바꿀 수 있어요.',
+    words: '저장, 코디 저장, 여러 코디, 슬롯, 이름 바꾸기', go: { tab: 'preset' } },
+  { id: 'dye', title: '염색하기', where: '코디 정보 / 염색 탭, 미리보기의 부위 염색', how: '코디 정보 / 염색 탭에서 부위를 고르거나, 미리보기의 부위 염색(팔레트)에서 바로 염색할 수 있어요. 헤어와 성형은 믹스 염색이에요.',
+    words: '염색, 색 바꾸기, 믹스 염색, 헤어 색, 렌즈 색, 색조 채도 명도, 프리즘', go: { tab: 'info' } },
+  { id: 'dye-table', title: '염색표', where: '헤어, 성형 염색 창 > 염색표', how: '헤어와 성형 염색 창에서 염색표를 누르면 베이스 색과 믹스 색을 표에서 한 번에 고를 수 있어요.',
+    words: '염색표, 발색표, 색 비교, 한눈에', go: { tab: 'info' } },
+  { id: 'dot', title: '점 위치 옮기기', where: '미리보기 > 점 위치', how: '점이 있는 얼굴 장식을 입으면 미리보기에 점 위치 버튼이 나와요. 눌러서 점을 원하는 자리로 옮길 수 있어요.',
+    words: '점, 얼굴 점, 점 옮기기, 위치 조절', go: { tab: 'codi' } },
+  { id: 'bg', title: '미리보기 배경 바꾸기', where: '미리보기 > 배경', how: '미리보기의 배경 버튼(휴대폰은 연출 설정 옆 그림 아이콘)에서 피팅룸, 흰색, 검은색, 직접 올린 그림 가운데 고를 수 있어요.',
+    words: '배경, 배경 바꾸기, 흰 배경, 검은 배경, 내 사진, 배경 업로드', go: { tab: 'codi', sheet: 'bg' } },
+  { id: 'image', title: '캐릭터 이미지 저장, 복사(배경 투명)', where: '미리보기 캐릭터 우클릭', how: '캐릭터를 우클릭(휴대폰은 길게 누르기)하면 캐릭터 이미지를 복사하거나 저장할 수 있어요. 저장한 이미지는 배경이 투명해요.',
+    words: '이미지 저장, 사진 저장, 캡처, 투명 배경으로 저장, 배경 없이 저장, png, 다운로드, 복사' },
+  { id: 'bookmark', title: '북마크와 코디 비교', where: '미리보기 > 북마크', how: '아이템 카드의 북마크로 모아 두고, 북마크 창에서 지금 코디와 나란히 비교(VS)할 수 있어요.',
+    words: '찜, 북마크, 비교, 나란히, vs', go: { tab: 'codi', sheet: 'bm' } },
+  { id: 'ai-search', title: 'AI 코디 검색', where: 'AI 코디 검색 탭', how: '원하는 생김새를 문장으로 적으면 어울리는 아이템을 찾아 줘요. 예: 하얀 리본이 달린 모자.',
+    words: '문장 검색, 비슷한 아이템, 생김새로 찾기, 스타일 검색', go: { tab: 'search', spot: 'ai' } },
+  { id: 'find', title: '아이템 찾기와 보기 방식', where: '코디 탭 > 목록 머리', how: '코디 탭 목록 머리에서 이름 검색, 신규만 보기, 성별, 보기 방식(아이템, 기본 캐릭터, 내 캐릭터)을 고를 수 있어요.',
+    words: '검색, 이름 검색, 신규, 새로 나온, 성별, 내 캐릭터로 보기, 입혀서 보기', go: { tab: 'codi' } },
+  { id: 'hide', title: '부위 숨기기, 전체 벗기', where: '코디 정보 / 염색 탭', how: '코디 정보 / 염색 탭에서 부위의 눈 아이콘으로 입은 채 숨기거나, 전체 벗기로 한 번에 벗을 수 있어요.',
+    words: '숨기기, 안 보이게, 벗기, 전부 벗기, 맨몸', go: { tab: 'info', spot: 'unequip' } },
+  { id: 'undo', title: '되돌리기, 다시실행', where: '미리보기 오른쪽 위', how: '미리보기의 화살표 버튼으로 방금 바꾼 것을 되돌리거나 다시 실행할 수 있어요.',
+    words: '취소, 되돌리기, 실수, 이전으로', go: { tab: 'codi' } },
+  { id: 'rate', title: '핑크빈 코디 평가', where: '위쪽 코디 평가 버튼', how: '맨 위의 코디 평가(휴대폰은 평가)를 누르면 핑크빈이 나와서 코디를 보고 한마디 해요.',
+    words: '평가, 핑크빈, 말풍선, 반응', go: { spot: 'rate' } },
+  { id: 'plaza', title: '코디 광장', where: '코디 광장 탭', how: '다른 사람이 올린 코디를 구경하고, 마음에 들면 내 프리셋으로 가져오거나 좋아요를 누를 수 있어요.',
+    words: '다른 사람 코디, 구경, 가져오기, 좋아요, 랭킹', go: { tab: 'share' } },
+  { id: 'plaza-up', title: '내 코디 올리기', where: '코디 광장 > 내 코디 등록', how: '코디 광장의 내 코디 등록에서 프리셋을 골라 이름, 설명, 태그와 함께 올릴 수 있어요.',
+    words: '코디 올리기, 업로드, 자랑, 등록', go: { tab: 'share' } },
+  { id: 'pinch', title: '화면 손가락 확대', where: '어디서나', how: '휴대폰에서는 두 손가락으로 화면을 벌려 확대할 수 있어요. 캐릭터만 키우려면 연출 설정의 배율이나 위쪽 보기 버튼을 써 보세요.',
+    words: '핀치 줌, 손가락 확대, 화면 확대, 크게 보기' },
+  { id: 'view', title: '캐릭터 크게 보기(휴대폰)', where: '휴대폰 맨 위 보기 버튼', how: '휴대폰 맨 위의 보기 버튼 셋 가운데 크게, 캐릭터만을 누르면 미리보기가 넓어지고 캐릭터도 커져요.',
+    words: '크게 보기, 넓게, 전체 화면, 캐릭터만, 목록 숨기기', go: { tab: 'codi', spot: 'view' } },
+  { id: 'sky', title: '배경 시간대, 배경 보기(PC)', where: 'PC 위쪽 도구 모음', how: 'PC 위쪽의 시간대 버튼으로 낮, 석양, 밤을 고르고, 배경 보기로 화면을 걷고 배경만 볼 수 있어요.',
+    words: '밤, 낮, 시간대, 배경만 보기, 하늘' },
+]
+
+export const guideById = new Map(GUIDE.map((g) => [g.id, g]))
+// 모델에 넘기는 목록(짧게 — 질문마다 같이 보낸다)
+const catalog = () => GUIDE.map((g) => ({ id: g.id, t: `${g.title} (${g.where}) ${g.how} / ${g.words}` }))
+
+// 안내 서버의 답. feature = ids 의 기능들, none = 목록에 없다, chat = 인사에 대한 reply, error = 서버 · 모델 실패
+export type GuideReply = { kind: 'feature' | 'none' | 'chat' | 'error'; ids: string[]; reply: string }
+// mode: ask = 질문 탭, check = 건의를 올리기 전 확인(이미 있는 기능일 때만 feature)
+export async function askGuide(q: string, mode: 'ask' | 'check', history: { r: string; t: string }[]): Promise<GuideReply> {
+  try {
+    const r = await fetch(`${backApi()}/guide`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q, mode, history, catalog: catalog() }),
+      signal: AbortSignal.timeout(20000),
+    })
+    if (!r.ok) return { kind: 'error', ids: [], reply: '' }
+    const d = await r.json()
+    const ids = (Array.isArray(d.ids) ? d.ids : []).filter((id: unknown): id is string => typeof id === 'string' && guideById.has(id))
+    const kind = d.kind === 'feature' && ids.length ? 'feature' : d.kind === 'chat' || d.kind === 'none' ? d.kind : 'error'
+    // 인사의 답도 화면 직전에 한 번 더 거른다(lib/safeText — 말풍선과 같은 안전망)
+    const reply = typeof d.reply === 'string' && safeBubble(d.reply) ? d.reply.slice(0, 140) : ''
+    return { kind: kind === 'chat' && !reply ? 'none' : kind, ids: kind === 'feature' ? ids : [], reply }
+  } catch { return { kind: 'error', ids: [], reply: '' } }
+}
+
+// 도착한 화면에서 그 요소(data-guide)를 잠깐 테두리로 가리킨다. 입력칸이면 커서를 둔다. 보이는 것 하나만.
+export function guideSpot(spot: string) {
+  const el = [...document.querySelectorAll<HTMLElement>(`[data-guide~="${spot}"]`)].find((e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden')
+  if (!el) return
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  if (el.matches('input, textarea')) el.focus({ preventScroll: true })
+  el.classList.remove('pb-guidehit')
+  void el.offsetWidth
+  el.classList.add('pb-guidehit')
+  window.setTimeout(() => el.classList.remove('pb-guidehit'), 1900)
+}

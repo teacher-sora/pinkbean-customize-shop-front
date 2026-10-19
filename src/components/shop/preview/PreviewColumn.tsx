@@ -68,7 +68,7 @@ export default function PreviewColumn() {
           <PvGroups group={group} onGroup={setGroup} mobile={false} />
         </div>
 
-        <div className={styles.ctrlRow}>
+        <div data-guide="pv" className={styles.ctrlRow}>
           <PvInlineFields mobile={false} narrow={narrow} />
           <button type="button" onClick={() => setPvAll((v) => !v)} title={pvAll ? '연출 설정 접기' : '연출 설정 더 보기 (형상 변이, 귀, 시선, 이펙트)'}
             aria-label={pvAll ? '연출 설정 접기' : '연출 설정 더 보기 (형상 변이, 귀, 시선, 이펙트)'} aria-expanded={pvAll}
@@ -101,7 +101,7 @@ export function MobileHero() {
         <button type="button" onClick={s.redo} disabled={!s.canRedo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>
       </div>
       <div className={styles.heroLeft}>
-        <button type="button" onClick={() => s.openSheet('pv')} title="연출 설정" className={styles.pvOpenBtn}>
+        <button type="button" onClick={() => s.openSheet('pv')} title="연출 설정" data-guide="pv" className={styles.pvOpenBtn}>
           연출 설정<IconCaretDown />
         </button>
         <button type="button" onClick={() => s.openSheet('bg')} title="미리보기 배경 바꾸기" aria-label="미리보기 배경" className={clsx(styles.pvOpenBtn, styles.pvOpenIcon, bgOpen && styles.pvOpenBtnOn)}>

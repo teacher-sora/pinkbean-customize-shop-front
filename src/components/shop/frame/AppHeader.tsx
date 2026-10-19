@@ -40,10 +40,10 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
           <span className={styles.logoTextM}>커마샵</span>
         </button>
         <div className={styles.headerActsM}>
-          <button type="button" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.rateBtnM)}>
+          <button type="button" data-guide="rate" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.rateBtnM)}>
             <IconRate size={13} />평가
           </button>
-          <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" className={clsx('pb-solid', styles.copyBtnM)}>
+          <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" data-guide="copy" className={clsx('pb-solid', styles.copyBtnM)}>
             <IconCopy size={13} />복사
           </button>
         </div>
@@ -65,10 +65,10 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
           <IconScene /><Swap now={bgOnly ? '돌아가기' : '배경 보기'} all={['배경 보기', '돌아가기']} />
         </button>
         <span className={styles.toolSep} aria-hidden />
-        <button type="button" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.tool)}>
+        <button type="button" data-guide="rate" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.tool)}>
           <IconRate />코디 평가
         </button>
-        <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" className={clsx('pb-solid', styles.toolSolid)}>
+        <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" data-guide="copy" className={clsx('pb-solid', styles.toolSolid)}>
           <IconCopy />프리셋 복사
         </button>
       </div>

@@ -511,12 +511,14 @@ export function plazaWhen(iso: string): string {
   return `${dt.getMonth() + 1}월 ${dt.getDate()}일`
 }
 
-// ── 공지 및 건의함(간이, supabase/0011) ──
-// 공지는 운영자가 Supabase 대시보드(Table Editor → plaza_notices)에서 쓴다 — 앱에는 쓰기 화면이 없다.
-// 댓글로 신고·건의를 받는다. 한 쪽에 20개, 최신이 위. 운영자 uid(plaza_admins)의 댓글은 '운영자'로 보인다.
+// ── 공지 및 건의함(supabase/0011 · 0013 · 0018) ──
+// 공지는 운영자가 Supabase 대시보드(Table Editor → plaza_notices)에서 쓴다 — 앱에는 쓰기 화면이 없다. 공지에는 댓글이 없다.
+// 건의 · 오류는 같은 표(plaza_notice_comments)에 종류(kind)로 나눠 담는다. 한 쪽에 20개, 최신이 위.
+// 운영자 uid(plaza_admins)의 글은 '운영자'로 보인다.
 export type PlazaNotice = { id: string; createdAt: string; title: string; body: string; pinned: boolean }
-// replies = 그 건의글에 달린 **운영자 답변**. 앱에서는 아무도 달 수 없고(supabase/0013 정책) 운영자가
-// DB 에서 직접 남긴다 — 그래서 답변은 곧 운영자 글이다(따로 권한 표를 두지 않는다).
+export type FeedbackKind = 'idea' | 'bug'
+// replies = 그 글에 달린 **운영자 답변**. 앱에서는 아무도 달 수 없고(supabase/0013 정책) 운영자가
+// /suggestion 에서 단다 — 그래서 답변은 곧 운영자 글이다(따로 권한 표를 두지 않는다).
 export type NoticeComment = { id: string; owner: string; body: string; createdAt: string; mine: boolean; admin: boolean; replies?: NoticeComment[] }
 export const NOTICE_PAGE = 20
 export async function loadNotices(): Promise<PlazaNotice[]> {
@@ -539,13 +541,13 @@ const loadAdmins = () => {
   }
   return adminsP
 }
-export async function loadNoticeComments(noticeId: string, page: number): Promise<{ list: NoticeComment[]; total: number }> {
+export async function loadFeedback(kind: FeedbackKind, page: number): Promise<{ list: NoticeComment[]; total: number }> {
   const c = sb()
   if (!c) return { list: [], total: 0 }
   const [uid, admins] = await Promise.all([plazaAuth(), loadAdmins()])
-  // 쪽 넘김은 **건의글(답변이 아닌 것)** 기준이다 — 답변은 그 글에 딸려 붙는다.
+  // 쪽 넘김은 **원글(답변이 아닌 것)** 기준이다 — 답변은 그 글에 딸려 붙는다.
   const { data, error, count } = await c.from('plaza_notice_comments').select('id,owner,body,created_at', { count: 'exact' })
-    .eq('notice_id', noticeId).is('parent_id', null).order('created_at', { ascending: false }).order('id')
+    .eq('kind', kind).is('parent_id', null).order('created_at', { ascending: false }).order('id')
     .range(page * NOTICE_PAGE, page * NOTICE_PAGE + NOTICE_PAGE - 1)
   if (error) throw error
   type Row = { id: string; owner: string; body: string; created_at: string }
@@ -573,17 +575,17 @@ export async function loadNoticeComments(noticeId: string, page: number): Promis
     }),
   }
 }
-export async function addNoticeComment(noticeId: string, body: string): Promise<void> {
+export async function addFeedback(kind: FeedbackKind, body: string): Promise<void> {
   const c = sb()
   if (!c) throw new Error('supabase not configured')
   const uid = await plazaAuth()
   if (!uid) throw new Error('auth failed')
   const text = censor(body.trim().slice(0, PLAZA_COMMENT_MAX))   // 욕설 · 성희롱 낱말만 가려서 올린다
   if (!text) throw new Error('empty')
-  const { error } = await c.from('plaza_notice_comments').insert({ notice_id: noticeId, owner: uid, body: text })
+  const { error } = await c.from('plaza_notice_comments').insert({ kind, owner: uid, body: text })
   if (error) throw error
 }
-export async function deleteNoticeComment(id: string): Promise<void> {
+export async function deleteFeedback(id: string): Promise<void> {
   const c = sb()
   if (!c) throw new Error('supabase not configured')
   const { error } = await c.from('plaza_notice_comments').delete().eq('id', id)
@@ -602,12 +604,12 @@ const opRpc = async <T>(fn: string, args: Record<string, unknown>): Promise<T | 
   return data as T | null
 }
 export const opLogin = async (cred: OpCred) => (await opRpc<boolean>('plaza_op_login', { p_id: cred.id, p_pw: cred.pw })) === true
-// 한 공지의 건의글 전부(최신이 위)와 그 답변. 운영자 화면이라 가리지 않은 원문 그대로다.
-export async function opLoadComments(noticeId: string): Promise<OpComment[]> {
+// 한 종류(건의 · 오류)의 글 전부(최신이 위)와 그 답변. 운영자 화면이라 가리지 않은 원문 그대로다.
+export async function opLoadFeedback(kind: FeedbackKind): Promise<OpComment[]> {
   const c = sb()
   if (!c) return []
   const { data, error } = await c.from('plaza_notice_comments').select('id,owner,body,created_at,parent_id')
-    .eq('notice_id', noticeId).order('created_at', { ascending: true }).limit(2000)
+    .eq('kind', kind).order('created_at', { ascending: true }).limit(2000)
   if (error) throw error
   const rows = (data || []) as { id: string; owner: string; body: string; created_at: string; parent_id: string | null }[]
   await fillAliases(rows.map((r) => r.owner)).catch(() => undefined)

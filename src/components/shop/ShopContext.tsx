@@ -21,6 +21,8 @@ import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, typ
 import { conflictSlots } from '@/lib/core/slots'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
+import { backApi } from '@/lib/backApi'
+import { guideSpot, type GuideGo } from '@/lib/guide'
 import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
@@ -42,12 +44,6 @@ const isMixSlot = (slot: string) => slot === 'hair' || slot === 'face'
 // 여러 부위를 합친 목록 필터(전체·신규·즐겨찾기) — 활성 슬롯이 없어 아이템 자신의 슬롯으로 판단한다.
 export const isMultiCat = (cat: string) => cat === 'all' || cat === 'new' || cat === 'fav'
 
-// AI 코디 검색 · 코디 평가 서버(back 레포, Fly.io). 운영과 dev 가 따로 있다 — 고르는 기준은 광장(lib/plaza 의 plazaTarget)처럼 **호스트**다:
-// 운영 도메인이면 운영 서버, 그 밖(dev 사이트 · 로컬)이면 dev 서버(back 의 dev 브랜치가 자동 배포된다).
-// 주소는 환경변수로 덮어쓸 수 있다(운영 NEXT_PUBLIC_SEARCH_API, dev NEXT_PUBLIC_SEARCH_API_DEV).
-const SEARCH_API_PROD = process.env.NEXT_PUBLIC_SEARCH_API || 'https://pinkbean-customize-shop-back.fly.dev'
-const SEARCH_API_DEV = process.env.NEXT_PUBLIC_SEARCH_API_DEV || 'https://pinkbean-customize-shop-back-dev.fly.dev'
-const searchApi = () => (typeof window !== 'undefined' && /^(www\.)?pinkbean-customize\.com$/.test(window.location.hostname) ? SEARCH_API_PROD : SEARCH_API_DEV)
 // 프리셋 스냅샷: 착용(slot→itemId) + 톤 + 염색 + 숨김. (공유 코드/영속에 이 형태 그대로 저장)
 // 프리셋에 저장하는 연출설정 일부(형상변이·귀·무기모션·이펙트토글·배율). 시선/액션/표정은 "보는 순간의 상태"라 저장 안 함.
 // 프리셋에 담기는 연출 설정은 두 갈래다.
@@ -242,6 +238,8 @@ export interface ShopCtx {
   plazaCols: number; plazaRows: number
   openPlazaPost: (post: PlazaPost) => void
   openNotice: () => void
+  // 기능 안내의 '열어 보기': 창을 닫고 그 탭 · 창으로 가서 요소를 잠깐 가리킨다(lib/guide)
+  guideGo: (g: { go?: GuideGo }) => void
   plazaTakeDirect: (post: PlazaPost) => void
   plazaTakeBack: () => void
   resolveSnapItems: (snap: Snapshot) => Promise<Record<string, ListItem | null>>
@@ -674,7 +672,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         setSearchResults(got.filter((x): x is ListItem => !!x))
         return
       }
-      const res = await fetch(`${searchApi()}/search`, {
+      const res = await fetch(`${backApi()}/search`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: t, slot: null, topK: 100 }),
       })
@@ -1313,6 +1311,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (surface?.kind === kind && !surfaceClosing) { closeSurface(); return }
     openSurface({ kind, item: null })
   }
+  // 기능 안내의 '열어 보기'. 창이 닫히는 것을 기다렸다가 탭을 바꾸고, 창(sheet)이 있으면 열고, 없으면 그 요소를 가리킨다.
+  // PC 의 연출 설정은 창이 아니라 미리보기 아래 줄이라 열지 않고 가리키기만 한다.
+  const guideGo = ({ go }: { go?: GuideGo }) => {
+    if (!go) return
+    closeSurface()
+    setTimeout(() => {
+      if (go.tab) setPrimary(go.tab)
+      const sheet = go.sheet && (go.sheet !== 'pv' || bp === 'mobile') ? go.sheet : null
+      if (sheet) { openSurface({ kind: sheet, item: null }); return }
+      if (go.spot) setTimeout(() => guideSpot(go.spot!), 260)
+    }, SURFACE_UNMOUNT_MS + 20)
+  }
   const openDye = (item: ListItem) => openSurface({ kind: 'dye', item })
   const openDot = (item: ListItem) => openSurface({ kind: 'dot', item })
   // 부위 염색 ↔ 염색/점 위치: 다이얼로그는 그대로 두고 본문만 가로 슬라이드(진입 = 왼쪽으로 빠지고 오른쪽에서 들어옴, 이전 = 반대).
@@ -1687,7 +1697,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // id 도 함께 → 백엔드가 그 아이템의 캡션(생김새)을 붙여 "이름"이 아니라 "모습"을 보고 말하게 한다.
       // history(최근 발언) → 같은 코디를 여러 번 눌러도 매번 다른 얘기가 나오게 한다.
       const items = Object.entries(equipped).filter(([, it]) => it).map(([slot, it]) => ({ slot, id: it!.id, name: it!.name || it!.id }))
-      const res = await fetch(`${searchApi()}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone, history: rateHistory.current, recent_slots: rateSlots.current }) })
+      const res = await fetch(`${backApi()}/rate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items, tone, history: rateHistory.current, recent_slots: rateSlots.current }) })
       const data = await res.json()
       // 말은 모델이 짓는다 → 성적·폭력적 표현이 섞여 나오는 경우를 화면에 붙이기 직전에 버린다(lib/safeText).
       // 서버에서도 같은 규칙으로 거르지만 백엔드는 따로 배포되므로, 여기서 한 번 더 본다.
@@ -1881,7 +1891,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
-    openPlazaPost, openNotice, plazaTakeDirect, plazaTakeBack, resolveSnapItems: resolveEquipped,
+    openPlazaPost, openNotice, guideGo, plazaTakeDirect, plazaTakeBack, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,
