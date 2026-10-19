@@ -49,6 +49,9 @@ export function buildVisibility(
   }
   return (slot, z) => {
     if (slot === 'cap') return true // the cap's own layers always show
+    // 형상 변이 부품(호영 귀 · 라라 뿔 · 렌 귀/머리장식)은 몸의 일부라 모자에 가리지 않는다. 자리가 capOverHair 라
+    // 모자 vslot 의 Cp 에 걸려 모자를 쓰면 사라졌다(사용자 제보 — '형상변이와 모자가 병행되지 않는다').
+    if (slot === 'anima') return true
     const codes = parseCodes(smap[z] || '')
     if (!codes.length) return true
     // 자기 부위 코드가 그 z 의 목록에 있으면 그것이 이 레이어의 자리다(공유 z 구분). 없으면 첫 코드.
