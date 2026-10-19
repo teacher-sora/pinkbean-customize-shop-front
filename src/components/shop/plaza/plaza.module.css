@@ -430,7 +430,7 @@
 .ntRowSkel :global(.pb-skel) { display: block; width: 46%; height: 11px; border-radius: 4px; }
 /* 본문은 PC 세 줄 · 휴대폰 두 줄까지(넘치면 말줄임) — 다 읽으려면 연다. PC 는 짧은 글도 세 줄 높이를 잡아 격자 줄이 맞는다 */
 .fbBoxBody { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; min-height: calc(1.55em * 3); overflow: hidden; font-size: 12.5px; line-height: 1.55; color: #3d372f; white-space: pre-line; overflow-wrap: anywhere; word-break: break-word; }
-.fbListM .fbBoxBody { -webkit-line-clamp: 2; min-height: 0; }
+.fbListM .fbBoxBody { -webkit-line-clamp: 2; min-height: calc(1.55em * 2); }
 .fbBoxDel { flex: 0 0 auto; display: flex; }
 .fbBoxFoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 16px; }
 .fbAnswered { margin-right: auto; }
