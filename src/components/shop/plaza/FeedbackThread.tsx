@@ -102,7 +102,7 @@ export function FeedbackComposer({ value, onChange, onSend, busy, ph, label, sen
   )
 }
 
-// 한 줄 높이 = 띠의 버튼 높이(PC 32 · 휴대폰 36 — 하단 탭보다 크지 않다) ~ 네 줄
+// 한 줄 높이 = 띠의 버튼 높이(PC 32 · 휴대폰 36 — 탭과 같은 높이) ~ 네 줄
 const barMin = (mobile: boolean) => (mobile ? 36 : 32)
 export function InputBar({ value, onChange, onSend, busy, ph, label, send = '등록', mobile, max = PLAZA_COMMENT_MAX, enterSend, side, top }: {
   value: string; onChange: (v: string) => void; onSend: () => void; busy: boolean; ph: string; label: string
