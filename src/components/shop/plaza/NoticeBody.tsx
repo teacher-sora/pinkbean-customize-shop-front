@@ -114,7 +114,7 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
         {shown === 'ask' && <Ask mobile={mobile} chat={chat} busy={askBusy} onAsk={ask} onIdea={toIdea} onGo={s.guideGo} />}
       </div>
     </div>
-    <SurfaceFooter onBack={back ?? undefined} />
+    <SurfaceFooter onBack={back ?? undefined} closeToo />
     </>
   )
 }
