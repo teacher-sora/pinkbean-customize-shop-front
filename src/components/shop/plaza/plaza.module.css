@@ -399,11 +399,12 @@
 /* 아래 입력 띠(InputBar): 푸터 바로 위에 붙박인다. 따뜻한 바탕 + 윗줄로 본문과, 흰 푸터와 갈린다. 입력칸은 흰 바탕 */
 .hpBar { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; background: #faf7f3; border-top: 1px solid #f0e9e1; }
 .hpBarRow { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
-.hpBarRow .hpGhost { height: 36px; }
-.hpBarLen { flex: 0 0 auto; width: 48px; line-height: 36px; text-align: right; font-size: 10.5px; color: #b7ada2; font-variant-numeric: tabular-nums; }
+.hpBarRow .hpGhost { height: 32px; }
+.hpBarM .hpGhost, .hpBarM .hpSend { height: 36px; }
+.hpBarLen { flex: 0 0 auto; width: 48px; line-height: 32px; text-align: right; font-size: 10.5px; color: #b7ada2; font-variant-numeric: tabular-nums; }
 .hpBar .hpFound { max-height: 38vh; overflow: hidden auto; overscroll-behavior: contain; background: #fff; }
 .hpBarM { padding: 10px 12px; gap: 8px; }
-.hpInput { flex: 1 1 auto; min-width: 0; height: 36px; padding: 8px 12px; border: 1px solid #e7ded4; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; outline: none; resize: none; overflow: hidden auto; overflow-wrap: anywhere; word-break: break-word; }
+.hpInput { flex: 1 1 auto; min-width: 0; height: 32px; padding: 5px 12px; border: 1px solid #e7ded4; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; outline: none; resize: none; overflow: hidden auto; overflow-wrap: anywhere; word-break: break-word; }
 .hpInputM { font-size: 13px; }
 .hpSend { height: 36px; }
 

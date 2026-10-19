@@ -82,7 +82,8 @@ export function FeedbackComposer({ value, onChange, onSend, busy, ph, label, sen
   )
 }
 
-const BAR_MIN = 36, BAR_MAX = 36 + 19.5 * 3   // 한 줄(36) ~ 네 줄
+// 한 줄 높이 = 띠의 버튼 높이(PC 32 · 휴대폰 36 — 하단 탭보다 크지 않다) ~ 네 줄
+const barMin = (mobile: boolean) => (mobile ? 36 : 32)
 export function InputBar({ value, onChange, onSend, busy, ph, label, send = '등록', mobile, max = PLAZA_COMMENT_MAX, enterSend, side, top }: {
   value: string; onChange: (v: string) => void; onSend: () => void; busy: boolean; ph: string; label: string
   send?: string; mobile: boolean; max?: number; enterSend?: boolean; side?: ReactNode; top?: ReactNode
@@ -92,9 +93,10 @@ export function InputBar({ value, onChange, onSend, busy, ph, label, send = '등
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    el.style.height = `${BAR_MIN}px`
-    el.style.height = `${Math.min(BAR_MAX, Math.max(BAR_MIN, el.scrollHeight + 2))}px`
-  }, [value])
+    const min = barMin(mobile)
+    el.style.height = `${min}px`
+    el.style.height = `${Math.min(min + 19.5 * 3, Math.max(min, el.scrollHeight + 2))}px`
+  }, [value, mobile])
   const t0 = value.trim()
   const can = !!t0 && !busy
   const enter = enterSend ?? !mobile
