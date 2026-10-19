@@ -15,7 +15,7 @@ import {
   opDelete, opLoadFeedback, opLoadThread, opLogin, opReply,
   type FeedbackKind, type FeedbackNode, type FeedbackPost, type OpCred,
 } from '@/lib/plaza'
-import { FeedbackBox, FeedbackComposer, FeedbackPostBody, FeedbackThread } from '@/components/shop/plaza/FeedbackThread'
+import { FeedbackBox, FeedbackBoxSkel, FeedbackComposer, FeedbackPostBody, FeedbackThread } from '@/components/shop/plaza/FeedbackThread'
 import plaza from '@/components/shop/plaza/plaza.module.css'
 import { useInnerSlide } from '@/components/shop/surface/innerSlide'
 import { IconChevronLeft, IconHelpTab } from '@/components/shop/ui/Icons'
@@ -135,16 +135,11 @@ function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
         ))}
       </div>
       <div className={plaza.fbList}>
-        {!shown && [0, 1, 2].map((i) => (
-          <div key={i} className={clsx(plaza.fbBox, plaza.fbBoxSkel)}>
-            <span className="pb-skel" style={{ width: '32%' }} />
-            <span className="pb-skel" style={{ width: '86%' }} />
-          </div>
-        ))}
+        {!shown && [0, 1, 2].map((i) => <FeedbackBoxSkel key={i} />)}
         {shown && !shown.length && <p className={styles.empty}>{filter === 'wait' ? '답을 기다리는 글이 없어요.' : kind === 'idea' ? '건의글이 없어요.' : '오류 보고가 없어요.'}</p>}
         {shown?.map((p) => (
           <div key={p.id} className={clsx(styles.boxWrap, wide && p.id === openId && styles.boxOn)}>
-            <FeedbackBox p={p} onOpen={() => openPost(p)} />
+            <FeedbackBox p={p} onOpen={() => openPost(p)} del={delBtn(p.id, () => { if (p.id === openId) setOpenId(null); void loadKind(kind) })} />
           </div>
         ))}
       </div>

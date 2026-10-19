@@ -22,8 +22,9 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { askGuide, guideById, guideFor, guideOn, type GuideEntry, type GuideReply } from '@/lib/guide'
 import { useShop } from '../ShopContext'
 import { useInnerSlide } from '../surface/innerSlide'
+import { SurfaceFooter } from '../surface/Surface'
 import { IconChevronLeft, IconChevronRight, IconHelpTab, IconTrashSolid } from '../ui/Icons'
-import { FeedbackBox, FeedbackComposer, FeedbackPostBody, FeedbackThread } from './FeedbackThread'
+import { FeedbackBox, FeedbackBoxSkel, FeedbackNodeSkel, FeedbackPostBody, FeedbackThread, InputBar } from './FeedbackThread'
 import styles from './plaza.module.css'
 
 type Tab = 'notice' | 'idea' | 'bug' | 'ask'
@@ -50,6 +51,9 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
   const [drafts, setDrafts] = useState<Record<FeedbackKind, string>>({ idea: '', bug: '' })
   const [chat, setChat] = useState<ChatMsg[]>(chatKeep)
   const [askBusy, setAskBusy] = useState(false)
+  // 푸터의 '이전': 공지 · 글 상세에 들어가 있으면 그 화면이 돌아갈 길을 넘긴다(부위 염색 → 염색과 같은 자리 — 본문에 '목록' 버튼을 두지 않는다)
+  const [back, setBackFn] = useState<(() => void) | null>(null)
+  const setBack = useCallback((fn: (() => void) | null) => setBackFn(() => fn), [])
   useEffect(() => { chatKeep = chat }, [chat])
   useEffect(() => () => { for (const t of timers.current) clearTimeout(t) }, [])
 
@@ -89,26 +93,29 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
   const toIdea = (q: string) => { setDrafts((d) => ({ ...d, idea: q })); go('idea') }
 
   return (
+    <>
     <div className={styles.hp}>
       {/* 탭 넷을 폭 가득 같은 너비로 — 그림 + 낱말. 모바일은 그림 위 낱말(하단 탭과 같은 짜임) */}
       <div role="tablist" aria-label="공지 및 건의함" className={clsx(styles.hpTabs, mobile && styles.hpTabsM)}>
         {TABS.map((t) => (
           <button key={t.v} type="button" role="tab" aria-selected={tab === t.v} onClick={() => go(t.v)} title={t.t}
             className={clsx(styles.hpTab, mobile && styles.hpTabM, tab === t.v && styles.hpTabOn)}>
-            <IconHelpTab tab={t.v} size={mobile ? 17 : 16} /><span>{t.l}</span>
+            <IconHelpTab tab={t.v} size={15} /><span>{t.l}</span>
           </button>
         ))}
       </div>
       <div className={styles.hpSlide} style={{ transform: `translateX(${slide}px)`, opacity: slide ? 0 : 1 }}>
-        {shown === 'notice' && <Notices mobile={mobile} />}
+        {shown === 'notice' && <Notices mobile={mobile} setBack={setBack} />}
         {(shown === 'idea' || shown === 'bug') && (
           <Feedback key={shown} kind={shown} mobile={mobile} notify={s.notify}
             draft={drafts[shown]} setDraft={(v) => setDrafts((d) => ({ ...d, [shown]: v }))}
-            onAsk={() => askFrom(shown)} />
+            onAsk={() => askFrom(shown)} setBack={setBack} />
         )}
         {shown === 'ask' && <Ask mobile={mobile} chat={chat} busy={askBusy} onAsk={ask} onIdea={toIdea} onGo={s.guideGo} />}
       </div>
     </div>
+    <SurfaceFooter onBack={back ?? undefined} />
+    </>
   )
 }
 
@@ -121,26 +128,45 @@ const botText = (m: ChatMsg) => {
   return '목록에 없는 기능'
 }
 
+// 불러오는 중이 잠깐이면 뼈대를 보이지 않는다(번쩍 나타났다 사라지는 깜빡임). 이만큼 넘게 걸릴 때만 뼈대를 그린다
+const SKEL_AFTER_MS = 400
+function useLate(loading: boolean) {
+  const [late, setLate] = useState(false)
+  useEffect(() => {
+    if (!loading) { setLate(false); return }
+    const t = setTimeout(() => setLate(true), SKEL_AFTER_MS)
+    return () => clearTimeout(t)
+  }, [loading])
+  return loading && late
+}
+// 한 번 받은 것은 기억해 두고(창을 닫았다 열거나 탭을 오가도) 바로 보여 준 뒤 새로 받아 바꾼다
+const noticeKeep: { list: PlazaNotice[] | null } = { list: null }
+const fbKeep = new Map<string, { list: FeedbackPost[]; total: number }>()
+
 /* ── 공지 ── */
-function Notices({ mobile }: { mobile: boolean }) {
-  const [notices, setNotices] = useState<PlazaNotice[] | null>(null)
+function Notices({ mobile, setBack }: { mobile: boolean; setBack: (fn: (() => void) | null) => void }) {
+  const [notices, setNotices] = useState<PlazaNotice[] | null>(noticeKeep.list)
+  const skel = useLate(!notices)
   const [failed, setFailed] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   useEffect(() => {
     let alive = true
     loadNotices()
-      .then((l) => { if (!alive) return; setNotices(l); if (l.length === 1) setOpenId(l[0].id) })
+      .then((l) => { noticeKeep.list = l; if (!alive) return; setNotices(l); if (l.length === 1) setOpenId(l[0].id) })
       .catch(() => { if (alive) { setNotices([]); setFailed(true) } })
     return () => { alive = false }
   }, [])
   const open = notices?.find((n) => n.id === openId) || null
+  const many = (notices?.length ?? 0) > 1
+  const shut = useCallback(() => setOpenId(null), [])
+  useEffect(() => { setBack(open && many ? shut : null) }, [open, many, shut, setBack])
+  useEffect(() => () => setBack(null), [setBack])
   return (
     <div className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
       <div className={styles.hpCol}>
-        {!notices && (
-          <div className={styles.cmtSkel}>
-            <span className="pb-skel" style={{ width: '48%' }} />
-            <span className="pb-skel" style={{ width: '72%' }} />
+        {skel && (
+          <div className={styles.ntList} aria-hidden>
+            <div className={clsx(styles.ntRow, styles.ntRowSkel)}><span className="pb-skel" style={{ width: '46%' }} /></div>
           </div>
         )}
         {notices && !notices.length && <p className={styles.cmtEmpty}>{failed ? '공지를 불러오지 못했어요.' : '아직 올라온 공지가 없어요.'}</p>}
@@ -158,7 +184,6 @@ function Notices({ mobile }: { mobile: boolean }) {
         {open && (
           <>
             <div className={styles.ntHead}>
-              {notices!.length > 1 && <button type="button" onClick={() => setOpenId(null)} className={styles.cmtReplyBtn}>목록</button>}
               <span className={styles.ntTitle}>{open.title}</span>
               <span className={styles.ntDate}>{plazaWhen(open.createdAt)}</span>
             </div>
@@ -177,27 +202,31 @@ const FB_TEXT: Record<FeedbackKind, { ph: string; label: string; empty: string; 
   idea: { ph: '있었으면 하는 기능을 적어 주세요', label: '건의', empty: '첫 건의를 남겨 주세요.', done: '건의를 남겼어요' },
   bug: { ph: '어떤 아이템에서 무엇이 이상한지 적어 주세요', label: '오류', empty: '올라온 오류 보고가 없어요.', done: '오류 보고를 남겼어요' },
 }
-function Feedback({ kind, mobile, notify, draft, setDraft, onAsk }: {
+function Feedback({ kind, mobile, notify, draft, setDraft, onAsk, setBack }: {
   kind: FeedbackKind; mobile: boolean; notify: (m: string) => void; draft: string; setDraft: (v: string) => void; onAsk: () => void
+  setBack: (fn: (() => void) | null) => void
 }) {
   const T = FB_TEXT[kind]
   const [page, setPage] = useState(0)
-  const [data, setData] = useState<{ list: FeedbackPost[]; total: number } | null>(null)
+  const [data, setData] = useState<{ list: FeedbackPost[]; total: number } | null>(() => fbKeep.get(`${kind}:0`) ?? null)
+  const skel = useLate(!data)
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   // 건의를 올리기 전 확인: 이미 있는 기능이면 그 기능을 보여 주고, 같은 글로 한 번 더 누르면 그대로 올린다
   const [found, setFound] = useState<{ text: string; ids: string[] } | null>(null)
   const { view, go, style } = useInnerSlide<'list' | 'post'>('list')
   const [post, setPost] = useState<FeedbackPost | null>(null)
-  const headRef = useRef<HTMLDivElement>(null)
+  const headRef = useRef<HTMLDivElement>(null)   // 목록 맨 위(쪽을 넘기면 여기로)
   const listScroll = useRef<HTMLDivElement>(null)
   const keepTop = useRef(0)
   const s = useShop()
 
   const load = useCallback((p: number) => {
     setFailed(false)
+    const kept = fbKeep.get(`${kind}:${p}`)
+    if (kept) setData(kept)   // 쪽을 넘길 때도 기억한 쪽이면 바로(없으면 지금 쪽을 그대로 둔 채 받는다 — 뼈대로 바꾸지 않는다)
     return loadFeedback(kind, p)
-      .then((d) => setData(d))
+      .then((d) => { fbKeep.set(`${kind}:${p}`, d); setData(d) })
       .catch(() => { setData({ list: [], total: 0 }); setFailed(true) })
   }, [kind])
   useEffect(() => { void load(page) }, [load, page])
@@ -208,7 +237,7 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk }: {
   const goPage = (p: number) => {
     if (p < 0 || p >= pages || p === page) return
     setPage(p)
-    // 목록 머리로 — 스크롤 칸만 움직인다(scrollIntoView 는 창 바깥 틀까지 밀어 올린다)
+    // 목록 맨 위로 — 스크롤 칸만 움직인다(scrollIntoView 는 창 바깥 틀까지 밀어 올린다)
     const sc = listScroll.current, h = headRef.current
     if (sc && h) sc.scrollTo({ top: Math.max(0, h.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8), behavior: 'smooth' })
   }
@@ -235,42 +264,31 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk }: {
     setPost(p)
     go('post', 1)
   }
-  const back = () => { go('list', -1); void load(page) }
+  // '이전'은 늘 같은 함수(푸터에 넘긴다) — 안에서 지금의 go · load · page 를 읽는다(go 는 그릴 때마다 새로 생긴다)
+  const latest = useRef({ go, load, page })
+  latest.current = { go, load, page }
+  const back = useCallback(() => { const l = latest.current; l.go('list', -1); void l.load(l.page) }, [])
+  useEffect(() => { setBack(view === 'post' ? back : null) }, [view, back, setBack])
+  useEffect(() => () => setBack(null), [setBack])
+  // 본인 글은 목록에서도 지운다(두 번 누르기). 댓글이 달린 글은 자리만 남는다(DB)
+  const removeBox = (p: FeedbackPost) => {
+    if (!confirmTwice(`ntc:${p.id}`, '한 번 더 누르면 글을 지워요')) return
+    deleteFeedback(p.id).then(() => { notify('글을 지웠어요'); void load(page) }).catch(() => notify('글을 지우지 못했어요'))
+  }
   const hit = found && found.text === text0 ? found.ids.map((id) => guideById.get(id)).filter((g): g is GuideEntry => !!g) : []
 
   return (
     <div className={styles.hpSlide} style={style}>
       {view === 'post' && post ? (
-        <FeedbackDetail key={post.id} post={post} label={T.label} mobile={mobile} notify={notify} onBack={back}
-          onGone={() => { go('list', -1); void load(page) }} />
+        <FeedbackDetail key={post.id} post={post} mobile={mobile} notify={notify} onGone={back} />
       ) : (
+        <>
         <div ref={listScroll} className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
           <div className={styles.hpCol}>
-            <FeedbackComposer value={draft} onChange={setDraft} onSend={send} busy={busy} ph={T.ph} label={`${T.label} 입력`} mobile={mobile}
-              send={hit.length ? '그래도 등록' : '등록'}
-              side={(
-                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onAsk} disabled={!text0}
-                  title={text0 ? '쓴 글로 기능 안내에 물어보기' : '물어볼 내용을 먼저 적어 주세요'} className={clsx('pb-ghost', styles.hpGhost)}>질문하기</button>
-              )} />
-            {hit.length > 0 && (
-              <div className={styles.hpFound}>
-                <p className={styles.hpFoundHead}>이미 있는 기능 같아요</p>
-                {hit.map((g) => <GuideCard key={g.id} g={g} onGo={s.guideGo} />)}
-              </div>
-            )}
-            <div ref={headRef} className={styles.cmtHead}>
-              <span className={styles.descLabel}>{T.label}</span>
-              {data && <span className={styles.cmtCount}>{data.total}</span>}
-            </div>
-            <div className={styles.fbList}>
-              {!data && [0, 1, 2].map((i) => (
-                <div key={i} className={clsx(styles.fbBox, styles.fbBoxSkel)}>
-                  <span className="pb-skel" style={{ width: '32%' }} />
-                  <span className="pb-skel" style={{ width: '86%' }} />
-                </div>
-              ))}
+            <div ref={headRef} className={clsx(styles.fbList, mobile && styles.fbListM)}>
+              {skel && [0, 1, 2, 3, 4, 5].slice(0, mobile ? 4 : 6).map((i) => <FeedbackBoxSkel key={i} />)}
               {data && !data.list.length && <p className={styles.cmtEmpty}>{failed ? '글을 불러오지 못했어요.' : T.empty}</p>}
-              {data?.list.map((p) => <FeedbackBox key={p.id} p={p} onOpen={() => open(p)} />)}
+              {data?.list.map((p) => <FeedbackBox key={p.id} p={p} onOpen={() => open(p)} del={p.mine ? delButton(p.id, () => removeBox(p)) : undefined} />)}
             </div>
             {pages > 1 && (
               <div className={styles.ntPager}>
@@ -283,17 +301,39 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk }: {
             )}
           </div>
         </div>
+        <InputBar value={draft} onChange={setDraft} onSend={send} busy={busy} ph={T.ph} label={`${T.label} 입력`} mobile={mobile}
+          send={hit.length ? '그래도 등록' : '등록'}
+          top={hit.length > 0 && (
+            <div className={clsx('pb-scroll', styles.hpFound)}>
+              <p className={styles.hpFoundHead}>이미 있는 기능 같아요</p>
+              {hit.map((g) => <GuideCard key={g.id} g={g} onGo={s.guideGo} />)}
+            </div>
+          )}
+          side={(
+            <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onAsk} disabled={!text0}
+              title={text0 ? '쓴 글로 기능 안내에 물어보기' : '물어볼 내용을 먼저 적어 주세요'} className={clsx('pb-ghost', styles.hpGhost)}>질문하기</button>
+          )} />
+        </>
       )}
     </div>
   )
 }
 
-// 글 하나: 맨 위에 '목록' + 글 본문, 그 아래 댓글 입력칸과 댓글 · 답글 나무
-function FeedbackDetail({ post: post0, label, mobile, notify, onBack, onGone }: {
-  post: FeedbackPost; label: string; mobile: boolean; notify: (m: string) => void; onBack: () => void; onGone: () => void
+// 지우기 버튼(두 번 누르기) — 목록 상자 · 상세가 함께 쓴다
+const delButton = (id: string, onClick: () => void) => (
+  <button type="button" onClick={onClick} {...{ [CONFIRM_ATTR]: `ntc:${id}` }} title="글 지우기 (두 번 누르기)" aria-label="글 지우기" className={styles.cmtDel}>
+    <IconTrashSolid />
+  </button>
+)
+
+// 글 하나: 글 → 줄 → 댓글 · 답글 나무. 두 덩어리는 줄과 넓은 간격으로 가른다(안은 좁게).
+// 댓글 쓰기는 아래 띠(InputBar), 돌아가기는 푸터의 '이전'(NoticeBody)이다.
+function FeedbackDetail({ post: post0, mobile, notify, onGone }: {
+  post: FeedbackPost; mobile: boolean; notify: (m: string) => void; onGone: () => void
 }) {
   const [post, setPost] = useState(post0)
   const [nodes, setNodes] = useState<FeedbackNode[] | null>(null)
+  const skel = useLate(!nodes)
   const [failed, setFailed] = useState(false)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -301,7 +341,6 @@ function FeedbackDetail({ post: post0, label, mobile, notify, onBack, onGone }: 
     .then((l) => { setNodes(l); setFailed(false) })
     .catch(() => { setNodes((n) => n ?? []); setFailed(true) }), [post0.id])
   useEffect(() => { void load() }, [load])
-  const count = (l: FeedbackNode[]): number => l.reduce((a, n) => a + (n.deleted ? 0 : 1) + count(n.children), 0)
 
   const reply = (parentId: string, body: string) => addFeedback('idea', body, parentId)
     .then(() => load().then(() => true))
@@ -321,40 +360,23 @@ function FeedbackDetail({ post: post0, label, mobile, notify, onBack, onGone }: 
       .then(() => { notify('글을 지웠어요'); if (had) setPost((p) => ({ ...p, deleted: true, body: '' })); else onGone() })
       .catch(() => notify('글을 지우지 못했어요'))
   }
-  const delBtn = (id: string, onClick: () => void) => (
-    <button type="button" onClick={onClick} {...{ [CONFIRM_ATTR]: `ntc:${id}` }} title="글 지우기 (두 번 누르기)" aria-label="글 지우기" className={styles.cmtDel}>
-      <IconTrashSolid />
-    </button>
-  )
-  const n = nodes ? count(nodes) : null
 
   return (
+    <>
     <div className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
-      <div className={styles.hpCol}>
-        <div className={styles.fbTop}>
-          <button type="button" onClick={onBack} className={clsx('pb-ghost', styles.hpGhost, styles.fbBack)}><IconChevronLeft />목록</button>
-          <span className={styles.fbTopLabel}>{label}</span>
-        </div>
-        <FeedbackPostBody p={post} del={post.mine ? delBtn(post.id, removePost) : undefined} />
-        <div className={styles.cmtHead}>
-          <span className={styles.descLabel}>댓글</span>
-          {n != null && <span className={styles.cmtCount}>{n}</span>}
-        </div>
-        {!post.deleted && (
-          <FeedbackComposer value={text} onChange={setText} onSend={sendTop} busy={busy} ph="댓글을 남겨 주세요" label="댓글 입력" mobile={mobile} />
-        )}
-        {!nodes && (
-          <div className={styles.cmtSkel}>
-            <span className="pb-skel" style={{ width: '48%' }} />
-            <span className="pb-skel" style={{ width: '80%' }} />
-          </div>
-        )}
-        {nodes && !nodes.length && <p className={styles.cmtEmpty}>{failed ? '댓글을 불러오지 못했어요.' : '아직 댓글이 없어요.'}</p>}
-        {nodes && nodes.length > 0 && (
-          <FeedbackThread nodes={nodes} mobile={mobile} canDelete={(x) => x.mine} del={(x) => delBtn(x.id, () => removeNode(x))} onReply={reply} />
-        )}
+      <div className={clsx(styles.hpCol, styles.fbDetail)}>
+        <FeedbackPostBody p={post} del={post.mine ? delButton(post.id, removePost) : undefined} />
+        <section className={styles.fbSec} aria-label="댓글">
+          {skel && <FeedbackNodeSkel />}
+          {nodes && !nodes.length && <p className={styles.cmtEmpty}>{failed ? '댓글을 불러오지 못했어요.' : '아직 댓글이 없어요.'}</p>}
+          {nodes && nodes.length > 0 && (
+            <FeedbackThread nodes={nodes} mobile={mobile} canDelete={(x) => x.mine} del={(x) => delButton(x.id, () => removeNode(x))} onReply={reply} />
+          )}
+        </section>
       </div>
     </div>
+    {!post.deleted && <InputBar value={text} onChange={setText} onSend={sendTop} busy={busy} ph="댓글을 남겨 주세요" label="댓글 입력" mobile={mobile} />}
+    </>
   )
 }
 
@@ -366,10 +388,7 @@ function GuideCard({ g: g0, onGo }: { g: GuideEntry; onGo: (g: GuideEntry) => vo
   const g = guideFor(g0, mobile)
   return (
     <div className={styles.hpCard}>
-      <div className={styles.hpCardHead}>
-        <span className={styles.hpCardTitle}>{g.title}</span>
-        <span className={styles.hpCardWhere}>{g.where}</span>
-      </div>
+      <span className={styles.hpCardTitle}>{g.title}</span>
       <p className={styles.hpCardHow}>{g.how}</p>
       {g.go && <button type="button" onClick={() => onGo(g)} className={clsx('pb-ghost', styles.hpGhost, styles.hpCardGo)}>열어 보기</button>}
     </div>
@@ -385,17 +404,15 @@ function Ask({ mobile, chat, busy, onAsk, onIdea, onGo }: {
   const logRef = useRef<HTMLDivElement>(null)
   // 새 말이 오면 맨 아래로
   useEffect(() => { const el = logRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: chat.length > 2 ? 'smooth' : 'auto' }) }, [chat])
-  const t0 = text.trim()
-  const can = !!t0 && !busy
-  const send = () => { if (!can) return; onAsk(t0); setText('') }
+  const send = () => { const t0 = text.trim(); if (!t0 || busy) return; onAsk(t0); setText('') }
   return (
     <div className={styles.hpAsk}>
       <div ref={logRef} className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
         <div className={clsx(styles.hpCol, styles.hpLog)}>
           {!chat.length && (
             <div className={styles.hpIntro}>
-              <p className={styles.hpIntroTitle}>무엇이든 물어보세요</p>
-              <p className={styles.cmtEmpty}>기능이 어디 있는지 찾아 드려요.</p>
+              <p className={styles.hpIntroTitle}>궁금한 기능을 물어보세요</p>
+              <p className={styles.cmtEmpty}>어디 있는지 알려 드려요.</p>
               <div className={styles.hpStarters}>
                 {STARTERS.map((q) => <button key={q} type="button" onClick={() => onAsk(q)} disabled={busy} className={clsx('pb-soft', styles.hpStarter)}>{q}</button>)}
               </div>
@@ -406,14 +423,8 @@ function Ask({ mobile, chat, busy, onAsk, onIdea, onGo }: {
             : <BotMsg key={m.id} m={m} q={chat[i - 1]?.text || ''} onIdea={onIdea} onGo={onGo} />))}
         </div>
       </div>
-      <div className={clsx(styles.hpBar, mobile && styles.hpBarM)}>
-        <input value={text} maxLength={300} onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send() } }}
-          placeholder="궁금한 기능을 물어보세요" aria-label="질문 입력"
-          className={clsx('pb-input', styles.hpInput, mobile && styles.hpInputM)} />
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={send} disabled={!can}
-          title={t0 ? undefined : '물어볼 내용을 먼저 적어 주세요'} className={clsx(styles.cmtSend, styles.hpSend, !can && styles.cmtSendOff)}>보내기</button>
-      </div>
+      <InputBar value={text} onChange={setText} onSend={send} busy={busy} ph="궁금한 기능을 물어보세요" label="질문 입력" mobile={mobile}
+        max={300} enterSend send="보내기" />
     </div>
   )
 }
@@ -436,10 +447,10 @@ function BotMsg({ m, q, onIdea, onGo }: { m: ChatMsg; q: string; onIdea: (q: str
   if (r?.kind === 'none') {
     return (
       <div className={clsx(styles.hpBot, styles.hpBotNone)}>
-        <p className={styles.hpBotText}>아직 없는 기능 같아요. 건의로 남겨 주시면 살펴볼게요.</p>
+        <p className={styles.hpBotText}>{'아직 없는 기능이에요.\n건의로 남겨 주세요.'}</p>
         <button type="button" onClick={() => onIdea(q)} className={clsx('pb-ghost', styles.hpGhost)}>건의로 남기기</button>
       </div>
     )
   }
-  return <p className={clsx(styles.hpBot, styles.hpBotText)}>지금은 답하지 못했어요. 잠시 후 다시 물어봐 주세요.</p>
+  return <p className={clsx(styles.hpBot, styles.hpBotText)}>{'지금은 답하지 못했어요.\n잠시 뒤 다시 물어봐 주세요.'}</p>
 }

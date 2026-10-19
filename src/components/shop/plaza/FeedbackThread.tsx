@@ -1,15 +1,19 @@
 'use client'
 
 // 건의 · 오류 글의 부품 — 공지 및 건의함(NoticeBody)과 운영자 화면(/suggestion)이 함께 쓴다.
-//  · FeedbackBox  = 목록의 글 하나(상자). 누르면 상세로 간다. 본문 두 줄, 댓글 수, 운영자 답변 여부.
+//  · FeedbackBox  = 목록의 글 하나(상자, 격자로 늘어선다). 누르면 상세로 간다. 본문은 몇 줄만(넘치면 말줄임), 댓글 수, 운영자 답변 여부.
+//    본인 글은 상자에서 바로 지운다(del). 상자 안에 버튼이 있어 상자는 button 이 아니라 role=button 이다.
 //  · FeedbackPost = 상세 맨 위의 글 본문.
 //  · FeedbackThread = 댓글 · 답글 나무. depth 1 = 글에 단 댓글, 2 · 3 = 답글(댓글부터 세 단까지).
 //    가장 깊은 단에는 '답글'이 없다(DB 트리거도 막는다). 답글 묶음의 왼쪽 줄은 깊이마다 진해진다(--fb-line 을 인라인으로).
 //    답글 칸은 한 번에 하나만 열린다. 지운 글은 답글이 달려 있을 때만 자리가 남는다('지운 글이에요').
-//  · FeedbackComposer = 글 · 댓글 · 답글 입력칸(글자 수 + 버튼). PC 는 Enter 로 보낸다(Shift+Enter 줄바꿈).
+//  · FeedbackComposer = 답글 입력칸(나무 안에 펼친다, 운영자 화면의 댓글 칸). PC 는 Enter 로 보낸다(Shift+Enter 줄바꿈).
+//  · InputBar = 창 아래, 푸터 바로 위에 붙박인 입력 띠. 건의 · 오류 글쓰기, 상세의 댓글 쓰기, 질문이 모두 이것이다 —
+//    목록을 아래위로 보는 중에도 언제든 쓸 수 있게(사용자 지시). 띠는 따뜻한 바탕 + 윗줄로 본문 · 푸터와 갈린다.
+//    입력칸은 한 줄에서 시작해 네 줄까지 늘고, 그 뒤로는 칸 안이 스크롤된다.
 
 import clsx from 'clsx'
-import { useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { FEEDBACK_DEPTH, PLAZA_COMMENT_MAX, plazaAlias, plazaWhen, type FeedbackNode, type FeedbackPost } from '@/lib/plaza'
 import { IconBubble } from '../ui/Icons'
 import styles from './plaza.module.css'
@@ -30,16 +34,38 @@ function WhoLine({ n, time, del }: { n: Who; time: string; del?: ReactNode }) {
   )
 }
 
-export function FeedbackBox({ p, onOpen }: { p: FeedbackPost; onOpen: () => void }) {
+export function FeedbackBox({ p, onOpen, del }: { p: FeedbackPost; onOpen: () => void; del?: ReactNode }) {
   return (
-    <button type="button" onClick={onOpen} className={styles.fbBox}>
-      <WhoLine n={p} time={p.createdAt} />
+    <div role="button" tabIndex={0} onClick={onOpen} aria-label="글 열기"
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen() } }}
+      className={styles.fbBox}>
+      <WhoLine n={p} time={p.createdAt} del={p.deleted || !del ? undefined : <span onClick={(e) => e.stopPropagation()} className={styles.fbBoxDel}>{del}</span>} />
       <span className={clsx(styles.fbBoxBody, p.deleted && styles.fbGone)}>{p.deleted ? '지운 글이에요' : p.body}</span>
       <span className={styles.fbBoxFoot}>
         {p.answered && <span className={clsx(styles.cmtChip, styles.fbAnswered)}>운영자 답변</span>}
         <span className={clsx(styles.fbCount, p.count > 0 && styles.fbCountOn)} aria-label={`댓글 ${p.count}개`}><IconBubble />{p.count}</span>
       </span>
-    </button>
+    </div>
+  )
+}
+
+// 뼈대: 진짜 상자 · 댓글과 **같은 짜임 · 같은 칸**(이름 줄, 본문 줄 수, 아래 줄)이라 받아도 크기가 바뀌지 않는다.
+// 본문 칸은 진짜와 같은 클래스(줄 수 · 최소 높이)를 쓰고, 막대는 글자 한 줄 높이에 맞춘다
+export function FeedbackBoxSkel() {
+  return (
+    <div aria-hidden className={clsx(styles.fbBox, styles.fbSkel)}>
+      <span className={styles.cmtMeta}><span className={clsx('pb-skel', styles.skWho)} /></span>
+      <span className={clsx(styles.fbBoxBody, styles.skBody)}><span className="pb-skel" style={{ width: '88%' }} /><span className="pb-skel" style={{ width: '56%' }} /></span>
+      <span className={styles.fbBoxFoot}><span className={clsx('pb-skel', styles.skCount)} /></span>
+    </div>
+  )
+}
+export function FeedbackNodeSkel() {
+  return (
+    <div aria-hidden className={clsx(styles.fbNode, styles.fbSkel)}>
+      <span className={styles.cmtMeta}><span className={clsx('pb-skel', styles.skWho)} /></span>
+      <span className={clsx(styles.cmtBody, styles.skBody)}><span className="pb-skel" style={{ width: '64%' }} /></span>
+    </div>
   )
 }
 
@@ -71,6 +97,40 @@ export function FeedbackComposer({ value, onChange, onSend, busy, ph, label, sen
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { if (can) onSend() }} disabled={!can}
             title={t0 ? undefined : '내용을 먼저 적어 주세요'} className={clsx(styles.cmtSend, !can && styles.cmtSendOff)}>{send}</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// 한 줄 높이 = 띠의 버튼 높이(PC 32 · 휴대폰 36 — 하단 탭보다 크지 않다) ~ 네 줄
+const barMin = (mobile: boolean) => (mobile ? 36 : 32)
+export function InputBar({ value, onChange, onSend, busy, ph, label, send = '등록', mobile, max = PLAZA_COMMENT_MAX, enterSend, side, top }: {
+  value: string; onChange: (v: string) => void; onSend: () => void; busy: boolean; ph: string; label: string
+  send?: string; mobile: boolean; max?: number; enterSend?: boolean; side?: ReactNode; top?: ReactNode
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  // 쓴 만큼 늘린다(네 줄까지). 높이는 한 번에 바뀐다 — 전환하지 않는다
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const min = barMin(mobile)
+    el.style.height = `${min}px`
+    el.style.height = `${Math.min(min + 19.5 * 3, Math.max(min, el.scrollHeight + 2))}px`
+  }, [value, mobile])
+  const t0 = value.trim()
+  const can = !!t0 && !busy
+  const enter = enterSend ?? !mobile
+  return (
+    <div className={clsx(styles.hpBar, mobile && styles.hpBarM)}>
+      {top}
+      <div className={styles.hpBarRow}>
+        <textarea ref={ref} rows={1} value={value} maxLength={max} onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => { if (enter && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (can) onSend() } }}
+          placeholder={ph} aria-label={label} className={clsx('pb-input', 'pb-scroll', styles.hpInput, mobile && styles.hpInputM)} />
+        {!mobile && <span className={styles.hpBarLen}>{value.length}/{max}</span>}
+        {side}
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { if (can) onSend() }} disabled={!can}
+          title={t0 ? undefined : '내용을 먼저 적어 주세요'} className={clsx(styles.cmtSend, styles.hpSend, !can && styles.cmtSendOff)}>{send}</button>
       </div>
     </div>
   )

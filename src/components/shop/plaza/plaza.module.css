@@ -348,11 +348,14 @@
 
 /* ── 공지 및 건의함(NoticeBody): 탭 넷 + 가로로 미끄러지는 본문 ── */
 .hp { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* 탭 넷: 폭 가득 같은 너비. 고른 탭은 테두리 + 바탕 + 글자색이 함께 바뀐다(버튼이라 뜨지 않는다). 모바일은 그림 위 낱말 */
-.hpTabs { flex: 0 0 auto; padding: 12px 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; border-bottom: 1px solid #f0e9e1; }
+/* 탭 넷: 폭 가득 같은 너비, 높이는 PC 하단 탭과 같은 32(창 안의 버튼은 하단 탭보다 크지 않다). 고른 탭은 테두리 + 바탕 + 글자색이 함께 바뀐다.
+   아래 줄은 양 끝을 본문 여백만큼 띄워(닫히지 않은 줄) 탭과 아래 본문이 한 덩어리로 읽힌다 */
+.hpTabs { flex: 0 0 auto; position: relative; padding: 12px 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.hpTabs::after { content: ''; position: absolute; left: 16px; right: 16px; bottom: 0; height: 1px; background: #f0e9e1; }
 .hpTabsM { padding: 10px 12px; gap: 6px; }
-.hpTab { min-width: 0; height: 42px; padding: 0 8px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-family: inherit; font-size: 13px; font-weight: 500; color: #8a8075; white-space: nowrap; cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
-.hpTabM { height: 50px; flex-direction: column; gap: 3px; padding: 0 4px; font-size: 11.5px; }
+.hpTabsM::after { left: 12px; right: 12px; }
+.hpTab { min-width: 0; height: 32px; padding: 0 8px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #eee6dc; border-radius: 6px; background: #fff; font-family: inherit; font-size: 13px; font-weight: 500; color: #8a8075; white-space: nowrap; cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
+.hpTabM { padding: 0 4px; gap: 5px; font-size: 12.5px; }
 .hpTabOn { border-color: #ec86ac; background: #fdf4f8; color: #d76d9a; font-weight: 600; }
 /* 움직임은 서피스의 본문 슬라이드(surface.module.css .slide)와 같다 */
 .hpSlide { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
@@ -375,10 +378,8 @@
 .hpFoundHead { margin: 0; font-size: 12px; font-weight: 600; color: #d76d9a; }
 /* 기능 하나(lib/guide 에 적힌 글 그대로) */
 .hpCard { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; min-width: 0; }
-.hpCardHead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
 .hpCardTitle { font-size: 13px; font-weight: 600; color: #2a2521; }
-.hpCardWhere { font-size: 11px; color: #a89e93; }
-.hpCardHow { margin: 0; font-size: 12.5px; line-height: 1.6; color: #5c534b; word-break: keep-all; overflow-wrap: anywhere; }
+.hpCardHow { margin: 0; font-size: 12.5px; line-height: 1.6; color: #5c534b; word-break: keep-all; overflow-wrap: anywhere; white-space: pre-line; }
 .hpCardGo { align-self: flex-start; margin-top: 2px; }
 /* 질문: 대화 칸 + 아래 입력 줄 */
 .hpAsk { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -389,40 +390,58 @@
 .hpStarter { height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 6px; background: #f4ecf3; font-family: inherit; font-size: 12px; font-weight: 500; color: #8a8075; cursor: pointer; transition: background-color .24s ease, color .22s ease; }
 .hpMe { align-self: flex-end; max-width: 80%; margin: 0; padding: 8px 12px; border: 1px solid #f8e0ea; border-radius: 8px; background: #fdf1f6; font-size: 12.5px; line-height: 1.55; color: #3d372f; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 .hpBot { align-self: flex-start; width: min(100%, 520px); display: flex; flex-direction: column; gap: 8px; }
-.hpBotText { width: auto; margin: 0; padding: 8px 12px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-size: 12.5px; line-height: 1.55; color: #5c534b; overflow-wrap: anywhere; word-break: keep-all; }
+.hpBotText { width: auto; margin: 0; padding: 8px 12px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-size: 12.5px; line-height: 1.55; color: #5c534b; overflow-wrap: anywhere; word-break: keep-all; white-space: pre-line; }
 .hpBotNone { padding: 12px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; }
 .hpBotNone .hpBotText { padding: 0; border: none; }
 .hpBotNone .hpGhost { align-self: flex-start; }
-.hpBar { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px; border-top: 1px solid #f0e9e1; }
-.hpBarM { padding: 8px 12px; }
-.hpInput { flex: 1 1 auto; min-width: 0; height: 36px; padding: 8px 12px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 12.5px; color: #3d372f; outline: none; }
-.hpInputM { font-size: 13px; }
-.hpSend { height: 36px; }
+/* 아래 입력 띠(InputBar): 푸터 바로 위에 붙박인다. 따뜻한 바탕 + 윗줄로 본문과, 흰 푸터와 갈린다. 입력칸은 흰 바탕 */
+.hpBar { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; background: #faf7f3; border-top: 1px solid #f0e9e1; }
+.hpBarRow { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+.hpBarRow .hpGhost { height: 32px; }
+.hpBarM .hpGhost, .hpBarM .hpSend { height: 36px; }
+.hpBarLen { flex: 0 0 auto; width: 48px; line-height: 32px; text-align: right; font-size: 10.5px; color: #b7ada2; font-variant-numeric: tabular-nums; }
+.hpBar .hpFound { max-height: 38vh; overflow: hidden auto; overscroll-behavior: contain; background: #fff; }
+.hpBarM { padding: 10px 12px; gap: 8px; }
+.hpInput { flex: 1 1 auto; min-width: 0; height: 32px; padding: 5px 12px; border: 1px solid #e7ded4; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; outline: none; resize: none; overflow: hidden auto; overflow-wrap: anywhere; word-break: break-word; }
+.hpInputM { height: 36px; padding: 7px 12px; font-size: 13px; }
+.hpSend { height: 32px; }
 
 /* 탭 hover(마우스만) */
 @media (hover: hover) and (pointer: fine) {
   .hpTab:not(.hpTabOn):hover { border-color: #f4cfdf; color: #5c534b; }
   .fbBox:hover { border-color: #ec86ac; background: #fef8fa; }
-  .fbBack:hover { border-color: #ec86ac; color: #d76d9a; }
 }
 
 /* ── 건의 · 오류: 글 상자 목록 → 상세(글 + 댓글 · 답글 나무, FeedbackThread) ── */
-.fbList { display: flex; flex-direction: column; gap: 8px; }
-.fbBox { width: 100%; min-width: 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-family: inherit; text-align: left; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
-.fbBoxSkel { cursor: default; gap: 9px; }
-.fbBoxSkel span { display: block; height: 11px; border-radius: 4px; }
-/* 본문은 두 줄까지(넘치면 말줄임) — 다 읽으려면 연다 */
-.fbBoxBody { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12.5px; line-height: 1.55; color: #3d372f; white-space: pre-line; overflow-wrap: anywhere; word-break: break-word; }
+/* 목록은 격자: PC 는 칸 폭 240 이상으로 채워 셋 안팎, 휴대폰은 한 줄에 하나. 본문 줄 수를 묶어 한 줄의 상자 높이가 같다 */
+.fbList { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.fbListM { grid-template-columns: minmax(0, 1fr); }
+.fbList > p { grid-column: 1 / -1; }
+.fbBox { width: 100%; min-width: 0; padding: 12px 14px; outline-offset: 2px; display: flex; flex-direction: column; gap: 6px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-family: inherit; text-align: left; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
+/* 뼈대(FeedbackBoxSkel, FeedbackNodeSkel): 진짜와 같은 칸. 막대(11px)는 글자 한 줄 높이 안 가운데에 둔다 */
+.fbSkel { cursor: default; }
+.fbBox .cmtMeta { min-height: 20px; } /* 지우기 버튼(20)이 있든 없든 상자 높이가 같다 */
+.skWho { display: block; width: 38%; height: 11px; border-radius: 4px; }
+.skBody.skBody { display: flex; flex-direction: column; }
+.skBody :global(.pb-skel), .skCount { display: block; height: 11px; border-radius: 4px; }
+.skBody :global(.pb-skel) { margin: calc((1.55em - 11px) / 2) 0; }
+.skCount { width: 24px; }
+.ntRowSkel { cursor: default; }
+.ntRowSkel :global(.pb-skel) { display: block; width: 46%; height: 11px; border-radius: 4px; }
+/* 본문은 PC 세 줄 · 휴대폰 두 줄까지(넘치면 말줄임) — 다 읽으려면 연다. PC 는 짧은 글도 세 줄 높이를 잡아 격자 줄이 맞는다 */
+.fbBoxBody { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; min-height: calc(1.55em * 3); overflow: hidden; font-size: 12.5px; line-height: 1.55; color: #3d372f; white-space: pre-line; overflow-wrap: anywhere; word-break: break-word; }
+.fbListM .fbBoxBody { -webkit-line-clamp: 2; min-height: 0; }
+.fbBoxDel { flex: 0 0 auto; display: flex; }
 .fbBoxFoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 16px; }
 .fbAnswered { margin-right: auto; }
 .fbCount { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: #c3b9ad; font-variant-numeric: tabular-nums; }
 .fbCountOn { color: #8a8075; }
 .fbGone { color: #b7ada2; }
-.fbTop { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.fbBack { display: flex; align-items: center; gap: 2px; padding: 0 10px 0 6px; }
-.fbTopLabel { font-size: 12px; font-weight: 600; color: #a89e93; }
 .fbPost { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #eee6dc; border-radius: 8px; background: #faf7f3; min-width: 0; }
 .fbPostText { margin: 0; font-size: 13px; line-height: 1.6; color: #2a2521; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+/* 상세: 글 | 댓글 · 답글 | 댓글 쓰기 — 덩어리 사이는 줄 + 넓은 간격(20), 덩어리 안은 좁게 */
+.fbDetail { gap: 0; }
+.fbSec { margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0e9e1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .fbThread { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .fbNode { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .fbReplyOn { color: #d76d9a; }
