@@ -49,6 +49,26 @@ export function FeedbackBox({ p, onOpen, del }: { p: FeedbackPost; onOpen: () =>
   )
 }
 
+// 뼈대: 진짜 상자 · 댓글과 **같은 짜임 · 같은 칸**(이름 줄, 본문 줄 수, 아래 줄)이라 받아도 크기가 바뀌지 않는다.
+// 본문 칸은 진짜와 같은 클래스(줄 수 · 최소 높이)를 쓰고, 막대는 글자 한 줄 높이에 맞춘다
+export function FeedbackBoxSkel() {
+  return (
+    <div aria-hidden className={clsx(styles.fbBox, styles.fbSkel)}>
+      <span className={styles.cmtMeta}><span className={clsx('pb-skel', styles.skWho)} /></span>
+      <span className={clsx(styles.fbBoxBody, styles.skBody)}><span className="pb-skel" style={{ width: '88%' }} /><span className="pb-skel" style={{ width: '56%' }} /></span>
+      <span className={styles.fbBoxFoot}><span className={clsx('pb-skel', styles.skCount)} /></span>
+    </div>
+  )
+}
+export function FeedbackNodeSkel() {
+  return (
+    <div aria-hidden className={clsx(styles.fbNode, styles.fbSkel)}>
+      <span className={styles.cmtMeta}><span className={clsx('pb-skel', styles.skWho)} /></span>
+      <span className={clsx(styles.cmtBody, styles.skBody)}><span className="pb-skel" style={{ width: '64%' }} /></span>
+    </div>
+  )
+}
+
 export function FeedbackPostBody({ p, del }: { p: FeedbackPost; del?: ReactNode }) {
   return (
     <div className={styles.fbPost}>

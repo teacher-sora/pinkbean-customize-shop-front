@@ -24,7 +24,7 @@ import { useShop } from '../ShopContext'
 import { useInnerSlide } from '../surface/innerSlide'
 import { SurfaceFooter } from '../surface/Surface'
 import { IconChevronLeft, IconChevronRight, IconHelpTab, IconTrashSolid } from '../ui/Icons'
-import { FeedbackBox, FeedbackPostBody, FeedbackThread, InputBar } from './FeedbackThread'
+import { FeedbackBox, FeedbackBoxSkel, FeedbackNodeSkel, FeedbackPostBody, FeedbackThread, InputBar } from './FeedbackThread'
 import styles from './plaza.module.css'
 
 type Tab = 'notice' | 'idea' | 'bug' | 'ask'
@@ -128,15 +128,31 @@ const botText = (m: ChatMsg) => {
   return '목록에 없는 기능'
 }
 
+// 불러오는 중이 잠깐이면 뼈대를 보이지 않는다(번쩍 나타났다 사라지는 깜빡임). 이만큼 넘게 걸릴 때만 뼈대를 그린다
+const SKEL_AFTER_MS = 400
+function useLate(loading: boolean) {
+  const [late, setLate] = useState(false)
+  useEffect(() => {
+    if (!loading) { setLate(false); return }
+    const t = setTimeout(() => setLate(true), SKEL_AFTER_MS)
+    return () => clearTimeout(t)
+  }, [loading])
+  return loading && late
+}
+// 한 번 받은 것은 기억해 두고(창을 닫았다 열거나 탭을 오가도) 바로 보여 준 뒤 새로 받아 바꾼다
+const noticeKeep: { list: PlazaNotice[] | null } = { list: null }
+const fbKeep = new Map<string, { list: FeedbackPost[]; total: number }>()
+
 /* ── 공지 ── */
 function Notices({ mobile, setBack }: { mobile: boolean; setBack: (fn: (() => void) | null) => void }) {
-  const [notices, setNotices] = useState<PlazaNotice[] | null>(null)
+  const [notices, setNotices] = useState<PlazaNotice[] | null>(noticeKeep.list)
+  const skel = useLate(!notices)
   const [failed, setFailed] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   useEffect(() => {
     let alive = true
     loadNotices()
-      .then((l) => { if (!alive) return; setNotices(l); if (l.length === 1) setOpenId(l[0].id) })
+      .then((l) => { noticeKeep.list = l; if (!alive) return; setNotices(l); if (l.length === 1) setOpenId(l[0].id) })
       .catch(() => { if (alive) { setNotices([]); setFailed(true) } })
     return () => { alive = false }
   }, [])
@@ -148,10 +164,9 @@ function Notices({ mobile, setBack }: { mobile: boolean; setBack: (fn: (() => vo
   return (
     <div className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
       <div className={styles.hpCol}>
-        {!notices && (
-          <div className={styles.cmtSkel}>
-            <span className="pb-skel" style={{ width: '48%' }} />
-            <span className="pb-skel" style={{ width: '72%' }} />
+        {skel && (
+          <div className={styles.ntList} aria-hidden>
+            <div className={clsx(styles.ntRow, styles.ntRowSkel)}><span className="pb-skel" style={{ width: '46%' }} /></div>
           </div>
         )}
         {notices && !notices.length && <p className={styles.cmtEmpty}>{failed ? '공지를 불러오지 못했어요.' : '아직 올라온 공지가 없어요.'}</p>}
@@ -193,7 +208,8 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk, setBack }: {
 }) {
   const T = FB_TEXT[kind]
   const [page, setPage] = useState(0)
-  const [data, setData] = useState<{ list: FeedbackPost[]; total: number } | null>(null)
+  const [data, setData] = useState<{ list: FeedbackPost[]; total: number } | null>(() => fbKeep.get(`${kind}:0`) ?? null)
+  const skel = useLate(!data)
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   // 건의를 올리기 전 확인: 이미 있는 기능이면 그 기능을 보여 주고, 같은 글로 한 번 더 누르면 그대로 올린다
@@ -207,8 +223,10 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk, setBack }: {
 
   const load = useCallback((p: number) => {
     setFailed(false)
+    const kept = fbKeep.get(`${kind}:${p}`)
+    if (kept) setData(kept)   // 쪽을 넘길 때도 기억한 쪽이면 바로(없으면 지금 쪽을 그대로 둔 채 받는다 — 뼈대로 바꾸지 않는다)
     return loadFeedback(kind, p)
-      .then((d) => setData(d))
+      .then((d) => { fbKeep.set(`${kind}:${p}`, d); setData(d) })
       .catch(() => { setData({ list: [], total: 0 }); setFailed(true) })
   }, [kind])
   useEffect(() => { void load(page) }, [load, page])
@@ -268,12 +286,7 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk, setBack }: {
         <div ref={listScroll} className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
           <div className={styles.hpCol}>
             <div ref={headRef} className={clsx(styles.fbList, mobile && styles.fbListM)}>
-              {!data && [0, 1, 2].map((i) => (
-                <div key={i} className={clsx(styles.fbBox, styles.fbBoxSkel)}>
-                  <span className="pb-skel" style={{ width: '32%' }} />
-                  <span className="pb-skel" style={{ width: '86%' }} />
-                </div>
-              ))}
+              {skel && [0, 1, 2, 3, 4, 5].slice(0, mobile ? 4 : 6).map((i) => <FeedbackBoxSkel key={i} />)}
               {data && !data.list.length && <p className={styles.cmtEmpty}>{failed ? '글을 불러오지 못했어요.' : T.empty}</p>}
               {data?.list.map((p) => <FeedbackBox key={p.id} p={p} onOpen={() => open(p)} del={p.mine ? delButton(p.id, () => removeBox(p)) : undefined} />)}
             </div>
@@ -320,6 +333,7 @@ function FeedbackDetail({ post: post0, mobile, notify, onGone }: {
 }) {
   const [post, setPost] = useState(post0)
   const [nodes, setNodes] = useState<FeedbackNode[] | null>(null)
+  const skel = useLate(!nodes)
   const [failed, setFailed] = useState(false)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -353,12 +367,7 @@ function FeedbackDetail({ post: post0, mobile, notify, onGone }: {
       <div className={clsx(styles.hpCol, styles.fbDetail)}>
         <FeedbackPostBody p={post} del={post.mine ? delButton(post.id, removePost) : undefined} />
         <section className={styles.fbSec} aria-label="댓글">
-          {!nodes && (
-            <div className={styles.cmtSkel}>
-              <span className="pb-skel" style={{ width: '48%' }} />
-              <span className="pb-skel" style={{ width: '80%' }} />
-            </div>
-          )}
+          {skel && <FeedbackNodeSkel />}
           {nodes && !nodes.length && <p className={styles.cmtEmpty}>{failed ? '댓글을 불러오지 못했어요.' : '아직 댓글이 없어요.'}</p>}
           {nodes && nodes.length > 0 && (
             <FeedbackThread nodes={nodes} mobile={mobile} canDelete={(x) => x.mine} del={(x) => delButton(x.id, () => removeNode(x))} onReply={reply} />
@@ -379,10 +388,7 @@ function GuideCard({ g: g0, onGo }: { g: GuideEntry; onGo: (g: GuideEntry) => vo
   const g = guideFor(g0, mobile)
   return (
     <div className={styles.hpCard}>
-      <div className={styles.hpCardHead}>
-        <span className={styles.hpCardTitle}>{g.title}</span>
-        <span className={styles.hpCardWhere}>{g.where}</span>
-      </div>
+      <span className={styles.hpCardTitle}>{g.title}</span>
       <p className={styles.hpCardHow}>{g.how}</p>
       {g.go && <button type="button" onClick={() => onGo(g)} className={clsx('pb-ghost', styles.hpGhost, styles.hpCardGo)}>열어 보기</button>}
     </div>
@@ -405,8 +411,8 @@ function Ask({ mobile, chat, busy, onAsk, onIdea, onGo }: {
         <div className={clsx(styles.hpCol, styles.hpLog)}>
           {!chat.length && (
             <div className={styles.hpIntro}>
-              <p className={styles.hpIntroTitle}>무엇이든 물어보세요</p>
-              <p className={styles.cmtEmpty}>기능이 어디 있는지 찾아 드려요.</p>
+              <p className={styles.hpIntroTitle}>궁금한 기능을 물어보세요</p>
+              <p className={styles.cmtEmpty}>어디 있는지 알려 드려요.</p>
               <div className={styles.hpStarters}>
                 {STARTERS.map((q) => <button key={q} type="button" onClick={() => onAsk(q)} disabled={busy} className={clsx('pb-soft', styles.hpStarter)}>{q}</button>)}
               </div>
@@ -441,10 +447,10 @@ function BotMsg({ m, q, onIdea, onGo }: { m: ChatMsg; q: string; onIdea: (q: str
   if (r?.kind === 'none') {
     return (
       <div className={clsx(styles.hpBot, styles.hpBotNone)}>
-        <p className={styles.hpBotText}>아직 없는 기능 같아요. 건의로 남겨 주시면 살펴볼게요.</p>
+        <p className={styles.hpBotText}>{'아직 없는 기능이에요.\n건의로 남겨 주세요.'}</p>
         <button type="button" onClick={() => onIdea(q)} className={clsx('pb-ghost', styles.hpGhost)}>건의로 남기기</button>
       </div>
     )
   }
-  return <p className={clsx(styles.hpBot, styles.hpBotText)}>지금은 답하지 못했어요. 잠시 후 다시 물어봐 주세요.</p>
+  return <p className={clsx(styles.hpBot, styles.hpBotText)}>{'지금은 답하지 못했어요.\n잠시 뒤 다시 물어봐 주세요.'}</p>
 }

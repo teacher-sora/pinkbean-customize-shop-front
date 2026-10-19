@@ -378,10 +378,8 @@
 .hpFoundHead { margin: 0; font-size: 12px; font-weight: 600; color: #d76d9a; }
 /* 기능 하나(lib/guide 에 적힌 글 그대로) */
 .hpCard { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; min-width: 0; }
-.hpCardHead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
 .hpCardTitle { font-size: 13px; font-weight: 600; color: #2a2521; }
-.hpCardWhere { font-size: 11px; color: #a89e93; }
-.hpCardHow { margin: 0; font-size: 12.5px; line-height: 1.6; color: #5c534b; word-break: keep-all; overflow-wrap: anywhere; }
+.hpCardHow { margin: 0; font-size: 12.5px; line-height: 1.6; color: #5c534b; word-break: keep-all; overflow-wrap: anywhere; white-space: pre-line; }
 .hpCardGo { align-self: flex-start; margin-top: 2px; }
 /* 질문: 대화 칸 + 아래 입력 줄 */
 .hpAsk { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -392,7 +390,7 @@
 .hpStarter { height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 6px; background: #f4ecf3; font-family: inherit; font-size: 12px; font-weight: 500; color: #8a8075; cursor: pointer; transition: background-color .24s ease, color .22s ease; }
 .hpMe { align-self: flex-end; max-width: 80%; margin: 0; padding: 8px 12px; border: 1px solid #f8e0ea; border-radius: 8px; background: #fdf1f6; font-size: 12.5px; line-height: 1.55; color: #3d372f; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 .hpBot { align-self: flex-start; width: min(100%, 520px); display: flex; flex-direction: column; gap: 8px; }
-.hpBotText { width: auto; margin: 0; padding: 8px 12px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-size: 12.5px; line-height: 1.55; color: #5c534b; overflow-wrap: anywhere; word-break: keep-all; }
+.hpBotText { width: auto; margin: 0; padding: 8px 12px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-size: 12.5px; line-height: 1.55; color: #5c534b; overflow-wrap: anywhere; word-break: keep-all; white-space: pre-line; }
 .hpBotNone { padding: 12px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; }
 .hpBotNone .hpBotText { padding: 0; border: none; }
 .hpBotNone .hpGhost { align-self: flex-start; }
@@ -420,8 +418,16 @@
 .fbListM { grid-template-columns: minmax(0, 1fr); }
 .fbList > p { grid-column: 1 / -1; }
 .fbBox { width: 100%; min-width: 0; padding: 12px 14px; outline-offset: 2px; display: flex; flex-direction: column; gap: 6px; border: 1px solid #eee6dc; border-radius: 8px; background: #fff; font-family: inherit; text-align: left; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
-.fbBoxSkel { cursor: default; gap: 9px; }
-.fbBoxSkel span { display: block; height: 11px; border-radius: 4px; }
+/* 뼈대(FeedbackBoxSkel, FeedbackNodeSkel): 진짜와 같은 칸. 막대(11px)는 글자 한 줄 높이 안 가운데에 둔다 */
+.fbSkel { cursor: default; }
+.fbSkel .cmtMeta { min-height: 16px; }
+.skWho { display: block; width: 38%; height: 11px; border-radius: 4px; }
+.skBody.skBody { display: flex; flex-direction: column; }
+.skBody :global(.pb-skel), .skCount { display: block; height: 11px; border-radius: 4px; }
+.skBody :global(.pb-skel) { margin: calc((1.55em - 11px) / 2) 0; }
+.skCount { width: 24px; }
+.ntRowSkel { cursor: default; }
+.ntRowSkel :global(.pb-skel) { display: block; width: 46%; height: 11px; border-radius: 4px; }
 /* 본문은 PC 세 줄 · 휴대폰 두 줄까지(넘치면 말줄임) — 다 읽으려면 연다. PC 는 짧은 글도 세 줄 높이를 잡아 격자 줄이 맞는다 */
 .fbBoxBody { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; min-height: calc(1.55em * 3); overflow: hidden; font-size: 12.5px; line-height: 1.55; color: #3d372f; white-space: pre-line; overflow-wrap: anywhere; word-break: break-word; }
 .fbListM .fbBoxBody { -webkit-line-clamp: 2; min-height: 0; }
