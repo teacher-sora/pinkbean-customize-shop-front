@@ -29,6 +29,8 @@ let endT = 0
 export function setHeroView(next: HeroView) {
   if (next === view) return
   const prev = view
+  // 캐릭터만은 화면 높이로 묶이므로 페이지를 내려 둔 채였으면 맨 위로(재기 전에)
+  if (next === 'full' && window.scrollY) window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
   const els = below()
   const before = els.map((el) => el.getBoundingClientRect().top)
   // 캐릭터만으로 갈 때: 지금 높이로 묶어 둔다(히어로가 커져도 줄어들지 않고 밀려난다)

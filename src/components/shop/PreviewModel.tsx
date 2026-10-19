@@ -19,6 +19,7 @@ import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
+import { useHeroView } from '@/lib/heroView'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
@@ -40,6 +41,8 @@ export type PreviewSource = {
   zoomMults: Record<number, number>; fraction: (h: number) => number
 }
 
+const HERO_BASE_H = 216 // 모바일 히어로 기본 높이(preview.module.css .hero)
+
 // 지금 떠 있는 미리보기의 내보내기 이미지(우클릭 메뉴와 같은 것). 모바일 히어로의 '이미지 저장' 버튼이 쓴다.
 let liveShot: (() => Promise<Blob | null>) | null = null
 export const previewShot = () => (liveShot ? liveShot() : Promise.resolve(null))
@@ -59,7 +62,13 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   // 세로 스택(태블릿+모바일)은 미리보기 영역이 낮고 넓다 → PC 비율(0.25)이면 모델이 콩알만 해진다.
-  const fraction = src ? src.fraction(dims.h) : isStacked(bp) ? PREVIEW_FRACTION_MOBILE : PREVIEW_FRACTION
+  // 모바일 미리보기 크기(lib/heroView): 칸이 커져도 캐릭터를 칸 높이에 그대로 비례시키지 않는다(캐릭터만에서 화면을 넘친다).
+  // 마네킹 키를 기본 칸 기준의 1.5배(크게) · 2배(캐릭터만)로 정하고, 남는 자리는 여백(모자 · 무기 · 이펙트가 잘리지 않게)으로 둔다.
+  const hv = useHeroView()
+  const heroGrow = !src && bp === 'mobile' && hv !== 'base' ? (hv === 'wide' ? 1.5 : 2) : 1
+  const fraction = src ? src.fraction(dims.h) : isStacked(bp)
+    ? (heroGrow > 1 && dims.h > 0 ? (PREVIEW_FRACTION_MOBILE * HERO_BASE_H * heroGrow) / dims.h : PREVIEW_FRACTION_MOBILE)
+    : PREVIEW_FRACTION
   const [dyeSettling, setDyeSettling] = useState(false) // 이펙트/피부 전 프레임 염색 중(애니메이션 잠깐 정지 → 점멸 방지)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)

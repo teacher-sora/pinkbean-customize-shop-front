@@ -39,6 +39,7 @@
 .logoBoxM { display: flex; align-items: center; gap: 7px; }
 .logoImgM { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
 .logoTextM { font-size: 15px; font-weight: 700; background: linear-gradient(100deg,#ec86ac,#c98fe0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+:global(html[data-pb-view='full']) .mobileCol { height: 100svh; } /* 캐릭터만(lib/heroView): 페이지가 스크롤되지 않게 화면 높이로 */
 .headerActsM { display: flex; align-items: center; min-height: 32px; gap: 6px; }
 /* 미리보기 크기 셋(아이콘 칸). 평가 · 복사와 같은 높이(28) — 칸 24 + 안쪽 2 */
 .viewSegM { display: flex; border-radius: 6px; }
