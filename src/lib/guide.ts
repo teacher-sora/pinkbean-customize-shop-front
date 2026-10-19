@@ -126,12 +126,32 @@ let pvIntent: { pick?: GuideGo['pick']; group?: GuideGo['group'] } | null = null
 export const setPvIntent = (v: typeof pvIntent) => { pvIntent = v }
 export const takePvIntent = () => { const v = pvIntent; pvIntent = null; return v }
 
+// 요소가 보이게 한다 — **사용자가 스크롤하는 칸(overflow auto · scroll)과 문서만** 움직인다. scrollIntoView 는 overflow:hidden 인
+// 칸까지 밀어 올려, PC 미리보기 카드가 위로 밀리고 접혀 있던 연출 설정 칸이 드러났다(되돌릴 길도 없다).
+function reveal(el: HTMLElement) {
+  let p = el.parentElement
+  while (p && p !== document.body) {
+    const o = getComputedStyle(p).overflowY
+    if ((o === 'auto' || o === 'scroll') && p.scrollHeight > p.clientHeight + 1) break
+    p = p.parentElement
+  }
+  let r = el.getBoundingClientRect()
+  if (p && p !== document.body) {
+    const pr = p.getBoundingClientRect()
+    if (r.top < pr.top || r.bottom > pr.bottom) p.scrollBy({ top: r.top - pr.top - (pr.height - r.height) / 2, behavior: 'smooth' })
+    // 칸 안은 맞췄다 — 문서는 그 칸이 화면 밖에 있을 때만 움직인다
+    if (pr.bottom > 0 && pr.top < window.innerHeight) return
+    r = pr
+  }
+  if (r.top < 0 || r.bottom > window.innerHeight) window.scrollBy({ top: r.top - (window.innerHeight - Math.min(r.height, window.innerHeight)) / 2, behavior: 'smooth' })
+}
+
 // 도착한 화면에서 그 요소(data-guide)를 잠깐 테두리로 가리킨다. 입력칸이면 커서를 둔다. 보이는 것 하나만.
 // click = 가리킨 뒤 눌러 연다(PC 미리보기 아래 표정 등 — 스크롤이 멈춘 뒤에 눌러야 팝오버가 제자리에 뜬다)
 export function guideSpot(spot: string, click = false) {
   const el = [...document.querySelectorAll<HTMLElement>(`[data-guide~="${spot}"]`)].find((e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden')
   if (!el) return
-  el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  reveal(el)
   if (el.matches('input, textarea')) el.focus({ preventScroll: true })
   el.classList.remove('pb-guidehit')
   void el.offsetWidth

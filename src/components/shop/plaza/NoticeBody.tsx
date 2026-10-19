@@ -208,7 +208,9 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk }: {
   const goPage = (p: number) => {
     if (p < 0 || p >= pages || p === page) return
     setPage(p)
-    headRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    // 목록 머리로 — 스크롤 칸만 움직인다(scrollIntoView 는 창 바깥 틀까지 밀어 올린다)
+    const sc = listScroll.current, h = headRef.current
+    if (sc && h) sc.scrollTo({ top: Math.max(0, h.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8), behavior: 'smooth' })
   }
   const text0 = draft.trim()
   const post0 = () => {
