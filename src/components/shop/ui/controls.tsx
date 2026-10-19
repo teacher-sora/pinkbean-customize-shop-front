@@ -8,7 +8,8 @@ import { DYE_FAMILIES } from '@/lib/catalog'
 import styles from './ui.module.css'
 
 /* ── 세그먼트 ── */
-export type SegOpt<T extends string> = { v: T; l: string; t?: string; disabled?: boolean; disabledTitle?: string }
+// icon 을 주면 글자 대신 아이콘을 그린다(글자 l 은 aria-label 로 남는다)
+export type SegOpt<T extends string> = { v: T; l: string; t?: string; disabled?: boolean; disabledTitle?: string; icon?: React.ReactNode }
 export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', title }: {
   opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: 'pc' | 'mobileFlex' | 'mobileFit'; title?: string
 }) {
@@ -19,9 +20,10 @@ export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', tit
       {opts.map((o) => {
         const on = !o.disabled && value === o.v
         return (
-          <button key={o.v} type="button" disabled={o.disabled} title={o.disabled ? o.disabledTitle : o.t}
+          <button key={o.v} type="button" disabled={o.disabled} title={o.disabled ? o.disabledTitle : o.t ?? (o.icon ? o.l : undefined)}
+            aria-label={o.icon ? o.l : undefined} aria-pressed={on}
             onClick={() => { if (!o.disabled) onPick(o.v) }}
-            className={clsx(on ? 'pb-solid' : 'pb-soft', btn, on && styles.segOn, o.disabled && styles.segDisabled)}>{o.l}</button>
+            className={clsx(on ? 'pb-solid' : 'pb-soft', btn, o.icon && styles.segIcon, on && styles.segOn, o.disabled && styles.segDisabled)}>{o.icon ?? o.l}</button>
         )
       })}
     </div>

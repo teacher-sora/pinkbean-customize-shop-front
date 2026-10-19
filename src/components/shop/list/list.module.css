@@ -24,7 +24,7 @@
 .total { min-width: calc(4ch + 16px); text-align: center; font-size: 12px; font-weight: 600; color: #8a8075; }
 .searchWrap { flex: 0 1 200px; min-width: 148px; position: relative; display: flex; align-items: center; }
 .searchWrapNarrow { flex: 1 1 200px; min-width: 80px; }
-.searchIcon { position: absolute; left: 10px; pointer-events: none; }
+.searchIcon { position: absolute; left: 10px; color: #b7ada2; pointer-events: none; }
 .searchInput { height: 34px; width: 100%; min-width: 0; padding: 0 12px 0 30px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-size: 13px; letter-spacing: -0.01em; outline: none; }
 .hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: #f2ebe3; }
 
@@ -46,7 +46,7 @@
 .pageChipM { flex: 0 0 auto; display: flex; align-items: center; height: 32px; padding: 0 5px; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-variant-numeric: tabular-nums; }
 .slashM { font-size: 12px; color: #ccc2b8; margin: 0 3px; }
 .searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
-.searchIconM { position: absolute; left: 11px; pointer-events: none; }
+.searchIconM { position: absolute; left: 11px; color: #b7ada2; pointer-events: none; }
 .searchInputM { width: 100%; min-width: 0; height: 32px; padding: 0 12px 0 31px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-size: 13px; outline: none; text-overflow: ellipsis; }
 .hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f2ebe3; }
 

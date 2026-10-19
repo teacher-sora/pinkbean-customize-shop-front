@@ -1,29 +1,131 @@
 'use client'
 
-// 공지 및 건의함(간이) — 하단 탭 '공지 및 건의함'을 누르면 서피스로 연다.
-//  · 공지는 운영자가 Supabase 대시보드(plaza_notices)에서 쓴다. 앱에는 쓰기 화면이 없다(계정이 없어 운영자를 가릴 수 없다).
-//  · 공지가 하나면 바로 그 공지를, 여럿이면 목록부터(고정 → 최신 순).
-//  · 댓글로 신고·건의를 받는다. 한 쪽에 20개, 최신이 위, 쪽 넘김. 이름은 광장 댓글과 같은 익명 이름(같은 사람 = 같은 이름).
-//    지우기는 본인 것만(두 번 누르기). 운영자 답변은 건의글 아래에 붙어 보인다(DB 에서 직접 남긴다 — supabase/0013).
-// 탭 전체 화면 대신 서피스로 둔 이유: 4개 폭의 새 레이아웃 없이 기존 상세·댓글 부품을 그대로 쓴다('간이').
+// 공지 및 건의함 — 하단 탭 '공지 및 건의함'을 누르면 서피스로 연다. 탭 넷: 공지 · 건의 · 오류 · 질문.
+//  · 공지는 운영자가 Supabase 대시보드(plaza_notices)에서 쓴다. 앱에는 쓰기 화면이 없다. 하나면 바로 그 공지를, 여럿이면 목록부터.
+//  · 건의 · 오류는 같은 표에 종류로 나눠 담는다(lib/plaza 의 loadFeedback · supabase/0018 · 0019). 목록은 글마다 상자 하나,
+//    한 쪽에 20개, 최신이 위, 쪽 넘김. 상자를 누르면 그 글의 상세(댓글 · 답글 나무, FeedbackThread)로 미끄러진다.
+//    누구나 댓글과 답글(댓글부터 세 단까지)을 단다. 이름은 광장 댓글과 같은 익명 이름, 운영자 글은 '운영자'(/suggestion 에서 단다).
+//    지우기는 본인 것만(두 번 누르기). 답글이 달린 글을 지우면 자리만 남는다.
+//  · 질문은 기능 안내다(lib/guide 의 목록 + back 의 /guide). 모델은 목록에서 고르기만 하고, 화면은 목록에 적힌 글과
+//    '열어 보기'를 보여 준다. 대화는 이 창을 닫았다 열어도 이어진다(새로고침하면 비워진다).
+//  · 건의를 올리기 전에 이미 있는 기능인지 한 번 묻는다. 있으면 그 기능을 보여 주고 '그래도 등록'으로 올린다.
+//    건의 · 오류 칸에서 '질문하기'를 누르면 쓰던 글을 그대로 질문 탭으로 넘겨 묻는다.
+//  · 탭을 바꾸면 본문이 가로로 미끄러진다 — 부위 염색 ↔ 염색 전환과 같은 움직임 · 시간(ShopContext 의 slideTo).
 
 import clsx from 'clsx'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
-  NOTICE_PAGE, PLAZA_COMMENT_MAX, addNoticeComment, deleteNoticeComment, loadNoticeComments, loadNotices, plazaAlias, plazaWhen,
-  type NoticeComment, type PlazaNotice,
+  NOTICE_PAGE, addFeedback, deleteFeedback, loadFeedback, loadFeedbackThread, loadNotices, plazaWhen,
+  type FeedbackKind, type FeedbackNode, type FeedbackPost, type PlazaNotice,
 } from '@/lib/plaza'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
+import { askGuide, guideById, guideFor, guideOn, type GuideEntry, type GuideReply } from '@/lib/guide'
 import { useShop } from '../ShopContext'
-import { IconChevronLeft, IconChevronRight, IconTrashSolid } from '../ui/Icons'
+import { useInnerSlide } from '../surface/innerSlide'
+import { IconChevronLeft, IconChevronRight, IconHelpTab, IconTrashSolid } from '../ui/Icons'
+import { FeedbackBox, FeedbackComposer, FeedbackPostBody, FeedbackThread } from './FeedbackThread'
 import styles from './plaza.module.css'
+
+type Tab = 'notice' | 'idea' | 'bug' | 'ask'
+const TABS: { v: Tab; l: string; t: string }[] = [
+  { v: 'notice', l: '공지', t: '운영자 공지' },
+  { v: 'idea', l: '건의', t: '있었으면 하는 기능' },
+  { v: 'bug', l: '오류', t: '이상하게 보이거나 동작하지 않는 것' },
+  { v: 'ask', l: '질문', t: '기능이 어디 있는지 물어보기' },
+]
+const ORDER: Tab[] = TABS.map((t) => t.v)
+const SLIDE_SWAP_MS = 90, SLIDE_IN_MS = 110   // ShopContext 의 PART_SLIDE_* 와 같다
+
+// 질문 대화 — 창을 닫았다 열어도 이어지게 모듈에 둔다
+export type ChatMsg = { id: number; who: 'me' | 'bot'; text: string; reply?: GuideReply; pending?: boolean }
+let chatKeep: ChatMsg[] = []
+let chatSeq = 0
 
 export default function NoticeBody({ mobile }: { mobile: boolean }) {
   const s = useShop()
+  const [tab, setTab] = useState<Tab>('notice')
+  const [shown, setShown] = useState<Tab>('notice')
+  const [slide, setSlide] = useState(0)
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+  const [drafts, setDrafts] = useState<Record<FeedbackKind, string>>({ idea: '', bug: '' })
+  const [chat, setChat] = useState<ChatMsg[]>(chatKeep)
+  const [askBusy, setAskBusy] = useState(false)
+  useEffect(() => { chatKeep = chat }, [chat])
+  useEffect(() => () => { for (const t of timers.current) clearTimeout(t) }, [])
+
+  const go = (next: Tab) => {
+    if (next === tab) return
+    const dir = ORDER.indexOf(next) > ORDER.indexOf(tab) ? 1 : -1
+    for (const t of timers.current) clearTimeout(t)
+    setTab(next)
+    setSlide(-34 * dir)
+    timers.current = [
+      setTimeout(() => { setShown(next); setSlide(34 * dir) }, SLIDE_SWAP_MS),
+      setTimeout(() => setSlide(0), SLIDE_IN_MS),
+    ]
+  }
+
+  const ask = (q0: string) => {
+    const q = q0.trim().slice(0, 300)
+    if (!q || askBusy) return
+    const mine: ChatMsg = { id: ++chatSeq, who: 'me', text: q }
+    const wait: ChatMsg = { id: ++chatSeq, who: 'bot', text: '', pending: true }
+    const history = chat.slice(-6).map((m) => ({ r: m.who === 'me' ? 'u' : 'a', t: m.who === 'me' ? m.text : botText(m) }))
+    setChat((c) => [...c, mine, wait])
+    setAskBusy(true)
+    askGuide(q, 'ask', history, mobile)
+      .then((reply) => setChat((c) => c.map((m) => (m.id === wait.id ? { ...m, pending: false, reply } : m))))
+      .finally(() => setAskBusy(false))
+  }
+  // 건의 · 오류 칸에서 쓰던 글을 질문으로
+  const askFrom = (kind: FeedbackKind) => {
+    const q = drafts[kind].trim()
+    if (!q) return
+    setDrafts((d) => ({ ...d, [kind]: '' }))
+    go('ask')
+    ask(q)
+  }
+  // 질문 답이 '없는 기능'이면 그 질문을 건의 칸으로
+  const toIdea = (q: string) => { setDrafts((d) => ({ ...d, idea: q })); go('idea') }
+
+  return (
+    <div className={styles.hp}>
+      {/* 탭 넷을 폭 가득 같은 너비로 — 그림 + 낱말. 모바일은 그림 위 낱말(하단 탭과 같은 짜임) */}
+      <div role="tablist" aria-label="공지 및 건의함" className={clsx(styles.hpTabs, mobile && styles.hpTabsM)}>
+        {TABS.map((t) => (
+          <button key={t.v} type="button" role="tab" aria-selected={tab === t.v} onClick={() => go(t.v)} title={t.t}
+            className={clsx(styles.hpTab, mobile && styles.hpTabM, tab === t.v && styles.hpTabOn)}>
+            <IconHelpTab tab={t.v} size={mobile ? 17 : 16} /><span>{t.l}</span>
+          </button>
+        ))}
+      </div>
+      <div className={styles.hpSlide} style={{ transform: `translateX(${slide}px)`, opacity: slide ? 0 : 1 }}>
+        {shown === 'notice' && <Notices mobile={mobile} />}
+        {(shown === 'idea' || shown === 'bug') && (
+          <Feedback key={shown} kind={shown} mobile={mobile} notify={s.notify}
+            draft={drafts[shown]} setDraft={(v) => setDrafts((d) => ({ ...d, [shown]: v }))}
+            onAsk={() => askFrom(shown)} />
+        )}
+        {shown === 'ask' && <Ask mobile={mobile} chat={chat} busy={askBusy} onAsk={ask} onIdea={toIdea} onGo={s.guideGo} />}
+      </div>
+    </div>
+  )
+}
+
+// 대화 기록으로 넘길 안내 쪽 말(짧게)
+const botText = (m: ChatMsg) => {
+  const r = m.reply
+  if (!r) return ''
+  if (r.kind === 'feature') return r.ids.map((id) => guideById.get(id)?.title).filter(Boolean).join(', ')
+  if (r.kind === 'chat') return r.reply
+  return '목록에 없는 기능'
+}
+
+/* ── 공지 ── */
+function Notices({ mobile }: { mobile: boolean }) {
   const [notices, setNotices] = useState<PlazaNotice[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
-
   useEffect(() => {
     let alive = true
     loadNotices()
@@ -31,152 +133,313 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
       .catch(() => { if (alive) { setNotices([]); setFailed(true) } })
     return () => { alive = false }
   }, [])
-
   const open = notices?.find((n) => n.id === openId) || null
   return (
-    <div className={clsx('pb-scroll', 'pb-fade', styles.detail, styles.ntBody, mobile && styles.ntBodyM)}>
-      {!notices && (
-        <div className={styles.cmtSkel}>
-          <span className="pb-skel" style={{ width: '48%' }} />
-          <span className="pb-skel" style={{ width: '72%' }} />
-        </div>
-      )}
-      {notices && !notices.length && (
-        <p className={styles.cmtEmpty}>{failed ? '공지를 불러오지 못했어요.' : '아직 올라온 공지가 없어요.'}</p>
-      )}
-      {notices && notices.length > 0 && !open && (
-        <div className={styles.ntList}>
-          {notices.map((n) => (
-            <button key={n.id} type="button" onClick={() => setOpenId(n.id)} className={styles.ntRow}>
-              {n.pinned && <span className={styles.cmtChip}>고정</span>}
-              <span className={styles.ntRowTitle}>{n.title}</span>
-              <span className={styles.ntRowDate}>{plazaWhen(n.createdAt)}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {open && (
-        <>
-          <div className={styles.ntHead}>
-            {notices!.length > 1 && (
-              <button type="button" onClick={() => setOpenId(null)} className={styles.cmtReplyBtn}>목록</button>
-            )}
-            <span className={styles.ntTitle}>{open.title}</span>
-            <span className={styles.ntDate}>{plazaWhen(open.createdAt)}</span>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
+      <div className={styles.hpCol}>
+        {!notices && (
+          <div className={styles.cmtSkel}>
+            <span className="pb-skel" style={{ width: '48%' }} />
+            <span className="pb-skel" style={{ width: '72%' }} />
           </div>
-          {open.body.trim() && <p className={clsx(styles.descText, styles.ntText)}>{open.body}</p>}
-          <div className={styles.ntHr} />
-          <NoticeComments key={open.id} notice={open} mobile={mobile} notify={s.notify} />
-        </>
+        )}
+        {notices && !notices.length && <p className={styles.cmtEmpty}>{failed ? '공지를 불러오지 못했어요.' : '아직 올라온 공지가 없어요.'}</p>}
+        {notices && notices.length > 0 && !open && (
+          <div className={styles.ntList}>
+            {notices.map((n) => (
+              <button key={n.id} type="button" onClick={() => setOpenId(n.id)} className={styles.ntRow}>
+                {n.pinned && <span className={styles.cmtChip}>고정</span>}
+                <span className={styles.ntRowTitle}>{n.title}</span>
+                <span className={styles.ntRowDate}>{plazaWhen(n.createdAt)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {open && (
+          <>
+            <div className={styles.ntHead}>
+              {notices!.length > 1 && <button type="button" onClick={() => setOpenId(null)} className={styles.cmtReplyBtn}>목록</button>}
+              <span className={styles.ntTitle}>{open.title}</span>
+              <span className={styles.ntDate}>{plazaWhen(open.createdAt)}</span>
+            </div>
+            {open.body.trim() && <p className={clsx(styles.descText, styles.ntText)}>{open.body}</p>}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── 건의 · 오류 ── */
+// 목록(글마다 상자 하나) ↔ 상세(글 + 댓글 · 답글)는 탭 전환과 같은 가로 슬라이드로 바뀐다(surface/innerSlide).
+// 목록으로 돌아오면 보던 자리로 스크롤을 되돌리고, 댓글 수가 바뀌었을 수 있어 조용히 다시 받는다.
+const FB_TEXT: Record<FeedbackKind, { ph: string; label: string; empty: string; done: string }> = {
+  idea: { ph: '있었으면 하는 기능을 적어 주세요', label: '건의', empty: '첫 건의를 남겨 주세요.', done: '건의를 남겼어요' },
+  bug: { ph: '어떤 아이템에서 무엇이 이상한지 적어 주세요', label: '오류', empty: '올라온 오류 보고가 없어요.', done: '오류 보고를 남겼어요' },
+}
+function Feedback({ kind, mobile, notify, draft, setDraft, onAsk }: {
+  kind: FeedbackKind; mobile: boolean; notify: (m: string) => void; draft: string; setDraft: (v: string) => void; onAsk: () => void
+}) {
+  const T = FB_TEXT[kind]
+  const [page, setPage] = useState(0)
+  const [data, setData] = useState<{ list: FeedbackPost[]; total: number } | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [busy, setBusy] = useState(false)
+  // 건의를 올리기 전 확인: 이미 있는 기능이면 그 기능을 보여 주고, 같은 글로 한 번 더 누르면 그대로 올린다
+  const [found, setFound] = useState<{ text: string; ids: string[] } | null>(null)
+  const { view, go, style } = useInnerSlide<'list' | 'post'>('list')
+  const [post, setPost] = useState<FeedbackPost | null>(null)
+  const headRef = useRef<HTMLDivElement>(null)
+  const listScroll = useRef<HTMLDivElement>(null)
+  const keepTop = useRef(0)
+  const s = useShop()
+
+  const load = useCallback((p: number) => {
+    setFailed(false)
+    return loadFeedback(kind, p)
+      .then((d) => setData(d))
+      .catch(() => { setData({ list: [], total: 0 }); setFailed(true) })
+  }, [kind])
+  useEffect(() => { void load(page) }, [load, page])
+  // 목록으로 돌아오면 보던 자리로
+  useLayoutEffect(() => { if (view === 'list' && listScroll.current) listScroll.current.scrollTop = keepTop.current }, [view])
+
+  const pages = Math.max(1, Math.ceil((data?.total ?? 0) / NOTICE_PAGE))
+  const goPage = (p: number) => {
+    if (p < 0 || p >= pages || p === page) return
+    setPage(p)
+    // 목록 머리로 — 스크롤 칸만 움직인다(scrollIntoView 는 창 바깥 틀까지 밀어 올린다)
+    const sc = listScroll.current, h = headRef.current
+    if (sc && h) sc.scrollTo({ top: Math.max(0, h.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8), behavior: 'smooth' })
+  }
+  const text0 = draft.trim()
+  const post0 = () => {
+    setBusy(true)
+    addFeedback(kind, text0)
+      .then(() => { setDraft(''); setFound(null); notify(T.done); if (page === 0) void load(0); else setPage(0) })
+      .catch(() => notify('글을 남기지 못했어요. 잠시 후 다시 시도해 주세요'))
+      .finally(() => setBusy(false))
+  }
+  const send = () => {
+    if (!text0 || busy) return
+    if (kind !== 'idea' || found?.text === text0) { post0(); return }
+    setBusy(true)
+    askGuide(text0, 'check', [], mobile)
+      .then((r) => {
+        if (r.kind === 'feature' && r.ids.length) { setFound({ text: text0, ids: r.ids }); setBusy(false) }
+        else { setBusy(false); post0() }
+      })
+  }
+  const open = (p: FeedbackPost) => {
+    keepTop.current = listScroll.current?.scrollTop ?? 0
+    setPost(p)
+    go('post', 1)
+  }
+  const back = () => { go('list', -1); void load(page) }
+  const hit = found && found.text === text0 ? found.ids.map((id) => guideById.get(id)).filter((g): g is GuideEntry => !!g) : []
+
+  return (
+    <div className={styles.hpSlide} style={style}>
+      {view === 'post' && post ? (
+        <FeedbackDetail key={post.id} post={post} label={T.label} mobile={mobile} notify={notify} onBack={back}
+          onGone={() => { go('list', -1); void load(page) }} />
+      ) : (
+        <div ref={listScroll} className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
+          <div className={styles.hpCol}>
+            <FeedbackComposer value={draft} onChange={setDraft} onSend={send} busy={busy} ph={T.ph} label={`${T.label} 입력`} mobile={mobile}
+              send={hit.length ? '그래도 등록' : '등록'}
+              side={(
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onAsk} disabled={!text0}
+                  title={text0 ? '쓴 글로 기능 안내에 물어보기' : '물어볼 내용을 먼저 적어 주세요'} className={clsx('pb-ghost', styles.hpGhost)}>질문하기</button>
+              )} />
+            {hit.length > 0 && (
+              <div className={styles.hpFound}>
+                <p className={styles.hpFoundHead}>이미 있는 기능 같아요</p>
+                {hit.map((g) => <GuideCard key={g.id} g={g} onGo={s.guideGo} />)}
+              </div>
+            )}
+            <div ref={headRef} className={styles.cmtHead}>
+              <span className={styles.descLabel}>{T.label}</span>
+              {data && <span className={styles.cmtCount}>{data.total}</span>}
+            </div>
+            <div className={styles.fbList}>
+              {!data && [0, 1, 2].map((i) => (
+                <div key={i} className={clsx(styles.fbBox, styles.fbBoxSkel)}>
+                  <span className="pb-skel" style={{ width: '32%' }} />
+                  <span className="pb-skel" style={{ width: '86%' }} />
+                </div>
+              ))}
+              {data && !data.list.length && <p className={styles.cmtEmpty}>{failed ? '글을 불러오지 못했어요.' : T.empty}</p>}
+              {data?.list.map((p) => <FeedbackBox key={p.id} p={p} onOpen={() => open(p)} />)}
+            </div>
+            {pages > 1 && (
+              <div className={styles.ntPager}>
+                <div className={styles.pageChipM}>
+                  <button type="button" onClick={() => goPage(page - 1)} disabled={page <= 0} title="이전 쪽" aria-label="이전 쪽" className={clsx('pb-arrow', styles.arrow, page > 0 && styles.arrowOn)}><IconChevronLeft /></button>
+                  <span className={styles.ntPageNum}>{page + 1} / {pages}</span>
+                  <button type="button" onClick={() => goPage(page + 1)} disabled={page >= pages - 1} title="다음 쪽" aria-label="다음 쪽" className={clsx('pb-arrow', styles.arrow, page < pages - 1 && styles.arrowOn)}><IconChevronRight /></button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-function NoticeComments({ notice, mobile, notify }: { notice: PlazaNotice; mobile: boolean; notify: (m: string) => void }) {
-  const [page, setPage] = useState(0)
-  const [data, setData] = useState<{ list: NoticeComment[]; total: number } | null>(null)
+// 글 하나: 맨 위에 '목록' + 글 본문, 그 아래 댓글 입력칸과 댓글 · 답글 나무
+function FeedbackDetail({ post: post0, label, mobile, notify, onBack, onGone }: {
+  post: FeedbackPost; label: string; mobile: boolean; notify: (m: string) => void; onBack: () => void; onGone: () => void
+}) {
+  const [post, setPost] = useState(post0)
+  const [nodes, setNodes] = useState<FeedbackNode[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
-  const headRef = useRef<HTMLDivElement>(null)
+  const load = useCallback(() => loadFeedbackThread(post0.id)
+    .then((l) => { setNodes(l); setFailed(false) })
+    .catch(() => { setNodes((n) => n ?? []); setFailed(true) }), [post0.id])
+  useEffect(() => { void load() }, [load])
+  const count = (l: FeedbackNode[]): number => l.reduce((a, n) => a + (n.deleted ? 0 : 1) + count(n.children), 0)
 
-  const load = useCallback((p: number) => {
-    setFailed(false)
-    return loadNoticeComments(notice.id, p)
-      .then((d) => setData(d))
-      .catch(() => { setData({ list: [], total: 0 }); setFailed(true) })
-  }, [notice.id])
-  useEffect(() => { void load(page) }, [load, page])
-
-  const pages = Math.max(1, Math.ceil((data?.total ?? 0) / NOTICE_PAGE))
-  // 쪽을 넘기면 댓글 머리로 올라간다(아래쪽 쪽 넘김 버튼에서 누르므로 그대로 두면 새 쪽의 끝부터 보인다).
-  const go = (p: number) => {
-    if (p < 0 || p >= pages || p === page) return
-    setPage(p)
-    headRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-  }
-  const text0 = text.trim()
-  const canSend = !!text0 && !busy
-  const send = () => {
-    if (!canSend) return
+  const reply = (parentId: string, body: string) => addFeedback('idea', body, parentId)
+    .then(() => load().then(() => true))
+    .catch(() => { notify('댓글을 남기지 못했어요. 잠시 후 다시 시도해 주세요'); return false })
+  const sendTop = () => {
     setBusy(true)
-    addNoticeComment(notice.id, text0)
-      // 새 댓글은 첫 쪽 맨 위에 있다 → 첫 쪽으로 가서 다시 읽는다.
-      .then(() => { setText(''); if (page === 0) void load(0); else setPage(0) })
-      .catch(() => notify('댓글을 남기지 못했어요. 잠시 후 다시 시도해 주세요'))
-      .finally(() => setBusy(false))
+    void reply(post0.id, text).then((ok) => { if (ok) setText('') }).finally(() => setBusy(false))
   }
-  const remove = (c: NoticeComment) => {
-    if (!confirmTwice(`ntc:${c.id}`, '한 번 더 누르면 댓글을 지워요')) return
-    deleteNoticeComment(c.id)
-      .then(() => load(page))
-      .catch(() => notify('댓글을 지우지 못했어요'))
+  const removeNode = (n: FeedbackNode) => {
+    if (!confirmTwice(`ntc:${n.id}`, '한 번 더 누르면 글을 지워요')) return
+    deleteFeedback(n.id).then(() => load()).catch(() => notify('글을 지우지 못했어요'))
   }
+  const removePost = () => {
+    if (!confirmTwice(`ntc:${post.id}`, '한 번 더 누르면 글을 지워요')) return
+    const had = !!nodes?.length
+    deleteFeedback(post.id)
+      .then(() => { notify('글을 지웠어요'); if (had) setPost((p) => ({ ...p, deleted: true, body: '' })); else onGone() })
+      .catch(() => notify('글을 지우지 못했어요'))
+  }
+  const delBtn = (id: string, onClick: () => void) => (
+    <button type="button" onClick={onClick} {...{ [CONFIRM_ATTR]: `ntc:${id}` }} title="글 지우기 (두 번 누르기)" aria-label="글 지우기" className={styles.cmtDel}>
+      <IconTrashSolid />
+    </button>
+  )
+  const n = nodes ? count(nodes) : null
 
   return (
-    <div className={styles.ntCmt}>
-      <div ref={headRef} className={styles.cmtHead}>
-        <span className={styles.descLabel}>건의 / 신고</span>
-        {data && <span className={styles.cmtCount}>{data.total}</span>}
-      </div>
-      <div className={styles.cmtForm}>
-        <textarea value={text} maxLength={PLAZA_COMMENT_MAX} onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (!mobile && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send() } }}
-          placeholder="건의하거나 신고할 내용을 남겨 주세요" aria-label="댓글 입력"
-          className={clsx('pb-input', 'pb-scroll', styles.cmtInput, mobile && styles.cmtInputM)} />
-        <div className={styles.cmtFormFoot}>
-          <span className={styles.cmtLen}>{text.length}/{PLAZA_COMMENT_MAX}</span>
-          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={send} disabled={!canSend}
-            className={clsx(styles.cmtSend, !canSend && styles.cmtSendOff)}>등록</button>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
+      <div className={styles.hpCol}>
+        <div className={styles.fbTop}>
+          <button type="button" onClick={onBack} className={clsx('pb-ghost', styles.hpGhost, styles.fbBack)}><IconChevronLeft />목록</button>
+          <span className={styles.fbTopLabel}>{label}</span>
         </div>
-      </div>
-      <div className={styles.ntCmtList}>
-        {!data && (
+        <FeedbackPostBody p={post} del={post.mine ? delBtn(post.id, removePost) : undefined} />
+        <div className={styles.cmtHead}>
+          <span className={styles.descLabel}>댓글</span>
+          {n != null && <span className={styles.cmtCount}>{n}</span>}
+        </div>
+        {!post.deleted && (
+          <FeedbackComposer value={text} onChange={setText} onSend={sendTop} busy={busy} ph="댓글을 남겨 주세요" label="댓글 입력" mobile={mobile} />
+        )}
+        {!nodes && (
           <div className={styles.cmtSkel}>
-            <span className="pb-skel" style={{ width: '62%' }} />
-            <span className="pb-skel" style={{ width: '88%' }} />
+            <span className="pb-skel" style={{ width: '48%' }} />
+            <span className="pb-skel" style={{ width: '80%' }} />
           </div>
         )}
-        {data && !data.list.length && <p className={styles.cmtEmpty}>{failed ? '댓글을 불러오지 못했어요.' : '첫 의견을 남겨 주세요.'}</p>}
-        {data?.list.map((c) => (
-          <div key={c.id} className={styles.cmtItem}>
-            <div className={styles.cmtMeta}>
-              <span className={clsx(styles.cmtWho, c.admin && styles.cmtWhoAuthor, c.mine && !c.admin && styles.cmtWhoMine)}>
-                {c.admin ? '운영자' : plazaAlias(c.owner)}
-              </span>
-              {c.mine && !c.admin && <span className={clsx(styles.cmtChip, styles.cmtChipMine)}>나</span>}
-              <span className={styles.cmtTime}>{plazaWhen(c.createdAt)}</span>
-              {c.mine && (
-                <button type="button" onClick={() => remove(c)} {...{ [CONFIRM_ATTR]: `ntc:${c.id}` }}
-                  title="댓글 지우기 (두 번 누르기)" aria-label="댓글 지우기" className={styles.cmtDel}>
-                  <IconTrashSolid />
-                </button>
-              )}
-            </div>
-            <p className={styles.cmtBody}>{c.body}</p>
-            {/* 운영자 답변 — 건의글 바로 아래에 붙는다(읽기 전용, 앱에서는 달 수 없다). */}
-            {c.replies?.map((r) => (
-              <div key={r.id} className={styles.ntReply}>
-                <div className={styles.cmtMeta}>
-                  <span className={clsx(styles.cmtWho, styles.cmtWhoAuthor)}>운영자</span>
-                  <span className={styles.cmtTime}>{plazaWhen(r.createdAt)}</span>
-                </div>
-                <p className={styles.cmtBody}>{r.body}</p>
-              </div>
-            ))}
-          </div>
-        ))}
+        {nodes && !nodes.length && <p className={styles.cmtEmpty}>{failed ? '댓글을 불러오지 못했어요.' : '아직 댓글이 없어요.'}</p>}
+        {nodes && nodes.length > 0 && (
+          <FeedbackThread nodes={nodes} mobile={mobile} canDelete={(x) => x.mine} del={(x) => delBtn(x.id, () => removeNode(x))} onReply={reply} />
+        )}
       </div>
-      {pages > 1 && (
-        <div className={styles.ntPager}>
-          <div className={styles.pageChipM}>
-            <button type="button" onClick={() => go(page - 1)} disabled={page <= 0} title="이전 쪽" aria-label="이전 쪽" className={clsx('pb-arrow', styles.arrow, page > 0 && styles.arrowOn)}><IconChevronLeft /></button>
-            <span className={styles.ntPageNum}>{page + 1} / {pages}</span>
-            <button type="button" onClick={() => go(page + 1)} disabled={page >= pages - 1} title="다음 쪽" aria-label="다음 쪽" className={clsx('pb-arrow', styles.arrow, page < pages - 1 && styles.arrowOn)}><IconChevronRight /></button>
-          </div>
-        </div>
-      )}
     </div>
   )
+}
+
+/* ── 기능 하나(목록에 적힌 글 그대로) ── */
+// 위치 · 쓰는 법 · '열어 보기'는 PC 와 휴대폰이 다르다(lib/guide 의 guideFor)
+function GuideCard({ g: g0, onGo }: { g: GuideEntry; onGo: (g: GuideEntry) => void }) {
+  const mobile = useShop().bp === 'mobile'
+  if (!guideOn(g0, mobile)) return null   // 다른 기기에만 있는 기능(예: 휴대폰의 캐릭터 크게 보기)은 보여 주지 않는다
+  const g = guideFor(g0, mobile)
+  return (
+    <div className={styles.hpCard}>
+      <div className={styles.hpCardHead}>
+        <span className={styles.hpCardTitle}>{g.title}</span>
+        <span className={styles.hpCardWhere}>{g.where}</span>
+      </div>
+      <p className={styles.hpCardHow}>{g.how}</p>
+      {g.go && <button type="button" onClick={() => onGo(g)} className={clsx('pb-ghost', styles.hpGhost, styles.hpCardGo)}>열어 보기</button>}
+    </div>
+  )
+}
+
+/* ── 질문 ── */
+const STARTERS = ['표정은 어디서 바꿔요?', '닉네임으로 코디를 불러올 수 있나요?', '무기 이펙트를 끄고 싶어요', '캐릭터 이미지를 저장하고 싶어요']
+function Ask({ mobile, chat, busy, onAsk, onIdea, onGo }: {
+  mobile: boolean; chat: ChatMsg[]; busy: boolean; onAsk: (q: string) => void; onIdea: (q: string) => void; onGo: (g: GuideEntry) => void
+}) {
+  const [text, setText] = useState('')
+  const logRef = useRef<HTMLDivElement>(null)
+  // 새 말이 오면 맨 아래로
+  useEffect(() => { const el = logRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: chat.length > 2 ? 'smooth' : 'auto' }) }, [chat])
+  const t0 = text.trim()
+  const can = !!t0 && !busy
+  const send = () => { if (!can) return; onAsk(t0); setText('') }
+  return (
+    <div className={styles.hpAsk}>
+      <div ref={logRef} className={clsx('pb-scroll', 'pb-fade', styles.hpScroll, mobile && styles.hpScrollM)}>
+        <div className={clsx(styles.hpCol, styles.hpLog)}>
+          {!chat.length && (
+            <div className={styles.hpIntro}>
+              <p className={styles.hpIntroTitle}>무엇이든 물어보세요</p>
+              <p className={styles.cmtEmpty}>기능이 어디 있는지 찾아 드려요.</p>
+              <div className={styles.hpStarters}>
+                {STARTERS.map((q) => <button key={q} type="button" onClick={() => onAsk(q)} disabled={busy} className={clsx('pb-soft', styles.hpStarter)}>{q}</button>)}
+              </div>
+            </div>
+          )}
+          {chat.map((m, i) => (m.who === 'me'
+            ? <p key={m.id} className={styles.hpMe}>{m.text}</p>
+            : <BotMsg key={m.id} m={m} q={chat[i - 1]?.text || ''} onIdea={onIdea} onGo={onGo} />))}
+        </div>
+      </div>
+      <div className={clsx(styles.hpBar, mobile && styles.hpBarM)}>
+        <input value={text} maxLength={300} onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send() } }}
+          placeholder="궁금한 기능을 물어보세요" aria-label="질문 입력"
+          className={clsx('pb-input', styles.hpInput, mobile && styles.hpInputM)} />
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={send} disabled={!can}
+          title={t0 ? undefined : '물어볼 내용을 먼저 적어 주세요'} className={clsx(styles.cmtSend, styles.hpSend, !can && styles.cmtSendOff)}>보내기</button>
+      </div>
+    </div>
+  )
+}
+
+function BotMsg({ m, q, onIdea, onGo }: { m: ChatMsg; q: string; onIdea: (q: string) => void; onGo: (g: GuideEntry) => void }) {
+  if (m.pending) {
+    return (
+      <div className={clsx(styles.hpBot, styles.cmtSkel)} aria-label="답을 찾는 중">
+        <span className="pb-skel" style={{ width: '58%' }} />
+        <span className="pb-skel" style={{ width: '84%' }} />
+      </div>
+    )
+  }
+  const r = m.reply
+  if (r?.kind === 'feature') {
+    const gs = r.ids.map((id) => guideById.get(id)).filter((g): g is GuideEntry => !!g)
+    return <div className={styles.hpBot}>{gs.map((g) => <GuideCard key={g.id} g={g} onGo={onGo} />)}</div>
+  }
+  if (r?.kind === 'chat' && r.reply) return <p className={clsx(styles.hpBot, styles.hpBotText)}>{r.reply}</p>
+  if (r?.kind === 'none') {
+    return (
+      <div className={clsx(styles.hpBot, styles.hpBotNone)}>
+        <p className={styles.hpBotText}>아직 없는 기능 같아요. 건의로 남겨 주시면 살펴볼게요.</p>
+        <button type="button" onClick={() => onIdea(q)} className={clsx('pb-ghost', styles.hpGhost)}>건의로 남기기</button>
+      </div>
+    )
+  }
+  return <p className={clsx(styles.hpBot, styles.hpBotText)}>지금은 답하지 못했어요. 잠시 후 다시 물어봐 주세요.</p>
 }

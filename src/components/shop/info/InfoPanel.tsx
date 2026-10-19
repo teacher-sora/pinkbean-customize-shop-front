@@ -116,7 +116,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
       <span className={styles.chipLabel}>{CATS.length}</span>
     </div>
   )
-  const unequip = <button type="button" onClick={s.unequipAll} title="모든 부위 벗기" className={clsx('pb-ghost', styles.btn, mobile && styles.btnM)}>전체 벗기</button>
+  const unequip = <button type="button" data-guide="unequip" onClick={s.unequipAll} title="모든 부위 벗기" className={clsx('pb-ghost', styles.btn, mobile && styles.btnM)}>전체 벗기</button>
 
   if (mobile) {
     return (

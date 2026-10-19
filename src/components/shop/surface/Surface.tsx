@@ -168,7 +168,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const k = sf.kind
   const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'vs' ? '코디 비교'
     : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? '공유받은 코디' : k === 'notice' ? '공지 및 건의함' : (sf.item?.name || sf.item?.id || '')
-  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' || k === 'bg' ? '' : k === 'notice' ? '신고 / 건의는 댓글로 남겨 주세요'
+  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' || k === 'bg' ? '' : k === 'notice' ? ''
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
 
@@ -201,7 +201,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
               <span className={styles.title}>{title}</span>
               {sub && <span className={styles.sub}>{sub}</span>}
             </div>
-            <button type="button" onClick={s.closeSurface} title="닫기 (Esc)" aria-label="닫기" className={clsx('pb-icon', styles.close)}><IconClose /></button>
+            <button type="button" onClick={s.closeSurface} title="닫기 (Esc)" aria-label="닫기" className={clsx('pb-icon', styles.close)}><IconClose size={15} /></button>
           </div>
           <div key={`${k}:${sf.item?.id ?? ''}`} className={styles.slide} style={slideStyle}>
             {/* 연출 설정은 자체 푸터를 쓴다 — 고르기 화면에서는 '이전'이 되어야 해서. */}

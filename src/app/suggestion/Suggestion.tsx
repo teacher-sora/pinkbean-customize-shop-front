@@ -1,26 +1,31 @@
 'use client'
 
 // 운영자용 건의함. 주소(/suggestion)로 직접 들어와 아이디 · 비밀번호를 넣으면
-// 지금 서비스 중인 '공지 및 건의함'의 건의글을 보고, '운영자' 답변을 달고, 어떤 글이든 지울 수 있다.
+// '공지 및 건의함'의 건의 · 오류 글을 종류별로 보고, 어느 글이든 '운영자'로 댓글 · 답글을 달고, 어떤 글이든 지울 수 있다.
+//  · 화면: 넓으면 왼쪽 글 상자 목록 + 오른쪽 상세(글 + 댓글 · 답글 나무). 좁으면 목록 → 상세로 가로로 미끄러진다.
+//    글 상자 · 나무 · 입력칸은 앱의 건의함과 같은 부품이다(plaza/FeedbackThread).
+//  · 목록 위에서 '답변 대기'(운영자 댓글이 없는 글)만 골라 볼 수 있다.
 //  · 로그인은 **이 화면이 떠 있는 동안만** 유지된다 — 값은 메모리에만 두고 저장하지 않는다(새로고침하면 다시 묻는다).
-//  · 아이디 · 비밀번호의 확인과 쓰기 · 지우기는 DB 함수가 한다(supabase/0016). 앱에는 비밀번호도 서비스 키도 없다.
-//  · 지우기는 두 번 누른다(3초 안에 같은 버튼을 다시).
+//  · 아이디 · 비밀번호의 확인과 쓰기 · 지우기는 DB 함수가 한다(supabase/0016 · 0019). 앱에는 비밀번호도 서비스 키도 없다.
+//  · 지우기는 두 번 누른다(3초 안에 같은 버튼을 다시). 운영자가 지우면 딸린 댓글 · 답글도 함께 지워진다.
 
 import clsx from 'clsx'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  PLAZA_COMMENT_MAX, loadNotices, opDelete, opLoadComments, opLogin, opReply, plazaAlias, plazaWhen,
-  type OpComment, type OpCred, type PlazaNotice,
+  opDelete, opLoadFeedback, opLoadThread, opLogin, opReply,
+  type FeedbackKind, type FeedbackNode, type FeedbackPost, type OpCred,
 } from '@/lib/plaza'
+import { FeedbackBox, FeedbackComposer, FeedbackPostBody, FeedbackThread } from '@/components/shop/plaza/FeedbackThread'
+import plaza from '@/components/shop/plaza/plaza.module.css'
+import { useInnerSlide } from '@/components/shop/surface/innerSlide'
+import { IconChevronLeft, IconHelpTab } from '@/components/shop/ui/Icons'
 import styles from './suggestion.module.css'
 
 export default function Suggestion() {
   const [cred, setCred] = useState<OpCred | null>(null)
   return (
     <main className={styles.page}>
-      <div className={styles.box}>
-        {cred ? <Board cred={cred} onLost={() => setCred(null)} /> : <Login onOk={setCred} />}
-      </div>
+      {cred ? <Board cred={cred} onLost={() => setCred(null)} /> : <Login onOk={setCred} />}
     </main>
   )
 }
@@ -40,111 +45,182 @@ function Login({ onOk }: { onOk: (c: OpCred) => void }) {
       .finally(() => setBusy(false))
   }
   return (
-    <form onSubmit={submit} className={styles.card}>
-      <h1 className={styles.title}>건의함 관리</h1>
-      <input value={id} onChange={(e) => setId(e.target.value)} placeholder="아이디" aria-label="아이디" autoComplete="off" autoCapitalize="none" className={styles.input} />
-      <input value={pw} onChange={(e) => setPw(e.target.value)} type="password" placeholder="비밀번호" aria-label="비밀번호" autoComplete="off" className={styles.input} />
-      <p className={styles.msg}>{msg}</p>
-      <button type="submit" disabled={busy || !id || !pw} className={styles.btn}>들어가기</button>
-    </form>
+    <div className={styles.loginWrap}>
+      <form onSubmit={submit} className={styles.login}>
+        <div className={styles.loginHead}>
+          <span className={styles.brand}>핑크빈 커마샵</span>
+          <h1 className={styles.title}>건의함 관리</h1>
+        </div>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>아이디</span>
+          <input value={id} onChange={(e) => setId(e.target.value)} autoComplete="off" autoCapitalize="none" autoFocus className={styles.input} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>비밀번호</span>
+          <input value={pw} onChange={(e) => setPw(e.target.value)} type="password" autoComplete="off" className={styles.input} />
+        </label>
+        <p className={styles.msg} role="alert">{msg}</p>
+        <button type="submit" disabled={busy || !id || !pw} className={styles.btn}>{busy ? '확인 중' : '들어가기'}</button>
+      </form>
+    </div>
   )
 }
 
+const KINDS: { v: FeedbackKind; l: string }[] = [{ v: 'idea', l: '건의' }, { v: 'bug', l: '오류' }]
+type Filter = 'all' | 'wait'
+
+// 넓은 화면(목록 + 상세 나란히)인가
+function useWide() {
+  const [wide, setWide] = useState(true)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 900px)')
+    const on = () => setWide(mq.matches)
+    on()
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return wide
+}
+
 function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
-  const [notices, setNotices] = useState<PlazaNotice[] | null>(null)
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [list, setList] = useState<OpComment[] | null>(null)
+  const wide = useWide()
+  const [kind, setKind] = useState<FeedbackKind>('idea')
+  const [filter, setFilter] = useState<Filter>('all')
+  const [lists, setLists] = useState<Partial<Record<FeedbackKind, FeedbackPost[]>>>({})
   const [msg, setMsg] = useState('')
-  const [replyTo, setReplyTo] = useState<string | null>(null)
-  const [text, setText] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const { view, go, style } = useInnerSlide<'list' | 'post'>('list')
   const [armed, setArmed] = useState<string | null>(null)   // 지우기를 한 번 누른 글
   const armTimer = useRef<number>()
+  useEffect(() => () => window.clearTimeout(armTimer.current), [])
 
-  useEffect(() => {
-    loadNotices().then((l) => { setNotices(l); if (l.length) setOpenId(l[0].id) }).catch(() => { setNotices([]); setMsg('공지를 불러오지 못했어요.') })
-    return () => window.clearTimeout(armTimer.current)
-  }, [])
-  const load = useCallback(() => {
-    if (!openId) return Promise.resolve()
-    return opLoadComments(openId).then(setList).catch(() => setMsg('건의글을 불러오지 못했어요.'))
-  }, [openId])
-  useEffect(() => { setList(null); void load() }, [load])
+  const loadKind = useCallback((k: FeedbackKind) => opLoadFeedback(k)
+    .then((l) => setLists((m) => ({ ...m, [k]: l })))
+    .catch(() => setMsg('글을 불러오지 못했어요.')), [])
+  const loadAll = useCallback(() => Promise.all(KINDS.map((k) => loadKind(k.v))), [loadKind])
+  useEffect(() => { void loadAll() }, [loadAll])
+
+  const list = lists[kind]
+  const shown = list?.filter((p) => filter === 'all' || (!p.answered && !p.deleted)) ?? null
+  const open = list?.find((p) => p.id === openId) ?? null
+  const waitN = (k: FeedbackKind) => lists[k]?.filter((p) => !p.answered && !p.deleted).length
 
   // 로그인이 틀렸다는 답이 오면(잠겼거나 비밀번호가 바뀌었다) 로그인 화면으로 돌아간다
   const run = (job: Promise<boolean>, fail: string) => {
-    setBusy(true); setMsg('')
-    return job.then((ok) => { if (!ok) { onLost(); return false } return load().then(() => true) })
+    setMsg('')
+    return job.then((ok) => { if (!ok) { onLost(); return false } return true })
       .catch(() => { setMsg(fail); return false })
-      .finally(() => setBusy(false))
   }
-  const send = (parent: string) => {
-    const body = text.trim()
-    if (!body || busy) return
-    void run(opReply(cred, parent, body), '답변을 달지 못했어요.').then((ok) => { if (ok) { setText(''); setReplyTo(null) } })
-  }
-  const remove = (id: string) => {
+  const arm = (id: string) => {
     window.clearTimeout(armTimer.current)
-    if (armed !== id) { setArmed(id); armTimer.current = window.setTimeout(() => setArmed(null), 3000); return }
+    if (armed !== id) { setArmed(id); armTimer.current = window.setTimeout(() => setArmed(null), 3000); return false }
     setArmed(null)
-    void run(opDelete(cred, id), '지우지 못했어요.')
+    return true
   }
-  const del = (id: string) => (
-    <button type="button" onClick={() => remove(id)} disabled={busy} className={clsx(styles.del, armed === id && styles.delArmed)}>{armed === id ? '한 번 더' : '지우기'}</button>
+  const delBtn = (id: string, onDone: () => void) => (
+    <button type="button" onClick={() => { if (arm(id)) void run(opDelete(cred, id), '지우지 못했어요.').then((ok) => { if (ok) onDone() }) }}
+      className={clsx(styles.del, armed === id && styles.delArmed)}>{armed === id ? '한 번 더' : '지우기'}</button>
   )
+  const pick = (k: FeedbackKind) => { setKind(k); setOpenId(null); if (!wide) go('list', -1) }
+  const openPost = (p: FeedbackPost) => { setOpenId(p.id); if (!wide) go('post', 1) }
+  const back = () => go('list', -1)
 
-  return (
-    <>
-      <div className={styles.card}>
-        <div className={styles.row}>
-          <h1 className={clsx(styles.title, styles.grow)}>건의함 관리</h1>
-          <button type="button" onClick={() => void load()} className={styles.ghost}>새로고침</button>
-          <button type="button" onClick={onLost} className={styles.ghost}>나가기</button>
-        </div>
-        {notices && notices.length > 1 && (
-          <div className={clsx(styles.row, styles.wrap)}>
-            {notices.map((n) => (
-              <button key={n.id} type="button" onClick={() => setOpenId(n.id)} className={clsx(styles.ghost, n.id === openId && styles.ghostOn)}>{n.title}</button>
-            ))}
-          </div>
-        )}
-        <p className={styles.msg}>{msg}</p>
+  const listPane = (
+    <div className={styles.listPane}>
+      <div className={styles.filters}>
+        {(['all', 'wait'] as const).map((f) => (
+          <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f} className={clsx(styles.chip, filter === f && styles.chipOn)}>
+            {f === 'all' ? '전체' : '답변 대기'}<span className={styles.chipN}>{f === 'all' ? list?.length ?? '' : waitN(kind) ?? ''}</span>
+          </button>
+        ))}
       </div>
-      <div className={styles.card}>
-        {notices && !notices.length && <p className={styles.empty}>올라온 공지가 없어요.</p>}
-        {openId && !list && <p className={styles.empty}>불러오는 중…</p>}
-        {list && !list.length && <p className={styles.empty}>건의글이 없어요.</p>}
-        {list?.map((c) => (
-          <div key={c.id} className={styles.item}>
-            <div className={styles.row}>
-              <span className={styles.who}>{plazaAlias(c.owner)}</span>
-              <span className={clsx(styles.time, styles.grow)}>{plazaWhen(c.createdAt)} | {new Date(c.createdAt).toLocaleString('ko-KR')}</span>
-              <button type="button" onClick={() => { setReplyTo(replyTo === c.id ? null : c.id); setText('') }} className={clsx(styles.ghost, replyTo === c.id && styles.ghostOn)}>답변</button>
-              {del(c.id)}
-            </div>
-            <p className={styles.body}>{c.body}</p>
-            {c.replies.map((r) => (
-              <div key={r.id} className={styles.reply}>
-                <div className={styles.row}>
-                  <span className={clsx(styles.who, styles.op)}>운영자</span>
-                  <span className={clsx(styles.time, styles.grow)}>{plazaWhen(r.createdAt)}</span>
-                  {del(r.id)}
-                </div>
-                <p className={styles.body}>{r.body}</p>
-              </div>
-            ))}
-            {replyTo === c.id && (
-              <div className={styles.form}>
-                <textarea value={text} maxLength={PLAZA_COMMENT_MAX} onChange={(e) => setText(e.target.value)} placeholder="운영자 답변" aria-label="운영자 답변" autoFocus className={styles.area} />
-                <div className={styles.row}>
-                  <span className={clsx(styles.len, styles.grow)}>{text.length}/{PLAZA_COMMENT_MAX}</span>
-                  <button type="button" onClick={() => send(c.id)} disabled={busy || !text.trim()} className={styles.btn}>운영자로 답변</button>
-                </div>
-              </div>
-            )}
+      <div className={plaza.fbList}>
+        {!shown && [0, 1, 2].map((i) => (
+          <div key={i} className={clsx(plaza.fbBox, plaza.fbBoxSkel)}>
+            <span className="pb-skel" style={{ width: '32%' }} />
+            <span className="pb-skel" style={{ width: '86%' }} />
+          </div>
+        ))}
+        {shown && !shown.length && <p className={styles.empty}>{filter === 'wait' ? '답을 기다리는 글이 없어요.' : kind === 'idea' ? '건의글이 없어요.' : '오류 보고가 없어요.'}</p>}
+        {shown?.map((p) => (
+          <div key={p.id} className={clsx(styles.boxWrap, wide && p.id === openId && styles.boxOn)}>
+            <FeedbackBox p={p} onOpen={() => openPost(p)} />
           </div>
         ))}
       </div>
-    </>
+    </div>
+  )
+  const detail = open
+    ? <Detail key={open.id} post={open} cred={cred} wide={wide} run={run} delBtn={delBtn} onBack={wide ? undefined : back}
+        onChanged={() => void loadKind(kind)} onGone={() => { setOpenId(null); if (!wide) back(); void loadKind(kind) }} />
+    : <div className={styles.pick}><p className={styles.empty}>왼쪽에서 글을 고르면 여기에 열려요.</p></div>
+
+  return (
+    <div className={styles.board}>
+      <header className={styles.bar}>
+        <div className={styles.barRow}>
+          <span className={styles.brand}>핑크빈 커마샵</span>
+          <h1 className={clsx(styles.title, styles.grow)}>건의함 관리</h1>
+          <button type="button" onClick={() => { setMsg(''); void loadAll() }} className={styles.ghost}>새로고침</button>
+          <button type="button" onClick={onLost} className={styles.ghost}>나가기</button>
+        </div>
+        <div role="tablist" aria-label="글 종류" className={styles.kinds}>
+          {KINDS.map((k) => (
+            <button key={k.v} type="button" role="tab" aria-selected={kind === k.v} onClick={() => pick(k.v)}
+              className={clsx(plaza.hpTab, kind === k.v && plaza.hpTabOn)}>
+              <IconHelpTab tab={k.v} /><span>{k.l}</span>
+              {!!waitN(k.v) && <span className={styles.wait} title="답변 대기">{waitN(k.v)}</span>}
+            </button>
+          ))}
+        </div>
+        {msg && <p className={styles.msg} role="alert">{msg}</p>}
+      </header>
+      {wide ? (
+        <div className={styles.split}>
+          {listPane}
+          <section className={styles.detailPane}>{detail}</section>
+        </div>
+      ) : (
+        <div className={styles.slide} style={style}>{view === 'post' && open ? <section className={styles.detailPane}>{detail}</section> : listPane}</div>
+      )}
+    </div>
+  )
+}
+
+function Detail({ post, cred, wide, run, delBtn, onBack, onChanged, onGone }: {
+  post: FeedbackPost; cred: OpCred; wide: boolean
+  run: (job: Promise<boolean>, fail: string) => Promise<boolean>
+  delBtn: (id: string, onDone: () => void) => React.ReactNode
+  onBack?: () => void; onChanged: () => void; onGone: () => void
+}) {
+  const [nodes, setNodes] = useState<FeedbackNode[] | null>(null)
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const load = useCallback(() => opLoadThread(post.id).then(setNodes).catch(() => setNodes((n) => n ?? [])), [post.id])
+  useEffect(() => { void load() }, [load])
+  const reply = (parentId: string, body: string) =>
+    run(opReply(cred, parentId, body), '답글을 달지 못했어요.').then((ok) => { if (ok) { void load(); onChanged() } return ok })
+  const sendTop = () => {
+    setBusy(true)
+    void reply(post.id, text).then((ok) => { if (ok) setText('') }).finally(() => setBusy(false))
+  }
+  const after = () => { void load(); onChanged() }
+  return (
+    <div className={styles.detail}>
+      {onBack && (
+        <button type="button" onClick={onBack} className={clsx(styles.ghost, styles.back)}><IconChevronLeft />목록</button>
+      )}
+      <FeedbackPostBody p={post} del={delBtn(post.id, onGone)} />
+      <span className={styles.when}>{new Date(post.createdAt).toLocaleString('ko-KR')}</span>
+      {!post.deleted && (
+        <FeedbackComposer value={text} onChange={setText} onSend={sendTop} busy={busy} mobile={!wide}
+          ph="운영자로 댓글 달기" label="운영자 댓글" send="운영자로 등록" />
+      )}
+      {!nodes && <p className={styles.empty}>불러오는 중</p>}
+      {nodes && !nodes.length && <p className={styles.empty}>아직 댓글이 없어요.</p>}
+      {nodes && nodes.length > 0 && (
+        <FeedbackThread nodes={nodes} mobile={!wide} canDelete={() => true} del={(n) => delBtn(n.id, after)} onReply={reply} />
+      )}
+    </div>
   )
 }

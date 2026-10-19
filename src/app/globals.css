@@ -237,3 +237,8 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
    ⚠️ 감출 요소에 직접 붙인다: display:contents 로 감싼 칸에는 opacity · transform 이 먹지 않아 툭 사라진다. */
 [data-pb-body] { transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease, visibility 0s; }
 html[data-pb-bgonly] [data-pb-body] { opacity: 0; transform: translateY(10px); visibility: hidden; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .22s ease, visibility 0s .26s; }
+
+/* ── 기능 안내의 '열어 보기'가 도착한 요소를 잠깐 가리킨다(lib/guide 의 guideSpot — 붙였다가 1.9초 뒤 뗀다) ── */
+/* 들어올 때와 나갈 때 모두 테두리 색만 전환한다(움직이지 않는다). :where 로 무게를 0 으로 둬, 요소가 제 transition · outline 을 가지면 그것이 이긴다 */
+:where([data-guide]) { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .3s cubic-bezier(.45,0,.55,1); }
+[data-guide].pb-guidehit { outline: 2px solid #ec86ac !important; outline-offset: 2px; }

@@ -4,8 +4,10 @@ import clsx from 'clsx'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useShop } from '../ShopContext'
+import { resetHeroView, setHeroView, useHeroView, type HeroView } from '@/lib/heroView'
 import { SKY_MODES, getSkyMode, setSkyMode, type SkyMode } from '../scene/skyTime'
-import { IconCopy, IconRate, IconScene, IconSky } from '../ui/Icons'
+import { Seg } from '../ui/controls'
+import { IconLinkCopy, IconRate, IconScene, IconSky, IconViewBase, IconViewFull, IconViewWide } from '../ui/Icons'
 import styles from './frame.module.css'
 
 // 글자가 바뀌는 버튼의 라벨. 나올 수 있는 글자를 모두 같은 자리에 겹쳐 두고 지금 것만 보인다 →
@@ -32,7 +34,17 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
   useEffect(() => { setSky(getSkyMode()) }, [])
   const skyAt = SKY_MODES.findIndex((m) => m.id === sky)
   const nextSky = () => { const m = SKY_MODES[(skyAt + 1) % SKY_MODES.length].id; setSkyMode(m); setSky(m) }
+  // 미리보기 크기(모바일 만, lib/heroView): 기본 · 크게 · 캐릭터만. 코디 광장에는 미리보기가 없어 고를 수 없다(그때는 기본으로 돌린다).
+  const hv = useHeroView()
+  const noHero = s.primary === 'share'
+  useEffect(() => { if (!mobile || noHero) resetHeroView() }, [mobile, noHero])
   if (mobile) {
+    const offT = '코디 광장에는 미리보기가 없어요'
+    const viewOpts: { v: HeroView; l: string; icon: React.ReactNode; disabled?: boolean; disabledTitle?: string }[] = [
+      { v: 'base', l: '미리보기 기본 크기', icon: <IconViewBase />, disabled: noHero, disabledTitle: offT },
+      { v: 'wide', l: '미리보기 크게', icon: <IconViewWide />, disabled: noHero, disabledTitle: offT },
+      { v: 'full', l: '캐릭터만 보기', icon: <IconViewFull />, disabled: noHero, disabledTitle: offT },
+    ]
     return (
       <div className={styles.headerM}>
         <button type="button" onClick={s.goHome} title="처음 화면으로" className={clsx(styles.logoBoxM, styles.logoBtn)}>
@@ -40,11 +52,14 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
           <span className={styles.logoTextM}>커마샵</span>
         </button>
         <div className={styles.headerActsM}>
-          <button type="button" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.rateBtnM)}>
+          <div data-guide="view" className={styles.viewSegM}>
+            <Seg variant="mobileFit" opts={viewOpts} value={noHero ? 'base' : hv} onPick={setHeroView} title="미리보기 크기" />
+          </div>
+          <button type="button" data-guide="rate" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.rateBtnM)}>
             <IconRate size={13} />평가
           </button>
-          <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" className={clsx('pb-solid', styles.copyBtnM)}>
-            <IconCopy size={13} />복사
+          <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" data-guide="copy" className={clsx('pb-solid', styles.copyBtnM)}>
+            <IconLinkCopy size={13} />복사
           </button>
         </div>
       </div>
@@ -65,11 +80,11 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
           <IconScene /><Swap now={bgOnly ? '돌아가기' : '배경 보기'} all={['배경 보기', '돌아가기']} />
         </button>
         <span className={styles.toolSep} aria-hidden />
-        <button type="button" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.tool)}>
+        <button type="button" data-guide="rate" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.tool)}>
           <IconRate />코디 평가
         </button>
-        <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" className={clsx('pb-solid', styles.toolSolid)}>
-          <IconCopy />프리셋 복사
+        <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" data-guide="copy" className={clsx('pb-solid', styles.toolSolid)}>
+          <IconLinkCopy size={15} />프리셋 복사
         </button>
       </div>
     </header>

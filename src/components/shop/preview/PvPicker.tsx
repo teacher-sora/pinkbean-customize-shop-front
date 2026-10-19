@@ -111,7 +111,7 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
 }
 
 // ── 버튼 + 팝오버(PC · 태블릿) ────────────────────────────────────────────────
-export default function PvPicker({ field, options, groups, value, onChange, variant, narrow, title, ariaLabel, shortLabel, isDefault, disabledValues, disabledTitle, onOpenPage }: GridProps & {
+export default function PvPicker({ field, options, groups, value, onChange, variant, narrow, title, ariaLabel, shortLabel, isDefault, disabledValues, disabledTitle, onOpenPage, guide }: GridProps & {
   variant: 'row' | 'rowM' | 'field' | 'fieldM'
   narrow?: boolean
   title?: string
@@ -119,6 +119,7 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
   shortLabel?: string
   isDefault?: boolean
   onOpenPage?: () => void // 주면 팝오버 대신 시트 안 화면으로 넘긴다(모바일)
+  guide?: string // 기능 안내가 가리킬 이름(data-guide)
 }) {
   const [pos, setPos] = useState<Pos | null>(null)
   const [shown, setShown] = useState(false) // 등장/퇴장 전환용(마운트 후 한 프레임 뒤에 켠다)
@@ -175,7 +176,7 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
 
   return (
     <>
-      <button ref={btnRef} type="button" onClick={toggle} title={title ?? ariaLabel} aria-label={ariaLabel} aria-expanded={open} className={cls}>
+      <button ref={btnRef} type="button" data-guide={guide} onClick={toggle} title={title ?? ariaLabel} aria-label={ariaLabel} aria-expanded={open} className={cls}>
         {isField
           ? <span className={clsx(ui.ddFieldText, isDefault && ui.ddFieldTextDef)}>{isDefault ? shortLabel : current}</span>
           : <span className={ui.ddRowText}>{current}</span>}

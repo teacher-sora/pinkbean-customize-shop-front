@@ -46,20 +46,22 @@
 | 토스트 | `ui/Toast.tsx` — `s.notify('…')` 로 띄운다 |
 | 캔버스 우클릭 메뉴와 그 알림 | `lib/canvasMenu.ts` — `bindImageMenu`, `flashToast`(React 밖에서 쓰는 것) |
 | 지우기 두 번 누르기 | `lib/confirmTwice.ts`(`confirmTwice`, `CONFIRM_ATTR`) + `ui/ConfirmBubble.tsx` — 누른 버튼 위에 말풍선, 3초 |
+| 기능 안내(질문에 맞는 기능을 목록에서 골라 보여 준다) | `lib/guide.ts`(`GUIDE` 목록, PC · 휴대폰 글 `pc` · `m` 과 `guideFor`, `askGuide`, `guideSpot`) + `plaza/NoticeBody` 의 `GuideCard` — '열어 보기'는 `s.guideGo`, 가리킬 요소에는 `data-guide` |
+| 글 상자 목록 · 댓글 답글 나무(깊이별 왼쪽 줄) · 글 입력칸 | `plaza/FeedbackThread`(`FeedbackBox` · `FeedbackPostBody` · `FeedbackThread` · `FeedbackComposer`) — 건의함과 운영자 화면이 함께 쓴다 |
 | 코디 평가(핑크빈이 무대에 나와 말한다) | `preview/PinkbeanRate.tsx` + `preview.module.css` 의 `.rate` `.bean` `.say` |
 
 ## 컨트롤 (`ui/controls.tsx`, `ui/ui.module.css`)
 
 | 무엇 | 이름 |
 |---|---|
-| 알약·나뉜 탭 | `Seg` — `pc` / `mobileFlex` / `mobileFit` |
+| 알약·나뉜 탭 | `Seg` — `pc` / `mobileFlex` / `mobileFit`. 옵션에 `icon` 을 주면 아이콘 칸(모바일 헤더의 미리보기 크기 셋) |
 | 접어 둔 보기 · 성별 | `list/ListArea.tsx` 의 `FilterM` — '보기 설정' 버튼 + 바로 아래 펼침 칸(모바일 · 좁은 폭) |
 | 스위치 | `Switch` |
 | 색 고르기 | `FamilyDots`(색상 계열), `Swatch` |
 | 숫자 증감 | `Stepper` |
 | 슬라이더 + 증감 한 줄 | `DyeRow` — 전역 `.pb-slider` `.pb-track-h/-s/-v` `.pb-dyerow` |
 | 고르기(select 대신) | `ui/Dropdown.tsx` — `row` / `rowM` / `field` / `fieldM` |
-| 아이콘 | `ui/Icons.tsx`(인라인 SVG 30여 개, `IconTab`) — 새 아이콘도 여기에 같은 굵기로. 염색은 팔레트(`IconDrop` 과 탭 아이콘 `info` — 이름은 예전 그대로), 더하기는 `IconAdd` |
+| 아이콘 | `ui/Icons.tsx`(인라인 SVG, `IconTab`) — 새 아이콘도 여기에 같은 굵기로. **역할마다 하나만 둔다**: 복사 · 링크 복사 `IconLinkCopy`, 닫기 `IconClose`, 검색 `IconSearch`(버튼 옆은 `bold`), 지우기 `IconTrashSolid`, 받기 · 불러오기 · 저장 `IconTakeDown`, 염색은 팔레트(`IconDrop` = 탭 아이콘 `info` 와 같은 경로), 공지는 하단 탭의 확성기(`TAB_ICONS.notice`), 더하기는 `IconAdd` |
 
 ## 전역 클래스 (`app/globals.css`)
 
@@ -89,7 +91,7 @@
 
 ## 광장에서 가져다 쓸 수 있는 것
 
-`plaza/PlazaComments.tsx`(댓글 + 입력), `plaza/PlazaRefViewer.tsx`(그림 확대·이동, 보일 자리 고르기), `plaza/NoticeBody.tsx`(서피스 안의 쪽 목록 + 댓글), `plaza/PlazaTakeBody.tsx`(프리셋 칸 고르기).
+`plaza/PlazaComments.tsx`(댓글 + 입력), `plaza/PlazaRefViewer.tsx`(그림 확대·이동, 보일 자리 고르기), `plaza/NoticeBody.tsx`(서피스 안의 탭 넷 + 글 목록 ↔ 상세), `plaza/PlazaTakeBody.tsx`(프리셋 칸 고르기).
 
 ## 배경
 

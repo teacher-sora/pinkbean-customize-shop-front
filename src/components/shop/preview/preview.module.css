@@ -104,8 +104,18 @@
 .chipX { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border: 1px solid #f5e2eb; border-radius: 50%; background: #fff; color: #d76d9a; font-size: 10px; line-height: 1; }
 
 /* 모바일 히어로 */
-.hero { flex: 0 0 auto; position: relative; height: 216px; /* 리스트에 여유를 주려고 낮게 잡는다 */ border-bottom: 1px solid #f4efe8; overflow: hidden; }
+/* 안의 것(캔버스 · 배경 장면 · 버튼)은 칸 밖으로 그려지지 않는다: overflow 에 더해 contain: paint(합성되는 WebGL 캔버스도 확실히 자른다),
+   isolation(z-index 를 가진 버튼이 미끄러지는 목록 위로 올라오지 않게) */
+.hero { flex: 0 0 auto; position: relative; height: 216px; /* 리스트에 여유를 주려고 낮게 잡는다 */ border-bottom: 1px solid #f4efe8; overflow: hidden; contain: paint; isolation: isolate; }
 .heroModel { position: absolute; inset: 0; }
+/* 미리보기 크기(lib/heroView — 모바일 헤더의 보기 셋). 누르는 즉시 바뀐다(전환 없음 — 시점 바꾸기는 바로바로).
+   크게 = 화면의 56%(기본보다 작아지지 않게 — 목록이 2줄 아래로 줄면 페이지가 길어진다, ListArea 의 --pb-min-h).
+   캐릭터만 = 헤더(46) 아래 전부, 틀도 화면 높이(100svh — 주소창이 펴져도 다 보이는 높이)로 묶는다(frame.module.css) */
+:global(html[data-pb-view='wide']) .hero { height: max(216px, 56vh); }
+:global(html[data-pb-view='full']) .hero { height: calc(100svh - 46px); }
+/* 왼쪽 위: 이미지 저장 · 링크 복사(광장 카드의 레일 버튼을 그대로 쓴다). 오른쪽 위의 되돌리기와 같은 높이 · 여백 */
+.heroRail.heroRail { left: 12px; right: auto; top: 10px; flex-direction: row; gap: 6px; opacity: 0; pointer-events: none; } /* 보기와 함께 바로 나타나고 사라진다 */
+.heroRailOn.heroRailOn { opacity: 1; pointer-events: auto; }
 .heroHist { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; }
 .heroIcon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: pointer; }
 .heroIconOn { border-color: #eeb2ce; background: #fff; color: #d76d9a; cursor: pointer; }

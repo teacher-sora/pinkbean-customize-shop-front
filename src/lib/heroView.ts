@@ -1,0 +1,46 @@
+// 모바일 미리보기(히어로)의 크기 — 기본 · 크게 · 캐릭터만. 모바일 헤더의 보기 버튼 셋이 고른다(frame/AppHeader).
+//  · 표시는 <html data-pb-view> 속성 하나다. 히어로 높이는 CSS(preview.module.css)가 이 속성을 보고 정한다.
+//  · **전환 없이 바로 바뀐다.** 보기를 바꾸는 것은 시점을 바꾸는 일이라 누르는 즉시 그 화면이어야 한다(사용자 지시).
+//    목록을 미끄러지게 했더니 커진 미리보기와 내려가는 목록이 잠깐 겹쳐 보였다.
+//  · 캐릭터만: 아래에 있는 것들(목록 · 프리셋 · 하단 탭)의 높이를 지금 값으로 묶어 두고 히어로를 화면 끝까지 키운다 →
+//    그것들은 줄어들지 않고 화면 아래로 밀려난다(틀이 overflow:hidden 이라 보이지 않는다). 되돌아오면 묶은 것을 푼다.
+//  · 저장하지 않는다. 새로 열면 기본이다. 모바일이 아니게 되면(폭이 넓어지면) 속성을 뗀다(AppHeader).
+import { useSyncExternalStore } from 'react'
+
+export type HeroView = 'base' | 'wide' | 'full'
+let view: HeroView = 'base'
+const subs = new Set<() => void>()
+const subscribe = (fn: () => void) => { subs.add(fn); return () => { subs.delete(fn) } }
+export const useHeroView = () => useSyncExternalStore(subscribe, () => view, () => 'base' as HeroView)
+
+// 히어로 아래의 것들: 패널 슬롯(display:contents) 안의 히어로 뒤 요소들 + 하단 탭
+function below(): HTMLElement[] {
+  const col = document.querySelector<HTMLElement>('[data-mobile-col]')
+  if (!col) return []
+  const hero = col.querySelector('[data-hero]')
+  const inPanel = [...col.querySelectorAll<HTMLElement>('[data-pb-panel] > *')].filter((el) => el !== hero)
+  const rest = [...col.querySelectorAll<HTMLElement>(':scope > [data-hero-below]')]
+  return [...inPanel, ...rest].filter((el) => el.getClientRects().length)
+}
+
+export function setHeroView(next: HeroView) {
+  if (next === view) return
+  const prev = view
+  // 캐릭터만은 화면 높이로 묶이므로 페이지를 내려 둔 채였으면 맨 위로(재기 전에)
+  if (next === 'full' && window.scrollY) window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  const els = below()
+  if (next === 'full') for (const el of els) { el.style.height = `${el.offsetHeight}px`; el.style.flex = '0 0 auto' }
+  if (prev === 'full') for (const el of els) { el.style.height = ''; el.style.flex = '' }
+  document.documentElement.setAttribute('data-pb-view', next)
+  view = next
+  subs.forEach((fn) => fn())
+}
+
+// 모바일이 아니게 되면 기본으로(속성을 떼고 묶은 높이를 푼다)
+export function resetHeroView() {
+  if (view === 'base') return
+  for (const el of below()) { el.style.height = ''; el.style.flex = '' }
+  document.documentElement.removeAttribute('data-pb-view')
+  view = 'base'
+  subs.forEach((fn) => fn())
+}

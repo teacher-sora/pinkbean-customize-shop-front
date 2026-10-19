@@ -12,7 +12,7 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
 const PRESET_FRACTION = 0.38
 import { useShop, type Snapshot } from '../ShopContext'
-import { IconImport, IconPencil, IconShare, IconTrash, IconCheck } from '../ui/Icons'
+import { IconCheck, IconLinkCopy, IconPencil, IconTakeDown, IconTrashSolid } from '../ui/Icons'
 import styles from './preset.module.css'
 
 export default function PresetPanel({ mobile }: { mobile: boolean }) {
@@ -80,8 +80,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
                   <IconPencil className={styles.pencil} />
                 </span>
               </div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); s.sharePreset(p) }} title="프리셋 복사" aria-label="프리셋 복사" className={clsx('pb-presetacts', styles.share, mobile && styles.shareM)}><IconShare /></button>
-              <button type="button" onClick={(e) => { e.stopPropagation(); remove(p) }} {...{ [CONFIRM_ATTR]: `preset:${p.id}` }} title="프리셋 삭제" aria-label="삭제" className={clsx('pb-presetacts', styles.del, mobile && styles.delM)}><IconTrash /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); s.sharePreset(p) }} title="프리셋 복사" aria-label="프리셋 복사" className={clsx('pb-presetacts', styles.share, mobile && styles.shareM)}><IconLinkCopy size={11} /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); remove(p) }} {...{ [CONFIRM_ATTR]: `preset:${p.id}` }} title="프리셋 삭제" aria-label="삭제" className={clsx('pb-presetacts', styles.del, mobile && styles.delM)}><IconTrashSolid size={11} /></button>
             </div>
           </div>
         )
@@ -96,8 +96,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           {chip}
           {/* 불러오기: 입력과 버튼을 한 칸에 묶는다(아래 PC 와 같은 모양) */}
           <div className={clsx(styles.importBox, styles.importBoxM)}>
-            <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
-            <button type="button" onClick={s.importFetch} disabled={s.importing} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconImport /></button>
+            <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
+            <button type="button" onClick={s.importFetch} disabled={s.importing} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconTakeDown size={15} /></button>
           </div>
         </div>
         <div className={styles.hrM} />
@@ -113,8 +113,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         <div className={styles.groupB}>
           {/* 불러오기: 아이콘 + 입력 + 채운 버튼을 한 테두리 안에. 칸의 생김새는 다른 탭의 검색 칸과 같고(면 · 테두리 · 아이콘), 채운 버튼 하나로만 눈에 띈다 */}
           <div className={clsx(styles.importBox, narrow && styles.importBoxNarrow)}>
-            <span className={styles.importIcon} aria-hidden><IconImport /></span>
-            <input value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
+            <span className={styles.importIcon} aria-hidden><IconTakeDown size={15} /></span>
+            <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
             <button type="button" onClick={s.importFetch} disabled={s.importing} title="닉네임 또는 공유 링크로 코디 불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtn, s.importing && styles.busy)}>
               {/* 두 문구를 한 칸에 겹쳐 두어 폭 = 긴 쪽('불러오는 중') — 상태가 바뀌어도 버튼·입력칸이 밀리지 않는다. */}
               <span className={styles.loadLabel}>

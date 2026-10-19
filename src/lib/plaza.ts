@@ -511,14 +511,18 @@ export function plazaWhen(iso: string): string {
   return `${dt.getMonth() + 1}월 ${dt.getDate()}일`
 }
 
-// ── 공지 및 건의함(간이, supabase/0011) ──
-// 공지는 운영자가 Supabase 대시보드(Table Editor → plaza_notices)에서 쓴다 — 앱에는 쓰기 화면이 없다.
-// 댓글로 신고·건의를 받는다. 한 쪽에 20개, 최신이 위. 운영자 uid(plaza_admins)의 댓글은 '운영자'로 보인다.
+// ── 공지 및 건의함(supabase/0011 · 0013 · 0018 · 0019) ──
+// 공지는 운영자가 Supabase 대시보드(Table Editor → plaza_notices)에서 쓴다 — 앱에는 쓰기 화면이 없다. 공지에는 댓글이 없다.
+// 건의 · 오류는 같은 표(plaza_notice_comments)에 종류(kind)로 나눠 담는다. 목록은 원글만, 한 쪽에 20개, 최신이 위.
+// 글을 열면 그 글의 댓글 · 답글이 나무로 붙는다(depth 1 = 댓글, 2 · 3 = 답글 — 댓글부터 세 단까지. 깊이 · 원글은 DB 트리거가 정한다).
+// op = 운영자 글(/suggestion 에서만 켜진다), deleted = 답글이 달린 채 지운 글(자리만 남는다).
 export type PlazaNotice = { id: string; createdAt: string; title: string; body: string; pinned: boolean }
-// replies = 그 건의글에 달린 **운영자 답변**. 앱에서는 아무도 달 수 없고(supabase/0013 정책) 운영자가
-// DB 에서 직접 남긴다 — 그래서 답변은 곧 운영자 글이다(따로 권한 표를 두지 않는다).
-export type NoticeComment = { id: string; owner: string; body: string; createdAt: string; mine: boolean; admin: boolean; replies?: NoticeComment[] }
+export type FeedbackKind = 'idea' | 'bug'
+export const FEEDBACK_DEPTH = 3   // 댓글부터 세 단까지(댓글 → 답글 → 답글)
 export const NOTICE_PAGE = 20
+// 목록의 글 하나. count = 지우지 않은 댓글 · 답글 수, answered = 운영자 댓글이 있다
+export type FeedbackPost = { id: string; owner: string; body: string; createdAt: string; mine: boolean; op: boolean; deleted: boolean; count: number; answered: boolean }
+export type FeedbackNode = { id: string; owner: string; body: string; createdAt: string; mine: boolean; op: boolean; deleted: boolean; depth: number; children: FeedbackNode[] }
 export async function loadNotices(): Promise<PlazaNotice[]> {
   const c = sb()
   if (!c) return []
@@ -528,72 +532,90 @@ export async function loadNotices(): Promise<PlazaNotice[]> {
   return ((data || []) as { id: string; created_at: string; title: string; body: string; pinned: boolean }[])
     .map((r) => ({ id: r.id, createdAt: r.created_at, title: r.title, body: r.body || '', pinned: r.pinned }))
 }
-let adminsP: Promise<Set<string>> | null = null
-const loadAdmins = () => {
-  const c = sb()
-  if (!c) return Promise.resolve(new Set<string>())
-  if (!adminsP) {
-    adminsP = Promise.resolve(c.from('plaza_admins').select('uid'))
-      .then(({ data }) => new Set(((data || []) as { uid: string }[]).map((r) => r.uid)))
-      .catch(() => { adminsP = null; return new Set<string>() })
-  }
-  return adminsP
-}
-export async function loadNoticeComments(noticeId: string, page: number): Promise<{ list: NoticeComment[]; total: number }> {
+type FbRow = { id: string; owner: string; body: string; created_at: string; op: boolean; deleted: boolean; depth: number; parent_id: string | null; root_id: string | null }
+const FB_COLS = 'id,owner,body,created_at,op,deleted,depth,parent_id,root_id'
+// 욕설 · 성희롱 낱말은 보여 줄 때도 가린다(lib/safeText) — 올릴 때 가리지만, 그 전에 올라온 글과 앱을 거치지 않고 넣은 글도 있다.
+// 운영자 화면(raw)은 원문 그대로다.
+const fbBody = (r: FbRow, raw: boolean) => (r.deleted ? '' : raw || r.op ? r.body : censor(r.body))
+async function fbPosts(kind: FeedbackKind, from: number, to: number, uid: string | null, raw: boolean): Promise<{ list: FeedbackPost[]; total: number }> {
   const c = sb()
   if (!c) return { list: [], total: 0 }
-  const [uid, admins] = await Promise.all([plazaAuth(), loadAdmins()])
-  // 쪽 넘김은 **건의글(답변이 아닌 것)** 기준이다 — 답변은 그 글에 딸려 붙는다.
-  const { data, error, count } = await c.from('plaza_notice_comments').select('id,owner,body,created_at', { count: 'exact' })
-    .eq('notice_id', noticeId).is('parent_id', null).order('created_at', { ascending: false }).order('id')
-    .range(page * NOTICE_PAGE, page * NOTICE_PAGE + NOTICE_PAGE - 1)
+  const { data, error, count } = await c.from('plaza_notice_comments').select(FB_COLS, { count: 'exact' })
+    .eq('kind', kind).is('parent_id', null).order('created_at', { ascending: false }).order('id').range(from, to)
   if (error) throw error
-  type Row = { id: string; owner: string; body: string; created_at: string }
-  const rows = (data || []) as Row[]
-  const mk = (r: Row, admin: boolean): NoticeComment =>
-    // 욕설 · 성희롱 낱말은 보여 줄 때도 가린다(lib/safeText) — 올릴 때 가리지만, 그 전에 올라온 글과 앱을 거치지 않고 넣은 글도 있다
-    ({ id: r.id, owner: r.owner, body: admin ? r.body : censor(r.body), createdAt: r.created_at, mine: !!uid && r.owner === uid, admin })
-  // 이 쪽에 보이는 글들의 답변만 한 번에 받아 붙인다(오래된 순 — 대화 순서대로 읽힌다).
-  const byParent = new Map<string, NoticeComment[]>()
+  const rows = (data || []) as FbRow[]
+  // 이 쪽 글들의 댓글 수 · 운영자 답변 여부를 한 번에
+  const stat = new Map<string, { n: number; op: boolean }>()
   if (rows.length) {
-    const { data: rd } = await c.from('plaza_notice_comments').select('id,owner,body,created_at,parent_id')
-      .in('parent_id', rows.map((r) => r.id)).order('created_at', { ascending: true })
-    for (const r of (rd || []) as (Row & { parent_id: string })[]) {
-      const arr = byParent.get(r.parent_id) || []
-      arr.push(mk(r, true)) // 답변 = 운영자 글
-      byParent.set(r.parent_id, arr)
+    const { data: rd } = await c.from('plaza_notice_comments').select('root_id,op,deleted').in('root_id', rows.map((r) => r.id)).limit(5000)
+    for (const r of (rd || []) as { root_id: string; op: boolean; deleted: boolean }[]) {
+      const st = stat.get(r.root_id) || { n: 0, op: false }
+      if (!r.deleted) st.n++
+      if (r.op && !r.deleted) st.op = true
+      stat.set(r.root_id, st)
     }
   }
   await fillAliases(rows.map((r) => r.owner)).catch(() => undefined)
   return {
     total: count ?? 0,
-    list: rows.map((r) => {
-      const rep = byParent.get(r.id)
-      return { ...mk(r, admins.has(r.owner)), ...(rep && rep.length ? { replies: rep } : {}) }
-    }),
+    list: rows.map((r) => ({
+      id: r.id, owner: r.owner, body: fbBody(r, raw), createdAt: r.created_at, mine: !!uid && r.owner === uid, op: r.op, deleted: r.deleted,
+      count: stat.get(r.id)?.n ?? 0, answered: !!stat.get(r.id)?.op,
+    })),
   }
 }
-export async function addNoticeComment(noticeId: string, body: string): Promise<void> {
+// 글 하나의 댓글 · 답글 나무(오래된 순 — 대화 순서대로 읽힌다)
+async function fbThread(rootId: string, uid: string | null, raw: boolean): Promise<FeedbackNode[]> {
+  const c = sb()
+  if (!c) return []
+  const { data, error } = await c.from('plaza_notice_comments').select(FB_COLS).eq('root_id', rootId).order('created_at', { ascending: true }).limit(1000)
+  if (error) throw error
+  const rows = (data || []) as FbRow[]
+  await fillAliases(rows.map((r) => r.owner)).catch(() => undefined)
+  const nodes = new Map<string, FeedbackNode>()
+  for (const r of rows) {
+    nodes.set(r.id, { id: r.id, owner: r.owner, body: fbBody(r, raw), createdAt: r.created_at, mine: !!uid && r.owner === uid, op: r.op, deleted: r.deleted, depth: r.depth, children: [] })
+  }
+  const top: FeedbackNode[] = []
+  for (const r of rows) {
+    const n = nodes.get(r.id)!
+    const p = r.parent_id && r.parent_id !== rootId ? nodes.get(r.parent_id) : undefined
+    if (p) p.children.push(n)
+    else top.push(n)
+  }
+  return top
+}
+export async function loadFeedback(kind: FeedbackKind, page: number) {
+  const uid = await plazaAuth()
+  return fbPosts(kind, page * NOTICE_PAGE, page * NOTICE_PAGE + NOTICE_PAGE - 1, uid, false)
+}
+export async function loadFeedbackThread(rootId: string) {
+  return fbThread(rootId, await plazaAuth(), false)
+}
+// 글 올리기(parentId 가 없으면 원글, 있으면 그 글 · 댓글에 다는 댓글 · 답글)
+export async function addFeedback(kind: FeedbackKind, body: string, parentId: string | null = null): Promise<void> {
   const c = sb()
   if (!c) throw new Error('supabase not configured')
   const uid = await plazaAuth()
   if (!uid) throw new Error('auth failed')
   const text = censor(body.trim().slice(0, PLAZA_COMMENT_MAX))   // 욕설 · 성희롱 낱말만 가려서 올린다
   if (!text) throw new Error('empty')
-  const { error } = await c.from('plaza_notice_comments').insert({ notice_id: noticeId, owner: uid, body: text })
+  const { error } = await c.from('plaza_notice_comments').insert(parentId ? { owner: uid, body: text, parent_id: parentId } : { kind, owner: uid, body: text })
   if (error) throw error
+  await fillAliases([uid]).catch(() => undefined)
 }
-export async function deleteNoticeComment(id: string): Promise<void> {
+// 자기 글 지우기 — 답글이 달려 있으면 자리만 남는다(DB 함수)
+export async function deleteFeedback(id: string): Promise<void> {
   const c = sb()
   if (!c) throw new Error('supabase not configured')
-  const { error } = await c.from('plaza_notice_comments').delete().eq('id', id)
+  const { data, error } = await c.rpc('plaza_fb_remove', { p_id: id })
   if (error) throw error
+  if (data !== true) throw new Error('not removed')
 }
 
-// ── 운영자용 건의함(/suggestion, supabase/0016) ──
+// ── 운영자용 건의함(/suggestion, supabase/0016 · 0019) ──
 // 아이디 · 비밀번호는 DB 함수가 확인한다(앱에는 서비스 키가 없다). 화면은 로그인한 값을 메모리에만 쥐고 부를 때마다 함께 보낸다.
 export type OpCred = { id: string; pw: string }
-export type OpComment = { id: string; owner: string; body: string; createdAt: string; replies: OpComment[] }
 const opRpc = async <T>(fn: string, args: Record<string, unknown>): Promise<T | null> => {
   const c = sb()
   if (!c) throw new Error('supabase not configured')
@@ -602,22 +624,12 @@ const opRpc = async <T>(fn: string, args: Record<string, unknown>): Promise<T | 
   return data as T | null
 }
 export const opLogin = async (cred: OpCred) => (await opRpc<boolean>('plaza_op_login', { p_id: cred.id, p_pw: cred.pw })) === true
-// 한 공지의 건의글 전부(최신이 위)와 그 답변. 운영자 화면이라 가리지 않은 원문 그대로다.
-export async function opLoadComments(noticeId: string): Promise<OpComment[]> {
-  const c = sb()
-  if (!c) return []
-  const { data, error } = await c.from('plaza_notice_comments').select('id,owner,body,created_at,parent_id')
-    .eq('notice_id', noticeId).order('created_at', { ascending: true }).limit(2000)
-  if (error) throw error
-  const rows = (data || []) as { id: string; owner: string; body: string; created_at: string; parent_id: string | null }[]
-  await fillAliases(rows.map((r) => r.owner)).catch(() => undefined)
-  const top = new Map<string, OpComment>()
-  for (const r of rows) if (!r.parent_id) top.set(r.id, { id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, replies: [] })
-  for (const r of rows) if (r.parent_id) top.get(r.parent_id)?.replies.push({ id: r.id, owner: r.owner, body: r.body, createdAt: r.created_at, replies: [] })
-  return [...top.values()].reverse()
-}
-// 돌려주는 값: 성공 true, 로그인이 틀렸으면(또는 잠겼으면) false
+// 한 종류(건의 · 오류)의 원글 전부(최신이 위). 운영자 화면이라 가리지 않은 원문 그대로다.
+export const opLoadFeedback = async (kind: FeedbackKind) => (await fbPosts(kind, 0, 1999, null, true)).list
+export const opLoadThread = (rootId: string) => fbThread(rootId, null, true)
+// 운영자 댓글 · 답글(원글이든 댓글이든). 돌려주는 값: 성공 true, 로그인이 틀렸으면(또는 잠겼으면) false
 export const opReply = async (cred: OpCred, parentId: string, body: string) =>
   (await opRpc<string>('plaza_op_reply', { p_id: cred.id, p_pw: cred.pw, p_parent: parentId, p_body: body.trim().slice(0, PLAZA_COMMENT_MAX) })) != null
+// 지우기(딸린 댓글 · 답글도 함께 지워진다)
 export const opDelete = async (cred: OpCred, id: string) =>
   (await opRpc<boolean>('plaza_op_delete', { p_id: cred.id, p_pw: cred.pw, p_comment: id })) != null

@@ -10,7 +10,7 @@ import { addStageBg, removeStageBg, setStageBg, STAGE_BG_MAX, useStageBg } from 
 import { STAGE_COLORS } from '../preview/StageBg'
 import { SCENE_SRC } from '../scene/sceneSrc'
 import { useShop } from '../ShopContext'
-import { IconAdd, IconCloseSmall } from '../ui/Icons'
+import { IconAdd, IconClose } from '../ui/Icons'
 import styles from './surface.module.css'
 
 const FIXED = [
@@ -45,7 +45,7 @@ export default function StageBgBody() {
         </button>
         {custom && (
           <button type="button" onClick={() => { if (confirmTwice(`bg:${id}`, '한 번 더 누르면 삭제해요')) removeStageBg(id) }} {...{ [CONFIRM_ATTR]: `bg:${id}` }}
-            title="그림 삭제" aria-label="그림 삭제" className={styles.bgDel}><IconCloseSmall /></button>
+            title="그림 삭제" aria-label="그림 삭제" className={styles.bgDel}><IconClose /></button>
         )}
       </div>
     )
