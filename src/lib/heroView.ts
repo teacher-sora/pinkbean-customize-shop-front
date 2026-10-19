@@ -40,13 +40,15 @@ export function setHeroView(next: HeroView) {
   view = next
   subs.forEach((fn) => fn())
   const after = els.map((el) => el.getBoundingClientRect().top)
-  // 움직이는 동안 히어로 위로 지나가므로 바탕을 칠한다(평소엔 틀의 흰 바탕이 비친다)
-  for (const el of els) { el.style.position = 'relative'; el.style.zIndex = '1'; el.style.background = '#fff' }
+  // 움직이는 동안 히어로 위로 지나가므로 바탕을 칠한다(평소엔 틀의 흰 바탕이 비친다). transform 이 걸린 요소는 DOM 순서대로
+  // 히어로(앞에 있다) 위에 그려지므로 position · z-index 는 건드리지 않는다. 절대 배치(가장자리 흐림 층 .pb-fadeov 등)는
+  // 따라 움직이기만 하고 바탕도 칠하지 않는다 — 칠하거나 배치를 바꾸면 흐름에 끼어들어 목록이 밀린다.
+  for (const el of els) if (getComputedStyle(el).position !== 'absolute') el.style.background = '#fff'
   place(els.map((el, i) => [el, before[i] - after[i]] as [HTMLElement, number]))
   const end = glideTo(els.map((el) => [el, 0] as [HTMLElement, number]))
   window.clearTimeout(endT)
   endT = window.setTimeout(() => {
-    for (const el of els) { el.style.transform = ''; el.style.transition = ''; el.style.position = ''; el.style.zIndex = ''; el.style.background = '' }
+    for (const el of els) { el.style.transform = ''; el.style.transition = ''; el.style.background = '' }
   }, end + 40)
 }
 
@@ -54,7 +56,7 @@ export function setHeroView(next: HeroView) {
 export function resetHeroView() {
   if (view === 'base') return
   window.clearTimeout(endT)
-  for (const el of below()) { el.style.height = ''; el.style.flex = ''; el.style.transform = ''; el.style.transition = ''; el.style.position = ''; el.style.zIndex = ''; el.style.background = '' }
+  for (const el of below()) { el.style.height = ''; el.style.flex = ''; el.style.transform = ''; el.style.transition = ''; el.style.background = '' }
   document.documentElement.removeAttribute('data-pb-view')
   view = 'base'
   subs.forEach((fn) => fn())
