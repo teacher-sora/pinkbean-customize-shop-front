@@ -405,8 +405,8 @@
 .hpBar .hpFound { max-height: 38vh; overflow: hidden auto; overscroll-behavior: contain; background: #fff; }
 .hpBarM { padding: 10px 12px; gap: 8px; }
 .hpInput { flex: 1 1 auto; min-width: 0; height: 32px; padding: 5px 12px; border: 1px solid #e7ded4; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12.5px; line-height: 1.5; color: #3d372f; outline: none; resize: none; overflow: hidden auto; overflow-wrap: anywhere; word-break: break-word; }
-.hpInputM { font-size: 13px; }
-.hpSend { height: 36px; }
+.hpInputM { height: 36px; padding: 7px 12px; font-size: 13px; }
+.hpSend { height: 32px; }
 
 /* 탭 hover(마우스만) */
 @media (hover: hover) and (pointer: fine) {
