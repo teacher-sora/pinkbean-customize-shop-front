@@ -362,10 +362,16 @@ const scaleAbout = (p: PlacedLayer, pv: Vec, s: number): PlacedLayer => ({ ...p,
 // 조립 입력에서 링의 일루전(내 뒤에 나 제외) — 이펙트를 그릴지(hideEffect) 정할 때 쓴다.
 export const ringIllusion = (items: { layers: Layer[] }[]): Illusion | null =>
   items.flatMap((i) => i.layers).find((l) => l.illusion && l.illusion.kind !== 'clone')?.illusion ?? null
-// 발(몸 그림의 origin)의 월드 좌표. 복제(slot 'clone')가 아닌 진짜 몸에서 잰다.
+// 발(몸 그림의 origin)의 월드 좌표. 복제(slot 'clone')가 아닌 진짜 몸에서 잰다. 일루전으로 키운 몸은 origin 도 배율만큼 멀다.
 export const footOf = (placed: PlacedLayer[]): Vec | null => {
   const b = placed.find((p) => p.slot === 'body' && p.name === 'body')
-  return b ? { x: b.x + b.origin.x, y: b.y + b.origin.y } : null
+  const k = b?.scale ?? 1
+  return b ? { x: b.x + b.origin.x * k, y: b.y + b.origin.y * k } : null
+}
+// 딛고 선 바닥의 월드 좌표 — 탈것을 탔으면 탈것의 origin(라이딩의 바닥), 아니면 발.
+const groundOf = (placed: PlacedLayer[]): Vec | null => {
+  const m = placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount'))
+  return m ? { x: m.x + m.origin.x * (m.scale ?? 1), y: m.y + m.origin.y * (m.scale ?? 1) } : footOf(placed)
 }
 function applyIllusion(placed: PlacedLayer[], anchors: Record<string, Vec>, marks: Layer[]): PlacedLayer[] {
   const foot = footOf(placed)
@@ -374,9 +380,10 @@ function applyIllusion(placed: PlacedLayer[], anchors: Record<string, Vec>, mark
   const clone = marks.find((m) => m.illusion!.kind === 'clone')
   let out = ring ? applyRing(placed, anchors, ring, foot) : placed
   // 내 뒤에 나는 링을 낀 모습(변신 · 거대한 몸 · 거대한 머리)을 그대로 복제한다(사용자 지시 — 링과 함께 써도 나온다).
-  // 기준은 원본 몸의 발(링이 옮겼으면 옮긴 자리 — 변신은 몸이 없어 처음 발).
+  // 기준은 딛고 선 바닥(groundOf — 탈것이면 탈것의 바닥, 링이 몸을 옮겼으면 옮긴 발, 변신은 처음 발)이다.
+  // 이 점을 기준으로 키우므로 복제의 발끝(탈것이면 탈것의 바닥)이 본체와 같은 줄에 선다(사용자 지시 — 모든 경우).
   if (clone) {
-    const pv = footOf(out) ?? foot, s = clone.illusion!.scale ?? 1, off = clone.illusion!.offset ?? { x: 0, y: 0 }
+    const pv = groundOf(out) ?? foot, s = clone.illusion!.scale ?? 1, off = clone.illusion!.offset ?? { x: 0, y: 0 }
     const twin = out.map((p) => ({ ...scaleAbout(p, pv, s), x: pv.x + (p.x - pv.x) * s + off.x, y: pv.y + (p.y - pv.y) * s + off.y, slot: 'clone' }))
     out = [...twin, ...out]
   }
