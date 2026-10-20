@@ -23,7 +23,7 @@ import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
-import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
+import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, loadPlazaPulse, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
@@ -1203,14 +1203,23 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [watching])
   // 광장을 **열어 둔 채로도** 남이 올린 글·내린 글이 몇 초 안에 보이게 한다.
   // 목록을 탭에 들어올 때만 받으면, 화면을 켜 두고 기다리는 사람에게는 새 글이 영영 오지 않는다.
-  // 5초마다 **첫 쪽만** 본다(lib/plaza.loadPlazaHead — 엣지 캐시에 걸려 대개 DB 까지 가지 않는다).
+  // 5초마다 **맥박만** 본다(lib/plaza.loadPlazaPulse — 글 수 + 최신 글 id, Supabase 직접). 바뀌었을 때만 첫 쪽을 받는다
+  // (loadPlazaHead — 엣지 캐시). 캐시 응답에 맥박의 최신 글이 없으면(비우기 실패) 캐시를 비켜 한 번 더 읽는다 → 3~5초 안에 보인다.
+  // 좋아요 수는 보이는 카드만 4초마다 따로 받는다(위). 화면 밖 카드의 좋아요는 목록을 다시 받을 때 맞춰진다.
   // ⚠️ plazaGen 은 올리지 않는다 — 올리면 보던 순서가 다시 잡혀 카드가 자리를 옮긴다. 새 글은 맨 앞에 붙는다.
   useEffect(() => {
     if (!watching || !plazaConfigured()) return
     let alive = true
+    let seen: string | null = null
     const tick = async () => {
       if (document.hidden) return
-      const head = await loadPlazaHead()
+      const pulse = await loadPlazaPulse()
+      if (!alive || !pulse) return
+      if (pulse === seen) return
+      seen = pulse // 처음 본 맥박에도 한 번 맞춘다(목록을 받은 뒤 그 사이에 올라온 글) — 대개 캐시 응답이다
+      const [total, top] = pulse.split('|')
+      let head = await loadPlazaHead()
+      if (head && ((top && !head.posts.some((p) => p.id === top)) || String(head.total) !== total)) head = await loadPlazaHead(true)
       if (!alive || !head) return
       setPlazaPosts((list) => {
         const here = new Set(list.map((p) => p.id))
