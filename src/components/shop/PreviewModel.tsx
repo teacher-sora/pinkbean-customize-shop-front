@@ -514,7 +514,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
 
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.
-  // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 몸통 중앙 · 정수 배율 · 그림에 맞춘 여백).
+  // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 그림에 맞춘 상자 · 4배 정수 확대).
   const makeBlob = useCallback(async (): Promise<Blob | null> => {
     const snap = copyRef.current
     if (!snap) return null
