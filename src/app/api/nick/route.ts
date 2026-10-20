@@ -61,7 +61,7 @@ async function fetchNexon(url: string, init: RequestInit): Promise<Response> {
 
 // 캐시 아이템 염색(컬러 프리즘). 넥슨이 색상계열/색조/채도/명도를 그대로 준다 → 내부 HsbParams 와 1:1 대응.
 // (염색 안 한 아이템은 null 이다 — 필드 자체가 없는 게 아니다.)
-interface NexonPrism { color_range?: string | null; hue?: number | null; saturation?: number | null; value?: number | null }
+interface NexonPrism { color_range?: string | null; hue?: number | null; saturation?: number | null; value?: number | null; black_inclusive_flag?: string | null }
 // custom_origin = 프리스타일(사소한 변경점/쩜) 아이템의 점 위치. custom_origin_no 1→첫째 점, 2→둘째 점.
 // x/y 는 문자열이며 게임 내부 origin 좌표(= WZ origin 과 같은 프레임). 프론트에서 오프셋으로 변환한다.
 interface NexonCustomOrigin { custom_origin_no: number; x: string; y: string }
@@ -102,7 +102,8 @@ function mergeItems(data: Cash, prefix: string, presetNo: number) {
       name: it.cash_item_name, gender: it.item_gender,
       // 염색 안 했으면 prism=null → 그대로 null 로 넘겨 프론트가 무시하게 한다.
       prism: p && (p.hue != null || p.saturation != null || p.value != null)
-        ? { colorRange: p.color_range ?? null, hue: p.hue ?? 0, saturation: p.saturation ?? 0, value: p.value ?? 0 }
+        // black_inclusive_flag '1' = 인게임 '순수 검정 포함'(테두리 포함). 빠뜨리면 불러온 코디의 검은 테두리가 염색되지 않는다.
+        ? { colorRange: p.color_range ?? null, hue: p.hue ?? 0, saturation: p.saturation ?? 0, value: p.value ?? 0, blackInclusive: p.black_inclusive_flag === '1' }
         : null,
       // 점 위치(사소한 변경점/쩜): 있으면 no/x/y 로 넘긴다. 없으면 null.
       customOrigin: it.custom_origin && it.custom_origin.length

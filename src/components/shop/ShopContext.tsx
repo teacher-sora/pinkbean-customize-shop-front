@@ -174,8 +174,9 @@ const NEXON_PART_SLOT: Record<string, string> = {
 }
 // 이름 정규화(성별 접미사·공백 제거)로 넥슨 이름 ↔ 내부 리스트 이름 매칭.
 const nrmName = (n: string) => (n || '').replace(/\s*\((여|남)\)\s*$/, '').replace(/\s+/g, ' ').trim()
-// prism = 캐시 아이템 염색(컬러 프리즘). 넥슨의 color_range/hue/saturation/value 를 그대로 받는다.
-type NexonPrism = { colorRange: string | null; hue: number; saturation: number; value: number }
+// prism = 캐시 아이템 염색(컬러 프리즘). 넥슨의 color_range/hue/saturation/value/black_inclusive_flag 를 그대로 받는다.
+// blackInclusive = 인게임 '순수 검정 포함'(우리 '테두리 포함', HsbParams.edge).
+type NexonPrism = { colorRange: string | null; hue: number; saturation: number; value: number; blackInclusive?: boolean }
 type NexonCustomOrigin = { no: number; x: number; y: number }
 type NexonItem = { part: string; slot: string; name: string; gender: string | null; prism?: NexonPrism | null; customOrigin?: NexonCustomOrigin[] | null }
 type NexonBeauty = { name: string; baseColor: string | null; mixColor: string | null; mixRate: string }
@@ -1592,6 +1593,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const prismToHsb = (p: NexonPrism): HsbParams => ({
     h: clampDye('h', p.hue), s: clampDye('s', p.saturation), b: clampDye('b', p.value),
     t: familyIdx(p.colorRange),
+    ...(p.blackInclusive ? { edge: true } : {}),
   })
   // 넥슨 코디 1벌(= 코디 × 프리셋) → 내부 스냅샷(착용 + 톤 + 염색). 매칭이 0건이면 null(=보여줄 게 없는 코디).
   // 헤어/성형/피부는 프리셋과 무관하게 코디(look) 단위로 하나다 → 프리셋만 items 로 갈아끼운다.
