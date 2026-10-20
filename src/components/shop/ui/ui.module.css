@@ -57,18 +57,16 @@
 .hue4 { background: hsl(174,68%,60%); }
 .hue5 { background: hsl(220,68%,60%); }
 .hue6 { background: hsl(300,68%,60%); }
-/* 칩 오른쪽 칸의 염색 값(info/SlotSprite DyeBand). 세로 줄로 칩과 나누고 값을 한 줄에 하나씩 쌓는다 — 모든 칩에 같은 폭이라 줄이 맞는다.
-   한 줄 = 앞(점, 낱말 없이 — .dyeBandSat 채도 · .dyeBandBri 명도) + 수치(진한 색, 오른쪽 맞춤). 네 줄(색조 · 채도 · 명도 · 테두리)까지 칩 높이 안에 든다. 꺼짐 = 흐리게 */
-.dyeBand { flex: 0 0 40px; align-self: stretch; min-width: 0; margin-left: auto; padding-left: 7px; border-left: 1px solid #f1e8df; display: flex; flex-direction: column; justify-content: center; gap: 1px; font-size: 9px; font-weight: 600; line-height: 9px; color: #6f655b; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; }
-.dyeBandRow { display: flex; align-items: center; justify-content: space-between; gap: 3px; min-width: 0; }
+/* 칩 아래 띠의 염색 값(info/SlotSprite DyeBand). 칩을 줄바꿈(.dyeChip)해 띠가 칩 폭 전체를 쓴다 — 모든 칩에 있어 높이가 같다.
+   띠 안은 칸(.dyeBandCell)으로 나눠 폭을 다 쓴다 — 칸은 제 글자 폭에 남는 폭을 똑같이 더 받는다(좁은 모바일 칩에서 잘리지 않게). 칸 사이는 가는 세로 줄, 칸 안은 가운데.
+   낱말(색 · 채 · 명 · 색 이름 · 테두리)은 흐린 색, 수치는 진한 색. 점은 색 계열 점(.famDot) · 스와치와 같은 색. 꺼짐 = 흐리게 */
+.dyeChip { flex-wrap: wrap; row-gap: 7px; }
+.dyeBand { flex: 0 0 100%; min-width: 0; height: 14px; padding-top: 7px; border-top: 1px solid #f4ede6; display: flex; align-items: center; overflow: hidden; font-size: 11px; font-weight: 600; line-height: 1; color: #6f655b; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; box-sizing: content-box; }
+.dyeBandCell { flex: 1 0 auto; height: 100%; padding: 0 3px; display: flex; align-items: center; justify-content: center; gap: 3px; }
+.dyeBandCell + .dyeBandCell { border-left: 1px solid #f1e8df; }
 .dyeBandMuted { font-weight: 500; color: #c3b9ad; }
-.dyeBandMuted .dyeBandRow { justify-content: flex-start; }
-.dyeBandEmpty { border-left-color: transparent; }
-.dyeBandKey { display: inline-flex; align-items: center; font-weight: 500; color: #b0a599; }
-.dyeBandVal { margin-left: auto; }
-.dyeBandDot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); }
-.dyeBandSat { background: linear-gradient(90deg, #d9d3cd, #e8508a); }
-.dyeBandBri { background: linear-gradient(90deg, #2f2b27, #fff); }
+.dyeBandKey { font-weight: 500; color: #b0a599; }
+.dyeBandDot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); }
 .dyeBandOff { color: #c3b9ad; }
 .dyeBandOff .dyeBandDot { filter: grayscale(1); opacity: .6; }
 

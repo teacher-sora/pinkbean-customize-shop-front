@@ -82,7 +82,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
         const name = r.on ? (r.hidden ? '숨김' : (r.item!.name || r.item!.id)) : '미착용'
         return (
           <button key={r.c.id} type="button" onClick={() => pick(r)} title={r.on ? `${r.c.label} - ${r.item!.name || r.item!.id}, 눌러서 염색` : `${r.c.label} - 미착용`}
-            className={clsx(r.on && 'pb-slotrow', styles.slot, r.on && styles.slotOn, r.hidden && styles.slotHidden, r.sel && styles.slotSel)}>
+            className={clsx(r.on && 'pb-slotrow', styles.slot, ui.dyeChip, r.on && styles.slotOn, r.hidden && styles.slotHidden, r.sel && styles.slotSel)}>
             <span className={clsx(styles.slotThumb, r.on && !r.hidden && styles.slotThumbOn)}>
               {r.on && r.item ? (
                 <span className={clsx(styles.slotSprite, r.hidden && styles.slotSpriteHidden)}>
