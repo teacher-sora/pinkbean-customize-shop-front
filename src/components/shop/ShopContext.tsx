@@ -242,6 +242,7 @@ export interface ShopCtx {
   // 기능 안내의 '열어 보기': 창을 닫고 그 탭 · 창으로 가서 요소를 잠깐 가리킨다(lib/guide)
   guideGo: (g: { go?: GuideGo }) => void
   plazaTakeDirect: (post: PlazaPost) => void
+  wearFromSnap: (snap: Snapshot, slots: string[], label?: string) => Promise<void>
   plazaTakeBack: () => void
   resolveSnapItems: (snap: Snapshot) => Promise<Record<string, ListItem | null>>
   plazaLike: (post: PlazaPost) => void
@@ -1143,6 +1144,31 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 저장해도 상세로 넘어가지 않고 그대로 닫힌다.
     openSurface({ kind: 'ptake', item: null, take })
   }
+  // 코디 광장 상세의 착용 칩 '입기' 버튼 — 남의 코디에서 그 부위만 지금 코디에 바로 입힌다(사용자 요청 — 코디 전체가 아니라 아이템 하나만).
+  // 부위마다 아이템 · 염색(발색 · HSB · 꺼짐)을 그대로 옮기고, 숨김은 푼다. 피부는 톤과 피부 염색. 겹치는 부위(islot)는 벗는다.
+  // 다른 부위와 연출은 건드리지 않는다. 지금 프리셋에 자동 저장되고 되돌리기로 돌아갈 수 있다(보통 착용과 같다).
+  const wearFromSnap = async (snap: Snapshot, slots: string[], label?: string) => {
+    const eq = await resolveEquipped(snap)
+    const pick = <T,>(src: Record<string, T> | undefined) => (prev: Record<string, T>) => {
+      const n = { ...prev }
+      for (const sl of slots) { if (src?.[sl] !== undefined) n[sl] = src[sl]; else delete n[sl] }
+      return n
+    }
+    const items = slots.filter((sl) => sl !== 'skin' && eq[sl])
+    if (slots.includes('skin')) setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
+    setEquipped((prev) => {
+      const next = { ...prev }
+      for (const sl of items) {
+        for (const c of conflictSlots(next, sl, eq[sl]!)) if (!slots.includes(c)) next[c] = null
+        next[sl] = eq[sl]
+      }
+      return next
+    })
+    setDyePalette(pick(snap.dyePalette)); setDyeHsb(pick(snap.dyeHsb)); setDyeOff(pick(snap.dyeOff))
+    setHidden((h) => { const n = { ...h }; for (const sl of slots) delete n[sl]; return n })
+    setDyeTarget(null)
+    notify(label ? `${label} 부위를 입었어요` : `${slots.length}개 부위를 입었어요`)
+  }
   // 'ptake' 에서 '이전' — 보던 상세로 되돌아간다(역방향 슬라이드).
   const plazaTakeBack = () => {
     const sf = surfaceRef.current
@@ -1909,7 +1935,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
-    openPlazaPost, openNotice, guideGo, plazaTakeDirect, plazaTakeBack, resolveSnapItems: resolveEquipped,
+    openPlazaPost, openNotice, guideGo, plazaTakeDirect, wearFromSnap, plazaTakeBack, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,

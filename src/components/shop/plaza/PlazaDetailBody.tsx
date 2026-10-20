@@ -13,6 +13,9 @@
 //  · 착용 아이템은 가져오기 전에 무엇을 입었는지 바로 보이게(가져와서 확인하는 번거로움을 덜기).
 //    부위 염색 칩과 같은 스프라이트 칩(염색 반영)을 **아코디언**에 담는다. 기본은 펼침(아래 WornItems) —
 //    접혀 있는 동안은 스프라이트를 하나도 받지 않는다.
+//  · 칩마다 '입기' 버튼(사용자 요청 — 코디 전체가 아니라 그 부위만 바로): 누르면 그 부위의 아이템 · 염색을 지금 코디에 입힌다
+//    (ShopContext.wearFromSnap). 창은 그대로 두어 다른 부위도 이어서 입을 수 있다. 이미 같은 것을 입고 있으면 체크로 바뀐다.
+//    모바일은 칩이 좁아 이름이 너무 잘리므로 글자 없이 아이콘만(같은 크기의 네모).
 
 import clsx from 'clsx'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -27,7 +30,7 @@ import { DyeBand, LookSprite, lookDyed } from '../info/SlotSprite'
 import { glideTo, place, release } from '../surface/glide'
 import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
-import { IconCaretDown, IconHeart, IconLinkCopy, IconTakeDown } from '../ui/Icons'
+import { IconCaretDown, IconCheck, IconHeart, IconLinkCopy, IconTakeDown } from '../ui/Icons'
 import PlazaComments from './PlazaComments'
 import PlazaRefViewer from './PlazaRefViewer'
 import styles from './plaza.module.css'
@@ -204,6 +207,8 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
     raf.current = requestAnimationFrame(() => go(wantRef.current))
   }, [mounted])
   const open = want
+  // 그 부위를 이미 입고 있는가(같은 아이템 · 피부는 같은 톤) — 입기 버튼이 체크로 바뀐다.
+  const isWorn = (w: Worn) => (w.slot === 'skin' ? s.tone === snap.tone : !!w.item && s.equipped[w.slot]?.id === w.item.id)
 
   return (
     <div ref={wrapRef} className={styles.worn}>
@@ -238,6 +243,14 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
                       <span className={surf.partSlot}>{w.label}</span>
                       <span className={surf.partName}>{w.name}</span>
                     </span>
+                    {isWorn(w) ? (
+                      <span title="지금 입고 있어요" className={clsx(styles.wearBtn, styles.wearBtnOn)}><IconCheck size={9} /></span>
+                    ) : (
+                      <button type="button" onClick={() => { s.wearFromSnap(snap, [w.slot], w.label).catch(() => {}) }}
+                        title={`${w.label}만 지금 코디에 입기`} aria-label={`${w.label}만 입기`} className={clsx(styles.wearBtn, mobile && styles.wearBtnM)}>
+                        <IconTakeDown size={11} />{!mobile && '입기'}
+                      </button>
+                    )}
                     <DyeBand state={w.dyed ? 'dyed' : w.dyeable ? 'plain' : 'none'} slot={w.slot} palette={snap.dyePalette?.[w.slot]} hsb={snap.dyeHsb?.[w.slot]} off={w.off} skinFamily={w.skinFamily} />
                   </span>
                 ))}
