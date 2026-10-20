@@ -170,7 +170,10 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // 재규어 액션 키 매핑: 엎드리기(캐릭터 proneStab) → 재규어 'prone'. 나머지는 V.action 그대로 매칭된다.
     const jagV = riding ? { ...V, action: V.action === 'proneStab' ? 'prone' : V.action } : V
     // 클럭: 앉으면 재규어(jagV) 애니메이션이 주체 → 재규어가 클럭. 서면 캐릭터(charV=V) 액션이 클럭.
-    const delays = frameDelays((seated ? ridingMeta : bodyMeta) ?? bodyMeta, seated ? jagV : charV)
+    // 변신 링은 캐릭터 대신 반지 그림이 돈다 → 반지가 클럭(그림 수 · 박자가 몸과 다르다).
+    const ringMeta = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
+    const transform = ringMeta?.illusion?.kind === 'transform'
+    const delays = transform ? frameDelays(ringMeta!, charV) : frameDelays((seated ? ridingMeta : bodyMeta) ?? bodyMeta, seated ? jagV : charV)
     const N = Math.max(1, delays.length)
     // stabOffset 기준 navel = stand1 고정(라이딩 포함). 액션 내 navel 드리프트는 "상체 상하 모션"이므로 죽이지
     // 않는다(발은 고정, 상체가 오르내림). 라이딩 가로 정렬은 렌더의 centerXOnly 가 담당(세로는 이 드리프트 유지).
@@ -241,6 +244,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
 
   const effList = useMemo(() => {
     const out: EffectMeta[] = []
+    // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect).
+    const ring = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
+    if (ring?.illusion?.hideEffect) return out
     for (const [slot, it] of Object.entries(equipped)) {
       if (!it || hidden[slot]) continue
       if (slot === 'cape' && !pv.cEffect) continue
@@ -249,7 +255,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       const em = effMetas.get(it.id); if (em) out.push(em)
     }
     return out
-  }, [equipped, hidden, effMetas, pv.cEffect, pv.wEffect, pv.capEffect])
+  }, [equipped, hidden, metas, effMetas, pv.cEffect, pv.wEffect, pv.capEffect])
 
   // 염색 발색 오버라이드: 착용한 헤어/성형(palette)을 선택 색상으로 리컬러한 레이어 캔버스 맵.
   // renderCharacter 가 png 키로 조회해 원본 대신 그린다. 색/뷰/착용/메타 변화 시에만 재계산(비동기).
