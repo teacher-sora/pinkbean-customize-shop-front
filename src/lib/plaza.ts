@@ -221,20 +221,33 @@ async function loadRows(onFirst?: (rows: Row[]) => void): Promise<Row[] | null> 
   } catch { return null }
 }
 
-// 광장을 **열어 둔 사이에** 남이 올리거나 내린 글을 몇 초 안에 보여 준다.
-// 목록 전체를 다시 받지 않고 **첫 쪽(최신 500개)만** 본다. 엣지 캐시(s-maxage 10)에 걸려 대개 DB 까지 가지 않는다.
+// 광장의 '맥박' — 글 수와 가장 최근 글의 id 만 Supabase 에 직접 묻는다(응답 수십 바이트, Vercel 을 거치지 않는다).
+// 열어 둔 광장은 5초마다 이것만 보고, 바뀌었을 때만 목록 첫 쪽(loadPlazaHead)을 받는다.
+// 왜: 5초마다 목록(글 200여 개 · 스냅샷 포함 ≈ 200KB)을 Vercel 에서 받던 것이 Vercel 무료 한도(ISR 읽기 · Fast Origin Transfer)를
+// 거의 다 썼다(2026-10, 30일에 8.7GB). 글이 올라오거나 내려가면 수나 맨 앞 id 가 바뀐다.
+export async function loadPlazaPulse(): Promise<string | null> {
+  const c = sb()
+  if (!c) return null
+  const { data, count, error } = await c.from('plaza_posts').select('id', { count: 'exact' }).order('created_at', { ascending: false }).order('id').limit(1)
+  if (error) return null
+  return `${count ?? 0}|${(data as { id: string }[] | null)?.[0]?.id ?? ''}`
+}
+
+// 광장을 **열어 둔 사이에** 남이 올리거나 내린 글을 몇 초 안에 보여 준다 — 맥박(loadPlazaPulse)이 바뀌었을 때만 부른다.
+// 목록 전체를 다시 받지 않고 **첫 쪽(최신 500개)만** 본다. 엣지 캐시(5분, 등록 · 내리기 때 즉시 비운다)에 걸려 대개 DB 까지 가지 않는다.
+// fresh = 캐시를 비켜 읽는다 — 맥박이 본 최신 글이 캐시 응답에 없을 때(비우기 호출이 실패했을 때) 한 번만 쓴다.
 // covers = 첫 쪽이 전체를 담고 있는가 — 담고 있으면 이 응답만으로 '내려간 글'도 가려낼 수 있다.
-export async function loadPlazaHead(): Promise<{ posts: PlazaPost[]; covers: boolean } | null> {
+export async function loadPlazaHead(fresh = false): Promise<{ posts: PlazaPost[]; covers: boolean; total: number } | null> {
   if (!sb()) return null
   try {
     const base = `/api/plaza/${targetName()}`
-    const r = await fetch(freshNow() ? `${base}/fresh?p=0` : base, { cache: 'no-store' })
+    const r = await fetch(fresh || freshNow() ? `${base}/fresh?p=0` : base, { cache: 'no-store' })
     if (!r.ok) return null
     const j = (await r.json()) as { posts: Row[]; total: number; pageSize: number }
     if (!Array.isArray(j?.posts)) return null
     const uid = await plazaAuth()          // 캐시된 세션 — 첫 로그인 뒤로는 왕복이 없다
     const liked = new Set<string>(meCache?.liked || [])
-    return { posts: j.posts.map((row) => toPost(row, uid, liked)), covers: (j.total || 0) <= j.posts.length }
+    return { posts: j.posts.map((row) => toPost(row, uid, liked)), covers: (j.total || 0) <= j.posts.length, total: j.total || 0 }
   } catch { return null }
 }
 

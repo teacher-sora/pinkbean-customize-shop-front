@@ -3,7 +3,7 @@
 // 왜 경로에 target 을 두는가:
 //  · 호스트를 읽어 스키마를 고르면 요청마다 실행돼야 해서(force-dynamic) 엣지 캐시를 직접 관리해야 하고,
 //    손으로 쓴 cache-control 로 만든 엣지 항목은 revalidateTag 가 지우지 못한다
-//    → 글을 올려도 **남들에게는 최대 10초** 늦게 보인다.
+//    → 글을 올려도 남들에게는 캐시 수명만큼 늦게 보인다.
 //  · 반대로 호스트를 읽지 않으면 Next 가 이 라우트를 빌드 때 구워 버리는데, 그러면 그때의 호스트로
 //    스키마가 굳는다(운영이 dev 데이터를 내보낼 수 있다).
 //  → 경로로 고르면 둘 다 해결된다. 요청을 읽지 않으므로 정적으로 캐시되고, 그 캐시는 Next 가 관리하므로
@@ -14,7 +14,7 @@
 import { NextResponse } from 'next/server'
 import { PLAZA_HEAD_TTL, PLAZA_TARGETS, fetchPage, isTarget, plazaTag, schemaOf } from '../shared'
 
-export const revalidate = 10           // = PLAZA_HEAD_TTL (여기는 리터럴만 허용된다)
+export const revalidate = 300          // = PLAZA_HEAD_TTL (여기는 리터럴만 허용된다)
 export const dynamicParams = false     // prod·dev 말고는 404
 
 export function generateStaticParams() {
