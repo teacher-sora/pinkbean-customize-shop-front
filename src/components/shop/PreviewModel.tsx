@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
-import { assemble, dropWeaponEffects, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
+import { assemble, dropWeaponEffects, footOf, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { applyHsb, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
@@ -226,8 +226,10 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       //   없어 안 어긋남 → 미리보기만 왼쪽 치우침). 균일 적용하면 재중심에서 stab 이 상쇄돼 카드와 동일해진다.
       const shift = riding && seated ? { x: 0, y: 0 } : stab
       const placed = shift.x || shift.y ? raw.map((p) => ({ ...p, x: p.x + shift.x, y: p.y + shift.y })) : raw
+      // 발 = 몸 그림의 origin(일루전이 몸을 옮겼으면 옮긴 자리 — 바닥 장면이 이 높이에 깔린다). 변신은 몸이 없어 맨몸의 발.
       const bnav = curBody?.map?.navel
-      const foot = { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
+      const bf = footOf(raw)
+      const foot = bf ? { x: bf.x + stab.x, y: bf.y + stab.y } : { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
       const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
       return { placed, foot, brow, navel: stab } // navel = 배꼽(월드 원점) + 같은 보정 — 허리에 붙는 이펙트(pos 4)
     })
