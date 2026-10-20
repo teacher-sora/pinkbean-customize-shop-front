@@ -91,7 +91,9 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const bnav = curBody?.map?.navel
   const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
   const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
-  const worn = await collectWornEffects(shown.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
+  // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기와 같은 규칙.
+  const noFx = !!equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion?.hideEffect
+  const worn = noFx ? [] : await collectWornEffects(shown.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
   const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, charTV.action, { foot, brow }, 0))
   // 탑승 중엔 가로 정렬 기준이 다르다(포즈마다 폭이 달라진다) — 메탈아머는 메카(mount) bbox, 그 외는 캐릭터 navel.
   const center = rideId ? (rideItem?.ridingCenterMount ? 'mount' : 'x') : undefined

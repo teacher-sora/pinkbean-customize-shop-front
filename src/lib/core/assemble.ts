@@ -7,7 +7,7 @@
 //    map point: topLeft = worldAnchor - (origin + map[anchor]); it then
 //    contributes its other map points so later parts attach.
 //  - Paint order follows zmap: higher index = further back -> draw first.
-import type { ItemMeta, Layer, Vec, Index, Frame } from './data'
+import type { Illusion, ItemMeta, Layer, Vec, Index, Frame } from './data'
 import { buildVisibility, type Equipped } from './occlusion'
 
 export interface PlacedLayer extends Layer {
@@ -16,6 +16,7 @@ export interface PlacedLayer extends Layer {
   itemId: string
   slot: string
   tintable: boolean
+  scale?: number // 일루전으로 키운 레이어의 배율(그리기가 nearest 로 키운다). x, y 는 키운 그림의 왼쪽 위
 }
 
 export interface AssembleInput {
@@ -267,9 +268,11 @@ export function assemble(
   // 숨긴 레이어도 자기 map 앵커(brow/neck/hand…)는 그대로 제공해야 한다.
   // 예: 탈(vslot 에 Hd)은 머리를 숨기는데, 탈 자신이 붙을 brow 앵커를 주는 게 바로 그 머리다.
   // 머리를 아예 빼버리면 brow 가 없어 탈이 앵커를 못 찾고 → 아래 폴백이 몸통 원점(허리)에 그려버린다.
+  const marks: Layer[] = [] // 일루전 표지(그리지 않는다 — 아래 applyIllusion 이 읽는다)
   for (const it of items) {
     const faceHidden = hideFace && it.slot === 'face'
     for (const l of it.layers) {
+      if (l.illusion) { marks.push(l); continue }
       // 귀(head 레이어 중 'head' 가 아닌 것 = 엘프/우든레프/하이레프 귀)는 모자 가림에서 예외 — 모자를 써도
       // 귀는 삐져나와 보여야 한다(그냥 모자 vslot 이 귀 z 까지 덮어 귀가 사라지던 이슈). 사람귀는 모자에 어차피 덮임.
       const isEar = it.slot === 'head' && l.name !== 'head'
@@ -343,5 +346,50 @@ export function assemble(
   placed.sort((a, b) => zOf(b) - zOf(a))
   // `anchors` holds every resolved named reference point (navel/neck/brow/hand/…) in
   // world coords (navel = 0,0). Item effects use it to pick their attach point by `pos`.
-  return { placed, anchors }
+  return { placed: marks.length ? applyIllusion(placed, anchors, marks) : placed, anchors }
+}
+
+// ── 일루전(반지 부위의 일루전 링 · 이펙트 부위의 내 뒤에 나) ─────────────────────────────────────────────
+// 원본에는 그림이 없고(변신만 그림이 있다) '어느 부위를 몇 배로'라는 값뿐이다 — 게임이 지금 캐릭터의 그림을 그 자리에서 키운다.
+// 그래서 조립이 끝난 레이어를 키우거나 바꾼다. 미리보기 · 카드 · 프리셋 · 공유 그림이 모두 assemble 을 거치므로 한 곳이면 된다.
+// 키운 레이어는 scale 을 달고(그리기가 nearest 로 키운다), 이펙트가 붙을 이마(anchors.brow)도 함께 옮긴다.
+// 기준점은 원본에 없어 그림으로 맞췄다: 거대한 머리 = 목(neck), 거대한 몸 = 발(몸 그림의 origin), 내 뒤에 나 = 발.
+// 링을 끼면 내 뒤에 나는 쓰지 않는다(원본 설명: '거대한 머리 · 거대한 몸으로 변신 중이면 적용되지 않는다').
+const HEAD_SLOTS = new Set(['head', 'hair', 'face', 'cap', 'faceAcc', 'eyeAcc', 'earring'])
+const BODY_SLOTS = new Set(['body', 'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape'])
+const isHeadPart = (p: PlacedLayer) => HEAD_SLOTS.has(p.slot) || (p.slot === 'anima' && p.name !== 'Tail') // 형상 변이의 귀 · 뿔은 머리
+const scaleAbout = (p: PlacedLayer, pv: Vec, s: number): PlacedLayer => ({ ...p, x: pv.x + (p.x - pv.x) * s, y: pv.y + (p.y - pv.y) * s, scale: (p.scale ?? 1) * s })
+// 조립 입력에서 링의 일루전(내 뒤에 나 제외) — 이펙트를 그릴지(hideEffect) 정할 때 쓴다.
+export const ringIllusion = (items: { layers: Layer[] }[]): Illusion | null =>
+  items.flatMap((i) => i.layers).find((l) => l.illusion && l.illusion.kind !== 'clone')?.illusion ?? null
+// 발(몸 그림의 origin)의 월드 좌표. 복제(slot 'clone')가 아닌 진짜 몸에서 잰다.
+export const footOf = (placed: PlacedLayer[]): Vec | null => {
+  const b = placed.find((p) => p.slot === 'body' && p.name === 'body')
+  return b ? { x: b.x + b.origin.x, y: b.y + b.origin.y } : null
+}
+function applyIllusion(placed: PlacedLayer[], anchors: Record<string, Vec>, marks: Layer[]): PlacedLayer[] {
+  const ring = marks.find((m) => m.illusion!.kind !== 'clone')
+  const spec: Illusion = (ring ?? marks[0]).illusion!
+  const foot = footOf(placed)
+  if (!foot) return placed
+  const s = spec.scale ?? 1
+  if (spec.kind === 'transform') return placed.filter((p) => p.slot === 'ring' || p.slot === 'riding')
+  const noWeapon = spec.hideWeapon ? placed.filter((p) => p.slot !== 'weapon' && p.slot !== 'shield') : placed
+  if (spec.kind === 'bigHead') {
+    const pv = anchors.neck ?? anchors.brow ?? foot
+    if (anchors.brow) anchors.brow = { x: pv.x + (anchors.brow.x - pv.x) * s, y: pv.y + (anchors.brow.y - pv.y) * s }
+    return noWeapon.map((p) => (isHeadPart(p) ? scaleAbout(p, pv, s) : p))
+  }
+  if (spec.kind === 'bigBody') {
+    // 머리는 원래 크기로, 키운 목 자리로 옮긴다. headorigin(프레임마다, 표지의 origin)만큼 머리를 올린다(그림으로 맞춘 방향).
+    const neck = anchors.neck ?? foot
+    const ho = ring!.origin
+    const d = { x: (neck.x - foot.x) * (s - 1) - ho.x, y: (neck.y - foot.y) * (s - 1) - ho.y }
+    if (anchors.brow) anchors.brow = { x: anchors.brow.x + d.x, y: anchors.brow.y + d.y }
+    return noWeapon.map((p) => (isHeadPart(p) ? { ...p, x: p.x + d.x, y: p.y + d.y } : BODY_SLOTS.has(p.slot) || p.slot === 'anima' ? scaleAbout(p, foot, s) : p))
+  }
+  // clone(내 뒤에 나): 지금 캐릭터를 s 배로 키워 offset 만큼 비켜 맨 뒤에 하나 더. 복제의 slot 은 'clone'(몸을 찾는 곳이 헷갈리지 않게).
+  const off = spec.offset ?? { x: 0, y: 0 }
+  const twin = placed.map((p) => ({ ...scaleAbout(p, foot, s), x: foot.x + (p.x - foot.x) * s + off.x, y: foot.y + (p.y - foot.y) * s + off.y, slot: 'clone' }))
+  return [...twin, ...placed]
 }

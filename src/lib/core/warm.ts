@@ -15,7 +15,7 @@ export function warmItem(item: ListItem, view: ViewOpts, palette?: PaletteParams
   warmed.add(key)
   return (async () => {
     const [meta, eidx] = await Promise.all([loadMeta(item.id), loadEffectIndex()])
-    const jobs: Promise<unknown>[] = getFrameLayers(meta, view, 0).map((l) => loadImage(l.png, true).catch(() => null))
+    const jobs: Promise<unknown>[] = getFrameLayers(meta, view, 0).filter((l) => l.png).map((l) => loadImage(l.png, true).catch(() => null))
     if (palette) preloadPaletteVariant(meta, palette, view)
     if (eidx.has(String(parseInt(item.id, 10)))) {
       jobs.push(loadEffect(item.id).then((em) => {

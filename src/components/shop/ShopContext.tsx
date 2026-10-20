@@ -63,7 +63,7 @@ export type RateLine = { text: string; slot: string }
 const RATE_WORDS: [RegExp, string[]][] = [
   [/헤어|머리카락|머리|앞머리|단발|양갈래|포니테일/, ['hair']], [/모자|리본|머리띠|왕관|헬멧|후드/, ['cap']], [/눈동자|눈빛|눈매|표정|얼굴|성형/, ['face']],
   [/안경|선글라스|눈장식/, ['eyeAcc']], [/얼굴장식|마스크|수염/, ['faceAcc']], [/귀고리|귀걸이/, ['earring']], [/신발|구두|부츠|운동화|슬리퍼/, ['shoes']],
-  [/장갑/, ['glove']], [/망토|날개|꼬리/, ['cape']], [/방패/, ['shield']], [/이펙트/, ['effect']], [/무기|검|칼|지팡이|활|총|창|도끼/, ['weapon']],
+  [/장갑/, ['glove']], [/망토|날개|꼬리/, ['cape']], [/방패/, ['shield']], [/반지|일루전/, ['ring']], [/이펙트/, ['effect']], [/무기|검|칼|지팡이|활|총|창|도끼/, ['weapon']],
   [/치마|바지|하의|스커트|반바지/, ['pants', 'longcoat']], [/원피스|드레스|한벌옷|교복|정장|옷|상의|셔츠|재킷|자켓|코트|티셔츠/, ['longcoat', 'coat']],
 ]
 function rateSlotOf(text: string, equipped: Record<string, ListItem | null>): string {
@@ -166,10 +166,11 @@ const loadPresetStore = (): PresetStore | null => {
   try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
 }
 // 넥슨 캐시아이템 part → 내부 slot. (part 로 매핑: '한벌옷'=longcoat, '상의'=coat 구분)
+// 반지는 일루전 링만 목록에 있어(rings/list.json) 이름이 맞는 것만 들어온다 — 명찰 · 말풍선 반지는 맞는 것이 없어 빠진다(사용자 지시).
 const NEXON_PART_SLOT: Record<string, string> = {
   '모자': 'cap', '얼굴장식': 'faceAcc', '눈장식': 'eyeAcc', '귀고리': 'earring',
   '망토': 'cape', '장갑': 'glove', '신발': 'shoes', '무기': 'weapon', '방패': 'shield',
-  '한벌옷': 'longcoat', '상의': 'coat', '하의': 'pants', '헤어': 'hair', '성형': 'face',
+  '한벌옷': 'longcoat', '상의': 'coat', '하의': 'pants', '헤어': 'hair', '성형': 'face', '반지': 'ring',
 }
 // 이름 정규화(성별 접미사·공백 제거)로 넥슨 이름 ↔ 내부 리스트 이름 매칭.
 const nrmName = (n: string) => (n || '').replace(/\s*\((여|남)\)\s*$/, '').replace(/\s+/g, ' ').trim()
