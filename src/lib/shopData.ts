@@ -11,7 +11,8 @@ import { CASHFX_FILE, type AnimaRace, type ListItem, type SlotSummary } from '@/
 export function foldList(l: ListItem[]): ListItem[] {
   if (!l.length) return l
   const hasColor = l[0].colorGroup != null
-  const keyOf = (it: ListItem) => (hasColor ? `g${it.colorGroup}` : `n${it.name ?? it.id}`)
+  // 장비는 이름 + 라벨로 묶는다 — 스페셜 라벨과 일반 아이템은 이름이 같아도 그림이 다른 다른 아이템이다(양머리 수건 01002447 · 01004689, 사용자 제보).
+  const keyOf = (it: ListItem) => (hasColor ? `g${it.colorGroup}` : `n${it.name ?? it.id}|${it.label ?? ''}`)
   const rep = new Map<string, ListItem>()
   for (const it of l) {
     if (it.dupOf != null) continue // 헤어 · 성형의 복제 묶음은 목록에 내지 않는다(원본이 같은 그림으로 있다 — data.ts loadBeautyDups)
