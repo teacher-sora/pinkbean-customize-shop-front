@@ -89,8 +89,8 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
     go('ask')
     ask(q)
   }
-  // 질문 답이 '없는 기능'이면 그 질문을 건의 칸으로
-  const toIdea = (q: string) => { setDrafts((d) => ({ ...d, idea: q })); go('idea') }
+  // 질문 답이 목록에 없으면 그 질문을 갈래에 맞는 칸(오류 신고 → 오류, 바라는 기능 → 건의)으로
+  const toFeedback = (k: FeedbackKind, q: string) => { setDrafts((d) => ({ ...d, [k]: q })); go(k) }
 
   return (
     <>
@@ -111,7 +111,7 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
             draft={drafts[shown]} setDraft={(v) => setDrafts((d) => ({ ...d, [shown]: v }))}
             onAsk={() => askFrom(shown)} setBack={setBack} />
         )}
-        {shown === 'ask' && <Ask mobile={mobile} chat={chat} busy={askBusy} onAsk={ask} onIdea={toIdea} onGo={s.guideGo} />}
+        {shown === 'ask' && <Ask mobile={mobile} chat={chat} busy={askBusy} onAsk={ask} onLeave={toFeedback} onGo={s.guideGo} />}
       </div>
     </div>
     <SurfaceFooter onBack={back ?? undefined} closeToo />
@@ -125,7 +125,8 @@ const botText = (m: ChatMsg) => {
   if (!r) return ''
   if (r.kind === 'feature') return r.ids.map((id) => guideById.get(id)?.title).filter(Boolean).join(', ')
   if (r.kind === 'chat') return r.reply
-  return '목록에 없는 기능'
+  if (r.kind === 'none') return r.type === 'other' ? r.reply : r.type === 'bug' ? '오류 신고' : '목록에 없는 기능'
+  return ''
 }
 
 // 불러오는 중이 잠깐이면 뼈대를 보이지 않는다(번쩍 나타났다 사라지는 깜빡임). 이만큼 넘게 걸릴 때만 뼈대를 그린다
@@ -397,8 +398,8 @@ function GuideCard({ g: g0, onGo }: { g: GuideEntry; onGo: (g: GuideEntry) => vo
 
 /* ── 질문 ── */
 const STARTERS = ['표정은 어디서 바꿔요?', '닉네임으로 코디를 불러올 수 있나요?', '무기 이펙트를 끄고 싶어요', '캐릭터 이미지를 저장하고 싶어요']
-function Ask({ mobile, chat, busy, onAsk, onIdea, onGo }: {
-  mobile: boolean; chat: ChatMsg[]; busy: boolean; onAsk: (q: string) => void; onIdea: (q: string) => void; onGo: (g: GuideEntry) => void
+function Ask({ mobile, chat, busy, onAsk, onLeave, onGo }: {
+  mobile: boolean; chat: ChatMsg[]; busy: boolean; onAsk: (q: string) => void; onLeave: (k: FeedbackKind, q: string) => void; onGo: (g: GuideEntry) => void
 }) {
   const [text, setText] = useState('')
   const logRef = useRef<HTMLDivElement>(null)
@@ -420,7 +421,7 @@ function Ask({ mobile, chat, busy, onAsk, onIdea, onGo }: {
           )}
           {chat.map((m, i) => (m.who === 'me'
             ? <p key={m.id} className={styles.hpMe}>{m.text}</p>
-            : <BotMsg key={m.id} m={m} q={chat[i - 1]?.text || ''} onIdea={onIdea} onGo={onGo} />))}
+            : <BotMsg key={m.id} m={m} q={chat[i - 1]?.text || ''} onLeave={onLeave} onGo={onGo} />))}
         </div>
       </div>
       <InputBar value={text} onChange={setText} onSend={send} busy={busy} ph="궁금한 기능을 물어보세요" label="질문 입력" mobile={mobile}
@@ -429,7 +430,7 @@ function Ask({ mobile, chat, busy, onAsk, onIdea, onGo }: {
   )
 }
 
-function BotMsg({ m, q, onIdea, onGo }: { m: ChatMsg; q: string; onIdea: (q: string) => void; onGo: (g: GuideEntry) => void }) {
+function BotMsg({ m, q, onLeave, onGo }: { m: ChatMsg; q: string; onLeave: (k: FeedbackKind, q: string) => void; onGo: (g: GuideEntry) => void }) {
   if (m.pending) {
     return (
       <div className={clsx(styles.hpBot, styles.cmtSkel)} aria-label="답을 찾는 중">
@@ -444,11 +445,16 @@ function BotMsg({ m, q, onIdea, onGo }: { m: ChatMsg; q: string; onIdea: (q: str
     return <div className={styles.hpBot}>{gs.map((g) => <GuideCard key={g.id} g={g} onGo={onGo} />)}</div>
   }
   if (r?.kind === 'chat' && r.reply) return <p className={clsx(styles.hpBot, styles.hpBotText)}>{r.reply}</p>
+  // 목록에 없을 때는 말의 갈래대로: 오류 신고면 오류 칸, 바라는 기능이면 건의 칸으로 쓰던 말을 넘긴다. 상관없는 말이면 그 답만
+  if (r?.kind === 'none' && r.type === 'other') {
+    return <p className={clsx(styles.hpBot, styles.hpBotText)}>{r.reply || '여기서는 사이트 기능만 안내해 드릴 수 있어요.\n사이트에서 궁금한 것을 물어봐 주세요.'}</p>
+  }
   if (r?.kind === 'none') {
+    const bug = r.type === 'bug'
     return (
       <div className={clsx(styles.hpBot, styles.hpBotNone)}>
-        <p className={styles.hpBotText}>{'아직 없는 기능이에요.\n건의로 남겨 주세요.'}</p>
-        <button type="button" onClick={() => onIdea(q)} className={clsx('pb-ghost', styles.hpGhost)}>건의로 남기기</button>
+        <p className={styles.hpBotText}>{bug ? '오류로 보여요.\n오류로 남겨 주시면 살펴볼게요.' : '아직 없는 기능이에요.\n건의로 남겨 주시면 살펴볼게요.'}</p>
+        <button type="button" onClick={() => onLeave(bug ? 'bug' : 'idea', q)} className={clsx('pb-ghost', styles.hpGhost)}>{bug ? '오류로 남기기' : '건의로 남기기'}</button>
       </div>
     )
   }
