@@ -14,7 +14,7 @@
 //    부위 염색 칩과 같은 스프라이트 칩(염색 반영)을 **아코디언**에 담는다. 기본은 펼침(아래 WornItems) —
 //    접혀 있는 동안은 스프라이트를 하나도 받지 않는다.
 //  · 칩마다 '입기' 버튼(사용자 요청 — 코디 전체가 아니라 그 부위만 바로): 누르면 그 부위의 아이템 · 염색을 지금 코디에 입힌다
-//    (ShopContext.wearFromSnap). 창은 그대로 두어 다른 부위도 이어서 입을 수 있다. 이미 같은 것을 입고 있으면 체크로 바뀐다.
+//    (ShopContext.wearFromSnap). 창은 그대로 두어 다른 부위도 이어서 입을 수 있다. 아이템 · 염색 · 점 위치까지 완전히 같게 입고 있을 때만 체크로 바뀐다.
 //    버튼은 글자 없이 작은 동그라미 아이콘만(사용자 지시 — 글자 버튼은 쓸데없이 커서 이름을 가린다).
 
 import clsx from 'clsx'
@@ -207,8 +207,8 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
     raf.current = requestAnimationFrame(() => go(wantRef.current))
   }, [mounted])
   const open = want
-  // 그 부위를 이미 입고 있는가(같은 아이템 · 피부는 같은 톤) — 입기 버튼이 체크로 바뀐다.
-  const isWorn = (w: Worn) => (w.slot === 'skin' ? s.tone === snap.tone : !!w.item && s.equipped[w.slot]?.id === w.item.id)
+  // 그 부위를 완전히 같게(아이템 · 염색 · 점 위치까지) 입고 있으면 입기 버튼이 체크로 바뀐다(ShopContext.isWornFromSnap).
+  const isWorn = (w: Worn) => s.isWornFromSnap(snap, w.slot, w.item)
 
   return (
     <div ref={wrapRef} className={styles.worn}>
