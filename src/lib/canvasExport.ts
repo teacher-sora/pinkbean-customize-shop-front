@@ -3,12 +3,13 @@
 // ★ 복사 이미지의 **단일 규칙**. 우측 미리보기 · 광장/프리셋 카드 · 부위 카드 ·
 //   염색 미리보기가 전부 modelShotBlob 하나로 만든다.
 //   규칙:
-//    1) 화면 픽셀을 가공하지 않고 합성 입력(placed)으로 **다시 그린다** — 게임 크기(1배) 그대로라 도트가 선명하고,
-//       카드가 작아도 결과 해상도가 같다. 가운데 기준은 화면과 같다(마네킹 중심 / 라이딩은 navel·메카).
-//    2) 그 중심을 **그대로 둔 채** 그림이 닿는 데까지만 자른다(중심에서 가장 먼 픽셀까지가 반 변) → 몸통은 정중앙,
-//       여백은 판 크기가 아니라 그림 크기에 비례(SHOT_PAD).
-//    3) **배경은 투명**이다.
-//       여백(2번)은 그대로 투명 여백으로 남는다. ⚠️ 투명을 모르는 곳에 붙여 넣으면(그림판·일부 메신저) 바탕이 검게 나올 수 있다.
+//    1) 화면 픽셀을 가공하지 않고 합성 입력(placed)으로 **다시 그린다** — 카드가 작아도 결과가 같다.
+//       가운데 기준은 화면과 같다(마네킹 중심 / 라이딩은 navel·메카).
+//    2) 그림이 닿는 데(불투명 픽셀의 상자)까지만 자르고 사방에 조금만 남긴다(SHOT_PAD) → 이펙트가 한쪽에 커도 빈 곳이 없다.
+//    3) 그 상자를 **정수배(SHOT_SCALE)로 nearest 확대**한다 → 캐릭터가 늘 같은 크기이고, 받는 곳에서 확대해도 도트가 번지지 않는다.
+//       긴 변이 메신저가 줄여 보내는 한도(SHOT_LONG)를 넘을 때만 한 단계씩 낮춘다(소수 비율로 줄여지면 도트가 깨진다).
+//       nearest 확대는 같은 줄 · 같은 칸이 되풀이되어 PNG 가 잘 눌린다(4배여도 1배의 약 2배 용량).
+//    4) **배경은 투명**이다. ⚠️ 투명을 모르는 곳에 붙여 넣으면(그림판·일부 메신저) 바탕이 검게 나올 수 있다.
 // renderCharacter 가 CORS 로 이미지를 로드해 그리므로 taint 되지 않는다 → getImageData / toBlob 이 동작한다.
 import type { PlacedLayer } from './core/assemble'
 import { computeModelPlacement } from './core/modelPlacement'
@@ -24,19 +25,20 @@ export type ModelShot = {
   centerDx?: number; centerDy?: number                            // 뒷모습 등 중심 오프셋(없으면 기본)
 }
 
-// 게임 크기(1배) 그대로 — 붙여 넣은 곳에서 줄이면 정수가 아닌 비율로 줄어 도트가 깨진다(사용자 요청). 키우는 쪽은 받는 곳에서 한다.
-const SHOT_SCALE = 1
+// 정수 확대 배율. 1배는 카카오톡 사진 보기에서 확대하면 부드럽게 번져 흐려 보였다(사용자 지적).
+const SHOT_SCALE = 4
+// 결과 긴 변 / 짧은 변 한도(px). 카카오톡 모바일 기본(일반 화질)은 이보다 크면 줄여 보낸다 — 넘으면 배율을 낮춘다.
+const SHOT_LONG = 1440
+const SHOT_SHORT = 1080
 // 다시 그리는 판(게임 픽셀, 몸통 가운데에서 사방 반씩). 가장 큰 이펙트(시즌 I 챌린저 문장)가 가운데에서 약 344칸까지 그려져
 // 480(반 240)이면 잘렸다 — 1,150개 이펙트를 재서 넉넉히 잡는다. 결과 크기와는 무관(그림이 닿는 데까지 다시 자른다)
 const SHOT_BOX = 960
-const SHOT_PAD = 0.12  // 결과 한 변 대비 사방 여백 비율
-const SHOT_MIN = 64    // 결과 최소 한 변(px, 1배 기준)
+const SHOT_PAD = 4     // 그림 상자 둘레 여백(게임 픽셀)
 
 export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
   if (!shot.placed.length) return null
   const off = document.createElement('canvas')
-  const dev = SHOT_BOX * SHOT_SCALE
-  const pl = computeModelPlacement({ divW: dev, divH: dev, dpr: 1, margin: 1, fraction: 0, scale: SHOT_SCALE, centerDx: shot.centerDx, centerDy: shot.centerDy })
+  const pl = computeModelPlacement({ divW: SHOT_BOX, divH: SHOT_BOX, dpr: 1, margin: 1, fraction: 0, scale: 1, centerDx: shot.centerDx, centerDy: shot.centerDy })
   try {
     await renderCharacter(off, shot.placed, {
       scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: shot.flip,
@@ -47,29 +49,31 @@ export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
   const w = off.width, h = off.height
   const sctx = off.getContext('2d')
   if (!w || !h || !sctx) return null
-  // 중심(판 한가운데 = 몸통)에서 가장 먼 불투명 픽셀까지의 거리 → 결과의 반 변.
-  const cx = w / 2, cy = h / 2
-  let half = 0
+  // 불투명 픽셀의 상자.
+  let x0 = w, y0 = h, x1 = -1, y1 = -1
   try {
     const data = sctx.getImageData(0, 0, w, h).data
     for (let y = 0; y < h; y++) {
-      const dy = Math.max(cy - y, y + 1 - cy)
       for (let x = 0; x < w; x++) {
         if (data[(y * w + x) * 4 + 3] > 8) {
-          const d = Math.max(dy, cx - x, x + 1 - cx)
-          if (d > half) half = d
+          if (x < x0) x0 = x
+          if (x > x1) x1 = x
+          if (y < y0) y0 = y
+          y1 = y
         }
       }
     }
   } catch { return null } // 혹시라도 taint 면 조용히 포기
-  if (!half) return null
-  let side = Math.max(SHOT_MIN, Math.ceil((half * 2) / (1 - SHOT_PAD * 2)))
-  side += side % 2 // 짝수 — 중심이 픽셀 경계에 정확히 놓인다(반 픽셀 밀림 없음)
+  if (x1 < 0) return null
+  const bw = x1 - x0 + 1 + SHOT_PAD * 2, bh = y1 - y0 + 1 + SHOT_PAD * 2
+  let k = SHOT_SCALE
+  while (k > 1 && (Math.max(bw, bh) * k > SHOT_LONG || Math.min(bw, bh) * k > SHOT_SHORT)) k--
   const out = document.createElement('canvas')
-  out.width = side; out.height = side
+  out.width = bw * k; out.height = bh * k
   const ctx = out.getContext('2d')!
   ctx.imageSmoothingEnabled = false
-  ctx.drawImage(off, side / 2 - cx, side / 2 - cy) // 늘리지 않고 그대로 옮긴다(1:1). 바탕은 칠하지 않는다 — 투명
+  // 바탕은 칠하지 않는다 — 투명
+  ctx.drawImage(off, x0 - SHOT_PAD, y0 - SHOT_PAD, bw, bh, 0, 0, bw * k, bh * k)
   return await new Promise((res) => out.toBlob((b) => res(b), 'image/png'))
 }
 
