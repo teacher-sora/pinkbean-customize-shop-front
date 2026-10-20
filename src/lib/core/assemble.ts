@@ -381,10 +381,10 @@ function applyIllusion(placed: PlacedLayer[], anchors: Record<string, Vec>, mark
     return noWeapon.map((p) => (isHeadPart(p) ? scaleAbout(p, pv, s) : p))
   }
   if (spec.kind === 'bigBody') {
-    // 머리는 원래 크기로, 키운 목 자리로 옮긴다. headorigin(프레임마다, 표지의 origin)만큼 머리를 올린다(그림으로 맞춘 방향).
+    // 머리는 원래 크기로, 키운 목 자리로 옮긴다. headorigin(프레임마다, 표지의 origin)만큼 머리를 더 내린다 — 키운 몸의 목이 둥글게 커져 그대로 두면 머리가 떠 보인다.
     const neck = anchors.neck ?? foot
     const ho = ring!.origin
-    const d = { x: (neck.x - foot.x) * (s - 1) - ho.x, y: (neck.y - foot.y) * (s - 1) - ho.y }
+    const d = { x: (neck.x - foot.x) * (s - 1) + ho.x, y: (neck.y - foot.y) * (s - 1) + ho.y }
     if (anchors.brow) anchors.brow = { x: anchors.brow.x + d.x, y: anchors.brow.y + d.y }
     return noWeapon.map((p) => (isHeadPart(p) ? { ...p, x: p.x + d.x, y: p.y + d.y } : BODY_SLOTS.has(p.slot) || p.slot === 'anima' ? scaleAbout(p, foot, s) : p))
   }
