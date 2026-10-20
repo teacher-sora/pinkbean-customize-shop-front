@@ -17,6 +17,7 @@ const imageCache = new LRU<Promise<HTMLImageElement>>(1200)
 //   CORS 에러가 난다. 그래서 CORS 용은 별도 쿼리키(?cors=1)로 분리 → 항상 Origin 과 함께 요청되어
 //   ACAO 가 포함된 별도 캐시 엔트리를 쓴다(일반 렌더 캐시는 오염되지 않음).
 export function loadImage(pngRel: string, cors = false): Promise<HTMLImageElement> {
+  if (!pngRel) return Promise.reject(new Error('no png')) // 일루전 표지 레이어(png '')는 받을 그림이 없다
   const base = spriteUrl(pngRel)
   const src = cors ? base + (base.includes('?') ? '&' : '?') + 'cors=1' : base
   let p = imageCache.get(src)
@@ -159,7 +160,7 @@ export async function renderCharacter(
     // 마운트(mount* 레이어)의 실제 스프라이트 가로 bbox 중심을 캔버스 중앙에. 스프라이트 폭은 로드된 이미지에서.
     let minX = Infinity, maxX = -Infinity
     for (const p of placed) {
-      if (!p.name.startsWith('mount')) continue
+      if (!p.name.startsWith('mount') || p.slot === 'clone') continue
       const src = opts.override?.get(p.png) ?? imgs.get(p.png)
       const w = (src as HTMLImageElement | HTMLCanvasElement | undefined)?.width ?? 0
       if (p.x < minX) minX = p.x
@@ -167,15 +168,17 @@ export async function renderCharacter(
     }
     if (minX < maxX) anchorX = opts.box.w / 2 - (minX + maxX) / 2
   } else if ((opts.centerX || opts.centerXOnly) && placed.length) {
-    const body = placed.find((p) => p.name === 'body') || placed[0]
+    // 내 뒤에 나의 복제(slot 'clone')는 몸이 아니다. 일루전으로 키운 몸은 배율(k)만큼 navel 도 멀어진다.
+    const body = placed.find((p) => p.slot === 'body' && p.name === 'body') || placed.find((p) => p.name === 'body' && p.slot !== 'clone') || placed[0]
     const nav = body.map?.navel
+    const k = body.scale ?? 1
     if (nav) {
-      anchorX = opts.box.w / 2 - (body.x + body.origin.x + nav.x)
+      anchorX = opts.box.w / 2 - (body.x + (body.origin.x + nav.x) * k)
       // Y 핀은 centerX 만. centerXOnly 는 anchor.y 유지 → navel 이 프레임마다 상하 드리프트(상체 상하 모션, 다리 고정).
-      if (opts.centerX) anchorY = opts.anchor.y - (body.y + body.origin.y + nav.y)
+      if (opts.centerX) anchorY = opts.anchor.y - (body.y + (body.origin.y + nav.y) * k)
     } else {
       const src = opts.override?.get(body.png) ?? imgs.get(body.png)
-      if (src) anchorX += opts.box.w / 2 - (opts.anchor.x + body.x + (src as HTMLImageElement).width / 2)
+      if (src) anchorX += opts.box.w / 2 - (opts.anchor.x + body.x + (src as HTMLImageElement).width * k / 2)
     }
   }
 
@@ -204,7 +207,8 @@ export async function renderCharacter(
   for (const p of placed) {
     const src = opts.override?.get(p.png) ?? imgs.get(p.png)
     if (!src) continue
-    const w = (src as HTMLImageElement).width, h = (src as HTMLImageElement).height
+    const k = p.scale ?? 1 // 일루전으로 키운 레이어(assemble.applyIllusion)
+    const w = (src as HTMLImageElement).width * k, h = (src as HTMLImageElement).height * k
     const dx = Math.round((anchorX + p.x) * scale)
     const dy = Math.round((anchorY + p.y) * scale)
     ctx.drawImage(src, dx, dy, w * scale, h * scale)

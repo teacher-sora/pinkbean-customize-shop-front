@@ -15,7 +15,16 @@ export interface Layer {
   // 원본에 앵커(map)가 없는 캔버스 — 뼈대의 어느 점에도 붙지 않고 캐릭터 원점(발)에 origin 을 맞춘다(이펙트 프레임과
   // 같은 좌표계). 추출기가 머리부착 아이템의 액션 프레임에서만 단다(extract.cjs extractFrame). z 가 정수일 수 있다.
   root?: boolean
+  // 일루전(반지 부위의 일루전 링 · 이펙트 부위의 내 뒤에 나)의 표지 레이어 — 그림이 없다(png ''). assemble 이 읽어 캐릭터를
+  // 키우거나 바꾸고, 그리는 목록에서는 뺀다. 프레임마다 다를 수 있는 값(거대한 몸의 headorigin = origin)도 이 레이어에 둔다.
+  illusion?: Illusion
 }
+
+// 일루전의 종류(parser scripts/ring-build.py · cashfx-build.py 가 쓴다).
+//   bigHead   = 머리 쪽 부위를 scale 배(거대한 머리)            bigBody = 몸 · 옷 · 신발 · 장갑 · 망토를 scale 배, 머리는 그대로(거대한 몸)
+//   transform = 캐릭터 대신 반지의 그림(변신 링)                  clone   = 지금 캐릭터를 scale 배로 키워 offset 만큼 비켜 뒤에(내 뒤에 나)
+// hideEffect · hideWeapon = 착용 아이템의 이펙트 · 무기와 방패를 그리지 않는다(원본 info.hideEffect · illusionequip).
+export interface Illusion { kind: 'bigHead' | 'bigBody' | 'transform' | 'clone'; scale?: number; offset?: Vec; hideEffect?: boolean; hideWeapon?: boolean }
 
 // One animation frame: its display duration (ms) + the layers to draw.
 export interface Frame { delay: number; layers: Layer[] }
@@ -43,6 +52,7 @@ export interface ItemMeta {
   gender?: number             // 0=남 1=여 2=공용
   label?: 'master' | 'special' // external grade badge (마라벨/스라벨); none = undefined
   invisibleFace?: number      // info.invisibleFace: 착용 시 성형(face)을 가림
+  illusion?: Illusion         // 일루전 링 · 내 뒤에 나(프레임의 표지 레이어와 같은 값 — 그리기 밖에서 이펙트 · 박자를 정할 때 쓴다)
   fixedEmotion?: string       // info.fixedEmotion: 착용 시 표정을 이 값으로 고정(표정 얼굴장식 25종)
   stances?: string[]          // weapon only: available weapon-type stance codes (30s한손/40s두손/49건)
   // frameKey → animation frames. (Legacy data may still be Layer[]; assemble.ts normalizes.)
@@ -255,6 +265,8 @@ export function loadMeta(id: string): Promise<ItemMeta> {
 // 이펙트 부위(캐시 이펙트)의 목록. 목록의 아이템은 모두 이펙트가 있으므로 이 목록이 곧 그 색인이다 —
 // effects/index.json(parser extract-effects 가 다시 쓴다)에 섞지 않고 여기서 합친다.
 export const CASHFX_FILE = 'cashfx/list.json'
+// 반지 부위(일루전 링)의 목록 — CDN rings/(parser scripts/ring-build.py). 카탈로그 index 밖이라 slotFile 이 고른다.
+export const RING_FILE = 'rings/list.json'
 let effectIndexPromise: Promise<Set<string>> | null = null
 // Set of item ids (non-padded, as stored in ItemEff) that have an extracted effect.
 export function loadEffectIndex(): Promise<Set<string>> {

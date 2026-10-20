@@ -2,7 +2,7 @@
 // 미리보기 고정 박스. 코어(src/lib/core)의 assemble/render/data 위에서 동작한다.
 
 import type { AssembleInput, ViewOpts } from '@/lib/core/assemble'
-import { CASHFX_FILE, type AnimaRace, type ListItem, type SlotSummary } from '@/lib/core/data'
+import { CASHFX_FILE, RING_FILE, type AnimaRace, type ListItem, type SlotSummary } from '@/lib/core/data'
 
 // 시각적 중복 폴딩:
 //  - 헤어/성형(colorGroup 있음): 그룹당 1개, 대표 = 그룹 내 최저 id(= 검정 color 0). 나머지 색은
@@ -35,7 +35,7 @@ export const CAT_TO_SLOT: Record<string, string> = {
   hair: 'hair', plastic: 'face', skin: 'skin', cap: 'cap', faceacc: 'faceAcc',
   eyeacc: 'eyeAcc', earring: 'earring', overall: 'longcoat', top: 'coat', bottom: 'pants',
   shoes: 'shoes', gloves: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
-  effect: 'effect', riding: 'riding',
+  ring: 'ring', effect: 'effect', riding: 'riding',
 }
 export const SLOT_TO_CAT: Record<string, string> = Object.fromEntries(
   Object.entries(CAT_TO_SLOT).map(([c, s]) => [s, c]),
@@ -44,6 +44,7 @@ export const SLOT_TO_CAT: Record<string, string> = Object.fromEntries(
 export const EQUIP_SLOTS = [
   'hair', 'face', 'cap', 'faceAcc', 'eyeAcc', 'earring',
   'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape', 'weapon', 'shield',
+  'ring', // 일루전 링 — 그릴 레이어 대신 표지 레이어(Layer.illusion)로 캐릭터를 키우거나 바꾼다(assemble.applyIllusion)
   'effect', // 캐시 이펙트 — 그릴 레이어가 없고(빈 meta) 이펙트(effects/<id>.json)만 그린다
   'riding', // 탑승 — 마운트/모프 레이어를 코디처럼 합성
 ] as const
@@ -63,9 +64,9 @@ export const RIDING_SEATED_DEFAULT = new Set(['basic', 'walk']) // 캐릭터가 
 type RidingOpts = { ridingActions?: string[]; ridingSeated?: string[] } | null | undefined
 export const ridingActionSet = (it: RidingOpts) => (it?.ridingActions?.length ? new Set(it.ridingActions) : RIDING_ACTIONS_DEFAULT)
 export const ridingSeatedSet = (it: RidingOpts) => (it?.ridingSeated?.length ? new Set(it.ridingSeated) : RIDING_SEATED_DEFAULT)
-// 슬롯 → 목록 파일. 라이딩(프론트 public)과 이펙트(CDN cashfx/ — 카탈로그 index 밖)만 갈라지는 지점이 **여기 하나**다.
+// 슬롯 → 목록 파일. 라이딩(프론트 public)과 반지 · 이펙트(CDN rings/ · cashfx/ — 카탈로그 index 밖)만 갈라지는 지점이 **여기 하나**다.
 export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null): string | undefined =>
-  (slot === 'riding' ? RIDING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
+  (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
 
 // 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아
 // 스프라이트는 div overflow 로만 잘린다. 모델(마네킹) 높이 = fraction × divH 로 장비·카드크기 무관 일정.
