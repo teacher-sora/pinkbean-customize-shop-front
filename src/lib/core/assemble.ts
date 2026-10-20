@@ -381,7 +381,8 @@ function applyIllusion(placed: PlacedLayer[], anchors: Record<string, Vec>, mark
   let out = ring ? applyRing(placed, anchors, ring, foot) : placed
   // 내 뒤에 나는 링을 낀 모습(변신 · 거대한 몸 · 거대한 머리)을 그대로 복제한다(사용자 지시 — 링과 함께 써도 나온다).
   // 기준은 딛고 선 바닥(groundOf — 탈것이면 탈것의 바닥, 링이 몸을 옮겼으면 옮긴 발, 변신은 처음 발)이다.
-  // 이 점을 기준으로 키우므로 복제의 발끝(탈것이면 탈것의 바닥)이 본체와 같은 줄에 선다(사용자 지시 — 모든 경우).
+  // 이 점을 기준으로 키우고, 맨 아래 픽셀끼리 같은 줄에 서도록 그리기(render.renderCharacter 의 cloneDy)가 마저 맞춘다
+  // — 발보다 아래로 내려온 픽셀은 그림 크기를 알아야 잴 수 있다(사용자 지시 — 모든 경우).
   if (clone) {
     const pv = groundOf(out) ?? foot, s = clone.illusion!.scale ?? 1, off = clone.illusion!.offset ?? { x: 0, y: 0 }
     const twin = out.map((p) => ({ ...scaleAbout(p, pv, s), x: pv.x + (p.x - pv.x) * s + off.x, y: pv.y + (p.y - pv.y) * s + off.y, slot: 'clone' }))

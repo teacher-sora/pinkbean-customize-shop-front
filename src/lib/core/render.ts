@@ -114,6 +114,27 @@ export interface RenderOpts {
                                      //   염색도 재fetch 없음. (Cloudflare 는 ?cors=1 에 CORS 헤더를 주므로 모두 성공.)
 }
 
+// 그림의 맨 아래 불투명 줄(0부터, 비었으면 -1). 그림마다 한 번만 잰다. 픽셀을 못 읽으면(taint) 그림 높이로 본다.
+const bottomCache = new WeakMap<object, number>()
+function opaqueBottom (src: HTMLImageElement | HTMLCanvasElement): number {
+  const hit = bottomCache.get(src)
+  if (hit !== undefined) return hit
+  let b = src.height - 1
+  try {
+    const c = document.createElement('canvas')
+    c.width = src.width; c.height = src.height
+    const g = c.getContext('2d', { willReadFrequently: true })!
+    g.drawImage(src, 0, 0)
+    const d = g.getImageData(0, 0, c.width, c.height).data
+    b = -1
+    for (let y = c.height - 1; y >= 0 && b < 0; y--) {
+      for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 8) { b = y; break }
+    }
+  } catch { /* 그림 높이 그대로 */ }
+  bottomCache.set(src, b)
+  return b
+}
+
 // Draw the placed character with the navel pinned to a fixed canvas coordinate.
 export async function renderCharacter(
   canvas: HTMLCanvasElement,
@@ -197,6 +218,24 @@ export async function renderCharacter(
   // effects behind the body (z < 0)
   for (const fx of effs) if (fx.e.z < 0) drawEffect(fx)
 
+  // 내 뒤에 나: 복제(slot 'clone')의 맨 아래 픽셀을 본체의 맨 아래 픽셀과 같은 줄에 세운다(사용자 지시 — 모든 경우).
+  // assemble 은 발(몸 그림의 origin)을 기준으로 키우므로, 발보다 아래로 내려온 픽셀(신발 · 옷자락 · 탈것)은 복제에서 배율만큼 더
+  // 내려간다 — 거대한 몸은 그 부분이 이미 3배라 크게 어긋났다. 그림 크기를 아는 여기서 그 차이만큼 복제를 올린다.
+  let cloneDy = 0
+  if (placed.some((p) => p.slot === 'clone')) {
+    let self = -Infinity, twin = -Infinity
+    for (const p of placed) {
+      const src = opts.override?.get(p.png) ?? imgs.get(p.png)
+      if (!src) continue
+      const ob = opaqueBottom(src)
+      if (ob < 0) continue
+      const y = p.y + (ob + 1) * (p.scale ?? 1)
+      if (p.slot === 'clone') twin = Math.max(twin, y)
+      else self = Math.max(self, y)
+    }
+    if (Number.isFinite(self) && Number.isFinite(twin)) cloneDy = self - twin
+  }
+
   if (back) {
     // centered horizontally on the navel, sitting around the upper body / back.
     const dx = Math.round((anchorX - back.width / 2) * scale)
@@ -210,7 +249,7 @@ export async function renderCharacter(
     const k = p.scale ?? 1 // 일루전으로 키운 레이어(assemble.applyIllusion)
     const w = (src as HTMLImageElement).width * k, h = (src as HTMLImageElement).height * k
     const dx = Math.round((anchorX + p.x) * scale)
-    const dy = Math.round((anchorY + p.y) * scale)
+    const dy = Math.round((anchorY + p.y + (p.slot === 'clone' ? cloneDy : 0)) * scale)
     ctx.drawImage(src, dx, dy, w * scale, h * scale)
   }
 
