@@ -182,15 +182,6 @@ export async function renderCharacter(
     }
   }
 
-  // 내 뒤에 나(복제, slot 'clone'): 캐릭터와 복제의 navel 사이 가운데를 화면 가운데로 — 라이딩처럼 둘이 함께 들어오게(사용자 지시).
-  const twin = placed.find((p) => p.slot === 'clone' && p.name === 'body')
-  const self = placed.find((p) => p.slot === 'body' && p.name === 'body')
-  if (twin?.map?.navel && self?.map?.navel) {
-    const tk = twin.scale ?? 1, sk = self.scale ?? 1
-    const tx = twin.x + (twin.origin.x + twin.map.navel.x) * tk, sx = self.x + (self.origin.x + self.map.navel.x) * sk
-    anchorX -= (tx - sx) / 2
-  }
-
   ctx.save()
   if (opts.flip) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1) } // mirror about center
 
