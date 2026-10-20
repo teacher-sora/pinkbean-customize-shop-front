@@ -58,12 +58,16 @@
 .hue5 { background: hsl(220,68%,60%); }
 .hue6 { background: hsl(300,68%,60%); }
 /* 칩 아래 띠의 염색 값(info/SlotSprite DyeBand). 칩을 줄바꿈(.dyeChip)해 띠가 칩 폭 전체를 쓴다 — 모든 칩에 있어 높이가 같다.
-   띠 안은 칸(.dyeBandCell)으로 나눠 폭을 다 쓴다 — 칸은 제 글자 폭에 남는 폭을 똑같이 더 받는다(좁은 모바일 칩에서 잘리지 않게). 칸 사이는 가는 세로 줄, 칸 안은 가운데.
+   띠 안은 같은 폭의 칸(.dyeBandCell)으로 나눠 폭을 다 쓴다(사용자 지시 — 색 · 채 · 명 세 칸은 언제나 같은 폭). '테두리'(.dyeBandEdge)만 제 글자 폭.
+   칸 사이는 가는 세로 줄, 칸 안은 가운데.
    낱말(색 · 채 · 명 · 색 이름 · 테두리)은 흐린 색, 수치는 진한 색. 점은 색 계열 점(.famDot) · 스와치와 같은 색. 꺼짐 = 흐리게 */
 .dyeChip { flex-wrap: wrap; row-gap: 7px; }
-.dyeBand { flex: 0 0 100%; min-width: 0; height: 14px; padding-top: 7px; border-top: 1px solid #f4ede6; display: flex; align-items: center; overflow: hidden; font-size: 11px; font-weight: 600; line-height: 1; color: #6f655b; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; box-sizing: content-box; }
-.dyeBandCell { flex: 1 0 auto; height: 100%; padding: 0 3px; display: flex; align-items: center; justify-content: center; gap: 3px; }
-.dyeBandCell + .dyeBandCell { border-left: 1px solid #f1e8df; }
+.dyeBand { container: dyeband / inline-size; flex: 0 0 100%; min-width: 0; height: 14px; padding-top: 7px; border-top: 1px solid #f4ede6; display: flex; align-items: center; overflow: hidden; font-size: 11px; font-weight: 600; line-height: 1; color: #6f655b; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; box-sizing: content-box; }
+.dyeBandCell { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; gap: 3px; overflow: hidden; }
+.dyeBandEdge { flex: 0 0 auto; padding: 0 4px; }
+/* 좁은 칩(모바일 두 줄 칸)에서는 글자 · 간격을 줄여 같은 폭 칸 안에 '● 색 359' 가 들어가게 한다 */
+@container dyeband (max-width: 180px) { .dyeBandCell { gap: 2px; font-size: 10px; } .dyeBandDot { width: 6px; height: 6px; } }
+.dyeBandCell + .dyeBandCell { box-shadow: inset 1px 0 #f1e8df; } /* 세로 줄을 테두리로 그리면 칸 폭이 1px 줄어 첫 칸만 넓다 */
 .dyeBandMuted { font-weight: 500; color: #c3b9ad; }
 .dyeBandKey { font-weight: 500; color: #b0a599; }
 .dyeBandDot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); }

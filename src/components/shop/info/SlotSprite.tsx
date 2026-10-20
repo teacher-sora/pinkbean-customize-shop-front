@@ -51,7 +51,7 @@ export function lookDyed(slot: string, item: ListItem | null, toneName: string |
 }
 
 // 칩 아래 띠의 염색 값(사용자 요청 — 광장 코디의 염색을 보고 따라 할 수 있게). 코디 광장 상세의 착용 칩 · 코디 정보 칩이 쓴다.
-// 띠는 칩 폭 전체를 같은 폭의 칸으로 나눠 쓴다(사용자 지시 — 왼쪽에 몰지 않는다). 칸 사이는 가는 세로 줄.
+// 띠는 칩 폭 전체를 같은 폭의 칸으로 나눠 쓴다(사용자 지시 — 왼쪽에 몰지 않는다, 색 · 채 · 명은 언제나 같은 폭). '테두리' 칸만 제 글자 폭.
 // 모든 칩에 띠가 있어 높이가 같다(염색하지 않았으면 '염색 없음', 염색할 수 없으면 '염색 불가', 비었으면 빈 띠).
 //  헤어 · 성형: [색 점] 색 이름 비율 — 섞었으면 베이스 · 믹스 두 칸.
 //  그 밖: [색상 계열 점] 색 · 채 · 명 세 칸(인게임 염색 창의 색조 · 채도 · 명도 순서) + 테두리 포함이면 '테두리' 한 칸.
@@ -87,7 +87,7 @@ export function DyeBand({ state, slot, palette, hsb, off, skinFamily }: {
       <span className={ui.dyeBandCell}>{dot(hue)}{k('색')}{hsb.h}</span>
       <span className={ui.dyeBandCell}>{k('채')}{signed(hsb.s)}</span>
       <span className={ui.dyeBandCell}>{k('명')}{signed(hsb.b)}</span>
-      {edge && <span className={clsx(ui.dyeBandCell, ui.dyeBandKey)}>테두리</span>}
+      {edge && <span className={clsx(ui.dyeBandCell, ui.dyeBandEdge, ui.dyeBandKey)}>테두리</span>}
     </span>
   )
 }
