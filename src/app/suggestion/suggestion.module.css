@@ -1,6 +1,7 @@
 /* 운영자용 건의함(/suggestion). 글 상자 · 나무 · 입력칸은 앱의 건의함 부품(plaza.module.css)을 그대로 쓰고, 여기는 화면 틀만 둔다. */
 /* 앱은 문서가 스크롤하지 않는다(globals.css 의 body). 건의함은 글이 쌓이면 화면보다 길어지므로 안내 글처럼 문서 스크롤을 푼다 */
-:global(html):has(.page) { height: auto; }
+/* 스크롤바 자리는 늘 잡아 둔다 — 글이 늘어 스크롤바가 생기거나 사라질 때 화면이 옆으로 밀리지 않게(사용자 지시) */
+:global(html):has(.page) { height: auto; scrollbar-gutter: stable; }
 :global(html):has(.page) :global(body) { height: auto; overflow: visible; }
 .page { min-height: 100svh; background: #faf7f3; color: #3d372f; }
 
@@ -43,7 +44,7 @@
 .boxOn > div { border-color: #ec86ac; background: #fdf4f8; }
 /* 상세는 화면에 붙어 따로 스크롤한다(넓은 화면) */
 .detailPane { min-width: 0; padding: 16px; border: 1px solid #eee6dc; border-radius: 12px; background: #fff; }
-.split .detailPane { position: sticky; top: 128px; max-height: calc(100svh - 144px); overflow: hidden auto; overscroll-behavior: contain; }
+.split .detailPane { position: sticky; top: 128px; max-height: calc(100svh - 144px); overflow: hidden auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .detail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .pick { min-height: 160px; display: flex; align-items: center; justify-content: center; }
 .when { margin-top: -6px; font-size: 11px; color: #b7ada2; }
