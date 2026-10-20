@@ -55,14 +55,16 @@ export function lookDyed(slot: string, item: ListItem | null, toneName: string |
 // 칸은 세로 줄로 나뉘고 값을 한 줄에 하나씩 쌓는다. 모든 칩에 같은 폭으로 있어 칩끼리 줄이 맞는다
 // (염색하지 않았으면 '염색 없음', 염색할 수 없으면 '염색 불가', 비었으면 빈 칸).
 //  헤어 · 성형: [색 점] 비율 — 섞었으면 베이스 · 믹스 두 줄. 색 이름은 title.
-//  그 밖: [색상 계열 점] 색 / 채 / 명(인게임 염색 창의 색조 · 채도 · 명도 순서) + 테두리 포함이면 '테두리' 한 줄 더.
+//  그 밖: 색조 · 채도 · 명도 세 줄(인게임 염색 창의 순서). 낱말 대신 점 — 색상 계열 점 · 채도 점(회색→진한 색) · 명도 점(검정→흰색)
+//  (사용자 지시 — 낱말이 있으면 빼곡하다). 테두리 포함이면 '테두리' 한 줄 더.
 // 누르는 요소가 아니다(창을 열지 않는다). 낱말로 된 전체 값은 title. off = 염색 꺼짐(흐리게).
 const signed = (v: number) => (v > 0 ? `+${v}` : `${v}`)
 export type DyeBandState = 'dyed' | 'plain' | 'none' | 'empty'
 export function DyeBand({ state, slot, palette, hsb, off, skinFamily }: {
   state: DyeBandState; slot: string; palette?: PaletteParams; hsb?: HsbParams; off?: boolean; skinFamily?: number
 }) {
-  const muted = (t: string) => <span className={clsx(ui.dyeBand, ui.dyeBandMuted, !t && ui.dyeBandEmpty)}><span className={ui.dyeBandRow}>{t}</span></span>
+  // '염색 없음' · '염색 불가'는 칸이 좁아 두 줄로 쌓는다.
+  const muted = (t: string) => <span className={clsx(ui.dyeBand, ui.dyeBandMuted, !t && ui.dyeBandEmpty)}>{t.split(' ').map((w) => <span key={w} className={ui.dyeBandRow}>{w}</span>)}</span>
   if (state !== 'dyed') return muted(state === 'plain' ? '염색 없음' : state === 'none' ? '염색 불가' : '')
   const row = (lead: ReactNode, v: ReactNode) => (
     <span className={ui.dyeBandRow}><span className={ui.dyeBandKey}>{lead}</span><span className={ui.dyeBandVal}>{v}</span></span>
@@ -87,9 +89,9 @@ export function DyeBand({ state, slot, palette, hsb, off, skinFamily }: {
   const title = `${DYE_FAMILIES[t]}, 색조 ${hsb.h}, 채도 ${signed(hsb.s)}, 명도 ${signed(hsb.b)}${edge ? ', 테두리 포함' : ''}`
   return (
     <span title={title} className={clsx(ui.dyeBand, off && ui.dyeBandOff)}>
-      {row(<><span className={clsx(ui.dyeBandDot, hue)} />색</>, hsb.h)}
-      {row('채', signed(hsb.s))}
-      {row('명', signed(hsb.b))}
+      {row(<span className={clsx(ui.dyeBandDot, hue)} />, hsb.h)}
+      {row(<span className={clsx(ui.dyeBandDot, ui.dyeBandSat)} />, signed(hsb.s))}
+      {row(<span className={clsx(ui.dyeBandDot, ui.dyeBandBri)} />, signed(hsb.b))}
       {edge && <span className={clsx(ui.dyeBandRow, ui.dyeBandKey)}>테두리</span>}
     </span>
   )
