@@ -14,7 +14,7 @@ import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
 import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/controls'
 import { IconCheck, IconEye } from '../ui/Icons'
-import { SlotSprite } from './SlotSprite'
+import { DyeTag, SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
 
 const defPal = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 }) // 믹스 기본 비율 50%
@@ -93,6 +93,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
             <span className={clsx(styles.slotText, mobile && styles.slotTextM)}>
               <span className={styles.slotPart}>{r.c.label}</span>
               <span className={clsx(styles.slotName, r.on && !r.hidden && styles.slotNameOn)}>{name}</span>
+              {r.dyed && <DyeTag slot={r.slot} palette={s.dyePalette[r.slot]} hsb={s.dyeHsb[r.slot]} off={r.dyeOff} skinFamily={r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined} />}
             </span>
             {r.on && !r.isSkin && (
               <span role="button" tabIndex={0} title="미리보기 표시/숨김" aria-label="미리보기 표시/숨김"

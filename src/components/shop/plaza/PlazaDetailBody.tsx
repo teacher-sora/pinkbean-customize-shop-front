@@ -23,7 +23,7 @@ import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaz
 import { CAT_TO_SLOT } from '@/lib/shopData'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
-import { LookSprite, lookDyed } from '../info/SlotSprite'
+import { DyeTag, LookSprite, lookDyed } from '../info/SlotSprite'
 import { glideTo, place, release } from '../surface/glide'
 import surf from '../surface/surface.module.css'
 import { IconCaretDown, IconHeart, IconLinkCopy, IconTakeDown } from '../ui/Icons'
@@ -236,6 +236,7 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
                     <span className={surf.partText}>
                       <span className={surf.partSlot}>{w.label}</span>
                       <span className={surf.partName}>{w.name}</span>
+                      {w.dyed && <DyeTag slot={w.slot} palette={snap.dyePalette?.[w.slot]} hsb={snap.dyeHsb?.[w.slot]} off={w.off} />}
                     </span>
                   </span>
                 ))}

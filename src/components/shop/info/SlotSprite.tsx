@@ -5,11 +5,14 @@
 // 렌더는 render*(염색 비활성화 반영) 값을 쓴다.
 // LookSprite 는 같은 그림을 **지금 코디가 아닌 스냅샷**(광장 글의 착용 아이템)으로 그린다 — 값만 받는 순수 부품.
 
+import clsx from 'clsx'
+import { DYE_FAMILIES, paletteFor } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
 import type { HsbParams, PaletteParams } from '@/lib/core/dye'
 import { isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, INFO_FRAC_HAIR, SKIN_ICON_FRACTION, SkinModel } from '../render/DyeSprite'
+import ui from '../ui/ui.module.css'
 
 const defHsb = (): HsbParams => ({ h: 0, s: 0, b: 0, t: 0 })
 const hsbActive = (h?: HsbParams) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0)
@@ -45,6 +48,37 @@ export function lookDyed(slot: string, item: ListItem | null, toneName: string |
   if (isMix(slot)) return !!palette && (palette.baseColor !== 0 || (palette.mixColor != null && palette.ratio > 0))
   if (item?.dyeMode === 'none') return false
   return hsbActive(hsb)
+}
+
+// 칩 이름 아래 한 줄의 염색 값(사용자 요청 — 광장 코디의 염색을 보고 따라 할 수 있게). 칩이 좁아(글자 칸 70~90px) 낱말 없이 쓴다.
+//  헤어 · 성형: [베이스 색 점] 비율 [믹스 색 점] 비율 — 섞지 않았으면 베이스 점 하나.
+//  그 밖: [색상 계열 점] 색조 채도 명도(인게임 염색 창의 순서). 테두리 포함이면 점에 진한 테두리를 두른다.
+// 누르는 요소가 아니다(창을 열지 않는다) — 낱말로 된 전체 값은 title(올려 두면 보이는 글)에 둔다. off = 염색 꺼짐(흐리게).
+const signed = (v: number) => (v > 0 ? `+${v}` : `${v}`)
+export function DyeTag({ slot, palette, hsb, off, skinFamily }: { slot: string; palette?: PaletteParams; hsb?: HsbParams; off?: boolean; skinFamily?: number }) {
+  if (isMix(slot)) {
+    if (!palette) return null
+    const pal = paletteFor(slot)
+    const base = pal[palette.baseColor], mixed = palette.mixColor != null && palette.mixColor !== palette.baseColor && palette.ratio > 0
+    const mix = mixed ? pal[palette.mixColor!] : null
+    const title = mix ? `${base?.name} ${100 - palette.ratio}, ${mix.name} ${palette.ratio}` : `${base?.name}`
+    return (
+      <span title={title} className={clsx(ui.dyeTag, off && ui.dyeTagOff)}>
+        <span className={ui.dyeTagDot} style={{ background: base?.hex }} />{mix && <>{100 - palette.ratio}<span className={ui.dyeTagDot} style={{ background: mix.hex }} />{palette.ratio}</>}
+        {!mix && base?.name}
+      </span>
+    )
+  }
+  if (!hsb) return null
+  const t = hsb.t ?? skinFamily ?? 0
+  const hue = [ui.hue0, ui.hue1, ui.hue2, ui.hue3, ui.hue4, ui.hue5, ui.hue6][t] ?? ui.hue0
+  const edge = !!hsb.edge && slot !== 'skin'
+  const title = `${DYE_FAMILIES[t]}, 색조 ${hsb.h}, 채도 ${signed(hsb.s)}, 명도 ${signed(hsb.b)}${edge ? ', 테두리 포함' : ''}`
+  return (
+    <span title={title} className={clsx(ui.dyeTag, off && ui.dyeTagOff)}>
+      <span className={clsx(ui.dyeTagDot, hue, edge && ui.dyeTagEdge)} />{hsb.h} {signed(hsb.s)} {signed(hsb.b)}
+    </span>
+  )
 }
 
 export function useSlotDyed() {
