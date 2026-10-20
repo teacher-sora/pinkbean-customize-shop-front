@@ -239,7 +239,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // 메탈아머(ridingCenterMount)는 메카(마운트)를 중앙정렬, 그 외 라이딩은 캐릭터(navel) 가로 중앙정렬(centerXOnly).
     const centerMount = riding && !!ridingItem?.ridingCenterMount
     // 바닥에 닿는 높이(navel 기준). 맨몸은 발, 탑승 중이면 탈것의 원점 — 배경 장면이 이 높이에 바닥을 깐다(lib/stageFloor).
-    const mount = riding ? frames[0]?.placed.find((p) => p.name.startsWith('mount')) : undefined
+    const mount = riding ? frames[0]?.placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount')) : undefined
     const ground = mount ? mount.y + mount.origin.y : frames[0]?.foot.y ?? 21
     return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action) }
   }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, V, viewInfo.isStatic])
