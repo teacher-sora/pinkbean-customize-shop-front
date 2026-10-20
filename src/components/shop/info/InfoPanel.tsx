@@ -16,6 +16,7 @@ import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/contro
 import { IconCheck, IconEye } from '../ui/Icons'
 import { DyeTag, SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
+import ui from '../ui/ui.module.css'
 
 const defPal = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 }) // 믹스 기본 비율 50%
 const defHsb = (): HsbParams => ({ h: 0, s: 0, b: 0, t: 0 })
@@ -91,9 +92,11 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
               {r.dyed && <span title={r.dyeOff ? '염색 비활성화됨' : '염색됨'} className={clsx(styles.dyedDot, r.dyeOff && styles.dyedDotOff)} />}
             </span>
             <span className={clsx(styles.slotText, mobile && styles.slotTextM)}>
-              <span className={styles.slotPart}>{r.c.label}</span>
+              <span className={ui.dyeHead}>
+                <span className={styles.slotPart}>{r.c.label}</span>
+                {r.dyed && <DyeTag slot={r.slot} palette={s.dyePalette[r.slot]} hsb={s.dyeHsb[r.slot]} off={r.dyeOff} skinFamily={r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined} />}
+              </span>
               <span className={clsx(styles.slotName, r.on && !r.hidden && styles.slotNameOn)}>{name}</span>
-              {r.dyed && <DyeTag slot={r.slot} palette={s.dyePalette[r.slot]} hsb={s.dyeHsb[r.slot]} off={r.dyeOff} skinFamily={r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined} />}
             </span>
             {r.on && !r.isSkin && (
               <span role="button" tabIndex={0} title="미리보기 표시/숨김" aria-label="미리보기 표시/숨김"

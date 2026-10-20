@@ -26,6 +26,7 @@ import { useShop, type Snapshot } from '../ShopContext'
 import { DyeTag, LookSprite, lookDyed } from '../info/SlotSprite'
 import { glideTo, place, release } from '../surface/glide'
 import surf from '../surface/surface.module.css'
+import ui from '../ui/ui.module.css'
 import { IconCaretDown, IconHeart, IconLinkCopy, IconTakeDown } from '../ui/Icons'
 import PlazaComments from './PlazaComments'
 import PlazaRefViewer from './PlazaRefViewer'
@@ -234,9 +235,11 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
                       {w.dyed && <span title={w.off ? '염색 비활성화됨' : '염색됨'} className={clsx(surf.partDot, w.off && surf.partDotOff)} />}
                     </span>
                     <span className={surf.partText}>
-                      <span className={surf.partSlot}>{w.label}</span>
+                      <span className={ui.dyeHead}>
+                        <span className={surf.partSlot}>{w.label}</span>
+                        {w.dyed && <DyeTag slot={w.slot} palette={snap.dyePalette?.[w.slot]} hsb={snap.dyeHsb?.[w.slot]} off={w.off} />}
+                      </span>
                       <span className={surf.partName}>{w.name}</span>
-                      {w.dyed && <DyeTag slot={w.slot} palette={snap.dyePalette?.[w.slot]} hsb={snap.dyeHsb?.[w.slot]} off={w.off} />}
                     </span>
                   </span>
                 ))}
