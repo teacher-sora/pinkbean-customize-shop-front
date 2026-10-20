@@ -60,7 +60,7 @@ export const GUIDE: GuideEntry[] = [
   { id: 'dot', title: '점 위치 옮기기', words: '점, 얼굴 점, 점 옮기기, 위치 조절',
     how: '점이 있는 얼굴장식을 입으면\n캐릭터 화면 오른쪽 아래에 있는 점 버튼이 켜져요.\n누르면 점을 옮길 수 있어요.', go: { tab: 'preview', spot: 'dot' },
     pc: { how: '점이 있는 얼굴장식을 입으면\n오른쪽의 캐릭터 화면 오른쪽 위에 있는\n[점 위치] 버튼에서 옮길 수 있어요.' } },
-  { id: 'bg', title: '캐릭터 배경 바꾸기', words: '배경, 배경 바꾸기, 흰 배경, 검은 배경, 내 사진, 배경 업로드',
+  { id: 'bg', title: '캐릭터 배경 바꾸기', words: '배경, 배경 바꾸기, 미리보기 배경, 코디 배경, 흰 배경, 검은 배경, 내 사진, 배경 업로드',
     how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n그림 버튼에서 바꿀 수 있어요.\n흰색, 검은색, 내 사진도 돼요.', go: { tab: 'preview', sheet: 'bg' },
     pc: { how: '오른쪽의 캐릭터 화면 왼쪽 위에 있는\n[배경] 버튼에서 바꿀 수 있어요.\n흰색, 검은색, 내 사진도 돼요.' } },
   { id: 'image', title: '캐릭터 이미지 저장', words: '이미지 저장, 사진 저장, 캡처, 투명 배경으로 저장, 배경 없이 저장, png, 다운로드, 복사',
@@ -111,7 +111,9 @@ export function guideFor(g: GuideEntry, mobile: boolean): GuideEntry {
 const catalog = (mobile: boolean) => GUIDE.filter((g) => guideOn(g, mobile)).map((g0) => { const g = guideFor(g0, mobile); return { id: g.id, t: `${g.title}: ${g.how.replace(/\n/g, ' ')} / ${g.words}` } })
 
 // 안내 서버의 답. feature = ids 의 기능들, none = 목록에 없다, chat = 인사에 대한 reply, error = 서버 · 모델 실패
-export type GuideReply = { kind: 'feature' | 'none' | 'chat' | 'error'; ids: string[]; reply: string }
+// none 의 갈래(type): bug = 오류 신고(오류 칸으로), idea = 바라는 기능(건의 칸으로), other = 사이트와 상관없는 말(reply 로 답한다)
+export type GuideNone = 'bug' | 'idea' | 'other'
+export type GuideReply = { kind: 'feature' | 'none' | 'chat' | 'error'; ids: string[]; reply: string; type?: GuideNone }
 // mode: ask = 질문 탭, check = 건의를 올리기 전 확인(이미 있는 기능일 때만 feature)
 export async function askGuide(q: string, mode: 'ask' | 'check', history: { r: string; t: string }[], mobile: boolean): Promise<GuideReply> {
   try {
@@ -127,7 +129,9 @@ export async function askGuide(q: string, mode: 'ask' | 'check', history: { r: s
     const kind = d.kind === 'feature' && ids.length ? 'feature' : d.kind === 'chat' || d.kind === 'none' ? d.kind : 'error'
     // 인사의 답도 화면 직전에 한 번 더 거른다(lib/safeText — 말풍선과 같은 안전망)
     const reply = typeof d.reply === 'string' && safeBubble(d.reply) ? d.reply.slice(0, 140) : ''
-    return { kind: kind === 'chat' && !reply ? 'none' : kind, ids: kind === 'feature' ? ids : [], reply }
+    const k = kind === 'chat' && !reply ? 'none' : kind
+    const type: GuideNone | undefined = k !== 'none' ? undefined : d.type === 'bug' || d.type === 'other' ? d.type : 'idea'
+    return { kind: k, ids: kind === 'feature' ? ids : [], reply, type }
   } catch { return { kind: 'error', ids: [], reply: '' } }
 }
 
