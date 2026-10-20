@@ -20,10 +20,10 @@ import StageBg from '../preview/StageBg'
 import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
 import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
-import { CAT_TO_SLOT } from '@/lib/shopData'
+import { CAT_TO_SLOT, isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
-import { DyeTag, LookSprite, lookDyed } from '../info/SlotSprite'
+import { DyeBand, LookSprite, lookDyed } from '../info/SlotSprite'
 import { glideTo, place, release } from '../surface/glide'
 import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
@@ -119,7 +119,7 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
   )
 }
 
-type Worn = { slot: string; label: string; item: ListItem | null; name: string; dyed: boolean; off: boolean }
+type Worn = { slot: string; label: string; item: ListItem | null; name: string; dyed: boolean; off: boolean; dyeable: boolean; skinFamily?: number }
 
 // 착용 아이템 아코디언. 펼침·접힘은 높이 전환이 아니라 FLIP — 레이아웃은 한 번에 바꾸고,
 // 칩 묶음은 overflow:hidden 창 안에서, 그 아래 구역(모바일 댓글)은 같은 거리만큼 translateY 로 움직인다.
@@ -142,12 +142,12 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
         if (!slot) continue
         const off = !!snap.dyeOff?.[slot]
         if (slot === 'skin') {
-          out.push({ slot, label: c.label, item: null, name: toneName || `피부 ${snap.tone}`, off, dyed: lookDyed(slot, null, toneName, undefined, snap.dyeHsb?.skin) })
+          out.push({ slot, label: c.label, item: null, name: toneName || `피부 ${snap.tone}`, off, dyed: lookDyed(slot, null, toneName, undefined, snap.dyeHsb?.skin), dyeable: isDyeableSkin(toneName), skinFamily: skinDyeFamily(toneName) ?? undefined })
           continue
         }
         const it = eq[slot]
         if (!it || snap.hidden?.[slot]) continue
-        out.push({ slot, label: c.label, item: it, name: it.name || it.id, off, dyed: lookDyed(slot, it, toneName, snap.dyePalette?.[slot], snap.dyeHsb?.[slot]) })
+        out.push({ slot, label: c.label, item: it, name: it.name || it.id, off, dyed: lookDyed(slot, it, toneName, snap.dyePalette?.[slot], snap.dyeHsb?.[slot]), dyeable: it.dyeMode !== 'none' })
       }
       setItems(out)
     }).catch(() => { if (alive) setItems([]) })
@@ -226,7 +226,7 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
               <div className={clsx(surf.partGrid, mobile && surf.partGridM)}>
                 {items.map((w) => (
                   <span key={w.slot} title={`${w.label} - ${w.name}${w.dyed ? (w.off ? ' (염색 꺼짐)' : ' (염색)') : ''}`}
-                    className={clsx(surf.partChip, styles.wornChip)}>
+                    className={clsx(surf.partChip, styles.wornChip, ui.dyeChip)}>
                     <span className={surf.partThumb}>
                       <span className={surf.partSprite}>
                         <LookSprite slot={w.slot} item={w.item} tone={snap.tone}
@@ -235,12 +235,10 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
                       {w.dyed && <span title={w.off ? '염색 비활성화됨' : '염색됨'} className={clsx(surf.partDot, w.off && surf.partDotOff)} />}
                     </span>
                     <span className={surf.partText}>
-                      <span className={ui.dyeHead}>
-                        <span className={surf.partSlot}>{w.label}</span>
-                        {w.dyed && <DyeTag slot={w.slot} palette={snap.dyePalette?.[w.slot]} hsb={snap.dyeHsb?.[w.slot]} off={w.off} />}
-                      </span>
+                      <span className={surf.partSlot}>{w.label}</span>
                       <span className={surf.partName}>{w.name}</span>
                     </span>
+                    <DyeBand state={w.dyed ? 'dyed' : w.dyeable ? 'plain' : 'none'} slot={w.slot} palette={snap.dyePalette?.[w.slot]} hsb={snap.dyeHsb?.[w.slot]} off={w.off} skinFamily={w.skinFamily} />
                   </span>
                 ))}
               </div>

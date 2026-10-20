@@ -50,33 +50,41 @@ export function lookDyed(slot: string, item: ListItem | null, toneName: string |
   return hsbActive(hsb)
 }
 
-// 칩 윗줄(부위 이름 줄) 오른쪽의 염색 값(사용자 요청 — 광장 코디의 염색을 보고 따라 할 수 있게). 칩이 좁아(글자 칸 70~90px) 낱말 없이 쓴다.
-//  헤어 · 성형: [베이스 색 점] 비율 [믹스 색 점] 비율 — 섞지 않았으면 베이스 점 하나.
-//  그 밖: [색상 계열 점] 색조 채도 명도(인게임 염색 창의 순서). 테두리 포함이면 점에 진한 테두리를 두른다.
-// 누르는 요소가 아니다(창을 열지 않는다) — 낱말로 된 전체 값은 title(올려 두면 보이는 글)에 둔다. off = 염색 꺼짐(흐리게).
+// 칩 아래 띠의 염색 값(사용자 요청 — 광장 코디의 염색을 보고 따라 할 수 있게). 코디 광장 상세의 착용 칩 · 코디 정보 칩이 쓴다.
+// 모든 칩에 띠가 있어 높이가 같다(염색하지 않았으면 '염색 없음', 염색할 수 없으면 '염색 불가', 비었으면 빈 띠).
+//  헤어 · 성형: [색 점] 색 이름 비율 — 섞었으면 베이스 · 믹스 둘.
+//  그 밖: [색상 계열 점] 색 · 채 · 명(인게임 염색 창의 색조 · 채도 · 명도 순서) + 테두리 포함이면 '테두리'.
+// 누르는 요소가 아니다(창을 열지 않는다). 낱말로 된 전체 값은 title. off = 염색 꺼짐(흐리게).
 const signed = (v: number) => (v > 0 ? `+${v}` : `${v}`)
-export function DyeTag({ slot, palette, hsb, off, skinFamily }: { slot: string; palette?: PaletteParams; hsb?: HsbParams; off?: boolean; skinFamily?: number }) {
-  if (isMix(slot)) {
-    if (!palette) return null
+export type DyeBandState = 'dyed' | 'plain' | 'none' | 'empty'
+export function DyeBand({ state, slot, palette, hsb, off, skinFamily }: {
+  state: DyeBandState; slot: string; palette?: PaletteParams; hsb?: HsbParams; off?: boolean; skinFamily?: number
+}) {
+  if (state !== 'dyed') {
+    return <span className={clsx(ui.dyeBand, ui.dyeBandMuted)}>{state === 'plain' ? '염색 없음' : state === 'none' ? '염색 불가' : ' '}</span>
+  }
+  const k = (t: string) => <span className={ui.dyeBandKey}>{t}</span>
+  if (isMix(slot) && palette) {
     const pal = paletteFor(slot)
     const base = pal[palette.baseColor], mixed = palette.mixColor != null && palette.mixColor !== palette.baseColor && palette.ratio > 0
     const mix = mixed ? pal[palette.mixColor!] : null
-    const title = mix ? `${base?.name} ${100 - palette.ratio}, ${mix.name} ${palette.ratio}` : `${base?.name}`
+    const title = mix ? `베이스 ${base?.name} ${100 - palette.ratio}, 믹스 ${mix.name} ${palette.ratio}` : `${base?.name}`
     return (
-      <span title={title} className={clsx(ui.dyeTag, off && ui.dyeTagOff)}>
-        <span className={ui.dyeTagDot} style={{ background: base?.hex }} />{mix && <>{100 - palette.ratio}<span className={ui.dyeTagDot} style={{ background: mix.hex }} />{palette.ratio}</>}
-        {!mix && base?.name}
+      <span title={title} className={clsx(ui.dyeBand, off && ui.dyeBandOff)}>
+        <span className={ui.dyeBandDot} style={{ background: base?.hex }} />{k(base?.name ?? '')}{mix ? 100 - palette.ratio : null}
+        {mix && <><span className={clsx(ui.dyeBandDot, ui.dyeBandGap)} style={{ background: mix.hex }} />{k(mix.name)}{palette.ratio}</>}
       </span>
     )
   }
-  if (!hsb) return null
+  if (!hsb) return <span className={clsx(ui.dyeBand, ui.dyeBandMuted)}>염색 없음</span>
   const t = hsb.t ?? skinFamily ?? 0
   const hue = [ui.hue0, ui.hue1, ui.hue2, ui.hue3, ui.hue4, ui.hue5, ui.hue6][t] ?? ui.hue0
   const edge = !!hsb.edge && slot !== 'skin'
   const title = `${DYE_FAMILIES[t]}, 색조 ${hsb.h}, 채도 ${signed(hsb.s)}, 명도 ${signed(hsb.b)}${edge ? ', 테두리 포함' : ''}`
   return (
-    <span title={title} className={clsx(ui.dyeTag, off && ui.dyeTagOff)}>
-      <span className={clsx(ui.dyeTagDot, hue, edge && ui.dyeTagEdge)} />{hsb.h} {signed(hsb.s)} {signed(hsb.b)}
+    <span title={title} className={clsx(ui.dyeBand, off && ui.dyeBandOff)}>
+      <span className={clsx(ui.dyeBandDot, hue)} />{k('색')}{hsb.h}<span className={ui.dyeBandGap} />{k('채')}{signed(hsb.s)}<span className={ui.dyeBandGap} />{k('명')}{signed(hsb.b)}
+      {edge && <span className={clsx(ui.dyeBandGap, ui.dyeBandKey)}>테두리</span>}
     </span>
   )
 }

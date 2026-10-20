@@ -1,6 +1,6 @@
 'use client'
 
-// 코디 정보 · 염색. 17부위 행 그리드 + (PC) 하단 인라인 염색. 모바일은 부위를 누르면 염색/점 위치 서피스를 연다.
+// 코디 정보 · 염색. 18부위 행 그리드 + (PC) 하단 인라인 염색. 모바일은 부위를 누르면 염색/점 위치 서피스를 연다.
 
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
@@ -14,7 +14,7 @@ import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
 import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/controls'
 import { IconCheck, IconEye } from '../ui/Icons'
-import { DyeTag, SlotSprite } from './SlotSprite'
+import { DyeBand, SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
 import ui from '../ui/ui.module.css'
 
@@ -82,7 +82,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
         const name = r.on ? (r.hidden ? '숨김' : (r.item!.name || r.item!.id)) : '미착용'
         return (
           <button key={r.c.id} type="button" onClick={() => pick(r)} title={r.on ? `${r.c.label} - ${r.item!.name || r.item!.id}, 눌러서 염색` : `${r.c.label} - 미착용`}
-            className={clsx(r.on && 'pb-slotrow', styles.slot, r.on && styles.slotOn, r.hidden && styles.slotHidden, r.sel && styles.slotSel)}>
+            className={clsx(r.on && 'pb-slotrow', styles.slot, ui.dyeChip, r.on && styles.slotOn, r.hidden && styles.slotHidden, r.sel && styles.slotSel)}>
             <span className={clsx(styles.slotThumb, r.on && !r.hidden && styles.slotThumbOn)}>
               {r.on && r.item ? (
                 <span className={clsx(styles.slotSprite, r.hidden && styles.slotSpriteHidden)}>
@@ -92,10 +92,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
               {r.dyed && <span title={r.dyeOff ? '염색 비활성화됨' : '염색됨'} className={clsx(styles.dyedDot, r.dyeOff && styles.dyedDotOff)} />}
             </span>
             <span className={clsx(styles.slotText, mobile && styles.slotTextM)}>
-              <span className={ui.dyeHead}>
-                <span className={styles.slotPart}>{r.c.label}</span>
-                {r.dyed && <DyeTag slot={r.slot} palette={s.dyePalette[r.slot]} hsb={s.dyeHsb[r.slot]} off={r.dyeOff} skinFamily={r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined} />}
-              </span>
+              <span className={styles.slotPart}>{r.c.label}</span>
               <span className={clsx(styles.slotName, r.on && !r.hidden && styles.slotNameOn)}>{name}</span>
             </span>
             {r.on && !r.isSkin && (
@@ -106,6 +103,8 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
                 <IconEye hidden={r.hidden} />
               </span>
             )}
+            <DyeBand state={!r.on ? 'empty' : r.dyed ? 'dyed' : (r.isSkin ? !isDyeableSkin(toneName) : r.item?.dyeMode === 'none') ? 'none' : 'plain'}
+              slot={r.slot} palette={s.dyePalette[r.slot]} hsb={s.dyeHsb[r.slot]} off={r.dyeOff} skinFamily={r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined} />
           </button>
         )
       })}

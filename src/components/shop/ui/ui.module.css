@@ -57,16 +57,17 @@
 .hue4 { background: hsl(174,68%,60%); }
 .hue5 { background: hsl(220,68%,60%); }
 .hue6 { background: hsl(300,68%,60%); }
-/* 칩 윗줄(부위 이름 줄) 오른쪽의 염색 값(info/SlotSprite DyeTag) — 칩 높이가 염색 여부와 상관없이 같다(사용자 지시). 좁으면 값이 말줄임된다.
-   .dyeHead = 그 줄: 부위 이름은 줄지 않고, 값이 남은 폭을 쓰며 오른쪽 끝에 붙는다. 점은 색 계열 점(.famDot) · 스와치와 같은 색, 테두리 포함이면 진한 링. 꺼짐 = 흐리게 */
-.dyeHead { width: 100%; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.dyeHead > :first-child { flex: 0 0 auto; }
-.dyeTag { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 3px; max-width: 100%; overflow: hidden; white-space: nowrap; font-size: 10.5px; font-weight: 600; line-height: 1.3; color: #d76d9a; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-.dyeTagOff { color: #b7ada2; }
-.dyeTagOff .dyeTagDot { filter: grayscale(1); }
-.dyeTagDot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
-.dyeTag > .dyeTagDot:not(:first-child) { margin-left: 3px; }
-.dyeTagEdge { width: 10px; height: 10px; border: 2.5px solid #2a2521; }
+/* 칩 아래 띠의 염색 값(info/SlotSprite DyeBand). 칩을 줄바꿈(.dyeChip)해 띠가 칩 폭 전체를 쓴다 — 모든 칩에 있어 높이가 같다.
+   낱말(색 · 채 · 명 · 색 이름 · 테두리)은 흐린 색, 수치는 진한 색. 점은 색 계열 점(.famDot) · 스와치와 같은 색. 꺼짐 = 흐리게 */
+.dyeChip { flex-wrap: wrap; row-gap: 6px; }
+.dyeBand { flex: 0 0 100%; min-width: 0; height: 12px; padding-top: 5px; border-top: 1px solid #f4ede6; display: flex; align-items: center; gap: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 10px; font-weight: 600; line-height: 1; color: #6f655b; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; box-sizing: content-box; }
+.dyeBandMuted { font-weight: 500; color: #c3b9ad; }
+.dyeBandKey { font-weight: 500; color: #b0a599; margin-right: 1px; }
+.dyeBandGap { margin-left: 6px; }
+.dyeBandDot { flex: 0 0 auto; width: 7px; height: 7px; margin-right: 3px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); }
+.dyeBandDot.dyeBandGap { margin-left: 7px; }
+.dyeBandOff { color: #c3b9ad; }
+.dyeBandOff .dyeBandDot { filter: grayscale(1); opacity: .6; }
 
 /* ── 믹스 스와치 ── */
 .swatch { flex: 0 0 auto; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; padding: 0; border: 2px solid #efe6dc; border-radius: 50%; background: #fff; cursor: pointer; transition: border-color .18s ease, background-color .2s ease; }
