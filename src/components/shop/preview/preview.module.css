@@ -196,3 +196,20 @@
 .sayText { min-width: 0; padding-left: 4px; font-size: 12px; font-weight: 600; line-height: 17px; color: #c05a94; }
 .sayItem + .sayText { padding-left: 0; }
 .sayTail { position: absolute; bottom: -6px; width: 10px; height: 10px; margin-left: -5px; background: #fff; border-right: 1.5px solid #f4b8d0; border-bottom: 1.5px solid #f4b8d0; transform: rotate(45deg); }
+
+/* ── 채팅 칸(ChatBar, dev 전용 — 명찰 · 말풍선). 미리보기 바로 아래 한 줄: 입력 · 이모티콘 · 전송 ── */
+.chatBar { flex: 0 0 auto; position: relative; z-index: 5; display: flex; align-items: center; gap: 6px; padding: 8px; border-top: 1px solid #f0e9e1; background: #fff; }
+.chatBarM { padding: 8px 12px; border-bottom: 1px solid #f4efe8; }
+.chatInput { flex: 1 1 auto; min-width: 0; height: 32px; padding: 0 11px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 13px; color: #3d372f; outline: none; box-sizing: border-box; }
+.chatIconBtn { flex: 0 0 32px; height: 32px; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.chatIconBtnOn { border-color: #ec86ac; background: #fdf1f6; }
+.chatSend { flex: 0 0 auto; height: 32px; padding: 0 14px; border-radius: 6px; font-family: inherit; font-size: 12.5px; font-weight: 600; }
+.chatEmoPanel { display: flex; flex-direction: column; gap: 8px; }
+.chatEmoSets { flex: 0 0 auto; display: flex; gap: 6px; overflow-x: auto; }
+.chatEmoSet { flex: 0 0 36px; height: 36px; display: flex; align-items: center; justify-content: center; padding: 3px; border: 1px solid #eee6dc; border-radius: 6px; background: #fff; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.chatEmoSetOn { border-color: #ec86ac; background: #fef8fa; }
+.chatPx { display: block; image-rendering: pixelated; }
+.chatEmoArt { max-width: 100%; max-height: 100%; }
+@media (hover: hover) and (pointer: fine) {
+  .chatIconBtn:hover, .chatEmoSet:hover { border-color: #eeb2ce; background: #fdf1f6; }
+}

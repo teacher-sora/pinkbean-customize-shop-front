@@ -77,7 +77,8 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
  * 데이터는 front public/dev/chatui(명찰 276 · 말풍선 295 · 채팅 이모티콘 141)이고, main 병합 때 빠진다(scripts/merge-dev-to-main.sh 의 DEV_ONLY).
  * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats · infoCats) — 운영에는 파일이 없어 부위 탭 · 코디 정보 칩이 생기지 않는다.
  * 부위 탭은 하나(명찰/말풍선 — 같은 이름의 명찰과 말풍선이 나란히, 세트 순서)이고 코디 정보 칩은 둘이다(따로 끼고 벗는다).
- * 그리기는 core/chatUi(renderCharacter 의 chat). 이름 · 말 · 이모티콘은 사용자가 고친다(ShopContext 의 chat, 편집 창 ChatEditBody). */
+ * 그리기는 core/chatUi(renderCharacter 의 chat). 명찰 이름 = 고른 프리셋 이름, 말풍선 = 미리보기 아래 채팅 칸(preview/ChatBar)에서
+ * 보낸 말 · 이모티콘이 CHAT_SHOW_MS 동안 떴다 사라진다(게임 값을 찾지 못해 사용자가 준 5~10초 안에서 정했다). */
 export const CHAT_TAB = 'chatring'
 export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰/말풍선' }]
 export const CHAT_INFO_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }]
@@ -85,15 +86,18 @@ const CHAT_LIST = '/dev/chatui/list.json'
 export const CHAT_FILES: Record<string, string> = { nameTag: CHAT_LIST, chatBalloon: CHAT_LIST, chatRing: CHAT_LIST }
 export const CHAT_EMO_FILE = '/dev/chatui/emoticons.json'
 export interface ChatState { name: string; text: string; emo?: ChatEmo }
-export const CHAT_DEFAULT: ChatState = { name: 'Maple', text: '안녕하세요' }
-export const CHAT_NAME_MAX = 12  // 이름 글자 수
+export interface ChatMsg { text: string; emo?: ChatEmo }
+export const CHAT_NAME_FALLBACK = 'Maple' // 프리셋을 고르지 않았을 때 명찰 이름
+export const CHAT_SAMPLE = '안녕하세요'   // 말풍선 카드(목록)의 견본 말 — 보낸 말이 있으면 그 말
 export const CHAT_TEXT_MAX = 70  // 말 글자 수
+export const CHAT_SHOW_MS = 6000 // 보낸 말풍선이 떠 있는 시간
 export const CHAT_CARD_UP = 26   // 말풍선 카드에서 보는 자리를 올리는 만큼(게임 픽셀) — 머리 위 말풍선이 카드 위에 잘리지 않게
 // 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
-export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, chat: ChatState, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
+// 말풍선은 보낸 말(msg)이 떠 있는 동안만 그린다.
+export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, name: string, msg: ChatMsg | null, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
   const ui = (slot: string) => { const it = equipped[slot]; return !it || hidden[slot] ? undefined : it.chatUi ?? metas?.get(it.id)?.chatUi }
-  const tag = ui('nameTag'), balloon = ui('chatBalloon')
-  return tag || balloon ? { tag, balloon, name: chat.name, text: chat.text, emo: chat.emo } : undefined
+  const tag = ui('nameTag'), balloon = msg ? ui('chatBalloon') : undefined
+  return tag || balloon ? { tag, balloon, name, text: msg?.text ?? '', emo: msg?.emo } : undefined
 }
 
 // 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아
