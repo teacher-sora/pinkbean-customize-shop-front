@@ -28,7 +28,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SAMPLE, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, type ChatState, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -214,7 +214,6 @@ export interface ShopCtx {
   chatOn: boolean // 명찰 · 말풍선을 쓸 수 있는가(dev 데이터가 있을 때만)
   chatName: string // 명찰 이름 = 고른 프리셋 이름
   chatMsg: ChatMsg | null; sendChat: (m: ChatMsg) => void // 채팅 칸에서 보낸 말 · 이모티콘(CHAT_SHOW_MS 동안)
-  chatCard: ChatState // 말풍선 카드(목록)에 쓸 이름 · 말 — 보낸 말이 없으면 견본
   catLoading: boolean
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
   search: string; setSearch: Dispatch<string>
@@ -561,10 +560,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat])
   }, [activeCat, ensureSlot, cats])
 
-  // 채팅 칸에서 보낸 말 — 게임처럼 잠깐 떴다 사라진다. 마지막으로 보낸 말은 말풍선 카드의 견본으로 남는다.
+  // 채팅 칸에서 보낸 말 — 게임처럼 잠깐 떴다 사라진다.
   const [chatMsg, setChatMsg] = useState<ChatMsg | null>(null)
-  const [lastMsg, setLastMsg] = useState<ChatMsg>({ text: CHAT_SAMPLE })
-  const sendChat = useCallback((m: ChatMsg) => { setChatMsg(m); setLastMsg(m) }, [])
+  const sendChat = useCallback((m: ChatMsg) => setChatMsg(m), [])
   useEffect(() => { if (!chatMsg) return; const t = setTimeout(() => setChatMsg(null), CHAT_SHOW_MS); return () => clearTimeout(t) }, [chatMsg])
 
   // 피부(skin) = index.base.tones 를 합성 리스트로. 그 외는 lists[slot].
@@ -1978,9 +1976,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const onPageKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } else if (e.key === 'Escape') e.currentTarget.blur() }
 
   const chatName = presets.find((p) => p.id === selectedPreset)?.name || CHAT_NAME_FALLBACK
-  const chatCard = useMemo<ChatState>(() => ({ name: chatName, text: lastMsg.text, emo: lastMsg.emo }), [chatName, lastMsg])
   const value: ShopCtx = {
-    index, cats, infoCats, chatOn, chatName, chatMsg, sendChat, chatCard, catLoading, activeList, search, setSearch,
+    index, cats, infoCats, chatOn, chatName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
     genderFilter, setGenderFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,

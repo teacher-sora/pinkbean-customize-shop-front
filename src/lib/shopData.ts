@@ -89,10 +89,9 @@ export const CHAT_NEW_FILE = '/dev/chatui/new.json' // 테스트 서버에만 �
 export interface ChatState { name: string; text: string; emo?: ChatEmo }
 export interface ChatMsg { text: string; emo?: ChatEmo }
 export const CHAT_NAME_FALLBACK = 'Maple' // 프리셋을 고르지 않았을 때 명찰 이름
-export const CHAT_SAMPLE = '안녕하세요'   // 말풍선 카드(목록)의 견본 말 — 보낸 말이 있으면 그 말
+export const CHAT_CARD: ChatState = { name: '핑크빈', text: '커마샵' } // 목록 카드의 명찰 이름 · 말풍선 말(고정 — 사용자 지시)
 export const CHAT_TEXT_MAX = 70  // 말 글자 수
 export const CHAT_SHOW_MS = 6000 // 보낸 말풍선이 떠 있는 시간
-export const CHAT_CARD_UP = 26   // 말풍선 카드에서 보는 자리를 올리는 만큼(게임 픽셀) — 머리 위 말풍선이 카드 위에 잘리지 않게
 // 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
 // 말풍선은 보낸 말(msg)이 떠 있는 동안만 그린다.
 export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, name: string, msg: ChatMsg | null, metas?: Map<string, ItemMeta>): ChatDraw | undefined {

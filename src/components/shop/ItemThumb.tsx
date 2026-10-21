@@ -5,6 +5,7 @@
  *  - sprite  : 아이템 아이콘/스프라이트 이미지(가장 가벼움). 헤어는 몸 없이 모든 파츠 합성(염색표와 동일)
  *  - model   : 베이스 몸통+머리에 이 아이템을 올린 미니 합성
  *  - mymodel : 현재 내 착용(해당 슬롯 제외)에 이 아이템을 올린 미니 합성
+ *  명찰 · 말풍선(dev 전용, 나중에 훈장 · 칭호도)은 model · mymodel 에서 몸 없이 그 아이템만 그린다(ChatThumb) — 몸에 달면 말풍선이 카드 위로 넘친다.
  * 이 아이템에 이펙트가 있으면(effects/index.json) 함께 합성한다. centerX 로 sprite 처럼 정중앙 정렬.
  */
 
@@ -18,7 +19,8 @@ import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
-import { CARD_FRACTION, CARD_MARGIN, CHAT_CARD_UP, thumbView, type ChatState } from '@/lib/shopData'
+import { chatPreview } from '@/lib/core/chatUi'
+import { CARD_FRACTION, CARD_MARGIN, thumbView, type ChatState } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
 import { CARD_FRAC_HAIR, DyeSprite } from './render/DyeSprite'
 
@@ -88,8 +90,57 @@ function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
   )
 }
 
+// 명찰 · 말풍선 카드: 몸 없이 그 아이템만 카드 가운데에. 배율은 정수(디바이스 픽셀 기준)로 카드 안쪽 CHAT_FIT 에 다 들어오는 가장 큰 값 —
+// 말풍선은 보통 화면 픽셀 1:1 보다 한 단계 작게(고해상도 화면에서 절반) 나와 전체가 보인다.
+const CHAT_FIT = 0.9
+function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [bmp, setBmp] = useState<HTMLCanvasElement | null>(null)
+  const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
+  useEffect(() => {
+    let alive = true
+    setBmp(null)
+    if (item.chatUi) chatPreview(item.chatUi, chat).then((c) => { if (alive) setBmp(c) }).catch(() => {})
+    return () => { alive = false }
+  }, [item.chatUi, chat])
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight, dpr = window.devicePixelRatio || 1
+      if (w > 0 && h > 0) setDims((d) => (d.w === w && d.h === h && d.dpr === dpr ? d : { w, h, dpr }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure); ro.observe(el)
+    window.addEventListener('resize', measure)
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
+  }, [])
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !bmp || !dims.w) return
+    const k = Math.max(1, Math.floor(Math.min((dims.w * dims.dpr * CHAT_FIT) / bmp.width, (dims.h * dims.dpr * CHAT_FIT) / bmp.height)))
+    const bw = bmp.width * k, bh = bmp.height * k
+    canvas.width = bw; canvas.height = bh
+    const g = canvas.getContext('2d')!
+    g.imageSmoothingEnabled = false
+    g.drawImage(bmp, 0, 0, bw, bh)
+    fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
+  }, [bmp, dims])
+  useEffect(() => {
+    const el = canvasRef.current
+    if (!el) return
+    return bindImageMenu(el, () => (bmp ? new Promise<Blob | null>((ok) => bmp.toBlob(ok, 'image/png')) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
+  }, [bmp, item.name, item.id])
+  return (
+    <div ref={wrapRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      {!bmp && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '62%', height: '28%', borderRadius: 8 }} />}
+      <canvas ref={canvasRef} style={{ position: 'absolute', transform: 'translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
+    </div>
+  )
+}
+
 interface ModelProps {
-  chat?: ChatState // 명찰 · 말풍선 카드만 — 그 아이템을 단 모습에 쓸 이름 · 말 · 이모티콘
   item: ListItem; gaze: string; ctxItems: AssembleInput[]; ctxKey: string
   zmap: string[]; smap: Record<string, string>; skinHeadId?: string
   override?: Map<string, HTMLCanvasElement> // 내 모델: 배경(내 착용) 염색 오버라이드(이펙트 염색 포함)
@@ -104,7 +155,7 @@ interface ModelProps {
   stance?: boolean                          // 배경이 무기모션 자세(두손=stand2)로 구워졌으면 후보 아이템도 같은 자세로
   ctxAction?: string                        // 배경이 내 무기 때문에 다른 자세로 구워졌으면 그 액션(thumbCtx.action) — 후보도 같은 자세로
 }
-function ModelThumb({ chat: chatState, item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets }: ModelProps) {
+function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets }: ModelProps) {
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [effs, setEffs] = useState<EffectDraw[]>([])
   const [parts, setParts] = useState<ParticleDraw[]>([])
@@ -244,21 +295,17 @@ function ModelThumb({ chat: chatState, item, gaze, ctxItems, ctxKey, zmap, smap,
     let cancelled = false
     const back = gaze === 'back'
     // snap: 배율을 정수로 스냅해 카드 도트가 항상 완전히 선명(모든 카드 동일, 화면 크기별로만 살짝 다름).
-    // 말풍선 카드는 머리 위 말풍선이 카드 위에 잘리지 않게 보는 자리를 그만큼 올린다(캐릭터가 아래로 내려온다).
-    const up = item.slot === 'chatBalloon' ? CHAT_CARD_UP : 0
-    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: CARD_FRACTION, snap: true, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: (back ? MODEL_REF.backDy : MODEL_REF.centerDy) - up, drop: true })
+    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: CARD_FRACTION, snap: true, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy, drop: true })
     // 캔버스를 화면 픽셀 격자에 맞춰 가운데(미리보기와 같은 규칙 — translate(-50%) 는 소수 px 라 도트가 뭉갠다).
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
     // 마네킹 중심을 셀 중앙에 고정(anchor 보정). flip=오른쪽 시선. 분수 scale=디바이스 해상도.
     const cm = item.slot === 'riding' && !!item.ridingCenterMount // 메탈아머는 메카(마운트) 중앙정렬
-    // 명찰 · 말풍선 카드(dev 전용)는 그 아이템을 단 모습 — 목록 아이템이 조각 정보를 들고 있다.
-    const chat = item.chatUi && chatState ? { [item.chatUi.kind === 'nameTag' ? 'tag' : 'balloon']: item.chatUi, name: chatState.name, text: chatState.text, emo: chatState.emo } : undefined
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, chat, shouldCancel: () => cancelled }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, shouldCancel: () => cancelled }).catch(() => {})
     // 우클릭 복사용 입력 — 화면과 같은 값(중심 오프셋·반전·라이딩 정렬)으로 다시 그린다(lib/canvasExport.modelShotBlob).
-    shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, chat, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
+    shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
     return () => { cancelled = true }
-  }, [placed, effs, parts, flip, dims, gaze, ovr, chatState])
+  }, [placed, effs, parts, flip, dims, gaze, ovr])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). item 바뀌면 파일명 갱신 위해 재바인딩.
   useEffect(() => {
@@ -290,6 +337,7 @@ export default function ItemThumb(props: {
   dotOffsets?: Record<string, { x: number; y: number }>
   chat?: ChatState
 }) {
+  if (props.mode !== 'sprite' && props.item.chatUi && props.chat) return <ChatThumb item={props.item} chat={props.chat} />
   if (props.mode === 'sprite') return props.item.slot === 'hair' ? <HairSprite item={props.item} zmap={props.zmap} /> : <Sprite item={props.item} />
-  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} chat={props.chat} />
+  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} />
 }

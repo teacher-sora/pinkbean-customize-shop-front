@@ -306,7 +306,17 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     && Object.entries(equipped).some(([slot, it]) => !!it && !hidden[slot] && !!floatItems[it.id]), [pv.action, V.action, equipped, hidden, floatItems])
 
   // 명찰 · 말풍선(dev 전용) — 그릴 레이어가 없고 renderCharacter 가 덧그린다(core/chatUi).
+  // 말을 보낼 때마다 아래 합성 effect 를 처음부터 다시 돌리지 않는다(프레임 · 스프라이트 준비를 건너뛰고) — 값은 ref 로 넘기고
+  // 그리기만 한 번 다시 부른다(redrawRef). 말풍선 그림은 채팅 칸에 적는 동안 미리 만들어 두어(core/chatUi.warmChat) 바로 나온다.
   const chat = useMemo(() => chatDrawOf(equipped, hidden, shop.chatName, shop.chatMsg, metas), [equipped, hidden, shop.chatName, shop.chatMsg, metas])
+  const chatRef = useRef(chat), chatVer = useRef(0)
+  const redrawRef = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    if (chatRef.current === chat) return
+    chatRef.current = chat; chatVer.current++
+    if (copyRef.current) copyRef.current = { ...copyRef.current, chat }
+    redrawRef.current?.()
+  }, [chat])
 
   const effList = useMemo(() => {
     const out: EffectMeta[] = []
@@ -551,7 +561,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 부유: 원래의 프레임(몸 흔들림)은 그대로 두고 캐릭터 전체(이펙트 · 파티클 포함)를 위아래로 부드럽게 띄운다. 바닥 그림자는 그 자리에 둔다.
       // 디바이스 픽셀 단위로 잘라 도트가 흐려지지 않게 하고, 한 칸 움직일 때만 다시 그린다(1초에 십여 번).
       const fy = floating ? Math.round(-FLOAT_AMP * (1 - Math.cos((2 * Math.PI * elapsed) / FLOAT_MS)) / 2 * pl.scale) / pl.scale : 0
-      const sig = fi + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';') + (particles.length ? `|${Math.floor(elapsed / 33)}` : '') + (fy ? `|${fy}` : '')
+      const sig = fi + '|' + chatVer.current + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';') + (particles.length ? `|${Math.floor(elapsed / 33)}` : '') + (fy ? `|${fy}` : '')
       if (sig === lastSig) return
       lastSig = sig
       // 분수 scale = 디바이스 해상도(1:1 표시로 선명). 마네킹 중심을 캔버스 중앙에(anchor 보정) → flip 대칭.
@@ -559,7 +569,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
       const seq = ++drawSeqRef.current
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat: chatRef.current, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
@@ -571,7 +581,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           placed: f0.placed,
           effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow, navel: f0.navel }, 0)) : [],
           particles: hasPart ? placeParticles(partSpots, partDescs, f0.foot, (d) => stillSim(d)) : [],
-          chat,
+          chat: chatRef.current,
           flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides,
           cDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx,
           cDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy,
@@ -583,6 +593,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     track(essential).then(() => {
       if (cancelled) return
       draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)
+      redrawRef.current = () => draw(nowElapsed()) // 명찰 · 말풍선만 바뀌었을 때(시그니처에 chatVer 가 있어 다시 그린다)
       // 발색 조절 중/전 프레임 염색 중/정지 뷰면 애니메이션 없이 여기서 끝(정지 프레임 유지).
       if (dyeInteracting || dyeSettling || (!animated && !hasEff && !hasPart && !floating)) return
       // 나머지 프레임은 백그라운드로 받으면서 곧바로 애니메이션 시작(안 받은 프레임은 draw 가 건너뜀).
@@ -595,7 +606,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       cancelled = true; cancelAnimationFrame(raf)
       if (clock.running) { clock.elapsed = nowElapsed(); clock.since = performance.now(); clock.running = false }
     }
-  }, [spec, effList, chat, partSpots, partDescs, simOf, floating, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, zoomMults, src, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
+  }, [spec, effList, partSpots, partDescs, simOf, floating, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, zoomMults, src, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
 
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.

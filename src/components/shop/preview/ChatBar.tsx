@@ -12,7 +12,7 @@
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { ChatEmo } from '@/lib/core/chatUi'
+import { warmChat, type ChatEmo } from '@/lib/core/chatUi'
 import { CHAT_EMO_FILE, CHAT_TEXT_MAX } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { IconSmile } from '../ui/Icons'
@@ -27,6 +27,7 @@ const PANEL_H = 250 // 묶음 줄 + 3열 × 2줄 남짓(표정 · 모션 고르�
 const INSET = 10    // 미리보기 안쪽 여백(표정 · 모션 고르기와 같다)
 const GAP = 8       // 칸과 창 사이
 const OUT_MS = 180  // 닫힘 전환이 끝난 뒤 떼어낸다
+const WARM_MS = 90  // 적다가 이만큼 멈추면 말풍선을 미리 만든다
 type Pos = { left: number; w: number; maxH: number; bottom?: number; top?: number }
 
 export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; show: boolean; onClose?: () => void }) {
@@ -81,6 +82,15 @@ export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; s
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
   // 모바일: 칸이 올라오면 바로 적을 수 있게
   useEffect(() => { if (mobile && show) box.current?.querySelector('input')?.focus({ preventScroll: true }) }, [mobile, show])
+
+  // 적는 동안 보낼 말풍선을 미리 만든다(글자 도트 · 그림 캐시) — 전송하면 그리기만 한다. 글자를 칠 때마다가 아니라 잠깐 멈췄을 때.
+  const ui = s.equipped.chatBalloon?.chatUi
+  useEffect(() => {
+    const t = text.trim()
+    if (!show || !ui || !t) return
+    const id = setTimeout(() => warmChat(ui, s.chatName, t), WARM_MS)
+    return () => clearTimeout(id)
+  }, [text, show, ui, s.chatName])
 
   const can = !!text.trim()
   const send = () => { const t = text.trim(); if (!t) return; s.sendChat({ text: t }); setText('') }
