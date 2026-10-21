@@ -13,7 +13,8 @@ import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
 import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/controls'
-import { IconCheck, IconEye } from '../ui/Icons'
+import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
+import { IconCheck, IconEye, IconTrashSolid } from '../ui/Icons'
 import { DyeBand, SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
 import ui from '../ui/ui.module.css'
@@ -101,6 +102,15 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[r.slot]) delete n[r.slot]; else n[r.slot] = true; return n }) } }}
                 className={clsx(styles.toggle, r.hidden && styles.toggleHidden)}>
                 <IconEye hidden={r.hidden} />
+              </span>
+            )}
+            {/* 이 부위만 벗기 — 칩 오른쪽 위 모서리의 휴지통. 두 번 눌러야 한다(lib/confirmTwice, 누른 단추 위에 되묻는 말풍선). 사용자 요청. */}
+            {r.on && !r.isSkin && (
+              <span role="button" tabIndex={0} title="이 부위 벗기" aria-label={`${r.c.label} 벗기`} {...{ [CONFIRM_ATTR]: `unequip:${r.slot}` }}
+                onClick={(e) => { e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) } }}
+                className={styles.trash}>
+                <IconTrashSolid size={11} />
               </span>
             )}
             <DyeBand state={!r.on ? 'empty' : r.dyed ? 'dyed' : (r.isSkin ? !isDyeableSkin(toneName) : r.item?.dyeMode === 'none') ? 'none' : 'plain'}
