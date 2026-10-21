@@ -18,7 +18,6 @@ import PresetPanel from './shop/preset/PresetPanel'
 import PlazaPanel from './shop/plaza/PlazaPanel'
 import PlazaUpload from './shop/plaza/PlazaUpload'
 import PreviewColumn, { MobileHero } from './shop/preview/PreviewColumn'
-import ChatBar from './shop/preview/ChatBar'
 import { useRidingGuards } from './shop/preview/pvControls'
 import { useScrollFades } from './shop/ui/useScrollFade'
 import Surface from './shop/surface/Surface'
@@ -57,7 +56,6 @@ function Shell() {
             <div data-pb-panel>
               {!isPlaza && <MobileHero />}
               {/* 채팅 칸(dev 전용) — 말풍선을 끼었을 때만, 미리보기 바로 아래 */}
-              {!isPlaza && s.chatOn && s.equipped.chatBalloon && <ChatBar mobile />}
               {isList && <ListArea mobile />}
               {isPlaza && <PlazaPanel mobile />}
               {s.primary === 'preset' && <PresetPanel mobile />}

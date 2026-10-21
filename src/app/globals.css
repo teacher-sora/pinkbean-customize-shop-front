@@ -41,16 +41,16 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-norail { scrollbar-width: none; }
 .pb-norail::-webkit-scrollbar { display: none; }
 
-/* 스크롤 칸의 가장자리 흐림(ui/useScrollFade) — 더 볼 것이 남은 쪽에만, 옅은 검은 흐림(최대 10~18%, 아래 '진하기'). data-fade = 남은 쪽(t b l r).
+/* 스크롤 칸의 가장자리 흐림(ui/useScrollFade) — 더 볼 것이 남은 쪽에만, 옅은 검은 흐림(최대 14~22%, 아래 '진하기'). data-fade = 남은 쪽(t b l r).
    칸 위에 얹는 층(.pb-fadeov) 하나에 네 겹을 깔고, 쪽마다 진하기(--pb-fa*)만 바꾼다. 생길 때 0.7초 · 사라질 때 0.9초, ease-out.
    쪽마다 따로 전환 시간을 쓰려고 시간을 변수(--pb-fd*)로 두고, 켜진 쪽만 0.7초로 바꾼다 — 전환은 바뀐 뒤의 값을 쓰므로
    켜질 때는 0.7초, 꺼질 때는 0.9초가 된다. 하단 부위 줄도 같은 흐림이다. */
-/* 진하기: 모바일(폭 520 이하)은 터치 10% · 마우스 14% 그대로. PC · 절반 · 태블릿(폭 521 이상)은 그보다 4%p 진하게 — 터치 14% · 마우스 18%
-   (사용자 지시 — 넓은 화면에서는 같은 진하기가 연하게 느껴진다. 모바일에는 영향을 주지 않는다) */
-:root { --pb-fmax: .1; }
-@media (hover: hover) and (pointer: fine) { :root { --pb-fmax: .14; } }
-@media (min-width: 521px) { :root { --pb-fmax: .14; } }
-@media (min-width: 521px) and (hover: hover) and (pointer: fine) { :root { --pb-fmax: .18; } }
+/* 진하기: 모바일(폭 520 이하)은 터치 14% · 마우스 18%. PC · 절반 · 태블릿(폭 521 이상)은 그보다 4%p 진하게 — 터치 18% · 마우스 22%
+   (사용자 지시 — 넓은 화면에서는 같은 진하기가 연하게 느껴진다. 두 폭 모두 처음보다 4%p 올렸다) */
+:root { --pb-fmax: .14; }
+@media (hover: hover) and (pointer: fine) { :root { --pb-fmax: .18; } }
+@media (min-width: 521px) { :root { --pb-fmax: .18; } }
+@media (min-width: 521px) and (hover: hover) and (pointer: fine) { :root { --pb-fmax: .22; } }
 @property --pb-fat { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-fab { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --pb-fal { syntax: '<number>'; inherits: false; initial-value: 0; }
@@ -70,6 +70,19 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-fadeov[data-fade~="b"] { --pb-fab: 1; --pb-fdb: .7s; }
 .pb-fadeov[data-fade~="l"] { --pb-fal: 1; --pb-fdl: .7s; }
 .pb-fadeov[data-fade~="r"] { --pb-far: 1; --pb-fdr: .7s; }
+/* 가로로 더 있는 쪽에는 작은 화살표를 흐림 가운데에 얹는다. 그 쪽으로 아주 천천히 밀렸다 돌아오기를 되풀이해(ease-out) 더 있다는 것을
+   또렷하게 알린다(사용자 지시 — 막대가 없는 가로 줄은 흐림만으로는 잘 모른다). 세로는 화살표 없이 흐림만. 생기고 사라지는 시간은 흐림과 같다.
+   @property 값은 상속되지 않아 화살표(가상 요소)는 data-fade 로 직접 켠다. 움직임을 줄인 기기에서는 멈춰 있다 */
+.pb-fadeov::before, .pb-fadeov::after {
+  content: ''; position: absolute; top: 50%; width: 12px; height: 12px; margin-top: -6px; opacity: 0; transition: opacity .9s ease-out;
+  background: center / 12px 12px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M4.5 2.5 8 6l-3.5 3.5' fill='none' stroke='%235c534b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.pb-fadeov::before { left: 4px; transform: scaleX(-1); animation: pb-fadenudge-l 2.4s ease-out infinite; }
+.pb-fadeov::after { right: 4px; animation: pb-fadenudge-r 2.4s ease-out infinite; }
+.pb-fadeov[data-fade~="l"]::before, .pb-fadeov[data-fade~="r"]::after { opacity: .75; transition-duration: .7s; }
+@keyframes pb-fadenudge-r { 0%, 100% { translate: 0 0; } 45% { translate: 3px 0; } }
+@keyframes pb-fadenudge-l { 0%, 100% { translate: 0 0; } 45% { translate: -3px 0; } }
+@media (prefers-reduced-motion: reduce) { .pb-fadeov::before, .pb-fadeov::after { animation: none; } }
 /* 떠 있는 목록의 층은 body 에 고정으로 붙는다(자리 · 둥글기 · 불투명도는 useScrollFade 가 목록을 따라 넣는다) */
 .pb-fadeovfix { position: fixed; }
 
