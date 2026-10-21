@@ -1,8 +1,9 @@
-// 그림 파일(PNG)을 직접 풀어 원본 픽셀을 얻는다 — 캔버스에 그려 읽지(getImageData) 않는다. 염색(core/dye)이 쓴다.
-// 왜: 캔버스에서 읽은 값은 브라우저마다 다르다. 추적 방지(Brave · 강화 모드의 Firefox · Safari 의 사생활 보호)가 읽는 값을
-// 조금씩 흔들고, 반투명 픽셀은 브라우저가 알파를 곱해 두었다 되돌리며 반올림이 달라진다. 염색은 값을 정확히 비교한다
+// 그림 파일(PNG)을 직접 풀어 원본 픽셀을 얻는다 — 캔버스 읽기(getImageData)를 **믿을 수 없는 브라우저에서만** 쓴다(core/dye).
+// 왜: 추적 방지(Brave · 강화 모드의 Firefox · Safari 의 사생활 보호)는 캔버스에서 읽는 값을 조금씩 흔든다. 염색은 값을 정확히 비교한다
 // (테두리 포함 = 순수 검정 0,0,0 만 / 17단계 그림 판별) — 흔들린 픽셀은 규칙에서 빠져 '테두리가 부분적으로만 하얗게' 됐다(건의함).
-// 파일을 직접 풀면 어느 브라우저에서나 같은 값이다. 압축은 브라우저 내장(DecompressionStream)으로 푼다 — 없으면 null(캔버스로 읽는다).
+// 보통 브라우저는 읽기가 정확하므로 예전 그대로(캔버스 읽기 — 추가로 받는 것도 기다리는 것도 없다). 직접 풀려면 그림을 캐시에서
+// 한 번 더 받아야 하는데, 이 시간이 환경마다 흔들려(헤드리스 크롬에서 캐시 적중에도 장당 80ms 안팎) 모두에게 쓰지 않는다.
+// 압축은 브라우저 내장(DecompressionStream)으로 푼다 — 없으면 null(캔버스로 읽는다).
 const SIG = [137, 80, 78, 71, 13, 10, 26, 10]
 
 async function inflate (data: Uint8Array): Promise<Uint8Array> {
@@ -68,6 +69,25 @@ export async function decodePng (bytes: Uint8Array): Promise<{ w: number; h: num
     }
   }
   return { w, h, data: out }
+}
+
+// 캔버스 읽기가 정확한가 — 정해 둔 무늬(순수 검정 · 흰색 · 여러 색, 불투명)를 그려 읽어 한 칸이라도 다르면 흔드는 브라우저다.
+// 처음 한 번만 잰다(0.1ms 안팎). Brave 는 이름으로도 안다(navigator.brave).
+let readOk: boolean | null = null
+export function canvasReadExact (): boolean {
+  if (readOk !== null) return readOk
+  try {
+    if ((navigator as unknown as { brave?: unknown }).brave) return (readOk = false)
+    const W = 32, src = new Uint8ClampedArray(W * W * 4)
+    for (let i = 0; i < W * W; i++) { const v = (i * 37) % 256; src[i * 4] = i % 3 ? v : 0; src[i * 4 + 1] = i % 5 ? 255 - v : 0; src[i * 4 + 2] = i % 7 ? (v * 3) % 256 : 0; src[i * 4 + 3] = 255 }
+    const c = document.createElement('canvas'); c.width = c.height = W
+    const g = c.getContext('2d', { willReadFrequently: true })!
+    g.putImageData(new ImageData(src, W, W), 0, 0)
+    const back = g.getImageData(0, 0, W, W).data
+    readOk = true
+    for (let i = 0; i < back.length; i++) if (back[i] !== src[i]) { readOk = false; break }
+  } catch { readOk = false }
+  return readOk
 }
 
 // 그림 요소 → 원본 픽셀. 그림이 이미 받아져 있어 fetch 는 브라우저 캐시에서 나온다. 한 번 푼 것은 그림마다 기억한다.

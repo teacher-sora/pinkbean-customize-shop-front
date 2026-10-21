@@ -12,7 +12,7 @@ export interface HsbParams { h: number; s: number; b: number; t?: number; edge?:
 export interface PaletteParams { baseColor: number; mixColor: number | null; ratio: number } // ratio 0..100
 
 import { LRU } from './lru'
-import { ensurePixels, exactPixels } from './pngPixels'
+import { canvasReadExact, ensurePixels, exactPixels } from './pngPixels'
 const cache = new LRU<HTMLCanvasElement>(400)
 
 // read = 픽셀을 읽을 캔버스다. `willReadFrequently` 로 만들어 픽셀을 메모리에 두게 한다 — 기본(가속) 캔버스는 픽셀이 GPU 에 있어
@@ -94,8 +94,8 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
   const valid = type >= 0 && type <= 6 && saturation >= 1 && saturation <= 199 && brightness >= 1 && brightness <= 199 &&
     !(hue === 0 && saturation === 100 && brightness === 100)
   if (!valid) { cache.set(ck, c); return c }
-  // 원본 픽셀(파일을 직접 푼 값 — core/pngPixels). 캔버스에서 읽은 값은 브라우저마다 흔들려 순수 검정 · 17단계 판별이 어긋난다.
-  const ex = exactPixels(img)
+  // 캔버스 읽기를 믿을 수 없는 브라우저만 원본 픽셀(파일을 직접 푼 값 — core/pngPixels). 그 밖은 예전 그대로 캔버스에서 읽는다.
+  const ex = canvasReadExact() ? null : exactPixels(img)
   const data = ex ? new ImageData(ex, c.width, c.height) : ctx.getImageData(0, 0, c.width, c.height)
   const a = data.data
   const fine = key.includes('effects/') || !is16Image(a)   // true = 1 단위(풀컬러 · 이펙트), false = 17 단위
@@ -205,7 +205,8 @@ export function blendPalette(base: HTMLImageElement, mix: HTMLImageElement, rati
   const w = base.width, h = base.height
   const c = toCanvas(base, w, h, true)
   const ctx = c.getContext('2d', READ)!
-  const be = exactPixels(base), me = mix.width === w && mix.height === h ? exactPixels(mix) : null
+  const exact = !canvasReadExact()
+  const be = exact ? exactPixels(base) : null, me = exact && mix.width === w && mix.height === h ? exactPixels(mix) : null
   const bd = be ? new ImageData(be, w, h) : ctx.getImageData(0, 0, w, h)
   const md = me ? new ImageData(me, w, h) : toCanvas(mix, w, h, true).getContext('2d', READ)!.getImageData(0, 0, w, h)
   blendPixels(bd.data, md.data, ratio)
@@ -229,8 +230,10 @@ import type { ItemMeta, Layer } from './data'
 import { frameCount, getFrameLayers, type ViewOpts } from './assemble'
 import { loadImage } from './render'
 
-// 염색할 그림 — 그림과 함께 원본 픽셀까지 풀어 둔다(applyHsb · blendPalette 가 그 값으로 칠한다). 염색하는 곳은 모두 이것으로 받는다.
-export const loadDyeImage = (png: string): Promise<HTMLImageElement> => loadImage(png, true).then((img) => ensurePixels(img).then(() => img))
+// 염색할 그림. 캔버스 읽기를 믿을 수 없는 브라우저에서만 원본 픽셀까지 풀어 둔다(applyHsb · blendPalette 가 그 값으로 칠한다) —
+// 보통 브라우저는 loadImage 와 같다(기다림 없음). 염색하는 곳은 모두 이것으로 받는다.
+export const loadDyeImage = (png: string): Promise<HTMLImageElement> =>
+  canvasReadExact() ? loadImage(png, true) : loadImage(png, true).then((img) => ensurePixels(img).then(() => img))
 
 export interface DyeState {
   palette: Record<string, PaletteParams | undefined> // by slot (hair/face)
