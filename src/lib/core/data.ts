@@ -1,6 +1,7 @@
 // Static data access. Everything is fetched from DATA_BASE — the Cloudflare R2/CDN bucket
 // (bucket contents live at the bucket root, e.g. <cdn>/index.json). NEXT_PUBLIC_DATA_BASE
 // overrides the base. Index is split per slot for virtualization.
+import type { ParticleDesc, ParticleSpot } from './particle'
 export const DATA_BASE =
   process.env.NEXT_PUBLIC_DATA_BASE ?? 'https://cdn.pinkbean-customize.com'
 
@@ -288,6 +289,34 @@ export function loadEffect(id: string): Promise<EffectMeta | null> {
     effectCache.set(bare, p)
   }
   return p
+}
+
+// --- 파티클(제네시스 무기의 붉은 파장 등 — parser scripts/extract-particles.cjs → CDN particles/) ---
+// index = { 8자리 id: { 동작 키(stand1 · 30/stand1 …): [{ name, z, origin }] } }. 규칙 · 그림은 particles/<이름>.json.
+let particleIndexPromise: Promise<Record<string, Record<string, ParticleSpot[]>>> | null = null
+export function loadParticleIndex(): Promise<Record<string, Record<string, ParticleSpot[]>>> {
+  if (!particleIndexPromise) particleIndexPromise = fetch(url('particles/index.json'), FRESH).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
+  return particleIndexPromise
+}
+const particleCache = new Map<string, Promise<ParticleDesc | null>>()
+export function loadParticle(name: string): Promise<ParticleDesc | null> {
+  let p = particleCache.get(name)
+  if (!p) { p = fetch(url(`particles/${name}.json`)).then((r) => (r.ok ? r.json() : null)).catch(() => null); particleCache.set(name, p) }
+  return p
+}
+// 부유 아이템(별빛 걸음 · 이펙트 수면안대 등 — parser scripts/float-items.cjs → CDN effects/float.json, { 8자리 id: 값 }).
+// 서기 때 원래의 흔들림에 위아래로 둥둥 뜨는 움직임을 더한다(PreviewModel).
+let floatPromise: Promise<Record<string, number>> | null = null
+export function loadFloatItems(): Promise<Record<string, number>> {
+  if (!floatPromise) floatPromise = fetch(url('effects/float.json'), FRESH).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
+  return floatPromise
+}
+// 무기가 '제 프레임으로 움직이는' 서기 동작(parser scripts/weapon-motion.py → CDN weapons/motion.json).
+// 프레임마다 그림이 다른 무기만 있다 — 그림이 같고 자리만 다른(숨쉬기) 무기는 몸이 멈춘 '기본'에서 돌리면 손에서 떨린다.
+let weaponMotionPromise: Promise<Record<string, string[]>> | null = null
+export function loadWeaponMotion(): Promise<Record<string, string[]>> {
+  if (!weaponMotionPromise) weaponMotionPromise = fetch(url('weapons/motion.json'), FRESH).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
+  return weaponMotionPromise
 }
 
 // 형상변이(Anima race) appearance parts (parser 레포의 scripts/extract-anima.cjs → CDN anima.json).

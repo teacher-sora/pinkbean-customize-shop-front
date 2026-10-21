@@ -1,16 +1,17 @@
 // 스냅샷(착용+톤+염색+점 위치+연출설정 일부) → 합성 결과(placed·염색 override·이펙트). 렌더 캔버스와 무관한 순수 조립.
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
 import { assemble, dropWeaponEffects, getFrameLayers, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
-import { loadMeta, loadAnima, loadSlot, type AnimaRace, type Index, type ItemMeta, type ListItem } from './data'
+import { loadMeta, loadAnima, loadParticle, loadParticleIndex, loadSlot, type AnimaRace, type Index, type ItemMeta, type ListItem } from './data'
 import { LRU } from './lru'
 import { applyHsb, buildOverrides, skinHsb as skinHsbFor } from './dye'
 import { effectDraws, loadImage, type EffectDraw } from './render'
+import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from './particle'
 import { collectWornEffects } from './thumbEffects'
 import { RIDING_FILE, animaLayers, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 
 // center = 라이딩일 때의 가로 정렬 기준(미리보기·부위 카드와 같은 규칙). 'x' = 캐릭터 navel, 'mount' = 메카 bbox.
-export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[]; center?: 'x' | 'mount' }
+export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[]; particles?: ParticleDraw[]; center?: 'x' | 'mount' }
 
 // view=true 면 카드 고정 뷰 대신 **스냅샷에 담긴 연출 설정(액션·표정)** 으로 그린다.
 // 연출 설정 고르기(PvPicker)의 작은 미리보기 전용 — 프리셋·광장 카드는 종전대로 정지 서기 자세다.
@@ -95,9 +96,16 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const noFx = !!equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion?.hideEffect
   const worn = noFx ? [] : await collectWornEffects(shown.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
   const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, charTV.action, { foot, brow }, 0))
+  // 파티클(제네시스 무기 등) — 다 퍼진 한 장(stillSim). 무기 이펙트를 끄거나 무기를 숨기는 링이면 없다(미리보기와 같은 규칙).
+  const ringIll = equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion
+  const pIdx = noFx || ringIll?.hideWeapon ? {} : await loadParticleIndex()
+  const spots = shown.filter(({ slot, meta }) => pIdx[meta.id] && (slot !== 'weapon' || spv.wEffect)).flatMap(({ meta }) => spotsFor(pIdx[meta.id], charTV.action))
+  const pDescs = new Map<string, ParticleDesc>()
+  for (const d of await Promise.all([...new Set(spots.map((x) => x.name))].map((n) => loadParticle(n)))) if (d) pDescs.set(d.name, d)
+  const particles = placeParticles(spots, pDescs, foot, (d) => stillSim(d))
   // 탑승 중엔 가로 정렬 기준이 다르다(포즈마다 폭이 달라진다) — 메탈아머는 메카(mount) bbox, 그 외는 캐릭터 navel.
   const center = rideId ? (rideItem?.ridingCenterMount ? 'mount' : 'x') : undefined
-  return { placed, overrides, effects, ...(center ? { center } : {}) }
+  return { placed, overrides, effects, ...(particles.length ? { particles } : {}), ...(center ? { center } : {}) }
 }
 
 // ── 합성 결과 캐시 ─────────────────────────────────────────────────────────────

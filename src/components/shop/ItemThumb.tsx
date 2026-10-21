@@ -10,9 +10,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { assemble, dropWeaponEffects, footOf, getFrameLayers, ringIllusion, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
-import { loadEffect, loadEffectIndex, loadMeta, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { loadEffect, loadEffectIndex, loadMeta, loadParticle, loadParticleIndex, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
+import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from '@/lib/core/particle'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
@@ -105,6 +106,7 @@ interface ModelProps {
 function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets }: ModelProps) {
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [effs, setEffs] = useState<EffectDraw[]>([])
+  const [parts, setParts] = useState<ParticleDraw[]>([])
   const [ovr, setOvr] = useState<Map<string, HTMLCanvasElement> | undefined>(override)
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -205,7 +207,18 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
           if (em) draws.push(...effectDraws(em, view.action, anch, 0))
         }
       }
-      if (alive) setEffs(draws)
+      // 이 아이템 자신의 파티클(제네시스 무기의 붉은 파장 등) — 다 퍼진 한 장. 무기 이펙트를 끄면 없다.
+      let parts: ParticleDraw[] = []
+      if (!noFx && !ringIllusion([...bgF, ...self])?.hideWeapon && (!pvEff || effectEnabled(item.slot, pvEff))) {
+        const pIdx = await loadParticleIndex()
+        const spots = spotsFor(pIdx[item.id], view.action)
+        if (spots.length) {
+          const descs = new Map<string, ParticleDesc>()
+          for (const d of await Promise.all([...new Set(spots.map((x) => x.name))].map((n) => loadParticle(n)))) if (d) descs.set(d.name, d)
+          parts = placeParticles(spots, descs, foot, (d) => stillSim(d))
+        }
+      }
+      if (alive) { setEffs(draws); setParts(parts) }
     })().catch(() => {})
     return () => { alive = false }
   }, [item.id, ctxKey, skinHeadId, gaze, ctxEffs, pvEff, cardExpr, faceMeta, override, ear, weapon, stance, ctxAction, dotOffsets])
@@ -236,11 +249,11 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
     // 마네킹 중심을 셀 중앙에 고정(anchor 보정). flip=오른쪽 시선. 분수 scale=디바이스 해상도.
     const cm = item.slot === 'riding' && !!item.ridingCenterMount // 메탈아머는 메카(마운트) 중앙정렬
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, shouldCancel: () => cancelled }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, shouldCancel: () => cancelled }).catch(() => {})
     // 우클릭 복사용 입력 — 화면과 같은 값(중심 오프셋·반전·라이딩 정렬)으로 다시 그린다(lib/canvasExport.modelShotBlob).
-    shotRef.current = { placed, override: ovr ?? undefined, effects: effs, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
+    shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
     return () => { cancelled = true }
-  }, [placed, effs, flip, dims, gaze, ovr])
+  }, [placed, effs, parts, flip, dims, gaze, ovr])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). item 바뀌면 파일명 갱신 위해 재바인딩.
   useEffect(() => {
