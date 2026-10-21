@@ -97,7 +97,9 @@ function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
   const loadKind = useCallback((k: FeedbackKind) => opLoadFeedback(k)
     .then((l) => setLists((m) => ({ ...m, [k]: l })))
     .catch(() => setMsg('글을 불러오지 못했어요.')), [])
-  const loadAll = useCallback(() => Promise.all(KINDS.map((k) => loadKind(k.v))), [loadKind])
+  // 마지막으로 목록을 다 받은 시각 — 머리의 새로고침 옆에 보인다(사용자 요청 — 새로고침이 됐는지 알 수 있게).
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null)
+  const loadAll = useCallback(() => Promise.all(KINDS.map((k) => loadKind(k.v))).then(() => setLoadedAt(new Date())), [loadKind])
   useEffect(() => { void loadAll() }, [loadAll])
 
   const list = lists[kind]
@@ -156,6 +158,7 @@ function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
         <div className={styles.barRow}>
           <span className={styles.brand}>핑크빈 커마샵</span>
           <h1 className={clsx(styles.title, styles.grow)}>건의함 관리</h1>
+          {loadedAt && <span className={styles.stamp} title="마지막으로 새로 받은 시각">{loadedAt.toLocaleTimeString('ko-KR', { hour12: false })}</span>}
           <button type="button" onClick={() => { setMsg(''); void loadAll() }} className={styles.ghost}>새로고침</button>
           <button type="button" onClick={onLost} className={styles.ghost}>나가기</button>
         </div>

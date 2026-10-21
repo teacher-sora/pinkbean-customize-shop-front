@@ -266,6 +266,7 @@ export interface ShopCtx {
   equipItem: (item: ListItem) => void                 // 토글 없이 착용(염색 적용 시)
   isEquippedInCat: (cat: string, itemId: string) => boolean
   unequipAll: () => void
+  unequipSlot: (slot: string, label?: string) => void
   hidden: Record<string, boolean>; setHidden: Dispatch<Record<string, boolean>>
   // 염색(slot 키)
   dyeTarget: string | null; setDyeTarget: Dispatch<string | null>
@@ -1026,6 +1027,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const cat = SLOT_TO_CAT[item.slot]
     if (!cat || isEquippedInCat(cat, item.id)) return
     equipFromCat(cat, item)
+  }
+  // 한 부위만 벗는다(코디 정보 칩의 휴지통 — 두 번 눌러야 한다). 염색 값은 그대로 둔다(같은 부위를 다시 입으면 쓰인다 — 목록에서 벗는 것과 같다).
+  const unequipSlot = (slot: string, label?: string) => {
+    setEquipped((prev) => (prev[slot] ? { ...prev, [slot]: null } : prev))
+    setHidden((h) => { if (!h[slot]) return h; const n = { ...h }; delete n[slot]; return n })
+    setDyeTarget((t) => (t === slot ? null : t))
+    notify(label ? `${label} 부위를 벗었어요` : '부위를 벗었어요')
   }
   const unequipAll = () => {
     setEquipped(Object.fromEntries(EQUIP_SLOTS.map((sl) => [sl, null])))
@@ -1958,7 +1966,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openPlazaPost, openNotice, guideGo, plazaTakeDirect, wearFromSnap, isWornFromSnap, plazaTakeBack, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
-    equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, hidden, setHidden,
+    equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, unequipSlot, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, dyeInteracting, setDyeInteracting, isMixSlot,
     surface, surfaceClosing, openSheet, openDye, openDot, closeSurface,
     openPartItem, partBack, partSlide, openVs, toggleVs, vsOn, vsPicks, toggleVsPick, swapSnapshot,

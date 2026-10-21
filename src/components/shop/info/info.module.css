@@ -22,7 +22,7 @@
 .grid { display: grid; gap: 8px; }
 
 /* 부위 행 */
-.slot { display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 7px 9px; overflow: hidden; border: 1px dashed #e7ded4; border-radius: 8px; background: #fbf8f4; cursor: default; text-align: left; font-family: inherit; transition: background-color .22s ease, border-color .22s ease; }
+.slot { position: relative; display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 7px 9px; overflow: visible; border: 1px dashed #e7ded4; border-radius: 8px; background: #fbf8f4; cursor: default; text-align: left; font-family: inherit; transition: background-color .22s ease, border-color .22s ease; }
 .slotOn { border-style: solid; border-color: #f8e0ea; background: #fdf7fa; cursor: pointer; }
 .slotHidden { background: #f7f3ee; }
 .slotSel { border-color: #ec86ac; }
@@ -41,6 +41,14 @@
 .slotNameOn { font-weight: 600; color: #2a2521; }
 .toggle { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fdf1f6; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
 .toggleHidden { border-color: #e7ded4; background: #f4efe8; color: #a89e93; }
+/* 이 부위 벗기(휴지통) — 칩 오른쪽 위 모서리에 걸친다. 칩 안에 단추를 더 넣으면 좁은 모바일 칩의 이름이 더 잘린다.
+   PC 는 칩에 마우스를 올렸을 때만 나타나고(누르지 않을 때는 눌리지도 않는다), 모바일은 늘 보인다. 두 번 눌러야 한다(lib/confirmTwice). */
+.trash { position: absolute; top: -7px; right: -7px; z-index: 2; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 1px solid #eee6dc; border-radius: 50%; background: #fff; color: #b0a599; box-shadow: 0 1px 3px rgba(61,55,47,.12); cursor: pointer; transition: opacity .18s ease, background-color .2s ease, border-color .2s ease, color .2s ease; }
+@media (hover: hover) and (pointer: fine) {
+  .trash { opacity: 0; pointer-events: none; }
+  .slot:hover .trash, .trash:focus-visible { opacity: 1; pointer-events: auto; }
+  .trash:hover { border-color: #ec86ac; background: #fdf1f6; color: #d76d9a; }
+}
 
 /* ── 하단 인라인 염색(PC) ── */
 .dyeWrap { flex: 0 0 auto; }
