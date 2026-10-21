@@ -58,7 +58,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 염색 비활성화 슬롯은 제외된 렌더용 값
   const equipped = src?.equipped ?? shop.equipped, hidden = src?.hidden ?? shop.hidden, tone = src?.tone ?? shop.tone, pv = src?.pv ?? shop.pv
   const dyePalette = src?.palette ?? shop.renderPalette, dyeHsb = src?.hsb ?? shop.renderHsb, dotPos = src?.dotPos ?? shop.dotPos
-  const dyeInteracting = src ? src.interacting : shop.dyeInteracting
+  const dyeInteracting = !!src?.interacting
   const zoomMults = src?.zoomMults ?? ZOOM_WORLD
   const [metas, setMetas] = useState<Map<string, ItemMeta>>(new Map())
   const [dyeOverrides, setDyeOverrides] = useState<Map<string, HTMLCanvasElement>>(new Map())

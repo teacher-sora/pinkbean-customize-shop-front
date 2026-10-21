@@ -1,26 +1,21 @@
 'use client'
 
-// 코디 정보 · 염색. 18부위 행 그리드 + (PC) 하단 인라인 염색. 모바일은 부위를 누르면 염색/점 위치 서피스를 연다.
+// 코디 정보 · 염색. 18부위 행 그리드. 부위를 누르면 염색/점 위치 서피스를 연다(PC 는 가운데 다이얼로그, 모바일은 바텀 시트).
 
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
-import { CATS, paletteFor } from '@/lib/catalog'
-import { clampDye } from '@/lib/color'
+import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
-import type { HsbParams, PaletteParams } from '@/lib/core/dye'
+import type { HsbParams } from '@/lib/core/dye'
 import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
-import { DyeSprite, INFO_FRAC, SKIN_PREVIEW_FRACTION, SkinModel } from '../render/DyeSprite'
-import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/controls'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
-import { IconCheck, IconEye, IconTrashSolid } from '../ui/Icons'
+import { IconEye, IconTrashSolid } from '../ui/Icons'
 import { DyeBand, SlotSprite } from './SlotSprite'
 import styles from './info.module.css'
 import ui from '../ui/ui.module.css'
 
-const defPal = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 }) // 믹스 기본 비율 50%
-const defHsb = (): HsbParams => ({ h: 0, s: 0, b: 0, t: 0 })
 const hsbActive = (h?: HsbParams) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0)
 
 // 피부(톤)를 염색 다이얼로그에 넘길 ListItem 형태로.
@@ -71,7 +66,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const pick = (r: typeof rows[number]) => {
     if (!r.on || !r.item) return
     s.setDyeTarget(r.slot)
-    if (!mobile) return
+    // 어느 폭이든 염색 창(서피스 — PC 는 가운데 다이얼로그, 모바일은 바텀 시트)을 연다(사용자 지시). 창 안에서 캐릭터를 크게 보며 바꾼다.
     if (r.isSkin && !isDyeableSkin(toneName)) { s.notify('이 피부는 염색할 수 없어요'); return }
     if (!r.isSkin && r.item.dyeMode === 'none' && !DOT_MOVER_IDS.has(r.item.id)) { s.notify('이 아이템은 염색할 수 없어요'); return }
     if (DOT_MOVER_IDS.has(r.item.id)) s.openDot(r.item); else s.openDye(r.item)
@@ -104,7 +99,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
                 <IconEye hidden={r.hidden} />
               </span>
             )}
-            {/* 이 부위만 벗기 — 칩 오른쪽 위 모서리의 휴지통. 두 번 눌러야 한다(lib/confirmTwice, 누른 단추 위에 되묻는 말풍선). 사용자 요청. */}
+            {/* 이 부위만 벗기 — 칩 오른쪽 아래 모서리의 휴지통(이름 줄 끝의 눈 단추와 떨어지게). 두 번 눌러야 한다(lib/confirmTwice, 누른 단추 위에 되묻는 말풍선). 사용자 요청. */}
             {r.on && !r.isSkin && (
               <span role="button" tabIndex={0} title="이 부위 벗기" aria-label={`${r.c.label} 벗기`} {...{ [CONFIRM_ATTR]: `unequip:${r.slot}` }}
                 onClick={(e) => { e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) }}
@@ -148,176 +143,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
       <div className={styles.hr} />
       <div className={clsx('pb-scroll', 'pb-fade', styles.scroll)}>
         <div ref={slotsRef} className={styles.slots}>{grid}</div>
-        <div className={styles.dyeWrap}>
-          <div className={styles.dyeHr} />
-          <InlineDye infoW={infoW} narrow={narrow} skinItem={skinItem} toneName={toneName} />
-        </div>
       </div>
     </section>
-  )
-}
-
-function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narrow: boolean; skinItem: ListItem | null; toneName: string }) {
-  const s = useShop()
-  const zmap = s.index?.zmap || []
-  const smap = s.index?.smap || {}
-  const target = s.dyeTarget
-  const isSkin = target === 'skin'
-  const it = !target ? null : isSkin ? skinItem : s.equipped[target] || null
-  const mix = !!target && s.isMixSlot(target)
-  const PAL = paletteFor(target) // 성형=FACE_PALETTE 표기, 헤어=MIX_PALETTE. 발색 로직은 동일.
-  const cat = target ? CATS.find((c) => CAT_TO_SLOT[c.id] === target) : null
-  const compact = narrow || infoW < 560
-  // 카드 3개(최소 90px)와 염색 박스(미리보기+컨트롤 482+패딩)가 함께 들어갈 폭일 때만 카드 배치
-  const boxNeed = (compact ? 96 : 116) + 7 + 482 + 24 + 12
-  const cardsFit = !!it && (infoW - 32 - boxNeed - 14) >= 75
-
-  // 입력 중 문자열 버퍼(빈값·'-' 허용). 슬라이더/스테퍼로 바꾸면 버퍼를 비워 실제 값을 보인다.
-  const [raw, setRaw] = useState<Record<string, string>>({})
-  const clearRaw = (k: string) => setRaw((r) => { if (!(k in r)) return r; const n = { ...r }; delete n[k]; return n })
-  // 슬라이더 드래그 동안 미리보기 애니메이션 일시정지(발색 리컬러에 리소스 몰아줌). 릴리즈 시 해제.
-  const beginDrag = () => {
-    s.setDyeInteracting(true)
-    const end = () => { s.setDyeInteracting(false); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end) }
-    window.addEventListener('pointerup', end)
-    window.addEventListener('pointercancel', end)
-  }
-
-  const areaCls = clsx(styles.dyeArea, cardsFit && styles.dyeAreaFit)
-  if (!it || !target) {
-    return (
-      <div className={areaCls}>
-        <div className={styles.dyeOff}>
-          <span className={styles.dyeOffTitle}>염색할 아이템을 선택해주세요</span>
-          <span className={styles.dyeOffHint}>위 코디 정보에서 착용된 부위를 누르면 염색할 수 있어요</span>
-        </div>
-      </div>
-    )
-  }
-  if (isSkin && !isDyeableSkin(toneName)) {
-    return (
-      <div className={areaCls}>
-        <div className={styles.dyeOff}>
-          <span className={styles.dyeOffTitle}>이 피부는 염색할 수 없어요</span>
-          <span className={styles.dyeOffHint}>&quot;컬러라인&quot; 커스텀 피부만 라인 염색이 가능해요</span>
-        </div>
-      </div>
-    )
-  }
-
-  // 염색할 수 없는 아이템(이펙트 · 일반 아이템). 점 위치를 옮기는 아이템은 점 편집이 있으므로 그대로 둔다.
-  if (!isSkin && it.dyeMode === 'none' && !DOT_MOVER_IDS.has(it.id)) {
-    return (
-      <div className={areaCls}>
-        <div className={styles.dyeOff}>
-          <span className={styles.dyeOffTitle}>이 아이템은 염색할 수 없어요</span>
-          <span className={styles.dyeOffHint}>{cat?.label === '이펙트' ? '이펙트는 원래 색으로만 보여요' : '색을 바꿀 수 없는 아이템이에요'}</span>
-        </div>
-      </div>
-    )
-  }
-
-  const pal = s.dyePalette[target] || defPal()
-  const hsb = s.dyeHsb[target] || defHsb()
-  const setPal = (patch: (cur: PaletteParams) => PaletteParams) => s.setDyePalette((p) => ({ ...p, [target]: patch(p[target] || defPal()) }))
-  // A(baseColor)/B(mixColor)/ratio 는 항상 독립 — A 를 바꿀 때 B(현재 표시값)를 명시적으로 고정해 따라오지 않게 한다.
-  const setBase = (i: number) => setPal((cur) => ({ baseColor: i, mixColor: cur.mixColor ?? cur.baseColor, ratio: cur.ratio }))
-  const setMixC = (i: number) => setPal((cur) => ({ ...cur, mixColor: i }))
-  const setHsbF = (f: 'h' | 's' | 'b', fn: (v: number) => number) => s.setDyeHsb((p) => { const cur = p[target] || defHsb(); return { ...p, [target]: { ...cur, [f]: clampDye(f, fn(cur[f] ?? 0)) } } })
-  const resetDye = () => {
-    if (mix) s.setDyePalette((p) => { const d = { ...p }; delete d[target]; return d })
-    else s.setDyeHsb((p) => { const d = { ...p }; delete d[target]; return d })
-    setRaw({})
-  }
-  const off = !!s.dyeOff[target]
-  // 염색 비활성화 토글 — 문구는 고정, 눌림 상태(aria-pressed + 강조 스타일)로만 구분. 수치는 유지된다.
-  const offBtn = (
-    <button type="button" onClick={() => s.toggleDyeOff(target)} aria-pressed={off} title={off ? '염색 다시 적용' : '수치는 그대로 두고 염색만 끄기'}
-      className={clsx('pb-ghost', styles.btn, styles.tickBtn, off && styles.btnOn)}>
-      <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>비활성화
-    </button>
-  )
-  // 테두리(순수 검정) 포함 — 염색 다이얼로그와 같은 값(dyeHsb.edge)을 여기서도 켜고 끈다.
-  // 검정은 채도가 0이라 색조·채도는 수학적으로 무효고 **명도로만 회색으로** 밝아진다(lib/core/dye).
-  // ⚠️ **커스텀 피부는 제외**한다(피부에는 이 테두리가 있어선 안 된다).
-  const edgeOn = !!s.dyeHsb[target]?.edge
-  const edgeBtn = (
-    <button type="button" aria-pressed={edgeOn}
-      onClick={() => s.setDyeHsb((p) => ({ ...p, [target]: { ...(p[target] || defHsb()), edge: !p[target]?.edge } }))}
-      title={(s.dyeHsb[target]?.b ?? 0) > 0 ? '검정 테두리도 함께 밝아져요' : '테두리는 명도를 올려야 밝아져요'}
-      className={clsx('pb-ghost', styles.btn, styles.tickBtn, edgeOn && styles.btnOn)}>
-      <span className={clsx(styles.tick, edgeOn && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>테두리 포함
-    </button>
-  )
-  const box = compact ? 72 : 88
-
-  return (
-    <div className={areaCls}>
-      {cardsFit && (
-        <div className={styles.sideCards}>
-          <div className={styles.sideCard} /><div className={styles.sideCard} /><div className={styles.sideCard} />
-        </div>
-      )}
-      <div className={clsx(styles.dyeBody, cardsFit && styles.dyeBodyFit)}>
-        <div className={clsx(styles.pvCol, compact && styles.pvColCompact)}>
-          <div className={clsx(styles.pvBox, compact && styles.pvBoxCompact)}>
-            {isSkin
-              ? <SkinModel key={target} bodyId={it.id} headId={it.headId!} hsb={off ? defHsb() : hsb} dyeable family={skinDyeFamily(toneName)} zmap={zmap} smap={smap} box={box} fraction={SKIN_PREVIEW_FRACTION} />
-              : <DyeSprite key={target} id={it.id} thumb={it.icon || `sprites/${it.id}/icon.png`} mix={mix} palette={off ? undefined : pal} hsb={off ? undefined : hsb} zmap={zmap} frac={INFO_FRAC} />}
-          </div>
-          <div className={styles.pvText}>
-            <div className={styles.pvPart}>{cat?.label || ''}</div>
-            <div className={styles.pvName}>{it.name || it.id}</div>
-          </div>
-        </div>
-        <div className={styles.divider} />
-        <div className={clsx('pb-dyecol', styles.ctrlCol, cardsFit && styles.ctrlColFit)}>
-          {mix ? (
-            <>
-              {/* 일반 아이템(색 계열 점 / 가로선 / 색조 · 채도 · 명도)과 같은 구조 — 가로선은 첫 묶음 안의 형제로, 묶음의 간격으로 나뉜다 */}
-              <div className={styles.group}>
-                <MixSwatches pal={PAL} base={pal.baseColor} mix={pal.mixColor ?? pal.baseColor} onBase={setBase} onMix={setMixC} />
-                <div className={styles.groupHr} />
-              </div>
-              <div className={styles.group}>
-                <MixRatio pal={PAL} base={pal.baseColor} mix={pal.mixColor ?? pal.baseColor} ratio={pal.ratio} onDragStart={beginDrag}
-                  onRatio={(v) => setPal((cur) => ({ ...cur, ratio: v }))} />
-                {/* 헤어·성형은 여기까지다 — 베이스 · 믹스 색과 그 비율이 전부이고 HSB(색조·채도·명도)는 쓰지 않는다. */}
-                <div className={styles.acts}>
-                  <button type="button" onClick={() => s.openDye(it)} title="발색표 보기" className={clsx('pb-ghost', styles.btn)}>염색표 보기</button>
-                  {offBtn}
-                  <button type="button" onClick={resetDye} title="이 아이템 염색 초기화" className={clsx('pb-ghost', styles.btn)}>수치 초기화</button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className={styles.group}>
-                <div className={styles.famRow}>
-                  <FamilyDots size="sm" value={hsb.t ?? 0} onPick={(t) => s.setDyeHsb((p) => ({ ...p, [target]: { ...(p[target] || defHsb()), t } }))} />
-                </div>
-                <div className={styles.groupHr} />
-              </div>
-              <div className={styles.group}>
-                {([['색조', 'h', 'h', 0, 359], ['채도', 's', 's', -99, 99], ['명도', 'b', 'v', -99, 99]] as const).map(([label, f, track, lo, hi]) => (
-                  <DyeRow key={f} label={label} track={track} min={lo} max={hi} value={hsb[f]} onDragStart={beginDrag}
-                    onRange={(v) => { clearRaw(f); setHsbF(f, () => v) }}
-                    stepper={<Stepper label={label} size="sm" valueStr={raw[f] ?? String(hsb[f])}
-                      onNum={(v) => { if (!/^-?\d*$/.test(v)) return; setRaw((r) => ({ ...r, [f]: v })); setHsbF(f, () => (v === '' || v === '-' ? 0 : parseInt(v, 10))) }}
-                      onBlur={() => clearRaw(f)}
-                      onStep={(d) => { clearRaw(f); setHsbF(f, (cur) => cur + d) }}
-                      decOff={hsb[f] <= lo} incOff={hsb[f] >= hi} />} />
-                ))}
-                <div className={styles.acts}>
-                  {!isSkin && edgeBtn}
-                  {offBtn}
-                  <button type="button" onClick={resetDye} title="이 아이템 염색 초기화" className={clsx('pb-ghost', styles.btn)}>수치 초기화</button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
   )
 }

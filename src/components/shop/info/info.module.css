@@ -41,48 +41,16 @@
 .slotNameOn { font-weight: 600; color: #2a2521; }
 .toggle { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fdf1f6; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
 .toggleHidden { border-color: #e7ded4; background: #f4efe8; color: #a89e93; }
-/* 이 부위 벗기(휴지통) — 칩 오른쪽 위 모서리에 걸친다. 칩 안에 단추를 더 넣으면 좁은 모바일 칩의 이름이 더 잘린다.
+@media (hover: hover) and (pointer: fine) {
+  .toggle:hover { border-color: #eeb2ce; background: #fbe3ee; color: #c2577f; }
+  .toggleHidden:hover { border-color: #d9cec2; background: #ece5dc; color: #7d7369; }
+}
+/* 이 부위 벗기(휴지통) — 칩 오른쪽 아래 모서리에 걸친다. 칩 안에 단추를 더 넣으면 좁은 모바일 칩의 이름이 더 잘리고 띠가 밀린다.
+   이름 줄 끝의 미리보기 표시/숨김(.toggle)과 칩 높이만큼 떨어져 잘못 누르지 않는다(사용자 요청 — 오른쪽 위에 있을 때 붙어 있었다).
    PC 는 칩에 마우스를 올렸을 때만 나타나고(누르지 않을 때는 눌리지도 않는다), 모바일은 늘 보인다. 두 번 눌러야 한다(lib/confirmTwice). */
-.trash { position: absolute; top: -8px; right: -8px; z-index: 2; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid #f3d6d6; border-radius: 50%; background: #fff; color: #e05555; box-shadow: 0 1px 3px rgba(61,55,47,.12); cursor: pointer; transition: opacity .18s ease, background-color .2s ease, border-color .2s ease, color .2s ease; }
+.trash { position: absolute; bottom: -8px; right: -8px; z-index: 2; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid #f3d6d6; border-radius: 50%; background: #fff; color: #e05555; box-shadow: 0 1px 3px rgba(61,55,47,.12); cursor: pointer; transition: opacity .18s ease, background-color .2s ease, border-color .2s ease, color .2s ease; }
 @media (hover: hover) and (pointer: fine) {
   .trash { opacity: 0; pointer-events: none; }
   .slot:hover .trash, .trash:focus-visible { opacity: 1; pointer-events: auto; }
   .trash:hover { border-color: #ec9c9c; background: #fdeeee; color: #d63a3a; }
 }
-
-/* ── 하단 인라인 염색(PC) ── */
-.dyeWrap { flex: 0 0 auto; }
-.dyeHr { height: 1px; margin: 0 6px; background: #f2ebe3; }
-.dyeArea { flex: 0 0 auto; padding: 10px 6px; display: flex; flex-direction: column; }
-.dyeAreaFit { flex-direction: row; align-items: stretch; gap: 14px; }
-.sideCards { flex: 1 1 0; min-width: 0; max-width: 100%; display: flex; align-items: stretch; gap: 10px; }
-.sideCard { flex: 1 1 0; min-width: 0; align-self: stretch; border: 1px dashed #efe6dc; border-radius: 8px; background: #fbf8f4; }
-.dyeOff { flex: 1 1 auto; min-height: 76px; border: 1px dashed #e7ded4; border-radius: 8px; background: #fbf8f4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
-.dyeOffTitle { font-size: 12.5px; font-weight: 600; color: #8a8075; }
-.dyeOffHint { font-size: 11.5px; color: #b7ada2; }
-.dyeBody { flex: 1 1 auto; width: 100%; min-height: 0; display: flex; align-items: stretch; gap: 12px; padding: 12px; border: 1px solid #f0e9e1; border-radius: 8px; background: #fdfbf9; }
-.dyeBodyFit { flex: 0 0 auto; width: auto; margin-left: auto; }
-.pvCol { flex: 0 0 auto; align-self: flex-start; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; width: 116px; }
-.pvColCompact { width: 96px; }
-.pvBox { flex: 0 0 auto; width: 88px; height: 88px; border-radius: 8px; border: 1px solid #eee6dc; background: #faf7f3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.pvBoxCompact { width: 72px; height: 72px; }
-.pvText { text-align: center; max-width: 100%; }
-.pvPart { font-size: 10.5px; font-weight: 600; color: #a89e93; }
-.pvName { font-size: 11.5px; font-weight: 600; color: #2a2521; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 92px; }
-.divider { flex: 0 0 1px; align-self: stretch; width: 1px; margin-right: 6px; background: #f0e9e1; }
-.ctrlCol { flex: 1 1 auto; min-width: 0; width: 100%; align-self: stretch; padding: 5px 14px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
-.ctrlColFit { flex: 0 0 482px; width: 482px; }
-.group { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.groupHr { height: 1px; margin: 2px 0 0; background: #f2ebe3; }
-.famRow { display: flex; align-items: center; gap: 9px; }
-/* 염색 버튼 줄. 점 아이템처럼 버튼이 하나 더 붙으면 좁은 폭(≈291px)에서 한 줄에 못 담는다
-   → 넘치면 아랫줄로 접는다(밖으로 삐져나오지 않게). */
-.acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-/* 염색 비활성화 토글 — 켜짐 상태 */
-.btnOn { background: #fdf1f6; border-color: #f5c6da; color: #d76d9a; }
-/* '테두리 포함' 체크 — 염색 다이얼로그의 같은 버튼과 같은 모양. */
-.tickBtn { display: inline-flex; align-items: center; gap: 6px; }
-.tick { flex: 0 0 auto; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e0d7cd; border-radius: 4px; background: #fff; color: #fff; transition: background-color .2s cubic-bezier(.45,0,.55,1), border-color .2s cubic-bezier(.45,0,.55,1); }
-.tick svg { opacity: 0; transition: opacity .2s cubic-bezier(.45,0,.55,1); }
-.tickOn { background: #ec86ac; border-color: #ec86ac; }
-.tickOn svg { opacity: 1; }

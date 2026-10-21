@@ -115,8 +115,8 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   const reset = () => { setCleared(true); setPal(DEF_PAL()) }
 
   // 일반 아이템(색 계열 줄 / 가로선 / 조절 줄)과 같은 구조 — 가로선은 바깥 칸의 형제로, 그 칸의 간격으로 나뉜다
-  const swatchRows = <MixSwatches size="lg" pal={PAL} base={pal.baseColor} mix={bIdx} onBase={setBase} onMix={setMixC} />
-  const ratioRows = <MixRatio size="lg" pal={PAL} base={pal.baseColor} mix={bIdx} ratio={pal.ratio} onRatio={(v) => setRatio(() => v)} />
+  const swatchRows = <MixSwatches pal={PAL} base={pal.baseColor} mix={bIdx} onBase={setBase} onMix={setMixC} />
+  const ratioRows = <MixRatio pal={PAL} base={pal.baseColor} mix={bIdx} ratio={pal.ratio} onRatio={(v) => setRatio(() => v)} />
   // 버튼 줄은 **일반 아이템(HSB)과 같은 모양**이다 — 염색표 보기까지 한 줄에 양끝 정렬.
   const actsRow = (big: boolean) => (
     <div className={styles.resetRow}>
@@ -218,7 +218,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
     return (
       <DyeRow key={f} label={label} track={TRACK[f]} min={lo} max={hi} value={hsb[f]}
         onRange={(v) => { clearRaw(f); setF(f, () => v) }}
-        stepper={<Stepper label={label} size="lg" placeholder="0" valueStr={raw[f] ?? String(hsb[f])}
+        stepper={<Stepper label={label} placeholder="0" valueStr={raw[f] ?? String(hsb[f])}
           onNum={(v) => { if (!/^-?\d*$/.test(v)) return; setRaw((r) => ({ ...r, [f]: v })); setF(f, () => (v === '' || v === '-' ? 0 : parseInt(v, 10))) }}
           onBlur={() => clearRaw(f)}
           onStep={(d) => { clearRaw(f); setF(f, (cur) => cur + d) }}
@@ -233,7 +233,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
       <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>비활성화
     </button>
   )
-  const families = <FamilyDots size="lgMin" value={hsb.t ?? 0} onPick={(t) => setHsb((h) => ({ ...h, t }))} />
+  const families = <FamilyDots noShrink value={hsb.t ?? 0} onPick={(t) => setHsb((h) => ({ ...h, t }))} />
   // 테두리(순수 검정) 포함 — 명도로만, 회색으로만 바뀐다(lib/core/dye 설명). 그래서 명도가 0 이하면 눌러도
   // 보이는 변화가 없어, 그때만 이유를 알려 준다(버튼은 그대로 눌린다 — 값은 저장돼야 하므로).
   // 자리는 '염색 비활성화 · 염색 초기화'와 **같은 줄**이다(염색 설정 버튼은 한 줄에 모은다).
