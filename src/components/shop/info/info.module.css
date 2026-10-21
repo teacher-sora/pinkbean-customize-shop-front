@@ -43,11 +43,11 @@
 .toggleHidden { border-color: #e7ded4; background: #f4efe8; color: #a89e93; }
 /* 이 부위 벗기(휴지통) — 칩 오른쪽 위 모서리에 걸친다. 칩 안에 단추를 더 넣으면 좁은 모바일 칩의 이름이 더 잘린다.
    PC 는 칩에 마우스를 올렸을 때만 나타나고(누르지 않을 때는 눌리지도 않는다), 모바일은 늘 보인다. 두 번 눌러야 한다(lib/confirmTwice). */
-.trash { position: absolute; top: -7px; right: -7px; z-index: 2; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 1px solid #eee6dc; border-radius: 50%; background: #fff; color: #b0a599; box-shadow: 0 1px 3px rgba(61,55,47,.12); cursor: pointer; transition: opacity .18s ease, background-color .2s ease, border-color .2s ease, color .2s ease; }
+.trash { position: absolute; top: -8px; right: -8px; z-index: 2; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid #f3d6d6; border-radius: 50%; background: #fff; color: #e05555; box-shadow: 0 1px 3px rgba(61,55,47,.12); cursor: pointer; transition: opacity .18s ease, background-color .2s ease, border-color .2s ease, color .2s ease; }
 @media (hover: hover) and (pointer: fine) {
   .trash { opacity: 0; pointer-events: none; }
   .slot:hover .trash, .trash:focus-visible { opacity: 1; pointer-events: auto; }
-  .trash:hover { border-color: #ec86ac; background: #fdf1f6; color: #d76d9a; }
+  .trash:hover { border-color: #ec9c9c; background: #fdeeee; color: #d63a3a; }
 }
 
 /* ── 하단 인라인 염색(PC) ── */
