@@ -235,4 +235,3 @@
   .chatEmoSet:hover { border-color: #ec86ac; }
 }
 @media (prefers-reduced-motion: reduce) { .chatDock, .chatBox, .chatBoxOn { transition-duration: .01s; } }
-}
