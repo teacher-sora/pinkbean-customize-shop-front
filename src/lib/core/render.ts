@@ -10,6 +10,7 @@ import { drawParticles, type ParticleDraw } from './particle'
 import { spriteUrl, type EffectGroup, type EffectMeta, type Vec } from './data'
 import type { PlacedLayer } from './assemble'
 import { LRU } from './lru'
+import { canvasReadExact, rememberBytes } from './pngPixels'
 
 const imageCache = new LRU<Promise<HTMLImageElement>>(1200)
 
@@ -24,13 +25,25 @@ export function loadImage(pngRel: string, cors = false): Promise<HTMLImageElemen
   const src = cors ? base + (base.includes('?') ? '&' : '?') + 'cors=1' : base
   let p = imageCache.get(src)
   if (!p) {
-    const once = () => new Promise<HTMLImageElement>((resolve, reject) => {
+    const plain = () => new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image()
       if (cors) img.crossOrigin = 'anonymous' // src 설정 전에 지정해야 적용됨
       img.onload = () => resolve(img)
       img.onerror = () => reject(new Error(`load ${src}`))
       img.src = src
     })
+    // 캔버스 읽기를 흔드는 브라우저(core/pngPixels)는 파일을 받아 바이트를 쥔 채 그 바이트로 그림을 만든다 — 염색이 쓸 원본 픽셀을
+    // 다시 받지 않고 한가할 때 풀어 둔다. 받는 횟수는 같고, 그림은 같은 출처(blob)라 캔버스가 더럽혀지지 않는다. 보통 브라우저는 예전 그대로.
+    const held = () => fetch(src, { mode: 'cors', credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`load ${src}`))))
+      .then((buf) => new Promise<HTMLImageElement>((resolve, reject) => {
+        const bytes = new Uint8Array(buf), url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }))
+        const img = new Image()
+        img.onload = () => { URL.revokeObjectURL(url); rememberBytes(img, bytes); resolve(img) }
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(`load ${src}`)) }
+        img.src = url
+      }))
+    const once = cors && !canvasReadExact() ? held : plain
     // 한 번 실패하면 잠깐 뒤 한 번 더 받는다. 그래도 실패하면 캐시에서 뺀다 — 실패한 Promise 를 캐시에 남기면
     // 순간적인 네트워크 끊김 한 번으로 그 그림이 든 코디가 새로고침 전까지 계속 빈 칸이 됐다(닉네임 불러오기의 빈 '기본' 카드).
     const made: Promise<HTMLImageElement> = once()

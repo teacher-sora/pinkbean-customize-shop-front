@@ -1,8 +1,9 @@
 // 그림 파일(PNG)을 직접 풀어 원본 픽셀을 얻는다 — 캔버스 읽기(getImageData)를 **믿을 수 없는 브라우저에서만** 쓴다(core/dye).
 // 왜: 추적 방지(Brave · 강화 모드의 Firefox · Safari 의 사생활 보호)는 캔버스에서 읽는 값을 조금씩 흔든다. 염색은 값을 정확히 비교한다
 // (테두리 포함 = 순수 검정 0,0,0 만 / 17단계 그림 판별) — 흔들린 픽셀은 규칙에서 빠져 '테두리가 부분적으로만 하얗게' 됐다(건의함).
-// 보통 브라우저는 읽기가 정확하므로 예전 그대로(캔버스 읽기 — 추가로 받는 것도 기다리는 것도 없다). 직접 풀려면 그림을 캐시에서
-// 한 번 더 받아야 하는데, 이 시간이 환경마다 흔들려(헤드리스 크롬에서 캐시 적중에도 장당 80ms 안팎) 모두에게 쓰지 않는다.
+// 보통 브라우저는 읽기가 정확하므로 예전 그대로(캔버스 읽기 — 추가로 받는 것도 기다리는 것도 없다). 흔드는 브라우저는 그림을 받을 때
+// 바이트를 함께 쥐고(render.loadImage — 받는 횟수는 같다) 한가할 때 미리 푼다. 캐시에서 다시 받는 길은 환경마다 흔들려(헤드리스 크롬에서
+// 캐시 적중에도 장당 80ms 안팎) 바이트가 없을 때만 쓴다.
 // 압축은 브라우저 내장(DecompressionStream)으로 푼다 — 없으면 null(캔버스로 읽는다).
 const SIG = [137, 80, 78, 71, 13, 10, 26, 10]
 
@@ -90,17 +91,47 @@ export function canvasReadExact (): boolean {
   return readOk
 }
 
-// 그림 요소 → 원본 픽셀. 그림이 이미 받아져 있어 fetch 는 브라우저 캐시에서 나온다. 한 번 푼 것은 그림마다 기억한다.
+// 그림 요소 → 원본 픽셀. 한 번 푼 것은 그림마다 기억한다.
+// 흔드는 브라우저에서는 loadImage 가 그림을 받을 때 파일 바이트를 함께 쥐어 둔다(rememberBytes) — 다시 받지 않는다.
+// 쥔 바이트는 한가할 때 미리 푼다(requestIdleCallback, 한 번에 시간이 남는 만큼만) — 장착 · 염색 적용 · 광장과 프리셋 카드에서
+// 염색할 때는 이미 풀려 있어 기다리지 않는다. 바이트가 없는 그림(드물다)만 캐시에서 다시 받는다.
 const pixels = new WeakMap<HTMLImageElement, Uint8ClampedArray | null>()
 const pending = new WeakMap<HTMLImageElement, Promise<void>>()
+const bytesOf = new WeakMap<HTMLImageElement, Uint8Array>()
+const idle: HTMLImageElement[] = []
+let idleOn = false
+type Ric = (cb: (d: { timeRemaining: () => number }) => void, o?: { timeout: number }) => number
+function pump () {
+  if (idleOn || !idle.length) return
+  idleOn = true
+  const ric = (window as unknown as { requestIdleCallback?: Ric }).requestIdleCallback
+  const run = async (d?: { timeRemaining: () => number }) => {
+    // 한가한 시간이 남는 동안 몇 장씩 푼다(한 장 0.3ms 안팎). 한가한 때가 오지 않아도 2초 안에는 돈다.
+    while (idle.length && (!d || d.timeRemaining() > 4)) {
+      const batch = idle.splice(0, 8)
+      await Promise.all(batch.map((img) => ensurePixels(img)))
+      if (!d) break
+    }
+    idleOn = false
+    if (idle.length) pump()
+  }
+  if (ric) ric((d) => { void run(d) }, { timeout: 2000 }); else setTimeout(() => { void run() }, 16)
+}
+export function rememberBytes (img: HTMLImageElement, bytes: Uint8Array): void {
+  bytesOf.set(img, bytes)
+  idle.push(img)
+  pump()
+}
 export function ensurePixels (img: HTMLImageElement): Promise<void> {
   if (pixels.has(img)) return Promise.resolve()
   let p = pending.get(img)
   if (!p) {
-    p = fetch(img.currentSrc || img.src, { mode: 'cors', credentials: 'same-origin' })
-      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('fetch'))))
-      .then((b) => decodePng(new Uint8Array(b)))
-      .then((d) => { pixels.set(img, d && d.w === img.naturalWidth && d.h === img.naturalHeight ? d.data : null) })
+    const held = bytesOf.get(img)
+    const bytes = held ? Promise.resolve(held) : fetch(img.currentSrc || img.src, { mode: 'cors', credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('fetch')))).then((b) => new Uint8Array(b))
+    p = bytes
+      .then((b) => decodePng(b))
+      .then((d) => { pixels.set(img, d && d.w === img.naturalWidth && d.h === img.naturalHeight ? d.data : null); bytesOf.delete(img) })
       .catch(() => { pixels.set(img, null) })
     pending.set(img, p)
   }
