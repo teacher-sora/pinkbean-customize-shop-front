@@ -15,7 +15,7 @@ import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
-import { applyHsb, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
+import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { effectDraws, effectGroups, loadImage, renderCharacter } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
@@ -377,7 +377,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           for (const fr of frames) pngs.push(fr.png)
         }
         if (!allFrames && shownFrame) for (const d of effectDraws(em, V.action, { foot: shownFrame.foot, brow: shownFrame.brow, navel: shownFrame.navel }, shownAt)) pngs.push(d.png)
-        const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
+        const loaded = await Promise.all(pngs.map((p) => loadDyeImage(p).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
         for (const e of loaded) {
           if (e) { try { ov.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} }
@@ -398,7 +398,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           // 뒷모습 프레임이 섞인 액션이면 뒷머리 png 도 함께(안 그러면 그 프레임만 피부 라인이 원본색).
           if (dyeBack) for (const l of getFrameLayers(meta, dyeV, 0, true)) { if (!seen.has(l.png)) { seen.add(l.png); pngs.push(l.png) } }
         }
-        const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
+        const loaded = await Promise.all(pngs.map((p) => loadDyeImage(p).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
         for (const e of loaded) {
           if (e) { try { ov.set(e[0], applyHsb(e[1], skinHsb2(skinHsb, skinFam), e[0])) } catch (_) {} }

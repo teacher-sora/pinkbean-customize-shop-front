@@ -10,7 +10,7 @@
 
 import { getFrameLayers } from './core/assemble'
 import { loadMeta, type ItemMeta } from './core/data'
-import { applyHsb, buildOverrides, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from './core/dye'
+import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from './core/dye'
 import { loadImage } from './core/render'
 import { hsbParamSame, lookItems, normLook, palGap, paramSame, type HsbN, type LookSnap } from './plazaLook'
 import { THUMB_VIEW } from './shopData'
@@ -108,7 +108,7 @@ async function renderSkin0(skin: NonNullable<SkinInfo>, hsb: HsbN | null): Promi
     const meta = await loadMeta(id)
     await Promise.all(getFrameLayers(meta, THUMB_VIEW).map(async (l) => {
       try {
-        const img = await loadImage(l.png, true)
+        const img = await loadDyeImage(l.png)
         out.set(l.png, dataOf(hsb ? applyHsb(img, skinHsbFor(hsb as HsbParams, skin.family ?? 5), l.png) : img))
       } catch { /* noop */ }
     }))
