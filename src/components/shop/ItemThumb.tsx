@@ -90,8 +90,8 @@ function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
   )
 }
 
-// 명찰 · 말풍선 카드: 몸 없이 그 아이템만 카드 가운데에. 배율은 정수(디바이스 픽셀 기준)로 카드 안쪽 CHAT_FIT 에 다 들어오는 가장 큰 값 —
-// 말풍선은 보통 화면 픽셀 1:1 보다 한 단계 작게(고해상도 화면에서 절반) 나와 전체가 보인다.
+// 명찰 · 말풍선 카드: 몸 없이 그 아이템만 카드 가운데에. 배율은 정수(디바이스 픽셀 기준) — 게임 크기(CSS 1px = 게임 1px)를 넘지 않고,
+// 카드 안쪽 CHAT_FIT 에 다 들어오지 않으면 들어오는 단계까지 줄인다(카드마다 크기가 들쭉날쭉하지 않게 키우지는 않는다).
 const CHAT_FIT = 0.9
 function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -119,7 +119,7 @@ function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !bmp || !dims.w) return
-    const k = Math.max(1, Math.floor(Math.min((dims.w * dims.dpr * CHAT_FIT) / bmp.width, (dims.h * dims.dpr * CHAT_FIT) / bmp.height)))
+    const k = Math.max(1, Math.min(Math.floor(dims.dpr) || 1, Math.floor(Math.min((dims.w * dims.dpr * CHAT_FIT) / bmp.width, (dims.h * dims.dpr * CHAT_FIT) / bmp.height))))
     const bw = bmp.width * k, bh = bmp.height * k
     canvas.width = bw; canvas.height = bh
     const g = canvas.getContext('2d')!

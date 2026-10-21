@@ -70,16 +70,16 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-fadeov[data-fade~="b"] { --pb-fab: 1; --pb-fdb: .7s; }
 .pb-fadeov[data-fade~="l"] { --pb-fal: 1; --pb-fdl: .7s; }
 .pb-fadeov[data-fade~="r"] { --pb-far: 1; --pb-fdr: .7s; }
-/* 가로로 더 있는 쪽에는 작은 화살표를 흐림 가운데에 얹는다. 그 쪽으로 아주 천천히 밀렸다 돌아오기를 되풀이해(ease-out) 더 있다는 것을
+/* 가로로 더 있는 쪽에는 작은 핑크 화살표(#ec86ac — 검은 흐림 위에서도 또렷하게)를 흐림 가운데에 얹는다. 그 쪽으로 아주 천천히 밀렸다 돌아오기를 되풀이해(ease-out) 더 있다는 것을
    또렷하게 알린다(사용자 지시 — 막대가 없는 가로 줄은 흐림만으로는 잘 모른다). 세로는 화살표 없이 흐림만. 생기고 사라지는 시간은 흐림과 같다.
    @property 값은 상속되지 않아 화살표(가상 요소)는 data-fade 로 직접 켠다. 움직임을 줄인 기기에서는 멈춰 있다 */
 .pb-fadeov::before, .pb-fadeov::after {
   content: ''; position: absolute; top: 50%; width: 12px; height: 12px; margin-top: -6px; opacity: 0; transition: opacity .9s ease-out;
-  background: center / 12px 12px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M4.5 2.5 8 6l-3.5 3.5' fill='none' stroke='%235c534b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background: center / 12px 12px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M4.5 2.5 8 6l-3.5 3.5' fill='none' stroke='%23ec86ac' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 .pb-fadeov::before { left: 4px; transform: scaleX(-1); animation: pb-fadenudge-l 2.4s ease-out infinite; }
 .pb-fadeov::after { right: 4px; animation: pb-fadenudge-r 2.4s ease-out infinite; }
-.pb-fadeov[data-fade~="l"]::before, .pb-fadeov[data-fade~="r"]::after { opacity: .75; transition-duration: .7s; }
+.pb-fadeov[data-fade~="l"]::before, .pb-fadeov[data-fade~="r"]::after { opacity: 1; transition-duration: .7s; }
 @keyframes pb-fadenudge-r { 0%, 100% { translate: 0 0; } 45% { translate: 3px 0; } }
 @keyframes pb-fadenudge-l { 0%, 100% { translate: 0 0; } 45% { translate: -3px 0; } }
 @media (prefers-reduced-motion: reduce) { .pb-fadeov::before, .pb-fadeov::after { animation: none; } }
