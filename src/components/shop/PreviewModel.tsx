@@ -12,8 +12,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
-import { assemble, dropWeaponEffects, footOf, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
-import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { assemble, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
+import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { effectDraws, effectGroups, loadImage, renderCharacter } from '@/lib/core/render'
@@ -114,7 +114,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 파티클(제네시스 무기의 붉은 파장 등)과 무기의 제 프레임 움직임 — 색인은 한 번만 받는다.
   const [particleIndex, setParticleIndex] = useState<Record<string, Record<string, ParticleSpot[]>>>({})
   const [partDescs, setPartDescs] = useState<Map<string, ParticleDesc>>(new Map())
-  const [weaponMotion, setWeaponMotion] = useState<Record<string, string[]>>({})
+  const [weaponMotion, setWeaponMotion] = useState<WeaponMotion>({})
   const [floatItems, setFloatItems] = useState<Record<string, number>>({})
   useEffect(() => { loadParticleIndex().then(setParticleIndex); loadWeaponMotion().then(setWeaponMotion); loadFloatItems().then(setFloatItems) }, [])
   useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
@@ -197,11 +197,19 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // 박자는 게임처럼 몸의 그 액션 박자(delays)를 따른다.
     const itemMotion = viewInfo.isStatic && pv.action === 'basic' && pv.gaze !== 'back'
     // 무기는 프레임마다 그림이 다른 것만 돈다(weapons/motion.json — 그림은 같고 자리만 다른 숨쉬기 프레임을 몸이 멈춘 채 돌리면 손에서 떨린다).
-    const ownMotion = (m: ItemMeta, action: string) => m.slot === 'weapon'
-      ? !!weaponMotion[m.id]?.some((k) => k === action || k.endsWith(`/${action}`))
-      : !!m.frames['base'] && ((m.frames as Record<string, unknown[]>)[action]?.length ?? 0) > 1
+    // 무기의 프레임별 보정(weaponNudge)만큼 되돌려 그려, 숨쉬기로 1px 씩 오르내리던 무기를 손에 가만히 두고 애니메이션만 돌린다(사용자 지시).
+    const weaponEntry = (m: ItemMeta, v: typeof charV) => {
+      const e = weaponMotion[m.id]; if (!e) return null
+      const key = weaponActionKey(m, v)
+      if (Array.isArray(e)) return e.some((k) => k === key || k.endsWith(`/${v.action}`)) ? [] : null
+      return e[key] ?? null
+    }
+    const ownMotion = (m: ItemMeta, v: typeof charV) => m.slot === 'weapon'
+      ? !!weaponEntry(m, v)
+      : !!m.frames['base'] && ((m.frames as Record<string, unknown[]>)[v.action]?.length ?? 0) > 1
     let itemAnimated = false
     const frames = Array.from({ length: N }, (_, fi) => {
+      let weaponNudge: [number, number] | null = null
       // 정지 + 아이템만 돌 때: 캐릭터는 0번 프레임(지금까지의 정지 화면과 같다), 아이템만 fi.
       const ci = itemMotion ? 0 : fi
       // 이 프레임만 뒷모습인가(두손/한손 스윙 마무리) — 맞으면 머리·헤어도 뒷프레임을 쓰고 얼굴은 숨긴다.
@@ -220,8 +228,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
         const itemV = slot === 'riding' ? jagV : charV // 탈것은 자기(매핑된) 액션, 나머지는 캐릭터 포즈(sit/선택)를 따른다
         // 탈것(riding)은 자기 액션을 도는 별도 모델이라 캐릭터의 뒷프레임 판단을 붙이지 않는다.
         // 정지('기본' 액션)면 프레임 번호를 넘기지 않는다 → 머리부착 아이템은 대표 그림(카드와 같은 규칙, assemble.stillIndex).
-        const moves = itemMotion && slot !== 'riding' && ownMotion(m, itemV.action)
+        const moves = itemMotion && slot !== 'riding' && ownMotion(m, itemV)
         if (moves) itemAnimated = true
+        if (moves && slot === 'weapon') { const off = weaponEntry(m, itemV); const o = off?.length ? off[fi % off.length] : null; if (o) weaponNudge = o }
         let layers = getFrameLayers(m, itemV, moves ? fi : viewInfo.isStatic ? undefined : fi, slot === 'riding' ? false : backFrame)
         layers = dropWeaponEffects(slot, layers, pv.wEffect)
         items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace, name: m.name, dotOffsets: dotPos[m.id] })
@@ -230,7 +239,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // navel-only 앵커링은 프레임마다 navel 의 스프라이트 내부 위치가 달라 몸통이 몇 px 흔들린다. 매 프레임
       // stand1 navel 기준으로 보정(stabOffset)해 몸통·옷은 고정되고 팔·다리만 움직이게 한다.
       // ⚠️ 이 보정을 무효화하지 않도록 렌더는 centerX(navel 재중심) 대신 고정 anchor 를 쓴다.
-      const { placed: raw, anchors } = assemble(items, index.zmap, index.smap)
+      const { placed: assembled, anchors } = assemble(items, index.zmap, index.smap)
+      const nudge = weaponNudge as [number, number] | null
+      const raw = nudge && (nudge[0] || nudge[1]) ? assembled.map((p) => (p.slot === 'weapon' ? { ...p, x: p.x + nudge[0], y: p.y + nudge[1] } : p)) : assembled
       const curBody = raw.find((p) => p.slot === 'body' && p.name === 'body')
       const curNav = curBody?.map?.navel
       // 캐릭터 stab = 발(origin) 고정, 몸통/사지만 움직임(stand1 navel 기준). 앉은 채(seated)면 stab 없음(안장 위 원위치).
