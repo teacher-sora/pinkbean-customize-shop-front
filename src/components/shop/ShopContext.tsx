@@ -275,7 +275,6 @@ export interface ShopCtx {
   // 염색 비활성화(slot 키): 수치는 그대로 두고 렌더에서만 뺀다. 렌더(미리보기·카드·썸네일)는 render* 를 쓴다.
   dyeOff: Record<string, boolean>; toggleDyeOff: (slot: string) => void
   renderPalette: Record<string, PaletteParams>; renderHsb: Record<string, HsbParams>
-  dyeInteracting: boolean; setDyeInteracting: Dispatch<boolean> // 발색 슬라이더 드래그 중(미리보기 애니메이션 일시정지용)
   isMixSlot: (slot: string) => boolean
   // 단일 서피스(연출 설정 · 북마크 · 염색 · 점 위치)
   surface: Surface | null; surfaceClosing: boolean
@@ -408,7 +407,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const toggleDyeOff = useCallback((slot: string) => setDyeOff((p) => { const n = { ...p }; if (n[slot]) delete n[slot]; else n[slot] = true; return n }), [])
   const renderPalette = useMemo(() => { const o: Record<string, PaletteParams> = {}; for (const [k, v] of Object.entries(dyePalette)) if (!dyeOff[k]) o[k] = v; return o }, [dyePalette, dyeOff])
   const renderHsb = useMemo(() => { const o: Record<string, HsbParams> = {}; for (const [k, v] of Object.entries(dyeHsb)) if (!dyeOff[k]) o[k] = v; return o }, [dyeHsb, dyeOff])
-  const [dyeInteracting, setDyeInteracting] = useState(false)
   const [surface, setSurface] = useState<Surface | null>(null)
   const surfaceRef = useRef<Surface | null>(null); surfaceRef.current = surface // 콜백에서 지금 열린 서피스를 본다
   const [surfaceClosing, setSurfaceClosing] = useState(false)
@@ -1857,7 +1855,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [pv])
 
   // 실행취소 히스토리: 코디 상태가 바뀔 때마다 "즉시" 스냅샷 기록(부위 빠르게 눌러도 전부 남음).
-  // 예외: 발색 슬라이더 드래그 중(dyeInteracting)은 보류 → 릴리즈 시 최종 상태 1개만 기록(스택 폭주 방지).
   // undo/redo 로 적용된 변경(histExpect 일치)은 기록하지 않아 스택이 오염되지 않는다. 최근 50개 유지.
   // 기록 한 건. 보통은 아래 effect 가 라이브 코디 변화를 보고 부르지만, **라이브가 그대로인 변경**
   // (선택하지 않은 프리셋을 초기화)은 그 자리에서 직접 부른다.
@@ -1881,9 +1878,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setHistVer((v) => v + 1)
   }
   useEffect(() => {
-    if (!initedRef.current || dyeInteracting) return // 초기 로드 완료 전엔 기록 안 함 → 첫 기록 = 초기 프리셋(baseline)
+    if (!initedRef.current) return // 초기 로드 완료 전엔 기록 안 함 → 첫 기록 = 초기 프리셋(baseline)
     pushHistory()
-  }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, dyeInteracting])
+  }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset])
 
 
   const applyHistory = (e: { snap: Snapshot; sel: string | null; names?: Record<string, string> }) => {
@@ -1969,7 +1966,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, unequipSlot, hidden, setHidden,
-    dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, dyeInteracting, setDyeInteracting, isMixSlot,
+    dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
     surface, surfaceClosing, openSheet, openDye, openDot, closeSurface,
     openPartItem, partBack, partSlide, openVs, toggleVs, vsOn, vsPicks, toggleVsPick, swapSnapshot,
     dotPos, setDot, resetDot,

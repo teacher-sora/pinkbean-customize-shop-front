@@ -73,7 +73,7 @@ export default function DotSurfaceBody({ item, mobile }: { item: ListItem; mobil
         </div>
 
         <div className={clsx(styles.dotRight, mobile && styles.dotRightM)}>
-          <div className={styles.famRow}><FamilyDots size="lg" value={ed.hsb.t ?? 0} onPick={ed.setFamily} /></div>
+          <div className={styles.famRow}><FamilyDots value={ed.hsb.t ?? 0} onPick={ed.setFamily} /></div>
           <div className={styles.hr} />
           <div className={clsx('pb-dyecol', styles.rowsCol)}>
             {(['h', 's', 'b'] as F[]).map((f) => {
@@ -82,7 +82,7 @@ export default function DotSurfaceBody({ item, mobile }: { item: ListItem; mobil
               return (
                 <DyeRow key={f} label={label} track={f === 'b' ? 'v' : f} min={lo} max={hi} value={ed.hsb[f]}
                   onRange={(v) => ed.setField(f, String(v))}
-                  stepper={<Stepper label={label} size="lg" placeholder="0" valueStr={ed.raw[f]}
+                  stepper={<Stepper label={label} placeholder="0" valueStr={ed.raw[f]}
                     onNum={(v) => ed.setField(f, v)} onStep={(d) => ed.bump(f, d)}
                     decOff={ed.hsb[f] <= lo} incOff={ed.hsb[f] >= hi} />} />
               )

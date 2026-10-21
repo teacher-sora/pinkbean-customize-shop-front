@@ -25,9 +25,8 @@ export const CARD_FRAC_HAIR = 0.68
 // 헤어·성형은 화면 픽셀보다 촘촘하게 그린 뒤 그만큼 줄여서 보여 준다(아래 useLiveRedraw 주석).
 // 어느 기기에서나 캔버스 해상도가 칸의 4배가 되도록 DPR 로 나눈다(DPR1=4배·DPR2=2배·DPR4=1배).
 const oversampleFor = (dpr: number) => Math.max(1, Math.round(4 / dpr))
-// 피부는 모델(body+head)로 렌더해 중앙 정렬 — fraction 으로 크기 조절(아이콘=작게, 미리보기=크게).
+// 피부는 모델(body+head)로 렌더해 중앙 정렬 — fraction 으로 크기 조절.
 export const SKIN_ICON_FRACTION = 0.72
-export const SKIN_PREVIEW_FRACTION = 0.52
 // 아이콘 그리기 — 칸에 맞춰 **정수 배율**로만 키운다.
 //  - 캔버스를 칸 크기로 잡고 그 안에 그리면 반올림 때문에 채움 비율을 넘고, 캔버스 픽셀 수가
 //    화면 픽셀과 어긋나(DPR 1.25·1.5) 도트가 뭉개진다(VS 칩에서 특히 심하다).
