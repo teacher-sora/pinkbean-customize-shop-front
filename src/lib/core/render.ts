@@ -136,7 +136,8 @@ function opaqueBottom (src: HTMLImageElement | HTMLCanvasElement): number {
     const d = g.getImageData(0, 0, c.width, c.height).data
     b = -1
     for (let y = c.height - 1; y >= 0 && b < 0; y--) {
-      for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 8) { b = y; break }
+      // 진한 칸(알파 200 이상)만 본다 — 별빛 걸음처럼 발밑에 옅은 빛이 번진 신발은 그 빛이 복제에서 3배로 더 내려가 복제의 발이 떴다.
+      for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] >= 200) { b = y; break }
     }
   } catch { /* 그림 높이 그대로 */ }
   bottomCache.set(src, b)
