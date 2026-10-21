@@ -74,7 +74,7 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
   CHAT_FILES[slot] ?? (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
 
 /* ── 명찰 · 말풍선 반지(dev 전용 실험) ──────────────────────────────────────
- * 데이터는 front public/dev/chatui(명찰 276 · 말풍선 295 · 채팅 이모티콘 141)이고, main 병합 때 빠진다(scripts/merge-dev-to-main.sh 의 DEV_ONLY).
+ * 데이터는 front public/dev/chatui(테스트 서버에서 뽑은 명찰 · 말풍선 603 · 채팅 이모티콘 141)이고, main 병합 때 빠진다(scripts/merge-dev-to-main.sh 의 DEV_ONLY).
  * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats · infoCats) — 운영에는 파일이 없어 부위 탭 · 코디 정보 칩이 생기지 않는다.
  * 부위 탭은 하나(명찰/말풍선 — 같은 이름의 명찰과 말풍선이 나란히, 세트 순서)이고 코디 정보 칩은 둘이다(따로 끼고 벗는다).
  * 그리기는 core/chatUi(renderCharacter 의 chat). 명찰 이름 = 고른 프리셋 이름, 말풍선 = 미리보기 아래 채팅 칸(preview/ChatBar)에서
@@ -85,6 +85,7 @@ export const CHAT_INFO_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 
 const CHAT_LIST = '/dev/chatui/list.json'
 export const CHAT_FILES: Record<string, string> = { nameTag: CHAT_LIST, chatBalloon: CHAT_LIST, chatRing: CHAT_LIST }
 export const CHAT_EMO_FILE = '/dev/chatui/emoticons.json'
+export const CHAT_NEW_FILE = '/dev/chatui/new.json' // 테스트 서버에만 있는(본 서버에 없는) 명찰 · 말풍선 id — NEW 라벨
 export interface ChatState { name: string; text: string; emo?: ChatEmo }
 export interface ChatMsg { text: string; emo?: ChatEmo }
 export const CHAT_NAME_FALLBACK = 'Maple' // 프리셋을 고르지 않았을 때 명찰 이름

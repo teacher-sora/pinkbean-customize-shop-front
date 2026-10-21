@@ -28,7 +28,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_FILES, CHAT_INFO_CATS, CHAT_NAME_FALLBACK, CHAT_SAMPLE, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, type ChatState, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SAMPLE, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, type ChatState, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -540,18 +540,27 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       .catch(() => setLists((m) => ({ ...m, [slot]: [] })))
       .finally(() => loadingSlots.current.delete(slot))
   }, [index, lists])
-  useEffect(() => {
-    // '전체'·'즐겨찾기' 는 모든 부위를 한 리스트로 보여주므로 전 슬롯을 로드한다(각 슬롯은 캐시돼 1회만 받음).
-    if (isMultiCat(activeCat)) { for (const c of CATS) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]); return }
-    if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat])
-  }, [activeCat, ensureSlot])
-
   // 명찰 · 말풍선(dev 전용): 목록 파일이 있을 때만 부위를 더한다 — 운영에는 파일이 없다(main 병합 때 빠진다). 반지 바로 뒤.
   const [chatOn, setChatOn] = useState(false)
-  useEffect(() => { fetch(CHAT_FILES.nameTag, { method: 'HEAD' }).then((r) => { setChatOn(r.ok); if (r.ok) prefetchGlyphs() }).catch(() => {}) }, []) // 글자 도트는 한가할 때 미리
+  useEffect(() => {
+    fetch(CHAT_FILES.nameTag, { method: 'HEAD' }).then((r) => {
+      setChatOn(r.ok)
+      if (!r.ok) return
+      prefetchGlyphs() // 글자 도트는 한가할 때 미리
+      // 테스트 서버에 새로 나온 명찰 · 말풍선(본 서버에 없는 것) — NEW 라벨 · '신규' 필터에 더한다
+      fetch(CHAT_NEW_FILE).then((x) => (x.ok ? x.json() : null)).then((j: { ids?: string[] } | null) => { if (j?.ids?.length) setNewIds((prev) => new Set([...prev, ...j.ids!])) }).catch(() => {})
+    }).catch(() => {})
+  }, [])
   const withChat = (extra: Cat[]) => { const i = CATS.findIndex((c) => c.id === 'ring') + 1; return [...CATS.slice(0, i), ...extra, ...CATS.slice(i)] }
   const cats = useMemo(() => (chatOn ? withChat(CHAT_CATS) : CATS), [chatOn])
   const infoCats = useMemo(() => (chatOn ? withChat(CHAT_INFO_CATS) : CATS), [chatOn])
+
+  useEffect(() => {
+    // '전체'·'즐겨찾기' 는 모든 부위를 한 리스트로 보여주므로 전 슬롯을 로드한다(각 슬롯은 캐시돼 1회만 받음).
+    if (isMultiCat(activeCat)) { for (const c of cats) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]); return }
+    if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat])
+  }, [activeCat, ensureSlot, cats])
+
   // 채팅 칸에서 보낸 말 — 게임처럼 잠깐 떴다 사라진다. 마지막으로 보낸 말은 말풍선 카드의 견본으로 남는다.
   const [chatMsg, setChatMsg] = useState<ChatMsg | null>(null)
   const [lastMsg, setLastMsg] = useState<ChatMsg>({ text: CHAT_SAMPLE })
@@ -569,17 +578,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const listForCat = useCallback((cat: string): ListItem[] => {
     if (cat === 'skin') return skinList
     // '전체' = 모든 부위를 CATS 순서(헤어→방패)로 이어붙인 하나의 리스트. 슬롯 내부 정렬은 그대로 유지.
-    if (cat === 'all') return CATS.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || []))
+    if (cat === 'all') return cats.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || []))
     // '즐겨찾기' = 전 부위(피부 포함)에서 즐겨찾기한 아이템만. CATS 순서 유지. 전 슬롯 로드가 필요(위 ensureSlot).
-    if (cat === 'fav') return CATS.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || [])).filter((it) => favorites.has(it.id))
+    if (cat === 'fav') return cats.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || [])).filter((it) => favorites.has(it.id))
     // '신규' = 최근 패치에서 추가된 아이템만(전 부위, CATS 순서). 헤어/성형은 폴딩 대표 id 로 매칭된다.
-    if (cat === 'new') return CATS.flatMap((c) => (c.id === 'skin' ? [] : lists[CAT_TO_SLOT[c.id]] || [])).filter((it) => newIds.has(it.id))
+    if (cat === 'new') return cats.flatMap((c) => (c.id === 'skin' ? [] : lists[CAT_TO_SLOT[c.id]] || [])).filter((it) => newIds.has(it.id))
     return lists[CAT_TO_SLOT[cat]] || []
-  }, [lists, skinList, favorites, newIds])
+  }, [lists, skinList, favorites, newIds, cats])
 
   // 활성 부위 리스트 로딩중?(index 미로드 또는 해당 slot 미로드)
   const catLoading = dataLoading || (isMultiCat(activeCat)
-    ? CATS.some((c) => c.id !== 'skin' && lists[CAT_TO_SLOT[c.id]] === undefined)
+    ? cats.some((c) => c.id !== 'skin' && lists[CAT_TO_SLOT[c.id]] === undefined)
     : activeCat !== 'skin' && lists[CAT_TO_SLOT[activeCat]] === undefined)
 
   // 성별 필터. 카탈로그의 gender(0=남 1=여 2=공용)를 쓴다.
