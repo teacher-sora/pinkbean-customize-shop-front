@@ -648,8 +648,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     rateLock.current = false; setRateShow(false)
   }, [])
   const searchRaw = useRef<Record<string, ListItem[]>>({}) // 슬롯 원본(비폴딩) 리스트 캐시
-  // 헤어 · 성형의 복제 묶음(dupOf) 아이템 → 같은 색의 원본 아이템. 같은 그림이라 보이는 것은 같고, 목록에 있는 카드와 맞춰진다.
+  // 복제 아이템 → 원본 아이템. 헤어 · 성형의 복제 묶음(dupOf)은 같은 색의 원본, 그 밖의 재출시 복제(dupId)는 원본 id.
+  // 같은 그림이라 보이는 것은 같고, 목록에 있는 카드와 맞춰진다.
   const toOriginal = (raw: ListItem[], it: ListItem): ListItem => {
+    if (it.dupId) return raw.find((x) => x.id === it.dupId) ?? it
     if (it.dupOf == null) return it
     const vid = variantId(it.dupOf, colorOf(parseInt(it.id, 10), it.slot), it.slot)
     return raw.find((x) => x.id === vid) ?? it

@@ -15,14 +15,14 @@ export function foldList(l: ListItem[]): ListItem[] {
   const keyOf = (it: ListItem) => (hasColor ? `g${it.colorGroup}` : `n${it.name ?? it.id}|${it.label ?? ''}`)
   const rep = new Map<string, ListItem>()
   for (const it of l) {
-    if (it.dupOf != null) continue // 헤어 · 성형의 복제 묶음은 목록에 내지 않는다(원본이 같은 그림으로 있다 — data.ts loadBeautyDups)
+    if (it.dupOf != null || it.dupId) continue // 복제(헤어 · 성형의 복제 묶음, 그 밖의 재출시 복제)는 목록에 내지 않는다(원본이 같은 그림으로 있다 — data.ts loadBeautyDups · loadItemDups)
     const k = keyOf(it); const cur = rep.get(k)
     if (!cur) { rep.set(k, it); continue }
     if (parseInt(it.id, 10) < parseInt(cur.id, 10)) rep.set(k, it)
   }
   const seen = new Set<string>(); const out: ListItem[] = []
   for (const it of l) {
-    if (it.dupOf != null) continue
+    if (it.dupOf != null || it.dupId) continue
     const k = keyOf(it); if (seen.has(k)) continue
     if (it.id !== rep.get(k)!.id) continue // 대표 위치에서만 출력 → 최저 id 기준 정렬 유지
     seen.add(k); out.push(rep.get(k)!)

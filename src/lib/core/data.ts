@@ -89,6 +89,7 @@ export interface ListItem {
   ridingBackSit?: boolean     // 라이딩 아이템: 뒷쪽 시선에도 캐릭터 sit 강제(탱크: 뒤=줄타기 프레임+앉은 조종사).
   metaUrl?: string            // 라이딩 아이템: 프론트 public 의 meta.json 경로(CDN 밖)
   dupOf?: number              // 헤어 · 성형: 같은 그림 · 같은 이름의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
+  dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups)
 }
 
 export interface SlotSummary {
@@ -231,6 +232,18 @@ export function loadBeautyDups(): Promise<BeautyDups> {
   }
   return beautyDupsPromise
 }
+// 헤어 · 성형 밖의 부위의 복제 표(parser scripts/dedup-catalog.cjs → CDN catalog/item-dups.json) = { slot: { 복제 id: 원본 id } }.
+// 넥슨이 같은 아이템을 새 id 로 다시 낸 것(페어리피코 01703287 = 페어리 피코 01702456 등) — 띄어쓰기만 다른 이름, 무기는 같은 종류까지 같아야 복제다.
+// 헤어 · 성형(loadBeautyDups)과 같이 목록에서 지우지 않고 표시만 해, 화면 목록에서 빼고(foldList) 저장된 코디 · 검색의 복제 id 는 원본으로 읽는다(ShopContext).
+type ItemDups = Record<string, Record<string, string>>
+let itemDupsPromise: Promise<ItemDups> | null = null
+export function loadItemDups(): Promise<ItemDups> {
+  if (!itemDupsPromise) {
+    itemDupsPromise = pre<ItemDups>('catalog/item-dups.json', () => fetch(url('catalog/item-dups.json'), FRESH).then((r) => (r.ok ? r.json() : {})))
+      .catch(() => ({}))
+  }
+  return itemDupsPromise
+}
 const slotCache = new Map<string, Promise<ListItem[]>>()
 export function loadSlot(file: string): Promise<ListItem[]> {
   let p = slotCache.get(file)
@@ -240,7 +253,12 @@ export function loadSlot(file: string): Promise<ListItem[]> {
       return items.map((it) => fixIcon(fixSlotCodes(it)))
     }).then(async (items) => {
       const first = items[0]
-      if (!first || (first.slot !== 'hair' && first.slot !== 'face') || first.colorGroup == null) return items
+      if (!first) return items
+      if (first.slot !== 'hair' && first.slot !== 'face') {
+        const dup = (await loadItemDups())[first.slot]
+        return dup ? items.map((it) => (dup[it.id] ? { ...it, dupId: dup[it.id] } : it)) : items
+      }
+      if (first.colorGroup == null) return items
       const dup = (await loadBeautyDups())[first.slot] || {}
       return items.map((it) => (it.colorGroup != null && dup[it.colorGroup] != null ? { ...it, dupOf: dup[it.colorGroup] } : it))
     })
