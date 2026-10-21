@@ -110,7 +110,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
                 onClick={(e) => { e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) }}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) } }}
                 className={styles.trash}>
-                <IconTrashSolid size={11} />
+                <IconTrashSolid size={13} />
               </span>
             )}
             <DyeBand state={!r.on ? 'empty' : r.dyed ? 'dyed' : (r.isSkin ? !isDyeableSkin(toneName) : r.item?.dyeMode === 'none') ? 'none' : 'plain'}
