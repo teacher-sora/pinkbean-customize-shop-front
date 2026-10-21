@@ -5,6 +5,7 @@
 // (world 0,0) is nailed to a FIXED canvas coordinate inside a fixed world box,
 // so the body never shifts when hair/hats/weapons change extent. All scaling is
 // integer (x1/x2/x3) with smoothing off and integer pixel snapping -> crisp dots.
+import { drawParticles, type ParticleDraw } from './particle'
 import { spriteUrl, type EffectGroup, type EffectMeta, type Vec } from './data'
 import type { PlacedLayer } from './assemble'
 import { LRU } from './lru'
@@ -74,6 +75,12 @@ function groupDraw(g: EffectGroup | undefined, anchors: EffectAnchors, elapsed: 
   const pt = g.pos === 1 ? anchors.brow : g.pos === 4 ? (anchors.navel ?? { x: 0, y: 0 }) : anchors.foot
   return { png: fr.png, origin: fr.origin, z: fr.z ?? g.z, ox: pt.x, oy: pt.y }
 }
+// 이펙트의 모든 묶음(두 번째 층 extra 까지) — 그림을 미리 받거나 염색할 때 빠뜨리지 않게 한 곳에서 모은다.
+// extra 를 빠뜨리면 미리보기가 그 그림을 기다리느라 첫 프레임에 멈췄다(체인지 버닝: 루시드 이펙트).
+export function effectGroups(meta: EffectMeta | null | undefined): EffectGroup[] {
+  if (!meta) return []
+  return [...Object.values(meta.groups), ...effectGroups(meta.extra)]
+}
 export function effectDraws(meta: EffectMeta | null | undefined, action: string, anchors: EffectAnchors, elapsed = 0): EffectDraw[] {
   if (!meta) return []
   const out: EffectDraw[] = []
@@ -101,6 +108,7 @@ export interface RenderOpts {
   override?: Map<string, HTMLCanvasElement>  // dyed source per layer png
   backImage?: string                 // sprite drawn BEHIND the body (ultimate fallback: no body & no effect)
   effects?: EffectDraw[]             // item effects (망토 등) composited around the body (each carries ox/oy)
+  particles?: ParticleDraw[]         // 파티클(제네시스 무기 등) — 입자는 sim 이 들고, 그림은 desc.tex.png. z 음수 = 캐릭터 뒤
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
   centerX?: boolean                  // pin the body NAVEL to a fixed box point (center X, anchor.y) in BOTH axes →
                                      //   body never moves regardless of sprite/equipment/effect size (body-based, not bbox)
@@ -151,6 +159,9 @@ export async function renderCharacter(
   // A dyed item's effect must recolor too → prefer the dye override canvas for the frame png.
   const effs = opts.effects?.length
     ? (await Promise.all(opts.effects.map(async (e) => ({ e, img: (opts.override?.get(e.png) ?? await loadImage(e.png, cors).catch(() => null)) as CanvasImageSource | null })))).filter((x) => x.img)
+    : []
+  const parts = opts.particles?.length
+    ? (await Promise.all(opts.particles.map(async (p) => ({ p, img: await loadImage(p.sim.desc.tex.png, cors).catch(() => null) })))).filter((x) => x.img)
     : []
   // 이펙트끼리는 z 순서로 쌓는다(작을수록 뒤) — 캐시 이펙트는 원본 z 를 그대로 쓴다(parser cashfx-build.layer_z). 같은 z 는 들어온 순서.
   effs.sort((a, b) => a.e.z - b.e.z)
@@ -215,6 +226,12 @@ export async function renderCharacter(
     ctx.drawImage(img, dx, dy, w * scale, h * scale)
   }
 
+  const drawPart = ({ p, img }: { p: ParticleDraw; img: HTMLImageElement | null }) => {
+    if (img) drawParticles(ctx, p.sim, img, (anchorX + p.ox) * scale, (anchorY + p.oy) * scale, scale)
+  }
+  // 파티클은 그 z 의 이펙트보다 먼저(더 뒤에) 깐다 — 제네시스의 파장은 캐릭터 · 망토 이펙트 뒤다.
+  for (const x of parts) if (x.p.z < 0) drawPart(x)
+
   // effects behind the body (z < 0)
   for (const fx of effs) if (fx.e.z < 0) drawEffect(fx)
 
@@ -255,5 +272,6 @@ export async function renderCharacter(
 
   // effects in front of the body (z >= 0)
   for (const fx of effs) if (fx.e.z >= 0) drawEffect(fx)
+  for (const x of parts) if (x.p.z >= 0) drawPart(x)
   ctx.restore()
 }

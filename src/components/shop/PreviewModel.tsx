@@ -13,9 +13,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, dropWeaponEffects, footOf, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
-import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
-import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
+import { effectDraws, effectGroups, loadImage, renderCharacter } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
@@ -46,6 +47,10 @@ const HERO_BASE_H = 216 // 모바일 히어로 기본 높이(preview.module.css 
 // 지금 떠 있는 미리보기의 내보내기 이미지(우클릭 메뉴와 같은 것). 모바일 히어로의 '이미지 저장' 버튼이 쓴다.
 let liveShot: (() => Promise<Blob | null>) | null = null
 export const previewShot = () => (liveShot ? liveShot() : Promise.resolve(null))
+
+// 부유 아이템의 둥둥 뜨기 — 위로 최대 FLOAT_AMP 게임 픽셀, FLOAT_MS 한 바퀴(원본에 값이 없어 게임 화면으로 맞췄다).
+const FLOAT_AMP = 5
+const FLOAT_MS = 2400
 
 export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const shop = useShop()
@@ -80,7 +85,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 우클릭 "이미지 복사"용 스냅샷 — 화면 미리보기와 별개로, 정사각형·큰 모델 이미지를 즉석에서 그리기 위한
   // 현재 프레임(정지=0프레임) 합성 입력. draw effect 가 매번 최신값으로 갱신한다.
   const copyRef = useRef<{
-    placed: PlacedLayer[]; effects: EffectDraw[]; flip: boolean
+    placed: PlacedLayer[]; effects: EffectDraw[]; particles: ParticleDraw[]; flip: boolean
     centerXOnly: boolean; centerMount: boolean; override: Map<string, HTMLCanvasElement>
     cDx: number; cDy: number
   } | null>(null)
@@ -106,6 +111,12 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const headId = toneEntry?.head
 
   useEffect(() => { loadEffectIndex().then(setEffectIndex).catch(() => {}) }, [])
+  // 파티클(제네시스 무기의 붉은 파장 등)과 무기의 제 프레임 움직임 — 색인은 한 번만 받는다.
+  const [particleIndex, setParticleIndex] = useState<Record<string, Record<string, ParticleSpot[]>>>({})
+  const [partDescs, setPartDescs] = useState<Map<string, ParticleDesc>>(new Map())
+  const [weaponMotion, setWeaponMotion] = useState<Record<string, string[]>>({})
+  const [floatItems, setFloatItems] = useState<Record<string, number>>({})
+  useEffect(() => { loadParticleIndex().then(setParticleIndex); loadWeaponMotion().then(setWeaponMotion); loadFloatItems().then(setFloatItems) }, [])
   useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
   useEffect(() => {
     if (!index || !bodyId || !headId) return
@@ -185,7 +196,10 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // 옷은 몸과 함께 숨 쉬는 프레임이라 몸이 멈춘 채 돌리면 어긋나고, 재규어는 통짜 그림이라 돌리면 1px 씩 떨린다.
     // 박자는 게임처럼 몸의 그 액션 박자(delays)를 따른다.
     const itemMotion = viewInfo.isStatic && pv.action === 'basic' && pv.gaze !== 'back'
-    const ownMotion = (m: ItemMeta, action: string) => !!m.frames['base'] && ((m.frames as Record<string, unknown[]>)[action]?.length ?? 0) > 1
+    // 무기는 프레임마다 그림이 다른 것만 돈다(weapons/motion.json — 그림은 같고 자리만 다른 숨쉬기 프레임을 몸이 멈춘 채 돌리면 손에서 떨린다).
+    const ownMotion = (m: ItemMeta, action: string) => m.slot === 'weapon'
+      ? !!weaponMotion[m.id]?.some((k) => k === action || k.endsWith(`/${action}`))
+      : !!m.frames['base'] && ((m.frames as Record<string, unknown[]>)[action]?.length ?? 0) > 1
     let itemAnimated = false
     const frames = Array.from({ length: N }, (_, fi) => {
       // 정지 + 아이템만 돌 때: 캐릭터는 0번 프레임(지금까지의 정지 화면과 같다), 아이템만 fi.
@@ -242,7 +256,40 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     const mount = riding ? frames[0]?.placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount')) : undefined
     const ground = mount ? mount.y + mount.origin.y : frames[0]?.foot.y ?? 21
     return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action) }
-  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, V, viewInfo.isStatic])
+  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, V, viewInfo.isStatic, weaponMotion])
+
+  // 그릴 파티클 자리 — 이펙트와 같은 규칙으로 끈다(부위 숨김 · 무기 이펙트 끔 · 이펙트를 숨기는 링).
+  const partSpots = useMemo(() => {
+    const ring = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
+    if (ring?.illusion?.hideEffect || ring?.illusion?.hideWeapon) return [] as ParticleSpot[]
+    const out: ParticleSpot[] = []
+    for (const [slot, it] of Object.entries(equipped)) {
+      if (!it || hidden[slot] || !particleIndex[it.id]) continue
+      if (slot === 'weapon' && !pv.wEffect) continue
+      out.push(...spotsFor(particleIndex[it.id], V.action))
+    }
+    return out
+  }, [equipped, hidden, metas, particleIndex, pv.wEffect, V.action])
+  useEffect(() => {
+    const miss = [...new Set(partSpots.map((x) => x.name))].filter((n) => !partDescs.has(n))
+    if (!miss.length) return
+    Promise.all(miss.map((n) => loadParticle(n).then((d) => [n, d] as const))).then((res) => {
+      setPartDescs((prev) => { const m = new Map(prev); for (const [n, d] of res) if (d) m.set(n, d); return m })
+    })
+  }, [partSpots, partDescs])
+  // 흐르는 입자는 그림을 다시 합성해도 이어져야 한다(착용 · 액션이 바뀌어도 파장이 처음부터 다시 퍼지지 않게) — 자리 번호 · 이름으로 들고 있는다.
+  // 처음 만들 때 한 바퀴 돌려 두어 이미 퍼진 모습으로 시작한다.
+  const simsRef = useRef(new Map<string, ParticleSim>())
+  const simOf = useCallback((d: ParticleDesc, i: number) => {
+    const k = `${i}|${d.name}`
+    let sim = simsRef.current.get(k)
+    if (!sim) { sim = new ParticleSim(d, i + 1); sim.step(Math.min(12, d.life + d.lifeVar + 1)); simsRef.current.set(k, sim) }
+    return sim
+  }, [])
+
+  // 부유 — 보이는 착용 아이템 가운데 부유 아이템이 하나라도 있고 서 있을 때(서기 · '기본'). 이펙트 표시 토글과는 상관없다(동작이다).
+  const floating = useMemo(() => (V.action === 'stand1' || V.action === 'stand2')
+    && Object.entries(equipped).some(([slot, it]) => !!it && !hidden[slot] && !!floatItems[it.id]), [V.action, equipped, hidden, floatItems])
 
   const effList = useMemo(() => {
     const out: EffectMeta[] = []
@@ -302,7 +349,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
         if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
         const em = effMetas.get(it.id); if (!em) continue
         const pngs: string[] = []
-        for (const g of Object.values(em.groups)) {
+        for (const g of effectGroups(em)) {
           const frames = allFrames ? g.frames : g.frames.slice(0, 1)
           for (const fr of frames) pngs.push(fr.png)
         }
@@ -424,6 +471,8 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     let cancelled = false, raf = 0
     const { frames, delays, animated, pingpong, riding, centerMount, ground } = spec
     const hasEff = effList.length > 0
+    const hasPart = partSpots.some((x) => partDescs.has(x.name))
+    let partT = -1 // 입자를 마지막으로 흘린 시계(ms)
     // div 크기·dpr·연출배율로 배치 계산: 캔버스는 div×margin(디바이스 해상도), 마네킹은 fraction×divH 고정.
     // 미리보기는 stabOffset 적용 → 뒷쪽은 카드용 back* 대신 stab 보정된 previewBack* 사용(중앙 고정).
     const back = pv.gaze === 'back'
@@ -446,7 +495,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     if (wrapEl && !src) setStageFloor({ wrap: wrapEl, cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((pl.anchor.y + ground) * pl.scale)) / dims.dpr, scale: pl.scale, shadow: riding ? 30 : 13 })
     const pngs = new Set<string>()
     frames.forEach((f) => f.placed.forEach((p) => pngs.add(p.png)))
-    effList.forEach((em) => Object.values(em.groups).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
+    effList.forEach((em) => effectGroups(em).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
     let lastSig = '' // 마지막으로 실제 합성한 "보이는 프레임" 시그니처
     const clock = clockRef.current
     const clockKey = `${V.action}|${pv.action}|${pv.gaze}|${frames.length}|${pingpong ? 1 : 0}`
@@ -464,11 +513,21 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       const f = frames[Math.min(fi, frames.length - 1)]
       const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow, navel: f.navel }, elapsed)) : []
       if (!f.placed.every((p) => loaded.has(p.png)) || !effects.every((d) => loaded.has(d.png))) return // 아직 로드 중 → 직전 프레임 유지
+      // 파티클은 시계만큼 흘리고 매 프레임(약 30fps) 다시 그린다 — 입자는 프레임 그림이 아니라 계속 움직인다.
+      const particles = hasPart ? placeParticles(partSpots, partDescs, f.foot, simOf) : []
+      if (particles.length) {
+        const dt = partT < 0 ? 0 : (elapsed - partT) / 1000
+        partT = elapsed
+        for (const pd of new Set(particles.map((x) => x.sim))) pd.step(dt)
+      }
       // ⚠️ 매 rAF(60fps)마다 재합성하지 않는다 — 메이플 스프라이트/이펙트 프레임 delay 는 ~100~180ms(≈6~10fps)라
       //   60fps 로 그리면 "같은 프레임"을 5~6번 덧그리는 순수 낭비다(착용·이펙트가 많을수록 비용↑). 캐릭터 프레임
       //   인덱스 + 이 프레임의 이펙트 draw(png·위치) 시그니처가 직전과 같으면 픽셀이 동일하므로 건너뛴다(화질 손실 0).
       //   염색/착용/액션이 바뀌면 이 effect 자체가 재실행되어 lastSig 가 초기화되므로 즉시 다시 그린다.
-      const sig = fi + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';')
+      // 부유: 원래의 프레임(몸 흔들림)은 그대로 두고 캐릭터 전체(이펙트 · 파티클 포함)를 위아래로 부드럽게 띄운다. 바닥 그림자는 그 자리에 둔다.
+      // 디바이스 픽셀 단위로 잘라 도트가 흐려지지 않게 하고, 한 칸 움직일 때만 다시 그린다(1초에 십여 번).
+      const fy = floating ? Math.round(-FLOAT_AMP * (1 - Math.cos((2 * Math.PI * elapsed) / FLOAT_MS)) / 2 * pl.scale) / pl.scale : 0
+      const sig = fi + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';') + (particles.length ? `|${Math.floor(elapsed / 33)}` : '') + (fy ? `|${fy}` : '')
       if (sig === lastSig) return
       lastSig = sig
       // 분수 scale = 디바이스 해상도(1:1 표시로 선명). 마네킹 중심을 캔버스 중앙에(anchor 보정) → flip 대칭.
@@ -476,7 +535,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
       const seq = ++drawSeqRef.current
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
@@ -487,6 +546,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       ? {
           placed: f0.placed,
           effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow, navel: f0.navel }, 0)) : [],
+          particles: hasPart ? placeParticles(partSpots, partDescs, f0.foot, (d) => stillSim(d)) : [],
           flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides,
           cDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx,
           cDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy,
@@ -499,7 +559,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       if (cancelled) return
       draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)
       // 발색 조절 중/전 프레임 염색 중/정지 뷰면 애니메이션 없이 여기서 끝(정지 프레임 유지).
-      if (dyeInteracting || dyeSettling || (!animated && !hasEff)) return
+      if (dyeInteracting || dyeSettling || (!animated && !hasEff && !hasPart && !floating)) return
       // 나머지 프레임은 백그라운드로 받으면서 곧바로 애니메이션 시작(안 받은 프레임은 draw 가 건너뜀).
       track(pngs)
       clock.elapsed = e0; clock.since = performance.now(); clock.running = true
@@ -510,7 +570,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       cancelled = true; cancelAnimationFrame(raf)
       if (clock.running) { clock.elapsed = nowElapsed(); clock.since = performance.now(); clock.running = false }
     }
-  }, [spec, effList, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, zoomMults, src, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
+  }, [spec, effList, partSpots, partDescs, simOf, floating, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, zoomMults, src, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
 
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.
@@ -518,7 +578,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const makeBlob = useCallback(async (): Promise<Blob | null> => {
     const snap = copyRef.current
     if (!snap) return null
-    return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
+    return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
   }, [])
 
   // 우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등)로 복사/저장 메뉴. wrap 은 항상 존재하므로 여기 바인딩.
