@@ -90,7 +90,12 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   const plaza = s.primary === 'share'
   const chips = plaza
     ? PLAZA_FILTERS.map((f) => ({ id: f.id as string, label: f.label, on: s.plazaFilter === f.id, pick: () => s.setPlazaFilter(f.id) }))
-    : PARTS.map((p) => ({ id: p.id, label: p.label, on: s.activeCat === p.id, pick: () => s.setActiveCat(p.id) }))
+    : PARTS.map((p) => ({ id: p.id, label: p.label, on: s.activeCat === p.id, pick: () => pickPart(p.id) }))
+  // 코디 정보 / 염색 · 프리셋에서 부위를 바꾸면 그 부위의 아이템을 보려는 것이다 — 코디 탭으로 넘어가 바로 보인다(사용자 지시).
+  const pickPart = (id: string) => {
+    s.setActiveCat(id)
+    if (s.primary === 'info' || s.primary === 'preset') s.setPrimary('codi')
+  }
   const pickTab = (t: { id: string; label: string }) => {
     if (READY.has(t.id)) { s.setPrimary(t.id); return }
     if (t.id === 'notice') { s.openNotice(); return } // 공지 및 건의함은 탭 화면 없이 서피스로 연다(간이)
