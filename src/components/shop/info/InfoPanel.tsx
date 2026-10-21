@@ -71,7 +71,8 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const pick = (r: typeof rows[number]) => {
     if (!r.on || !r.item) return
     s.setDyeTarget(r.slot)
-    if (!mobile) return
+    // 넓은 PC 는 아래 인라인 염색. 모바일 · 절반 · 태블릿은 염색 창(서피스)을 연다 — 인라인은 부위 칸 아래라 스크롤해야 닿았다(사용자 요청).
+    if (!mobile && !narrow) return
     if (r.isSkin && !isDyeableSkin(toneName)) { s.notify('이 피부는 염색할 수 없어요'); return }
     if (!r.isSkin && r.item.dyeMode === 'none' && !DOT_MOVER_IDS.has(r.item.id)) { s.notify('이 아이템은 염색할 수 없어요'); return }
     if (DOT_MOVER_IDS.has(r.item.id)) s.openDot(r.item); else s.openDye(r.item)
@@ -150,16 +151,18 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
       <div className={styles.hr} />
       <div className={clsx('pb-scroll', 'pb-fade', styles.scroll)}>
         <div ref={slotsRef} className={styles.slots}>{grid}</div>
-        <div className={styles.dyeWrap}>
-          <div className={styles.dyeHr} />
-          <InlineDye infoW={infoW} narrow={narrow} skinItem={skinItem} toneName={toneName} />
-        </div>
+        {!narrow && (
+          <div className={styles.dyeWrap}>
+            <div className={styles.dyeHr} />
+            <InlineDye infoW={infoW} skinItem={skinItem} toneName={toneName} />
+          </div>
+        )}
       </div>
     </section>
   )
 }
 
-function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narrow: boolean; skinItem: ListItem | null; toneName: string }) {
+function InlineDye({ infoW, skinItem, toneName }: { infoW: number; skinItem: ListItem | null; toneName: string }) {
   const s = useShop()
   const zmap = s.index?.zmap || []
   const smap = s.index?.smap || {}
@@ -169,7 +172,7 @@ function InlineDye({ infoW, narrow, skinItem, toneName }: { infoW: number; narro
   const mix = !!target && s.isMixSlot(target)
   const PAL = paletteFor(target) // 성형=FACE_PALETTE 표기, 헤어=MIX_PALETTE. 발색 로직은 동일.
   const cat = target ? CATS.find((c) => CAT_TO_SLOT[c.id] === target) : null
-  const compact = narrow || infoW < 560
+  const compact = infoW < 560
   // 카드 3개(최소 90px)와 염색 박스(미리보기+컨트롤 482+패딩)가 함께 들어갈 폭일 때만 카드 배치
   const boxNeed = (compact ? 96 : 116) + 7 + 482 + 24 + 12
   const cardsFit = !!it && (infoW - 32 - boxNeed - 14) >= 75
