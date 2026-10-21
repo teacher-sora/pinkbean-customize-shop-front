@@ -349,7 +349,13 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // ⚠️ 1단계는 반드시 allFrames=false — 보이는 프레임만 칠해 즉시 반영한다(기존과 동일한 비용/체감속도).
     //    전 프레임은 아래 2단계에서 백그라운드로 이어 칠한다. 여기서 전 프레임을 칠하면 장착/드래그가 눈에 띄게 느려진다.
     // 실패해도 키는 반드시 갱신돼야 미리보기가 보류 상태로 멈추지 않는다 → 1단계는 예외를 삼킨다.
-    const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, false, dyeBack).catch(() => new Map<string, HTMLCanvasElement>())
+    // 지금 화면에 멈춰 있는 프레임. 발색 드래그 동안 애니메이션은 이 프레임에 멈춘다 — 0번만 칠하면 제 프레임으로 도는 무기
+    // (겨울여우 솜펀치 등)나 이펙트가 0번이 아닌 프레임에 멈췄을 때 그 부위만 염색이 풀려 보였다. 그래서 이 프레임도 함께 칠한다.
+    const clk = clockRef.current
+    const shownAt = clk.running ? clk.elapsed + (performance.now() - clk.since) : clk.elapsed
+    const shownFi = spec?.animated ? Math.min((spec.pingpong ? frameAtElapsedAlt : frameAtElapsed)(spec.delays, shownAt), spec.frames.length - 1) : 0
+    const shownFrame = spec?.frames[shownFi]
+    const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, shownFi || false, dyeBack).catch(() => new Map<string, HTMLCanvasElement>())
     // 이펙트/피부 프레임 염색을 override(ov)에 추가. allFrames=false 면 프레임0만, true 면 전 프레임.
     // ⚠️ 프레임 png 는 반드시 "병렬 로드"(Promise.all)로 받는다 — 순차 fetch(프레임마다 await)면 큰 이펙트(망토)
     //    처럼 프레임이 많을 때 fetch 가 줄줄이 늘어져 매우 느리고 점멸한다. 병렬로 한 번에 받아 즉시 리컬러.
@@ -365,6 +371,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           const frames = allFrames ? g.frames : g.frames.slice(0, 1)
           for (const fr of frames) pngs.push(fr.png)
         }
+        if (!allFrames && shownFrame) for (const d of effectDraws(em, V.action, { foot: shownFrame.foot, brow: shownFrame.brow, navel: shownFrame.navel }, shownAt)) pngs.push(d.png)
         const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
         for (const e of loaded) {
@@ -380,7 +387,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
         const seen = new Set<string>()
         for (const meta of [bodyMeta, headMeta]) {
           const nf = allFrames ? Math.max(1, frameDelays(meta, dyeV).length) : 1
-          for (let fi = 0; fi < nf; fi++) {
+          for (const fi of [...Array(nf).keys(), ...(allFrames ? [] : [shownFi])]) {
             for (const l of getFrameLayers(meta, dyeV, fi)) { if (!seen.has(l.png)) { seen.add(l.png); pngs.push(l.png) } }
           }
           // 뒷모습 프레임이 섞인 액션이면 뒷머리 png 도 함께(안 그러면 그 프레임만 피부 라인이 원본색).
