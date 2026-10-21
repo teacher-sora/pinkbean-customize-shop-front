@@ -27,7 +27,7 @@ const cache = new Map<string, Promise<Bitmap | null>>()
 
 const canvasOf = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h); return c }
 
-// 글자 한 줄 → 잉크가 닿는 상자로 자른 그림. 알파는 0/255 로 끊는다(번짐 없는 도트).
+// 글자 한 줄 → 잉크가 닿는 상자로 자른 그림(가로 · 세로 모두 — 놓을 때 잉크를 칸 가운데에 맞춘다). 알파는 0/255 로 끊는다(번짐 없는 도트).
 function textBitmap (str: string, clr: string): { c: HTMLCanvasElement; adv: number } {
   const probe = canvasOf(1, 1).getContext('2d')!
   probe.font = FONT
@@ -37,16 +37,16 @@ function textBitmap (str: string, clr: string): { c: HTMLCanvasElement; adv: num
   g.font = FONT; g.fillStyle = clr; g.textBaseline = 'top'
   g.fillText(str, 1, 2)
   const d = g.getImageData(0, 0, c.width, c.height)
-  let top = c.height, bot = -1
+  let top = c.height, bot = -1, left = c.width, right = -1
   for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
     const i = (y * c.width + x) * 4 + 3
-    d.data[i] = d.data[i] >= 110 ? 255 : 0
-    if (d.data[i]) { if (y < top) top = y; bot = y }
+    d.data[i] = d.data[i] >= 128 ? 255 : 0
+    if (d.data[i]) { if (y < top) top = y; bot = y; if (x < left) left = x; if (x > right) right = x }
   }
   g.putImageData(d, 0, 0)
   if (bot < 0) return { c: canvasOf(1, 1), adv }
-  const out = canvasOf(c.width, bot - top + 1)
-  out.getContext('2d')!.drawImage(c, 0, -top)
+  const out = canvasOf(right - left + 1, bot - top + 1)
+  out.getContext('2d')!.drawImage(c, -left, -top)
   return { c: out, adv }
 }
 
@@ -88,7 +88,7 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
   // 글자: 가로는 글자 칸 가운데, 세로는 띠의 불투명한 부분 가운데.
   const bandTop = T - P.c.origin.y + ct, bandBot = T - P.c.origin.y + cb
   const ty = Math.round((bandTop + bandBot + 1 - t.c.height) / 2)
-  g.drawImage(t.c, L + 2 - x0 + Math.floor((t.adv - (t.c.width - 2)) / 2), ty - y0)
+  g.drawImage(t.c, L + Math.round((inner - t.c.width) / 2) - x0, ty - y0)
   return { c, ox: x0, oy: y0 }
 }
 
