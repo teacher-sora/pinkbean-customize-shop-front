@@ -5,7 +5,7 @@
 import { getFrameLayers, type ViewOpts } from './assemble'
 import { loadEffect, loadEffectIndex, loadMeta, type ListItem } from './data'
 import { preloadPaletteVariant, type PaletteParams } from './dye'
-import { loadImage } from './render'
+import { effectGroups, loadImage } from './render'
 
 const warmed = new Set<string>()
 
@@ -20,7 +20,7 @@ export function warmItem(item: ListItem, view: ViewOpts, palette?: PaletteParams
     if (eidx.has(String(parseInt(item.id, 10)))) {
       jobs.push(loadEffect(item.id).then((em) => {
         if (!em) return
-        return Promise.all(Object.values(em.groups).map((g) => (g.frames[0] ? loadImage(g.frames[0].png, true).catch(() => null) : null)))
+        return Promise.all(effectGroups(em).map((g) => (g.frames[0] ? loadImage(g.frames[0].png, true).catch(() => null) : null)))
       }))
     }
     await Promise.all(jobs)

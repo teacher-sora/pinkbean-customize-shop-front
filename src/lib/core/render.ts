@@ -74,6 +74,12 @@ function groupDraw(g: EffectGroup | undefined, anchors: EffectAnchors, elapsed: 
   const pt = g.pos === 1 ? anchors.brow : g.pos === 4 ? (anchors.navel ?? { x: 0, y: 0 }) : anchors.foot
   return { png: fr.png, origin: fr.origin, z: fr.z ?? g.z, ox: pt.x, oy: pt.y }
 }
+// 이펙트의 모든 묶음(두 번째 층 extra 까지) — 그림을 미리 받거나 염색할 때 빠뜨리지 않게 한 곳에서 모은다.
+// extra 를 빠뜨리면 미리보기가 그 그림을 기다리느라 첫 프레임에 멈췄다(체인지 버닝: 루시드 이펙트).
+export function effectGroups(meta: EffectMeta | null | undefined): EffectGroup[] {
+  if (!meta) return []
+  return [...Object.values(meta.groups), ...effectGroups(meta.extra)]
+}
 export function effectDraws(meta: EffectMeta | null | undefined, action: string, anchors: EffectAnchors, elapsed = 0): EffectDraw[] {
   if (!meta) return []
   const out: EffectDraw[] = []
