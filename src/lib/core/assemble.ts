@@ -18,6 +18,7 @@ export interface PlacedLayer extends Layer {
   slot: string
   tintable: boolean
   scale?: number // 일루전으로 키운 레이어의 배율(그리기가 nearest 로 키운다). x, y 는 키운 그림의 왼쪽 위
+  twinOf?: string // 내 뒤에 나의 복제(slot 'clone')면 원래 부위 — 발끝을 맞출 때 몸 · 신발만 보려고 둔다
 }
 
 export interface AssembleInput {
@@ -122,6 +123,10 @@ export const hasBackFrame = (bodyMeta: ItemMeta, opts: ViewOpts): boolean => get
 // Resolve the animation frame SEQUENCE for one item in the current view (key selection +
 // head ear-filter + face/back hide). Returns [] when the item shows nothing (e.g. face on back).
 // backFrame: 이 프레임만 뒷모습(isBackFrame) — 액션 이름은 앞모습이어도 뒤로 취급한다.
+// 무기가 이 보기에서 쓰는 프레임 키(자세가 있으면 '자세/동작') — weapons/motion.json 의 키와 같은 꼴.
+export function weaponActionKey(meta: ItemMeta, opts: ViewOpts): string {
+  return meta.stances?.length ? `${pickWeaponStance(meta.stances, opts.weaponMotion)}/${opts.action}` : opts.action
+}
 export function getFrameSeq(meta: ItemMeta, opts: ViewOpts, backFrame = false): Frame[] {
   const f = meta.frames as Record<string, any>
   const keys = Object.keys(f)
@@ -388,7 +393,7 @@ function applyIllusion(placed: PlacedLayer[], anchors: Record<string, Vec>, mark
   const hidesFx = !!ring && (ring.illusion!.kind === 'bigBody' || ring.illusion!.kind === 'transform')
   if (clone && !hidesFx) {
     const pv = groundOf(out) ?? foot, s = clone.illusion!.scale ?? 1, off = clone.illusion!.offset ?? { x: 0, y: 0 }
-    const twin = out.map((p) => ({ ...scaleAbout(p, pv, s), x: pv.x + (p.x - pv.x) * s + off.x, y: pv.y + (p.y - pv.y) * s + off.y, slot: 'clone' }))
+    const twin = out.map((p) => ({ ...scaleAbout(p, pv, s), x: pv.x + (p.x - pv.x) * s + off.x, y: pv.y + (p.y - pv.y) * s + off.y, slot: 'clone', twinOf: p.slot }))
     out = [...twin, ...out]
   }
   return out

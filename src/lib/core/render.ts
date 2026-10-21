@@ -235,13 +235,18 @@ export async function renderCharacter(
   // effects behind the body (z < 0)
   for (const fx of effs) if (fx.e.z < 0) drawEffect(fx)
 
-  // 내 뒤에 나: 복제(slot 'clone')의 맨 아래 픽셀을 본체의 맨 아래 픽셀과 같은 줄에 세운다(사용자 지시 — 모든 경우).
+  // 내 뒤에 나: 복제(slot 'clone')의 발 맨 아래 픽셀을 본체의 발 맨 아래 픽셀과 같은 줄에 세운다(사용자 지시 — 모든 경우, 게임과 같다).
   // assemble 은 발(몸 그림의 origin)을 기준으로 키우므로, 발보다 아래로 내려온 픽셀(신발 · 옷자락 · 탈것)은 복제에서 배율만큼 더
   // 내려간다 — 거대한 몸은 그 부분이 이미 3배라 크게 어긋났다. 그림 크기를 아는 여기서 그 차이만큼 복제를 올린다.
+  // 견주는 것은 **땅에 닿는 것**(몸 · 신발, 탈것을 탔으면 탈것, 변신이면 변신 그림)만이다 — 모든 레이어의 맨 아래를 견주면 발보다 아래로
+  // 내려온 무기 · 망토 · 긴 머리를 맞추게 되어, 그것이 3배로 더 내려간 복제의 발이 위로 떴다.
   let cloneDy = 0
   if (placed.some((p) => p.slot === 'clone')) {
+    const ground = (slot: string | undefined, name: string) => slot === 'body' || slot === 'shoes' || slot === 'ring' || (slot === 'riding' && name.startsWith('mount'))
+    const hasGround = placed.some((p) => p.slot !== 'clone' && ground(p.slot, p.name))
     let self = -Infinity, twin = -Infinity
     for (const p of placed) {
+      if (hasGround && !ground(p.slot === 'clone' ? p.twinOf : p.slot, p.name)) continue
       const src = opts.override?.get(p.png) ?? imgs.get(p.png)
       if (!src) continue
       const ob = opaqueBottom(src)
