@@ -18,7 +18,7 @@ import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
-import { CARD_FRACTION, CARD_MARGIN, thumbView } from '@/lib/shopData'
+import { CARD_FRACTION, CARD_MARGIN, CHAT_NAME, CHAT_TEXT, thumbView } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
 import { CARD_FRAC_HAIR, DyeSprite } from './render/DyeSprite'
 
@@ -249,9 +249,11 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
     // 마네킹 중심을 셀 중앙에 고정(anchor 보정). flip=오른쪽 시선. 분수 scale=디바이스 해상도.
     const cm = item.slot === 'riding' && !!item.ridingCenterMount // 메탈아머는 메카(마운트) 중앙정렬
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, shouldCancel: () => cancelled }).catch(() => {})
+    // 명찰 · 말풍선 카드(dev 전용)는 그 아이템을 단 모습 — 목록 아이템이 조각 정보를 들고 있다.
+    const chat = item.chatUi ? { [item.chatUi.kind === 'nameTag' ? 'tag' : 'balloon']: item.chatUi, name: CHAT_NAME, text: CHAT_TEXT } : undefined
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, chat, shouldCancel: () => cancelled }).catch(() => {})
     // 우클릭 복사용 입력 — 화면과 같은 값(중심 오프셋·반전·라이딩 정렬)으로 다시 그린다(lib/canvasExport.modelShotBlob).
-    shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
+    shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, chat, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
     return () => { cancelled = true }
   }, [placed, effs, parts, flip, dims, gaze, ovr])
 

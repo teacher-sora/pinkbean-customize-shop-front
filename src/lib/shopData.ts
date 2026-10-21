@@ -2,7 +2,9 @@
 // 미리보기 고정 박스. 코어(src/lib/core)의 assemble/render/data 위에서 동작한다.
 
 import type { AssembleInput, ViewOpts } from '@/lib/core/assemble'
-import { CASHFX_FILE, RING_FILE, type AnimaRace, type ListItem, type SlotSummary } from '@/lib/core/data'
+import type { ChatDraw } from '@/lib/core/chatUi'
+import { CASHFX_FILE, RING_FILE, type AnimaRace, type ItemMeta, type ListItem, type SlotSummary } from '@/lib/core/data'
+import type { Cat } from '@/lib/catalog'
 
 // 시각적 중복 폴딩:
 //  - 헤어/성형(colorGroup 있음): 그룹당 1개, 대표 = 그룹 내 최저 id(= 검정 color 0). 나머지 색은
@@ -36,6 +38,7 @@ export const CAT_TO_SLOT: Record<string, string> = {
   eyeacc: 'eyeAcc', earring: 'earring', overall: 'longcoat', top: 'coat', bottom: 'pants',
   shoes: 'shoes', gloves: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
   ring: 'ring', effect: 'effect', riding: 'riding',
+  nametag: 'nameTag', balloon: 'chatBalloon', // dev 전용(CHAT_CATS)
 }
 export const SLOT_TO_CAT: Record<string, string> = Object.fromEntries(
   Object.entries(CAT_TO_SLOT).map(([c, s]) => [s, c]),
@@ -47,6 +50,7 @@ export const EQUIP_SLOTS = [
   'ring', // 일루전 링 — 그릴 레이어 대신 표지 레이어(Layer.illusion)로 캐릭터를 키우거나 바꾼다(assemble.applyIllusion)
   'effect', // 캐시 이펙트 — 그릴 레이어가 없고(빈 meta) 이펙트(effects/<id>.json)만 그린다
   'riding', // 탑승 — 마운트/모프 레이어를 코디처럼 합성
+  'nameTag', 'chatBalloon', // 명찰 · 말풍선(dev 전용 — 그릴 레이어 없이 core/chatUi 가 덧그린다)
 ] as const
 
 /* ── 라이딩(탑승) 공통 규칙 ───────────────────────────────────────────────
@@ -66,7 +70,22 @@ export const ridingActionSet = (it: RidingOpts) => (it?.ridingActions?.length ? 
 export const ridingSeatedSet = (it: RidingOpts) => (it?.ridingSeated?.length ? new Set(it.ridingSeated) : RIDING_SEATED_DEFAULT)
 // 슬롯 → 목록 파일. 라이딩(프론트 public)과 반지 · 이펙트(CDN rings/ · cashfx/ — 카탈로그 index 밖)만 갈라지는 지점이 **여기 하나**다.
 export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null): string | undefined =>
-  (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
+  CHAT_FILES[slot] ?? (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
+
+/* ── 명찰 · 말풍선 반지(dev 전용 실험) ──────────────────────────────────────
+ * 데이터는 front public/dev/chatui(벚꽃 한 세트)이고, main 병합 때 빠진다(scripts/merge-dev-to-main.sh 의 DEV_ONLY).
+ * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats) — 운영에는 파일이 없어 부위 탭 · 코디 정보 칩이 생기지 않는다.
+ * 그리기는 core/chatUi(renderCharacter 의 chat). 이름과 말은 아직 고정값이다. */
+export const CHAT_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }]
+export const CHAT_FILES: Record<string, string> = { nameTag: '/dev/chatui/nametag.json', chatBalloon: '/dev/chatui/balloon.json' }
+export const CHAT_NAME = '핑크빈'
+export const CHAT_TEXT = '안녕하세요'
+// 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
+export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
+  const ui = (slot: string) => { const it = equipped[slot]; return !it || hidden[slot] ? undefined : it.chatUi ?? metas?.get(it.id)?.chatUi }
+  const tag = ui('nameTag'), balloon = ui('chatBalloon')
+  return tag || balloon ? { tag, balloon, name: CHAT_NAME, text: CHAT_TEXT } : undefined
+}
 
 // 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아
 // 스프라이트는 div overflow 로만 잘린다. 모델(마네킹) 높이 = fraction × divH 로 장비·카드크기 무관 일정.

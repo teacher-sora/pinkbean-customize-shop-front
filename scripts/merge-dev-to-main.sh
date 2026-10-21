@@ -10,7 +10,7 @@
 set -e
 
 # 운영에 절대 올라가면 안 되는 경로. 늘어나면 여기에만 추가한다.
-DEV_ONLY="src/app/viewer"
+DEV_ONLY="src/app/viewer public/dev"
 
 cd "$(dirname "$0")/.."
 

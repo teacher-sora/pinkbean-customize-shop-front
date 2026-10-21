@@ -5,13 +5,12 @@
 
 import clsx from 'clsx'
 import { useEffect, useRef } from 'react'
-import { CATS } from '@/lib/catalog'
 import { PLAZA_FILTERS } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import { IconTab } from '../ui/Icons'
 import styles from './nav.module.css'
 
-const PARTS = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }, ...CATS]
+const MULTI = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }]
 export const TABS = [
   { id: 'codi', label: '코디', short: '코디' },
   { id: 'search', label: 'AI 코디 검색', short: 'AI 검색' },
@@ -71,7 +70,7 @@ export function CatTabsM() {
   }, [s.activeCat, railRef])
   return (
     <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label="부위">
-      {PARTS.map((p) => {
+      {[...MULTI, ...s.cats].map((p) => {
         const on = s.activeCat === p.id
         return (
           <button key={p.id} type="button" onClick={() => s.setActiveCat(p.id)} aria-pressed={on} title={p.label}
@@ -90,7 +89,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   const plaza = s.primary === 'share'
   const chips = plaza
     ? PLAZA_FILTERS.map((f) => ({ id: f.id as string, label: f.label, on: s.plazaFilter === f.id, pick: () => s.setPlazaFilter(f.id) }))
-    : PARTS.map((p) => ({ id: p.id, label: p.label, on: s.activeCat === p.id, pick: () => pickPart(p.id) }))
+    : [...MULTI, ...s.cats].map((p) => ({ id: p.id, label: p.label, on: s.activeCat === p.id, pick: () => pickPart(p.id) }))
   // 코디 정보 / 염색 · 프리셋에서 부위를 바꾸면 그 부위의 아이템을 보려는 것이다 — 코디 탭으로 넘어가 바로 보인다(사용자 지시).
   const pickPart = (id: string) => {
     s.setActiveCat(id)

@@ -5,6 +5,7 @@
 // (world 0,0) is nailed to a FIXED canvas coordinate inside a fixed world box,
 // so the body never shifts when hair/hats/weapons change extent. All scaling is
 // integer (x1/x2/x3) with smoothing off and integer pixel snapping -> crisp dots.
+import { drawChat, prepareChat, type ChatDraw } from './chatUi'
 import { drawParticles, type ParticleDraw } from './particle'
 import { spriteUrl, type EffectGroup, type EffectMeta, type Vec } from './data'
 import type { PlacedLayer } from './assemble'
@@ -109,6 +110,7 @@ export interface RenderOpts {
   backImage?: string                 // sprite drawn BEHIND the body (ultimate fallback: no body & no effect)
   effects?: EffectDraw[]             // item effects (망토 등) composited around the body (each carries ox/oy)
   particles?: ParticleDraw[]         // 파티클(제네시스 무기 등) — 입자는 sim 이 들고, 그림은 desc.tex.png. z 음수 = 캐릭터 뒤
+  chat?: ChatDraw                    // 명찰 · 말풍선(dev 전용, core/chatUi) — 모든 것 위에, 시선과 무관하게 뒤집지 않고 그린다
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
   centerX?: boolean                  // pin the body NAVEL to a fixed box point (center X, anchor.y) in BOTH axes →
                                      //   body never moves regardless of sprite/equipment/effect size (body-based, not bbox)
@@ -169,6 +171,7 @@ export async function renderCharacter(
 
   // Image loads above are async; if a newer render started while we awaited (fast item
   // swaps), bail BEFORE touching the canvas so this stale pass can't overwrite it.
+  const chat = await prepareChat(opts.chat).catch(() => [])
   if (opts.shouldCancel?.()) return
 
   // 정수 배율이면 확대가 nearest 로 완벽히 선명. 카드/미리보기는 캔버스를 "디바이스 픽셀" 해상도로 맞추려고
@@ -280,4 +283,5 @@ export async function renderCharacter(
   for (const fx of effs) if (fx.e.z >= 0) drawEffect(fx)
   for (const x of parts) if (x.p.z >= 0) drawPart(x)
   ctx.restore()
+  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width })
 }

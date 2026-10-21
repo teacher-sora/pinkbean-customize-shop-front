@@ -373,8 +373,8 @@ export const footOf = (placed: PlacedLayer[]): Vec | null => {
   const k = b?.scale ?? 1
   return b ? { x: b.x + b.origin.x * k, y: b.y + b.origin.y * k } : null
 }
-// 딛고 선 바닥의 월드 좌표 — 탈것을 탔으면 탈것의 origin(라이딩의 바닥), 아니면 발.
-const groundOf = (placed: PlacedLayer[]): Vec | null => {
+// 딛고 선 바닥의 월드 좌표 — 탈것을 탔으면 탈것의 origin(라이딩의 바닥), 아니면 발. 명찰 · 말풍선(chatUi)도 이 점을 기준으로 놓인다.
+export const groundOf = (placed: PlacedLayer[]): Vec | null => {
   const m = placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount'))
   return m ? { x: m.x + m.origin.x * (m.scale ?? 1), y: m.y + m.origin.y * (m.scale ?? 1) } : footOf(placed)
 }

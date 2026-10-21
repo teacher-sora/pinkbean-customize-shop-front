@@ -58,6 +58,7 @@ src/lib/core/           합성·염색·가림·렌더 코어(README 가 있다)
 src/lib/                shopData(부위·라이딩 규칙) · catalog(정적 표) · plaza* · shareCode · shareImage · uiState · nameSearch · canvasExport · safeText …
 src/assets/             배경 장면 그림(scene/*.webp — parser 가 만든다)과 광장 배경
 public/riding/          라이딩의 목록·메타·그림(parser 의 Wcr2.exe --mount 가 만든다)
+public/dev/             dev 전용 실험 데이터 — main 에 없다(병합 스크립트 · 훅 · 워크플로가 뺀다). 지금은 chatui/(명찰 · 말풍선 한 세트)
 supabase/               광장 스키마 SQL(번호순)
 scripts/merge-dev-to-main.sh
 ```
@@ -107,6 +108,9 @@ scripts/merge-dev-to-main.sh
 - **이펙트의 두 번째 층(`extra`)도 미리 받는다**(`render.effectGroups` — 미리보기 · 염색 · 카드 · 예열이 모두 쓴다). 빠뜨리면 미리보기가 그 그림을 기다리느라 첫 프레임에 멈췄다(체인지 버닝: 루시드 이펙트).
 - **파티클은 계속 흐른다**(`lib/core/particle.ts` — 제네시스 무기의 붉은 파장과 떠오르는 검붉은 점, 사용자 지시). 데이터는 CDN `particles/index.json`(아이템 → 동작별 자리)과 `particles/<이름>.json`(뿌리는 규칙 · 입자 그림, parser `extract-particles.cjs`). 움직임은 WzComparerR2 MapRender 의 ParticleSystem 을 옮겼다: 1초에 total / 평균 수명 개를 뿌려 total 개까지 살리고, 입자마다 시작 · 끝 색 · 크기를 (값 ± 폭)에서 뽑아 수명 동안 바꾼다. 알파는 중간점(MiddlePoint)을 지나며 바뀐다. 색은 ARGB 정수이고 그림에 곱한다. 붙는 자리는 **발 + 원본 노드의 origin**(제네시스는 (0,-40) — 가슴께, 게임 화면으로 맞췄다). 원본의 posX/posY(-200, 60)는 만드는 도구의 자리값이라 쓰지 않는다. z 가 음수면 캐릭터 뒤다. 미리보기는 입자를 시계만큼 흘리고 그때마다(약 30fps) 다시 그린다. 처음 만들 때 한 바퀴 돌려 두어 이미 퍼진 모습으로 시작한다. 카드 · 프리셋 · 광장 · 공유 · 복사 그림은 다 퍼진 한 장(`stillSim`)이다. 무기 이펙트를 끄거나, 무기를 숨기는 링(거대한 몸 · 변신)이면 그리지 않는다. 동작에 그 파티클이 없으면 서기의 것을 쓴다(게임에서 공격 중에도 파장이 이어진다).
 - **이펙트 부위(캐시 이펙트 — 내가 바로 스타 등)는 레이어 없이 이펙트만 그린다.** 방패와 라이딩 사이의 부위이고(`CATS` 의 `effect`), 장비와 겹치지 않으며 염색할 수 없다(`dyeMode: 'none'` — 카드에 염색 버튼이 없고, 코디 정보는 '염색할 수 없어요'를 보인다). 데이터는 CDN `cashfx/list.json`(목록 — `shopData.slotFile` 이 고른다) · `meta/<id>.json`(frames 가 빈 자리표시) · `effects/<id>.json`(망토 · 무기 이펙트와 같은 `EffectMeta`)이다(parser `Wcr2.exe --cashfx` → `scripts/cashfx-build.py`). 이펙트 색인은 `effects/index.json` 에 이 목록의 id 를 합친 것이다(`data.loadEffectIndex`). 그래서 미리보기 · 카드 · 프리셋 · 광장 · 염색 창이 기존 이펙트 그리기를 그대로 쓴다. 캐시 이펙트는 **거의 다 캐릭터 맨 뒤**다. 원본 묶음에 붙는 자리(`pos`)가 **없으면** 원본 z 를 그대로 써서, z 가 0 이상(또는 없음 → 2)이면 모든 레이어 앞이다 — 나는 네 선물 · 여행을 떠나요 판넬 · 행복한 겨울 · 사원증 등 22개. `pos` 가 있으면 원본 z 가 2 여도 뒤다(음수면 그 값, 아니면 -1) — parser `cashfx-build.layer_z`, 사용자 지시. 이펙트끼리는 z 순서로 쌓는다(`render` 가 정렬 — 망토 · 무기 이펙트도 함께). `EffectMeta` 에 더 붙는 것: 프레임마다의 `z`, 따라다니는 겹(`trail` — 멈춰 서면 캐릭터 자리로 모이므로 함께 그린다), 두 번째 층(`extra` — effect2), 묶음 돌리기(`cycle`). 붙는 자리 `pos` 는 0 · 3 · 없음 = 발, 1 = 이마, 4 = 배꼽(호영 꼬리)이다(그림 위치로 맞췄다). 넣지 않는 것: 이름 없는 것, '월드 베스트 ○○', 그림이 없는 코드 이펙트(잔상 · 피니시 어택) — 사용자 지시. 내 뒤에 나는 넣는다 — 지금 캐릭터를 3배로 복제해 뒤에 세운다(아래 '반지 부위'의 일루전과 같은 길, 사용자 지시). Maple Inc. 사원증은 레벨 구간 카드 세 장을 3초마다 돌리고(`cycle`), 이름 '핑크빈' · 레벨 200 · 250 · 300 을 원본 글자 칸에 새겨 둔다(사용자 지시).
+- **명찰 · 말풍선 반지는 dev 전용 실험이다**(`lib/core/chatUi`, `shopData` 의 `CHAT_CATS` · `chatDrawOf`, 데이터 `public/dev/chatui` — 벚꽃 한 세트). 목록 파일이 있을 때만 부위(반지 뒤에 명찰 · 말풍선)가 생긴다 — 운영에는 파일이 없어 부위 탭 · 코디 정보 칩이 나오지 않는다(`ShopContext` 의 `cats`). 그릴 레이어가 없고 `renderCharacter` 의 `chat` 이 모든 것 위에 덧그린다(시선이 오른쪽이어도 글자는 뒤집지 않는다). 미리보기 · 목록 카드 · 복사 이미지가 같이 쓴다.
+  - 조각(UI.wz `NameTag.img` · `ChatBalloon.img`)은 원본 origin 대로 놓는다 — origin 이 글자 칸(명찰) · 안쪽 칸(말풍선)의 모서리 기준이라 그대로 이으면 조각끼리 겹치지 않는다. 띠 조각은 크기 단위로 이어 붙여 안쪽 칸은 조각 크기의 배수다. **꼬리(arrow)는 아래 띠 조각 하나를 대신한다** — 폭이 같고 윗줄 8줄이 띠와 같다. 왜: 띠 위에 겹쳐 그리면 반투명(알파 204)이 두 번 쌓여 꼬리 둘레만 진했다. 꼬리가 가운데 칸에 정확히 들어가게 칸 수는 짝수다.
+  - 글자는 돋움 12px, 색은 원본 `clr`(ARGB). 알파를 0/255 로 끊어 번짐 없는 도트로 그린다(돋움은 윈도우에 비트맵이 있어 게임과 같다). 말풍선은 `이름 : 말`, 이름 · 말은 아직 고정값(핑크빈 · 안녕하세요). 명찰은 발끝 2px 아래, 말풍선은 안쪽 칸 아래 끝이 발끝 85px 위(게임 클라이언트의 고정값)다.
 - **반지 부위(일루전 링)와 내 뒤에 나는 `assemble` 의 마지막 단계(`applyIllusion`) 한 곳에서 그린다.** 반지는 방패와 이펙트 사이의 부위이고(`CATS` 의 `ring`), 일루전 링 137개만 있다(명찰 · 말풍선 반지는 없다 — 사용자 지시). 데이터는 CDN `rings/list.json`(목록 — `shopData.slotFile`) · `meta/<id>.json`(parser `Wcr2.exe --rings` → `scripts/ring-build.py`). 원본에 그림이 없는 일루전은 프레임에 **표지 레이어**(`Layer.illusion`, png '')를 두어, 동작 · 프레임을 고르는 길을 다른 아이템과 같이 탄다. 그래서 미리보기 · 카드 · 프리셋 · 광장 · 공유 그림이 모두 그대로 반영된다. 종류:
   - 변신(135개): 캐릭터 대신 반지의 그림(root 레이어, 발에 origin). 미리보기의 박자는 반지 그림이 정한다(`PreviewModel` — 그림 수 · 박자가 몸과 다르다).
   - 거대한 머리: 머리 · 헤어 · 성형 · 모자 · 얼굴장식 · 눈장식 · 귀고리 · 형상 변이의 귀 · 뿔을 목(neck) 기준 2배. 이마에 붙는 이펙트 자리도 옮긴다.
@@ -333,7 +337,7 @@ scripts/merge-dev-to-main.sh
 - **확인은 dev 사이트에서 한다.** dev 에 올려 `dev.pinkbean-customize.com` 에서 보고, 운영에는 읽기만 하는 확인만 한다. 운영에서 시험 글·좋아요·댓글을 만들지 않는다. dev 에서 만든 시험 데이터는 끝나면 지운다.
 - **도메인.** 정본은 apex 다. `www` → apex 308 은 Vercel 의 도메인 설정이 한다. **`middleware` 에 apex → www 같은 리다이렉트를 넣지 않는다**(둘이 겹치면 끝없이 돈다). 왜 apex 가 정본인가: 사용자의 프리셋이 apex 출처의 localStorage 에 있다.
 - 분석: Vercel Analytics · Speed Insights, 넥슨 Open API 분석 스크립트(`app/layout.tsx`). 대표 이미지(OG)는 Vercel Blob 주소를 쓴다.
-- 빌드·타입 검사를 하는 CI 는 없다. 워크플로는 `/viewer` 가 main 에 없는지만 본다(`guard-dev-only.yml`).
+- 빌드·타입 검사를 하는 CI 는 없다. 워크플로는 `/viewer` · `public/dev` 가 main 에 없는지만 본다(`guard-dev-only.yml`).
 
 ### 4-2. 환경변수
 

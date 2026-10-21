@@ -13,7 +13,7 @@ import { useSelectedLayoutSegment } from 'next/navigation'
 import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
 import { nameMatcher } from '@/lib/nameSearch'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
-import { CATS, MIX_PALETTE, type Preset, type Pv } from '@/lib/catalog'
+import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
@@ -27,7 +27,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
-import { CAT_TO_SLOT, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_FILES, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -208,6 +208,7 @@ const stripColorPrefix = (name: string, color: string | null) => (color && name.
 export interface ShopCtx {
   // 데이터
   index: Index | null
+  cats: Cat[] // 화면에 보이는 부위(CATS + dev 에서만 명찰 · 말풍선 — CHAT_CATS)
   catLoading: boolean
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
   search: string; setSearch: Dispatch<string>
@@ -538,6 +539,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (isMultiCat(activeCat)) { for (const c of CATS) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]); return }
     if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat])
   }, [activeCat, ensureSlot])
+
+  // 명찰 · 말풍선(dev 전용): 목록 파일이 있을 때만 부위를 더한다 — 운영에는 파일이 없다(main 병합 때 빠진다). 반지 바로 뒤.
+  const [chatOn, setChatOn] = useState(false)
+  useEffect(() => { fetch(CHAT_FILES.nameTag, { method: 'HEAD' }).then((r) => setChatOn(r.ok)).catch(() => {}) }, [])
+  const cats = useMemo(() => {
+    if (!chatOn) return CATS
+    const i = CATS.findIndex((c) => c.id === 'ring') + 1
+    return [...CATS.slice(0, i), ...CHAT_CATS, ...CATS.slice(i)]
+  }, [chatOn])
 
   // 피부(skin) = index.base.tones 를 합성 리스트로. 그 외는 lists[slot].
   const skinList = useMemo<ListItem[]>(() => {
@@ -1949,7 +1959,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const onPageKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } else if (e.key === 'Escape') e.currentTarget.blur() }
 
   const value: ShopCtx = {
-    index, catLoading, activeList, search, setSearch,
+    index, cats, catLoading, activeList, search, setSearch,
     genderFilter, setGenderFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,

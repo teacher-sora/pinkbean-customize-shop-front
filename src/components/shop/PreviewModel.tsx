@@ -20,11 +20,12 @@ import { effectDraws, effectGroups, loadImage, renderCharacter } from '@/lib/cor
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
+import type { ChatDraw } from '@/lib/core/chatUi'
 import { useHeroView } from '@/lib/heroView'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
+import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
 import { peekSavedZoom, useShop, type DotOffsets } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
@@ -85,7 +86,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 우클릭 "이미지 복사"용 스냅샷 — 화면 미리보기와 별개로, 정사각형·큰 모델 이미지를 즉석에서 그리기 위한
   // 현재 프레임(정지=0프레임) 합성 입력. draw effect 가 매번 최신값으로 갱신한다.
   const copyRef = useRef<{
-    placed: PlacedLayer[]; effects: EffectDraw[]; particles: ParticleDraw[]; flip: boolean
+    placed: PlacedLayer[]; effects: EffectDraw[]; particles: ParticleDraw[]; chat?: ChatDraw; flip: boolean
     centerXOnly: boolean; centerMount: boolean; override: Map<string, HTMLCanvasElement>
     cDx: number; cDy: number
   } | null>(null)
@@ -303,6 +304,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 이펙트 표시 토글과는 상관없다(동작이다).
   const floating = useMemo(() => pv.action !== 'basic' && (V.action === 'stand1' || V.action === 'stand2')
     && Object.entries(equipped).some(([slot, it]) => !!it && !hidden[slot] && !!floatItems[it.id]), [pv.action, V.action, equipped, hidden, floatItems])
+
+  // 명찰 · 말풍선(dev 전용) — 그릴 레이어가 없고 renderCharacter 가 덧그린다(core/chatUi).
+  const chat = useMemo(() => chatDrawOf(equipped, hidden, metas), [equipped, hidden, metas])
 
   const effList = useMemo(() => {
     const out: EffectMeta[] = []
@@ -555,7 +559,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
       const seq = ++drawSeqRef.current
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
@@ -567,6 +571,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           placed: f0.placed,
           effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow, navel: f0.navel }, 0)) : [],
           particles: hasPart ? placeParticles(partSpots, partDescs, f0.foot, (d) => stillSim(d)) : [],
+          chat,
           flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides,
           cDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx,
           cDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy,
@@ -590,7 +595,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       cancelled = true; cancelAnimationFrame(raf)
       if (clock.running) { clock.elapsed = nowElapsed(); clock.since = performance.now(); clock.running = false }
     }
-  }, [spec, effList, partSpots, partDescs, simOf, floating, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, zoomMults, src, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
+  }, [spec, effList, chat, partSpots, partDescs, simOf, floating, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, zoomMults, src, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
 
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.
@@ -598,7 +603,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const makeBlob = useCallback(async (): Promise<Blob | null> => {
     const snap = copyRef.current
     if (!snap) return null
-    return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
+    return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
   }, [])
 
   // 우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등)로 복사/저장 메뉴. wrap 은 항상 존재하므로 여기 바인딩.
