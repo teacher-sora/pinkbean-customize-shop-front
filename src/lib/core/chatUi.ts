@@ -122,21 +122,31 @@ function opaqueRows (atlas: HTMLImageElement, p: ChatPart): [number, number] {
   return top < 0 ? [0, p.h - 1] : [top, bot]
 }
 
-type Piece = [ChatPart, number, number, number?] // 조각 · 놓을 자리(origin 이 닿는 점) · 그릴 폭(이어 붙일 때 끝에서 자른다)
-// 조각들을 한 장에 그린다(겹치는 조각이 없다). 기준점(0,0)에서 그림 왼쪽 위까지 = (ox, oy).
+// 그릴 조각: 그림 위 왼쪽 위 자리(x, y)와 조각 안에서 잘라 쓸 범위((sx, sy) 부터 w × h — 이어 붙일 때 양끝에서 자른다).
+type Piece = { p: ChatPart; x: number; y: number; sx?: number; sy?: number; w?: number; h?: number }
+const at = (p: ChatPart, ax: number, ay: number): Piece => ({ p, x: ax - p.origin.x, y: ay - p.origin.y }) // origin 이 (ax, ay) 에 닿게
+const right = (q: Piece) => q.x + (q.w ?? q.p.w), bottom = (q: Piece) => q.y + (q.h ?? q.p.h)
+// 조각 p 를 [a, b) 에 조각 폭 단위로 깐다. 'start' = a 에서 무늬가 시작(끝 조각은 b 에서 자른다),
+// 'end' = b 에서 무늬가 끝난다(첫 조각은 왼쪽을 자른다 — 위 장식 · 꼬리 왼쪽 띠가 장식 쪽에서 무늬가 이어지게).
+function hfill (out: Piece[], p: ChatPart, a: number, b: number, y: number, align: 'start' | 'end' = 'start', h = p.h, sy = 0) {
+  if (align === 'start') for (let x = a; x < b; x += p.w) out.push({ p, x, y, sy, w: Math.min(p.w, b - x), h })
+  else for (let x = b; x > a; x -= p.w) { const l = Math.max(a, x - p.w); out.push({ p, x: l, y, sx: l - (x - p.w), sy, w: x - l, h }) }
+}
+const vfill = (out: Piece[], p: ChatPart, x: number, a: number, b: number) => { for (let y = a; y < b; y += p.h) out.push({ p, x, y, h: Math.min(p.h, b - y) }) }
+// 조각들을 한 장에 그린다. 기준점(0,0)에서 그림 왼쪽 위까지 = (ox, oy).
 function compose (A: HTMLImageElement, pieces: Piece[], extra: (g: CanvasRenderingContext2D, x0: number, y0: number) => void): Bitmap {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
-  for (const [p, x, y, w = p.w] of pieces) { x0 = Math.min(x0, x - p.origin.x); y0 = Math.min(y0, y - p.origin.y); x1 = Math.max(x1, x - p.origin.x + w); y1 = Math.max(y1, y - p.origin.y + p.h) }
-  const c = canvasOf(x1 - x0, y1 - y0), g = c.getContext('2d')!
+  const live = pieces.filter((q) => (q.w ?? q.p.w) > 0 && (q.h ?? q.p.h) > 0)
+  const x0 = Math.min(...live.map((q) => q.x)), y0 = Math.min(...live.map((q) => q.y))
+  const c = canvasOf(Math.max(...live.map(right)) - x0, Math.max(...live.map(bottom)) - y0), g = c.getContext('2d')!
   g.imageSmoothingEnabled = false
-  for (const [p, x, y, w = p.w] of pieces) if (w > 0) g.drawImage(A, p.x, p.y, w, p.h, x - p.origin.x - x0, y - p.origin.y - y0, w, p.h)
+  for (const q of live) { const w = q.w ?? q.p.w, h = q.h ?? q.p.h; g.drawImage(A, q.p.x + (q.sx ?? 0), q.p.y + (q.sy ?? 0), w, h, q.x - x0, q.y - y0, w, h) }
   extra(g, x0, y0)
   return { c, ox: x0, oy: y0 }
 }
-// 띠 조각 p 를 [from, to) 에 조각 폭 단위로 이어 붙인다(마지막 조각은 to 에서 자른다). 무늬는 from 에서 새로 시작한다.
-function tile (out: Piece[], p: ChatPart, from: number, to: number, y: number) { for (let x = from; x < to; x += p.w) out.push([p, x, y, Math.min(p.w, to - x)]) }
 
 // 명찰. 기준점(0,0) = 발끝. 글자 칸(높이 12)의 위 = TAG_TEXT, 가로 가운데 = 0.
+// 양끝(w · e)은 origin 대로 글자 칸 양옆에 두고, 가운데(c)는 두 조각이 실제로 그려진 사이만 메운다 — origin 이 조각 폭과 몇 px
+// 어긋난 디자인도 겹치거나(진한 줄) 비지(빈 틈) 않는다.
 async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
   const A = await loadImage(ui.atlas, true), P = ui.parts
   const t = textBitmap(name, ui.clr)
@@ -146,13 +156,14 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
   if (ani.length) {
     // 이름이 들어가는 가장 작은 층(없으면 가장 넓은 층). origin = 글자 칸 가운데 위.
     const i = (ui.aniFit ?? []).findIndex((f) => t.adv <= f)
-    pieces.push([P[ani[i < 0 ? ani.length - 1 : i]], 0, T])
+    pieces.push(at(P[ani[i < 0 ? ani.length - 1 : i]], 0, T))
   } else {
-    const inner = t.adv + 4 // 글자 칸 = 글자 폭 + 양옆 2px
+    // 글자 칸 = 글자 폭 + 양옆 2px. 이름이 아주 짧아도 양끝 조각이 안쪽으로 들어온 만큼은 남겨 서로 겹치지 않게.
+    const inner = Math.max(t.adv + 4, P.w.w - P.w.origin.x + P.e.origin.x)
     const L = -Math.floor(inner / 2), R = L + inner
-    pieces.push([P.w, L, T])
-    tile(pieces, P.c, L, R, T)
-    pieces.push([P.e, R, T])
+    const w = at(P.w, L, T), e = at(P.e, R, T)
+    hfill(pieces, P.c, right(w), e.x, T - P.c.origin.y)
+    pieces.push(w, e)
   }
   // 글자: 가로는 잉크를 가운데에, 세로는 글자 칸의 기준선에 — 띠가 아니라 글자 칸을 기준으로 놓는다(띠는 origin 이 글자 칸에 맞춘다).
   return compose(A, pieces, (g, x0, y0) => g.drawImage(t.c, -Math.floor(t.c.width / 2) - x0, T + t.top - y0))
@@ -170,6 +181,8 @@ function opaqueBottom (A: HTMLImageElement, p: ChatPart): number {
 // 말풍선. 기준점(0,0) = 발끝. 안쪽 칸 높이 = 옆 띠 조각 높이의 배수.
 // 안쪽 칸 폭: 글이면 가장 긴 줄 / 조각 + 2 칸, 이모티콘이면 그 크기가 들어가는 칸 수(꼬리 양옆에 띠가 한 칸씩은 남게).
 // 위 장식이 있으면 [띠 k 개][장식][띠 k 개]로 잡는다.
+// 네 모서리는 origin 대로 안쪽 칸 모서리에 둔다. 띠는 이웃한 두 모서리가 실제로 그려진 사이를, 안쪽은 네 띠가 그려진 사이를 메운다 —
+// origin 이 조각 크기와 어긋난 디자인(안쪽으로 들어온 모서리, 1px 어긋난 띠, 안쪽 조각 origin 7 등)도 겹치거나 비지 않는다.
 async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap> {
   const A = await loadImage(ui.atlas, true), P = ui.parts
   const E = emo ? await loadImage(emo.png, true) : null
@@ -177,26 +190,42 @@ async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap
   const xt = P.n.w, yt = P.w.h
   const contentW = E ? E.width : Math.max(0, ...lines.map((l) => l.adv))
   const contentH = E ? E.height : lines.length * LINE + (lines.length - 1) * GAP
-  const need = Math.max((E ? Math.ceil(contentW / xt) : Math.floor(contentW / xt) + 2) * xt, P.arrow ? P.arrow.w + 2 * P.s.w : 0)
+  const need = Math.max((E ? Math.ceil(contentW / xt) : Math.floor(contentW / xt) + 2) * xt, P.arrow ? 2 * (P.arrow.w + P.s.w) : 0)
   const hw = P.head?.w ?? 0
   const k = P.head ? Math.max(1, Math.ceil((need - hw) / (2 * xt))) : 0
   const W = P.head ? 2 * k * xt + hw : Math.max(2, Math.ceil(need / xt)) * xt
-  const H = Math.max(1, Math.ceil(contentH / yt)) * yt
+  // 높이: 위 · 아래 띠(와 모서리)가 안쪽으로 들어오는 만큼은 늘 남긴다 — 위 띠가 안쪽 깊이 내려오는 옛 디자인(황금의 파리)이
+  // 한 줄짜리 낮은 말풍선에서 아래 띠와 겹치지 않게.
+  const intr = Math.max(...[P.n, P.nw, P.ne].map((q) => q.h - q.origin.y)) + Math.max(...[P.s, P.sw, P.se].map((q) => q.origin.y))
+  const H = Math.max(Math.max(1, Math.ceil(contentH / yt)), Math.ceil(intr / yt)) * yt
   const L = -Math.floor(W / 2), R = L + W, B = 0, T = -H
+  const nw = at(P.nw, L, T), ne = at(P.ne, R, T), sw = at(P.sw, L, B), se = at(P.se, R, B)
+  const ny = T - P.n.origin.y, sy = B - P.s.origin.y
+  const wx = L - P.w.origin.x, ex = R - P.e.origin.x
   const pieces: Piece[] = []
-  for (let y = T; y < B; y += P.c.h) tile(pieces, { ...P.c, h: Math.min(P.c.h, B - y) }, L, R, y) // 안쪽
+  // 안쪽: 옆 띠 사이 × 위 · 아래 띠 사이. 모서리가 안쪽으로 들어온 줄에서는 그 모서리 옆부터 메운다(줄을 모서리 높이에서 끊는다).
+  const cx0 = wx + P.w.w, cx1 = ex, cy0 = ny + P.n.h, cy1 = sy
+  const cuts = [...new Set([cy0, cy1, ...[bottom(nw), bottom(ne), sw.y, se.y].filter((v) => v > cy0 && v < cy1)])].sort((a, b) => a - b)
+  for (let i = 0; i + 1 < cuts.length; i++) {
+    const ya = cuts[i], yb = cuts[i + 1]
+    const xa = Math.max(cx0, ya < bottom(nw) ? right(nw) : -Infinity, ya >= sw.y ? right(sw) : -Infinity)
+    const xb = Math.min(cx1, ya < bottom(ne) ? ne.x : Infinity, ya >= se.y ? se.x : Infinity)
+    for (let y = ya; y < yb;) { const off = (y - cy0) % P.c.h, h = Math.min(P.c.h - off, yb - y); hfill(pieces, P.c, xa, xb, y, 'start', h, off); y += h }
+  }
   // 위 띠 — 장식이 띠 한 칸을 대신한다
-  if (P.head) { const hl = L + k * xt; tile(pieces, P.n, L, hl, T); pieces.push([P.head, hl + P.head.origin.x, T]); tile(pieces, P.n, hl + hw, R, T) }
-  else tile(pieces, P.n, L, R, T)
+  if (P.head) { const hl = L + k * xt; hfill(pieces, P.n, right(nw), hl, ny, 'end'); pieces.push({ p: P.head, x: hl, y: T - P.head.origin.y }); hfill(pieces, P.n, hl + hw, ne.x, ny) }
+  else hfill(pieces, P.n, right(nw), ne.x, ny)
   // 아래 띠 — 꼬리를 가운데에 두고 그 자리를 비워 양옆을 잇는다
-  let tip = B - P.s.origin.y + opaqueBottom(A, P.s) + 1
+  let tip = sy + opaqueBottom(A, P.s) + 1
   if (P.arrow) {
-    const al = L + Math.round((W - P.arrow.w) / 2)
-    tile(pieces, P.s, L, al, B); pieces.push([P.arrow, al + P.arrow.origin.x, B]); tile(pieces, P.s, al + P.arrow.w, R, B)
+    const al = -P.arrow.origin.x // 꼬리 origin 이 안쪽 칸 아래 가운데에(꼬리 그림은 한쪽으로 꺾여 있어 그림을 가운데에 두면 끝이 치우친다)
+    hfill(pieces, P.s, right(sw), al, sy, 'end'); pieces.push(at(P.arrow, 0, B)); hfill(pieces, P.s, al + P.arrow.w, se.x, sy)
     tip = B - P.arrow.origin.y + opaqueBottom(A, P.arrow) + 1
   }
-  for (let y = T; y < B; y += yt) pieces.push([P.w, L, y], [P.e, R, y]) // 옆 띠
-  pieces.push([P.nw, L, T], [P.ne, R, T], [P.sw, L, B], [P.se, R, B])
+  // 옆 띠
+  vfill(pieces, P.w, wx, bottom(nw), sw.y)
+  vfill(pieces, P.e, ex, bottom(ne), se.y)
+  pieces.push(nw, ne, sw, se)
   const bm = compose(A, pieces, (g, x0, y0) => {
     if (E) g.drawImage(E, Math.round(-E.width / 2) - x0, Math.round(T + (H - E.height) / 2) - y0)
     else {
