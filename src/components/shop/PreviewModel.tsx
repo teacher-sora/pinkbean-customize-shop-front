@@ -15,7 +15,7 @@ import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, dropWeaponEffects, footOf, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadMeta, type AnimaRace, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { applyHsb, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
-import { effectDraws, loadImage, renderCharacter } from '@/lib/core/render'
+import { effectDraws, effectGroups, loadImage, renderCharacter } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
@@ -302,7 +302,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
         if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
         const em = effMetas.get(it.id); if (!em) continue
         const pngs: string[] = []
-        for (const g of Object.values(em.groups)) {
+        for (const g of effectGroups(em)) {
           const frames = allFrames ? g.frames : g.frames.slice(0, 1)
           for (const fr of frames) pngs.push(fr.png)
         }
@@ -446,7 +446,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     if (wrapEl && !src) setStageFloor({ wrap: wrapEl, cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((pl.anchor.y + ground) * pl.scale)) / dims.dpr, scale: pl.scale, shadow: riding ? 30 : 13 })
     const pngs = new Set<string>()
     frames.forEach((f) => f.placed.forEach((p) => pngs.add(p.png)))
-    effList.forEach((em) => Object.values(em.groups).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
+    effList.forEach((em) => effectGroups(em).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
     let lastSig = '' // 마지막으로 실제 합성한 "보이는 프레임" 시그니처
     const clock = clockRef.current
     const clockKey = `${V.action}|${pv.action}|${pv.gaze}|${frames.length}|${pingpong ? 1 : 0}`

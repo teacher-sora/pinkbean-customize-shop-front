@@ -9,7 +9,7 @@
 // 그래서 이 헬퍼가 한 번에: 토글 반영 → 이펙트 메타 수집 → HSB 염색을 override 에 구움.
 import { loadEffect, loadEffectIndex, type EffectMeta } from './data'
 import { applyHsb, type HsbParams } from './dye'
-import { loadImage } from './render'
+import { effectGroups, loadImage } from './render'
 
 export type WornEff = { slot: string; em: EffectMeta }
 
@@ -42,7 +42,7 @@ export async function collectWornEffects(
     const h = dyeHsb[slot]
     if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) return { slot, em } // 염색 없음 → 원본 그대로
     // 프레임 png 는 병렬 로드(순차면 프레임 많은 망토에서 줄줄이 늘어져 느리다).
-    const pngs = Object.values(em.groups).flatMap((g) => g.frames.slice(0, 1).map((fr) => fr.png))
+    const pngs = effectGroups(em).flatMap((g) => g.frames.slice(0, 1).map((fr) => fr.png))
     const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
     for (const e of loaded) { if (e) { try { override.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} } }
     return { slot, em }
