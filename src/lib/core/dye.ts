@@ -320,12 +320,14 @@ export async function renderDyedSprite(
 // backFrame: 이 뷰에 **한 프레임만 뒷모습**인 게 섞여 있다(두손/한손 스윙 마무리 — assemble.isBackFrame).
 // 그 프레임에선 머리 부착물이 '뒷' 스프라이트로 바뀌므로 그 png 도 함께 칠해 둬야 그 프레임에서만
 // 염색이 풀려 보이지 않는다. 뒷 프레임이 없는 아이템은 빈 배열이라 비용이 없다.
-function viewLayers(meta: ItemMeta, view: ViewOpts, allFrames: boolean, backFrame = false): Layer[] {
+// allFrames 가 숫자면 보이는 프레임(정지 그림) + 그 번호의 프레임 — 발색 드래그로 애니메이션이 그 프레임에 멈춰 있을 때(PreviewModel 1단계).
+function viewLayers(meta: ItemMeta, view: ViewOpts, allFrames: boolean | number, backFrame = false): Layer[] {
   if (!allFrames && !backFrame) return getFrameLayers(meta, view)
   const seen = new Set<string>()
   const out: Layer[] = []
   const push = (ls: Layer[]) => { for (const l of ls) if (!seen.has(l.png)) { seen.add(l.png); out.push(l) } }
-  const n = allFrames ? Math.max(1, frameCount(meta, view)) : 1
+  if (typeof allFrames === 'number') { push(getFrameLayers(meta, view)); push(getFrameLayers(meta, view, allFrames)) }
+  const n = allFrames === true ? Math.max(1, frameCount(meta, view)) : typeof allFrames === 'number' ? 0 : 1
   for (let i = 0; i < n; i++) push(getFrameLayers(meta, view, i))
   if (backFrame) push(getFrameLayers(meta, view, 0, true))
   return out
@@ -339,7 +341,7 @@ export async function buildOverrides(
   // 호출부 대부분(카드 썸네일·염색 다이얼로그·프리셋 카드)은 THUMB_VIEW 로 프레임 0 만 그린다.
   // 그런데 stand1 도 프레임이 여러 개(호흡)라, 기본을 true 로 두면 한 화면 18장 카드가 쓰지도 않을
   // 프레임까지 전부 리컬러하게 된다 → 순수 낭비. 전 프레임이 정말 필요한 곳(PreviewModel 2단계)만 true 를 넘긴다.
-  allFrames = false,
+  allFrames: boolean | number = false,
   // 이 뷰에 뒷모습 프레임이 섞여 있으면 true — 그 프레임의 '뒷' 스프라이트도 함께 칠한다(viewLayers 주석).
   backFrame = false,
 ): Promise<Map<string, HTMLCanvasElement>> {
