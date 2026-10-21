@@ -306,7 +306,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     && Object.entries(equipped).some(([slot, it]) => !!it && !hidden[slot] && !!floatItems[it.id]), [pv.action, V.action, equipped, hidden, floatItems])
 
   // 명찰 · 말풍선(dev 전용) — 그릴 레이어가 없고 renderCharacter 가 덧그린다(core/chatUi).
-  const chat = useMemo(() => chatDrawOf(equipped, hidden, metas), [equipped, hidden, metas])
+  const chat = useMemo(() => chatDrawOf(equipped, hidden, shop.chat, metas), [equipped, hidden, shop.chat, metas])
 
   const effList = useMemo(() => {
     const out: EffectMeta[] = []

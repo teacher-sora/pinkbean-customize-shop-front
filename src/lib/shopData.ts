@@ -2,7 +2,7 @@
 // 미리보기 고정 박스. 코어(src/lib/core)의 assemble/render/data 위에서 동작한다.
 
 import type { AssembleInput, ViewOpts } from '@/lib/core/assemble'
-import type { ChatDraw } from '@/lib/core/chatUi'
+import type { ChatDraw, ChatEmo } from '@/lib/core/chatUi'
 import { CASHFX_FILE, RING_FILE, type AnimaRace, type ItemMeta, type ListItem, type SlotSummary } from '@/lib/core/data'
 import type { Cat } from '@/lib/catalog'
 
@@ -38,11 +38,12 @@ export const CAT_TO_SLOT: Record<string, string> = {
   eyeacc: 'eyeAcc', earring: 'earring', overall: 'longcoat', top: 'coat', bottom: 'pants',
   shoes: 'shoes', gloves: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
   ring: 'ring', effect: 'effect', riding: 'riding',
-  nametag: 'nameTag', balloon: 'chatBalloon', // dev 전용(CHAT_CATS)
+  nametag: 'nameTag', balloon: 'chatBalloon', chatring: 'chatRing', // dev 전용 — 부위 탭은 명찰/말풍선 하나(chatring), 코디 정보 칩은 둘(CHAT_INFO_CATS)
 }
-export const SLOT_TO_CAT: Record<string, string> = Object.fromEntries(
-  Object.entries(CAT_TO_SLOT).map(([c, s]) => [s, c]),
-)
+export const SLOT_TO_CAT: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(CAT_TO_SLOT).map(([c, s]) => [s, c])),
+  nameTag: 'chatring', chatBalloon: 'chatring', // 명찰 · 말풍선 아이템은 한 탭에서 고른다
+}
 // 실제 착용 슬롯(합성 대상). skin 은 톤이라 별도.
 export const EQUIP_SLOTS = [
   'hair', 'face', 'cap', 'faceAcc', 'eyeAcc', 'earring',
@@ -73,18 +74,25 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
   CHAT_FILES[slot] ?? (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
 
 /* ── 명찰 · 말풍선 반지(dev 전용 실험) ──────────────────────────────────────
- * 데이터는 front public/dev/chatui(벚꽃 한 세트)이고, main 병합 때 빠진다(scripts/merge-dev-to-main.sh 의 DEV_ONLY).
- * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats) — 운영에는 파일이 없어 부위 탭 · 코디 정보 칩이 생기지 않는다.
- * 그리기는 core/chatUi(renderCharacter 의 chat). 이름과 말은 아직 고정값이다. */
-export const CHAT_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }]
-export const CHAT_FILES: Record<string, string> = { nameTag: '/dev/chatui/nametag.json', chatBalloon: '/dev/chatui/balloon.json' }
-export const CHAT_NAME = 'Maple'
-export const CHAT_TEXT = '안녕하세요'
+ * 데이터는 front public/dev/chatui(명찰 276 · 말풍선 295 · 채팅 이모티콘 141)이고, main 병합 때 빠진다(scripts/merge-dev-to-main.sh 의 DEV_ONLY).
+ * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats · infoCats) — 운영에는 파일이 없어 부위 탭 · 코디 정보 칩이 생기지 않는다.
+ * 부위 탭은 하나(명찰/말풍선 — 같은 이름의 명찰과 말풍선이 나란히, 세트 순서)이고 코디 정보 칩은 둘이다(따로 끼고 벗는다).
+ * 그리기는 core/chatUi(renderCharacter 의 chat). 이름 · 말 · 이모티콘은 사용자가 고친다(ShopContext 의 chat, 편집 창 ChatEditBody). */
+export const CHAT_TAB = 'chatring'
+export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰/말풍선' }]
+export const CHAT_INFO_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }]
+const CHAT_LIST = '/dev/chatui/list.json'
+export const CHAT_FILES: Record<string, string> = { nameTag: CHAT_LIST, chatBalloon: CHAT_LIST, chatRing: CHAT_LIST }
+export const CHAT_EMO_FILE = '/dev/chatui/emoticons.json'
+export interface ChatState { name: string; text: string; emo?: ChatEmo }
+export const CHAT_DEFAULT: ChatState = { name: 'Maple', text: '안녕하세요' }
+export const CHAT_NAME_MAX = 12  // 이름 글자 수
+export const CHAT_TEXT_MAX = 70  // 말 글자 수
 // 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
-export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
+export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, chat: ChatState, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
   const ui = (slot: string) => { const it = equipped[slot]; return !it || hidden[slot] ? undefined : it.chatUi ?? metas?.get(it.id)?.chatUi }
   const tag = ui('nameTag'), balloon = ui('chatBalloon')
-  return tag || balloon ? { tag, balloon, name: CHAT_NAME, text: CHAT_TEXT } : undefined
+  return tag || balloon ? { tag, balloon, name: chat.name, text: chat.text, emo: chat.emo } : undefined
 }
 
 // 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아

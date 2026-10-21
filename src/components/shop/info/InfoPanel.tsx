@@ -47,7 +47,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const fit = infoW > 0 ? Math.floor((infoW - 20 + 8) / (150 + 8)) : maxCols
   const cols = Math.max(1, Math.min(maxCols, fit > 0 ? fit : maxCols))
 
-  const rows = s.cats.map((c) => {
+  const rows = s.infoCats.map((c) => {
     const slot = CAT_TO_SLOT[c.id]
     const isSkin = c.id === 'skin'
     const isMix = s.isMixSlot(slot)
@@ -120,7 +120,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
       <span className={styles.chipLabel}>착용</span>
       <span className={styles.chipNum}>{wornCount}</span>
       <span className={styles.chipSlash}>/</span>
-      <span className={styles.chipLabel}>{s.cats.length}</span>
+      <span className={styles.chipLabel}>{s.infoCats.length}</span>
     </div>
   )
   const unequip = <button type="button" data-guide="unequip" onClick={s.unequipAll} title="모든 부위 벗기" className={clsx('pb-ghost', styles.btn, mobile && styles.btnM)}>전체 벗기</button>

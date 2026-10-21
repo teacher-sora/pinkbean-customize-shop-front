@@ -179,3 +179,34 @@
 .tick svg { opacity: 0; transition: opacity .2s cubic-bezier(.45,0,.55,1); }
 .tickOn { background: #ec86ac; border-color: #ec86ac; }
 .tickOn svg { opacity: 1; }
+
+/* ── 명찰 · 말풍선 편집(ChatEditBody, dev 전용) — 코디 비교(.vs*)의 틀을 그대로 쓰고 입력칸 · 이모티콘 고르기만 더한다 ── */
+.chatStage { min-height: 150px; display: flex; align-items: center; justify-content: center; }
+.chatCanvas { position: relative; z-index: 1; display: block; image-rendering: pixelated; transition: opacity .2s cubic-bezier(.45,0,.55,1); }
+.chatCanvasWait { opacity: 0; }
+.chatEmpty { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 14px; border: 1px solid #eee6dc; border-radius: 8px; background: #fbf8f4; }
+.chatEmptyTitle { font-size: 12.5px; font-weight: 600; color: #8a8075; }
+.chatEmptyHint { font-size: 11.5px; color: #b7ada2; }
+.chatRowM { flex: 0 0 auto; flex-direction: column; min-height: 0; }
+.chatRowM .chatStage { min-height: 120px; }
+.chatField { flex: 1 1 auto; min-width: 0; width: 100%; height: 34px; padding: 0 11px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 13px; color: #3d372f; outline: none; box-sizing: border-box; }
+.chatFieldRow { display: flex; align-items: center; gap: 6px; }
+.chatEmoField { display: flex; align-items: center; gap: 7px; padding: 0 5px 0 8px; }
+.chatEmoThumb { flex: 0 0 auto; width: 24px; height: 24px; object-fit: contain; }
+.chatEmoName { flex: 1 1 auto; min-width: 0; font-size: 12.5px; font-weight: 600; color: #3d372f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chatEmoX { flex: 0 0 auto; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; padding: 0; border: none; border-radius: 5px; background: transparent; color: #a89e93; cursor: pointer; }
+.chatEmoBtn { flex: 0 0 34px; height: 34px; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; color: #d76d9a; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.chatEmoBtnOn { border-color: #ec86ac; background: #fdf1f6; }
+.chatPicker { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; padding: 8px; border: 1px solid #eee6dc; border-radius: 8px; background: #fdfbf9; }
+.chatPickerWait { height: 120px; }
+.chatSets { display: flex; gap: 6px; overflow-x: auto; }
+.chatSet { flex: 0 0 38px; height: 38px; display: flex; align-items: center; justify-content: center; padding: 3px; border: 1.5px solid #f0e9e1; border-radius: 6px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.chatSetOn { border-color: #ec86ac; background: #fdf1f6; }
+.chatGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 6px; max-height: 160px; overflow-y: auto; }
+.chatEmo { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; padding: 4px; border: 1.5px solid #f0e9e1; border-radius: 6px; background: #faf7f3; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.chatEmoOn { border-color: #ec86ac; background: #fdf1f6; }
+.chatPx { display: block; max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+@media (hover: hover) and (pointer: fine) {
+  .chatEmoBtn:hover, .chatSet:hover, .chatEmo:hover { border-color: #eeb2ce; background: #fdf1f6; }
+  .chatEmoX:hover { background: #f4efe8; color: #6f655b; }
+}

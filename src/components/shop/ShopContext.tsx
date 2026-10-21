@@ -28,7 +28,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_FILES, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT, CHAT_FILES, CHAT_INFO_CATS, CHAT_TAB, type ChatState, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -85,7 +85,7 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'vs' | 'plaza' | 'ptake' | 'notice'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'vs' | 'plaza' | 'ptake' | 'notice' | 'chat'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
@@ -209,7 +209,10 @@ const stripColorPrefix = (name: string, color: string | null) => (color && name.
 export interface ShopCtx {
   // 데이터
   index: Index | null
-  cats: Cat[] // 화면에 보이는 부위(CATS + dev 에서만 명찰 · 말풍선 — CHAT_CATS)
+  cats: Cat[] // 부위 탭(CATS + dev 에서만 명찰/말풍선 — CHAT_CATS)
+  infoCats: Cat[] // 코디 정보 칩(CATS + dev 에서만 명찰 · 말풍선 둘 — CHAT_INFO_CATS)
+  chatOn: boolean // 명찰 · 말풍선을 쓸 수 있는가(dev 데이터가 있을 때만)
+  chat: ChatState; setChat: (c: ChatState) => void; openChatEdit: () => void // 명찰 이름 · 말풍선 말 · 이모티콘
   catLoading: boolean
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
   search: string; setSearch: Dispatch<string>
@@ -544,11 +547,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 명찰 · 말풍선(dev 전용): 목록 파일이 있을 때만 부위를 더한다 — 운영에는 파일이 없다(main 병합 때 빠진다). 반지 바로 뒤.
   const [chatOn, setChatOn] = useState(false)
   useEffect(() => { fetch(CHAT_FILES.nameTag, { method: 'HEAD' }).then((r) => { setChatOn(r.ok); if (r.ok) prefetchGlyphs() }).catch(() => {}) }, []) // 글자 도트는 한가할 때 미리
-  const cats = useMemo(() => {
-    if (!chatOn) return CATS
-    const i = CATS.findIndex((c) => c.id === 'ring') + 1
-    return [...CATS.slice(0, i), ...CHAT_CATS, ...CATS.slice(i)]
-  }, [chatOn])
+  const withChat = (extra: Cat[]) => { const i = CATS.findIndex((c) => c.id === 'ring') + 1; return [...CATS.slice(0, i), ...extra, ...CATS.slice(i)] }
+  const cats = useMemo(() => (chatOn ? withChat(CHAT_CATS) : CATS), [chatOn])
+  const infoCats = useMemo(() => (chatOn ? withChat(CHAT_INFO_CATS) : CATS), [chatOn])
+  // 명찰 이름 · 말풍선 말 · 이모티콘 — 이 브라우저에 기억한다(dev 실험이라 프리셋 · 공유에는 아직 넣지 않는다).
+  const [chat, setChatState] = useState<ChatState>(CHAT_DEFAULT)
+  useEffect(() => { try { const v = JSON.parse(localStorage.getItem('pb-chat-v1') || 'null'); if (v && typeof v.name === 'string' && typeof v.text === 'string') setChatState(v) } catch { /* 기본값 */ } }, [])
+  const setChat = useCallback((c: ChatState) => { setChatState(c); try { localStorage.setItem('pb-chat-v1', JSON.stringify(c)) } catch { /* 저장 못 해도 이번에는 쓴다 */ } }, [])
 
   // 피부(skin) = index.base.tones 를 합성 리스트로. 그 외는 lists[slot].
   const skinList = useMemo<ListItem[]>(() => {
@@ -1017,7 +1022,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 착용: skin=톤 변경, 그 외=slot 라디오(재클릭 해제) + islot 충돌 슬롯 자동 해제.
   const equipFromCat = (cat: string, item: ListItem) => {
     if (cat === 'skin') { setTone(index?.base.tones.find((t) => t.body === item.id)?.tone ?? 0); return }
-    const slot = CAT_TO_SLOT[cat]
+    const slot = cat === CHAT_TAB ? item.slot : CAT_TO_SLOT[cat] // 명찰/말풍선 탭은 두 부위가 섞여 있다 — 아이템의 부위로 끼운다
     setEquipped((prev) => {
       const cur = prev[slot]
       if (cur && cur.id === item.id) return { ...prev, [slot]: null } // 토글 해제
@@ -1031,6 +1036,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   const isEquippedInCat = (cat: string, itemId: string) => {
     if (cat === 'skin') return index?.base.tones.find((t) => t.tone === tone)?.body === itemId
+    if (cat === CHAT_TAB) return equipped.nameTag?.id === itemId || equipped.chatBalloon?.id === itemId
     return equipped[CAT_TO_SLOT[cat]]?.id === itemId
   }
   // 토글 없이 착용(이미 입고 있으면 그대로) — 염색 다이얼로그 "적용"이 보던 아이템을 입힐 때.
@@ -1419,6 +1425,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const openPartItem = (item: ListItem) => slideTo(1, { kind: DOT_MOVER_IDS.has(item.id) ? 'dot' : 'dye', item, fromPart: true })
   const partBack = () => slideTo(-1, { kind: 'part', item: null })
   // VS: 북마크가 없으면 열지 않는다. 열 때는 아무것도 고르지 않은 상태로 시작한다.
+  const openChatEdit = () => openSurface({ kind: 'chat', item: null })
   const openVs = () => {
     if (!bookmarks.length) { notify('먼저 아이템을 북마크해주세요'); return }
     setVsPicks([])
@@ -1960,7 +1967,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const onPageKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } else if (e.key === 'Escape') e.currentTarget.blur() }
 
   const value: ShopCtx = {
-    index, cats, catLoading, activeList, search, setSearch,
+    index, cats, infoCats, chatOn, chat, setChat, openChatEdit, catLoading, activeList, search, setSearch,
     genderFilter, setGenderFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,

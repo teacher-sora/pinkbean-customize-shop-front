@@ -12,7 +12,7 @@ import { DOT_MOVER_IDS } from '@/lib/shopData'
 import PreviewModel, { previewShot } from '../PreviewModel'
 import plaza from '../plaza/plaza.module.css'
 import { useShop } from '../ShopContext'
-import { IconBookmark, IconCaretDown, IconDot, IconDrop, IconLinkCopy, IconRedo, IconScene, IconTakeDown, IconUndo } from '../ui/Icons'
+import { IconBookmark, IconBubble, IconCaretDown, IconDot, IconDrop, IconLinkCopy, IconRedo, IconScene, IconTakeDown, IconUndo } from '../ui/Icons'
 import PinkbeanRate from './PinkbeanRate'
 import { BookmarkBox } from './PreviewParts'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
@@ -44,6 +44,7 @@ export default function PreviewColumn() {
   const histCls = (on: boolean) => clsx('pb-icon', styles.iconBtn, on && styles.histOn)
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
   const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
+  const chatOpen = s.surface?.kind === 'chat' && !s.surfaceClosing
 
   return (
     <section className={clsx(styles.col, s.bp === 'half' && styles.colHalf, s.bp === 'tablet' && styles.colTablet)}>
@@ -60,6 +61,13 @@ export default function PreviewColumn() {
               className={clsx('pb-ddbtn', styles.partBtn, bgOpen && styles.partBtnOn)}>
               <IconScene size={14} /><span>배경</span>
             </button>
+            {/* 명찰 이름 · 말풍선 대사(dev 전용 — 명찰 · 말풍선 데이터가 있을 때만) */}
+            {s.chatOn && (
+              <button type="button" onClick={s.openChatEdit} title="명찰 이름과 말풍선 대사 바꾸기" aria-label="이름/대사"
+                className={clsx('pb-ddbtn', styles.partBtn, chatOpen && styles.partBtnOn)}>
+                <IconBubble size={14} /><span>이름/대사</span>
+              </button>
+            )}
           </div>
           <div data-guide="undo" className={styles.hist}>
             <button type="button" onClick={s.undo} disabled={!s.canUndo} title={s.canUndo ? '되돌리기' : '되돌릴 것이 없어요'} aria-label="되돌리기" className={histCls(s.canUndo)}><IconUndo /></button>
@@ -104,6 +112,7 @@ export function MobileHero() {
   const bmOpen = s.surface?.kind === 'bm' && !s.surfaceClosing
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
   const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
+  const chatOpen = s.surface?.kind === 'chat' && !s.surfaceClosing
   const n = s.bookmarks.length
   // 크게 · 캐릭터만일 때 왼쪽 위에 이미지 저장 · 링크 복사(코디 광장 카드의 레일과 같은 버튼). 기본 크기에서는 걷는다
   const big = useHeroView() !== 'base'
@@ -128,6 +137,12 @@ export function MobileHero() {
         <button type="button" onClick={() => s.openSheet('bg')} title="미리보기 배경 바꾸기" aria-label="미리보기 배경" className={clsx(styles.pvOpenBtn, styles.pvOpenIcon, bgOpen && styles.pvOpenBtnOn)}>
           <IconScene size={15} />
         </button>
+        {/* 명찰 이름 · 말풍선 대사(dev 전용) — 배경 옆, 같은 생김새의 아이콘 버튼 */}
+        {s.chatOn && (
+          <button type="button" onClick={s.openChatEdit} title="명찰 이름과 말풍선 대사 바꾸기" aria-label="이름/대사" className={clsx(styles.pvOpenBtn, styles.pvOpenIcon, chatOpen && styles.pvOpenBtnOn)}>
+            <IconBubble size={15} />
+          </button>
+        )}
       </div>
       <div className={styles.heroRight}>
         <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경" aria-label="점 위치 변경" data-guide="dot"

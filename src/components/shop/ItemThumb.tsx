@@ -18,7 +18,7 @@ import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
-import { CARD_FRACTION, CARD_MARGIN, CHAT_NAME, CHAT_TEXT, thumbView } from '@/lib/shopData'
+import { CARD_FRACTION, CARD_MARGIN, thumbView, type ChatState } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
 import { CARD_FRAC_HAIR, DyeSprite } from './render/DyeSprite'
 
@@ -89,6 +89,7 @@ function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
 }
 
 interface ModelProps {
+  chat?: ChatState // 명찰 · 말풍선 카드만 — 그 아이템을 단 모습에 쓸 이름 · 말 · 이모티콘
   item: ListItem; gaze: string; ctxItems: AssembleInput[]; ctxKey: string
   zmap: string[]; smap: Record<string, string>; skinHeadId?: string
   override?: Map<string, HTMLCanvasElement> // 내 모델: 배경(내 착용) 염색 오버라이드(이펙트 염색 포함)
@@ -103,7 +104,7 @@ interface ModelProps {
   stance?: boolean                          // 배경이 무기모션 자세(두손=stand2)로 구워졌으면 후보 아이템도 같은 자세로
   ctxAction?: string                        // 배경이 내 무기 때문에 다른 자세로 구워졌으면 그 액션(thumbCtx.action) — 후보도 같은 자세로
 }
-function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets }: ModelProps) {
+function ModelThumb({ chat: chatState, item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets }: ModelProps) {
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
   const [effs, setEffs] = useState<EffectDraw[]>([])
   const [parts, setParts] = useState<ParticleDraw[]>([])
@@ -250,12 +251,12 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     // 마네킹 중심을 셀 중앙에 고정(anchor 보정). flip=오른쪽 시선. 분수 scale=디바이스 해상도.
     const cm = item.slot === 'riding' && !!item.ridingCenterMount // 메탈아머는 메카(마운트) 중앙정렬
     // 명찰 · 말풍선 카드(dev 전용)는 그 아이템을 단 모습 — 목록 아이템이 조각 정보를 들고 있다.
-    const chat = item.chatUi ? { [item.chatUi.kind === 'nameTag' ? 'tag' : 'balloon']: item.chatUi, name: CHAT_NAME, text: CHAT_TEXT } : undefined
+    const chat = item.chatUi && chatState ? { [item.chatUi.kind === 'nameTag' ? 'tag' : 'balloon']: item.chatUi, name: chatState.name, text: chatState.text, emo: chatState.emo } : undefined
     renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, chat, shouldCancel: () => cancelled }).catch(() => {})
     // 우클릭 복사용 입력 — 화면과 같은 값(중심 오프셋·반전·라이딩 정렬)으로 다시 그린다(lib/canvasExport.modelShotBlob).
     shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, chat, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
     return () => { cancelled = true }
-  }, [placed, effs, parts, flip, dims, gaze, ovr])
+  }, [placed, effs, parts, flip, dims, gaze, ovr, chatState])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). item 바뀌면 파일명 갱신 위해 재바인딩.
   useEffect(() => {
@@ -285,7 +286,8 @@ export default function ItemThumb(props: {
   dye?: DyeState
   ear?: string; weapon?: string; isMy?: boolean; stance?: boolean; ctxAction?: string
   dotOffsets?: Record<string, { x: number; y: number }>
+  chat?: ChatState
 }) {
   if (props.mode === 'sprite') return props.item.slot === 'hair' ? <HairSprite item={props.item} zmap={props.zmap} /> : <Sprite item={props.item} />
-  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} />
+  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} chat={props.chat} />
 }

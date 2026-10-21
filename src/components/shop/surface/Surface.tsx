@@ -27,6 +27,7 @@ import PlazaTakeBody from '../plaza/PlazaTakeBody'
 import NoticeBody from '../plaza/NoticeBody'
 import { plazaWhen } from '@/lib/plaza'
 import VsBody from './VsBody'
+import ChatEditBody from './ChatEditBody'
 import { IconClose } from '../ui/Icons'
 import { useMaskClose } from '../ui/useMaskClose'
 import DotSurfaceBody from './DotSurfaceBody'
@@ -166,9 +167,9 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   })
 
   const k = sf.kind
-  const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'vs' ? '코디 비교'
+  const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'vs' ? '코디 비교' : k === 'chat' ? '이름/대사'
     : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? '공유받은 코디' : k === 'notice' ? '공지 및 건의함' : (sf.item?.name || sf.item?.id || '')
-  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' || k === 'bg' ? '' : k === 'notice' ? ''
+  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'chat' ? '명찰 이름과 말풍선 대사' : k === 'bm' || k === 'part' || k === 'bg' ? '' : k === 'notice' ? ''
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
 
@@ -210,6 +211,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'part' && <><PartPickBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'bg' && <><StageBgBody /><SurfaceFooter /></>}
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
+            {k === 'chat' && <ChatEditBody mobile={mobile} />}   {/* 푸터(닫기 · 적용)는 본문이 그린다 */}
             {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다. */}
             {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
             {/* 공유받은 코디 — 광장 상세를 거쳐 왔으면(post 있음) '이전'으로 상세로 되돌아가고, 링크·코드로 받은 경우는 '닫기'. */}
