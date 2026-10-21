@@ -287,9 +287,10 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     return sim
   }, [])
 
-  // 부유 — 보이는 착용 아이템 가운데 부유 아이템이 하나라도 있고 서 있을 때(서기 · '기본'). 이펙트 표시 토글과는 상관없다(동작이다).
-  const floating = useMemo(() => (V.action === 'stand1' || V.action === 'stand2')
-    && Object.entries(equipped).some(([slot, it]) => !!it && !hidden[slot] && !!floatItems[it.id]), [V.action, equipped, hidden, floatItems])
+  // 부유 — 보이는 착용 아이템 가운데 부유 아이템이 하나라도 있고 '서기' 동작일 때만. '기본'은 몸이 멈춘 화면이라 뜨지 않는다(사용자 지시).
+  // 이펙트 표시 토글과는 상관없다(동작이다).
+  const floating = useMemo(() => pv.action !== 'basic' && (V.action === 'stand1' || V.action === 'stand2')
+    && Object.entries(equipped).some(([slot, it]) => !!it && !hidden[slot] && !!floatItems[it.id]), [pv.action, V.action, equipped, hidden, floatItems])
 
   const effList = useMemo(() => {
     const out: EffectMeta[] = []
