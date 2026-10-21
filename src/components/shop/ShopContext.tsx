@@ -19,6 +19,7 @@ import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
+import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
@@ -542,7 +543,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // 명찰 · 말풍선(dev 전용): 목록 파일이 있을 때만 부위를 더한다 — 운영에는 파일이 없다(main 병합 때 빠진다). 반지 바로 뒤.
   const [chatOn, setChatOn] = useState(false)
-  useEffect(() => { fetch(CHAT_FILES.nameTag, { method: 'HEAD' }).then((r) => setChatOn(r.ok)).catch(() => {}) }, [])
+  useEffect(() => { fetch(CHAT_FILES.nameTag, { method: 'HEAD' }).then((r) => { setChatOn(r.ok); if (r.ok) prefetchGlyphs() }).catch(() => {}) }, []) // 글자 도트는 한가할 때 미리
   const cats = useMemo(() => {
     if (!chatOn) return CATS
     const i = CATS.findIndex((c) => c.id === 'ring') + 1
