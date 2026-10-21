@@ -96,14 +96,6 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
               <span className={styles.slotPart}>{r.c.label}</span>
               <span className={clsx(styles.slotName, r.on && !r.hidden && styles.slotNameOn)}>{name}</span>
             </span>
-            {r.on && !r.isSkin && (
-              <span role="button" tabIndex={0} title="미리보기 표시/숨김" aria-label="미리보기 표시/숨김"
-                onClick={(e) => { e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[r.slot]) delete n[r.slot]; else n[r.slot] = true; return n }) }}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[r.slot]) delete n[r.slot]; else n[r.slot] = true; return n }) } }}
-                className={clsx(styles.toggle, r.hidden && styles.toggleHidden)}>
-                <IconEye hidden={r.hidden} />
-              </span>
-            )}
             {/* 이 부위만 벗기 — 칩 오른쪽 위 모서리의 휴지통. 두 번 눌러야 한다(lib/confirmTwice, 누른 단추 위에 되묻는 말풍선). 사용자 요청. */}
             {r.on && !r.isSkin && (
               <span role="button" tabIndex={0} title="이 부위 벗기" aria-label={`${r.c.label} 벗기`} {...{ [CONFIRM_ATTR]: `unequip:${r.slot}` }}
@@ -114,7 +106,17 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
               </span>
             )}
             <DyeBand state={!r.on ? 'empty' : r.dyed ? 'dyed' : (r.isSkin ? !isDyeableSkin(toneName) : r.item?.dyeMode === 'none') ? 'none' : 'plain'}
-              slot={r.slot} palette={s.dyePalette[r.slot]} hsb={s.dyeHsb[r.slot]} off={r.dyeOff} skinFamily={r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined} />
+              slot={r.slot} palette={s.dyePalette[r.slot]} hsb={s.dyeHsb[r.slot]} off={r.dyeOff} skinFamily={r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined}
+              className={r.on && !r.isSkin ? styles.bandEye : undefined} />
+            {/* 미리보기 표시/숨김 — 칩 아래 띠의 오른쪽 끝. 이름 줄 폭을 쓰지 않고, 오른쪽 위 휴지통과 칩 높이만큼 떨어진다(사용자 요청 — 잘못 누르기 쉬웠다). */}
+            {r.on && !r.isSkin && (
+              <span role="button" tabIndex={0} title="미리보기 표시/숨김" aria-label="미리보기 표시/숨김"
+                onClick={(e) => { e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[r.slot]) delete n[r.slot]; else n[r.slot] = true; return n }) }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[r.slot]) delete n[r.slot]; else n[r.slot] = true; return n }) } }}
+                className={clsx(styles.toggle, r.hidden && styles.toggleHidden)}>
+                <span className={styles.toggleFace}><IconEye hidden={r.hidden} /></span>
+              </span>
+            )}
           </button>
         )
       })}
