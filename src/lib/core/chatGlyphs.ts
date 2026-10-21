@@ -1,12 +1,14 @@
 // 명찰 · 말풍선 글자 = 돋움 12px 비트맵(게임의 글꼴) 도트를 직접 찍는다(scripts/font-dotum-bitmap.py 가 뽑는다).
 // 브라우저가 글꼴을 그리지 않으므로 어느 기기에서나 게임과 같은 도트 · 같은 글자 폭이다(윈도우 돋움과 한글 11,172자 · 기호 1,490자 전수 대조).
-// 파일은 넷으로 나눠 그 글자가 든 것만 받는다 — 영문 · 기호(basic), 자주 쓰는 한글 2,350자(ks), 나머지 한글(rest), 한자 · 가나(cjk).
+// 파일은 그 글자가 든 것만 받는다 — 영문 · 기호(basic), 자주 쓰는 한글 2,350자(ks)는 통째로, 나머지 한글(rest-<n>)과 한자 · 가나(cjk-<n>)는
+// 코드 순의 작은 묶음(압축 8~12KB)으로 — 일본어 · 중국어 한두 글자를 쓰려고 큰 파일을 받지 않는다. 돋움에 없는 글자(간체 일부 · 이모지 등)는
+// 사이트 글꼴로 대신 그린다(core/chatUi).
 // 한 번 받은 파일은 다시 받지 않고(주소에 판이 들어가 오래 캐시 — next.config 의 headers), 부위가 생기면 한가할 때 basic · ks 를 미리 받는다.
-import { DOTUM_DIR, KS_MASK } from './chatGlyphsKs'
+import { CJK_STARTS, DOTUM_DIR, KS_MASK, REST_STARTS } from './chatGlyphsKs'
 
 export interface Glyph { adv: number; bx: number; by: number; w: number; h: number; rows: Uint8Array } // rows = 줄마다 ceil(w/8) 바이트
 
-type Chunk = 'basic' | 'ks' | 'rest' | 'cjk'
+type Chunk = string // 'basic' | 'ks' | 'rest-<n>' | 'cjk-<n>'
 let ks: Uint8Array | null = null
 const isKs = (cp: number) => {
   if (!ks) ks = Uint8Array.from(atob(KS_MASK), (c) => c.charCodeAt(0))
@@ -14,7 +16,10 @@ const isKs = (cp: number) => {
   return !!(ks[i >> 3] & (1 << (i & 7)))
 }
 const cjk = (c: number) => (c >= 0x2e80 && c <= 0x2fdf) || (c >= 0x3040 && c <= 0x30ff) || (c >= 0x31f0 && c <= 0x31ff) || (c >= 0x3400 && c <= 0x4dbf) || (c >= 0x4e00 && c <= 0x9fff) || (c >= 0xf900 && c <= 0xfaff) || c >= 0x20000
-const chunkOf = (cp: number): Chunk => (cp >= 0xac00 && cp <= 0xd7a3 ? (isKs(cp) ? 'ks' : 'rest') : cjk(cp) ? 'cjk' : 'basic')
+// 묶음 = 첫 코드가 그 글자 이하인 마지막 묶음(첫 코드들은 오름차순).
+const inStarts = (starts: number[], cp: number) => { let lo = 0, hi = starts.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (starts[m] <= cp) lo = m; else hi = m - 1 } return lo }
+const chunkOf = (cp: number): Chunk =>
+  cp >= 0xac00 && cp <= 0xd7a3 ? (isKs(cp) ? 'ks' : `rest-${inStarts(REST_STARTS, cp)}`) : cjk(cp) ? `cjk-${inStarts(CJK_STARTS, cp)}` : 'basic'
 
 const glyphs = new Map<number, Glyph>()
 const loaded = new Map<Chunk, Promise<void>>()
