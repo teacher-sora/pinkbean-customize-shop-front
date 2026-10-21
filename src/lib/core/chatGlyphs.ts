@@ -47,8 +47,13 @@ export async function loadGlyphs (texts: string[]): Promise<boolean> {
   return ok.every(Boolean)
 }
 // 부위가 생기면 한가할 때 미리 받는다 — 명찰 · 말풍선을 끼는 순간 글자를 기다리지 않게.
-export function prefetchGlyphs (): void {
-  const go = () => { void loadChunk('basic').catch(() => {}); void loadChunk('ks').catch(() => {}) }
+// allHangul: 채팅 칸이 나오면(말풍선을 끼면) 나머지 한글 묶음까지 받는다(압축 모두 68KB) — 드문 한글을 붙여 넣고 바로 보내도
+// 묶음을 기다리지 않게(잰 값: 받기 전 291ms → 받은 뒤 10ms 안팎). 한자 · 가나는 쓸 때만 받는다.
+export function prefetchGlyphs (allHangul = false): void {
+  const go = () => {
+    const ks = ['basic', 'ks', ...(allHangul ? REST_STARTS.map((_, i) => `rest-${i}`) : [])]
+    for (const k of ks) void loadChunk(k).catch(() => {})
+  }
   const ric = (window as unknown as { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback
   if (ric) ric(go); else setTimeout(go, 1)
 }

@@ -12,6 +12,7 @@
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { warmChat, type ChatEmo } from '@/lib/core/chatUi'
 import { CHAT_EMO_FILE, CHAT_TEXT_MAX } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
@@ -85,6 +86,7 @@ export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; s
 
   // 적는 동안 보낼 말풍선을 미리 만든다(글자 도트 · 그림 캐시) — 전송하면 그리기만 한다. 글자를 칠 때마다가 아니라 잠깐 멈췄을 때.
   const ui = s.equipped.chatBalloon?.chatUi
+  useEffect(() => { if (show) prefetchGlyphs(true) }, [show]) // 칸이 나오면 나머지 한글 도트도 한가할 때 받아 둔다
   useEffect(() => {
     const t = text.trim()
     if (!show || !ui || !t) return
