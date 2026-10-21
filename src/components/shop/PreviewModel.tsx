@@ -196,20 +196,18 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // 옷은 몸과 함께 숨 쉬는 프레임이라 몸이 멈춘 채 돌리면 어긋나고, 재규어는 통짜 그림이라 돌리면 1px 씩 떨린다.
     // 박자는 게임처럼 몸의 그 액션 박자(delays)를 따른다.
     const itemMotion = viewInfo.isStatic && pv.action === 'basic' && pv.gaze !== 'back'
-    // 무기는 프레임마다 그림이 다른 것만 돈다(weapons/motion.json — 그림은 같고 자리만 다른 숨쉬기 프레임을 몸이 멈춘 채 돌리면 손에서 떨린다).
-    // 무기의 프레임별 보정(weaponNudge)만큼 되돌려 그려, 숨쉬기로 1px 씩 오르내리던 무기를 손에 가만히 두고 애니메이션만 돌린다(사용자 지시).
+    // 무기는 그림이 바뀌는 레이어만 돈다(weapons/motion.json). 손에 든 본체는 첫 프레임 그림에 고정하고(숨쉬기 프레임은 위아래 · 좌우로
+    // 밀리고 모양도 조금씩 달라 몸이 멈춘 채 돌리면 손에서 떨린다), 이펙트 · 떠다니는 조각만 프레임대로 돌린다(사용자 지시).
     const weaponEntry = (m: ItemMeta, v: typeof charV) => {
-      const e = weaponMotion[m.id]; if (!e) return null
-      const key = weaponActionKey(m, v)
-      if (Array.isArray(e)) return e.some((k) => k === key || k.endsWith(`/${v.action}`)) ? [] : null
-      return e[key] ?? null
+      const e = weaponMotion[m.id]?.[weaponActionKey(m, v)]
+      return e && !Array.isArray(e) && Object.keys(e).length ? e : null
     }
     const ownMotion = (m: ItemMeta, v: typeof charV) => m.slot === 'weapon'
       ? !!weaponEntry(m, v)
       : !!m.frames['base'] && ((m.frames as Record<string, unknown[]>)[v.action]?.length ?? 0) > 1
     let itemAnimated = false
     const frames = Array.from({ length: N }, (_, fi) => {
-      let weaponNudge: [number, number] | null = null
+      let weaponLive: Record<string, [number, number][]> | null = null
       // 정지 + 아이템만 돌 때: 캐릭터는 0번 프레임(지금까지의 정지 화면과 같다), 아이템만 fi.
       const ci = itemMotion ? 0 : fi
       // 이 프레임만 뒷모습인가(두손/한손 스윙 마무리) — 맞으면 머리·헤어도 뒷프레임을 쓰고 얼굴은 숨긴다.
@@ -230,8 +228,10 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
         // 정지('기본' 액션)면 프레임 번호를 넘기지 않는다 → 머리부착 아이템은 대표 그림(카드와 같은 규칙, assemble.stillIndex).
         const moves = itemMotion && slot !== 'riding' && ownMotion(m, itemV)
         if (moves) itemAnimated = true
-        if (moves && slot === 'weapon') { const off = weaponEntry(m, itemV); const o = off?.length ? off[fi % off.length] : null; if (o) weaponNudge = o }
+        if (moves && slot === 'weapon') weaponLive = weaponEntry(m, itemV)
         let layers = getFrameLayers(m, itemV, moves ? fi : viewInfo.isStatic ? undefined : fi, slot === 'riding' ? false : backFrame)
+        // 무기: 도는 레이어만 이 프레임, 나머지(본체)는 정지 그림.
+        if (slot === 'weapon' && weaponLive) { const live = weaponLive; layers = [...getFrameLayers(m, itemV, undefined, backFrame).filter((l) => !live[l.name]), ...layers.filter((l) => live[l.name])] }
         layers = dropWeaponEffects(slot, layers, pv.wEffect)
         items.push({ itemId: m.id, slot, vslot: m.vslot ?? null, layers, invisibleFace: m.invisibleFace, name: m.name, dotOffsets: dotPos[m.id] })
       }
@@ -240,8 +240,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // stand1 navel 기준으로 보정(stabOffset)해 몸통·옷은 고정되고 팔·다리만 움직이게 한다.
       // ⚠️ 이 보정을 무효화하지 않도록 렌더는 centerX(navel 재중심) 대신 고정 anchor 를 쓴다.
       const { placed: assembled, anchors } = assemble(items, index.zmap, index.smap)
-      const nudge = weaponNudge as [number, number] | null
-      const raw = nudge && (nudge[0] || nudge[1]) ? assembled.map((p) => (p.slot === 'weapon' ? { ...p, x: p.x + nudge[0], y: p.y + nudge[1] } : p)) : assembled
+      const wl = weaponLive as Record<string, [number, number][]> | null
+      const nudgeOf = (p: PlacedLayer) => { const o = p.slot === 'weapon' ? wl?.[p.name] : undefined; return o?.length ? o[fi % o.length] : null }
+      const raw = wl ? assembled.map((p) => { const o = nudgeOf(p); return o && (o[0] || o[1]) ? { ...p, x: p.x + o[0], y: p.y + o[1] } : p }) : assembled
       const curBody = raw.find((p) => p.slot === 'body' && p.name === 'body')
       const curNav = curBody?.map?.navel
       // 캐릭터 stab = 발(origin) 고정, 몸통/사지만 움직임(stand1 navel 기준). 앉은 채(seated)면 stab 없음(안장 위 원위치).

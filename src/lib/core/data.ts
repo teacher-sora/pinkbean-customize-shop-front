@@ -312,10 +312,9 @@ export function loadFloatItems(): Promise<Record<string, number>> {
   return floatPromise
 }
 // 무기가 '제 프레임으로 움직이는' 서기 동작(parser scripts/weapon-motion.py → CDN weapons/motion.json).
-// 프레임마다 그림이 다른 무기만 있다 — 그림이 같고 자리만 다른(숨쉬기) 무기는 몸이 멈춘 '기본'에서 돌리면 손에서 떨린다.
-// 값 = { 동작 키: 프레임마다 [dx, dy] } — 그 프레임을 첫 프레임에 맞추는 보정(무기가 숨쉬기로 1px 씩 오르내리는 것을 되돌려 손에 가만히 둔다).
-// 옛 꼴(동작 키 목록)도 읽는다(보정 없음).
-export type WeaponMotion = Record<string, string[] | Record<string, [number, number][]>>
+// 값 = { 동작 키: { 도는 레이어 이름: 프레임마다 [dx, dy] } } — 몸이 멈춘 '기본'에서 이 레이어만 프레임대로 돌리고(보정만큼 옮겨),
+// 나머지 레이어(손에 든 무기 본체)는 첫 프레임 그림에 고정한다. 이펙트는 보정 0(원본대로 움직인다), 조각이 든 본체는 큰 덩어리를 제자리에 두는 보정.
+export type WeaponMotion = Record<string, Record<string, Record<string, [number, number][]>>>
 let weaponMotionPromise: Promise<WeaponMotion> | null = null
 export function loadWeaponMotion(): Promise<WeaponMotion> {
   if (!weaponMotionPromise) weaponMotionPromise = fetch(url('weapons/motion.json'), FRESH).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
