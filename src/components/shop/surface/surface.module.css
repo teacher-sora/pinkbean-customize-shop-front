@@ -189,8 +189,9 @@
 .chatEmptyHint { font-size: 11.5px; color: #b7ada2; }
 .chatRowM { flex: 0 0 auto; flex-direction: column; min-height: 0; }
 .chatRowM .chatStage { min-height: 120px; }
-.chatField { flex: 1 1 auto; min-width: 0; width: 100%; height: 34px; padding: 0 11px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 13px; color: #3d372f; outline: none; box-sizing: border-box; }
-.chatFieldRow { display: flex; align-items: center; gap: 6px; }
+.chatField { flex: 0 0 auto; min-width: 0; width: 100%; height: 34px; padding: 0 11px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 13px; color: #3d372f; outline: none; box-sizing: border-box; }
+.chatFieldRow { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.chatFieldRow .chatField { flex: 1 1 auto; }
 .chatEmoField { display: flex; align-items: center; gap: 7px; padding: 0 5px 0 8px; }
 .chatEmoThumb { flex: 0 0 auto; width: 24px; height: 24px; object-fit: contain; }
 .chatEmoName { flex: 1 1 auto; min-width: 0; font-size: 12.5px; font-weight: 600; color: #3d372f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

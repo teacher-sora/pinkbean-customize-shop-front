@@ -18,7 +18,7 @@ import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
-import { CARD_FRACTION, CARD_MARGIN, thumbView, type ChatState } from '@/lib/shopData'
+import { CARD_FRACTION, CARD_MARGIN, CHAT_CARD_UP, thumbView, type ChatState } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
 import { CARD_FRAC_HAIR, DyeSprite } from './render/DyeSprite'
 
@@ -244,7 +244,9 @@ function ModelThumb({ chat: chatState, item, gaze, ctxItems, ctxKey, zmap, smap,
     let cancelled = false
     const back = gaze === 'back'
     // snap: 배율을 정수로 스냅해 카드 도트가 항상 완전히 선명(모든 카드 동일, 화면 크기별로만 살짝 다름).
-    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: CARD_FRACTION, snap: true, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy, drop: true })
+    // 말풍선 카드는 머리 위 말풍선이 카드 위에 잘리지 않게 보는 자리를 그만큼 올린다(캐릭터가 아래로 내려온다).
+    const up = item.slot === 'chatBalloon' ? CHAT_CARD_UP : 0
+    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: CARD_FRACTION, snap: true, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: (back ? MODEL_REF.backDy : MODEL_REF.centerDy) - up, drop: true })
     // 캔버스를 화면 픽셀 격자에 맞춰 가운데(미리보기와 같은 규칙 — translate(-50%) 는 소수 px 라 도트가 뭉갠다).
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)

@@ -88,6 +88,7 @@ export interface ChatState { name: string; text: string; emo?: ChatEmo }
 export const CHAT_DEFAULT: ChatState = { name: 'Maple', text: '안녕하세요' }
 export const CHAT_NAME_MAX = 12  // 이름 글자 수
 export const CHAT_TEXT_MAX = 70  // 말 글자 수
+export const CHAT_CARD_UP = 26   // 말풍선 카드에서 보는 자리를 올리는 만큼(게임 픽셀) — 머리 위 말풍선이 카드 위에 잘리지 않게
 // 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
 export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, chat: ChatState, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
   const ui = (slot: string) => { const it = equipped[slot]; return !it || hidden[slot] ? undefined : it.chatUi ?? metas?.get(it.id)?.chatUi }
