@@ -78,7 +78,7 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
  * 그리기는 core/chatUi(renderCharacter 의 chat). 이름과 말은 아직 고정값이다. */
 export const CHAT_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }]
 export const CHAT_FILES: Record<string, string> = { nameTag: '/dev/chatui/nametag.json', chatBalloon: '/dev/chatui/balloon.json' }
-export const CHAT_NAME = '핑크빈'
+export const CHAT_NAME = 'Maple'
 export const CHAT_TEXT = '안녕하세요'
 // 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
 export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
