@@ -18,7 +18,7 @@ const PRESETS: Preset[] = [
   { id: 'mobile', label: '모바일', w: 390, h: 844, touch: true, note: '≤520 · 터치' },
 ]
 
-const TABS = ['', '코디', 'AI 코디 검색', '코디 정보 · 염색', '프리셋', '코디 광장', '공지 및 건의함']
+const TABS = ['', '코디', 'AI 코디 검색', '코디 정보 · 염색', '프리셋', '코디 광장', '건의함 및 가이드']
 
 // CSS 모듈 클래스 `plaza_pickBtn__a1b2` → `plaza.module.css › .pickBtn`
 const MOD = /^(.+?)_(.+)__[A-Za-z0-9_-]+$/

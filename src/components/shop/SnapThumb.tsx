@@ -26,8 +26,8 @@ import { useShop, type Snapshot } from './ShopContext'
 // 명찰 조각 정보(id → chatUi). 명찰 · 말풍선 목록 파일을 처음 쓸 때 한 번만 받는다.
 let tagUis: Promise<Map<string, ChatUi>> | null = null
 const loadTagUis = () => (tagUis ??= fetch(CHAT_FILES.nameTag).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === 'nameTag' && x.chatUi).map((x) => [x.id, x.chatUi!]))).catch(() => new Map()))
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName }: {
-  snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, fileName }: {
+  snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
 }) {
   const { index } = useShop()
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
@@ -107,8 +107,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return
-    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), tagName?.trim() || 'pinkbean-cody') // 프리셋 카드는 프리셋 이름
-  }, [tagName])
+    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), fileName || 'pinkbean-cody') // 프리셋 카드는 프리셋 이름(presetFileName)
+  }, [fileName])
 
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>

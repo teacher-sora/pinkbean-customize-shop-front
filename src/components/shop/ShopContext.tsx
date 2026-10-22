@@ -29,7 +29,8 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { presetFileName } from '@/lib/canvasExport'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -111,7 +112,6 @@ function copyAsyncText(make: () => Promise<string>): Promise<void> {
 // 복원은 저장소에 있는 칸만 읽어 오므로(아래 PRESET_IDS.forEach) 기존 코디·이름은 손대지 않는다. 새 칸만 기본값으로 생긴다.
 const PRESET_COUNT = 30
 const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
-const defaultPresetName = (i: number) => `코디 ${i + 1}`
 // 되돌리기 기록용: 프리셋 이름 전체(id → 이름)와, 기록 한 건을 가르는 상태키(코디 + 선택 프리셋 + 이름).
 const namesOf = (ps: Preset[]): Record<string, string> => Object.fromEntries(ps.map((p) => [p.id, p.name]))
 const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, string>) => JSON.stringify({ s: snap, p: sel, n: names })
@@ -216,6 +216,7 @@ export interface ShopCtx {
   chatOn: boolean // 명찰 · 말풍선을 쓸 수 있는가(목록 파일이 있을 때만)
   chatDefault: ChatUi | null // 기본 말풍선(말풍선 반지 없이 보낸 채팅)
   chatName: string // 명찰 이름 = 고른 프리셋 이름
+  saveName: string // 이미지 · 움짤 저장 파일 이름(canvasExport.presetFileName)
   chatMsg: ChatMsg | null; sendChat: (m: ChatMsg) => void // 채팅 칸에서 보낸 말 · 이모티콘(CHAT_SHOW_MS 동안)
   catLoading: boolean
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
@@ -1187,7 +1188,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (primary !== 'share') setPlazaUpload(false) }, [primary])
 
   const openPlazaPost = (post: PlazaPost) => openSurface({ kind: 'plaza', item: null, post })
-  // 공지 및 건의함 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
+  // 건의함 및 가이드 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
   const openNotice = () => openSurface({ kind: 'notice', item: null })
   // 공유받은 코디를 프리셋 칸에 저장하는 화면(서피스 ptake) — 공유 링크·코드로 받았을 때도 이 화면이다
   // (저장 화면은 하나다). 칸을 고르면 applySharedToPreset 으로 들어간다.
@@ -1995,8 +1996,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const onPageKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } else if (e.key === 'Escape') e.currentTarget.blur() }
 
   const chatName = presets.find((p) => p.id === selectedPreset)?.name?.trim() || CHAT_NAME_FALLBACK
+  // 이미지 · 움짤 저장 이름 = 쓰고 있는 프리셋 이름(비면 그 번호의 코디 N). 프리셋을 고르지 않았으면 명찰과 같은 이름
+  const selIdx = presets.findIndex((p) => p.id === selectedPreset)
+  const saveName = selIdx >= 0 ? presetFileName(presets[selIdx].name, selIdx) : CHAT_NAME_FALLBACK
   const value: ShopCtx = {
-    index, cats, infoCats, chatOn, chatDefault, chatName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
+    index, cats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
     genderFilter, setGenderFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,

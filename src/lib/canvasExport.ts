@@ -15,6 +15,7 @@ import { computeModelPlacement } from './core/modelPlacement'
 import type { ParticleDraw } from './core/particle'
 import type { ChatDraw } from './core/chatUi'
 import { renderCharacter, type EffectDraw } from './core/render'
+import { defaultPresetName } from './shopData'
 
 // 다시 그릴 때 필요한 것 = 화면에 그린 입력 그대로. center* 는 화면 렌더와 같은 값을 넘긴다.
 export type ModelShot = {
@@ -98,9 +99,13 @@ export async function copyImage (getBlob: () => Promise<Blob | null>): Promise<b
 // PNG(움짤은 GIF) 파일로 저장. 가능하면 "다른 이름으로 저장" 대화상자(File System Access API)를 띄워 위치·파일명을
 // 사용자가 고르게 한다. 미지원 브라우저(Firefox/Safari/모바일 등)는 기존 다운로드로 폴백한다.
 // 반환: 'saved' 저장됨 · 'canceled' 사용자가 취소 · 'error' 실패.
+// 파일 이름에 못 쓰는 글자(윈도우 \ / : * ? " < > |, 제어 문자)는 _ 로, 앞뒤 공백 · 끝의 점은 지운다. 남는 것이 없으면 ''.
+export const fileSafe = (name: string): string => name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().replace(/\.+$/, '')
+// 프리셋의 저장 이름 — 프리셋 이름, 비었거나 못 쓰는 글자뿐이면 그 프리셋 번호의 기본 이름(코디 N — 사용자 지시)
+export const presetFileName = (name: string | undefined, i: number): string => fileSafe(name ?? '') || defaultPresetName(i)
+
 export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string, kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'canceled' | 'error'> {
-  // 파일 이름에 못 쓰는 글자(윈도우 \ / : * ? " < > |, 제어 문자)는 _ 로, 앞뒤 공백 · 끝의 점은 지운다
-  const base = filename.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().replace(/\.+$/, '') || 'pinkbean-cody'
+  const base = fileSafe(filename) || 'pinkbean' // 부르는 쪽이 이름을 정한다(프리셋은 presetFileName) — 여기는 마지막 안전망
   const name = base.endsWith(`.${kind}`) ? base : `${base}.${kind}`
   const type = kind === 'gif' ? { description: '움짤(GIF)', accept: { 'image/gif': ['.gif'] } } : { description: 'PNG 이미지', accept: { 'image/png': ['.png'] } }
   const picker = (window as unknown as { showSaveFilePicker?: (o: unknown) => Promise<{ createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker

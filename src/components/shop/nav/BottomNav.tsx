@@ -18,7 +18,7 @@ export const TABS = [
   { id: 'info', label: '코디 정보 / 염색', short: '염색' },
   { id: 'preset', label: '프리셋', short: '프리셋' },
   { id: 'share', label: '코디 광장', short: '광장' },
-  { id: 'notice', label: '공지 및 건의함', short: '공지' },
+  { id: 'notice', label: '건의함 및 가이드', short: '건의함' },
 ]
 const READY = new Set(['codi', 'search', 'info', 'preset', 'share'])
 
@@ -64,7 +64,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   }
   const pickTab = (t: { id: string; label: string }) => {
     if (READY.has(t.id)) { s.setPrimary(t.id); return }
-    if (t.id === 'notice') { s.openNotice(); return } // 공지 및 건의함은 탭 화면 없이 서피스로 연다(간이)
+    if (t.id === 'notice') { s.openNotice(); return } // 건의함 및 가이드는 탭 화면 없이 서피스로 연다(간이)
     s.notify(`${t.label}은 아직 준비 중이에요!`)
   }
 

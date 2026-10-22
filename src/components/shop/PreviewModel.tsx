@@ -651,7 +651,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     }
     return {
       ok: () => { const p = periodsOf(); return !!p && (p.periods.length > 0 || p.flowing) },
-      getBlob: async () => {
+      getBlob: async (transparent) => {
         const p = periodsOf()
         if (!p) return null
         const { a, snap, emo } = p
@@ -676,7 +676,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
             if (particles.length) { const dt = partT < 0 ? 0 : (t - partT) / 1000; partT = t; for (const sim of new Set(particles.map((x) => x.sim))) sim.step(dt) }
             return { placed: f.placed, override: snap.override, effects: effAt(t), particles, chat: snap.chat, chatT: emo ? t : undefined, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy, lift: liftAt(t), ringFloor: a.ringFloor }
           },
-        })
+        }, transparent)
       },
     }
   }, [])
@@ -685,9 +685,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    const off = bindImageMenu(el, makeBlob, shop.chatName, gifMenu) // 파일 이름 = 고른 프리셋 이름(사용자 지시 — 명찰 이름과 같다)
+    const off = bindImageMenu(el, makeBlob, shop.saveName, gifMenu) // 파일 이름 = 쓰고 있는 프리셋 이름(사용자 지시)
     return off
-  }, [makeBlob, gifMenu, shop.chatName])
+  }, [makeBlob, gifMenu, shop.saveName])
 
   return (
     <div ref={wrapRef} className={styles.wrap}>
