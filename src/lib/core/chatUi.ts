@@ -159,9 +159,9 @@ function compose (A: HTMLImageElement, pieces: Piece[], extra: (g: CanvasRenderi
 }
 
 // 기본 명찰 — 명찰 반지를 끼지 않았을 때의 게임 명찰. 원본에 그림이 없다(클라이언트가 직접 그린다) — 게임 화면을 점 단위로 재어 맞췄다:
-// 판 = 이름 폭 + 5(펜 시작 2칸 왼쪽부터) × 13, 위 끝이 발끝 2칸 아래, 네 모서리 1칸씩 깎음, 검정 55% 불투명. 글자는 흰색, 글자 줄의 위 = 판 위 + 2.
+// 판 = 이름 폭 + 5(펜 시작 2칸 왼쪽부터) × 16(글자 줄 12 의 위 2, 아래 2), 위 끝이 발끝 2칸 아래, 네 모서리 1칸씩 깎음, 검정 55% 불투명. 글자는 흰색, 글자 줄의 위 = 판 위 + 2.
 export const BASE_TAG: ChatUi = { kind: 'nameTag', clr: '#ffffff', atlas: 'base', parts: {}, plain: true }
-const BASE_TAG_TOP = 2, BASE_TAG_H = 13, BASE_TAG_ALPHA = 0.55
+const BASE_TAG_TOP = 2, BASE_TAG_H = 16, BASE_TAG_ALPHA = 0.55
 function plainTag (name: string): Bitmap {
   const t = textBitmap(name, BASE_TAG.clr)
   const pen = -Math.floor((t.adv + 4) / 2), x = pen - 2, w = t.adv + 5, h = BASE_TAG_H
