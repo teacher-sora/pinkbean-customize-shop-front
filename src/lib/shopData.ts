@@ -111,6 +111,8 @@ export const CHAT_NEW_FILE = '/chatui/new.json' // 테스트 서버에만 있는
 export interface ChatState { name: string; text: string; emo?: ChatEmo }
 export interface ChatMsg { text: string; emo?: ChatEmo; at?: number } // at = 보낸 시각(performance.now — 움직이는 이모티콘의 시계)
 export const defaultPresetName = (i: number) => `코디 ${i + 1}` // 프리셋 기본 이름(비우면 이것으로 돌아간다)
+// 기본 이름 꼴('코디 N')인가 — 순서를 바꾸면 이 이름은 새 자리의 번호로 따라간다(ShopContext.reorderPresets)
+export const isDefaultPresetName = (name: string) => /^코디 \d+$/.test(name.trim())
 export const CHAT_NAME_FALLBACK = '핑크빈' // 프리셋을 고르지 않았거나 이름을 비웠을 때 명찰 이름(사용자 지시)
 export const CHAT_CARD: ChatState = { name: '핑크빈', text: '커마샵' } // 목록 카드의 명찰 이름 · 말풍선 말(고정 — 사용자 지시)
 export const CHAT_TEXT_MAX = 70  // 말 글자 수

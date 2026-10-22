@@ -152,7 +152,9 @@ export function openImageMenu (x: number, y: number, getBlob: () => Promise<Blob
 
 // 요소에 "우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등 터치)" 를 모두 걸어 이미지 메뉴를 띄운다.
 // 반환값은 해제 함수. 렌더와 무관한 이벤트 리스너만 붙이므로 성능 영향 없음.
-export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | null>, filename: string | (() => string), gif?: GifMenu): () => void {
+// opts.hold = false: 터치 길게 누르기 대신 IMAGE_MENU_EVENT(detail {x, y})를 받으면 연다 — 그 요소의 길게 누르기를 다른 동작(프리셋 끌기)이 쓸 때
+export const IMAGE_MENU_EVENT = 'pb-imagemenu'
+export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | null>, filename: string | (() => string), gif?: GifMenu, opts?: { hold?: boolean }): () => void {
   // 터치 위주 기기(모바일)면 롱프레스 → 중앙 큰 다이얼로그. 마우스면 우클릭 → 커서 옆 작은 메뉴.
   const coarse = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)')?.matches
   // 우클릭: 마우스 기기에서만 메뉴를 연다. 터치 기기(안드로이드)는 롱프레스 타이머가 중앙 다이얼로그를 열고,
@@ -167,6 +169,12 @@ export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | nu
   el.setAttribute('draggable', 'false')
   const onDrag = (e: Event) => e.preventDefault() // 이미지 드래그 시작 자체를 차단
   el.addEventListener('dragstart', onDrag)
+
+  if (opts?.hold === false) {
+    const onAsk = (e: Event) => { const d = (e as CustomEvent<{ x: number; y: number }>).detail; openImageMenu(d.x, d.y, getBlob, filename, true, gif) }
+    el.addEventListener(IMAGE_MENU_EVENT, onAsk)
+    return () => { el.removeEventListener('contextmenu', onCtx); el.removeEventListener('dragstart', onDrag); el.removeEventListener(IMAGE_MENU_EVENT, onAsk) }
+  }
 
   // 터치 롱프레스 직접 감지(iOS Safari 는 롱프레스에 contextmenu 를 안 쏜다).
   let timer: ReturnType<typeof setTimeout> | null = null

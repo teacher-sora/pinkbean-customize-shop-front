@@ -62,15 +62,13 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   )
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') s.importFetch() }
 
-  // 카드를 끌어 순서를 바꾼다(usePresetDrag). 끄는 동안은 그 순서로 그리고, 놓으면 프리셋 순서로 저장한다
+  // 카드를 끌어 순서를 바꾼다(usePresetDrag). 끄는 동안은 transform 으로만 옮기고(다시 그리지 않는다), 놓으면 프리셋 순서로 저장한다
   const gridRef = useRef<HTMLDivElement>(null)
-  const byId = useMemo(() => new Map(s.presets.map((p) => [p.id, p])), [s.presets])
   const dnd = usePresetDrag(s.presets.map((p) => p.id), gridRef, boxRef, s.reorderPresets, mobile ? 'm' : narrow ? 'n' : 'pc')
 
   const grid = (
     <div ref={gridRef} className={mobile ? styles.gridHM : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
-      {dnd.view.map((id, i) => {
-        const p = byId.get(id)!
+      {s.presets.map((p, i) => {
         const on = s.selectedPreset === p.id
         const snap = on ? liveSnap : s.presetData[p.id]
         return (
@@ -78,7 +76,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
             className={clsx('pb-presetwrap', styles.wrap, dnd.dragId === p.id && styles.dragging, dnd.liftId === p.id && styles.lifted)}>
             <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
               <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
-              <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} />}</div>
+              <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={false} />}</div>
               <div className={styles.nameRow}>
                 <span className={styles.nameWrap}>
                   <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}

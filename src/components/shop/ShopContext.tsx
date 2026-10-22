@@ -30,7 +30,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -1869,11 +1869,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 프리셋 이름(카드의 인라인 입력). 비운 채로 두면 기본 이름으로 되돌린다(blur 시 호출부가 처리).
   const renamePreset = (id: string, name: string) => setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name } : p)))
-  // 카드 순서만 바꾼다(내용 · 이름 · 선택은 id 에 붙어 그대로). 모르는 id 나 빠진 칸이 있으면 바꾸지 않는다
+  // 카드 순서를 바꾼다(내용 · 선택은 id 에 붙어 그대로). 이름이 기본 꼴('코디 N')이면 새 자리의 번호로 바꾼다(사용자 지시 —
+  // 놓을 때 한 번, 끄는 도중에는 바꾸지 않는다). 사용자가 지은 이름은 그대로. 모르는 id 나 빠진 칸이 있으면 바꾸지 않는다
   const reorderPresets = (ids: string[]) => setPresets((ps) => {
     const by = new Map(ps.map((p) => [p.id, p]))
     if (ids.length !== ps.length || ids.some((id) => !by.has(id)) || new Set(ids).size !== ids.length) return ps
-    return ids.map((id) => by.get(id)!)
+    return ids.map((id, i) => { const p = by.get(id)!; return isDefaultPresetName(p.name) ? { ...p, name: defaultPresetName(i) } : p })
   })
   // 이름 입력을 마쳤을 때(입력창을 벗어날 때) — 비었으면 기본 이름으로 되돌리고, 바뀐 이름을 되돌리기 기록 한 건으로 남긴다.
   // 글자마다 기록하면 되돌리기가 한 글자씩 지워지므로 확정 시점에만 남긴다.
