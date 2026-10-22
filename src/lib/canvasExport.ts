@@ -99,7 +99,9 @@ export async function copyImage (getBlob: () => Promise<Blob | null>): Promise<b
 // 사용자가 고르게 한다. 미지원 브라우저(Firefox/Safari/모바일 등)는 기존 다운로드로 폴백한다.
 // 반환: 'saved' 저장됨 · 'canceled' 사용자가 취소 · 'error' 실패.
 export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string, kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'canceled' | 'error'> {
-  const name = filename.endsWith(`.${kind}`) ? filename : `${filename}.${kind}`
+  // 파일 이름에 못 쓰는 글자(윈도우 \ / : * ? " < > |, 제어 문자)는 _ 로, 앞뒤 공백 · 끝의 점은 지운다
+  const base = filename.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().replace(/\.+$/, '') || 'pinkbean-cody'
+  const name = base.endsWith(`.${kind}`) ? base : `${base}.${kind}`
   const type = kind === 'gif' ? { description: '움짤(GIF)', accept: { 'image/gif': ['.gif'] } } : { description: 'PNG 이미지', accept: { 'image/png': ['.png'] } }
   const picker = (window as unknown as { showSaveFilePicker?: (o: unknown) => Promise<{ createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker
   if (typeof picker === 'function') {

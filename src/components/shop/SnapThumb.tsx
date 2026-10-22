@@ -107,8 +107,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return
-    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), 'pinkbean-cody')
-  }, [])
+    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), tagName?.trim() || 'pinkbean-cody') // 프리셋 카드는 프리셋 이름
+  }, [tagName])
 
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>

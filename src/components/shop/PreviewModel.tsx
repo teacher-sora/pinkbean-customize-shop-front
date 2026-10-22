@@ -685,9 +685,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    const off = bindImageMenu(el, makeBlob, 'pinkbean-cody', gifMenu)
+    const off = bindImageMenu(el, makeBlob, shop.chatName, gifMenu) // 파일 이름 = 고른 프리셋 이름(사용자 지시 — 명찰 이름과 같다)
     return off
-  }, [makeBlob, gifMenu])
+  }, [makeBlob, gifMenu, shop.chatName])
 
   return (
     <div ref={wrapRef} className={styles.wrap}>
