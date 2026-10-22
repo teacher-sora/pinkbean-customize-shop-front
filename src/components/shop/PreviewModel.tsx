@@ -629,6 +629,8 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.
   // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 그림에 맞춘 상자 · 게임 크기 1배).
+  const saveNameRef = useRef(shop.saveName)
+  saveNameRef.current = shop.saveName
   const makeBlob = useCallback(async (): Promise<Blob | null> => {
     for (let i = 0; i < 300 && !copyRef.current; i++) await new Promise((r) => setTimeout(r, 100)) // 불러오는 중이면 첫 그림을 기다린다
     const snap = copyRef.current
@@ -693,9 +695,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    const off = bindImageMenu(el, makeBlob, shop.saveName, gifMenu) // 파일 이름 = 쓰고 있는 프리셋 이름(사용자 지시)
+    const off = bindImageMenu(el, makeBlob, () => saveNameRef.current, gifMenu) // 파일 이름 = 저장하는 순간에 쓰고 있는 프리셋 이름(사용자 지시)
     return off
-  }, [makeBlob, gifMenu, shop.saveName])
+  }, [makeBlob, gifMenu])
 
   return (
     <div ref={wrapRef} className={styles.wrap}>

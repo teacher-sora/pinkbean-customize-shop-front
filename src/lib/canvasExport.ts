@@ -108,11 +108,12 @@ export const presetFileName = (name: string | undefined, i: number): string => f
 //    볼 수 없어 이 일은 브라우저만 할 수 있다.
 //  · 위치를 고르고 싶으면 브라우저 설정의 '다운로드 전에 각 파일의 저장 위치 확인'을 켜면 저장 창이 뜬다.
 // 반환: 'saved' 내려받기 시작 · 'error' 그림을 못 만들었다.
-export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string, kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'error'> {
-  const base = fileSafe(filename) || 'pinkbean' // 부르는 쪽이 이름을 정한다(프리셋은 presetFileName) — 여기는 마지막 안전망
-  const name = base.endsWith(`.${kind}`) ? base : `${base}.${kind}`
+// filename 이 함수면 그림을 다 만든 뒤에 부른다(불러오는 중에 눌러도 그때의 프리셋 이름으로).
+export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string | (() => string), kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'error'> {
   try {
     const b = await getBlob(); if (!b) return 'error'
+    const base = fileSafe(typeof filename === 'function' ? filename() : filename) || 'pinkbean' // 부르는 쪽이 이름을 정한다(프리셋은 presetFileName) — 여기는 마지막 안전망
+    const name = base.endsWith(`.${kind}`) ? base : `${base}.${kind}`
     const url = URL.createObjectURL(b)
     const a = document.createElement('a')
     a.href = url; a.download = name
