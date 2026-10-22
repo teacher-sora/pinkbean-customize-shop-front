@@ -2,7 +2,9 @@
 // 미리보기 고정 박스. 코어(src/lib/core)의 assemble/render/data 위에서 동작한다.
 
 import type { AssembleInput, ViewOpts } from '@/lib/core/assemble'
-import { CASHFX_FILE, RING_FILE, type AnimaRace, type ListItem, type SlotSummary } from '@/lib/core/data'
+import type { ChatDraw, ChatEmo } from '@/lib/core/chatUi'
+import { CASHFX_FILE, RING_FILE, type AnimaRace, type ItemMeta, type ListItem, type SlotSummary } from '@/lib/core/data'
+import type { Cat } from '@/lib/catalog'
 
 // 시각적 중복 폴딩:
 //  - 헤어/성형(colorGroup 있음): 그룹당 1개, 대표 = 그룹 내 최저 id(= 검정 color 0). 나머지 색은
@@ -27,6 +29,25 @@ export function foldList(l: ListItem[]): ListItem[] {
     if (it.id !== rep.get(k)!.id) continue // 대표 위치에서만 출력 → 최저 id 기준 정렬 유지
     seen.add(k); out.push(rep.get(k)!)
   }
+  return pairSizes(out)
+}
+
+// 크기만 다른 짝(일루전 링의 'X (L)' — 같은 그림을 크게)은 나란히 둔다 — 큰 것이 먼저(왼쪽), 일반 크기 'X' 가 바로 뒤(사용자 지시 — 명찰 · 말풍선 세트처럼).
+// 짝은 둘 가운데 먼저(최신순) 나오는 자리에 선다. 이름이 정확히 같은 일반 크기가 없으면 그대로 둔다.
+const BIG = /\s*\(L\)$/
+function pairSizes(l: ListItem[]): ListItem[] {
+  const base = new Map<string, ListItem>()
+  for (const it of l) if (it.name && !BIG.test(it.name)) base.set(it.name, it)
+  const big = new Map<string, ListItem>() // 일반 크기 id → (L)
+  for (const it of l) { const b = it.name && BIG.test(it.name) ? base.get(it.name.replace(BIG, '')) : undefined; if (b) big.set(b.id, it) }
+  if (!big.size) return l
+  const out: ListItem[] = [], done = new Set<string>()
+  for (const it of l) {
+    if (done.has(it.id)) continue
+    const b = it.name && BIG.test(it.name) ? base.get(it.name.replace(BIG, '')) : undefined
+    const pair = b && big.get(b.id) === it ? [it, b] : [...(big.has(it.id) ? [big.get(it.id)!] : []), it]
+    for (const x of pair) if (!done.has(x.id)) { done.add(x.id); out.push(x) }
+  }
   return out
 }
 
@@ -36,10 +57,12 @@ export const CAT_TO_SLOT: Record<string, string> = {
   eyeacc: 'eyeAcc', earring: 'earring', overall: 'longcoat', top: 'coat', bottom: 'pants',
   shoes: 'shoes', gloves: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
   ring: 'ring', effect: 'effect', riding: 'riding',
+  nametag: 'nameTag', balloon: 'chatBalloon', chatring: 'chatRing', // dev 전용 — 부위 탭은 명찰/말풍선 하나(chatring), 코디 정보 칩은 둘(CHAT_INFO_CATS)
 }
-export const SLOT_TO_CAT: Record<string, string> = Object.fromEntries(
-  Object.entries(CAT_TO_SLOT).map(([c, s]) => [s, c]),
-)
+export const SLOT_TO_CAT: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(CAT_TO_SLOT).map(([c, s]) => [s, c])),
+  nameTag: 'chatring', chatBalloon: 'chatring', // 명찰 · 말풍선 아이템은 한 탭에서 고른다
+}
 // 실제 착용 슬롯(합성 대상). skin 은 톤이라 별도.
 export const EQUIP_SLOTS = [
   'hair', 'face', 'cap', 'faceAcc', 'eyeAcc', 'earring',
@@ -47,6 +70,7 @@ export const EQUIP_SLOTS = [
   'ring', // 일루전 링 — 그릴 레이어 대신 표지 레이어(Layer.illusion)로 캐릭터를 키우거나 바꾼다(assemble.applyIllusion)
   'effect', // 캐시 이펙트 — 그릴 레이어가 없고(빈 meta) 이펙트(effects/<id>.json)만 그린다
   'riding', // 탑승 — 마운트/모프 레이어를 코디처럼 합성
+  'nameTag', 'chatBalloon', // 명찰 · 말풍선(dev 전용 — 그릴 레이어 없이 core/chatUi 가 덧그린다)
 ] as const
 
 /* ── 라이딩(탑승) 공통 규칙 ───────────────────────────────────────────────
@@ -66,7 +90,34 @@ export const ridingActionSet = (it: RidingOpts) => (it?.ridingActions?.length ? 
 export const ridingSeatedSet = (it: RidingOpts) => (it?.ridingSeated?.length ? new Set(it.ridingSeated) : RIDING_SEATED_DEFAULT)
 // 슬롯 → 목록 파일. 라이딩(프론트 public)과 반지 · 이펙트(CDN rings/ · cashfx/ — 카탈로그 index 밖)만 갈라지는 지점이 **여기 하나**다.
 export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null): string | undefined =>
-  (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
+  CHAT_FILES[slot] ?? (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
+
+/* ── 명찰 · 말풍선 반지(dev 전용 실험) ──────────────────────────────────────
+ * 데이터는 front public/dev/chatui(테스트 서버에서 뽑은 명찰 · 말풍선 603 · 채팅 이모티콘 141)이고, main 병합 때 빠진다(scripts/merge-dev-to-main.sh 의 DEV_ONLY).
+ * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats · infoCats) — 운영에는 파일이 없어 부위 탭 · 코디 정보 칩이 생기지 않는다.
+ * 부위 탭은 하나(명찰/말풍선 — 같은 이름의 명찰과 말풍선이 나란히, 세트 순서)이고 코디 정보 칩은 둘이다(따로 끼고 벗는다).
+ * 그리기는 core/chatUi(renderCharacter 의 chat). 명찰 이름 = 고른 프리셋 이름, 말풍선 = 미리보기 아래 채팅 칸(preview/ChatBar)에서
+ * 보낸 말 · 이모티콘이 CHAT_SHOW_MS 동안 떴다 사라진다(게임 값을 찾지 못해 사용자가 정했다). */
+export const CHAT_TAB = 'chatring'
+export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰 / 말풍선' }] // '/' 양옆은 가는 공백(U+2009 — 보통 공백보다 좁게, 사용자 지시)
+export const CHAT_INFO_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }]
+const CHAT_LIST = '/dev/chatui/list.json'
+export const CHAT_FILES: Record<string, string> = { nameTag: CHAT_LIST, chatBalloon: CHAT_LIST, chatRing: CHAT_LIST }
+export const CHAT_EMO_FILE = '/dev/chatui/emoticons.json'
+export const CHAT_NEW_FILE = '/dev/chatui/new.json' // 테스트 서버에만 있는(본 서버에 없는) 명찰 · 말풍선 id — NEW 라벨
+export interface ChatState { name: string; text: string; emo?: ChatEmo }
+export interface ChatMsg { text: string; emo?: ChatEmo; at?: number } // at = 보낸 시각(performance.now — 움직이는 이모티콘의 시계)
+export const CHAT_NAME_FALLBACK = '핑크빈' // 프리셋을 고르지 않았거나 이름을 비웠을 때 명찰 이름(사용자 지시)
+export const CHAT_CARD: ChatState = { name: '핑크빈', text: '커마샵' } // 목록 카드의 명찰 이름 · 말풍선 말(고정 — 사용자 지시)
+export const CHAT_TEXT_MAX = 70  // 말 글자 수
+export const CHAT_SHOW_MS = 10000 // 보낸 말풍선이 떠 있는 시간(사용자 지시 — 10초)
+// 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
+// 말풍선은 보낸 말(msg)이 떠 있는 동안만 그린다.
+export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, name: string, msg: ChatMsg | null, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
+  const ui = (slot: string) => { const it = equipped[slot]; return !it || hidden[slot] ? undefined : it.chatUi ?? metas?.get(it.id)?.chatUi }
+  const tag = ui('nameTag'), balloon = msg ? ui('chatBalloon') : undefined
+  return tag || balloon ? { tag, balloon, name, text: msg?.text ?? '', emo: msg?.emo, t0: msg?.at } : undefined
+}
 
 // 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아
 // 스프라이트는 div overflow 로만 잘린다. 모델(마네킹) 높이 = fraction × divH 로 장비·카드크기 무관 일정.

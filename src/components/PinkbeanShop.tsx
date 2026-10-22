@@ -55,6 +55,7 @@ function Shell() {
                 밖에 두면 뼈대 동안 보였다가 사라진다. */}
             <div data-pb-panel>
               {!isPlaza && <MobileHero />}
+              {/* 채팅 칸(dev 전용) — 말풍선을 끼었을 때만, 미리보기 바로 아래 */}
               {isList && <ListArea mobile />}
               {isPlaza && <PlazaPanel mobile />}
               {s.primary === 'preset' && <PresetPanel mobile />}

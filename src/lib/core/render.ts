@@ -5,10 +5,12 @@
 // (world 0,0) is nailed to a FIXED canvas coordinate inside a fixed world box,
 // so the body never shifts when hair/hats/weapons change extent. All scaling is
 // integer (x1/x2/x3) with smoothing off and integer pixel snapping -> crisp dots.
+import { drawChat, prepareChat, type ChatDraw } from './chatUi'
 import { drawParticles, type ParticleDraw } from './particle'
 import { spriteUrl, type EffectGroup, type EffectMeta, type Vec } from './data'
 import type { PlacedLayer } from './assemble'
 import { LRU } from './lru'
+import { canvasReadExact, rememberBytes } from './pngPixels'
 
 const imageCache = new LRU<Promise<HTMLImageElement>>(1200)
 
@@ -23,13 +25,25 @@ export function loadImage(pngRel: string, cors = false): Promise<HTMLImageElemen
   const src = cors ? base + (base.includes('?') ? '&' : '?') + 'cors=1' : base
   let p = imageCache.get(src)
   if (!p) {
-    const once = () => new Promise<HTMLImageElement>((resolve, reject) => {
+    const plain = () => new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image()
       if (cors) img.crossOrigin = 'anonymous' // src 설정 전에 지정해야 적용됨
       img.onload = () => resolve(img)
       img.onerror = () => reject(new Error(`load ${src}`))
       img.src = src
     })
+    // 캔버스 읽기를 흔드는 브라우저(core/pngPixels)는 파일을 받아 바이트를 쥔 채 그 바이트로 그림을 만든다 — 염색이 쓸 원본 픽셀을
+    // 다시 받지 않고 한가할 때 풀어 둔다. 받는 횟수는 같고, 그림은 같은 출처(blob)라 캔버스가 더럽혀지지 않는다. 보통 브라우저는 예전 그대로.
+    const held = () => fetch(src, { mode: 'cors', credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`load ${src}`))))
+      .then((buf) => new Promise<HTMLImageElement>((resolve, reject) => {
+        const bytes = new Uint8Array(buf), url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }))
+        const img = new Image()
+        img.onload = () => { URL.revokeObjectURL(url); rememberBytes(img, bytes); resolve(img) }
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(`load ${src}`)) }
+        img.src = url
+      }))
+    const once = cors && !canvasReadExact() ? held : plain
     // 한 번 실패하면 잠깐 뒤 한 번 더 받는다. 그래도 실패하면 캐시에서 뺀다 — 실패한 Promise 를 캐시에 남기면
     // 순간적인 네트워크 끊김 한 번으로 그 그림이 든 코디가 새로고침 전까지 계속 빈 칸이 됐다(닉네임 불러오기의 빈 '기본' 카드).
     const made: Promise<HTMLImageElement> = once()
@@ -109,6 +123,8 @@ export interface RenderOpts {
   backImage?: string                 // sprite drawn BEHIND the body (ultimate fallback: no body & no effect)
   effects?: EffectDraw[]             // item effects (망토 등) composited around the body (each carries ox/oy)
   particles?: ParticleDraw[]         // 파티클(제네시스 무기 등) — 입자는 sim 이 들고, 그림은 desc.tex.png. z 음수 = 캐릭터 뒤
+  chat?: ChatDraw                    // 명찰 · 말풍선(dev 전용, core/chatUi) — 모든 것 위에, 시선과 무관하게 뒤집지 않고 그린다
+  ringFloor?: number                 // 변신 그림을 올리거나 내릴 만큼(월드 px) — 동작의 모든 프레임으로 잰 값(ringFloorOf). 없으면 이 프레임만으로 잰다
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
   centerX?: boolean                  // pin the body NAVEL to a fixed box point (center X, anchor.y) in BOTH axes →
                                      //   body never moves regardless of sprite/equipment/effect size (body-based, not bbox)
@@ -120,6 +136,30 @@ export interface RenderOpts {
   cors?: boolean                     // load sprites with CORS(?cors=1). DEFAULT true so ALL canvas renders(코디 카드·
                                      //   미리보기·다이얼로그)와 염색(픽셀리드)이 한 캐시를 공유 → 장착 시 재fetch 없음,
                                      //   염색도 재fetch 없음. (Cloudflare 는 ?cors=1 에 CORS 헤더를 주므로 모두 성공.)
+}
+
+// 변신 그림 한 프레임: 맨 아래 불투명 줄이 캐릭터가 딛는 줄(그림 origin)보다 몇 px 아래인가(위면 음수). 그림이 없으면 null.
+function ringGap (layers: PlacedLayer[], get: (png: string) => HTMLImageElement | HTMLCanvasElement | undefined): number | null {
+  let bottom = -Infinity, root = NaN
+  for (const p of layers) {
+    const src = get(p.png); if (!src) continue
+    const ob = opaqueBottom(src); if (ob < 0) continue
+    const k = p.scale ?? 1
+    bottom = Math.max(bottom, p.y + (ob + 1) * k)
+    if (Number.isNaN(root)) root = p.y + p.origin.y * k
+  }
+  return Number.isFinite(bottom) && !Number.isNaN(root) ? bottom - root : null
+}
+// 변신의 한 동작(프레임 전부)에서 그림을 올리거나 내릴 만큼 — 가장 낮게 내려오는 프레임의 맨 아래가 바닥에 닿게.
+// 둥실대거나 뛰는 움직임은 그대로 두고(프레임마다 맞추면 점프가 사라진다) 동작 전체를 한 번만 옮긴다. 변신이 아니면 undefined.
+export async function ringFloorOf (frames: PlacedLayer[][]): Promise<number | undefined> {
+  const per = frames.map((f) => f.filter((p) => p.slot === 'ring' && p.root))
+  if (!per.some((f) => f.length)) return undefined
+  const imgs = new Map<string, HTMLImageElement>()
+  await Promise.all([...new Set(per.flat().map((p) => p.png))].map((png) => loadImage(png, true).then((i) => { imgs.set(png, i) }, () => {})))
+  let gap = -Infinity
+  for (const f of per) { const g = ringGap(f, (png) => imgs.get(png)); if (g != null) gap = Math.max(gap, g) }
+  return Number.isFinite(gap) ? -gap : undefined
 }
 
 // 그림의 맨 아래 불투명 줄(0부터, 비었으면 -1). 그림마다 한 번만 잰다. 픽셀을 못 읽으면(taint) 그림 높이로 본다.
@@ -169,6 +209,7 @@ export async function renderCharacter(
 
   // Image loads above are async; if a newer render started while we awaited (fast item
   // swaps), bail BEFORE touching the canvas so this stale pass can't overwrite it.
+  const chat = await prepareChat(opts.chat).catch(() => [])
   if (opts.shouldCancel?.()) return
 
   // 정수 배율이면 확대가 nearest 로 완벽히 선명. 카드/미리보기는 캔버스를 "디바이스 픽셀" 해상도로 맞추려고
@@ -241,6 +282,12 @@ export async function renderCharacter(
   // 내려간다 — 거대한 몸은 그 부분이 이미 3배라 크게 어긋났다. 그림 크기를 아는 여기서 그 차이만큼 복제를 올린다.
   // 견주는 것은 **땅에 닿는 것**(몸 · 신발, 탈것을 탔으면 탈것, 변신이면 변신 그림)만이다 — 모든 레이어의 맨 아래를 견주면 발보다 아래로
   // 내려온 무기 · 망토 · 긴 머리를 맞추게 되어, 그것이 3배로 더 내려간 복제의 발이 위로 떴다.
+  // 변신(일루전 링 그림이 캐릭터를 대신한다): 그림의 맨 아래 불투명 줄을 캐릭터가 딛는 줄에 세운다(사용자 지시 — 거대한 몸 · 내 뒤에 나와 같은 바닥).
+  // 그림의 origin 은 게임에서 캐릭터가 서는 점이라(수레를 끄는 칠면조면 칠면조의 발) 가로는 그대로 두고 세로만 맞춘다.
+  // 대부분은 이미 맞고(맨 아래 = origin), 떠 있는 그림(저승사자 주니어 리퍼 — 9~13px 위)과 바퀴가 내려간 그림(패밀리 칠면조 — 6px 아래)만 움직인다.
+  const ringRoot = placed.filter((p) => p.slot === 'ring' && p.root)
+  const ringDy = ringRoot.length ? opts.ringFloor ?? -(ringGap(ringRoot, (png) => opts.override?.get(png) ?? imgs.get(png)) ?? 0) : 0
+
   let cloneDy = 0
   if (placed.some((p) => p.slot === 'clone')) {
     const ground = (slot: string | undefined, name: string) => slot === 'body' || slot === 'shoes' || slot === 'ring' || (slot === 'riding' && name.startsWith('mount'))
@@ -272,7 +319,7 @@ export async function renderCharacter(
     const k = p.scale ?? 1 // 일루전으로 키운 레이어(assemble.applyIllusion)
     const w = (src as HTMLImageElement).width * k, h = (src as HTMLImageElement).height * k
     const dx = Math.round((anchorX + p.x) * scale)
-    const dy = Math.round((anchorY + p.y + (p.slot === 'clone' ? cloneDy : 0)) * scale)
+    const dy = Math.round((anchorY + p.y + (p.slot === 'clone' ? cloneDy : 0) + (p.slot === 'ring' && p.root ? ringDy : 0)) * scale)
     ctx.drawImage(src, dx, dy, w * scale, h * scale)
   }
 
@@ -280,4 +327,6 @@ export async function renderCharacter(
   for (const fx of effs) if (fx.e.z >= 0) drawEffect(fx)
   for (const x of parts) if (x.p.z >= 0) drawPart(x)
   ctx.restore()
+  // 움직이는 이모티콘은 보낸 뒤 흐른 시간의 프레임(보낸 시각이 없으면 — 복사 그림 등 — 대표 프레임)
+  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width, t: opts.chat?.t0 != null ? performance.now() - opts.chat.t0 : undefined, main: opts.chat?.emo?.main })
 }

@@ -373,8 +373,8 @@ export const footOf = (placed: PlacedLayer[]): Vec | null => {
   const k = b?.scale ?? 1
   return b ? { x: b.x + b.origin.x * k, y: b.y + b.origin.y * k } : null
 }
-// 딛고 선 바닥의 월드 좌표 — 탈것을 탔으면 탈것의 origin(라이딩의 바닥), 아니면 발.
-const groundOf = (placed: PlacedLayer[]): Vec | null => {
+// 딛고 선 바닥의 월드 좌표 — 탈것을 탔으면 탈것의 origin(라이딩의 바닥), 아니면 발. 명찰 · 말풍선(chatUi)도 이 점을 기준으로 놓인다.
+export const groundOf = (placed: PlacedLayer[]): Vec | null => {
   const m = placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount'))
   return m ? { x: m.x + m.origin.x * (m.scale ?? 1), y: m.y + m.origin.y * (m.scale ?? 1) } : footOf(placed)
 }
@@ -403,7 +403,9 @@ function applyRing(placed: PlacedLayer[], anchors: Record<string, Vec>, ring: La
   const spec = ring.illusion!
   const s = spec.scale ?? 1
   if (spec.kind === 'transform') return placed.filter((p) => p.slot === 'ring' || p.slot === 'riding')
-  const noWeapon = spec.hideWeapon ? placed.filter((p) => p.slot !== 'weapon' && p.slot !== 'shield') : placed
+  // 무기 · 방패 숨기기(원본 illusionequip — 거대한 몸). 프레임의 표지 레이어에는 hideWeapon 이 없어(parser ring-build 는 meta.illusion 에만 단다)
+  // 표지만 보면 거대한 몸에서 무기가 남았다 — 그 값이 붙는 종류(거대한 몸)로 가린다. 변신은 위에서 반지 그림만 남긴다.
+  const noWeapon = spec.hideWeapon || spec.kind === 'bigBody' ? placed.filter((p) => p.slot !== 'weapon' && p.slot !== 'shield') : placed
   if (spec.kind === 'bigHead') {
     const pv = anchors.neck ?? anchors.brow ?? foot
     if (anchors.brow) anchors.brow = { x: pv.x + (anchors.brow.x - pv.x) * s, y: pv.y + (anchors.brow.y - pv.y) * s }

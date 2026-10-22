@@ -14,6 +14,7 @@
 //    고정으로 붙여 목록 바로 위에 놓는다(목록의 둥근 모서리 · 나타나고 사라지는 불투명도를 따라간다).
 //  - 쪽 번호가 있는 목록(코디 · AI 검색 · 광장의 카드 목록, 프리셋 목록)에는 달지 않는다 — 쪽 번호가 그 역할을 한다.
 import { useEffect } from 'react'
+import { RELAYOUT_EVENT } from '@/lib/heroView'
 
 function watch(el: HTMLElement): () => void {
   let last: string | null = null
@@ -24,6 +25,8 @@ function watch(el: HTMLElement): () => void {
   const ov = document.createElement('div')
   ov.className = pop ? 'pb-fadeov pb-fadeovfix' : 'pb-fadeov'
   ov.setAttribute('aria-hidden', 'true')
+  // 세로로 더 있는 쪽 화살표(가로는 층의 ::before · ::after) — 층 안의 두 점(globals.css 의 .pb-fadear)
+  ov.innerHTML = '<i class="pb-fadear pb-fadear-t"></i><i class="pb-fadear pb-fadear-b"></i>'
   if (pop) document.body.appendChild(ov)
   else if (parent) {
     // 층은 칸 바로 뒤에 둔다. 부모가 자리 기준이 아니면 기준으로 만든다(층이 엉뚱한 조상을 기준으로 잡지 않게)
@@ -31,6 +34,9 @@ function watch(el: HTMLElement): () => void {
     el.after(ov)
   }
   const place = () => {
+    // 칸이 화면에서 빠졌으면(display:none) 층도 숨긴다
+    if (!el.getClientRects().length) { ov.style.display = 'none'; return }
+    ov.style.display = ''
     const cs = getComputedStyle(el), r = el.getBoundingClientRect()
     // 소수점까지 맞춘다(clientWidth 는 정수라 칸이 반 픽셀 걸치면 층이 1px 모자란다)
     const bl = parseFloat(cs.borderLeftWidth) || 0, br = parseFloat(cs.borderRightWidth) || 0, bt = parseFloat(cs.borderTopWidth) || 0, bb = parseFloat(cs.borderBottomWidth) || 0
@@ -73,6 +79,7 @@ function watch(el: HTMLElement): () => void {
   // 떠 있는 목록은 잠깐 떠 있는 동안 늘 따라간다(열리는 움직임이 전환이 아니라 애니메이션인 것도 있다)
   if (pop) { moving = 1; raf = requestAnimationFrame(follow) }
   el.addEventListener('scroll', sync, { passive: true })
+  window.addEventListener(RELAYOUT_EVENT, all) // 보기를 바꿔 칸이 자리만 옮겨 간 때(크기 변화가 없어 ResizeObserver 가 모른다)
   el.addEventListener('transitionrun', onRun)
   el.addEventListener('transitionend', onEnd)
   el.addEventListener('transitioncancel', onEnd)
@@ -84,7 +91,7 @@ function watch(el: HTMLElement): () => void {
   observeKids()
   all()
   return () => {
-    el.removeEventListener('scroll', sync); el.removeEventListener('transitionrun', onRun); el.removeEventListener('transitionend', onEnd); el.removeEventListener('transitioncancel', onEnd)
+    el.removeEventListener('scroll', sync); window.removeEventListener(RELAYOUT_EVENT, all);el.removeEventListener('transitionrun', onRun); el.removeEventListener('transitionend', onEnd); el.removeEventListener('transitioncancel', onEnd)
     ro.disconnect(); mo.disconnect(); cancelAnimationFrame(raf)
     ov.remove()
     if (madeRelative && parent) parent.style.position = ''

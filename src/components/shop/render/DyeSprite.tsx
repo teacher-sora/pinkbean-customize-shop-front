@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta } from '@/lib/core/data'
-import { applyHsb, renderDyedSprite, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from '@/lib/core/dye'
+import { applyHsb, loadDyeImage, renderDyedSprite, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { THUMB_VIEW } from '@/lib/shopData'
@@ -90,7 +90,7 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
     } else {
       const rel = thumb || `sprites/${id}/icon.png` // 아이템 스프라이트(모델 베이크 아님)
       const active = hsbActive(hsb)
-      const img = await loadImage(rel, active)
+      const img = active ? await loadDyeImage(rel) : await loadImage(rel, false)
       const src: CanvasImageSource = active ? applyHsb(img, hsb!, rel) : img
       drawSprite(el, src, (src as HTMLCanvasElement).width, (src as HTMLCanvasElement).height, boxW, boxH, frac, dpr)
     }
@@ -131,7 +131,7 @@ export function SkinModel({ bodyId, headId, hsb, dyeable, family, zmap, smap, bo
     const canvas = ref.current; if (!canvas || !placed) return
     const ov = new Map<string, HTMLCanvasElement>()
     const active = dyeable && hsbActive(hsb)
-    if (active) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadImage(p.png, true), skinHsbFor(hsb!, family ?? 5), p.png)) } catch (_) {} }
+    if (active) for (const p of placed) { try { ov.set(p.png, applyHsb(await loadDyeImage(p.png), skinHsbFor(hsb!, family ?? 5), p.png)) } catch (_) {} }
     const dpr = window.devicePixelRatio || 1
     const pl = computeModelPlacement({ divW: box, divH: box, dpr, margin: 1, fraction, snap: true })
     await renderCharacter(canvas, placed, { scale: pl.scale, box: pl.box, anchor: pl.anchor, override: ov })

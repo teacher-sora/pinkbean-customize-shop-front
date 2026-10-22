@@ -179,3 +179,4 @@
 .tick svg { opacity: 0; transition: opacity .2s cubic-bezier(.45,0,.55,1); }
 .tickOn { background: #ec86ac; border-color: #ec86ac; }
 .tickOn svg { opacity: 1; }
+

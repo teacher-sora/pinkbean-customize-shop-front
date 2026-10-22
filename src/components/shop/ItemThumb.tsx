@@ -5,6 +5,7 @@
  *  - sprite  : 아이템 아이콘/스프라이트 이미지(가장 가벼움). 헤어는 몸 없이 모든 파츠 합성(염색표와 동일)
  *  - model   : 베이스 몸통+머리에 이 아이템을 올린 미니 합성
  *  - mymodel : 현재 내 착용(해당 슬롯 제외)에 이 아이템을 올린 미니 합성
+ *  명찰 · 말풍선(dev 전용, 나중에 훈장 · 칭호도)은 model · mymodel 에서 몸 없이 그 아이템만 그린다(ChatThumb) — 몸에 달면 말풍선이 카드 위로 넘친다.
  * 이 아이템에 이펙트가 있으면(effects/index.json) 함께 합성한다. centerX 로 sprite 처럼 정중앙 정렬.
  */
 
@@ -18,7 +19,8 @@ import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
-import { CARD_FRACTION, CARD_MARGIN, thumbView } from '@/lib/shopData'
+import { chatPreview } from '@/lib/core/chatUi'
+import { CARD_FRACTION, CARD_MARGIN, thumbView, type ChatState } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
 import { CARD_FRAC_HAIR, DyeSprite } from './render/DyeSprite'
 
@@ -84,6 +86,59 @@ function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
   return (
     <div className="pb-hairsprite">
       <div className="pb-hairsprite-box"><DyeSprite id={item.id} mix zmap={zmap} frac={CARD_FRAC_HAIR} /></div>
+    </div>
+  )
+}
+
+// 명찰 · 말풍선 카드: 몸 없이 그 아이템만 카드 가운데에. 배율은 정수(디바이스 픽셀 기준) — 게임 크기(CSS 1px = 게임 1px)를 넘지 않고,
+// 카드 안쪽 CHAT_FIT 에 다 들어오지 않으면 들어오는 단계까지 줄인다(카드마다 크기가 들쭉날쭉하지 않게 키우지는 않는다).
+// 디바이스 픽셀 1:1 로도 넘치면(배율 1 화면의 넓은 말풍선) 카드에 맞춰 부드럽게 줄인다 — 잘려서 생김새를 못 보는 것보다 낫다(사용자 지시).
+const CHAT_FIT = 0.9
+function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [bmp, setBmp] = useState<HTMLCanvasElement | null>(null)
+  const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
+  useEffect(() => {
+    let alive = true
+    setBmp(null)
+    if (item.chatUi) chatPreview(item.chatUi, chat).then((c) => { if (alive) setBmp(c) }).catch(() => {})
+    return () => { alive = false }
+  }, [item.chatUi, chat])
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight, dpr = window.devicePixelRatio || 1
+      if (w > 0 && h > 0) setDims((d) => (d.w === w && d.h === h && d.dpr === dpr ? d : { w, h, dpr }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure); ro.observe(el)
+    window.addEventListener('resize', measure)
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
+  }, [])
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !bmp || !dims.w) return
+    const fit = Math.min((dims.w * dims.dpr * CHAT_FIT) / bmp.width, (dims.h * dims.dpr * CHAT_FIT) / bmp.height)
+    const k = fit >= 1 ? Math.min(Math.floor(dims.dpr) || 1, Math.floor(fit)) : fit
+    const bw = Math.round(bmp.width * k), bh = Math.round(bmp.height * k)
+    canvas.width = bw; canvas.height = bh
+    const g = canvas.getContext('2d')!
+    g.imageSmoothingEnabled = k < 1
+    g.imageSmoothingQuality = 'high'
+    g.drawImage(bmp, 0, 0, bw, bh)
+    fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
+  }, [bmp, dims])
+  useEffect(() => {
+    const el = canvasRef.current
+    if (!el) return
+    return bindImageMenu(el, () => (bmp ? new Promise<Blob | null>((ok) => bmp.toBlob(ok, 'image/png')) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
+  }, [bmp, item.name, item.id])
+  return (
+    <div ref={wrapRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      {!bmp && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '62%', height: '28%', borderRadius: 8 }} />}
+      <canvas ref={canvasRef} style={{ position: 'absolute', transform: 'translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
     </div>
   )
 }
@@ -283,7 +338,9 @@ export default function ItemThumb(props: {
   dye?: DyeState
   ear?: string; weapon?: string; isMy?: boolean; stance?: boolean; ctxAction?: string
   dotOffsets?: Record<string, { x: number; y: number }>
+  chat?: ChatState
 }) {
+  if (props.mode !== 'sprite' && props.item.chatUi && props.chat) return <ChatThumb item={props.item} chat={props.chat} />
   if (props.mode === 'sprite') return props.item.slot === 'hair' ? <HairSprite item={props.item} zmap={props.zmap} /> : <Sprite item={props.item} />
   return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} />
 }

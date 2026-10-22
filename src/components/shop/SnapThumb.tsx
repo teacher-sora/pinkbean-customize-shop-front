@@ -9,7 +9,8 @@ import { renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { animaNow, animaOnce, composePeek, composeSnapshotCached, snapKey, type SnapComposite } from '@/lib/core/snapRender'
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
-import { CARD_FRACTION, CARD_MARGIN } from '@/lib/shopData'
+import type { ChatUi } from '@/lib/core/chatUi'
+import { CARD_FRACTION, CARD_MARGIN, CHAT_FILES } from '@/lib/shopData'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop, type Snapshot } from './ShopContext'
 
@@ -20,8 +21,13 @@ import { useShop, type Snapshot } from './ShopContext'
 // 부모는 position:relative + 크기가 있어야 한다(이 컴포넌트는 inset:0 으로 채운다).
 // priority: 0 = 보이는 것(곧바로), 1 이상 = 화면 밖 미리 그리기(보이는 것이 다 끝난 뒤) — lib/thumbQueue.
 // view: 스냅샷의 연출 설정(액션·표정)까지 그려 준다 — 연출 설정 고르기의 작은 미리보기 전용.
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view }: {
-  snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean
+// tagName: 끼운 명찰(dev 전용)을 이 이름으로 함께 그린다 — 프리셋 카드만(프리셋 이름, 사용자 지시). 말풍선은 그리지 않는다.
+
+// 명찰 조각 정보(id → chatUi). 명찰 · 말풍선 목록 파일을 처음 쓸 때 한 번만 받는다 — 운영에는 파일이 없어 빈 표다.
+let tagUis: Promise<Map<string, ChatUi>> | null = null
+const loadTagUis = () => (tagUis ??= fetch(CHAT_FILES.nameTag).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === 'nameTag' && x.chatUi).map((x) => [x.id, x.chatUi!]))).catch(() => new Map()))
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName }: {
+  snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string
 }) {
   const { index } = useShop()
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
@@ -38,6 +44,16 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => { if (!animaRaces) animaOnce().then(setAnimaRaces).catch(() => {}) }, [animaRaces])
   const key = useMemo(() => snapKey(snap), [snap])
+  // 프리셋 카드의 명찰: 끼웠고 숨기지 않았을 때만
+  const tagId = tagName != null && !snap.hidden?.nameTag ? snap.equipped.nameTag : undefined
+  const [tagUi, setTagUi] = useState<ChatUi | undefined>(undefined)
+  useEffect(() => {
+    if (!tagId) { setTagUi(undefined); return }
+    let alive = true
+    loadTagUis().then((m) => { if (alive) setTagUi(m.get(tagId)) })
+    return () => { alive = false }
+  }, [tagId])
+  const chat = useMemo(() => (tagUi && tagName != null ? { tag: tagUi, name: tagName, text: '' } : undefined), [tagUi, tagName])
 
   const prioRef = useRef(priority)
   prioRef.current = priority
@@ -79,14 +95,14 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, snap: true, drop: true })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, shouldCancel: () => cancelled }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, ov, effects, particles, center, dims, fraction, margin])
+  }, [placed, ov, effects, particles, center, dims, fraction, margin, chat])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
   // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 게임 크기 1배).
   const shotRef = useRef<ModelShot | null>(null)
-  shotRef.current = placed ? { placed, override: ov, effects, particles, centerX: center === 'x', centerMount: center === 'mount' } : null
+  shotRef.current = placed ? { placed, override: ov, effects, particles, chat, centerX: center === 'x', centerMount: center === 'mount' } : null
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return

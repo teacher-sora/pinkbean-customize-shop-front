@@ -15,16 +15,17 @@ import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
-import { applyHsb, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
-import { effectDraws, effectGroups, loadImage, renderCharacter } from '@/lib/core/render'
+import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
+import { effectDraws, effectGroups, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
+import { emoFrameAt, type ChatDraw } from '@/lib/core/chatUi'
 import { useHeroView } from '@/lib/heroView'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
+import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
 import { peekSavedZoom, useShop, type DotOffsets } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
@@ -43,10 +44,6 @@ export type PreviewSource = {
 }
 
 const HERO_BASE_H = 216 // 모바일 히어로 기본 높이(preview.module.css .hero)
-
-// 지금 떠 있는 미리보기의 내보내기 이미지(우클릭 메뉴와 같은 것). 모바일 히어로의 '이미지 저장' 버튼이 쓴다.
-let liveShot: (() => Promise<Blob | null>) | null = null
-export const previewShot = () => (liveShot ? liveShot() : Promise.resolve(null))
 
 // 부유 아이템의 둥둥 뜨기 — 위로 최대 FLOAT_AMP 게임 픽셀, FLOAT_MS 한 바퀴(원본에 값이 없어 게임 화면으로 맞췄다).
 const FLOAT_AMP = 5
@@ -85,7 +82,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 우클릭 "이미지 복사"용 스냅샷 — 화면 미리보기와 별개로, 정사각형·큰 모델 이미지를 즉석에서 그리기 위한
   // 현재 프레임(정지=0프레임) 합성 입력. draw effect 가 매번 최신값으로 갱신한다.
   const copyRef = useRef<{
-    placed: PlacedLayer[]; effects: EffectDraw[]; particles: ParticleDraw[]; flip: boolean
+    placed: PlacedLayer[]; effects: EffectDraw[]; particles: ParticleDraw[]; chat?: ChatDraw; flip: boolean
     centerXOnly: boolean; centerMount: boolean; override: Map<string, HTMLCanvasElement>
     cDx: number; cDy: number
   } | null>(null)
@@ -304,6 +301,27 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const floating = useMemo(() => pv.action !== 'basic' && (V.action === 'stand1' || V.action === 'stand2')
     && Object.entries(equipped).some(([slot, it]) => !!it && !hidden[slot] && !!floatItems[it.id]), [pv.action, V.action, equipped, hidden, floatItems])
 
+  // 명찰 · 말풍선(dev 전용) — 그릴 레이어가 없고 renderCharacter 가 덧그린다(core/chatUi).
+  // 말을 보낼 때마다 아래 합성 effect 를 처음부터 다시 돌리지 않는다(프레임 · 스프라이트 준비를 건너뛰고) — 값은 ref 로 넘기고
+  // 그리기만 한 번 다시 부른다(redrawRef). 말풍선 그림은 채팅 칸에 적는 동안 미리 만들어 두어(core/chatUi.warmChat) 바로 나온다.
+  const chat = useMemo(() => chatDrawOf(equipped, hidden, shop.chatName, shop.chatMsg, metas), [equipped, hidden, shop.chatName, shop.chatMsg, metas])
+  const chatRef = useRef(chat), chatVer = useRef(0)
+  const redrawRef = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    if (chatRef.current === chat) return
+    chatRef.current = chat; chatVer.current++
+    if (copyRef.current) copyRef.current = { ...copyRef.current, chat }
+    redrawRef.current?.()
+  }, [chat])
+  // 움직이는 이모티콘이 떠 있는 동안은 캐릭터가 멈춰 있어도 프레임마다 그린다(그리기는 시그니처의 프레임 번호가 바뀔 때만 실제로 합성한다)
+  useEffect(() => {
+    if (!chat?.emo?.frames?.length || chat.t0 == null) return
+    let raf = 0
+    const tick = () => { redrawRef.current?.(); raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [chat])
+
   const effList = useMemo(() => {
     const out: EffectMeta[] = []
     // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect).
@@ -373,7 +391,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           for (const fr of frames) pngs.push(fr.png)
         }
         if (!allFrames && shownFrame) for (const d of effectDraws(em, V.action, { foot: shownFrame.foot, brow: shownFrame.brow, navel: shownFrame.navel }, shownAt)) pngs.push(d.png)
-        const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
+        const loaded = await Promise.all(pngs.map((p) => loadDyeImage(p).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
         for (const e of loaded) {
           if (e) { try { ov.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} }
@@ -394,7 +412,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           // 뒷모습 프레임이 섞인 액션이면 뒷머리 png 도 함께(안 그러면 그 프레임만 피부 라인이 원본색).
           if (dyeBack) for (const l of getFrameLayers(meta, dyeV, 0, true)) { if (!seen.has(l.png)) { seen.add(l.png); pngs.push(l.png) } }
         }
-        const loaded = await Promise.all(pngs.map((p) => loadImage(p, true).then((img) => [p, img] as const).catch(() => null)))
+        const loaded = await Promise.all(pngs.map((p) => loadDyeImage(p).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
         for (const e of loaded) {
           if (e) { try { ov.set(e[0], applyHsb(e[1], skinHsb2(skinHsb, skinFam), e[0])) } catch (_) {} }
@@ -547,7 +565,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 부유: 원래의 프레임(몸 흔들림)은 그대로 두고 캐릭터 전체(이펙트 · 파티클 포함)를 위아래로 부드럽게 띄운다. 바닥 그림자는 그 자리에 둔다.
       // 디바이스 픽셀 단위로 잘라 도트가 흐려지지 않게 하고, 한 칸 움직일 때만 다시 그린다(1초에 십여 번).
       const fy = floating ? Math.round(-FLOAT_AMP * (1 - Math.cos((2 * Math.PI * elapsed) / FLOAT_MS)) / 2 * pl.scale) / pl.scale : 0
-      const sig = fi + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';') + (particles.length ? `|${Math.floor(elapsed / 33)}` : '') + (fy ? `|${fy}` : '')
+      const ce = chatRef.current
+      const emoF = ce?.emo?.frames?.length && ce.t0 != null ? emoFrameAt(ce.emo, performance.now() - ce.t0) : -1
+      const sig = fi + '|' + chatVer.current + '|' + emoF + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';') + (particles.length ? `|${Math.floor(elapsed / 33)}` : '') + (fy ? `|${fy}` : '')
       if (sig === lastSig) return
       lastSig = sig
       // 분수 scale = 디바이스 해상도(1:1 표시로 선명). 마네킹 중심을 캔버스 중앙에(anchor 보정) → flip 대칭.
@@ -555,7 +575,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
       const seq = ++drawSeqRef.current
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat: chatRef.current, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
@@ -567,6 +587,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           placed: f0.placed,
           effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow, navel: f0.navel }, 0)) : [],
           particles: hasPart ? placeParticles(partSpots, partDescs, f0.foot, (d) => stillSim(d)) : [],
+          chat: chatRef.current,
           flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides,
           cDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx,
           cDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy,
@@ -575,9 +596,13 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     const essential = new Set<string>()
     fNow?.placed.forEach((p) => essential.add(p.png))
     if (hasEff && fNow) effList.flatMap((em) => effectDraws(em, V.action, { foot: fNow.foot, brow: fNow.brow, navel: fNow.navel }, e0)).forEach((d) => essential.add(d.png))
-    track(essential).then(() => {
+    // 변신(일루전 링): 동작의 모든 프레임으로 그림을 바닥에 맞출 만큼을 잰다(render.ringFloorOf — 반지 그림만 받는다, 변신이 아니면 바로 끝).
+    // 첫 그림부터 맞춘 자리에 그리도록 기다린다 — 나중에 맞추면 한 번 툭 내려앉는다.
+    let ringFloor: number | undefined
+    Promise.all([track(essential), ringFloorOf(frames.map((f) => f.placed)).then((v) => { ringFloor = v })]).then(() => {
       if (cancelled) return
       draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)
+      redrawRef.current = () => draw(nowElapsed()) // 명찰 · 말풍선만 바뀌었을 때(시그니처에 chatVer 가 있어 다시 그린다)
       // 발색 조절 중/전 프레임 염색 중/정지 뷰면 애니메이션 없이 여기서 끝(정지 프레임 유지).
       if (dyeInteracting || dyeSettling || (!animated && !hasEff && !hasPart && !floating)) return
       // 나머지 프레임은 백그라운드로 받으면서 곧바로 애니메이션 시작(안 받은 프레임은 draw 가 건너뜀).
@@ -598,17 +623,16 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const makeBlob = useCallback(async (): Promise<Blob | null> => {
     const snap = copyRef.current
     if (!snap) return null
-    return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
+    return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
   }, [])
 
   // 우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등)로 복사/저장 메뉴. wrap 은 항상 존재하므로 여기 바인딩.
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    if (!src) liveShot = makeBlob
     const off = bindImageMenu(el, makeBlob, 'pinkbean-cody')
-    return () => { off(); if (liveShot === makeBlob) liveShot = null }
-  }, [makeBlob, src])
+    return off
+  }, [makeBlob])
 
   return (
     <div ref={wrapRef} className={styles.wrap}>

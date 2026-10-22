@@ -13,6 +13,7 @@
 import type { PlacedLayer } from './core/assemble'
 import { computeModelPlacement } from './core/modelPlacement'
 import type { ParticleDraw } from './core/particle'
+import type { ChatDraw } from './core/chatUi'
 import { renderCharacter, type EffectDraw } from './core/render'
 
 // 다시 그릴 때 필요한 것 = 화면에 그린 입력 그대로. center* 는 화면 렌더와 같은 값을 넘긴다.
@@ -21,6 +22,7 @@ export type ModelShot = {
   override?: Map<string, HTMLCanvasElement>
   effects?: EffectDraw[]
   particles?: ParticleDraw[] // 다 퍼진 한 장(particle.stillSim)
+  chat?: ChatDraw            // 명찰 · 말풍선(dev 전용)
   flip?: boolean
   centerX?: boolean; centerXOnly?: boolean; centerMount?: boolean // 라이딩 정렬(renderCharacter 옵션 그대로)
   centerDx?: number; centerDy?: number                            // 뒷모습 등 중심 오프셋(없으면 기본)
@@ -39,7 +41,7 @@ export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
     await renderCharacter(off, shot.placed, {
       scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: shot.flip,
       centerX: shot.centerX, centerXOnly: shot.centerXOnly, centerMount: shot.centerMount,
-      override: shot.override, effects: shot.effects, particles: shot.particles,
+      override: shot.override, effects: shot.effects, particles: shot.particles, chat: shot.chat,
     })
   } catch { return null }
   const w = off.width, h = off.height

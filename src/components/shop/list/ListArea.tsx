@@ -7,9 +7,9 @@ import clsx from 'clsx'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { isNarrow } from '@/lib/useBreakpoint'
-import { useShop, type GenderFilter, type ListMode } from '../ShopContext'
+import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
-import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch } from '../ui/Icons'
+import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
 import { CatTabsM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
@@ -25,13 +25,24 @@ const GENDERS: SegOpt<GenderFilter>[] = [
   { v: 'f', l: '여', t: '여자 캐릭터가 입을 수 있는 것' },
   { v: 'm', l: '남', t: '남자 캐릭터가 입을 수 있는 것' },
 ]
+// 넘기는 방향 — 기본 가로. 세로여도 PC · 절반 · 태블릿은 한 쪽씩 넘기고, 모바일은 목록 안에서 세로로 스크롤한다(넘기는 방향만 바뀐다).
+const DIRS: SegOpt<ListDir>[] = [
+  { v: 'x', l: '가로로 넘기기', t: '가로로 넘겨 보기', icon: <IconDirX /> },
+  { v: 'y', l: '세로로 넘기기', t: '세로로 넘겨 보기', icon: <IconDirY /> },
+]
 // 보이는 순서대로 적는다. keep = 자리가 좁아 줄일 때 남기는 순서(작을수록 끝까지 남는다) — 모바일은 둘, 좁은 화면은 셋만 보인다
 const AI_EXAMPLES = [{ q: '동물 귀', keep: 2 }, { q: '한벌옷 스타킹', keep: 0 }, { q: '귀여운 얼굴', keep: 3 }, { q: '단발 헤어', keep: 1 }]
+
+// 모바일 뷰포트의 스크롤 위치 → 쪽 번호(쪽 = 3열 × 2줄). 가로는 열 = 폭/3, 세로는 줄 = 높이/2 단위로 반올림한 뒤 쪽으로. 크기가 없으면 -1.
+const scrollIdx = (vp: HTMLElement, y: boolean) => {
+  const w = y ? vp.clientHeight : vp.clientWidth; if (!w) return -1
+  return y ? Math.floor(Math.round(vp.scrollTop / (w / 2)) / 2) : Math.floor(Math.round(vp.scrollLeft / (w / 3)) / 3)
+}
 
 // 모바일 · 절반 · 태블릿: 보기(아이템 / 기본 캐릭터 / 내 캐릭터)와 성별을 버튼 하나에 접어 둔다(넓은 PC 는 펼쳐 둔다). 누르면 버튼 아래에 두 묶음이 펼쳐진다.
 // 왜: 둘 다 한번 정해 두고 쓰는 값인데 늘 펼쳐 두느라 목록 머리가 두 줄이었다(쪽 번호 · 검색은 매번 쓰는 것이라 그대로 내놓는다).
 // 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(둘을 이어서 고를 수 있게).
-function FilterM({ viewOpts, mode, onMode, gender, onGender, mobile }: { mobile: boolean; viewOpts: SegOpt<ListMode>[]; mode: ListMode; onMode: (v: ListMode) => void; gender: GenderFilter; onGender: (v: GenderFilter) => void }) {
+function FilterM({ viewOpts, mode, onMode, gender, onGender, dir, onDir, mobile }: { mobile: boolean; viewOpts: SegOpt<ListMode>[]; mode: ListMode; onMode: (v: ListMode) => void; gender: GenderFilter; onGender: (v: GenderFilter) => void; dir: ListDir; onDir: (v: ListDir) => void }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     if (!open) return
@@ -39,7 +50,7 @@ function FilterM({ viewOpts, mode, onMode, gender, onGender, mobile }: { mobile:
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [open])
-  const now = (viewOpts.find((o) => o.v === mode)?.l ?? '') + (gender === 'all' ? '' : `, ${GENDERS.find((g) => g.v === gender)?.l}`)
+  const now = (viewOpts.find((o) => o.v === mode)?.l ?? '') + (gender === 'all' ? '' : `, ${GENDERS.find((g) => g.v === gender)?.l}`) + (dir === 'y' ? ', 세로' : '')
   return (
     <div className={styles.filterM}>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, open && styles.filterBtnOn)}>
@@ -49,11 +60,13 @@ function FilterM({ viewOpts, mode, onMode, gender, onGender, mobile }: { mobile:
       {/* 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다 */}
       {open && <div className={styles.filterShade} onClick={() => setOpen(false)} />}
       {/* 늘 붙여 두고 보임만 바꾼다 — 닫힐 때도 전환이 보이게 */}
-      <div role="group" aria-label="보기와 성별" aria-hidden={!open} className={clsx(styles.filterPop, open && styles.filterPopOn)}>
+      <div role="group" aria-label="보기 · 성별 · 넘기는 방향" aria-hidden={!open} className={clsx(styles.filterPop, open && styles.filterPopOn)}>
         <span className={styles.filterLabel}>보기</span>
         <Seg variant="mobileFlex" title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={mode} onPick={onMode} />
         <span className={styles.filterLabel}>성별</span>
         <Seg variant="mobileFlex" title="성별" opts={GENDERS} value={gender} onPick={onGender} />
+        <span className={styles.filterLabel}>방향</span>
+        <Seg variant="mobileFlex" title="넘기는 방향" opts={DIRS} value={dir} onPick={onDir} />
       </div>
     </div>
   )
@@ -121,12 +134,14 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다(컬럼 높이는 탭과 무관한 숫자일 뿐).
     return () => { ro?.disconnect() }
   }, [mobile])
-  // ── 모바일: 네이티브 자유 가로 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화 ──
+  // ── 모바일: 네이티브 자유 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화. 가로면 가로, 세로면 세로(쪽 = 3열 × 2줄) ──
+  //  세로: 쪽 높이 = 뷰포트 높이(100cqh), 줄 = 높이/2 — 스크롤 → 인덱스는 줄 = round(스크롤/(높이/2)), 쪽 = floor(줄/2).
   //  페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라 열 위치가 정확히 폭/3 배수(페이지 = 3열).
   //  스크롤 → 인덱스: 열 = round(스크롤/(폭/3)), 페이지 = floor(열/3).
   //  인덱스 → 스크롤: 화살표·페이지 입력 등으로 인덱스가 바뀌어 스크롤 위치와 어긋날 때만 이동(같으면 아무것도 안 함 →
   //  사용자 스크롤·프로그램 스크롤이 서로 싸우지 않는다). 부위·탭이 바뀌면 애니메이션 없이 즉시.
   //  가상화 유지: 트랙 폭만 페이지 수만큼 잡고, 페이지 DOM 은 현재 ±1 만 만든다(아래 pages).
+  const dirY = s.listDir === 'y'
   const live = useRef({ idx: s.curIdx, setIdx: s.setIdx })
   live.current = { idx: s.curIdx, setIdx: s.setIdx }
   useEffect(() => {
@@ -137,28 +152,27 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       if (raf) return
       raf = requestAnimationFrame(() => {
         raf = 0
-        const w = vp.clientWidth; if (!w) return
-        const i = Math.floor(Math.round(vp.scrollLeft / (w / 3)) / 3)
+        const i = scrollIdx(vp, dirY); if (i < 0) return
         if (i !== live.current.idx) live.current.setIdx(i, false)
       })
     }
     vp.addEventListener('scroll', onScroll, { passive: true })
     return () => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
-  }, [mobile])
-  const scrollKey = `${s.primary}|${s.activeCat}|${isAi ? s.searchQuery : ''}`
+  }, [mobile, dirY])
+  const scrollKey = `${s.primary}|${s.activeCat}|${isAi ? s.searchQuery : ''}|${s.listDir}`
   const lastScrollKey = useRef(scrollKey)
   const scrolledOnce = useRef(false)
   useLayoutEffect(() => {
     const vp = vpRef.current
     if (!mobile || !vp) return
-    const w = vp.clientWidth; if (!w) return
-    // 첫 마운트(예: 태블릿 → 모바일 폭 전환)도 즉시 이동 — 보던 위치가 스크롤 애니메이션 없이 유지돼 보이게.
+    const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
+    // 첫 마운트(예: 태블릿 → 모바일 폭 전환)도 즉시 이동 — 보던 위치가 스크롤 애니메이션 없이 유지돼 보이게. 방향을 바꿔도 즉시.
     const jump = lastScrollKey.current !== scrollKey || !scrolledOnce.current
     lastScrollKey.current = scrollKey
     scrolledOnce.current = true
-    if (Math.floor(Math.round(vp.scrollLeft / (w / 3)) / 3) === s.curIdx && !jump) return
+    if (scrollIdx(vp, dirY) === s.curIdx && !jump) return
     const target = s.curIdx * w
-    const smooth = !(jump || Math.abs(vp.scrollLeft - target) > w * 3)
+    const smooth = !(jump || Math.abs((dirY ? vp.scrollTop : vp.scrollLeft) - target) > w * 3)
     // ⚠️ 트랙 폭은 `pageCount * 100cqw`(컨테이너 쿼리 단위)라, 페이지 수가 늘어난 **그 커밋의 layout effect
     //    시점엔 아직 한 페이지 폭**이다. 그때 scrollTo 를 부르면 브라우저가 목표를 최대 스크롤(=0)로 깎는다
     //    → 인덱스는 6 인데 스크롤은 0 이라 페이지 DOM(현재 ±1) 이 화면 밖에 있어 **빈 리스트**가 보인다.
@@ -169,13 +183,14 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       raf = 0
       if (!vp.isConnected) return
       // 트랙이 목표까지 자랐으면 이동. 아직이면 다음 프레임에 다시 본다(보통 1~3프레임).
-      if (vp.scrollWidth - vp.clientWidth < target && left-- > 0) { raf = requestAnimationFrame(go); return }
-      const max = Math.max(0, vp.scrollWidth - vp.clientWidth)
-      vp.scrollTo({ left: Math.min(target, max), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
+      const room = dirY ? vp.scrollHeight - vp.clientHeight : vp.scrollWidth - vp.clientWidth
+      if (room < target && left-- > 0) { raf = requestAnimationFrame(go); return }
+      const to = Math.min(target, Math.max(0, room))
+      vp.scrollTo({ ...(dirY ? { top: to, left: 0 } : { left: to, top: 0 }), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
     }
     go()
     return () => { if (raf) cancelAnimationFrame(raf) }
-  }, [mobile, s.curIdx, scrollKey, s.pageCount])
+  }, [mobile, s.curIdx, scrollKey, s.pageCount, dirY])
   const hero = isAi && s.searchQuery === null && !loading
   const noSprite = thumbs.noSprite
   const viewOpts = VIEW_MODES.map((m) => (m.v === 'sprite' && noSprite
@@ -211,7 +226,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const controls = mobile ? (
     // 한 줄: 보기와 성별(접어 둔 버튼) · 쪽 번호 · 검색. 높이는 프리셋 · 코디 정보의 머리와 같다(48)
     <div className={styles.controlsM}>
-      <FilterM mobile viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} />
+      <FilterM mobile viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} dir={s.listDir} onDir={s.setListDir} />
       {pageChip}
       <div className={styles.searchWrapM}>
         <IconSearch className={styles.searchIconM} />
@@ -222,11 +237,12 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     <div className={styles.header}>
       {/* 좁은 폭(절반 · 태블릿)에서는 보기와 성별을 접어 한 줄로 둔다 — 펼쳐 두면 머리가 두 줄이 된다 */}
       {narrow
-        ? <FilterM mobile={false} viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} />
+        ? <FilterM mobile={false} viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} dir={s.listDir} onDir={s.setListDir} />
         : (
           <div className={styles.groupA}>
             <Seg title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={thumbs.mode} onPick={s.setListMode} />
             <Seg title="성별" opts={GENDERS} value={s.genderFilter} onPick={s.setGenderFilter} />
+            <Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} />
           </div>
         )}
       <div className={styles.groupB}>
@@ -241,7 +257,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
 
   const per = s.itemsPerPage
   // 페이지 div 는 현재 ±1 만 만든다(전체 페이지 수만큼 만들면 검색어 입력마다 수천 개를 다시 그려 지연). 각 페이지는
-  // 트랙 안 절대 위치(left = 인덱스×100%)라 translateX 이동·스냅은 그대로다.
+  // 트랙 안 절대 위치(가로 left · 세로 top = 인덱스×100%)라 translateX · translateY 이동 · 스냅은 그대로다.
   const pages: { pi: number; items: ListItem[] }[] = []
   for (let pi = Math.max(0, s.curIdx - 1); pi <= Math.min(s.pageCount - 1, s.curIdx + 1); pi++) pages.push({ pi, items: list.slice(pi * per, pi * per + per) })
   const gridStyle = mobile ? undefined : { gridTemplateColumns: `repeat(${s.cols},minmax(0,1fr))`, gridTemplateRows: `repeat(${s.rows},minmax(0,1fr))` }
@@ -254,7 +270,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const viewport = (
-    <div ref={setVp} className={clsx(styles.viewport, mobile && 'pb-norail', mobile && styles.viewportM)}>
+    <div ref={setVp} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
       {hero ? (
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>
@@ -282,10 +298,11 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
         // 마운트하되, 스냅 애니메이션 중에는 새로 창에 들어온 페이지 마운트를 미뤄(캔버스 합성 부하) 전환이 끊기지 않게 한다.
         <div ref={mobile ? undefined : s.bindTrack} className={styles.track}
           style={mobile
-            ? { width: `calc(${s.pageCount} * 100cqw)` } // 모바일: 스크롤 폭만 페이지 수만큼(페이지 DOM 은 ±1)
-            : { transform: `translateX(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
+            ? (dirY ? { height: `calc(${s.pageCount} * 100cqh)` } : { width: `calc(${s.pageCount} * 100cqw)` }) // 모바일: 스크롤 길이만 페이지 수만큼(페이지 DOM 은 ±1)
+            : { transform: `${dirY ? 'translateY' : 'translateX'}(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
           {pages.map(({ pi, items }) => (
-            <div key={pi} className={clsx('pb-page', mobile && 'pb-scroll pb-norail', mobile ? styles.pageM : styles.page)} style={{ left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
+            <div key={pi} className={clsx('pb-page', mobile && 'pb-scroll pb-norail', mobile ? (dirY ? styles.pageMY : styles.pageM) : styles.page)}
+              style={dirY ? { top: mobile ? `calc(${pi} * 100cqh)` : `${pi * 100}%` } : { left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
               {(!s.snapping || pi === s.curIdx || Math.abs(pi - s.snapFrom) <= 1) && (
                 <div className={mobile ? styles.gridM : styles.grid} style={gridStyle}>
                   {items.map((it) => (
@@ -316,7 +333,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       <div className={styles.hr} />
       {viewport}
       <div className={clsx('pb-hintbar', styles.hintBar)}>
-        <span className={styles.hintText}>스크롤, 스와이프, ← → 로 페이지를 넘겨요</span>
+        <span className={styles.hintText}>{dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'}</span>
       </div>
     </section>
   )

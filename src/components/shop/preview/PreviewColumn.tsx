@@ -4,15 +4,13 @@
 // 연출 설정 드로어 · 상시 필드 행 · 북마크 박스.  모바일은 MobileHero.
 
 import clsx from 'clsx'
-import { useEffect, useState } from 'react'
-import { saveImage } from '@/lib/canvasExport'
+import { useCallback, useEffect, useState } from 'react'
 import { GUIDE_DRAWER_EVENT, guideSpot } from '@/lib/guide'
-import { useHeroView } from '@/lib/heroView'
 import { DOT_MOVER_IDS } from '@/lib/shopData'
-import PreviewModel, { previewShot } from '../PreviewModel'
-import plaza from '../plaza/plaza.module.css'
+import PreviewModel from '../PreviewModel'
+import ChatBar from './ChatBar'
 import { useShop } from '../ShopContext'
-import { IconBookmark, IconCaretDown, IconDot, IconDrop, IconLinkCopy, IconRedo, IconScene, IconTakeDown, IconUndo } from '../ui/Icons'
+import { IconBookmark, IconBubble, IconCaretDown, IconDot, IconDrop, IconRedo, IconScene, IconUndo } from '../ui/Icons'
 import PinkbeanRate from './PinkbeanRate'
 import { BookmarkBox } from './PreviewParts'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
@@ -79,6 +77,12 @@ export default function PreviewColumn() {
         </div>
 
         <div className={clsx('pb-drawer', styles.drawer, pvAll && styles.drawerOpen)}>
+          {/* 채팅 칸(dev 전용) — 말풍선을 끼었을 때만. 드로어 윗변에 붙어 함께 오르내린다(접히면 아래 줄 바로 위) */}
+          {s.chatOn && (
+            <div className={clsx(styles.chatDock, !pvAll && styles.chatDockDown)}>
+              <ChatBar mobile={false} show={!!s.equipped.chatBalloon} />
+            </div>
+          )}
           <PvGroups group={group} onGroup={setGroup} mobile={false} />
         </div>
 
@@ -105,31 +109,35 @@ export function MobileHero() {
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
   const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
   const n = s.bookmarks.length
-  // 크게 · 캐릭터만일 때 왼쪽 위에 이미지 저장 · 링크 복사(코디 광장 카드의 레일과 같은 버튼). 기본 크기에서는 걷는다
-  const big = useHeroView() !== 'base'
-  const save = async () => { const r = await saveImage(previewShot, 'pinkbean-cody'); if (r === 'saved') s.notify('이미지를 저장했어요'); else if (r === 'error') s.notify('이미지 저장에 실패했어요') }
+  // 채팅 칸(dev 전용 — 명찰 · 말풍선): 말풍선을 끼었을 때 아래 줄의 말풍선 버튼으로 올린다. 벗으면 내린다
+  const canChat = s.chatOn && !!s.equipped.chatBalloon
+  const [chat, setChat] = useState(false)
+  const chatUp = chat && canChat
+  const closeChat = useCallback(() => setChat(false), [])
   return (
     <div data-hero className={styles.hero}>
       <StageBg />
       <PinkbeanRate />
       <div className={styles.heroModel}><PreviewModel /></div>
-      <div aria-hidden={!big} className={clsx(plaza.rail, styles.heroRail, big && styles.heroRailOn)}>
-        <button type="button" onClick={() => void save()} tabIndex={big ? 0 : -1} title="캐릭터 이미지 저장" aria-label="이미지 저장" className={plaza.railBtn}><IconTakeDown /></button>
-        <button type="button" onClick={s.shareCurrentLink} tabIndex={big ? 0 : -1} title="현재 프리셋 공유 링크 복사" aria-label="링크 복사" className={plaza.railBtn}><IconLinkCopy /></button>
-      </div>
       <div data-guide="undo" className={styles.heroHist}>
         <button type="button" onClick={s.undo} disabled={!s.canUndo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
         <button type="button" onClick={s.redo} disabled={!s.canRedo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>
       </div>
-      <div className={styles.heroLeft}>
+      <div className={clsx(styles.heroLeft, chatUp && styles.heroBarOff)}>
         <button type="button" onClick={() => s.openSheet('pv')} title="연출 설정" data-guide="pv" className={styles.pvOpenBtn}>
           연출 설정<IconCaretDown />
         </button>
         <button type="button" onClick={() => s.openSheet('bg')} title="미리보기 배경 바꾸기" aria-label="미리보기 배경" className={clsx(styles.pvOpenBtn, styles.pvOpenIcon, bgOpen && styles.pvOpenBtnOn)}>
           <IconScene size={15} />
         </button>
+        {canChat && (
+          <button type="button" onClick={() => setChat(true)} title="말풍선 띄우기" aria-label="채팅" aria-expanded={chatUp} className={clsx(styles.pvOpenBtn, styles.pvOpenIcon)}>
+            <IconBubble size={15} />
+          </button>
+        )}
       </div>
-      <div className={styles.heroRight}>
+      {s.chatOn && <ChatBar mobile show={chatUp} onClose={closeChat} />}
+      <div className={clsx(styles.heroRight, chatUp && styles.heroBarOff)}>
         <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경" aria-label="점 위치 변경" data-guide="dot"
           className={clsx(styles.dotBtnM, dotItem && styles.dotBtnMOn)}>
           <IconDot size={15} />

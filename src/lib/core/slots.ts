@@ -27,6 +27,8 @@ const CONFLICT_IGNORE = new Set(['Hr', 'Fc'])
 // 원본에 상하의를 함께 차지하는(islot MaPn) 상의 7개(꾸러기 티셔츠 등 공용)와 하의 1개(와이드 디스트로이드 진 (남))가 있어,
 // islot 만 보면 이 옷을 입을 때 반대쪽 옷이 벗겨졌다(여자 상의 + 남자 바지가 함께 안 입히던 원인).
 const TOP_BOTTOM = new Set(['coat', 'pants'])
+// 반지끼리도 서로 벗기지 않는다 — 게임은 반지 칸이 넷이라 일루전 링 · 명찰 · 말풍선을 함께 낀다(셋 다 islot 이 Ri 다).
+const RINGS = new Set(['ring', 'nameTag', 'chatBalloon'])
 export function conflictSlots(
   equipped: Record<string, ListItem | null>,
   newSlot: string,
@@ -37,6 +39,7 @@ export function conflictSlots(
   for (const [slot, it] of Object.entries(equipped)) {
     if (!it || slot === newSlot) continue
     if (TOP_BOTTOM.has(slot) && TOP_BOTTOM.has(newSlot)) continue
+    if (RINGS.has(slot) && RINGS.has(newSlot)) continue
     if (intersects(codes, parseCodes(it.islot))) clear.push(slot)
   }
   return clear

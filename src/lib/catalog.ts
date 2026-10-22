@@ -28,7 +28,7 @@ export const CATS: Cat[] = [
   { id: 'cape', label: '망토' },
   { id: 'weapon', label: '무기' },
   { id: 'shield', label: '방패' },
-  { id: 'ring', label: '반지' }, // 일루전 링(변신 · 거대한 머리 · 거대한 몸) — 명찰 · 말풍선 반지는 넣지 않는다. 염색 불가
+  { id: 'ring', label: '일루전링' }, // 일루전 링(변신 · 거대한 머리 · 거대한 몸) — 명찰 · 말풍선 반지는 따로(dev 전용 CHAT_CATS). 염색 불가
   { id: 'effect', label: '이펙트' }, // 캐시 이펙트(내가 바로 스타 등) — 장비와 따로 켜는 꾸밈. 레이어 없이 이펙트만 그린다, 염색 불가
   { id: 'riding', label: '라이딩' }, // 탑승(재규어/메탈아머) — 정적 코디 아이템, AI검색 제외
 ]
