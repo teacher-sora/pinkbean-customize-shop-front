@@ -114,6 +114,13 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
                 blocked={r.key === 'form' && riding} blockedTitle="라이딩 중에는 형상 변이를 바꿀 수 없어요" />
             </div>
           ))}
+          {/* 기본 명찰: 명찰 반지를 끼지 않았을 때 발밑의 게임 기본 명찰(반투명 검은 판). 반지를 끼면 이 값과 상관없이 반지 명찰이 나온다 */}
+          {s.chatOn && (
+            <div className={styles.pvRow} title="명찰 반지를 끼지 않았을 때 발밑에 나오는 기본 명찰">
+              <span className={labelCls}>기본 명찰</span>
+              <Switch on={pv.baseTag} onToggle={() => s.setPv('baseTag', !pv.baseTag)} title="기본 명찰" />
+            </div>
+          )}
         </div>
       </div>
       <div className={clsx('pb-slide', 'pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.slide, group === 'effect' && styles.slideOn)}>

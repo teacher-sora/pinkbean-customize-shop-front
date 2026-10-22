@@ -15,6 +15,7 @@ import { computeModelPlacement } from './core/modelPlacement'
 import type { ParticleDraw } from './core/particle'
 import type { ChatDraw } from './core/chatUi'
 import { renderCharacter, type EffectDraw } from './core/render'
+import { defaultPresetName } from './shopData'
 
 // 다시 그릴 때 필요한 것 = 화면에 그린 입력 그대로. center* 는 화면 렌더와 같은 값을 넘긴다.
 export type ModelShot = {
@@ -26,22 +27,28 @@ export type ModelShot = {
   flip?: boolean
   centerX?: boolean; centerXOnly?: boolean; centerMount?: boolean // 라이딩 정렬(renderCharacter 옵션 그대로)
   centerDx?: number; centerDy?: number                            // 뒷모습 등 중심 오프셋(없으면 기본)
+  lift?: number              // 캐릭터 전체를 올릴 만큼(월드 px, 위가 음수) — 부유
+  chatT?: number             // 움직이는 이모티콘의 시각(ms)
+  ringFloor?: number         // 변신 그림을 올리거나 내릴 만큼 — 동작 전체로 잰 값(움짤). 없으면 그리는 한 프레임으로 잰다
 }
 
 // 다시 그리는 판(게임 픽셀, 몸통 가운데에서 사방 반씩). 가장 큰 이펙트(시즌 I 챌린저 문장)가 가운데에서 약 344칸까지 그려져
 // 480(반 240)이면 잘렸다 — 1,150개 이펙트를 재서 넉넉히 잡는다. 결과 크기와는 무관(그림이 닿는 데까지 다시 자른다)
 const SHOT_BOX = 960
-const SHOT_PAD = 4     // 그림 상자 둘레 여백(게임 픽셀)
+export const SHOT_PAD = 4 // 그림 상자 둘레 여백(게임 픽셀)
 
-export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
+// 합성 입력을 게임 크기(1배)로 다시 그린 판(SHOT_BOX)과, 그 판에서 불투명 픽셀이 닿는 상자. 그림이 없으면 null.
+// 움짤 저장(lib/gifExport)도 프레임마다 이것으로 그린다 — 한 장 저장과 그리는 규칙이 같다.
+// place 를 주면 그 판(상자 · 기준점, 게임 1배)에 그린다 — 배경이 있는 움짤이 미리보기 캔버스와 같은 판에 그려 미리보기 칸에 그대로 얹는다.
+export async function drawShot (shot: ModelShot, place?: { box: { w: number; h: number }; anchor: { x: number; y: number } }): Promise<{ c: HTMLCanvasElement; x0: number; y0: number; x1: number; y1: number } | null> {
   if (!shot.placed.length) return null
   const off = document.createElement('canvas')
-  const pl = computeModelPlacement({ divW: SHOT_BOX, divH: SHOT_BOX, dpr: 1, margin: 1, fraction: 0, scale: 1, centerDx: shot.centerDx, centerDy: shot.centerDy })
+  const pl = place ? { scale: 1, ...place } : computeModelPlacement({ divW: SHOT_BOX, divH: SHOT_BOX, dpr: 1, margin: 1, fraction: 0, scale: 1, centerDx: shot.centerDx, centerDy: shot.centerDy })
   try {
     await renderCharacter(off, shot.placed, {
-      scale: pl.scale, box: pl.box, anchor: pl.anchor, flip: shot.flip,
+      scale: pl.scale, box: pl.box, anchor: shot.lift ? { x: pl.anchor.x, y: pl.anchor.y + shot.lift } : pl.anchor, flip: shot.flip,
       centerX: shot.centerX, centerXOnly: shot.centerXOnly, centerMount: shot.centerMount,
-      override: shot.override, effects: shot.effects, particles: shot.particles, chat: shot.chat,
+      override: shot.override, effects: shot.effects, particles: shot.particles, chat: shot.chat, chatT: shot.chatT, ringFloor: shot.ringFloor,
     })
   } catch { return null }
   const w = off.width, h = off.height
@@ -63,12 +70,18 @@ export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
     }
   } catch { return null } // 혹시라도 taint 면 조용히 포기
   if (x1 < 0) return null
-  const bw = x1 - x0 + 1 + SHOT_PAD * 2, bh = y1 - y0 + 1 + SHOT_PAD * 2
+  return { c: off, x0, y0, x1, y1 }
+}
+
+export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
+  const d = await drawShot(shot)
+  if (!d) return null
+  const bw = d.x1 - d.x0 + 1 + SHOT_PAD * 2, bh = d.y1 - d.y0 + 1 + SHOT_PAD * 2
   const out = document.createElement('canvas')
   out.width = bw; out.height = bh
   const ctx = out.getContext('2d')!
   // 늘리지 않고 그대로 옮긴다(1:1). 바탕은 칠하지 않는다 — 투명
-  ctx.drawImage(off, x0 - SHOT_PAD, y0 - SHOT_PAD, bw, bh, 0, 0, bw, bh)
+  ctx.drawImage(d.c, d.x0 - SHOT_PAD, d.y0 - SHOT_PAD, bw, bh, 0, 0, bw, bh)
   return await new Promise((res) => out.toBlob((b) => res(b), 'image/png'))
 }
 
@@ -84,37 +97,28 @@ export async function copyImage (getBlob: () => Promise<Blob | null>): Promise<b
   } catch { return false }
 }
 
-// PNG 파일로 저장. 가능하면 "다른 이름으로 저장" 대화상자(File System Access API)를 띄워 위치·파일명을
-// 사용자가 고르게 한다. 미지원 브라우저(Firefox/Safari/모바일 등)는 기존 다운로드로 폴백한다.
-// 반환: 'saved' 저장됨 · 'canceled' 사용자가 취소 · 'error' 실패.
-export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string): Promise<'saved' | 'canceled' | 'error'> {
-  const name = filename.endsWith('.png') ? filename : `${filename}.png`
-  const picker = (window as unknown as { showSaveFilePicker?: (o: unknown) => Promise<{ createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker
-  if (typeof picker === 'function') {
-    // 대화상자는 사용자 제스처 안에서 즉시 열어야 하므로 blob 생성보다 먼저 호출한다.
-    let handle: { createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> } | null = null
-    try {
-      handle = await picker({ suggestedName: name, types: [{ description: 'PNG 이미지', accept: { 'image/png': ['.png'] } }] })
-    } catch (e) {
-      if (e && (e as { name?: string }).name === 'AbortError') return 'canceled' // 사용자가 닫음
-      handle = null // 권한 등 다른 실패 → 폴백 다운로드로
-    }
-    if (handle) {
-      try {
-        const b = await getBlob(); if (!b) return 'error'
-        const w = await handle.createWritable(); await w.write(b); await w.close()
-        return 'saved'
-      } catch { return 'error' }
-    }
-  }
-  // 폴백: 앵커 다운로드(브라우저 설정에 따라 저장 위치를 물어보거나 다운로드 폴더로 바로 저장).
+// 파일 이름에 못 쓰는 글자(윈도우 \ / : * ? " < > |, 제어 문자)는 _ 로, 앞뒤 공백 · 끝의 점은 지운다. 남는 것이 없으면 ''.
+export const fileSafe = (name: string): string => name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().replace(/\.+$/, '')
+// 프리셋의 저장 이름 — 프리셋 이름, 비었거나 못 쓰는 글자뿐이면 그 프리셋 번호의 기본 이름(코디 N — 사용자 지시)
+export const presetFileName = (name: string | undefined, i: number): string => fileSafe(name ?? '') || defaultPresetName(i)
+
+// PNG(움짤은 GIF) 파일로 저장 — 브라우저의 다운로드로 내려받는다(사용자 지시). 그래서
+//  · 브라우저 다운로드 기록(크롬 오른쪽 위 다운로드 목록)에 남는다. 'showSaveFilePicker'(파일 시스템 API)로 직접 쓰면 남지 않았다.
+//  · 같은 이름 · 형식의 파일이 이미 있으면 브라우저가 이름 끝에 (1), (2) … 를 붙인다(크롬 · 엣지 · 파이어폭스). 페이지는 사용자의 폴더를
+//    볼 수 없어 이 일은 브라우저만 할 수 있다.
+//  · 위치를 고르고 싶으면 브라우저 설정의 '다운로드 전에 각 파일의 저장 위치 확인'을 켜면 저장 창이 뜬다.
+// 반환: 'saved' 내려받기 시작 · 'error' 그림을 못 만들었다.
+// filename 이 함수면 그림을 다 만든 뒤에 부른다(불러오는 중에 눌러도 그때의 프리셋 이름으로).
+export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string | (() => string), kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'error'> {
   try {
     const b = await getBlob(); if (!b) return 'error'
+    const base = fileSafe(typeof filename === 'function' ? filename() : filename) || 'pinkbean' // 부르는 쪽이 이름을 정한다(프리셋은 presetFileName) — 여기는 마지막 안전망
+    const name = base.endsWith(`.${kind}`) ? base : `${base}.${kind}`
     const url = URL.createObjectURL(b)
     const a = document.createElement('a')
     a.href = url; a.download = name
     document.body.appendChild(a); a.click(); a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setTimeout(() => URL.revokeObjectURL(url), 30000) // 내려받기가 시작될 때까지 주소를 살려 둔다
     return 'saved'
   } catch { return 'error' }
 }

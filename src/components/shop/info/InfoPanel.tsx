@@ -62,7 +62,11 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   })
   const wornCount = rows.filter((r) => r.on).length
 
+  // 명찰 · 말풍선 칸이 비었을 때는 '기본'(게임처럼 반지가 없으면 기본 명찰 · 말풍선). 기본 명찰은 연출 설정 > 캐릭터의 토글로 켜고 끈다(pv.baseTag)
+  const baseOf = (r: typeof rows[number]) => (r.on ? null : r.slot === 'nameTag' ? (s.pv.baseTag ? '기본' : '기본 꺼짐') : r.slot === 'chatBalloon' ? '기본' : null)
+  const baseTitle = (r: typeof rows[number]) => (r.slot === 'nameTag' ? `명찰 - 기본 명찰(${s.pv.baseTag ? '켜짐' : '꺼짐'}), 눌러서 연출 설정 > 캐릭터에서 켜고 끄기` : '말풍선 - 기본 말풍선, 채팅을 보내면 떠요')
   const pick = (r: typeof rows[number]) => {
+    if (!r.on && r.slot === 'nameTag' && baseOf(r)) { s.guideGo({ go: mobile ? { tab: 'preview', sheet: 'pv', group: 'char' } : { tab: 'preview', drawer: 'char' } }); return }
     if (!r.on || !r.item) return
     s.setDyeTarget(r.slot)
     // 어느 폭이든 염색 창(서피스 — PC 는 가운데 다이얼로그, 모바일은 바텀 시트)을 연다(사용자 지시). 창 안에서 캐릭터를 크게 보며 바꾼다.
@@ -74,9 +78,10 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const grid = (
     <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${cols},minmax(0,1fr))` }}>
       {rows.map((r) => {
-        const name = r.on ? (r.hidden ? '숨김' : (r.item!.name || r.item!.id)) : '미착용'
+        const base = baseOf(r)
+        const name = r.on ? (r.hidden ? '숨김' : (r.item!.name || r.item!.id)) : base ?? '미착용'
         return (
-          <button key={r.c.id} type="button" onClick={() => pick(r)} title={r.on ? `${r.c.label} - ${r.item!.name || r.item!.id}, 눌러서 염색` : `${r.c.label} - 미착용`}
+          <button key={r.c.id} type="button" onClick={() => pick(r)} title={r.on ? `${r.c.label} - ${r.item!.name || r.item!.id}, 눌러서 염색` : base ? baseTitle(r) : `${r.c.label} - 미착용`}
             className={clsx(r.on && 'pb-slotrow', styles.slot, ui.dyeChip, r.on && styles.slotOn, r.hidden && styles.slotHidden, r.sel && styles.slotSel)}>
             <span className={clsx(styles.slotThumb, r.on && !r.hidden && styles.slotThumbOn)}>
               {r.on && r.item ? (
@@ -88,7 +93,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
             </span>
             <span className={clsx(styles.slotText, mobile && styles.slotTextM)}>
               <span className={styles.slotPart}>{r.c.label}</span>
-              <span className={clsx(styles.slotName, r.on && !r.hidden && styles.slotNameOn)}>{name}</span>
+              <span className={clsx(styles.slotName, ((r.on && !r.hidden) || name === '기본') && styles.slotNameOn)}>{name}</span>
             </span>
             {r.on && !r.isSkin && (
               <span role="button" tabIndex={0} title="미리보기 표시/숨김" aria-label="미리보기 표시/숨김"

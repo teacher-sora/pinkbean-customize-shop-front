@@ -5,7 +5,8 @@
 import clsx from 'clsx'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import type { Preset } from '@/lib/catalog'
-import { CHAT_NAME_FALLBACK } from '@/lib/shopData'
+import { CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
+import { presetFileName } from '@/lib/canvasExport'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
@@ -69,14 +70,14 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           <div key={p.id} onClick={() => s.selectPreset(p.id)} className={clsx('pb-presetwrap', styles.wrap)}>
             <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
               <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
-              <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} />}</div>
+              <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} />}</div>
               <div className={styles.nameRow}>
                 <span className={styles.nameWrap}>
                   <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
                     onChange={(e) => s.renamePreset(p.id, e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                    onBlur={() => s.commitPresetName(p.id, `코디 ${i + 1}`)}
+                    onBlur={() => s.commitPresetName(p.id, defaultPresetName(i))}
                     className={clsx('pb-input', 'pb-presetname', styles.nameInput)} />
                   <IconPencil className={styles.pencil} />
                 </span>

@@ -131,23 +131,33 @@ export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[], o
   }
 }
 
-// 미리보기 캔버스 공용: 우클릭/롱프레스 → "이미지 복사 / 이미지 저장" 메뉴. getBlob 이 내보내기 이미지를 만든다.
+// 움짤 저장(미리보기만) — 늘 나온다(불러오는 중에도 — 그림이 준비되면 만든다). getBlob 이 한 바퀴 GIF 를 만든다(lib/gifExport).
+// 지금 배경과 투명 바탕 둘 — GIF 는 반투명을 담지 못해 투명이면 이펙트의 번지는 빛이 딱딱해진다(gifExport 머리말).
+export type GifMenu = { getBlob: (transparent: boolean) => Promise<Blob | null> }
+
+// 미리보기 캔버스 공용: 우클릭/롱프레스 → "이미지 복사 / 이미지 저장(/ 움짤 저장)" 메뉴. getBlob 이 내보내기 이미지를 만든다.
 // centered=true 면 화면 중앙 큰 다이얼로그(모바일용).
-export function openImageMenu (x: number, y: number, getBlob: () => Promise<Blob | null>, filename: string, centered?: boolean): void {
-  openCanvasMenu(x, y, [
+// filename 은 함수로도 준다 — 그림이 준비된 뒤(불러오는 중에 눌렀으면 기다린 뒤) 그때의 이름으로 저장한다.
+export function openImageMenu (x: number, y: number, getBlob: () => Promise<Blob | null>, filename: string | (() => string), centered?: boolean, gif?: GifMenu): void {
+  const nameOf = typeof filename === 'function' ? filename : () => filename
+  const items: CanvasMenuItem[] = [
     { label: '이미지 복사', onClick: async () => flashToast((await copyImage(getBlob)) ? '이미지를 복사했어요' : '이미지 복사에 실패했어요') },
-    { label: '이미지 저장', onClick: async () => { const r = await saveImage(getBlob, filename); if (r === 'saved') flashToast('이미지를 저장했어요'); else if (r === 'error') flashToast('이미지 저장에 실패했어요') } }, // 취소는 조용히
-  ], { centered })
+    { label: '이미지 저장', onClick: async () => { const r = await saveImage(getBlob, nameOf); flashToast(r === 'saved' ? '이미지를 저장했어요' : '이미지 저장에 실패했어요') } },
+  ]
+  // 만드는 데 몇 초 걸릴 수 있어 시작할 때 알린다
+  const saveGif = async (transparent: boolean) => { flashToast('움짤을 만들고 있어요'); const r = await saveImage(() => gif!.getBlob(transparent), nameOf, 'gif'); flashToast(r === 'saved' ? '움짤을 저장했어요' : '움짤 저장에 실패했어요') }
+  if (gif) items.push({ label: '움짤 저장', onClick: () => saveGif(false) }, { label: '투명 움짤 저장', onClick: () => saveGif(true) })
+  openCanvasMenu(x, y, items, { centered })
 }
 
 // 요소에 "우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등 터치)" 를 모두 걸어 이미지 메뉴를 띄운다.
 // 반환값은 해제 함수. 렌더와 무관한 이벤트 리스너만 붙이므로 성능 영향 없음.
-export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | null>, filename: string): () => void {
+export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | null>, filename: string | (() => string), gif?: GifMenu): () => void {
   // 터치 위주 기기(모바일)면 롱프레스 → 중앙 큰 다이얼로그. 마우스면 우클릭 → 커서 옆 작은 메뉴.
   const coarse = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)')?.matches
   // 우클릭: 마우스 기기에서만 메뉴를 연다. 터치 기기(안드로이드)는 롱프레스 타이머가 중앙 다이얼로그를 열고,
   // 여기선 네이티브 메뉴만 막는다(둘 다 열려 중복되는 걸 방지).
-  const onCtx = (e: MouseEvent) => { e.preventDefault(); if (!coarse) openImageMenu(e.clientX, e.clientY, getBlob, filename, false) }
+  const onCtx = (e: MouseEvent) => { e.preventDefault(); if (!coarse) openImageMenu(e.clientX, e.clientY, getBlob, filename, false, gif) }
   el.addEventListener('contextmenu', onCtx)
   // 롱프레스 시 iOS 네이티브 콜아웃/이미지 드래그·선택(영역 드래그)을 막고 우리 메뉴로 대체.
   el.style.setProperty('-webkit-touch-callout', 'none')
@@ -166,7 +176,7 @@ export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | nu
     if (e.touches.length !== 1) { clear(); return }
     const t = e.touches[0]; sx = t.clientX; sy = t.clientY; fired = false
     clear()
-    timer = setTimeout(() => { fired = true; openImageMenu(sx, sy, getBlob, filename, true) }, 500) // ≈0.5초 꾹 → 중앙 다이얼로그
+    timer = setTimeout(() => { fired = true; openImageMenu(sx, sy, getBlob, filename, true, gif) }, 500) // ≈0.5초 꾹 → 중앙 다이얼로그
   }
   const onMove = (e: TouchEvent) => {
     const t = e.touches[0]; if (!t) return

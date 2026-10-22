@@ -1,15 +1,15 @@
 'use client'
 
-// 공지 및 건의함 — 하단 탭 '공지 및 건의함'을 누르면 서피스로 연다. 탭 넷: 공지 · 건의 · 오류 · 질문.
+// 도움 및 가이드 — 하단 탭 '도움 및 가이드'를 누르면 서피스로 연다. 탭 넷: 도움 · 건의 · 오류 · 공지(처음은 도움 — 사용자 지시).
+//  · 공지는 거의 쓰지 않아 맨 끝에 둔다(이름에서도 뺐다). 운영자가 쓸 때를 위해 탭은 남긴다.
 //  · 공지는 운영자가 Supabase 대시보드(plaza_notices)에서 쓴다. 앱에는 쓰기 화면이 없다. 하나면 바로 그 공지를, 여럿이면 목록부터.
 //  · 건의 · 오류는 같은 표에 종류로 나눠 담는다(lib/plaza 의 loadFeedback · supabase/0018 · 0019). 목록은 글마다 상자 하나,
 //    한 쪽에 20개, 최신이 위, 쪽 넘김. 상자를 누르면 그 글의 상세(댓글 · 답글 나무, FeedbackThread)로 미끄러진다.
 //    누구나 댓글과 답글(댓글부터 세 단까지)을 단다. 이름은 광장 댓글과 같은 익명 이름, 운영자 글은 '운영자'(/suggestion 에서 단다).
 //    지우기는 본인 것만(두 번 누르기). 답글이 달린 글을 지우면 자리만 남는다.
-//  · 질문은 기능 안내다(lib/guide 의 목록 + back 의 /guide). 모델은 목록에서 고르기만 하고, 화면은 목록에 적힌 글과
+//  · 도움은 기능 안내다(lib/guide 의 목록 + back 의 /guide). 모델은 목록에서 고르기만 하고, 화면은 목록에 적힌 글과
 //    '열어 보기'를 보여 준다. 대화는 이 창을 닫았다 열어도 이어진다(새로고침하면 비워진다).
 //  · 건의를 올리기 전에 이미 있는 기능인지 한 번 묻는다. 있으면 그 기능을 보여 주고 '그래도 등록'으로 올린다.
-//    건의 · 오류 칸에서 '질문하기'를 누르면 쓰던 글을 그대로 질문 탭으로 넘겨 묻는다.
 //  · 탭을 바꾸면 본문이 가로로 미끄러진다 — 부위 염색 ↔ 염색 전환과 같은 움직임 · 시간(ShopContext 의 slideTo).
 
 import clsx from 'clsx'
@@ -29,23 +29,23 @@ import styles from './plaza.module.css'
 
 type Tab = 'notice' | 'idea' | 'bug' | 'ask'
 const TABS: { v: Tab; l: string; t: string }[] = [
-  { v: 'notice', l: '공지', t: '운영자 공지' },
+  { v: 'ask', l: '도움', t: '기능이 어디 있는지 물어보기' },
   { v: 'idea', l: '건의', t: '있었으면 하는 기능' },
   { v: 'bug', l: '오류', t: '이상하게 보이거나 동작하지 않는 것' },
-  { v: 'ask', l: '질문', t: '기능이 어디 있는지 물어보기' },
+  { v: 'notice', l: '공지', t: '운영자 공지' },
 ]
 const ORDER: Tab[] = TABS.map((t) => t.v)
 const SLIDE_SWAP_MS = 90, SLIDE_IN_MS = 110   // ShopContext 의 PART_SLIDE_* 와 같다
 
-// 질문 대화 — 창을 닫았다 열어도 이어지게 모듈에 둔다
+// 도움 대화 — 창을 닫았다 열어도 이어지게 모듈에 둔다
 export type ChatMsg = { id: number; who: 'me' | 'bot'; text: string; reply?: GuideReply; pending?: boolean }
 let chatKeep: ChatMsg[] = []
 let chatSeq = 0
 
 export default function NoticeBody({ mobile }: { mobile: boolean }) {
   const s = useShop()
-  const [tab, setTab] = useState<Tab>('notice')
-  const [shown, setShown] = useState<Tab>('notice')
+  const [tab, setTab] = useState<Tab>('ask')
+  const [shown, setShown] = useState<Tab>('ask')
   const [slide, setSlide] = useState(0)
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   const [drafts, setDrafts] = useState<Record<FeedbackKind, string>>({ idea: '', bug: '' })
@@ -81,22 +81,14 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
       .then((reply) => setChat((c) => c.map((m) => (m.id === wait.id ? { ...m, pending: false, reply } : m))))
       .finally(() => setAskBusy(false))
   }
-  // 건의 · 오류 칸에서 쓰던 글을 질문으로
-  const askFrom = (kind: FeedbackKind) => {
-    const q = drafts[kind].trim()
-    if (!q) return
-    setDrafts((d) => ({ ...d, [kind]: '' }))
-    go('ask')
-    ask(q)
-  }
-  // 질문 답이 목록에 없으면 그 질문을 갈래에 맞는 칸(오류 신고 → 오류, 바라는 기능 → 건의)으로
+  // 도움 답이 목록에 없으면 그 질문을 갈래에 맞는 칸(오류 신고 → 오류, 바라는 기능 → 건의)으로
   const toFeedback = (k: FeedbackKind, q: string) => { setDrafts((d) => ({ ...d, [k]: q })); go(k) }
 
   return (
     <>
     <div className={styles.hp}>
       {/* 탭 넷을 폭 가득 같은 너비로 — 그림 + 낱말. 모바일은 그림 위 낱말(하단 탭과 같은 짜임) */}
-      <div role="tablist" aria-label="공지 및 건의함" className={clsx(styles.hpTabs, mobile && styles.hpTabsM)}>
+      <div role="tablist" aria-label="도움 및 가이드" className={clsx(styles.hpTabs, mobile && styles.hpTabsM)}>
         {TABS.map((t) => (
           <button key={t.v} type="button" role="tab" aria-selected={tab === t.v} onClick={() => go(t.v)} title={t.t}
             className={clsx(styles.hpTab, mobile && styles.hpTabM, tab === t.v && styles.hpTabOn)}>
@@ -109,7 +101,7 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
         {(shown === 'idea' || shown === 'bug') && (
           <Feedback key={shown} kind={shown} mobile={mobile} notify={s.notify}
             draft={drafts[shown]} setDraft={(v) => setDrafts((d) => ({ ...d, [shown]: v }))}
-            onAsk={() => askFrom(shown)} setBack={setBack} />
+            setBack={setBack} />
         )}
         {shown === 'ask' && <Ask mobile={mobile} chat={chat} busy={askBusy} onAsk={ask} onLeave={toFeedback} onGo={s.guideGo} />}
       </div>
@@ -203,8 +195,8 @@ const FB_TEXT: Record<FeedbackKind, { ph: string; label: string; empty: string; 
   idea: { ph: '있었으면 하는 기능을 적어 주세요', label: '건의', empty: '첫 건의를 남겨 주세요.', done: '건의를 남겼어요' },
   bug: { ph: '어떤 아이템에서 무엇이 이상한지 적어 주세요', label: '오류', empty: '올라온 오류 보고가 없어요.', done: '오류 보고를 남겼어요' },
 }
-function Feedback({ kind, mobile, notify, draft, setDraft, onAsk, setBack }: {
-  kind: FeedbackKind; mobile: boolean; notify: (m: string) => void; draft: string; setDraft: (v: string) => void; onAsk: () => void
+function Feedback({ kind, mobile, notify, draft, setDraft, setBack }: {
+  kind: FeedbackKind; mobile: boolean; notify: (m: string) => void; draft: string; setDraft: (v: string) => void
   setBack: (fn: (() => void) | null) => void
 }) {
   const T = FB_TEXT[kind]
@@ -309,10 +301,6 @@ function Feedback({ kind, mobile, notify, draft, setDraft, onAsk, setBack }: {
               <p className={styles.hpFoundHead}>이미 있는 기능 같아요</p>
               {hit.map((g) => <GuideCard key={g.id} g={g} onGo={s.guideGo} />)}
             </div>
-          )}
-          side={(
-            <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onAsk} disabled={!text0}
-              title={text0 ? '쓴 글로 기능 안내에 물어보기' : '물어볼 내용을 먼저 적어 주세요'} className={clsx('pb-ghost', styles.hpGhost)}>질문하기</button>
           )} />
         </>
       )}
@@ -396,7 +384,7 @@ function GuideCard({ g: g0, onGo }: { g: GuideEntry; onGo: (g: GuideEntry) => vo
   )
 }
 
-/* ── 질문 ── */
+/* ── 도움 ── */
 const STARTERS = ['표정은 어디서 바꿔요?', '닉네임으로 코디를 불러올 수 있나요?', '무기 이펙트를 끄고 싶어요', '캐릭터 이미지를 저장하고 싶어요']
 function Ask({ mobile, chat, busy, onAsk, onLeave, onGo }: {
   mobile: boolean; chat: ChatMsg[]; busy: boolean; onAsk: (q: string) => void; onLeave: (k: FeedbackKind, q: string) => void; onGo: (g: GuideEntry) => void

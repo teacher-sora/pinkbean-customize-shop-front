@@ -16,16 +16,16 @@ import { assemble, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getF
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
-import { effectDraws, effectGroups, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
+import { effectDraws, effectGroups, effectPeriods, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
 import { emoFrameAt, type ChatDraw } from '@/lib/core/chatUi'
 import { useHeroView } from '@/lib/heroView'
-import { bindImageMenu } from '@/lib/canvasMenu'
+import { bindImageMenu, type GifMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
+import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
 import { peekSavedZoom, useShop, type DotOffsets } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import styles from './PreviewModel.module.css'
@@ -85,6 +85,14 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     placed: PlacedLayer[]; effects: EffectDraw[]; particles: ParticleDraw[]; chat?: ChatDraw; flip: boolean
     centerXOnly: boolean; centerMount: boolean; override: Map<string, HTMLCanvasElement>
     cDx: number; cDy: number
+  } | null>(null)
+  // 우클릭 "움짤 저장"용 — 지금 그리는 동작의 전 프레임과 움직이는 것들(이펙트 · 입자 · 부유). draw effect 가 그림을 그리기 시작할 때 갱신한다.
+  const animRef = useRef<{
+    frames: { placed: PlacedLayer[]; foot: { x: number; y: number }; brow: { x: number; y: number }; navel: { x: number; y: number } }[]
+    delays: number[]; animated: boolean; pingpong: boolean; effList: EffectMeta[]; action: string
+    spots: ParticleSpot[]; descs: Map<string, ParticleDesc>; floating: boolean; ringFloor?: number
+    // 미리보기 캔버스의 판(게임 1배 상자 · 기준점)과 칸 안 자리(디바이스 px) — 배경 움짤이 같은 자리에 얹는다
+    stage: { box: { w: number; h: number }; anchor: { x: number; y: number }; scale: number; left: number; top: number; dpr: number }
   } | null>(null)
 
   // 표시 영역(div) 크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.
@@ -304,7 +312,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 명찰 · 말풍선 — 그릴 레이어가 없고 renderCharacter 가 덧그린다(core/chatUi).
   // 말을 보낼 때마다 아래 합성 effect 를 처음부터 다시 돌리지 않는다(프레임 · 스프라이트 준비를 건너뛰고) — 값은 ref 로 넘기고
   // 그리기만 한 번 다시 부른다(redrawRef). 말풍선 그림은 채팅 칸에 적는 동안 미리 만들어 두어(core/chatUi.warmChat) 바로 나온다.
-  const chat = useMemo(() => chatDrawOf(equipped, hidden, shop.chatName, shop.chatMsg, metas, shop.chatDefault), [equipped, hidden, shop.chatName, shop.chatMsg, metas, shop.chatDefault])
+  const chat = useMemo(() => chatDrawOf(equipped, hidden, shop.chatName, shop.chatMsg, metas, shop.chatDefault, shop.chatOn && pv.baseTag), [equipped, hidden, shop.chatName, shop.chatMsg, metas, shop.chatDefault, shop.chatOn, pv.baseTag])
   const chatRef = useRef(chat), chatVer = useRef(0)
   const redrawRef = useRef<(() => void) | null>(null)
   useEffect(() => {
@@ -601,6 +609,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     let ringFloor: number | undefined
     Promise.all([track(essential), ringFloorOf(frames.map((f) => f.placed)).then((v) => { ringFloor = v })]).then(() => {
       if (cancelled) return
+      animRef.current = { frames, delays, animated, pingpong, effList, action: V.action, spots: hasPart ? partSpots : [], descs: partDescs, floating, ringFloor, stage: { box: pl.box, anchor: pl.anchor, scale: pl.scale, left: leftDev, top: topDev, dpr: dims.dpr } }
       draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)
       redrawRef.current = () => draw(nowElapsed()) // 명찰 · 말풍선만 바뀌었을 때(시그니처에 chatVer 가 있어 다시 그린다)
       // 발색 조절 중/전 프레임 염색 중/정지 뷰면 애니메이션 없이 여기서 끝(정지 프레임 유지).
@@ -620,19 +629,75 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.
   // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 그림에 맞춘 상자 · 게임 크기 1배).
+  const saveNameRef = useRef(shop.saveName)
+  saveNameRef.current = shop.saveName
   const makeBlob = useCallback(async (): Promise<Blob | null> => {
+    for (let i = 0; i < 300 && !copyRef.current; i++) await new Promise((r) => setTimeout(r, 100)) // 불러오는 중이면 첫 그림을 기다린다
     const snap = copyRef.current
     if (!snap) return null
     return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
+  }, [])
+
+  // 움짤 — 화면과 같은 시계 규칙으로 시각 t 의 그림을 만든다(lib/gifExport 가 한 바퀴를 훑는다). 그리는 법은 위 draw 와 같고,
+  // 정렬 · 염색 · 명찰 · 말풍선은 한 장 저장(copyRef)의 것을 쓴다. 입자는 이 움짤만의 시뮬을 새로 돌린다(화면의 입자를 건드리지 않게).
+  const gifMenu = useMemo<GifMenu>(() => {
+    const periodsOf = () => {
+      const a = animRef.current, snap = copyRef.current
+      if (!a || !snap) return null
+      const emo = snap.chat?.emo?.frames?.length && snap.chat.t0 != null ? snap.chat.emo : undefined
+      const periods = [
+        a.animated ? frameCycleMs(a.delays, a.pingpong) : 0,
+        ...a.effList.flatMap((em) => effectPeriods(em, a.action)),
+        a.floating ? FLOAT_MS : 0,
+        emo ? (emo.frames ?? []).reduce((n, f) => n + Math.max(1, f.d), 0) : 0,
+      ].filter((p) => p > 0)
+      return { a, snap, emo, periods, flowing: a.spots.length > 0 }
+    }
+    return {
+      getBlob: async (transparent) => {
+        // 불러오는 중에 눌렀으면 첫 그림이 준비될 때까지 기다린다(메뉴는 늘 움짤을 보인다 — 사용자 지시). 움직이는 것이 없으면 한 장짜리
+        for (let i = 0; i < 300 && !periodsOf(); i++) await new Promise((r) => setTimeout(r, 100))
+        const p = periodsOf()
+        if (!p) return null
+        const { a, snap, emo } = p
+        const fiAt = (t: number) => a.animated ? Math.min((a.pingpong ? frameAtElapsedAlt : frameAtElapsed)(a.delays, t), a.frames.length - 1) : 0
+        const effAt = (t: number) => { const f = a.frames[fiAt(t)]; return a.effList.flatMap((em) => effectDraws(em, a.action, { foot: f.foot, brow: f.brow, navel: f.navel }, t)) }
+        const liftAt = (t: number) => a.floating ? Math.round(-FLOAT_AMP * (1 - Math.cos((2 * Math.PI * t) / FLOAT_MS)) / 2) : 0
+        const sims = new Map<string, ParticleSim>()
+        const simOf = (d: ParticleDesc, i: number) => {
+          const k = `${i}|${d.name}`
+          let sim = sims.get(k)
+          if (!sim) { sim = new ParticleSim(d, i + 1); sim.step(Math.min(12, d.life + d.lifeVar + 1)); sims.set(k, sim) }
+          return sim
+        }
+        let partT = -1
+        // 배경: 캐릭터를 미리보기 캔버스와 같은 판에 그리고, 판의 (x0, y0) 칸이 움짤의 왼쪽 위에 오도록 지금 배경을 깐다.
+        // 판 칸 b 는 칸 안 CSS (left + b × scale) / dpr 에 보인다 → CSS c 는 움짤의 c × (s × dpr / scale) − (left / scale + x0) × s
+        const st = a.stage, wrap = wrapRef.current
+        const [{ animatedGif }, { paintStage }] = await Promise.all([import('@/lib/gifExport'), import('@/lib/stageShot')])
+        return animatedGif({
+          stage: { place: { box: st.box, anchor: st.anchor }, paint: async (g, x0, y0, s) => !!wrap && paintStage(g, wrap, (s * st.dpr) / st.scale, s, -(st.left / st.scale + x0) * s, -(st.top / st.scale + y0) * s) },
+          periods: p.periods,
+          flowing: p.flowing,
+          sigAt: (t) => `${fiAt(t)}|${liftAt(t)}|${emo ? emoFrameAt(emo, t) : -1}|` + effAt(t).map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';'),
+          shotAt: (t) => {
+            const f = a.frames[fiAt(t)]
+            const particles = a.spots.length ? placeParticles(a.spots, a.descs, f.foot, simOf) : []
+            if (particles.length) { const dt = partT < 0 ? 0 : (t - partT) / 1000; partT = t; for (const sim of new Set(particles.map((x) => x.sim))) sim.step(dt) }
+            return { placed: f.placed, override: snap.override, effects: effAt(t), particles, chat: snap.chat, chatT: emo ? t : undefined, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy, lift: liftAt(t), ringFloor: a.ringFloor }
+          },
+        }, transparent)
+      },
+    }
   }, [])
 
   // 우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등)로 복사/저장 메뉴. wrap 은 항상 존재하므로 여기 바인딩.
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    const off = bindImageMenu(el, makeBlob, 'pinkbean-cody')
+    const off = bindImageMenu(el, makeBlob, () => saveNameRef.current, gifMenu) // 파일 이름 = 저장하는 순간에 쓰고 있는 프리셋 이름(사용자 지시)
     return off
-  }, [makeBlob])
+  }, [makeBlob, gifMenu])
 
   return (
     <div ref={wrapRef} className={styles.wrap}>

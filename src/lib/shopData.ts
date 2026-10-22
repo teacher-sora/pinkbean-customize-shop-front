@@ -2,7 +2,7 @@
 // 미리보기 고정 박스. 코어(src/lib/core)의 assemble/render/data 위에서 동작한다.
 
 import type { AssembleInput, ViewOpts } from '@/lib/core/assemble'
-import type { ChatDraw, ChatEmo, ChatUi } from '@/lib/core/chatUi'
+import { BASE_TAG, type ChatDraw, type ChatEmo, type ChatUi } from '@/lib/core/chatUi'
 import { CASHFX_FILE, RING_FILE, type AnimaRace, type ItemMeta, type ListItem, type SlotSummary } from '@/lib/core/data'
 import type { Cat } from '@/lib/catalog'
 
@@ -97,7 +97,8 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
  * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats · infoCats).
  * 부위 탭은 하나(명찰/말풍선 — 같은 이름의 명찰과 말풍선이 나란히, 세트 순서)이고 코디 정보 칩은 둘이다(따로 끼고 벗는다).
  * 그리기는 core/chatUi(renderCharacter 의 chat). 명찰 이름 = 고른 프리셋 이름, 말풍선 = 미리보기 아래 채팅 칸(preview/ChatBar)에서
- * (말풍선 반지를 끼지 않았거나 숨겼으면 기본 말풍선 — 게임의 흰 말풍선, CHAT_DEFAULT_BALLOON. 명찰은 끼었을 때만 나온다 — 사용자 지시)
+ * (말풍선 반지를 끼지 않았거나 숨겼으면 기본 말풍선 — 게임의 흰 말풍선, CHAT_DEFAULT_BALLOON. 명찰은 끼었을 때, 또는 칸이 비었고
+ *  연출 설정 > 캐릭터의 기본 명찰(pv.baseTag, 기본 꺼짐)을 켰을 때 — 사용자 지시)
  * 보낸 말 · 이모티콘이 CHAT_SHOW_MS 동안 떴다 사라진다(게임 값을 찾지 못해 사용자가 정했다). */
 export const CHAT_TAB = 'chatring'
 export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰 / 말풍선' }] // '/' 양옆은 가는 공백(U+2009 — 보통 공백보다 좁게, 사용자 지시)
@@ -109,15 +110,17 @@ export const CHAT_DEFAULT_BALLOON = '/chatui/default-balloon.json' // UI.wz Chat
 export const CHAT_NEW_FILE = '/chatui/new.json' // 테스트 서버에만 있는(본 서버에 없는) 명찰 · 말풍선 id — NEW 라벨
 export interface ChatState { name: string; text: string; emo?: ChatEmo }
 export interface ChatMsg { text: string; emo?: ChatEmo; at?: number } // at = 보낸 시각(performance.now — 움직이는 이모티콘의 시계)
+export const defaultPresetName = (i: number) => `코디 ${i + 1}` // 프리셋 기본 이름(비우면 이것으로 돌아간다)
 export const CHAT_NAME_FALLBACK = '핑크빈' // 프리셋을 고르지 않았거나 이름을 비웠을 때 명찰 이름(사용자 지시)
 export const CHAT_CARD: ChatState = { name: '핑크빈', text: '커마샵' } // 목록 카드의 명찰 이름 · 말풍선 말(고정 — 사용자 지시)
 export const CHAT_TEXT_MAX = 70  // 말 글자 수
 export const CHAT_SHOW_MS = 10000 // 보낸 말풍선이 떠 있는 시간(사용자 지시 — 10초)
 // 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
 // 말풍선은 보낸 말(msg)이 떠 있는 동안만 그린다.
-export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, name: string, msg: ChatMsg | null, metas?: Map<string, ItemMeta>, defBalloon?: ChatUi | null): ChatDraw | undefined {
+export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, name: string, msg: ChatMsg | null, metas?: Map<string, ItemMeta>, defBalloon?: ChatUi | null, baseTag?: boolean): ChatDraw | undefined {
   const ui = (slot: string) => { const it = equipped[slot]; return !it || hidden[slot] ? undefined : it.chatUi ?? metas?.get(it.id)?.chatUi }
-  const tag = ui('nameTag'), balloon = msg ? ui('chatBalloon') ?? defBalloon ?? undefined : undefined
+  // 명찰: 반지를 끼었으면 그 명찰(숨겼으면 없음), 칸이 비었으면 연출 설정의 '기본 명찰'(pv.baseTag)이 켜졌을 때만 기본 명찰
+  const tag = ui('nameTag') ?? (!equipped.nameTag && baseTag ? BASE_TAG : undefined), balloon = msg ? ui('chatBalloon') ?? defBalloon ?? undefined : undefined
   return tag || balloon ? { tag, balloon, name, text: msg?.text ?? '', emo: msg?.emo, t0: msg?.at } : undefined
 }
 
@@ -272,6 +275,13 @@ export function frameAtElapsed(delays: number[], elapsed: number): number {
   let t = ((elapsed % total) + total) % total
   for (let i = 0; i < ds.length; i++) { t -= ds[i]; if (t < 0) return i }
   return ds.length - 1
+}
+// 한 바퀴 길이(ms) — frameAtElapsed(핑퐁이면 frameAtElapsedAlt)가 처음으로 돌아오기까지. 돌지 않으면 0.
+export function frameCycleMs(delays: number[], pingpong = false): number {
+  const N = delays?.length ?? 0
+  if (N <= 1) return 0
+  const ds = delays.map((d) => Math.max(20, d || 120))
+  return pingpong ? ds.reduce((a, d, i) => a + (i === 0 || i === N - 1 ? d : 2 * d), 0) : ds.reduce((a, b) => a + b, 0)
 }
 // 핑퐁(무한 왕복): 0→1→…→N-1→N-2→…→1→0 (이동/자세 액션).
 export function frameAtElapsedAlt(delays: number[], elapsed: number): number {

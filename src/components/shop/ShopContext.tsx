@@ -29,7 +29,8 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { presetFileName } from '@/lib/canvasExport'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -53,9 +54,9 @@ export const isMultiCat = (cat: string) => cat === 'all' || cat === 'new' || cat
 //  · 코디에 속하는 연출(PV_LOOK_DEFAULT) = 형상변이·귀·무기모션·이펙트 3종. 저장되고 **카드에도 그대로 그려진다**.
 //  · 보기 설정(PV_VIEW_DEFAULT) = 시선·액션·표정·배율. **정보로만** 담아 프리셋을 쓸 때 화면에 되살리고, 카드에는 적용하지 않는다.
 // 보기 설정은 광장에 올릴 때 빠진다(lib/plazaLook.plazaSnapshot) → 없을 수 있고, 없으면 지금 보던 값을 유지한다.
-export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; floatFx?: boolean // floatFx = 부유 아이템의 둥둥 뜨기(없으면 켜짐)
+export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; floatFx?: boolean; baseTag?: boolean // floatFx = 부유 아이템의 둥둥 뜨기(없으면 켜짐), baseTag = 명찰 반지가 없을 때 기본 명찰(없으면 꺼짐)
   gaze?: string; action?: string; expr?: string; zoom?: number }
-export const PV_LOOK_DEFAULT = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, floatFx: true }
+export const PV_LOOK_DEFAULT = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, floatFx: true, baseTag: false }
 export const PV_VIEW_DEFAULT = { gaze: 'left', action: 'basic', expr: 'default', zoom: 2 }
 export const PV_SNAP_DEFAULT: PvSnap = { ...PV_LOOK_DEFAULT, ...PV_VIEW_DEFAULT }
 // 점(애교점) 위치 오프셋: 레이어이름(accessoryEye/accessoryEye2) → 월드 오프셋. 사소한 변경점/쩜 전용.
@@ -111,7 +112,6 @@ function copyAsyncText(make: () => Promise<string>): Promise<void> {
 // 복원은 저장소에 있는 칸만 읽어 오므로(아래 PRESET_IDS.forEach) 기존 코디·이름은 손대지 않는다. 새 칸만 기본값으로 생긴다.
 const PRESET_COUNT = 30
 const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
-const defaultPresetName = (i: number) => `코디 ${i + 1}`
 // 되돌리기 기록용: 프리셋 이름 전체(id → 이름)와, 기록 한 건을 가르는 상태키(코디 + 선택 프리셋 + 이름).
 const namesOf = (ps: Preset[]): Record<string, string> => Object.fromEntries(ps.map((p) => [p.id, p.name]))
 const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, string>) => JSON.stringify({ s: snap, p: sel, n: names })
@@ -119,13 +119,13 @@ const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, stri
 // 시선·액션·표정·fps 는 스냅샷에 담기지 않지만, 초기화는 **이것까지 전부** 되돌린다.
 const PV_DEFAULT: Pv = {
   action: 'basic', weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
-  gaze: 'left', wEffect: true, cEffect: true, capEffect: true, floatFx: true, fps: 12, zoom: 2,
+  gaze: 'left', wEffect: true, cEffect: true, capEffect: true, floatFx: true, baseTag: false, fps: 12, zoom: 2,
 }
 const defaultSnapshot = (): Snapshot => ({
   equipped: Object.fromEntries(Object.entries(DEFAULT_EQUIP).map(([slot, it]) => [slot, it.id])),
   tone: DEFAULT_TONE, dyePalette: {}, dyeHsb: {}, hidden: {}, dotPos: {},
   // 연출 설정도 프리셋마다 따로 각인된다 → 기본 프리셋은 '기본 연출'을 명시해 둔다(빈 값이면 카드마다 해석이 갈린다).
-  pv: { form: PV_DEFAULT.form, ear: PV_DEFAULT.ear, weapon: PV_DEFAULT.weapon, wEffect: PV_DEFAULT.wEffect, cEffect: PV_DEFAULT.cEffect, capEffect: PV_DEFAULT.capEffect, floatFx: PV_DEFAULT.floatFx, zoom: PV_DEFAULT.zoom },
+  pv: { form: PV_DEFAULT.form, ear: PV_DEFAULT.ear, weapon: PV_DEFAULT.weapon, wEffect: PV_DEFAULT.wEffect, cEffect: PV_DEFAULT.cEffect, capEffect: PV_DEFAULT.capEffect, floatFx: PV_DEFAULT.floatFx, baseTag: PV_DEFAULT.baseTag, zoom: PV_DEFAULT.zoom },
 })
 // 키 순서와 무관한 비교용 직렬화(프리셋이 기본값 그대로인지 판별 — "프리셋 n / 20" 카운트).
 const canon = (v: unknown): string => {
@@ -216,6 +216,7 @@ export interface ShopCtx {
   chatOn: boolean // 명찰 · 말풍선을 쓸 수 있는가(목록 파일이 있을 때만)
   chatDefault: ChatUi | null // 기본 말풍선(말풍선 반지 없이 보낸 채팅)
   chatName: string // 명찰 이름 = 고른 프리셋 이름
+  saveName: string // 이미지 · 움짤 저장 파일 이름(canvasExport.presetFileName)
   chatMsg: ChatMsg | null; sendChat: (m: ChatMsg) => void // 채팅 칸에서 보낸 말 · 이모티콘(CHAT_SHOW_MS 동안)
   catLoading: boolean
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
@@ -1187,7 +1188,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (primary !== 'share') setPlazaUpload(false) }, [primary])
 
   const openPlazaPost = (post: PlazaPost) => openSurface({ kind: 'plaza', item: null, post })
-  // 공지 및 건의함 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
+  // 도움 및 가이드 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
   const openNotice = () => openSurface({ kind: 'notice', item: null })
   // 공유받은 코디를 프리셋 칸에 저장하는 화면(서피스 ptake) — 공유 링크·코드로 받았을 때도 이 화면이다
   // (저장 화면은 하나다). 칸을 고르면 applySharedToPreset 으로 들어간다.
@@ -1508,7 +1509,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     for (const [s, it] of Object.entries(equipped)) if (it) eq[s] = it.id
     return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden }, dotPos: { ...dotPos },
       ...(Object.keys(dyeOff).length ? { dyeOff: { ...dyeOff } } : {}),
-      pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, floatFx: pv.floatFx,
+      pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, floatFx: pv.floatFx, baseTag: pv.baseTag,
         // 보기 설정은 **정보로만** 담는다 — 프리셋을 쓸 때 화면을 되살리는 데만 쓰이고 카드에는 그려지지 않는다.
         gaze: pv.gaze, action: pv.action, expr: pv.expr, zoom: pv.zoom } }
   }
@@ -1518,7 +1519,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const applyPvSnap = (v?: PvSnap) => {
     const s = v ?? PV_LOOK_DEFAULT
     setPvState((prev) => ({ ...prev,
-      form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, floatFx: s.floatFx ?? true,
+      form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, floatFx: s.floatFx ?? true, baseTag: s.baseTag ?? false,
       gaze: v?.gaze ?? prev.gaze, action: v?.action ?? prev.action, expr: v?.expr ?? prev.expr, zoom: v?.zoom ?? prev.zoom }))
   }
   // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
@@ -1892,7 +1893,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 저장 대상 pv 변경도 자동저장 트리거에 포함해야 새로고침 후 유지된다 — 코디 연출(형상변이·귀·무기모션·이펙트)과
     // 보기 설정(시선·액션·표정·배율) 모두. (fps 만 담지 않는다.)
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, presets,
-      pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.floatFx, pv.zoom, pv.gaze, pv.action, pv.expr])
+      pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.floatFx, pv.baseTag, pv.zoom, pv.gaze, pv.action, pv.expr])
 
   // 연출설정(pv) 전체를 새로고침 후에도 유지 — 프리셋 스냅샷엔 서브셋만 담기므로 전체 pv 를 별도 키에 영속.
   useEffect(() => {
@@ -1995,8 +1996,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const onPageKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } else if (e.key === 'Escape') e.currentTarget.blur() }
 
   const chatName = presets.find((p) => p.id === selectedPreset)?.name?.trim() || CHAT_NAME_FALLBACK
+  // 이미지 · 움짤 저장 이름 = 쓰고 있는 프리셋 이름(비면 그 번호의 코디 N). 프리셋을 고르지 않았으면 명찰과 같은 이름
+  const selIdx = presets.findIndex((p) => p.id === selectedPreset)
+  const saveName = selIdx >= 0 ? presetFileName(presets[selIdx].name, selIdx) : CHAT_NAME_FALLBACK
   const value: ShopCtx = {
-    index, cats, infoCats, chatOn, chatDefault, chatName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
+    index, cats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
     genderFilter, setGenderFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
