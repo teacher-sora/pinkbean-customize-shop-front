@@ -97,44 +97,27 @@ export async function copyImage (getBlob: () => Promise<Blob | null>): Promise<b
   } catch { return false }
 }
 
-// PNG(움짤은 GIF) 파일로 저장. 가능하면 "다른 이름으로 저장" 대화상자(File System Access API)를 띄워 위치·파일명을
-// 사용자가 고르게 한다. 미지원 브라우저(Firefox/Safari/모바일 등)는 기존 다운로드로 폴백한다.
-// 반환: 'saved' 저장됨 · 'canceled' 사용자가 취소 · 'error' 실패.
 // 파일 이름에 못 쓰는 글자(윈도우 \ / : * ? " < > |, 제어 문자)는 _ 로, 앞뒤 공백 · 끝의 점은 지운다. 남는 것이 없으면 ''.
 export const fileSafe = (name: string): string => name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().replace(/\.+$/, '')
 // 프리셋의 저장 이름 — 프리셋 이름, 비었거나 못 쓰는 글자뿐이면 그 프리셋 번호의 기본 이름(코디 N — 사용자 지시)
 export const presetFileName = (name: string | undefined, i: number): string => fileSafe(name ?? '') || defaultPresetName(i)
 
-export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string, kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'canceled' | 'error'> {
+// PNG(움짤은 GIF) 파일로 저장 — 브라우저의 다운로드로 내려받는다(사용자 지시). 그래서
+//  · 브라우저 다운로드 기록(크롬 오른쪽 위 다운로드 목록)에 남는다. 'showSaveFilePicker'(파일 시스템 API)로 직접 쓰면 남지 않았다.
+//  · 같은 이름 · 형식의 파일이 이미 있으면 브라우저가 이름 끝에 (1), (2) … 를 붙인다(크롬 · 엣지 · 파이어폭스). 페이지는 사용자의 폴더를
+//    볼 수 없어 이 일은 브라우저만 할 수 있다.
+//  · 위치를 고르고 싶으면 브라우저 설정의 '다운로드 전에 각 파일의 저장 위치 확인'을 켜면 저장 창이 뜬다.
+// 반환: 'saved' 내려받기 시작 · 'error' 그림을 못 만들었다.
+export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string, kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'error'> {
   const base = fileSafe(filename) || 'pinkbean' // 부르는 쪽이 이름을 정한다(프리셋은 presetFileName) — 여기는 마지막 안전망
   const name = base.endsWith(`.${kind}`) ? base : `${base}.${kind}`
-  const type = kind === 'gif' ? { description: '움짤(GIF)', accept: { 'image/gif': ['.gif'] } } : { description: 'PNG 이미지', accept: { 'image/png': ['.png'] } }
-  const picker = (window as unknown as { showSaveFilePicker?: (o: unknown) => Promise<{ createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> }> }).showSaveFilePicker
-  if (typeof picker === 'function') {
-    // 대화상자는 사용자 제스처 안에서 즉시 열어야 하므로 blob 생성보다 먼저 호출한다.
-    let handle: { createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> } | null = null
-    try {
-      handle = await picker({ suggestedName: name, types: [type] })
-    } catch (e) {
-      if (e && (e as { name?: string }).name === 'AbortError') return 'canceled' // 사용자가 닫음
-      handle = null // 권한 등 다른 실패 → 폴백 다운로드로
-    }
-    if (handle) {
-      try {
-        const b = await getBlob(); if (!b) return 'error'
-        const w = await handle.createWritable(); await w.write(b); await w.close()
-        return 'saved'
-      } catch { return 'error' }
-    }
-  }
-  // 폴백: 앵커 다운로드(브라우저 설정에 따라 저장 위치를 물어보거나 다운로드 폴더로 바로 저장).
   try {
     const b = await getBlob(); if (!b) return 'error'
     const url = URL.createObjectURL(b)
     const a = document.createElement('a')
     a.href = url; a.download = name
     document.body.appendChild(a); a.click(); a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setTimeout(() => URL.revokeObjectURL(url), 30000) // 내려받기가 시작될 때까지 주소를 살려 둔다
     return 'saved'
   } catch { return 'error' }
 }

@@ -131,20 +131,20 @@ export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[], o
   }
 }
 
-// 움짤 저장(미리보기만) — 움직이는 것이 있을 때만 메뉴에 나온다. getBlob 이 한 바퀴 GIF 를 만든다(lib/gifExport).
-// 흰 바탕과 투명 바탕 둘 — GIF 는 반투명을 담지 못해 투명이면 이펙트의 번지는 빛이 딱딱해진다(gifExport 머리말).
-export type GifMenu = { ok: () => boolean; getBlob: (transparent: boolean) => Promise<Blob | null> }
+// 움짤 저장(미리보기만) — 늘 나온다(불러오는 중에도 — 그림이 준비되면 만든다). getBlob 이 한 바퀴 GIF 를 만든다(lib/gifExport).
+// 지금 배경과 투명 바탕 둘 — GIF 는 반투명을 담지 못해 투명이면 이펙트의 번지는 빛이 딱딱해진다(gifExport 머리말).
+export type GifMenu = { getBlob: (transparent: boolean) => Promise<Blob | null> }
 
 // 미리보기 캔버스 공용: 우클릭/롱프레스 → "이미지 복사 / 이미지 저장(/ 움짤 저장)" 메뉴. getBlob 이 내보내기 이미지를 만든다.
 // centered=true 면 화면 중앙 큰 다이얼로그(모바일용).
 export function openImageMenu (x: number, y: number, getBlob: () => Promise<Blob | null>, filename: string, centered?: boolean, gif?: GifMenu): void {
   const items: CanvasMenuItem[] = [
     { label: '이미지 복사', onClick: async () => flashToast((await copyImage(getBlob)) ? '이미지를 복사했어요' : '이미지 복사에 실패했어요') },
-    { label: '이미지 저장', onClick: async () => { const r = await saveImage(getBlob, filename); if (r === 'saved') flashToast('이미지를 저장했어요'); else if (r === 'error') flashToast('이미지 저장에 실패했어요') } }, // 취소는 조용히
+    { label: '이미지 저장', onClick: async () => { const r = await saveImage(getBlob, filename); flashToast(r === 'saved' ? '이미지를 저장했어요' : '이미지 저장에 실패했어요') } },
   ]
-  // 만드는 데 몇 초 걸릴 수 있어 시작할 때 알린다(저장 창을 고른 뒤 — 창은 누른 순간에 열어야 한다)
-  const saveGif = async (transparent: boolean) => { const r = await saveImage(async () => { flashToast('움짤을 만들고 있어요'); return gif!.getBlob(transparent) }, filename, 'gif'); if (r === 'saved') flashToast('움짤을 저장했어요'); else if (r === 'error') flashToast('움짤 저장에 실패했어요') }
-  if (gif?.ok()) items.push({ label: '움짤 저장', onClick: () => saveGif(false) }, { label: '투명 움짤 저장', onClick: () => saveGif(true) })
+  // 만드는 데 몇 초 걸릴 수 있어 시작할 때 알린다
+  const saveGif = async (transparent: boolean) => { flashToast('움짤을 만들고 있어요'); const r = await saveImage(() => gif!.getBlob(transparent), filename, 'gif'); flashToast(r === 'saved' ? '움짤을 저장했어요' : '움짤 저장에 실패했어요') }
+  if (gif) items.push({ label: '움짤 저장', onClick: () => saveGif(false) }, { label: '투명 움짤 저장', onClick: () => saveGif(true) })
   openCanvasMenu(x, y, items, { centered })
 }
 

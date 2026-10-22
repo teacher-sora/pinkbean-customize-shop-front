@@ -92,7 +92,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     delays: number[]; animated: boolean; pingpong: boolean; effList: EffectMeta[]; action: string
     spots: ParticleSpot[]; descs: Map<string, ParticleDesc>; floating: boolean; ringFloor?: number
     // 미리보기 캔버스의 판(게임 1배 상자 · 기준점)과 칸 안 자리(디바이스 px) — 배경 움짤이 같은 자리에 얹는다
-    stage: { box: { w: number; h: number }; anchor: { x: number; y: number }; scale: number; left: number; top: number; w: number; h: number; dpr: number }
+    stage: { box: { w: number; h: number }; anchor: { x: number; y: number }; scale: number; left: number; top: number; dpr: number }
   } | null>(null)
 
   // 표시 영역(div) 크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.
@@ -609,7 +609,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     let ringFloor: number | undefined
     Promise.all([track(essential), ringFloorOf(frames.map((f) => f.placed)).then((v) => { ringFloor = v })]).then(() => {
       if (cancelled) return
-      animRef.current = { frames, delays, animated, pingpong, effList, action: V.action, spots: hasPart ? partSpots : [], descs: partDescs, floating, ringFloor, stage: { box: pl.box, anchor: pl.anchor, scale: pl.scale, left: leftDev, top: topDev, w: dims.w, h: dims.h, dpr: dims.dpr } }
+      animRef.current = { frames, delays, animated, pingpong, effList, action: V.action, spots: hasPart ? partSpots : [], descs: partDescs, floating, ringFloor, stage: { box: pl.box, anchor: pl.anchor, scale: pl.scale, left: leftDev, top: topDev, dpr: dims.dpr } }
       draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)
       redrawRef.current = () => draw(nowElapsed()) // 명찰 · 말풍선만 바뀌었을 때(시그니처에 chatVer 가 있어 다시 그린다)
       // 발색 조절 중/전 프레임 염색 중/정지 뷰면 애니메이션 없이 여기서 끝(정지 프레임 유지).
@@ -630,6 +630,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.
   // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 그림에 맞춘 상자 · 게임 크기 1배).
   const makeBlob = useCallback(async (): Promise<Blob | null> => {
+    for (let i = 0; i < 300 && !copyRef.current; i++) await new Promise((r) => setTimeout(r, 100)) // 불러오는 중이면 첫 그림을 기다린다
     const snap = copyRef.current
     if (!snap) return null
     return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
@@ -651,8 +652,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       return { a, snap, emo, periods, flowing: a.spots.length > 0 }
     }
     return {
-      ok: () => { const p = periodsOf(); return !!p && (p.periods.length > 0 || p.flowing) },
       getBlob: async (transparent) => {
+        // 불러오는 중에 눌렀으면 첫 그림이 준비될 때까지 기다린다(메뉴는 늘 움짤을 보인다 — 사용자 지시). 움직이는 것이 없으면 한 장짜리
+        for (let i = 0; i < 300 && !periodsOf(); i++) await new Promise((r) => setTimeout(r, 100))
         const p = periodsOf()
         if (!p) return null
         const { a, snap, emo } = p
@@ -667,12 +669,12 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           return sim
         }
         let partT = -1
-        // 배경 판 = 미리보기 칸. 게임 1칸 = 지금 보이는 CSS 크기(배율)를 반올림한 정수 px — 1배 화면에서 보는 크기다
-        const st = a.stage, k = st.scale / st.dpr, S = Math.min(4, Math.max(1, Math.round(k))), f = S / k
-        const wrap = wrapRef.current
+        // 배경: 캐릭터를 미리보기 캔버스와 같은 판에 그리고, 판의 (x0, y0) 칸이 움짤의 왼쪽 위에 오도록 지금 배경을 깐다.
+        // 판 칸 b 는 칸 안 CSS (left + b × scale) / dpr 에 보인다 → CSS c 는 움짤의 c × (s × dpr / scale) − (left / scale + x0) × s
+        const st = a.stage, wrap = wrapRef.current
         const [{ animatedGif }, { paintStage }] = await Promise.all([import('@/lib/gifExport'), import('@/lib/stageShot')])
         return animatedGif({
-          stage: wrap ? { w: Math.round(st.w * f), h: Math.round(st.h * f), s: S, ox: Math.round((st.left / st.dpr) * f), oy: Math.round((st.top / st.dpr) * f), place: { box: st.box, anchor: st.anchor }, paint: (g) => paintStage(g, wrap, f, S) } : undefined,
+          stage: { place: { box: st.box, anchor: st.anchor }, paint: async (g, x0, y0, s) => !!wrap && paintStage(g, wrap, (s * st.dpr) / st.scale, s, -(st.left / st.scale + x0) * s, -(st.top / st.scale + y0) * s) },
           periods: p.periods,
           flowing: p.flowing,
           sigAt: (t) => `${fiAt(t)}|${liftAt(t)}|${emo ? emoFrameAt(emo, t) : -1}|` + effAt(t).map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';'),

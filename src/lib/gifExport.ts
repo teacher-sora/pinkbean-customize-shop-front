@@ -4,11 +4,12 @@
 //     돌고, 박자가 맞지 않는 이펙트만 이음매에서 한 번 이어지지 않는다. 입자는 박자가 없어 이음매에서 조금 튈 수 있다.
 //  2) 그 구간을 10ms(GIF 시간 단위)마다 훑어 보이는 그림이 바뀌는 때마다 프레임을 하나 둔다. 20ms 보다 짧은 프레임은 앞 프레임에 붙인다
 //     (브라우저가 20ms 미만을 100ms 로 늘려 재생한다).
-//  3) 그림은 한 장 저장과 같은 함수(canvasExport.drawShot)로 다시 그린다. 두 가지 판:
-//     - 배경(stage — 메뉴의 '움짤 저장'): 판 = 미리보기 칸, 지금 깔린 배경(lib/stageShot) 위에 미리보기 캔버스와 같은 자리 · 크기로 얹는다.
-//       보이는 그대로다(배율 · 잘리는 곳까지). 반투명한 이펙트도 배경 위에 섞여 그대로 담긴다.
-//     - 투명('투명 움짤 저장'): 모든 프레임이 닿는 상자 하나로 자르고(사방 SHOT_PAD) 게임 픽셀 하나를 GIF_SCALE 칸으로 키운다.
-//       GIF 는 칸마다 보이거나 안 보이거나 둘뿐이라 반투명 칸을 알파 절반(ALPHA_CUT)에서 끊는다 — 캐릭터 · 옷은 그대로지만 이펙트의
+//  3) 그림은 한 장 저장과 같은 함수(canvasExport.drawShot)로 다시 그리고, 모든 프레임이 닿는 상자 하나로 자른다(사방 SHOT_PAD).
+//     게임 픽셀 하나 = GIF_SCALE 칸(메신저가 작은 그림을 흐릿하게 늘리지 않게). 바탕 둘:
+//     - '움짤 저장': 그 상자 자리에 미리보기에서 보이는 배경을 깐다(lib/stageShot — 사용자 지시: 보는 화면을 통째로 뽑지 말고 캐릭터에
+//       맞춘 판에 바탕만 지금 배경으로). 캐릭터를 미리보기 캔버스와 같은 판(stage.place)에 그려 배경과 자리가 맞는다. 반투명한 이펙트도
+//       배경 위에 섞여 그대로 담긴다.
+//     - '투명 움짤 저장': GIF 는 칸마다 보이거나 안 보이거나 둘뿐이라 반투명 칸을 알파 절반(ALPHA_CUT)에서 끊는다 — 캐릭터 · 옷은 그대로지만 이펙트의
 //       번지는 빛은 끝이 딱딱해진다(점으로 흉내 내는 디더링은 빛이 점무늬가 되어 더 나빴다 — 2026-10 달 망토 이펙트로 견줘 봤다).
 //  4) 색은 모든 프레임에서 고른 팔레트 하나(프레임마다 고르면 색이 깜빡인다). 팔레트의 마지막 칸은 투명 자리다 — 투명 판은 진짜 투명,
 //     배경 판은 '앞 프레임 그대로'(바뀐 칸만 적는다 — 배경이 큰 판도 파일이 작다). 사진 배경은 색 띠가 지지 않게 고정 무늬로 흔든다(dither).
@@ -22,11 +23,11 @@ export type GifSource = {
   shotAt: (t: number) => ModelShot // t 의 그림. 시간 순서대로 부른다(입자가 그만큼 흐른다)
   stage?: GifStage                 // 배경 판(없으면 투명 판만 만든다)
 }
-// 배경 판: w × h(px) = 미리보기 칸, 게임 1칸 = s px. 캐릭터 판(place — 미리보기 캔버스와 같은 상자 · 기준점)의 왼쪽 위가 (ox, oy)
+// 배경: 캐릭터를 미리보기 캔버스와 같은 판(place — 상자 · 기준점, 게임 1배)에 그리고, paint 가 그 판의 (x0, y0) 칸이 움짤의 왼쪽 위에,
+// 게임 1칸이 s px 로 오도록 지금 배경을 그린다. 돌려주는 값 true = 사진(올린 그림)이라 고르게 번지는 색이 많다
 export type GifStage = {
-  w: number; h: number; s: number; ox: number; oy: number
   place: { box: { w: number; h: number }; anchor: { x: number; y: number } }
-  paint: (g: CanvasRenderingContext2D) => Promise<boolean> // 배경을 그린다. true = 사진(올린 그림)이라 고르게 번지는 색이 많다
+  paint: (g: CanvasRenderingContext2D, x0: number, y0: number, s: number) => Promise<boolean>
 }
 
 const TICK = 10, MIN_FRAME = 20, MAX_MS = 12000, FLOW_MS = 40, FLOW_LOOP = 3000, GIF_SCALE = 2, ALPHA_CUT = 128
@@ -43,7 +44,7 @@ function dither (g: CanvasRenderingContext2D, W: number, H: number) {
   g.putImageData(im, 0, 0)
 }
 
-// 한 바퀴 길이(ms). 움직이는 것이 없으면 0.
+// 한 바퀴 길이(ms). 움직이는 것이 없으면 0(한 장짜리 움짤).
 export function gifLoopMs (periods: number[], flowing = false): number {
   const ps = periods.filter((p) => p > 0).map((p) => Math.max(TICK, Math.round(p / TICK) * TICK))
   if (!ps.length) return flowing ? FLOW_LOOP : 0
@@ -56,7 +57,6 @@ export function gifLoopMs (periods: number[], flowing = false): number {
 
 export async function animatedGif (src: GifSource, transparent = false): Promise<Blob | null> {
   const L = gifLoopMs(src.periods, src.flowing)
-  if (!L) return null
   const sig = (t: number) => src.sigAt(t) + (src.flowing ? `|${Math.floor(t / FLOW_MS)}` : '')
   const starts: number[] = [0]
   let prev = sig(0)
@@ -68,8 +68,7 @@ export async function animatedGif (src: GifSource, transparent = false): Promise
   }
   while (starts.length > 1 && L - starts[starts.length - 1] < MIN_FRAME) starts.pop()
 
-  const stage = transparent ? undefined : src.stage
-  if (!transparent && !stage) return null
+  const stage = src.stage
   // 프레임마다 그려 그림 상자만 잘라 둔다(판 전체를 들고 있으면 프레임이 많을 때 메모리가 크다).
   const shots: { c: HTMLCanvasElement; x: number; y: number }[] = []
   let ux0 = Infinity, uy0 = Infinity, ux1 = -Infinity, uy1 = -Infinity
@@ -83,15 +82,16 @@ export async function animatedGif (src: GifSource, transparent = false): Promise
     ux0 = Math.min(ux0, d.x0); uy0 = Math.min(uy0, d.y0); ux1 = Math.max(ux1, d.x1); uy1 = Math.max(uy1, d.y1)
     if (i % 4 === 3) await new Promise((r) => setTimeout(r, 0)) // 화면이 멈추지 않게
   }
-  // 판 크기 · 게임 1칸 크기 · 캐릭터 판의 자리
-  const S = stage ? stage.s : GIF_SCALE
-  const W = stage ? stage.w : (ux1 - ux0 + 1 + SHOT_PAD * 2) * S, H = stage ? stage.h : (uy1 - uy0 + 1 + SHOT_PAD * 2) * S
-  const ox = stage ? stage.ox : (SHOT_PAD - ux0) * S, oy = stage ? stage.oy : (SHOT_PAD - uy0) * S
+  // 판 크기와 캐릭터 판의 자리(판의 (ux0 - PAD, uy0 - PAD) 칸이 움짤의 왼쪽 위)
+  const S = GIF_SCALE, x0 = ux0 - SHOT_PAD, y0 = uy0 - SHOT_PAD
+  const W = (ux1 - x0 + 1 + SHOT_PAD) * S, H = (uy1 - y0 + 1 + SHOT_PAD) * S
+  const ox = -x0 * S, oy = -y0 * S
   let back: HTMLCanvasElement | null = null
-  if (stage) {
+  if (!transparent) {
     back = document.createElement('canvas'); back.width = W; back.height = H
     const bg = back.getContext('2d', { willReadFrequently: true })!
-    if (await stage.paint(bg)) dither(bg, W, H)
+    bg.fillStyle = '#ffffff'; bg.fillRect(0, 0, W, H) // 배경을 모르면 흰 바탕
+    if (stage && await stage.paint(bg, x0, y0, S)) dither(bg, W, H)
   }
   const page = document.createElement('canvas'); page.width = W; page.height = H
   const g = page.getContext('2d', { willReadFrequently: true })!
@@ -124,7 +124,7 @@ export async function animatedGif (src: GifSource, transparent = false): Promise
     if (cut) for (let p = 0; p < W * H; p++) { if (d[p * 4 + 3] < ALPHA_CUT) cut[p] = 1; d[p * 4 + 3] = 255 }
     const idx = applyPalette(d, colors)
     if (cut) for (let p = 0; p < idx.length; p++) if (cut[p]) idx[p] = clear
-    const delay = (i + 1 < starts.length ? starts[i + 1] : L) - starts[i]
+    const delay = L ? (i + 1 < starts.length ? starts[i + 1] : L) - starts[i] : 0
     if (transparent) gif.writeFrame(idx, W, H, { palette: i === 0 ? palette : undefined, delay, repeat: 0, transparent: true, transparentIndex: clear })
     else {
       // 배경 판: 앞 프레임과 같은 칸은 투명 자리(= 앞 프레임 그대로, dispose 1)로 적는다

@@ -1,5 +1,5 @@
 // 움짤 저장의 배경 — 미리보기에 깔린 배경(lib/stageBg)을 움짤 판에 화면과 같은 자리 · 크기로 그린다(클라이언트에서만, 서버를 거치지 않는다).
-// 판 = 미리보기 칸(PreviewModel 의 wrap). f = CSS px 하나가 판의 몇 px 인가, s = 게임 1칸이 판의 몇 px 인가(정수).
+// 미리보기 칸(PreviewModel 의 wrap)의 CSS 점 c 가 판의 c × f + (ox, oy) 에 온다. s = 게임 1칸이 판의 몇 px 인가(정수).
 //  · 피팅룸: 장면(scene/sceneCore)의 무대는 매장 그림(room-main)과 창밖 그림(room-far) 두 장에 시각의 빛과 발밑 그림자만 입힌다 —
 //    움직이는 것이 없다(창밖의 느린 흔들림만 있다 — 움짤은 흔들지 않는다, 장면의 '동작 줄이기'와 같다). 그래서 셰이더의 식을 그대로
 //    옮겨 그림에 한 번 입힌다(roomLit). 반짝이는 조명의 아주 작은 일렁임(±7%)은 시간에 따라 바뀌어 넣지 않는다.
@@ -47,18 +47,18 @@ async function roomLit (shadow: number): Promise<HTMLCanvasElement> {
   return c
 }
 
-// 판(g 의 캔버스 전체)에 지금 배경을 그린다. wrap = 미리보기 칸, f = CSS px → 판 px, s = 게임 1칸 → 판 px.
+// 판(g 의 캔버스 전체)에 지금 배경을 그린다. wrap = 미리보기 칸, f = CSS px → 판 px, (ox, oy) = 칸의 왼쪽 위가 오는 판 자리, s = 게임 1칸 → 판 px.
 // 돌려주는 값: 사진(올린 그림)인가 — 움짤이 색 띠를 풀지 정한다.
-export async function paintStage (g: CanvasRenderingContext2D, wrap: HTMLElement, f: number, s: number): Promise<boolean> {
+export async function paintStage (g: CanvasRenderingContext2D, wrap: HTMLElement, f: number, s: number, ox = 0, oy = 0): Promise<boolean> {
   const bg = getStageBg(), floor = getStageFloor()
   const W = g.canvas.width, H = g.canvas.height
   const wr = wrap.getBoundingClientRect()
   const host = (wrap.closest('[data-pv-stage],[data-hero]') as HTMLElement | null) ?? wrap // 배경이 깔린 칸(미리보기 칸보다 클 수 있다)
   const hr = host.getBoundingClientRect()
-  const hx = (hr.left - wr.left) * f, hy = (hr.top - wr.top) * f, hw = hr.width * f, hh = hr.height * f
+  const hx = (hr.left - wr.left) * f + ox, hy = (hr.top - wr.top) * f + oy, hw = hr.width * f, hh = hr.height * f
   const fill = (c: string, x = 0, y = 0, w = W, h = H) => { g.fillStyle = c; g.fillRect(x, y, w, h) }
   // 캐릭터가 서는 자리(판 px). 아직 모르면 장면의 기본 자리(칸 가운데 조금 아래)
-  const cx = floor ? floor.cx * f : W / 2, foot = floor ? floor.footY * f : H / 2 + 38.4 * f
+  const cx = (floor ? floor.cx : wr.width / 2) * f + ox, foot = (floor ? floor.footY : wr.height / 2 + 38.4) * f + oy
   if (bg.sel === 'room') {
     fill(sceneFallback('room'))
     const room = await roomLit(floor?.shadow ?? 13)
