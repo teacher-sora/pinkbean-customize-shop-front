@@ -24,7 +24,7 @@ import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { getFrameLayers } from '@/lib/core/assemble'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
-import { GUIDE_DRAWER_EVENT, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
+import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
 import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, loadPlazaPulse, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
@@ -1435,9 +1435,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (sheet) {
         if (sheet === 'pv') setPvIntent({ pick: go.pick, group: go.group })
         openSurface({ kind: sheet, item: null })
+        // 창이 다 오른 뒤 그 줄까지 창 안을 스크롤해 가리킨다(고르기 화면으로 연 것은 그 화면이 곧 목적지라 가리키지 않는다)
+        if (go.spot && !go.pick) setTimeout(() => guideSpot(go.spot!), GUIDE_SETTLE_MS)
         return
       }
-      if (go.drawer) { setTimeout(() => window.dispatchEvent(new CustomEvent(GUIDE_DRAWER_EVENT, { detail: go.drawer })), 260); return }
+      if (go.drawer) { setTimeout(() => window.dispatchEvent(new CustomEvent(GUIDE_DRAWER_EVENT, { detail: { group: go.drawer, spot: go.spot } })), 260); return }
       if (go.spot) setTimeout(() => guideSpot(go.spot!, !!go.click), 260)
     }, SURFACE_UNMOUNT_MS + 20)
   }

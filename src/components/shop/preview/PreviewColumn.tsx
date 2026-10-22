@@ -5,7 +5,7 @@
 
 import clsx from 'clsx'
 import { useCallback, useEffect, useState } from 'react'
-import { GUIDE_DRAWER_EVENT, guideSpot } from '@/lib/guide'
+import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot } from '@/lib/guide'
 import { DOT_MOVER_IDS } from '@/lib/shopData'
 import PreviewModel from '../PreviewModel'
 import ChatBar from './ChatBar'
@@ -28,12 +28,14 @@ export default function PreviewColumn() {
   const narrow = s.bp === 'half' || s.bp === 'tablet'
   const [pvAll, setPvAll] = useState(false)
   const [group, setGroup] = useState<PvGroup>('char')
-  // 기능 안내의 '열어 보기'(형상 변이 · 이펙트): 연출 설정을 펼치고 그 칸을 고른 뒤 가리킨다
+  // 기능 안내의 '열어 보기'(형상 변이 · 이펙트 · 기본 명찰): 연출 설정을 펼치고 그 칸을 고른 뒤 가리킨다.
+  // spot 이 있으면 펼침과 칸 전환이 끝난 뒤 그 줄까지 칸 안을 스크롤해 가리킨다(guideSpot 의 reveal)
   useEffect(() => {
     const on = (e: Event) => {
-      const g = (e as CustomEvent<PvGroup>).detail
+      const { group: g, spot } = (e as CustomEvent<{ group: PvGroup; spot?: string }>).detail
       setPvAll(true); setGroup(g)
       window.setTimeout(() => guideSpot('pvall'), 60)
+      if (spot) window.setTimeout(() => guideSpot(spot), GUIDE_SETTLE_MS)
     }
     window.addEventListener(GUIDE_DRAWER_EVENT, on)
     return () => window.removeEventListener(GUIDE_DRAWER_EVENT, on)

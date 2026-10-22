@@ -9,6 +9,7 @@
 //  · go = '열어 보기'. tab = 그 탭으로(preview 면 지금 탭 그대로 — 요청한 것 말고는 바꾸지 않는다), sheet = 그 창을 연다, pick = 휴대폰 연출 설정 시트를 그 고르기 화면(표정 등)으로 연다,
 //    group = 연출 설정의 캐릭터 / 이펙트 칸, drawer = PC 미리보기 아래 연출 설정을 펼친다,
 //    spot = 도착한 화면에서 그 요소(`data-guide`)를 잠깐 테두리로 가리키고(입력칸이면 커서를 둔다), click = 가리킨 뒤 눌러 연다.
+//    sheet · drawer 와 함께 쓰면 창이 다 열린 뒤 그 줄까지 창 안을 스크롤해 가리킨다(아래쪽 줄도 보이게 — 사용자 지시).
 
 import { backApi } from './backApi'
 import { safeBubble } from './safeText'
@@ -34,14 +35,14 @@ export const GUIDE: GuideEntry[] = [
     how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n[연출 설정] 버튼을 누르면\n[모션]에서 바꿀 수 있어요.', go: { tab: 'preview', sheet: 'pv', pick: 'weapon' },
     pc: { how: '오른쪽의 캐릭터 화면 아래에 있는\n[모션] 버튼에서 바꿀 수 있어요.', go: { tab: 'preview', spot: 'weapon', click: true } } },
   { id: 'zoom', title: '캐릭터 크기', words: '크기, 확대, 축소, 작게, 크게, 인게임 비율, 잘려요, 배율',
-    how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n[연출 설정] 버튼을 누르면\n[배율]에서 바꿀 수 있어요.\n1배가 가장 작아요.', go: { tab: 'preview', sheet: 'pv' },
+    how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n[연출 설정] 버튼을 누르면\n[배율]에서 바꿀 수 있어요.\n1배가 가장 작아요.', go: { tab: 'preview', sheet: 'pv', spot: 'zoom' },
     pc: { how: '오른쪽의 캐릭터 화면 아래에 있는\n[배율] 버튼에서 바꿀 수 있어요.\n1배가 가장 작아요.', go: { tab: 'preview', spot: 'zoom', click: true } } },
   { id: 'form', title: '형상 변이, 귀, 시선', words: '아니마, 호영 꼬리, 라라 뿔, 렌, 엘프 귀, 레프 귀, 뒤돌기, 뒷모습, 방향, 시선',
-    how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n[연출 설정] 버튼을 누르면\n맨 위에서 바꿀 수 있어요.', go: { tab: 'preview', sheet: 'pv', group: 'char' },
-    pc: { how: '오른쪽의 캐릭터 화면 아래 맨 끝에 있는\n[연출 설정] 버튼을 누르면\n펼쳐진 칸에서 바꿀 수 있어요.', go: { tab: 'preview', drawer: 'char' } } },
+    how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n[연출 설정] 버튼을 누르면\n맨 위에서 바꿀 수 있어요.', go: { tab: 'preview', sheet: 'pv', group: 'char', spot: 'pv-form' },
+    pc: { how: '오른쪽의 캐릭터 화면 아래 맨 끝에 있는\n[연출 설정] 버튼을 누르면\n펼쳐진 칸에서 바꿀 수 있어요.', go: { tab: 'preview', drawer: 'char', spot: 'pv-form' } } },
   { id: 'effect', title: '이펙트 끄고 켜기', words: '이펙트 끄기, 무기 이펙트, 망토 이펙트, 모자 이펙트, 반짝이 없애기, 효과 끄기, 부유 효과, 둥둥 뜨기, 떠 있는 캐릭터',
-    how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n[연출 설정] 버튼을 누르고\n[이펙트]를 고르면 끄고 켤 수 있어요.\n캐릭터가 둥둥 뜨는 것은 [부유 효과]예요.', go: { tab: 'preview', sheet: 'pv', group: 'effect' },
-    pc: { how: '오른쪽의 캐릭터 화면 아래 맨 끝에 있는\n[연출 설정] 버튼을 누르고\n[이펙트]를 고르면 끄고 켤 수 있어요.\n캐릭터가 둥둥 뜨는 것은 [부유 효과]예요.', go: { tab: 'preview', drawer: 'effect' } } },
+    how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n[연출 설정] 버튼을 누르고\n[이펙트]를 고르면 끄고 켤 수 있어요.\n캐릭터가 둥둥 뜨는 것은 [부유 효과]예요.', go: { tab: 'preview', sheet: 'pv', group: 'effect', spot: 'pv-effect' },
+    pc: { how: '오른쪽의 캐릭터 화면 아래 맨 끝에 있는\n[연출 설정] 버튼을 누르고\n[이펙트]를 고르면 끄고 켤 수 있어요.\n캐릭터가 둥둥 뜨는 것은 [부유 효과]예요.', go: { tab: 'preview', drawer: 'effect', spot: 'pv-effect' } } },
   { id: 'nick', title: '닉네임으로 코디 불러오기', words: '닉네임 검색, 내 캐릭터, 인게임 코디 가져오기, 캐릭터 이름, 넥슨, 불러오기',
     how: '맨 아래의 [프리셋] 탭에 있는 맨 위 칸에\n닉네임을 넣고 오른쪽 버튼을 누르면\n게임 속 코디를 그대로 가져와요.', go: { tab: 'preset', spot: 'nick' },
     pc: { how: '맨 아래의 [프리셋] 탭에 있는 맨 위 칸에\n닉네임을 넣고 [불러오기]를 누르면\n게임 속 코디를 그대로 가져와요.' } },
@@ -84,8 +85,8 @@ export const GUIDE: GuideEntry[] = [
     how: '캐릭터 화면 왼쪽 아래의 말풍선 버튼으로\n말과 이모티콘을 보낼 수 있어요.\n명찰과 말풍선 모양은 맨 아래의 [코디] 탭\n부위 줄의 [명찰 / 말풍선]에서 골라 입어요.', go: { tab: 'preview', spot: 'chat', click: true },
     pc: { how: '오른쪽의 캐릭터 화면 아래 채팅 칸에\n말을 적고 Enter 를 누르면 떠요.\n명찰과 말풍선 모양은 맨 아래의 [코디] 탭\n부위 줄의 [명찰 / 말풍선]에서 골라 입어요.', go: { tab: 'preview', spot: 'chat' } } },
   { id: 'basetag', title: '기본 명찰 켜고 끄기', words: '기본 명찰, 기본 이름표, 발밑 이름, 캐릭터 이름 표시, 명찰 반지 없이',
-    how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n[연출 설정] 버튼을 누르고 [캐릭터]를 고르면\n[기본 명찰]에서 켜고 끌 수 있어요.\n명찰 반지를 끼면 그 명찰이 나와요.', go: { tab: 'preview', sheet: 'pv', group: 'char' },
-    pc: { how: '오른쪽의 캐릭터 화면 아래 맨 끝에 있는\n[연출 설정] 버튼을 누르고 [캐릭터]를 고르면\n[기본 명찰]에서 켜고 끌 수 있어요.\n명찰 반지를 끼면 그 명찰이 나와요.', go: { tab: 'preview', drawer: 'char' } } },
+    how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n[연출 설정] 버튼을 누르고 [캐릭터]를 고르면\n[기본 명찰]에서 켜고 끌 수 있어요.\n명찰 반지를 끼면 그 명찰이 나와요.', go: { tab: 'preview', sheet: 'pv', group: 'char', spot: 'basetag' },
+    pc: { how: '오른쪽의 캐릭터 화면 아래 맨 끝에 있는\n[연출 설정] 버튼을 누르고 [캐릭터]를 고르면\n[기본 명찰]에서 켜고 끌 수 있어요.\n명찰 반지를 끼면 그 명찰이 나와요.', go: { tab: 'preview', drawer: 'char', spot: 'basetag' } } },
   { id: 'hide', title: '숨기기, 전부 벗기', words: '숨기기, 안 보이게, 벗기, 전부 벗기, 맨몸',
     how: '맨 아래의 [염색] 탭에서\n부위 옆에 있는 눈 버튼으로 숨길 수 있어요.\n[전체 벗기]로 한 번에 벗을 수도 있어요.', go: { tab: 'info', spot: 'unequip' },
     pc: { how: '맨 아래의 [코디 정보 / 염색] 탭에서\n부위 옆에 있는 눈 버튼으로 숨길 수 있어요.\n[전체 벗기]로 한 번에 벗을 수도 있어요.' } },
@@ -187,3 +188,5 @@ export function guideSpot(spot: string, click = false) {
 
 // PC 미리보기 아래 연출 설정 펼치기(PreviewColumn 이 듣는다)
 export const GUIDE_DRAWER_EVENT = 'pb-guide-drawer'
+// 창(시트) · 펼침이 다 열린 뒤 — 그 안의 줄을 가리키는 때(움직이는 도중에 재면 자리가 틀린다)
+export const GUIDE_SETTLE_MS = 460
