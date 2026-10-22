@@ -304,7 +304,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 명찰 · 말풍선 — 그릴 레이어가 없고 renderCharacter 가 덧그린다(core/chatUi).
   // 말을 보낼 때마다 아래 합성 effect 를 처음부터 다시 돌리지 않는다(프레임 · 스프라이트 준비를 건너뛰고) — 값은 ref 로 넘기고
   // 그리기만 한 번 다시 부른다(redrawRef). 말풍선 그림은 채팅 칸에 적는 동안 미리 만들어 두어(core/chatUi.warmChat) 바로 나온다.
-  const chat = useMemo(() => chatDrawOf(equipped, hidden, shop.chatName, shop.chatMsg, metas), [equipped, hidden, shop.chatName, shop.chatMsg, metas])
+  const chat = useMemo(() => chatDrawOf(equipped, hidden, shop.chatName, shop.chatMsg, metas, shop.chatDefault), [equipped, hidden, shop.chatName, shop.chatMsg, metas, shop.chatDefault])
   const chatRef = useRef(chat), chatVer = useRef(0)
   const redrawRef = useRef<(() => void) | null>(null)
   useEffect(() => {

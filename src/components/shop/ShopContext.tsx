@@ -17,6 +17,7 @@ import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog
 import { clampDye } from '@/lib/color'
 import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
+import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
@@ -28,7 +29,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
   PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -212,7 +213,8 @@ export interface ShopCtx {
   index: Index | null
   cats: Cat[] // 부위 탭(CATS + dev 에서만 명찰/말풍선 — CHAT_CATS)
   infoCats: Cat[] // 코디 정보 칩(CATS + dev 에서만 명찰 · 말풍선 둘 — CHAT_INFO_CATS)
-  chatOn: boolean // 명찰 · 말풍선을 쓸 수 있는가(dev 데이터가 있을 때만)
+  chatOn: boolean // 명찰 · 말풍선을 쓸 수 있는가(목록 파일이 있을 때만)
+  chatDefault: ChatUi | null // 기본 말풍선(말풍선 반지 없이 보낸 채팅)
   chatName: string // 명찰 이름 = 고른 프리셋 이름
   chatMsg: ChatMsg | null; sendChat: (m: ChatMsg) => void // 채팅 칸에서 보낸 말 · 이모티콘(CHAT_SHOW_MS 동안)
   catLoading: boolean
@@ -547,11 +549,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [index, lists])
   // 명찰 · 말풍선: 목록 파일이 있을 때만 부위를 더한다. 반지 바로 뒤.
   const [chatOn, setChatOn] = useState(false)
+  const [chatDefault, setChatDefault] = useState<ChatUi | null>(null)
   useEffect(() => {
     fetch(CHAT_FILES.nameTag, { method: 'HEAD' }).then((r) => {
       setChatOn(r.ok)
       if (!r.ok) return
       prefetchGlyphs() // 글자 도트는 한가할 때 미리
+      fetch(CHAT_DEFAULT_BALLOON).then((x) => (x.ok ? x.json() : null)).then((u: ChatUi | null) => { if (u?.parts) setChatDefault(u) }).catch(() => {})
       // 테스트 서버에 새로 나온 명찰 · 말풍선(본 서버에 없는 것) — NEW 라벨 · '신규' 필터에 더한다
       fetch(CHAT_NEW_FILE).then((x) => (x.ok ? x.json() : null)).then((j: { ids?: string[] } | null) => { if (j?.ids?.length) setNewIds((prev) => new Set([...prev, ...j.ids!])) }).catch(() => {})
     }).catch(() => {})
@@ -1991,7 +1995,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   const chatName = presets.find((p) => p.id === selectedPreset)?.name?.trim() || CHAT_NAME_FALLBACK
   const value: ShopCtx = {
-    index, cats, infoCats, chatOn, chatName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
+    index, cats, infoCats, chatOn, chatDefault, chatName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
     genderFilter, setGenderFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
