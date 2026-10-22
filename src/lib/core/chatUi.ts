@@ -35,6 +35,7 @@ export interface ChatUi {
   kind: 'nameTag' | 'chatBalloon'; clr: string; atlas: string; parts: Record<string, ChatPart>
   originOffset?: Vec; heightoffset?: number; bottomoffset?: number; fontType?: number
   aniFit?: number[] // 움직이는 명찰: 층(ani0, ani1, …)마다 이름이 들어가는 폭(px) — 추출 때 그림의 안쪽 폭을 재어 적는다
+  plain?: boolean // 기본 명찰(BASE_TAG) — 조각 그림 없이 반투명 검은 판을 그린다
   arrowPad?: number // 말풍선 꼬리의 왼쪽 빈 열 수(origin.x 만큼 띠 위에 걸치는 자리 중 띠 높이에서 투명한 열) — 띠를 그만큼 꼬리 밑으로 늘린다
 }
 // 이모티콘 프레임: 가로로 이은 그림(strip) 안의 자리 x · 크기 · origin(ox, oy) · 머무는 시간(d, ms)
@@ -157,10 +158,25 @@ function compose (A: HTMLImageElement, pieces: Piece[], extra: (g: CanvasRenderi
   return { c, ox: x0, oy: y0 }
 }
 
+// 기본 명찰 — 명찰 반지를 끼지 않았을 때의 게임 명찰. 원본에 그림이 없다(클라이언트가 직접 그린다) — 게임 화면을 점 단위로 재어 맞췄다:
+// 판 = 이름 폭 + 5(펜 시작 2칸 왼쪽부터) × 13, 위 끝이 발끝 2칸 아래, 네 모서리 1칸씩 깎음, 검정 55% 불투명. 글자는 흰색, 글자 줄의 위 = 판 위 + 2.
+export const BASE_TAG: ChatUi = { kind: 'nameTag', clr: '#ffffff', atlas: 'base', parts: {}, plain: true }
+const BASE_TAG_TOP = 2, BASE_TAG_H = 13, BASE_TAG_ALPHA = 0.55
+function plainTag (name: string): Bitmap {
+  const t = textBitmap(name, BASE_TAG.clr)
+  const pen = -Math.floor((t.adv + 4) / 2), x = pen - 2, w = t.adv + 5, h = BASE_TAG_H
+  const c = canvasOf(w, h), g = c.getContext('2d')!
+  g.fillStyle = `rgba(0,0,0,${BASE_TAG_ALPHA})`
+  g.fillRect(1, 0, w - 2, 1); g.fillRect(0, 1, w, h - 2); g.fillRect(1, h - 1, w - 2, 1)
+  g.drawImage(t.c, pen + t.left - x, 2 + t.top)
+  return { c, ox: x, oy: BASE_TAG_TOP }
+}
+
 // 명찰. 기준점(0,0) = 발끝. 글자 칸(높이 12)의 위 = TAG_TEXT, 글자 칸의 왼끝 = -(이름 폭 + 4) / 2.
 // 양끝(w · e)은 origin 대로 글자 칸 양옆에 두고, 가운데(c)는 두 조각이 실제로 그려진 사이만 메운다 — origin 이 조각 폭과 몇 px
 // 어긋난 디자인도 겹치거나(진한 줄) 비지(빈 틈) 않는다.
 async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
+  if (ui.plain) return plainTag(name)
   const A = await loadImage(ui.atlas, true), P = ui.parts
   const t = textBitmap(name, ui.clr)
   const T = TAG_TEXT

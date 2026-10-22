@@ -9,7 +9,7 @@ import { renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { animaNow, animaOnce, composePeek, composeSnapshotCached, snapKey, type SnapComposite } from '@/lib/core/snapRender'
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
-import type { ChatUi } from '@/lib/core/chatUi'
+import { BASE_TAG, type ChatUi } from '@/lib/core/chatUi'
 import { CARD_FRACTION, CARD_MARGIN, CHAT_FILES } from '@/lib/shopData'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop, type Snapshot } from './ShopContext'
@@ -21,7 +21,7 @@ import { useShop, type Snapshot } from './ShopContext'
 // 부모는 position:relative + 크기가 있어야 한다(이 컴포넌트는 inset:0 으로 채운다).
 // priority: 0 = 보이는 것(곧바로), 1 이상 = 화면 밖 미리 그리기(보이는 것이 다 끝난 뒤) — lib/thumbQueue.
 // view: 스냅샷의 연출 설정(액션·표정)까지 그려 준다 — 연출 설정 고르기의 작은 미리보기 전용.
-// tagName: 끼운 명찰을 이 이름으로 함께 그린다 — 프리셋 카드만(프리셋 이름, 사용자 지시). 말풍선은 그리지 않는다.
+// tagName: 끼운 명찰(칸이 비었으면 그 프리셋의 기본 명찰 — pv.baseTag)을 이 이름으로 함께 그린다 — 프리셋 카드만(프리셋 이름, 사용자 지시). 말풍선은 그리지 않는다.
 
 // 명찰 조각 정보(id → chatUi). 명찰 · 말풍선 목록 파일을 처음 쓸 때 한 번만 받는다.
 let tagUis: Promise<Map<string, ChatUi>> | null = null
@@ -53,7 +53,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     loadTagUis().then((m) => { if (alive) setTagUi(m.get(tagId)) })
     return () => { alive = false }
   }, [tagId])
-  const chat = useMemo(() => (tagUi && tagName != null ? { tag: tagUi, name: tagName, text: '' } : undefined), [tagUi, tagName])
+  const baseTag = tagName != null && !snap.equipped.nameTag && !!snap.pv?.baseTag
+  const chat = useMemo(() => { const tag = tagUi ?? (baseTag ? BASE_TAG : undefined); return tag && tagName != null ? { tag, name: tagName, text: '' } : undefined }, [tagUi, tagName, baseTag])
 
   const prioRef = useRef(priority)
   prioRef.current = priority
