@@ -52,14 +52,15 @@
 /* ── 카드 ── */
 .wrap { cursor: pointer; }
 /* 순서 변경(usePresetDrag): 켠 동안 카드 테두리는 점선 · 잡는 손 모양, 터치는 브라우저 스크롤 대신 끌기. 끄는 카드는 손을 따라 떠 있다(팝오버와 같은 그림자 — 떠 있는 것).
-   켠 동안 카드는 GPU 층(will-change) — 끌고 밀려도 그림 · 그림자를 다시 칠하지 않는다. hover 로 올라오는 것도 끈다(끄는 카드가 지나갈 때마다 아래 카드가 들썩였다) */
-.wrap.sorting { cursor: grab; touch-action: none; will-change: transform; }
+   끄는 카드만 GPU 층(will-change) — 손을 따라 움직여도 그림 · 그림자를 다시 칠하지 않는다. 밀려나는 카드는 전환 중에 브라우저가 스스로 층으로 올린다
+   (30장 모두에 걸면 카드마다 GPU 메모리를 쥔다). hover 로 올라오는 것도 끈다(끄는 카드가 지나갈 때마다 아래 카드가 들썩였다) */
+.wrap.sorting { cursor: grab; touch-action: none; }
 .wrap.sorting > :global(.pb-preset) { border-style: dashed; }
 @media (hover: hover) and (pointer: fine) {
   .wrap.sorting:hover > :global(.pb-preset) { transform: none; border-color: #eee6dc; }
   .wrap.sorting:hover > :global(.pb-preset.pb-preset-sel) { transform: translateY(-5px); border-color: #ec86ac; }
 }
-.wrap.dragging { position: relative; z-index: 10; pointer-events: none; }
+.wrap.dragging { position: relative; z-index: 10; pointer-events: none; will-change: transform; }
 .wrap.dragging > :global(.pb-preset) { border-style: solid; border-color: #ec86ac; transform: translateY(-5px); }
 .wrap.dragging > :global(.pb-preset) { box-shadow: 0 12px 32px rgba(42,37,33,.12); }
 .badge { position: absolute; top: 7px; left: 7px; z-index: 3; display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 20px; background: #fdf1f6; border: 1px solid #f8e0ea; color: #d76d9a; font-size: 10px; font-weight: 700; pointer-events: none; transition: opacity .22s ease, transform .22s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); }
