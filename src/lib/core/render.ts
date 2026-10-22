@@ -112,6 +112,17 @@ export function effectDraws(meta: EffectMeta | null | undefined, action: string,
   return out
 }
 
+// 이 동작에서 그려지는 이펙트 묶음마다 한 바퀴 길이(ms) — effectDraws 와 같은 묶음을 고른다(움짤 저장이 반복 길이를 정할 때).
+// 한 장짜리 묶음은 돌지 않아 빠진다. 묶음을 차례로 돌리는 이펙트(cycle)는 차례 한 바퀴도 넣는다.
+export function effectPeriods(meta: EffectMeta | null | undefined, action: string): number[] {
+  if (!meta) return []
+  const len = (g: EffectGroup | undefined) => g && g.frames.length > 1 ? g.frames.reduce((s, f) => s + Math.max(20, f.delay || 100), 0) : 0
+  const keys = meta.cycle?.groups.length ? meta.cycle.groups : meta.trail?.length ? meta.trail : [meta.groups[action] ? action : meta.groups['default'] ? 'default' : meta.repGroup]
+  const out = keys.map((k) => len(meta.groups[k]))
+  if (meta.cycle?.groups.length) out.push(meta.cycle.ms * meta.cycle.groups.length)
+  return [...out, ...effectPeriods(meta.extra, action)].filter((v) => v > 0)
+}
+
 export interface RenderOpts {
   scale?: number              // canvas = box * scale. Integer (1/2/3) for crisp CSS-scaled views; a fractional
                               //   scale is allowed to render the bitmap at the target's DEVICE-pixel resolution
@@ -124,6 +135,7 @@ export interface RenderOpts {
   effects?: EffectDraw[]             // item effects (망토 등) composited around the body (each carries ox/oy)
   particles?: ParticleDraw[]         // 파티클(제네시스 무기 등) — 입자는 sim 이 들고, 그림은 desc.tex.png. z 음수 = 캐릭터 뒤
   chat?: ChatDraw                    // 명찰 · 말풍선(core/chatUi) — 모든 것 위에, 시선과 무관하게 뒤집지 않고 그린다
+  chatT?: number                     // 움직이는 이모티콘의 시각(ms) — 주면 보낸 시각(t0) 대신 쓴다(움짤 저장이 프레임마다 정한다)
   ringFloor?: number                 // 변신 그림을 올리거나 내릴 만큼(월드 px) — 동작의 모든 프레임으로 잰 값(ringFloorOf). 없으면 이 프레임만으로 잰다
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
   centerX?: boolean                  // pin the body NAVEL to a fixed box point (center X, anchor.y) in BOTH axes →
@@ -328,5 +340,5 @@ export async function renderCharacter(
   for (const x of parts) if (x.p.z >= 0) drawPart(x)
   ctx.restore()
   // 움직이는 이모티콘은 보낸 뒤 흐른 시간의 프레임(보낸 시각이 없으면 — 복사 그림 등 — 대표 프레임)
-  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width, t: opts.chat?.t0 != null ? performance.now() - opts.chat.t0 : undefined, main: opts.chat?.emo?.main })
+  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width, t: opts.chatT ?? (opts.chat?.t0 != null ? performance.now() - opts.chat.t0 : undefined), main: opts.chat?.emo?.main })
 }

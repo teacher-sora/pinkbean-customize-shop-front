@@ -275,6 +275,13 @@ export function frameAtElapsed(delays: number[], elapsed: number): number {
   for (let i = 0; i < ds.length; i++) { t -= ds[i]; if (t < 0) return i }
   return ds.length - 1
 }
+// 한 바퀴 길이(ms) — frameAtElapsed(핑퐁이면 frameAtElapsedAlt)가 처음으로 돌아오기까지. 돌지 않으면 0.
+export function frameCycleMs(delays: number[], pingpong = false): number {
+  const N = delays?.length ?? 0
+  if (N <= 1) return 0
+  const ds = delays.map((d) => Math.max(20, d || 120))
+  return pingpong ? ds.reduce((a, d, i) => a + (i === 0 || i === N - 1 ? d : 2 * d), 0) : ds.reduce((a, b) => a + b, 0)
+}
 // 핑퐁(무한 왕복): 0→1→…→N-1→N-2→…→1→0 (이동/자세 액션).
 export function frameAtElapsedAlt(delays: number[], elapsed: number): number {
   const N = delays?.length ?? 0
