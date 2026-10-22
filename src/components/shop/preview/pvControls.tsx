@@ -123,8 +123,8 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
           )}
         </div>
       </div>
-      <div className={clsx('pb-slide', 'pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.slide, group === 'effect' && styles.slideOn)}>
-        <div data-guide="pv-effect" className={styles.slidePad}>
+      <div data-guide="pv-effect" className={clsx('pb-slide', 'pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.slide, group === 'effect' && styles.slideOn)}>
+        <div className={styles.slidePad}>
           {switches.map((r) => (
             <div key={r.key} className={styles.pvRow}>
               <span className={labelCls}>{r.label}</span>
