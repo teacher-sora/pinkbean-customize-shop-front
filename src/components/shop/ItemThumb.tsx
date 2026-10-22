@@ -92,6 +92,7 @@ function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
 
 // 명찰 · 말풍선 카드: 몸 없이 그 아이템만 카드 가운데에. 배율은 정수(디바이스 픽셀 기준) — 게임 크기(CSS 1px = 게임 1px)를 넘지 않고,
 // 카드 안쪽 CHAT_FIT 에 다 들어오지 않으면 들어오는 단계까지 줄인다(카드마다 크기가 들쭉날쭉하지 않게 키우지는 않는다).
+// 디바이스 픽셀 1:1 로도 넘치면(배율 1 화면의 넓은 말풍선) 카드에 맞춰 부드럽게 줄인다 — 잘려서 생김새를 못 보는 것보다 낫다(사용자 지시).
 const CHAT_FIT = 0.9
 function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -119,11 +120,13 @@ function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !bmp || !dims.w) return
-    const k = Math.max(1, Math.min(Math.floor(dims.dpr) || 1, Math.floor(Math.min((dims.w * dims.dpr * CHAT_FIT) / bmp.width, (dims.h * dims.dpr * CHAT_FIT) / bmp.height))))
-    const bw = bmp.width * k, bh = bmp.height * k
+    const fit = Math.min((dims.w * dims.dpr * CHAT_FIT) / bmp.width, (dims.h * dims.dpr * CHAT_FIT) / bmp.height)
+    const k = fit >= 1 ? Math.min(Math.floor(dims.dpr) || 1, Math.floor(fit)) : fit
+    const bw = Math.round(bmp.width * k), bh = Math.round(bmp.height * k)
     canvas.width = bw; canvas.height = bh
     const g = canvas.getContext('2d')!
-    g.imageSmoothingEnabled = false
+    g.imageSmoothingEnabled = k < 1
+    g.imageSmoothingQuality = 'high'
     g.drawImage(bmp, 0, 0, bw, bh)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
   }, [bmp, dims])

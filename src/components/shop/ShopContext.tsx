@@ -85,7 +85,7 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'vs' | 'plaza' | 'ptake' | 'notice'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'vs' | 'plaza' | 'ptake' | 'notice' | 'emo'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
@@ -284,7 +284,7 @@ export interface ShopCtx {
   isMixSlot: (slot: string) => boolean
   // 단일 서피스(연출 설정 · 북마크 · 염색 · 점 위치)
   surface: Surface | null; surfaceClosing: boolean
-  openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg') => void
+  openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg' | 'emo') => void // emo = 채팅 이모티콘(모바일, dev 전용)
   openDye: (item: ListItem) => void
   openDot: (item: ListItem) => void
   closeSurface: () => void
@@ -1397,7 +1397,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPlazaFilter('all'); setPlazaQState('')
     setPageByCat({}) // 부위별로 따로 기억하던 페이지까지 전부 1페이지로
   }
-  const openSheet = (kind: 'pv' | 'bm' | 'part' | 'bg') => {
+  const openSheet = (kind: 'pv' | 'bm' | 'part' | 'bg' | 'emo') => {
     if (surface?.kind === kind && !surfaceClosing) { closeSurface(); return }
     openSurface({ kind, item: null })
   }
@@ -1975,7 +1975,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const commitPage = () => { if (pageT.current) clearTimeout(pageT.current); const n = parseInt(pageInput, 10); if (!isNaN(n)) setIdx(n - 1); setPageEditing(false); setPageInput('') }
   const onPageKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } else if (e.key === 'Escape') e.currentTarget.blur() }
 
-  const chatName = presets.find((p) => p.id === selectedPreset)?.name || CHAT_NAME_FALLBACK
+  const chatName = presets.find((p) => p.id === selectedPreset)?.name?.trim() || CHAT_NAME_FALLBACK
   const value: ShopCtx = {
     index, cats, infoCats, chatOn, chatName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
     genderFilter, setGenderFilter,

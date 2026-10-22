@@ -3,7 +3,9 @@
 // 조각은 반지마다 그림 한 장(아틀라스)에 모아 두고 잘라 쓴다 — 반지 하나를 그리는 데 요청이 한 번이다.
 //
 // 조각은 모두 반투명(알파 204 안팎)이라 **어느 두 조각도 겹치면 안 된다**(겹친 자리만 진해진다). 조각 배치는 원본 origin 그대로다.
-//  명찰: origin = **글자 칸**(높이 12)의 모서리 · 가운데 위 기준. 글자 칸을 발끝 아래 TAG_TEXT 에 두고 띠는 origin 대로 놓는다 —
+//  명찰: origin = **글자 칸**(높이 12)의 모서리 · 가운데 위 기준. 글자 칸을 발끝 아래 TAG_TEXT 에 두고 띠는 origin 대로 놓는다.
+//        글자 칸 폭 = 이름 폭 그대로, 왼끝 = 기준점에서 (이름 폭 + 4) / 2 왼쪽 — 게임 화면과 점 단위로 맞춘 값이다(게임도 명찰이 2px 왼쪽).
+//        디자인마다 띠가 글자 칸 위로 올라오는 만큼이 달라 명찰마다 높이가 다르다 —
 //        디자인마다 띠가 글자 칸 위로 올라오는 만큼이 달라 명찰마다 높이가 다르다.
 //        w(왼쪽)는 오른쪽 끝이 글자 칸 왼쪽에, c(가운데)는 글자 칸 폭만큼 이어 붙이고, e(오른쪽)는 글자 칸 오른쪽에서 시작한다.
 //        움직이는 명찰(aniNameTag)의 층 0, 1, 2(, 3) = 이름 폭에 따라 고르는 **명찰 통째 그림**이다(층마다 24px 안팎씩 넓다).
@@ -14,7 +16,8 @@
 //        위 장식(head)과 꼬리(arrow)는 띠 무늬를 그 안에 이미 품은 조각이다(첫 열이 띠 조각의 첫 열과 같다) — 띠 위에 얹지 않고
 //        **띠 한 칸을 대신한다**. 폭이 띠 조각과 달라도 되도록 그 자리를 비워 두고 띠를 양옆에서 이어 붙인다.
 //        위 장식이 있으면 안쪽 칸 폭 = 띠 조각 k개 + 장식 + 띠 조각 k개 — 장식 왼쪽이 띠 조각 경계에 떨어져 무늬가 끊기지 않는다.
-//        꼬리 끝(가장 아래 불투명한 줄)을 발끝 위 BALLOON_TIP 에 둔다 — 아래 띠가 두꺼운 디자인도 얼굴을 덮지 않고,
+//        위 장식 · 꼬리는 말풍선 가운데에, 안쪽 칸의 가운데는 캐릭터 기준점에 온다.
+//        꼬리 그림의 아래 끝을 발끝 위 BALLOON_TIP 에 둔다 — 아래 띠가 두꺼운 디자인도 얼굴을 덮지 않고,
 //        몸통 높이는 디자인마다 다르다. originOffset 은 말풍선 전체를 옮긴다.
 //        이모티콘을 고르면 글 대신 이모티콘을 원래 크기 그대로 안쪽 칸 가운데에 둔다(안쪽 칸이 그 크기에 맞춰 커진다).
 // 글자는 돋움 12px 비트맵의 도트를 그대로 찍는다(core/chatGlyphs — 브라우저가 글꼴을 그리지 않아 어느 기기에서나 게임과 같다).
@@ -37,10 +40,11 @@ export interface ChatDraw { tag?: ChatUi; balloon?: ChatUi; name: string; text: 
 
 const LINE = 12            // 글자 한 줄 높이(돋움 12px — 기준선 위 10, 아래 2)
 const GAP = 2              // 줄 사이
-const WRAP = 160           // 말풍선 한 줄의 최대 폭(px) — 넘으면 다음 줄로
+const WRAP = 144           // 말풍선 한 줄의 최대 폭(px, 한글 12자) — 넘으면 다음 줄로. 원본에 없는 값이라 게임 화면의 느낌에 맞춰 정했다
 const BASE = 12            // 글자 그림 안의 기준선(위 여백 2 — 기준선 위로 10보다 높은 글자가 있어도 잘리지 않게)
-const TAG_TEXT = 7         // 발끝 아래 명찰 글자 칸 위까지(가장 흔한 띠 — origin y 5 — 의 윗변이 발끝 2px 아래에 온다)
-const BALLOON_TIP = 65     // 발끝 위 말풍선 꼬리 끝까지(머리 바로 위)
+// 발끝에서의 두 거리는 원본에 없어 게임 화면(꿈나라 달링 · 벼링 명찰 · 말풍선, 1배 캡처)을 픽셀로 재어 맞췄다.
+const TAG_TEXT = 8         // 발끝 아래 명찰 글자 칸 위까지(띠 origin y 6 인 명찰의 윗변이 발끝 2px 아래 — 게임과 같다)
+const BALLOON_TIP = 76     // 발끝 위 말풍선 꼬리 그림 아래 끝까지(두 반지 모두 이 줄 — 몸통은 꼬리 길이만큼 오르내린다)
 
 type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number } // ox, oy = 기준점(발끝)에서 그림 왼쪽 위까지
 // 만든 그림(명찰 · 말풍선 + 글). 최근에 쓴 것 CACHE_MAX 개만 둔다 — 채팅 칸에 적는 동안 글자마다 미리 만들어 두므로(warmChat) 끝없이 쌓이지 않게.
@@ -76,7 +80,8 @@ function wrapLines (str: string): string[] {
 // 글자 한 줄 → 잉크가 닿는 상자로 자른 그림(가로 · 세로 모두 — 놓을 때 잉크를 칸 가운데에 맞춘다)과 글자 폭의 합(adv).
 // 돋움 도트를 펜 위치 + 왼쪽 여백, 기준선 - 기준선 위 높이에 찍고 펜을 글자 폭만큼 옮긴다(게임 · 윈도우의 글자 놓기와 같다).
 // top = 잘린 그림의 위가 줄의 위(기준선 - 10)에서 몇 칸 아래인지 — 여러 줄을 같은 기준선 간격으로 쌓을 때 쓴다.
-function textBitmap (str: string, clr: string): { c: HTMLCanvasElement; adv: number; top: number } {
+// left = 잘린 그림의 왼끝이 펜의 시작에서 몇 칸 오른쪽인지 — 명찰 글자를 게임처럼 펜 위치로 놓을 때 쓴다.
+function textBitmap (str: string, clr: string): { c: HTMLCanvasElement; adv: number; top: number; left: number } {
   const chars = [...str]
   const fb = canvasOf(1, 1).getContext('2d')!
   fb.font = fallbackFont()
@@ -105,22 +110,11 @@ function textBitmap (str: string, clr: string): { c: HTMLCanvasElement; adv: num
   }
   let top = H, bot = -1, left = W, right = -1
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3]) { if (y < top) top = y; bot = y; if (x < left) left = x; if (x > right) right = x }
-  if (bot < 0) return { c: canvasOf(1, 1), adv, top: 0 }
+  if (bot < 0) return { c: canvasOf(1, 1), adv, top: 0, left: 0 }
   g2.putImageData(img, 0, 0)
   const out = canvasOf(right - left + 1, bot - top + 1)
   out.getContext('2d')!.drawImage(c, -left, -top)
-  return { c: out, adv, top: top - (BASE - 10) }
-}
-
-// 아틀라스 안 조각의 불투명한 줄 범위(위, 아래 — 조각 기준). 글자를 띠의 불투명한 부분 가운데에 맞추려고 잰다.
-function opaqueRows (atlas: HTMLImageElement, p: ChatPart): [number, number] {
-  const c = canvasOf(p.w, p.h)
-  const g = c.getContext('2d', { willReadFrequently: true })!
-  g.drawImage(atlas, p.x, p.y, p.w, p.h, 0, 0, p.w, p.h)
-  const d = g.getImageData(0, 0, c.width, c.height).data
-  let top = -1, bot = -1
-  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3]) { if (top < 0) top = y; bot = y; break }
-  return top < 0 ? [0, p.h - 1] : [top, bot]
+  return { c: out, adv, top: top - (BASE - 10), left: left - 2 }
 }
 
 // 그릴 조각: 그림 위 왼쪽 위 자리(x, y)와 조각 안에서 잘라 쓸 범위((sx, sy) 부터 w × h — 이어 붙일 때 양끝에서 자른다).
@@ -145,7 +139,7 @@ function compose (A: HTMLImageElement, pieces: Piece[], extra: (g: CanvasRenderi
   return { c, ox: x0, oy: y0 }
 }
 
-// 명찰. 기준점(0,0) = 발끝. 글자 칸(높이 12)의 위 = TAG_TEXT, 가로 가운데 = 0.
+// 명찰. 기준점(0,0) = 발끝. 글자 칸(높이 12)의 위 = TAG_TEXT, 글자 칸의 왼끝 = -(이름 폭 + 4) / 2.
 // 양끝(w · e)은 origin 대로 글자 칸 양옆에 두고, 가운데(c)는 두 조각이 실제로 그려진 사이만 메운다 — origin 이 조각 폭과 몇 px
 // 어긋난 디자인도 겹치거나(진한 줄) 비지(빈 틈) 않는다.
 async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
@@ -159,24 +153,16 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
     const i = (ui.aniFit ?? []).findIndex((f) => t.adv <= f)
     pieces.push(at(P[ani[i < 0 ? ani.length - 1 : i]], 0, T))
   } else {
-    // 글자 칸 = 글자 폭 + 양옆 2px. 이름이 아주 짧아도 양끝 조각이 안쪽으로 들어온 만큼은 남겨 서로 겹치지 않게.
-    const inner = Math.max(t.adv + 4, P.w.w - P.w.origin.x + P.e.origin.x)
-    const L = -Math.floor(inner / 2), R = L + inner
+    // 글자 칸 = 이름 폭. 이름이 아주 짧아도 양끝 조각이 안쪽으로 들어온 만큼은 남겨 서로 겹치지 않게.
+    const inner = Math.max(t.adv, P.w.w - P.w.origin.x + P.e.origin.x)
+    const L = -Math.floor((t.adv + 4) / 2), R = L + inner
     const w = at(P.w, L, T), e = at(P.e, R, T)
     hfill(pieces, P.c, right(w), e.x, T - P.c.origin.y)
     pieces.push(w, e)
   }
-  // 글자: 가로는 잉크를 가운데에, 세로는 글자 칸의 기준선에 — 띠가 아니라 글자 칸을 기준으로 놓는다(띠는 origin 이 글자 칸에 맞춘다).
-  return compose(A, pieces, (g, x0, y0) => g.drawImage(t.c, -Math.floor(t.c.width / 2) - x0, T + t.top - y0))
-}
-
-// 아틀라스 조각의 가장 아래 불투명한 줄(조각 기준). 꼬리 끝을 머리 위에 맞추려고 잰다.
-const bottoms = new Map<string, number>()
-function opaqueBottom (A: HTMLImageElement, p: ChatPart): number {
-  const k = `${A.src}|${p.x},${p.y}`
-  let v = bottoms.get(k)
-  if (v == null) { v = opaqueRows(A, p)[1]; bottoms.set(k, v) }
-  return v
+  // 글자: 글자 칸 왼끝부터 돋움의 펜 위치대로, 세로는 글자 칸의 기준선에 — 띠가 아니라 글자 칸을 기준으로 놓는다.
+  const tl = ani.length ? -Math.floor(t.adv / 2) : -Math.floor((t.adv + 4) / 2)
+  return compose(A, pieces, (g, x0, y0) => g.drawImage(t.c, tl + t.left - x0, T + t.top - y0))
 }
 
 // 말풍선. 기준점(0,0) = 발끝. 안쪽 칸 높이 = 옆 띠 조각 높이의 배수.
@@ -191,7 +177,7 @@ async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap
   const xt = P.n.w, yt = P.w.h
   const contentW = E ? E.width : Math.max(0, ...lines.map((l) => l.adv))
   const contentH = E ? E.height : lines.length * LINE + (lines.length - 1) * GAP
-  const need = Math.max((E ? Math.ceil(contentW / xt) : Math.floor(contentW / xt) + 2) * xt, P.arrow ? 2 * (P.arrow.w + P.s.w) : 0)
+  const need = Math.max((E ? Math.ceil(contentW / xt) : Math.floor(contentW / xt) + 2) * xt, P.arrow ? P.arrow.w + 2 * P.s.w : 0)
   const hw = P.head?.w ?? 0
   const k = P.head ? Math.max(1, Math.ceil((need - hw) / (2 * xt))) : 0
   const W = P.head ? 2 * k * xt + hw : Math.max(2, Math.ceil(need / xt)) * xt
@@ -217,11 +203,11 @@ async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap
   if (P.head) { const hl = L + k * xt; hfill(pieces, P.n, right(nw), hl, ny, 'end'); pieces.push({ p: P.head, x: hl, y: T - P.head.origin.y }); hfill(pieces, P.n, hl + hw, ne.x, ny) }
   else hfill(pieces, P.n, right(nw), ne.x, ny)
   // 아래 띠 — 꼬리를 가운데에 두고 그 자리를 비워 양옆을 잇는다
-  let tip = sy + opaqueBottom(A, P.s) + 1
+  let tip = sy + P.s.h
   if (P.arrow) {
-    const al = -P.arrow.origin.x // 꼬리 origin 이 안쪽 칸 아래 가운데에(꼬리 그림은 한쪽으로 꺾여 있어 그림을 가운데에 두면 끝이 치우친다)
-    hfill(pieces, P.s, right(sw), al, sy, 'end'); pieces.push(at(P.arrow, 0, B)); hfill(pieces, P.s, al + P.arrow.w, se.x, sy)
-    tip = B - P.arrow.origin.y + opaqueBottom(A, P.arrow) + 1
+    const al = L + Math.floor((W - P.arrow.w) / 2) // 꼬리 그림을 말풍선 가운데에
+    hfill(pieces, P.s, right(sw), al, sy, 'end'); pieces.push({ p: P.arrow, x: al, y: B - P.arrow.origin.y }); hfill(pieces, P.s, al + P.arrow.w, se.x, sy)
+    tip = B - P.arrow.origin.y + P.arrow.h
   }
   // 옆 띠
   vfill(pieces, P.w, wx, bottom(nw), sw.y)
@@ -235,7 +221,7 @@ async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap
       lines.forEach((l, i) => g.drawImage(l.c, Math.round(-l.c.width / 2) - x0, top + i * (LINE + GAP) + l.top - y0))
     }
   })
-  // 꼬리 끝(tip)이 발끝 위 BALLOON_TIP 에 오게 옮긴다.
+  // 꼬리 그림 아래 끝(tip)이 발끝 위 BALLOON_TIP 에 오게 옮긴다. 안쪽 칸 가운데 = 기준점.
   const oo = ui.originOffset ?? { x: 0, y: 0 }
   return { c: bm.c, ox: bm.ox + oo.x, oy: bm.oy - tip - BALLOON_TIP + oo.y }
 }

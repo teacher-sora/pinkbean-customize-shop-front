@@ -45,10 +45,6 @@ export type PreviewSource = {
 
 const HERO_BASE_H = 216 // 모바일 히어로 기본 높이(preview.module.css .hero)
 
-// 지금 떠 있는 미리보기의 내보내기 이미지(우클릭 메뉴와 같은 것). 모바일 히어로의 '이미지 저장' 버튼이 쓴다.
-let liveShot: (() => Promise<Blob | null>) | null = null
-export const previewShot = () => (liveShot ? liveShot() : Promise.resolve(null))
-
 // 부유 아이템의 둥둥 뜨기 — 위로 최대 FLOAT_AMP 게임 픽셀, FLOAT_MS 한 바퀴(원본에 값이 없어 게임 화면으로 맞췄다).
 const FLOAT_AMP = 5
 const FLOAT_MS = 2400
@@ -621,10 +617,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    if (!src) liveShot = makeBlob
     const off = bindImageMenu(el, makeBlob, 'pinkbean-cody')
-    return () => { off(); if (liveShot === makeBlob) liveShot = null }
-  }, [makeBlob, src])
+    return off
+  }, [makeBlob])
 
   return (
     <div ref={wrapRef} className={styles.wrap}>

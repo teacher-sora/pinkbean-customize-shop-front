@@ -8,6 +8,7 @@
 import { useSyncExternalStore } from 'react'
 
 export type HeroView = 'base' | 'wide' | 'full'
+export const RELAYOUT_EVENT = 'pb-relayout' // 칸이 크기는 그대로 자리만 옮겨 갔을 때(보기 바꾸기)
 let view: HeroView = 'base'
 const subs = new Set<() => void>()
 const subscribe = (fn: () => void) => { subs.add(fn); return () => { subs.delete(fn) } }
@@ -18,7 +19,8 @@ function below(): HTMLElement[] {
   const col = document.querySelector<HTMLElement>('[data-mobile-col]')
   if (!col) return []
   const hero = col.querySelector('[data-hero]')
-  const inPanel = [...col.querySelectorAll<HTMLElement>('[data-pb-panel] > *')].filter((el) => el !== hero)
+  // 가장자리 흐림 층(.pb-fadeov — 칸 바로 뒤에 붙는다)은 빼고 묶는다. 묶으면 층이 옛 자리에 굳어 보기를 바꿔도 남아 있었다.
+  const inPanel = [...col.querySelectorAll<HTMLElement>('[data-pb-panel] > *')].filter((el) => el !== hero && !el.classList.contains('pb-fadeov'))
   const rest = [...col.querySelectorAll<HTMLElement>(':scope > [data-hero-below]')]
   return [...inPanel, ...rest].filter((el) => el.getClientRects().length)
 }
@@ -34,6 +36,8 @@ export function setHeroView(next: HeroView) {
   document.documentElement.setAttribute('data-pb-view', next)
   view = next
   subs.forEach((fn) => fn())
+  // 칸들이 크기는 그대로 자리만 옮겨 가므로 흐림 층에 다시 재라고 알린다(ui/useScrollFade)
+  requestAnimationFrame(() => window.dispatchEvent(new Event(RELAYOUT_EVENT)))
 }
 
 // 모바일이 아니게 되면 기본으로(속성을 떼고 묶은 높이를 푼다)
@@ -43,4 +47,5 @@ export function resetHeroView() {
   document.documentElement.removeAttribute('data-pb-view')
   view = 'base'
   subs.forEach((fn) => fn())
+  requestAnimationFrame(() => window.dispatchEvent(new Event(RELAYOUT_EVENT)))
 }

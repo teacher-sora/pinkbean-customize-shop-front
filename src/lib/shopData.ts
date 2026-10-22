@@ -29,6 +29,25 @@ export function foldList(l: ListItem[]): ListItem[] {
     if (it.id !== rep.get(k)!.id) continue // 대표 위치에서만 출력 → 최저 id 기준 정렬 유지
     seen.add(k); out.push(rep.get(k)!)
   }
+  return pairSizes(out)
+}
+
+// 크기만 다른 짝(일루전 링의 'X (L)' — 같은 그림을 크게)은 일반 크기 'X' 바로 뒤에 나란히 둔다(사용자 지시 — 명찰 · 말풍선 세트처럼).
+// 짝은 둘 가운데 먼저(최신순) 나오는 자리에 선다. 이름이 정확히 같은 일반 크기가 없으면 그대로 둔다.
+const BIG = /\s*\(L\)$/
+function pairSizes(l: ListItem[]): ListItem[] {
+  const base = new Map<string, ListItem>()
+  for (const it of l) if (it.name && !BIG.test(it.name)) base.set(it.name, it)
+  const big = new Map<string, ListItem>() // 일반 크기 id → (L)
+  for (const it of l) { const b = it.name && BIG.test(it.name) ? base.get(it.name.replace(BIG, '')) : undefined; if (b) big.set(b.id, it) }
+  if (!big.size) return l
+  const out: ListItem[] = [], done = new Set<string>()
+  for (const it of l) {
+    if (done.has(it.id)) continue
+    const b = it.name && BIG.test(it.name) ? base.get(it.name.replace(BIG, '')) : undefined
+    const pair = b && big.get(b.id) === it ? [b, it] : [it, ...(big.has(it.id) ? [big.get(it.id)!] : [])]
+    for (const x of pair) if (!done.has(x.id)) { done.add(x.id); out.push(x) }
+  }
   return out
 }
 
@@ -80,7 +99,7 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
  * 그리기는 core/chatUi(renderCharacter 의 chat). 명찰 이름 = 고른 프리셋 이름, 말풍선 = 미리보기 아래 채팅 칸(preview/ChatBar)에서
  * 보낸 말 · 이모티콘이 CHAT_SHOW_MS 동안 떴다 사라진다(게임 값을 찾지 못해 사용자가 준 5~10초 안에서 정했다). */
 export const CHAT_TAB = 'chatring'
-export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰/말풍선' }]
+export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰 / 말풍선' }] // '/' 양옆은 가는 공백(U+2009 — 보통 공백보다 좁게, 사용자 지시)
 export const CHAT_INFO_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }]
 const CHAT_LIST = '/dev/chatui/list.json'
 export const CHAT_FILES: Record<string, string> = { nameTag: CHAT_LIST, chatBalloon: CHAT_LIST, chatRing: CHAT_LIST }
@@ -88,7 +107,7 @@ export const CHAT_EMO_FILE = '/dev/chatui/emoticons.json'
 export const CHAT_NEW_FILE = '/dev/chatui/new.json' // 테스트 서버에만 있는(본 서버에 없는) 명찰 · 말풍선 id — NEW 라벨
 export interface ChatState { name: string; text: string; emo?: ChatEmo }
 export interface ChatMsg { text: string; emo?: ChatEmo }
-export const CHAT_NAME_FALLBACK = 'Maple' // 프리셋을 고르지 않았을 때 명찰 이름
+export const CHAT_NAME_FALLBACK = '핑크빈' // 프리셋을 고르지 않았거나 이름을 비웠을 때 명찰 이름(사용자 지시)
 export const CHAT_CARD: ChatState = { name: '핑크빈', text: '커마샵' } // 목록 카드의 명찰 이름 · 말풍선 말(고정 — 사용자 지시)
 export const CHAT_TEXT_MAX = 70  // 말 글자 수
 export const CHAT_SHOW_MS = 6000 // 보낸 말풍선이 떠 있는 시간
