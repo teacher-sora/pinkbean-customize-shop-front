@@ -13,6 +13,11 @@
 .chipLabel { font-size: 12px; font-weight: 600; color: #8a8075; line-height: 1; }
 .chipNum { font-size: 12px; font-weight: 700; color: #d76d9a; line-height: 1; }
 .chipSlash { font-size: 12px; color: #ccc2b8; line-height: 1; }
+/* 순서 변경 버튼(칩 옆): 꺼짐 = 칩과 같은 면 · 테두리, 켜짐 = 채운 핑크 + '완료'(사용자 지시 — 켜짐 · 꺼짐이 확실히 보이게) */
+.sortBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 34px; padding: 0 11px; border: 1px solid #f0e9e1; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #8a8075; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
+.sortBtnM { height: 32px; padding: 0 9px; gap: 4px; font-size: 12px; }
+@media (hover: hover) and (pointer: fine) { .sortBtn:hover { border-color: #eeb2ce; color: #c05a94; } .sortBtn.sortOn:hover { border-color: #ec86ac; color: #fff; } }
+.sortBtn.sortOn { background: #ec86ac; border-color: #ec86ac; color: #fff; }
 
 /* 불러오기: 입력과 버튼을 한 테두리 안에 묶은 칸. 면 · 테두리 · 아이콘 색은 다른 탭의 검색 칸과 같다 — 이 칸만 색을 달리하면 머리마다 생김새가 달라진다. 눈에 띄는 것은 안의 채운 버튼 하나다 */
 .importBox { flex: 1 1 auto; min-width: 0; max-width: 340px; margin-left: auto; height: 34px; padding: 0 3px 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; transition: border-color .22s ease; }
@@ -46,9 +51,11 @@
 
 /* ── 카드 ── */
 .wrap { cursor: pointer; }
-/* 끌어 옮기기(usePresetDrag): 끄는 카드는 손을 따라 떠 있고(팝오버와 같은 그림자 — 떠 있는 것), 터치로 들린 카드는 hover 처럼 올라온다 */
+/* 순서 변경(usePresetDrag): 켠 동안 카드 테두리는 점선 · 잡는 손 모양, 터치는 브라우저 스크롤 대신 끌기. 끄는 카드는 손을 따라 떠 있다(팝오버와 같은 그림자 — 떠 있는 것) */
+.wrap.sorting { cursor: grab; touch-action: none; }
+.wrap.sorting > :global(.pb-preset) { border-style: dashed; }
 .wrap.dragging { position: relative; z-index: 10; pointer-events: none; }
-.wrap.dragging > :global(.pb-preset), .wrap.lifted > :global(.pb-preset) { border-color: #ec86ac; transform: translateY(-5px); }
+.wrap.dragging > :global(.pb-preset) { border-style: solid; border-color: #ec86ac; transform: translateY(-5px); }
 .wrap.dragging > :global(.pb-preset) { box-shadow: 0 12px 32px rgba(42,37,33,.12); }
 .badge { position: absolute; top: 7px; left: 7px; z-index: 3; display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 20px; background: #fdf1f6; border: 1px solid #f8e0ea; color: #d76d9a; font-size: 10px; font-weight: 700; pointer-events: none; transition: opacity .22s ease, transform .22s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); }
 .badgeOn { opacity: 1; transform: translateY(0); }
