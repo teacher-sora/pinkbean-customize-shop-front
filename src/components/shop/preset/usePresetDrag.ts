@@ -18,7 +18,7 @@
 //    저장은 앱 전체를 다시 그려 무겁다 — 움직이는 도중에 하면 놓는 순간 멈칫했다(CPU 4배 느리게에서 130ms). 끝난 뒤라 보이는 것이 그대로다:
 //    카드는 이미 새 칸에 transform 으로 서 있고, 순서가 바뀌어 그려지면 그리기 전에 transform 만 지운다(자리가 같아 한 프레임도 튀지 않는다).
 //  · 문서 전체(<html>)의 스타일은 건드리지 않는다 — user-select 를 걸고 풀 때마다 페이지 전체 스타일을 다시 계산해 집는 순간 멈칫했다.
-//    글자 선택은 누를 때 기본 동작을 막아 막는다(이름 칸 · 버튼에서는 집지 않으니 그대로 쓸 수 있다).
+//    글자 선택은 켜 둔 동안 카드에만 user-select: none(.sorting — 켤 때 한 번), 그림 끌기는 누를 때 기본 동작을 막아 막는다.
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
 const MOUSE_SLOP = 6, TOUCH_SLOP = 6, EDGE = 44, EDGE_SPEED = 12, INSET = 0.18, SETTLE_MS = 240
@@ -72,7 +72,9 @@ export function usePresetDrag (enabled: boolean, ids: string[], grid: React.RefO
   }
 
   const begin = (id: string, x: number, y: number) => {
-    flush() // 앞에서 놓은 것이 아직 미끄러지는 중이면 지금 저장한다
+    // 앞에서 놓은 것이 아직 미끄러지는 중이면 지금 저장하고 이번엔 집지 않는다 — 새 순서가 그려진 뒤(다음 움직임) 집는다.
+    // 바로 집으면 아직 옛 순서인 화면을 재게 된다
+    if (settle.current) { flush(); return false }
     const g = grid.current
     const all = cards(), el = all.find((c) => c.dataset.presetId === id)
     if (!g || !el) return false
