@@ -11,7 +11,7 @@
 //       GIF 는 칸마다 보이거나 안 보이거나 둘뿐이라 반투명 칸을 알파 절반(ALPHA_CUT)에서 끊는다 — 캐릭터 · 옷은 그대로지만 이펙트의
 //       번지는 빛은 끝이 딱딱해진다(점으로 흉내 내는 디더링은 빛이 점무늬가 되어 더 나빴다 — 2026-10 달 망토 이펙트로 견줘 봤다).
 //  4) 색은 모든 프레임에서 고른 팔레트 하나(프레임마다 고르면 색이 깜빡인다). 팔레트의 마지막 칸은 투명 자리다 — 투명 판은 진짜 투명,
-//     배경 판은 '앞 프레임 그대로'(바뀐 칸만 적는다 — 배경이 큰 판도 파일이 작다).
+//     배경 판은 '앞 프레임 그대로'(바뀐 칸만 적는다 — 배경이 큰 판도 파일이 작다). 사진 배경은 색 띠가 지지 않게 고정 무늬로 흔든다(dither).
 import { GIFEncoder, applyPalette, quantize } from 'gifenc'
 import { SHOT_PAD, drawShot, type ModelShot } from './canvasExport'
 
@@ -26,11 +26,22 @@ export type GifSource = {
 export type GifStage = {
   w: number; h: number; s: number; ox: number; oy: number
   place: { box: { w: number; h: number }; anchor: { x: number; y: number } }
-  paint: (g: CanvasRenderingContext2D) => Promise<void>
+  paint: (g: CanvasRenderingContext2D) => Promise<boolean> // 배경을 그린다. true = 사진(올린 그림)이라 고르게 번지는 색이 많다
 }
 
 const TICK = 10, MIN_FRAME = 20, MAX_MS = 12000, FLOW_MS = 40, FLOW_LOOP = 3000, GIF_SCALE = 2, ALPHA_CUT = 128
 const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a)
+// 사진 배경의 색 띠 풀기 — 256색으로 줄이면 고른 그라데이션이 계단이 된다. 고정된 4×4 무늬(Bayer)로 ±DITHER 만큼 흔들어 둔다.
+// 배경 판에 한 번만 입힌다(캐릭터는 도트 그대로) — 무늬가 프레임마다 같아 '앞 프레임 그대로' 칸도 그대로 남는다.
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5], DITHER = 10
+function dither (g: CanvasRenderingContext2D, W: number, H: number) {
+  const im = g.getImageData(0, 0, W, H), d = im.data
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const o = ((BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16 - 0.5) * 2 * DITHER, i = (y * W + x) * 4
+    d[i] += o; d[i + 1] += o; d[i + 2] += o
+  }
+  g.putImageData(im, 0, 0)
+}
 
 // 한 바퀴 길이(ms). 움직이는 것이 없으면 0.
 export function gifLoopMs (periods: number[], flowing = false): number {
@@ -79,7 +90,8 @@ export async function animatedGif (src: GifSource, transparent = false): Promise
   let back: HTMLCanvasElement | null = null
   if (stage) {
     back = document.createElement('canvas'); back.width = W; back.height = H
-    await stage.paint(back.getContext('2d')!)
+    const bg = back.getContext('2d', { willReadFrequently: true })!
+    if (await stage.paint(bg)) dither(bg, W, H)
   }
   const page = document.createElement('canvas'); page.width = W; page.height = H
   const g = page.getContext('2d', { willReadFrequently: true })!

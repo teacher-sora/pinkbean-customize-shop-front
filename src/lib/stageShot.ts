@@ -48,7 +48,8 @@ async function roomLit (shadow: number): Promise<HTMLCanvasElement> {
 }
 
 // 판(g 의 캔버스 전체)에 지금 배경을 그린다. wrap = 미리보기 칸, f = CSS px → 판 px, s = 게임 1칸 → 판 px.
-export async function paintStage (g: CanvasRenderingContext2D, wrap: HTMLElement, f: number, s: number): Promise<void> {
+// 돌려주는 값: 사진(올린 그림)인가 — 움짤이 색 띠를 풀지 정한다.
+export async function paintStage (g: CanvasRenderingContext2D, wrap: HTMLElement, f: number, s: number): Promise<boolean> {
   const bg = getStageBg(), floor = getStageFloor()
   const W = g.canvas.width, H = g.canvas.height
   const wr = wrap.getBoundingClientRect()
@@ -63,7 +64,7 @@ export async function paintStage (g: CanvasRenderingContext2D, wrap: HTMLElement
     const room = await roomLit(floor?.shadow ?? 13)
     g.imageSmoothingEnabled = false
     g.drawImage(room, Math.round(cx - ROOM.foot[0] * s), Math.round(foot - ROOM.foot[1] * s), ROOM.w * s, ROOM.h * s)
-    return
+    return false
   }
   const cash = CASH_BGS.find((c) => c.id === bg.sel)
   if (cash) {
@@ -71,7 +72,7 @@ export async function paintStage (g: CanvasRenderingContext2D, wrap: HTMLElement
     const img = await loadImg(cash.src)
     g.imageSmoothingEnabled = false
     g.drawImage(img, Math.round(cx - (CASH_BG_W / 2) * s), Math.round(foot - CASH_BG_GROUND * s), CASH_BG_W * s, CASH_BG_H * s)
-    return
+    return false
   }
   const up = bg.images.find((i) => i.id === bg.sel)
   if (up) {
@@ -80,7 +81,8 @@ export async function paintStage (g: CanvasRenderingContext2D, wrap: HTMLElement
     fill('#ffffff')
     g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'
     g.drawImage(img, hx + (hw - w) / 2, hy + (hh - h) / 2, w, h)
-    return
+    return true
   }
   fill(STAGE_COLORS[bg.sel] ?? STAGE_COLORS.white)
+  return false
 }
