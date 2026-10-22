@@ -120,7 +120,7 @@
 .heroIcon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: rgba(255,255,255,0.92); color: #cdc2b7; cursor: pointer; }
 .heroIconOn { border-color: #eeb2ce; background: #fff; color: #d76d9a; cursor: pointer; }
 .heroLeft { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px; }
-/* 채팅 칸이 올라온 동안 아래 줄은 비켜 준다(dev 전용 — 명찰 · 말풍선) */
+/* 채팅 칸이 올라온 동안 아래 줄은 비켜 준다(명찰 · 말풍선) */
 .heroLeft, .heroRight { transition: opacity .22s ease; }
 .heroBarOff { opacity: 0; pointer-events: none; }
 .pvOpenBtn { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; color: #d76d9a; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -200,7 +200,7 @@
 .sayItem + .sayText { padding-left: 0; }
 .sayTail { position: absolute; bottom: -6px; width: 10px; height: 10px; margin-left: -5px; background: #fff; border-right: 1.5px solid #f4b8d0; border-bottom: 1.5px solid #f4b8d0; transform: rotate(45deg); }
 
-/* ── 채팅 칸(ChatBar, dev 전용 — 명찰 · 말풍선). 미리보기 아래쪽에 떠 있는 한 칸: 입력 · 이모티콘 · 전송 ──
+/* ── 채팅 칸(ChatBar — 명찰 · 말풍선). 미리보기 아래쪽에 떠 있는 한 칸: 입력 · 이모티콘 · 전송 ──
    생김새는 프리셋의 불러오기 칸(preset .importBox)과 같다. 장면 위에 떠 있어 바탕은 흰색, 그림자는 떠 있는 작은 버튼의 것.
    PC: 연출 설정 드로어 윗변 위 10px 에 붙어 함께 오르내린다. 드로어가 접히면 드로어는 (높이 + 아래 줄 46px) 만큼 내려가므로,
    칸만 46px 되올려 아래 줄 바로 위 10px 에 둔다(두 전환이 같은 곡선 · 같은 시간이라 합친 움직임도 같은 곡선이다). */

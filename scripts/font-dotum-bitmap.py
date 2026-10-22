@@ -3,14 +3,13 @@
 # 왜 글꼴 파일이 아니라 도트인가: 게임 글자는 돋움에 들어 있는 12px 전용 1비트 비트맵(EBDT/EBLC)이다. 이 비트맵은 웹 글꼴로 내려주면
 # 브라우저의 글꼴 검사(OTS)가 지워 윤곽선으로 그려지고, 윤곽선 12px 은 번져 게임과 다르다. 도트를 직접 찍으면 어느 기기에서나 같다.
 #
-#   public/dev/fonts/dotum12-<판>/basic.json  한글 음절 · 한자를 뺀 글자(영문 · 숫자 · 문장부호 · 자모 · 기호)
-#   public/dev/fonts/dotum12-<판>/ks.json     KS X 1001 의 한글 2,350자
-#   public/dev/fonts/dotum12-<판>/rest-<n>.json  나머지 한글 음절 — 코드 순으로 REST_N 자씩 끊는다
-#   public/dev/fonts/dotum12-<판>/cjk-<n>.json   한자 · 가나 — 코드 순으로 CJK_N 자씩 끊는다
+#   public/fonts/dotum12-<판>/basic.json  한글 음절 · 한자를 뺀 글자(영문 · 숫자 · 문장부호 · 자모 · 기호)
+#   public/fonts/dotum12-<판>/ks.json     KS X 1001 의 한글 2,350자
+#   public/fonts/dotum12-<판>/rest-<n>.json  나머지 한글 음절 — 코드 순으로 REST_N 자씩 끊는다
+#   public/fonts/dotum12-<판>/cjk-<n>.json   한자 · 가나 — 코드 순으로 CJK_N 자씩 끊는다
 #   src/lib/core/chatGlyphsKs.ts                 KS 2,350자 표(11,172칸 비트)와 묶음마다 첫 코드(어느 파일에 든 글자인지 고른다. 이 스크립트가 쓴다)
 # 드문 글자를 작은 묶음으로 끊는 것은 한 글자를 쓰려고 큰 파일을 받지 않게 하려는 것이다(한자 · 가나를 통째로 두면 압축 145KB).
 # 한 글자 = [코드, 폭(advance), 왼쪽 여백(bearingX), 기준선 위 높이(bearingY), 너비, 높이, 줄마다 비트(16진수, 줄 길이 = ceil(너비/8)*2)].
-# 지금은 dev 전용이라 public/dev 에 둔다(main 병합 때 빠진다).
 #
 # 쓰기(윈도우):  pip install fonttools  →  front 폴더에서  python scripts/font-dotum-bitmap.py
 import base64, io, json, os, shutil
@@ -20,7 +19,7 @@ VER = '2'
 REST_N = 1200  # 한 묶음 글자 수(압축 8KB 안팎)
 CJK_N = 600    # 한 묶음 글자 수(압축 10KB 안팎)
 SRC = 'C:/Windows/Fonts/gulim.ttc'
-OUT = f'public/dev/fonts/dotum12-{VER}/'
+OUT = f'public/fonts/dotum12-{VER}/'
 PPEM = 12
 
 font = next(f for f in TTCollection(SRC).fonts if f['name'].getDebugName(1) == 'Dotum')
@@ -95,7 +94,7 @@ for cp in sorted(cmap):
     key = 'cjk' if cjk(cp) else ('ks' if cp in ks else 'rest') if syllable(cp) else 'basic'
     parts[key].append(rec)
 
-shutil.rmtree('public/dev/fonts', ignore_errors=True)
+shutil.rmtree('public/fonts', ignore_errors=True)
 os.makedirs(OUT)
 files = {'basic': parts['basic'], 'ks': parts['ks']}
 starts = {}
@@ -115,7 +114,7 @@ io.open('src/lib/core/chatGlyphsKs.ts', 'w', encoding='utf-8', newline=NL).write
     '// scripts/font-dotum-bitmap.py 가 만든다. 손으로 고치지 않는다.',
     '// KS X 1001 의 한글 2,350자 표 — 음절(가~힣) 11,172칸을 한 비트씩. 그 음절의 도트가 ks 파일과 rest-<n> 파일 가운데 어디에 있는지 고른다.',
     '// REST_STARTS · CJK_STARTS = 묶음마다 첫 글자의 코드(오름차순) — 글자가 든 묶음 = 첫 코드가 그 글자 이하인 마지막 묶음.',
-    f"export const DOTUM_DIR = '/dev/fonts/dotum12-{VER}/'",
+    f"export const DOTUM_DIR = '/fonts/dotum12-{VER}/'",
     f"export const KS_MASK = '{base64.b64encode(bytes(mask)).decode()}'",
     f"export const REST_STARTS = {json.dumps(starts['rest'])}",
     f"export const CJK_STARTS = {json.dumps(starts['cjk'])}",

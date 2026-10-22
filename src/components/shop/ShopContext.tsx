@@ -286,7 +286,7 @@ export interface ShopCtx {
   isMixSlot: (slot: string) => boolean
   // 단일 서피스(연출 설정 · 북마크 · 염색 · 점 위치)
   surface: Surface | null; surfaceClosing: boolean
-  openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg' | 'emo') => void // emo = 채팅 이모티콘(모바일, dev 전용)
+  openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg' | 'emo') => void // emo = 채팅 이모티콘(모바일)
   openDye: (item: ListItem) => void
   openDot: (item: ListItem) => void
   closeSurface: () => void
@@ -545,7 +545,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       .catch(() => setLists((m) => ({ ...m, [slot]: [] })))
       .finally(() => loadingSlots.current.delete(slot))
   }, [index, lists])
-  // 명찰 · 말풍선(dev 전용): 목록 파일이 있을 때만 부위를 더한다 — 운영에는 파일이 없다(main 병합 때 빠진다). 반지 바로 뒤.
+  // 명찰 · 말풍선: 목록 파일이 있을 때만 부위를 더한다. 반지 바로 뒤.
   const [chatOn, setChatOn] = useState(false)
   useEffect(() => {
     fetch(CHAT_FILES.nameTag, { method: 'HEAD' }).then((r) => {

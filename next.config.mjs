@@ -8,9 +8,9 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 31536000, // 경로에 올린 시각이 들어가 같은 주소의 그림은 바뀌지 않는다
   },
-  // 명찰 · 말풍선 글자 도트(public/dev/fonts) — 폴더 이름에 판이 들어가 같은 주소의 내용은 바뀌지 않는다. 한 번 받으면 다시 묻지 않는다.
+  // 명찰 · 말풍선 글자 도트(public/fonts) — 폴더 이름에 판이 들어가 같은 주소의 내용은 바뀌지 않는다. 한 번 받으면 다시 묻지 않는다.
   async headers () {
-    return [{ source: '/dev/fonts/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] }]
+    return [{ source: '/fonts/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] }]
   },
 };
 

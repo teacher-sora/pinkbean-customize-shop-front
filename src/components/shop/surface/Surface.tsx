@@ -210,7 +210,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'bm' && <><BookmarkSheetBody /><SurfaceFooter /></>}
             {k === 'part' && <><PartPickBody mobile={mobile} /><SurfaceFooter /></>}
             {k === 'bg' && <><StageBgBody /><SurfaceFooter /></>}
-            {/* 채팅 이모티콘(모바일, dev 전용) — 고르면 보내고 닫는다 */}
+            {/* 채팅 이모티콘(모바일) — 고르면 보내고 닫는다 */}
             {k === 'emo' && <><ChatEmoPicker mobile onPick={(emo) => { s.sendChat({ text: '', emo }); s.closeSurface() }} /><SurfaceFooter /></>}
             {k === 'vs' && <><VsBody mobile={mobile} /><SurfaceFooter /></>}
             {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다. */}

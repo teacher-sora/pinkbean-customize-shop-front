@@ -30,7 +30,7 @@ git checkout dev
 
 ## 개발 전용 경로
 
-`src/app/viewer`(화면 뷰어)와 `public/dev`(dev 전용 실험 데이터 — 지금은 명찰 · 말풍선 한 세트)는 dev 에만 있다. main 에서 지워도 dev 에는 남아 있어 병합할 때마다 따라오므로, **병합할 때마다 걷어 내고 걷어 냈는지 확인**한다. 그 일을 세 겹으로 한다.
+`src/app/viewer`(화면 뷰어)와 `public/dev`(dev 전용 실험 데이터 자리 — 지금은 비어 있다)는 dev 에만 있다. main 에서 지워도 dev 에는 남아 있어 병합할 때마다 따라오므로, **병합할 때마다 걷어 내고 걷어 냈는지 확인**한다. 그 일을 세 겹으로 한다.
 
 1. `scripts/merge-dev-to-main.sh` — 병합하면서 이 경로를 빼고, 커밋 전·후 두 번 확인한다.
 2. 훅(`.githooks`) — 그냥 `git merge` 하거나 main 에 이 경로를 커밋·푸시하려 하면 거부한다. **받은 뒤 한 번 `git config core.hooksPath .githooks` 를 해야 돈다.**

@@ -55,7 +55,7 @@ export interface ItemMeta {
   label?: 'master' | 'special' // external grade badge (마라벨/스라벨); none = undefined
   invisibleFace?: number      // info.invisibleFace: 착용 시 성형(face)을 가림
   illusion?: Illusion         // 일루전 링 · 내 뒤에 나(프레임의 표지 레이어와 같은 값 — 그리기 밖에서 이펙트 · 박자를 정할 때 쓴다)
-  chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(dev 전용, core/chatUi)
+  chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(core/chatUi)
   fixedEmotion?: string       // info.fixedEmotion: 착용 시 표정을 이 값으로 고정(표정 얼굴장식 25종)
   stances?: string[]          // weapon only: available weapon-type stance codes (30s한손/40s두손/49건)
   // frameKey → animation frames. (Legacy data may still be Layer[]; assemble.ts normalizes.)
@@ -89,8 +89,8 @@ export interface ListItem {
   ridingSeated?: string[]     // 라이딩 아이템: 캐릭터가 앉는(sit) 액션(UI값). 메탈아머는 전부 앉음.
   ridingCenterMount?: boolean // 라이딩 아이템: 캐릭터가 아니라 마운트(메카)를 중앙정렬(메탈아머).
   ridingBackSit?: boolean     // 라이딩 아이템: 뒷쪽 시선에도 캐릭터 sit 강제(탱크: 뒤=줄타기 프레임+앉은 조종사).
-  metaUrl?: string            // 프론트 public 의 meta.json 경로(CDN 밖 — 라이딩 · dev 전용 명찰과 말풍선)
-  chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(dev 전용, core/chatUi)
+  metaUrl?: string            // 프론트 public 의 meta.json 경로(CDN 밖 — 라이딩 · 명찰과 말풍선)
+  chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(core/chatUi)
   dupOf?: number              // 헤어 · 성형: 같은 그림 · 같은 이름의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
   dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups)
 }
