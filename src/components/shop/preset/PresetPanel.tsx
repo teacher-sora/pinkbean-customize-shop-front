@@ -73,7 +73,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   }, [sorting])
   const toggleSort = () => setSorting((v) => { if (!v) s.notify('카드를 끌어 순서를 바꿔요'); return !v })
   const gridRef = useRef<HTMLDivElement>(null)
-  const dnd = usePresetDrag(sorting, s.presets.map((p) => p.id), gridRef, boxRef, s.reorderPresets, mobile ? 'm' : narrow ? 'n' : 'pc')
+  const dnd = usePresetDrag(sorting, s.presets.map((p) => p.id), gridRef, boxRef, s.reorderPresets, styles.dragging, mobile ? 'm' : narrow ? 'n' : 'pc')
   // 켜짐 = 채운 핑크 + '완료'. 두 문구를 한 칸에 겹쳐 폭이 바뀌지 않는다(불러오기 버튼과 같다)
   const sortBtn = (
     <button type="button" data-guide="sort" onClick={toggleSort} aria-pressed={sorting} title={sorting ? '순서 변경 끝내기' : '카드를 끌어 순서 바꾸기'}
@@ -93,7 +93,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         const snap = on ? liveSnap : s.presetData[p.id]
         return (
           <div key={p.id} data-preset-id={p.id} onClick={() => { if (!sorting && !dnd.swallowClick()) s.selectPreset(p.id) }} onPointerDown={(e) => dnd.onPointerDown(e, p.id)}
-            className={clsx('pb-presetwrap', styles.wrap, sorting && styles.sorting, dnd.dragId === p.id && styles.dragging)}>
+            className={clsx('pb-presetwrap', styles.wrap, sorting && styles.sorting)}>
             <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
               <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
               <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>

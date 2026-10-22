@@ -21,7 +21,7 @@ export function flashToast (msg: string): void {
     Object.assign(toastEl.style, {
       position: 'fixed', bottom: '32px', left: '50%', zIndex: '10000',
       padding: '12px 22px', background: 'linear-gradient(100deg,#ec86ac,#b57bdb)', color: '#fff',
-      borderRadius: '999px', font: '600 13px system-ui, "Malgun Gothic", sans-serif',
+      border: '1.5px solid #fff', borderRadius: '999px', font: '600 13px system-ui, "Malgun Gothic", sans-serif',
       boxShadow: '0 10px 28px rgba(180,123,219,.38)', pointerEvents: 'none',
       transition: 'opacity .28s ease, transform .28s cubic-bezier(.22,.61,.36,1)',
       opacity: '0', transform: 'translate(-50%, 12px)',
