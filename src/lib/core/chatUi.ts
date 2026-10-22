@@ -294,6 +294,15 @@ export function warmChat (ui: ChatUi, name: string, text: string): void {
   void loadGlyphs([name, text, ' : ']).then((keep) => bitmapOf(ui, `${name} : ${text}`, keep)).catch(() => {})
 }
 
+// 말풍선 · 명찰 틀 그림을 미리 받는다(채팅 칸이 나올 때 — ChatBar). 처음 보내는 말풍선이 틀을 그때 받느라 0.1~0.4초 늦었다(실측). 한 장이고 작다
+// 첫 화면의 받기와 다투지 않게 한가할 때 받는다
+export function warmChatUi (ui: ChatUi | null | undefined): void {
+  if (!ui) return
+  const go = () => { void loadImage(ui.atlas, true).catch(() => {}) }
+  const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback
+  if (ric) ric(go, { timeout: 3000 }); else window.setTimeout(go, 600)
+}
+
 // 움직이는 이모티콘의 그림(strip)을 미리 받는다 — 고르기 창에서 마우스를 올리거나 누를 때, 보고 있는 묶음을 한가할 때(ChatEmoPicker).
 // 받은 그림은 render 의 그림 캐시에 남아 다시 보내도 바로 뜬다
 export function warmEmo (emo: ChatEmo): Promise<unknown> {
