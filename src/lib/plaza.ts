@@ -138,11 +138,22 @@ export function plazaAuth(): Promise<string | null> {
   void p.then((id) => { if (!id && authP === p) authP = null; else if (id) void linkAlias(c, id) })
   return p
 }
-// 이 uid 를 기기 키로 같은 사람에 묶는다(supabase/0020) — 저장소가 지워져 uid 가 새로 생겨도 이름은 그 사람의 첫 이름 하나다.
+// 이 uid 를 이 브라우저에 묶는다(supabase/0021) — 세션 갱신이 실패해 같은 브라우저에서 uid 가 새로 생겨도 이름은 이 브라우저의 첫 이름이다.
+// 브라우저 id 는 이 브라우저 저장소에만 있는 무작위 값이다(브라우저 · 기기가 다르면 이름도 다르다 — 사용자 지시).
 // 세션마다 한 번. 실패해도 쓰기 · 읽기는 그대로다(이름만 예전처럼 uid 마다).
+const BID_KEY = 'pb.bid'
+function browserId(): string | null {
+  try {
+    let v = localStorage.getItem(BID_KEY)
+    if (!v || v.length < 16) { v = crypto.randomUUID().replace(/-/g, ''); localStorage.setItem(BID_KEY, v) }
+    return v
+  } catch { return null }
+}
 async function linkAlias(c: NonNullable<ReturnType<typeof sb>>, uid: string) {
   try {
-    const { data } = await c.rpc('plaza_alias_link', { fp: plazaDeviceFp() })
+    const bid = browserId()
+    if (!bid) return
+    const { data } = await c.rpc('plaza_alias_link', { bid })
     if (typeof data === 'string' && data) aliasCache.set(uid, data)
   } catch { /* 이름 묶기는 없어도 된다 */ }
 }
@@ -414,7 +425,7 @@ const toComment = (r: CRow, uid: string | null, post: PlazaPost): PlazaComment =
 // ── 익명 이름 ──
 // 로그인을 받지 않으므로 **모두 익명**이다. 다만 '익명 1' 같은 번호는 대화를 따라가기 어렵고 심심하다.
 // 이름은 DB 가 사람마다 한 번 정해 plaza_alias 에 적는다(supabase/0017) — 사람끼리는 **겹치지 않는다**.
-// 한 사람의 uid 가 여럿이어도(저장소가 지워져 새로 생긴 uid) 기기 키로 묶어 그 사람의 첫 이름 하나를 함께 쓴다(supabase/0020, linkAlias).
+// 같은 브라우저에서 uid 가 새로 생겨도(세션 갱신 실패) 브라우저 id 로 묶어 그 브라우저의 첫 이름을 그대로 쓴다(supabase/0021, linkAlias).
 //  · 수식어 324 × 실제 메이플 몬스터 997 = 약 32만 가지, 0.5% 확률로 몬스터 자리에 보스(이스터에그).
 //    낱말 목록은 DB(plaza_priv.alias_adj / alias_noun / alias_boss)에만 있다.
 //  · 처음 댓글을 다는 순간 트리거가 정한다. 화면은 댓글을 받을 때 그 사람들의 이름을 함께 받아 aliasCache 에 둔다.
