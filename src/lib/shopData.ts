@@ -2,7 +2,7 @@
 // 미리보기 고정 박스. 코어(src/lib/core)의 assemble/render/data 위에서 동작한다.
 
 import type { AssembleInput, ViewOpts } from '@/lib/core/assemble'
-import type { ChatDraw, ChatEmo } from '@/lib/core/chatUi'
+import type { ChatDraw, ChatEmo, ChatUi } from '@/lib/core/chatUi'
 import { CASHFX_FILE, RING_FILE, type AnimaRace, type ItemMeta, type ListItem, type SlotSummary } from '@/lib/core/data'
 import type { Cat } from '@/lib/catalog'
 
@@ -97,6 +97,7 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
  * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats · infoCats).
  * 부위 탭은 하나(명찰/말풍선 — 같은 이름의 명찰과 말풍선이 나란히, 세트 순서)이고 코디 정보 칩은 둘이다(따로 끼고 벗는다).
  * 그리기는 core/chatUi(renderCharacter 의 chat). 명찰 이름 = 고른 프리셋 이름, 말풍선 = 미리보기 아래 채팅 칸(preview/ChatBar)에서
+ * (말풍선 반지를 끼지 않았거나 숨겼으면 기본 말풍선 — 게임의 흰 말풍선, CHAT_DEFAULT_BALLOON. 명찰은 끼었을 때만 나온다 — 사용자 지시)
  * 보낸 말 · 이모티콘이 CHAT_SHOW_MS 동안 떴다 사라진다(게임 값을 찾지 못해 사용자가 정했다). */
 export const CHAT_TAB = 'chatring'
 export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰 / 말풍선' }] // '/' 양옆은 가는 공백(U+2009 — 보통 공백보다 좁게, 사용자 지시)
@@ -104,6 +105,7 @@ export const CHAT_INFO_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 
 const CHAT_LIST = '/chatui/list.json'
 export const CHAT_FILES: Record<string, string> = { nameTag: CHAT_LIST, chatBalloon: CHAT_LIST, chatRing: CHAT_LIST }
 export const CHAT_EMO_FILE = '/chatui/emoticons.json'
+export const CHAT_DEFAULT_BALLOON = '/chatui/default-balloon.json' // UI.wz ChatBalloon.img/0(parser chatui-build)
 export const CHAT_NEW_FILE = '/chatui/new.json' // 테스트 서버에만 있는(본 서버에 없는) 명찰 · 말풍선 id — NEW 라벨
 export interface ChatState { name: string; text: string; emo?: ChatEmo }
 export interface ChatMsg { text: string; emo?: ChatEmo; at?: number } // at = 보낸 시각(performance.now — 움직이는 이모티콘의 시계)
@@ -113,9 +115,9 @@ export const CHAT_TEXT_MAX = 70  // 말 글자 수
 export const CHAT_SHOW_MS = 10000 // 보낸 말풍선이 떠 있는 시간(사용자 지시 — 10초)
 // 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
 // 말풍선은 보낸 말(msg)이 떠 있는 동안만 그린다.
-export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, name: string, msg: ChatMsg | null, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
+export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, name: string, msg: ChatMsg | null, metas?: Map<string, ItemMeta>, defBalloon?: ChatUi | null): ChatDraw | undefined {
   const ui = (slot: string) => { const it = equipped[slot]; return !it || hidden[slot] ? undefined : it.chatUi ?? metas?.get(it.id)?.chatUi }
-  const tag = ui('nameTag'), balloon = msg ? ui('chatBalloon') : undefined
+  const tag = ui('nameTag'), balloon = msg ? ui('chatBalloon') ?? defBalloon ?? undefined : undefined
   return tag || balloon ? { tag, balloon, name, text: msg?.text ?? '', emo: msg?.emo, t0: msg?.at } : undefined
 }
 

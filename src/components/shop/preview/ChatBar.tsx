@@ -73,7 +73,7 @@ export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; s
   useEffect(() => { if (mobile && show) box.current?.querySelector('input')?.focus({ preventScroll: true }) }, [mobile, show])
 
   // 적는 동안 보낼 말풍선을 미리 만든다(글자 도트 · 그림 캐시) — 전송하면 그리기만 한다. 글자를 칠 때마다가 아니라 잠깐 멈췄을 때.
-  const ui = s.equipped.chatBalloon?.chatUi
+  const ui = (!s.hidden.chatBalloon ? s.equipped.chatBalloon?.chatUi : undefined) ?? s.chatDefault ?? undefined
   useEffect(() => { if (show) prefetchGlyphs(true) }, [show]) // 칸이 나오면 나머지 한글 도트도 한가할 때 받아 둔다
   useEffect(() => {
     const t = text.trim()
@@ -85,7 +85,7 @@ export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; s
   const can = !!text.trim()
   const send = () => { const t = text.trim(); if (!t) return; s.sendChat({ text: t }); setText('') }
   return (
-    <form ref={box} inert={!show || undefined} onSubmit={(e) => { e.preventDefault(); send() }} className={clsx(styles.chatBox, mobile && styles.chatBoxM, show && styles.chatBoxOn)}>
+    <form ref={box} data-guide={mobile ? undefined : 'chat'} inert={!show || undefined} onSubmit={(e) => { e.preventDefault(); send() }} className={clsx(styles.chatBox, mobile && styles.chatBoxM, show && styles.chatBoxOn)}>
       <input value={text} maxLength={CHAT_TEXT_MAX} onChange={(e) => setText(e.target.value)} tabIndex={show ? 0 : -1}
         placeholder="말풍선에 띄울 말" aria-label="채팅" enterKeyHint="send" autoComplete="off" className={styles.chatField} />
       <button ref={btn} type="button" onClick={toggle} aria-expanded={mobile ? sheetOn : open} title="이모티콘" aria-label="이모티콘"

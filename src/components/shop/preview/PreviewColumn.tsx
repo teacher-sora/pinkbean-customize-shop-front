@@ -77,10 +77,10 @@ export default function PreviewColumn() {
         </div>
 
         <div className={clsx('pb-drawer', styles.drawer, pvAll && styles.drawerOpen)}>
-          {/* 채팅 칸 — 말풍선을 끼었을 때만. 드로어 윗변에 붙어 함께 오르내린다(접히면 아래 줄 바로 위) */}
+          {/* 채팅 칸 — 늘 있다(말풍선 반지가 없으면 기본 흰 말풍선). 드로어 윗변에 붙어 함께 오르내린다(접히면 아래 줄 바로 위) */}
           {s.chatOn && (
             <div className={clsx(styles.chatDock, !pvAll && styles.chatDockDown)}>
-              <ChatBar mobile={false} show={!!s.equipped.chatBalloon} />
+              <ChatBar mobile={false} show />
             </div>
           )}
           <PvGroups group={group} onGroup={setGroup} mobile={false} />
@@ -109,8 +109,8 @@ export function MobileHero() {
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
   const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
   const n = s.bookmarks.length
-  // 채팅 칸(명찰 · 말풍선): 말풍선을 끼었을 때 아래 줄의 말풍선 버튼으로 올린다. 벗으면 내린다
-  const canChat = s.chatOn && !!s.equipped.chatBalloon
+  // 채팅 칸(명찰 · 말풍선): 아래 줄의 말풍선 버튼으로 올린다. 버튼은 늘 있다(말풍선 반지가 없으면 기본 흰 말풍선 — 사용자 지시)
+  const canChat = s.chatOn
   const [chat, setChat] = useState(false)
   const chatUp = chat && canChat
   const closeChat = useCallback(() => setChat(false), [])
