@@ -35,6 +35,7 @@ export interface ChatUi {
   kind: 'nameTag' | 'chatBalloon'; clr: string; atlas: string; parts: Record<string, ChatPart>
   originOffset?: Vec; heightoffset?: number; bottomoffset?: number; fontType?: number
   aniFit?: number[] // 움직이는 명찰: 층(ani0, ani1, …)마다 이름이 들어가는 폭(px) — 추출 때 그림의 안쪽 폭을 재어 적는다
+  arrowPad?: number // 말풍선 꼬리의 왼쪽 빈 열 수(origin.x 만큼 띠 위에 걸치는 자리 중 띠 높이에서 투명한 열) — 띠를 그만큼 꼬리 밑으로 늘린다
 }
 // 이모티콘 프레임: 가로로 이은 그림(strip) 안의 자리 x · 크기 · origin(ox, oy) · 머무는 시간(d, ms)
 export interface EmoFrame { x: number; w: number; h: number; ox: number; oy: number; d: number }
@@ -226,7 +227,8 @@ async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap
   let tip = sy + P.s.h
   if (P.arrow) {
     const al = L + Math.floor((W - P.arrow.w) / 2) // 꼬리 그림을 말풍선 가운데에
-    hfill(pieces, P.s, right(sw), al, sy, 'end'); pieces.push({ p: P.arrow, x: al, y: B - P.arrow.origin.y }); hfill(pieces, P.s, al + P.arrow.w, se.x, sy)
+    // 꼬리 왼쪽의 빈 열(arrowPad)은 띠가 메운다 — 비워 두면 1~2px 세로 틈으로 바탕이 비친다(게임의 기본 말풍선과 대조 — 사용자 지적)
+    hfill(pieces, P.s, right(sw), al + (ui.arrowPad ?? 0), sy, 'end'); pieces.push({ p: P.arrow, x: al, y: B - P.arrow.origin.y }); hfill(pieces, P.s, al + P.arrow.w, se.x, sy)
     tip = B - P.arrow.origin.y + P.arrow.h
   }
   // 옆 띠
