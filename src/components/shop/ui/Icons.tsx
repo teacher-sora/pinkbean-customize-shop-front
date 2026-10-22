@@ -66,6 +66,15 @@ const ViewIcon = ({ size = 15, h }: P & { h: number }) => (
 export const IconViewBase = (p: P) => <ViewIcon {...p} h={3.4} />
 export const IconViewWide = (p: P) => <ViewIcon {...p} h={6.4} />
 export const IconViewFull = (p: P) => <ViewIcon {...p} h={10} />
+// 목록 넘기는 방향(보기 아이콘과 같은 틀): 두 쪽이 옆으로 나란히 = 가로, 위아래로 = 세로
+const DirIcon = ({ size = 15, y }: P & { y?: boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="3.4" />
+    {y ? <><rect x="7" y="7" width="10" height="4" rx="1.2" fill="currentColor" stroke="none" /><rect x="7" y="13" width="10" height="4" rx="1.2" fill="currentColor" stroke="none" opacity=".45" /></>
+      : <><rect x="7" y="7" width="4" height="10" rx="1.2" fill="currentColor" stroke="none" /><rect x="13" y="7" width="4" height="10" rx="1.2" fill="currentColor" stroke="none" opacity=".45" /></>}
+  </svg>
+)
+export const IconDirX = (p: P) => <DirIcon {...p} />
+export const IconDirY = (p: P) => <DirIcon {...p} y />
 export const IconTakeDown = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 4.5v11m0 0l-4.2-4.2M12 15.5l4.2-4.2M5 19h14" /></svg>
 )

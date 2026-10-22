@@ -38,6 +38,7 @@ import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, dropUiHistory, readUiPref, 
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
+export type ListDir = 'x' | 'y' // 목록 넘기는 방향: 가로 / 세로
 // 성별 필터: 전체 / 여캐가 입을 수 있는 것 / 남캐가 입을 수 있는 것 (공용은 항상 포함)
 export type GenderFilter = 'all' | 'f' | 'm'
 // 염색 대상은 실제 slot. hair/face(성형)만 믹스 염색, 그 외 HSV.
@@ -231,6 +232,7 @@ export interface ShopCtx {
   warmForPreview: (item: ListItem) => void // 착용 전 워밍(현재 연출 기준 메타·첫 프레임·이펙트·발색)
   bookmarks: ListItem[]; isBookmarked: (id: string) => boolean; toggleBookmark: (item: ListItem) => void; clearBookmarks: () => void
   listMode: ListMode; setListMode: Dispatch<ListMode>
+  listDir: ListDir; setListDir: Dispatch<ListDir> // 목록을 넘기는 방향(가로 · 세로) — 기본 가로
   bindVp: (el: HTMLDivElement | null) => void
   bindTrack: (el: HTMLDivElement | null) => void // 스와이프 중 손가락 따라가기(DOM 직접 갱신)
   snapFrom: number // 스냅 애니메이션 직전 페이지 — 애니메이션 중엔 새 페이지 마운트를 미룬다
@@ -402,6 +404,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true }
   }, [])
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=기본 캐릭터(코디는 모델이 기본)
+  // 목록 넘기는 방향. 가로 = 지금까지의 넘기기, 세로 = 같은 넘기기를 위아래로(PC · 절반 · 태블릿은 한 쪽씩, 모바일은 목록 안 세로 스크롤 — ListArea).
+  const [listDir, setListDir] = useState<ListDir>('x')
+  const listDirRef = useRef<ListDir>('x')
+  listDirRef.current = listDir
   const [search, setSearch] = useState('')
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
   const [tone, setTone] = useState(0)
@@ -891,6 +897,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const onWheel = useCallback((e: WheelEvent) => {
     // 모바일: 리스트 페이지 내부에 세로 스크롤이 남아 있으면 스크롤을 우선한다.
     if (bpRef.current === 'mobile') {
+      if (listDirRef.current === 'y') return // 모바일 세로는 목록 안의 네이티브 세로 스크롤(ListArea)이 담당
       const page = (e.target as HTMLElement | null)?.closest?.('.pb-page') as HTMLElement | null
       if (page && page.scrollHeight - page.clientHeight > 2) {
         const max = page.scrollHeight - page.clientHeight
@@ -913,13 +920,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     n = Math.max(-CAP, Math.min(CAP, n))
     if (n) setIdx(live.current.curIdx + n)
   }, [setIdx])
-  // 터치 가로 스와이프 = 손가락을 따라 트랙이 움직이고(React 리렌더 없이 DOM 직접), 놓으면 거리(폭 18%)나
-  // 속도(0.35px/ms)로 넘길지 정해 같은 곡선으로 스냅. 세로는 touch-action:pan-y 로 브라우저 스크롤. 마우스는 제외.
+  // 터치 스와이프 = 손가락을 따라 트랙이 움직이고(React 리렌더 없이 DOM 직접), 놓으면 거리(폭 · 높이 18%)나
+  // 속도(0.35px/ms)로 넘길지 정해 같은 곡선으로 스냅. 넘기는 방향(listDir)의 축만 잡고, 다른 축은 touch-action 으로 브라우저 스크롤. 마우스는 제외.
   const onDown = useCallback((e: PointerEvent) => {
     if (e.pointerType === 'mouse' || e.button !== 0) return
     if (bpRef.current === 'mobile') return // 모바일은 네이티브 가로 스크롤(ListArea)이 담당
-    const w = vpElRef.current?.clientWidth || window.innerWidth
-    swipe.current = { on: true, id: e.pointerId, x0: e.clientX, y0: e.clientY, mode: null, lx: e.clientX, lt: e.timeStamp, vx: 0, w }
+    const y = listDirRef.current === 'y'
+    const w = (y ? vpElRef.current?.clientHeight : vpElRef.current?.clientWidth) || (y ? window.innerHeight : window.innerWidth)
+    swipe.current = { on: true, id: e.pointerId, x0: e.clientX, y0: e.clientY, mode: null, lx: y ? e.clientY : e.clientX, lt: e.timeStamp, vx: 0, w }
   }, [])
   const bindTrack = useCallback((el: HTMLDivElement | null) => { trackRef.current = el }, [])
   // 포커스 시 브라우저가 overflow 뷰포트를 강제 스크롤해 페이지가 넘어가 보이는 현상 차단.
@@ -948,28 +956,33 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const onMove = (e: PointerEvent) => {
       const d = swipe.current
       if (!d.on || e.pointerId !== d.id) return
-      const dx = e.clientX - d.x0, dy = e.clientY - d.y0
-      if (!d.mode && (Math.abs(dx) > 7 || Math.abs(dy) > 7)) {
-        d.mode = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
-        if (d.mode === 'x') { d.x0 = e.clientX; d.lx = e.clientX; d.lt = e.timeStamp } // 판정 거리만큼 튀지 않게 기준점 재설정
+      // 넘기는 축(ax — 세로 넘기기면 y)의 좌표만 쓴다. 방향을 정하기 전 x0 · y0 은 누른 자리, 정한 뒤 x0 · lx 는 그 축의 기준점이다.
+      const ax = listDirRef.current, pos = ax === 'y' ? e.clientY : e.clientX
+      if (!d.mode) {
+        const mx = Math.abs(e.clientX - d.x0), my = Math.abs(e.clientY - d.y0)
+        if (mx > 7 || my > 7) {
+          d.mode = mx > my ? 'x' : 'y'
+          if (d.mode === ax) { d.x0 = pos; d.lx = pos; d.lt = e.timeStamp } // 판정 거리만큼 튀지 않게 기준점 재설정
+        }
       }
-      if (d.mode !== 'x') return
+      if (d.mode !== ax) return
       const dt = e.timeStamp - d.lt
-      if (dt > 0) { d.vx = 0.7 * ((e.clientX - d.lx) / dt) + 0.3 * d.vx; d.lx = e.clientX; d.lt = e.timeStamp }
+      if (dt > 0) { d.vx = 0.7 * ((pos - d.lx) / dt) + 0.3 * d.vx; d.lx = pos; d.lt = e.timeStamp }
       const el = trackRef.current; if (!el) return
       const { curIdx: i, maxIndex } = live.current
-      let off = e.clientX - d.x0
+      let off = pos - d.x0
       if ((i === 0 && off > 0) || (i === maxIndex && off < 0)) off *= 0.3 // 첫/끝 페이지는 고무줄 저항
       el.style.transition = 'none'
-      el.style.transform = `translateX(calc(${-i * 100}% + ${off}px))`
+      el.style.transform = `${ax === 'y' ? 'translateY' : 'translateX'}(calc(${-i * 100}% + ${off}px))`
     }
     const onUp = (e: PointerEvent) => {
       const d = swipe.current
       if (!d.on || e.pointerId !== d.id) return
       d.on = false
-      if (d.mode !== 'x') return
+      const ax = listDirRef.current
+      if (d.mode !== ax) return
       const { curIdx: i, maxIndex } = live.current
-      const dx = e.type === 'pointerup' ? e.clientX - d.x0 : 0
+      const dx = e.type === 'pointerup' ? (ax === 'y' ? e.clientY : e.clientX) - d.x0 : 0
       const recent = e.timeStamp - d.lt < 100 ? d.vx : 0 // 멈췄다 뗀 경우 속도 무시
       let dir = 0
       if (e.type === 'pointerup') {
@@ -978,7 +991,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }
       const target = Math.max(0, Math.min(maxIndex, i + dir))
       const el = trackRef.current
-      if (el) { el.style.transition = SNAP; el.style.transform = `translateX(${-target * 100}%)` }
+      if (el) { el.style.transition = SNAP; el.style.transform = `${ax === 'y' ? 'translateY' : 'translateX'}(${-target * 100}%)` }
       if (target !== i) setIdx(target)
       else { setSnapping(true); if (snapT.current) clearTimeout(snapT.current); snapT.current = setTimeout(() => setSnapping(false), 340) }
       swipeClickUntil.current = performance.now() + 350
@@ -987,6 +1000,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return
       if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1)
+      else if (listDirRef.current === 'y' && bpRef.current !== 'mobile' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); step(e.key === 'ArrowUp' ? -1 : 1) }
     }
     window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp)
     window.addEventListener('keydown', onKey)
@@ -1984,7 +1998,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     undo, redo, canUndo, canRedo,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
-    warmForPreview, listMode, setListMode, bindVp, bindTrack, snapFrom, consumeSwipeClick,
+    warmForPreview, listMode, setListMode, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,
     bp, cols, rows, itemsPerPage,
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
