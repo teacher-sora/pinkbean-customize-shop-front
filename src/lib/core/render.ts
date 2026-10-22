@@ -19,10 +19,19 @@ const imageCache = new LRU<Promise<HTMLImageElement>>(1200)
 //   사실상 무시하고 캐시한다 → no-Origin 으로 먼저 캐시된 응답(ACAO 없음)이 crossOrigin 요청에도 서빙돼
 //   CORS 에러가 난다. 그래서 CORS 용은 별도 쿼리키(?cors=1)로 분리 → 항상 Origin 과 함께 요청되어
 //   ACAO 가 포함된 별도 캐시 엔트리를 쓴다(일반 렌더 캐시는 오염되지 않음).
+// loadImage 가 받는 주소. 화면의 <img> 가 같은 그림을 보여 주면 이 주소(와 cors 면 crossOrigin="anonymous")를 쓴다 —
+// 주소가 다르면 이미 화면에 뜬 그림을 캔버스용으로 한 번 더 받는다(이모티콘 고르기 → 말풍선)
+export function imageSrc(pngRel: string, cors = false): string {
+  const base = spriteUrl(pngRel)
+  return cors ? base + (base.includes('?') ? '&' : '?') + 'cors=1' : base
+}
+// 다 받은 그림이 캐시에 있는가 — 기다리지 않고 바로 그릴 수 있는지 고를 때(캐시에서 밀려났으면 false)
+export const imageLoaded = (pngRel: string, cors = false) => { const p = imageCache.peek(imageSrc(pngRel, cors)); return !!p && loaded.has(p) }
+const loaded = new WeakSet<Promise<HTMLImageElement>>()
+
 export function loadImage(pngRel: string, cors = false): Promise<HTMLImageElement> {
   if (!pngRel) return Promise.reject(new Error('no png')) // 일루전 표지 레이어(png '')는 받을 그림이 없다
-  const base = spriteUrl(pngRel)
-  const src = cors ? base + (base.includes('?') ? '&' : '?') + 'cors=1' : base
+  const src = imageSrc(pngRel, cors)
   let p = imageCache.get(src)
   if (!p) {
     const plain = () => new Promise<HTMLImageElement>((resolve, reject) => {
@@ -50,6 +59,7 @@ export function loadImage(pngRel: string, cors = false): Promise<HTMLImageElemen
       .catch(() => new Promise((r) => setTimeout(r, 400)).then(once))
       .catch((e) => { if (imageCache.peek(src) === made) imageCache.delete(src); throw e })
     p = made
+    made.then(() => { loaded.add(made) }, () => {})
     imageCache.set(src, p)
   }
   return p
@@ -221,7 +231,7 @@ export async function renderCharacter(
 
   // Image loads above are async; if a newer render started while we awaited (fast item
   // swaps), bail BEFORE touching the canvas so this stale pass can't overwrite it.
-  const chat = await prepareChat(opts.chat).catch(() => [])
+  const chat = await prepareChat(opts.chat, opts.chatT != null).catch(() => []) // 움짤(chatT)은 움직이는 이모티콘을 기다린다
   if (opts.shouldCancel?.()) return
 
   // 정수 배율이면 확대가 nearest 로 완벽히 선명. 카드/미리보기는 캔버스를 "디바이스 픽셀" 해상도로 맞추려고

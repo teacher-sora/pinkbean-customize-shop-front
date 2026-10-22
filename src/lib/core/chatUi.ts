@@ -28,7 +28,7 @@
 import { groundOf, type PlacedLayer } from './assemble'
 import { glyphOf, loadGlyphs } from './chatGlyphs'
 import type { Vec } from './data'
-import { loadImage } from './render'
+import { imageLoaded, loadImage } from './render'
 
 export interface ChatPart { x: number; y: number; w: number; h: number; origin: Vec } // 아틀라스 안의 자리
 export interface ChatUi {
@@ -41,7 +41,7 @@ export interface ChatUi {
 // 이모티콘 프레임: 가로로 이은 그림(strip) 안의 자리 x · 크기 · origin(ox, oy) · 머무는 시간(d, ms)
 export interface EmoFrame { x: number; w: number; h: number; ox: number; oy: number; d: number }
 // png = 대표 그림(mainImg — 고르기 칸 · 정지 그림). 움직이는 것은 strip · frames 가 있다.
-export interface ChatEmo { id: string; name: string; png: string; w: number; h: number; origin: Vec; main?: number; strip?: string; frames?: EmoFrame[] }
+export interface ChatEmo { id: string; name: string; png: string; w: number; h: number; origin: Vec; main?: number; strip?: string; frames?: EmoFrame[]; still?: boolean } // still = 움직이는 그림이 오기 전 대표 프레임(png)으로 그린다(prepareChat)
 // 그릴 것: 명찰 · 말풍선(없으면 그리지 않는다)과 글자 · 이모티콘.
 export interface ChatDraw { tag?: ChatUi; balloon?: ChatUi; name: string; text: string; emo?: ChatEmo; t0?: number } // t0 = 보낸 시각(performance.now) — 움직이는 이모티콘의 시계
 
@@ -207,7 +207,9 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
 async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap> {
   const A = await loadImage(ui.atlas, true), P = ui.parts
   const anim = emo?.frames?.length && emo.strip ? emo.frames : null
-  const E = emo ? await loadImage(anim ? emo.strip! : emo.png, true) : null
+  // still: 움직이는 그림(strip)이 아직 없다 — 크기는 움직이는 그림의 상자로 잡고(말풍선 크기가 그대로), 대표 프레임(png, 크기 · 기준점이 같다 — 111종 대조)을 박아 둔다
+  const still = !!(anim && emo!.still)
+  const E = emo ? await loadImage(anim && !still ? emo.strip! : emo.png, true) : null
   const lines = E ? [] : wrapLines(text).map((l) => textBitmap(l, ui.clr))
   const xt = P.n.w, yt = P.w.h
   // 움직이는 이모티콘: 모든 프레임을 origin 에 맞춰 겹친 상자(origin 왼쪽 · 오른쪽 · 위 · 아래로 가장 먼 것)
@@ -253,7 +255,8 @@ async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap
   pieces.push(nw, ne, sw, se)
   let emoAt: { x: number; y: number } | null = null
   const bm = compose(A, pieces, (g, x0, y0) => {
-    if (box) emoAt = { x: Math.round(-contentW / 2) + box.l - x0, y: Math.round(T + (H - contentH) / 2) + box.t - y0 } // 프레임은 그릴 때 덧그린다
+    if (box && still && E) { const o = emo!.origin; g.drawImage(E, Math.round(-contentW / 2) + box.l - o.x - x0, Math.round(T + (H - contentH) / 2) + box.t - o.y - y0) }
+    else if (box) emoAt = { x: Math.round(-contentW / 2) + box.l - x0, y: Math.round(T + (H - contentH) / 2) + box.t - y0 } // 프레임은 그릴 때 덧그린다
     else if (E) g.drawImage(E, Math.round(-E.width / 2) - x0, Math.round(T + (H - E.height) / 2) - y0)
     else {
       // 줄마다 가운데 정렬, 줄 묶음은 안쪽 칸 세로 가운데. 줄 간격은 기준선 기준(LINE + GAP)이다.
@@ -263,10 +266,10 @@ async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap
   })
   // 꼬리 그림 아래 끝(tip)이 발끝 위 BALLOON_TIP 에 오게 옮긴다. 안쪽 칸 가운데 = 기준점.
   const oo = ui.originOffset ?? { x: 0, y: 0 }
-  return { c: bm.c, ox: bm.ox + oo.x, oy: bm.oy - tip - BALLOON_TIP + oo.y, ...(anim && E && emoAt ? { emo: { img: E, frames: anim, ...(emoAt as { x: number; y: number }) } } : {}) }
+  return { c: bm.c, ox: bm.ox + oo.x, oy: bm.oy - tip - BALLOON_TIP + oo.y, ...(anim && !still && E && emoAt ? { emo: { img: E, frames: anim, ...(emoAt as { x: number; y: number }) } } : {}) }
 }
 
-const key = (ui: ChatUi, s: string, emo?: ChatEmo) => `${ui.kind}|${ui.atlas}|${emo ? 'emo:' + emo.id : s}`
+const key = (ui: ChatUi, s: string, emo?: ChatEmo) => `${ui.kind}|${ui.atlas}|${emo ? 'emo:' + emo.id + (emo.still ? ':still' : '') : s}`
 function bitmapOf (ui: ChatUi, s: string, keep: boolean, emo?: ChatEmo): Promise<Bitmap | null> {
   const k = key(ui, s, emo)
   let p = cache.get(k)
@@ -291,12 +294,23 @@ export function warmChat (ui: ChatUi, name: string, text: string): void {
   void loadGlyphs([name, text, ' : ']).then((keep) => bitmapOf(ui, `${name} : ${text}`, keep)).catch(() => {})
 }
 
+// 움직이는 이모티콘의 그림(strip)을 미리 받는다 — 고르기 창에서 마우스를 올리거나 누를 때, 보고 있는 묶음을 한가할 때(ChatEmoPicker).
+// 받은 그림은 render 의 그림 캐시에 남아 다시 보내도 바로 뜬다
+export function warmEmo (emo: ChatEmo): Promise<unknown> {
+  return emo.strip && emo.frames?.length ? loadImage(emo.strip, true).catch(() => {}) : Promise.resolve()
+}
+
 // 그릴 그림들을 미리 만든다(캐시). 그리기는 동기로 한다 — renderCharacter 가 그림을 다 받은 뒤 부른다.
-export async function prepareChat (d: ChatDraw | undefined): Promise<Bitmap[]> {
+// 움직이는 이모티콘의 그림이 아직 없으면 **기다리지 않고** 대표 프레임으로 먼저 그린다(still — 고르기 창에 떠 있던 그림이라 받아 둔 것이다).
+// 그림이 오면 다음 프레임부터 움직인다(미리보기는 이모티콘이 떠 있는 동안 프레임마다 다시 그린다). 보내는 순간의 지연 = 그림 받기였다
+// (느린 3G 0.7~1.4초, 4G 0.2~0.3초 — 실측). full = 움짤처럼 움직이는 그림이 꼭 있어야 할 때(기다린다).
+export async function prepareChat (d: ChatDraw | undefined, full = false): Promise<Bitmap[]> {
   if (!d) return []
   // 글자 도트를 먼저 받는다(이미 받았으면 바로 끝난다) — 받기 전에 그리지 않는다. 받지 못했으면 그린 그림을 기억하지 않아 다음에 다시 그린다.
   const keep = await loadGlyphs([d.name, d.text, ' : '])
-  const out = await Promise.all([d.balloon ? bitmapOf(d.balloon, `${d.name} : ${d.text}`, keep, d.emo) : null, d.tag ? bitmapOf(d.tag, d.name, keep) : null])
+  let emo = d.emo
+  if (!full && emo?.strip && emo.frames?.length && !imageLoaded(emo.strip, true)) { void warmEmo(emo); emo = { ...emo, still: true } }
+  const out = await Promise.all([d.balloon ? bitmapOf(d.balloon, `${d.name} : ${d.text}`, keep, emo) : null, d.tag ? bitmapOf(d.tag, d.name, keep) : null])
   return out.filter((b): b is Bitmap => !!b)
 }
 
