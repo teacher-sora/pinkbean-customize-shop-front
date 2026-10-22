@@ -14,7 +14,11 @@
 //    밀려나는 카드는 CSS 전환 중에 브라우저가 스스로 층으로 올린다(30장 모두에 걸면 GPU 메모리를 쥔다).
 //  · 밀려나는 카드는 CSS 전환이 지금 보이는 자리에서 이어 간다(튀지 않는다). 손이 칸의 안쪽(가장자리 INSET 을 뺀 곳)에 들어가야 자리를 바꾼다
 //    — 경계에서 왔다 갔다 하지 않는다. 칸 자리는 집을 때 한 번 잰다.
-//  · 놓을 때 한 번 순서를 바꾸고(onDrop — 이름 '코디 N' 도 그때 한 번), 바뀐 자리에서 보이던 자리로 되돌렸다가 미끄러지게 한다(FLIP, 그리기 전에).
+//  · 놓으면 끄던 카드를 새 칸으로 미끄러뜨리고, **미끄러짐이 끝난 뒤** 순서를 한 번 저장한다(onDrop — 이름 '코디 N' 도 그때 한 번).
+//    저장은 앱 전체를 다시 그려 무겁다 — 움직이는 도중에 하면 놓는 순간 멈칫했다(CPU 4배 느리게에서 130ms). 끝난 뒤라 보이는 것이 그대로다:
+//    카드는 이미 새 칸에 transform 으로 서 있고, 순서가 바뀌어 그려지면 그리기 전에 transform 만 지운다(자리가 같아 한 프레임도 튀지 않는다).
+//  · 문서 전체(<html>)의 스타일은 건드리지 않는다 — user-select 를 걸고 풀 때마다 페이지 전체 스타일을 다시 계산해 집는 순간 멈칫했다.
+//    글자 선택은 누를 때 기본 동작을 막아 막는다(이름 칸 · 버튼에서는 집지 않으니 그대로 쓸 수 있다).
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
 const MOUSE_SLOP = 6, TOUCH_SLOP = 6, EDGE = 44, EDGE_SPEED = 12, INSET = 0.18, SETTLE_MS = 240
@@ -32,7 +36,8 @@ type Drag = {
 export function usePresetDrag (enabled: boolean, ids: string[], grid: React.RefObject<HTMLElement | null>, box: React.RefObject<HTMLElement | null>, onDrop: (ids: string[]) => void, dragCls: string, layout: string) {
   const drag = useRef<Drag | null>(null)
   const justDropped = useRef(false)
-  const flip = useRef<Map<string, DOMRect> | null>(null) // 놓을 때 보이던 자리(순서가 바뀐 뒤 그 자리에서 미끄러진다)
+  const settle = useRef<{ el: HTMLElement; t: number; order: string[] } | null>(null) // 놓고 미끄러지는 중(끝나면 순서를 저장)
+  const committing = useRef(false)                     // 저장한 순서가 그려지면 transform 을 지운다
   // 리스너는 한 번만 붙인다 — 바깥 순서 · 콜백은 ref 로 읽는다(렌더마다 다시 붙이면 누르던 손가락을 놓친다)
   const idsRef = useRef(ids), dropRef = useRef(onDrop), onRef = useRef(enabled)
   idsRef.current = ids; dropRef.current = onDrop; onRef.current = enabled
@@ -67,18 +72,18 @@ export function usePresetDrag (enabled: boolean, ids: string[], grid: React.RefO
   }
 
   const begin = (id: string, x: number, y: number) => {
+    flush() // 앞에서 놓은 것이 아직 미끄러지는 중이면 지금 저장한다
     const g = grid.current
     const all = cards(), el = all.find((c) => c.dataset.presetId === id)
     if (!g || !el) return false
-    for (const c of all) { c.style.transition = 'none'; c.style.transform = '' } // 앞 전환이 남아 있으면 칸 자리가 틀린다
+    // 읽기를 먼저 다 하고(레이아웃 한 번) 쓰기는 그 뒤에. 남은 transform 이 있으면(드물다) 지우고 잰다
+    if (all.some((c) => c.style.transform)) for (const c of all) { c.style.transition = 'none'; c.style.transform = '' }
     const r = g.getBoundingClientRect(), er = el.getBoundingClientRect()
     const els = new Map(all.map((c) => [c.dataset.presetId!, c]))
     const list = idsRef.current
     const slots = list.map((k) => { const c = els.get(k)!.getBoundingClientRect(); return { x: c.left - r.left, y: c.top - r.top, w: c.width, h: c.height } })
-    for (const c of all) if (c !== el) c.style.transition = EASE
+    for (const c of all) c.style.transition = c === el ? 'none' : EASE
     el.classList.add(dragCls)
-    document.documentElement.style.setProperty('user-select', 'none')
-    window.getSelection()?.removeAllRanges() // 누르고 움직이는 사이 잡힌 글자 선택을 지운다
     drag.current = { id, el, x, y, gx: x - er.left, gy: y - er.top, slots, home: new Map(list.map((k, i) => [k, i])), els, order: list.slice(), raf: 0 }
     drag.current.raf = requestAnimationFrame(frame)
     return true
@@ -89,37 +94,41 @@ export function usePresetDrag (enabled: boolean, ids: string[], grid: React.RefO
     if (!d) return
     drag.current = null
     cancelAnimationFrame(d.raf)
-    document.documentElement.style.removeProperty('user-select')
     justDropped.current = true
     window.setTimeout(() => { justDropped.current = false }, 0)
-    window.setTimeout(() => d.el.classList.remove(dragCls), SETTLE_MS) // 제자리로 미끄러지는 동안은 위에 떠 있는다
+    // 끄던 카드를 들어갈 칸으로 미끄러뜨린다(다른 카드는 이미 제 칸에 있다)
+    const a = d.slots[d.home.get(d.id)!], q = d.slots[d.order.indexOf(d.id)]
+    d.el.style.transition = EASE
+    d.el.style.transform = a === q ? '' : `translate3d(${q.x - a.x}px, ${q.y - a.y}px, 0)`
     const changed = d.order.some((id, i) => id !== idsRef.current[i])
-    if (!changed) { d.el.style.transition = EASE; d.el.style.transform = ''; return }
-    flip.current = new Map([...d.els].map(([id, c]) => [id, c.getBoundingClientRect()]))
-    dropRef.current(d.order)
+    settle.current = { el: d.el, order: changed ? d.order : [], t: window.setTimeout(flush, SETTLE_MS) }
+  }
+  // 미끄러짐이 끝났다(또는 다시 집었다) — 떠 있던 표시를 내리고, 순서가 바뀌었으면 저장한다
+  const flush = () => {
+    const st = settle.current
+    if (!st) return
+    settle.current = null
+    clearTimeout(st.t)
+    st.el.classList.remove(dragCls)
+    if (st.order.length) { committing.current = true; dropRef.current(st.order) }
   }
 
-  // 놓은 뒤 순서가 바뀌어 그려지면: 바뀐 자리 → 보이던 자리로 되돌렸다가 제자리로 미끄러진다(그리기 전에 — 한 프레임도 튀지 않는다)
+  // 저장한 순서가 그려지면: 카드는 이미 그 자리에 transform 으로 서 있다 — 그리기 전에 transform 만 지운다(보이는 것은 그대로)
   const idsKey = ids.join(',')
   useLayoutEffect(() => {
-    const prev = flip.current
-    if (!prev) return
-    flip.current = null
-    const all = cards()
-    for (const c of all) { c.style.transition = 'none'; c.style.transform = '' }
-    const now = all.map((c) => c.getBoundingClientRect())
-    all.forEach((c, i) => { const p = prev.get(c.dataset.presetId!); if (p) c.style.transform = `translate3d(${p.left - now[i].left}px, ${p.top - now[i].top}px, 0)` })
-    void grid.current?.offsetWidth
-    for (const c of all) { c.style.transition = EASE; c.style.transform = '' }
+    if (!committing.current) return
+    committing.current = false
+    for (const c of cards()) { c.style.transition = 'none'; c.style.transform = '' }
   }, [idsKey])
 
-  // 순서 변경을 끄면 끌던 것을 놓는다. 패널이 사라지면 프레임만 멈춘다
+  // 순서 변경을 끄면 끌던 것을 놓는다. 패널이 사라지면 프레임을 멈추고, 미끄러지던 것은 바로 저장한다
   useEffect(() => { if (!enabled) end() }, [enabled])
-  useEffect(() => () => { const d = drag.current; if (d) { cancelAnimationFrame(d.raf); drag.current = null; document.documentElement.style.removeProperty('user-select') } }, [])
+  useEffect(() => () => { const d = drag.current; if (d) { cancelAnimationFrame(d.raf); drag.current = null } const st = settle.current; if (st) { settle.current = null; clearTimeout(st.t); if (st.order.length) dropRef.current(st.order) } }, [])
 
   // 마우스 · 펜
   const onPointerDown = (e: React.PointerEvent<HTMLElement>, id: string) => {
     if (!onRef.current || e.pointerType === 'touch' || e.button !== 0 || (e.target as HTMLElement).closest(NO_GRAB)) return
+    e.preventDefault() // 글자 선택 · 그림 끌기를 시작하지 않는다
     const sx = e.clientX, sy = e.clientY
     let on = false
     const mv = (ev: PointerEvent) => {
