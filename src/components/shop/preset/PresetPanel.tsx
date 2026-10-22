@@ -9,6 +9,7 @@ import { CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
 import { presetFileName } from '@/lib/canvasExport'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
+import { usePresetDrag } from './usePresetDrag'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
@@ -61,13 +62,20 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   )
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') s.importFetch() }
 
+  // 카드를 끌어 순서를 바꾼다(usePresetDrag). 끄는 동안은 그 순서로 그리고, 놓으면 프리셋 순서로 저장한다
+  const gridRef = useRef<HTMLDivElement>(null)
+  const byId = useMemo(() => new Map(s.presets.map((p) => [p.id, p])), [s.presets])
+  const dnd = usePresetDrag(s.presets.map((p) => p.id), gridRef, boxRef, s.reorderPresets, mobile ? 'm' : narrow ? 'n' : 'pc')
+
   const grid = (
-    <div className={mobile ? styles.gridHM : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
-      {s.presets.map((p, i) => {
+    <div ref={gridRef} className={mobile ? styles.gridHM : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
+      {dnd.view.map((id, i) => {
+        const p = byId.get(id)!
         const on = s.selectedPreset === p.id
         const snap = on ? liveSnap : s.presetData[p.id]
         return (
-          <div key={p.id} onClick={() => s.selectPreset(p.id)} className={clsx('pb-presetwrap', styles.wrap)}>
+          <div key={p.id} data-preset-id={p.id} onClick={() => { if (!dnd.swallowClick()) s.selectPreset(p.id) }} onPointerDown={(e) => dnd.onPointerDown(e, p.id)}
+            className={clsx('pb-presetwrap', styles.wrap, dnd.dragId === p.id && styles.dragging, dnd.liftId === p.id && styles.lifted)}>
             <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
               <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
               <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} />}</div>

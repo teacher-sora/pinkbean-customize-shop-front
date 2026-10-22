@@ -154,7 +154,13 @@ const PV_KEY = 'pb_pv_v1'
 const loadPv = (): Partial<Pv> | null => {
   try { const raw = localStorage.getItem(PV_KEY); if (!raw) return null; const v = JSON.parse(raw); return v && typeof v === 'object' ? v as Partial<Pv> : null } catch { return null }
 }
-type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null; v?: number }
+// order = 카드 순서(프리셋 id). 끌어서 옮긴 순서다 — 없거나 빠진 칸은 기본 순서(d0, d1 …)로 뒤에 붙인다
+type PresetStore = { data: Record<string, Snapshot>; names: Record<string, string>; sel: string | null; order?: string[]; v?: number }
+const presetOrder = (store: PresetStore | null): string[] => {
+  const seen = new Set<string>(), out: string[] = []
+  for (const id of [...(Array.isArray(store?.order) ? store!.order : []), ...PRESET_IDS]) if (PRESET_IDS.includes(id) && !seen.has(id)) { seen.add(id); out.push(id) }
+  return out
+}
 const PRESET_STORE_V = 2 // 2 = 녹셀→레아 기본 헤어 이관을 마친 저장소
 // 저장된 미리보기 배율을 미리 읽는다(없으면 null). 연출 설정(pv)은 목록을 받은 뒤에야 복원되므로, 그 전에 깔리는
 // 피팅룸 배경이 이 값으로 크기를 잡는다. 복원 순서와 같다: 전역 연출 설정 → 고른 프리셋에 담긴 값.
@@ -312,6 +318,7 @@ export interface ShopCtx {
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
+  reorderPresets: (ids: string[]) => void // 카드를 끌어 옮긴 순서(프리셋 id 전부)
   commitPresetName: (id: string, fallback: string) => void // 이름 입력 확정 = 되돌리기 기록 한 건
   nickInput: string; setNickInput: Dispatch<string>
   importFetch: () => void
@@ -517,7 +524,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (!alive) return
       setIndex(idx)
       setPresetData(data)
-      setPresets(PRESET_IDS.map((id, i) => ({ id, name: store?.names[id] || defaultPresetName(i) })))
+      setPresets(presetOrder(store).map((id, i) => ({ id, name: store?.names[id] || defaultPresetName(i) })))
       setEquipped(eq); setTone(snap.tone ?? DEFAULT_TONE)
       setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setDyeOff({ ...(snap.dyeOff || {}) }); setHidden({ ...(snap.hidden || {}) })
       setDotPos({ ...(snap.dotPos || {}) })
@@ -1837,7 +1844,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 프리셋 삭제 = 코디 기본값 + 기본 이름으로 되돌림(칸 수는 고정). 선택된 프리셋이면 라이브 모델도 즉시 적용.
   const resetPreset = (id: string) => {
     const snap = defaultSnapshot()
-    const i = PRESET_IDS.indexOf(id)
+    const i = presets.findIndex((p) => p.id === id) // 기본 이름은 지금 자리의 번호(코디 N)
     // 지우기 전 내용·이름을 기록에 함께 남긴다 → 되돌리기로 그 칸의 코디·이름이 돌아온다.
     // 보고 있지 않은 칸을 지우면 라이브 코디가 그대로라, 따로 남기지 않으면 기록 자체가 없다.
     const over: PresetOver<Snapshot> = {
@@ -1862,6 +1869,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 프리셋 이름(카드의 인라인 입력). 비운 채로 두면 기본 이름으로 되돌린다(blur 시 호출부가 처리).
   const renamePreset = (id: string, name: string) => setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name } : p)))
+  // 카드 순서만 바꾼다(내용 · 이름 · 선택은 id 에 붙어 그대로). 모르는 id 나 빠진 칸이 있으면 바꾸지 않는다
+  const reorderPresets = (ids: string[]) => setPresets((ps) => {
+    const by = new Map(ps.map((p) => [p.id, p]))
+    if (ids.length !== ps.length || ids.some((id) => !by.has(id)) || new Set(ids).size !== ids.length) return ps
+    return ids.map((id) => by.get(id)!)
+  })
   // 이름 입력을 마쳤을 때(입력창을 벗어날 때) — 비었으면 기본 이름으로 되돌리고, 바뀐 이름을 되돌리기 기록 한 건으로 남긴다.
   // 글자마다 기록하면 되돌리기가 한 글자씩 지워지므로 확정 시점에만 남긴다.
   const commitPresetName = (id: string, fallback: string) => {
@@ -1886,7 +1899,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         const next = { ...d, [selectedPreset]: snap }
         try {
           const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
-          localStorage.setItem(PRESET_KEY, JSON.stringify({ data: next, names, sel: selectedPreset, v: PRESET_STORE_V } as PresetStore))
+          localStorage.setItem(PRESET_KEY, JSON.stringify({ data: next, names, sel: selectedPreset, order: presets.map((p) => p.id), v: PRESET_STORE_V } as PresetStore))
         } catch {}
         return next
       })
@@ -1977,7 +1990,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const t = setTimeout(() => {
       try {
         const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
-        localStorage.setItem(PRESET_KEY, JSON.stringify({ data: presetData, names, sel: selectedPreset, v: PRESET_STORE_V } as PresetStore))
+        localStorage.setItem(PRESET_KEY, JSON.stringify({ data: presetData, names, sel: selectedPreset, order: presets.map((p) => p.id), v: PRESET_STORE_V } as PresetStore))
       } catch {}
     }, 100)
     return () => clearTimeout(t)
@@ -2024,7 +2037,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openPartItem, partBack, partSlide, openVs, toggleVs, vsOn, vsPicks, toggleVsPick, swapSnapshot,
     dotPos, setDot, resetDot,
     pv, setPv,
-    presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, commitPresetName, snapshot,
+    presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, reorderPresets, commitPresetName, snapshot,
     nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rating, rateBusy: rating || rateShow, endRate, rateResult, takeRate,
     lookPick, chooseLook, closeLookPick: () => setLookPick(null),
     toast, toastText, notify,
