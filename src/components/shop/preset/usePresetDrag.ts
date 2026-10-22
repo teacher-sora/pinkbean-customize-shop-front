@@ -2,15 +2,15 @@
 
 // 프리셋 카드를 끌어 순서를 바꾼다(사용자 지시 — 따로 정렬 버튼 없이 카드를 집으면 손을 따라오고, 놓은 자리에 들어간다).
 //  · 마우스: 누른 채 6px 넘게 움직이면 집는다(그냥 누르면 지금처럼 고르기). 이름 칸 · 복사 · 삭제 띠지에서는 집지 않는다.
-//  · 터치: 0.3초 누르고 있으면 카드가 들린다. 그때 움직이면 끌고, 움직이지 않고 떼면 이미지 메뉴다(사용자 지시 — 길게 누르면 바로 뜨던
-//    메뉴가 끌기와 겹쳤다. 카드의 길게 누르기 메뉴는 꺼 두고(SnapThumb holdMenu) 여기서 뗄 때 연다). 들리기 전에 움직이면 목록 스크롤이다.
+//  · 터치: 0.3초 누르고 있으면 카드가 들리고, 그때 움직이면 끈다. 들리기 전에 움직이면 목록 스크롤이다(스크롤과 나누려면 길게 눌러야 한다).
+//    길게 누르기는 끌기만 한다 — 프리셋 카드의 이미지 메뉴(복사 · 저장)는 터치에서 열지 않는다(SnapThumb holdMenu, 사용자 지시 — 겹치는
+//    동작이 하나도 없게). 같은 코디는 위의 캐릭터 화면을 길게 눌러 복사 · 저장한다. 들었다가 그냥 떼면 아무 일도 없다.
 //  · **끄는 동안은 화면의 순서(DOM)를 바꾸지 않는다.** 카드마다 들어갈 칸까지 transform 으로만 옮긴다 — 리액트가 다시 그리지 않아
 //    그림이 깜박이지 않고, 움직이던 카드가 또 밀려도 CSS 전환이 지금 보이는 자리에서 이어 간다(튀지 않는다).
 //    놓을 때 한 번 순서를 바꾸고(onDrop — 이름 '코디 N' 도 그때 한 번), 바뀐 자리에서 보이던 자리로 되돌렸다가 미끄러지게 한다(FLIP).
 //  · 칸 자리는 집을 때 한 번 잰다. 손이 어느 칸의 안쪽(가장자리 INSET 을 뺀 곳)에 들어가야 그 칸으로 간다 — 경계에서 왔다 갔다 하지 않는다.
 //  · 칸 가장자리(EDGE)에 가면 목록이 그쪽으로 흐른다(PC 세로, 휴대폰 가로).
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { IMAGE_MENU_EVENT } from '@/lib/canvasMenu'
 
 const MOUSE_SLOP = 6, TOUCH_HOLD = 300, TOUCH_SLOP = 10, EDGE = 44, EDGE_SPEED = 12, INSET = 0.18, SETTLE_MS = 240
 const EASE = 'transform .22s cubic-bezier(.45,0,.55,1)'
@@ -164,11 +164,7 @@ export function usePresetDrag (ids: string[], grid: React.RefObject<HTMLElement 
     }
     const stop = (e: TouchEvent) => {
       if (on) { e.preventDefault(); end() }
-      else if (armed && id && e.type === 'touchend') {
-        // 들었다가 움직이지 않고 뗐다 = 이미지 메뉴(뒤따르는 클릭 — 고르기 — 는 막는다)
-        e.preventDefault()
-        card(id)?.querySelector('canvas')?.dispatchEvent(new CustomEvent(IMAGE_MENU_EVENT, { detail: { x: sx, y: sy } }))
-      }
+      else if (armed && e.cancelable) e.preventDefault() // 들었다가 그냥 뗐다 — 끌려던 것이라 고르기(클릭)도 하지 않는다
       reset()
     }
     g.addEventListener('touchstart', start, { passive: true })
