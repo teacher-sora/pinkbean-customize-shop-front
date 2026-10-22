@@ -30,7 +30,8 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const baseP = Promise.all([loadMeta(te.body), loadMeta(te.head)])
   // 착용 아이템의 meta 는 **한꺼번에** 받는다(순서는 스냅샷 그대로). 하나씩 기다리면 아이템이 열 개인 코디는 왕복 열 번이
   // 줄을 서서, 카드 한 장에 1초 가까이 걸렸다(광장 한 쪽이 다 뜨는 데 5초).
-  const wornIds = Object.entries(snap.equipped).filter(([slot, id]) => !snap.hidden?.[slot] && id)
+  // 명찰 · 말풍선(dev 전용)은 그릴 레이어가 없고 meta 가 CDN 에 없다 — 받지 않는다(카드의 명찰은 SnapThumb 의 tagName 이 덧그린다).
+  const wornIds = Object.entries(snap.equipped).filter(([slot, id]) => !snap.hidden?.[slot] && id && slot !== 'nameTag' && slot !== 'chatBalloon')
   const [[bodyMeta, headMeta], got] = await Promise.all([baseP, Promise.all(wornIds.map(([, id]) => loadMeta(id).catch(() => null)))])
   const equipMetas: { slot: string; meta: ItemMeta }[] = wornIds.flatMap(([slot], i) => (got[i] ? [{ slot, meta: got[i]! }] : []))
   // 표정 얼굴장식(fixedEmotion)이 프리셋에 들어있으면 그 표정으로 굳는다. 없으면 종전대로 THUMB_VIEW.

@@ -5,6 +5,7 @@
 import clsx from 'clsx'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import type { Preset } from '@/lib/catalog'
+import { CHAT_NAME_FALLBACK } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
@@ -68,7 +69,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           <div key={p.id} onClick={() => s.selectPreset(p.id)} className={clsx('pb-presetwrap', styles.wrap)}>
             <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
               <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
-              <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} />}</div>
+              <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} />}</div>
               <div className={styles.nameRow}>
                 <span className={styles.nameWrap}>
                   <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
