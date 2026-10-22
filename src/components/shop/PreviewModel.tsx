@@ -16,7 +16,7 @@ import { assemble, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getF
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
-import { effectDraws, effectGroups, loadImage, renderCharacter } from '@/lib/core/render'
+import { effectDraws, effectGroups, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
@@ -575,7 +575,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
       const seq = ++drawSeqRef.current
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat: chatRef.current, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat: chatRef.current, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
@@ -596,7 +596,10 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     const essential = new Set<string>()
     fNow?.placed.forEach((p) => essential.add(p.png))
     if (hasEff && fNow) effList.flatMap((em) => effectDraws(em, V.action, { foot: fNow.foot, brow: fNow.brow, navel: fNow.navel }, e0)).forEach((d) => essential.add(d.png))
-    track(essential).then(() => {
+    // 변신(일루전 링): 동작의 모든 프레임으로 그림을 바닥에 맞출 만큼을 잰다(render.ringFloorOf — 반지 그림만 받는다, 변신이 아니면 바로 끝).
+    // 첫 그림부터 맞춘 자리에 그리도록 기다린다 — 나중에 맞추면 한 번 툭 내려앉는다.
+    let ringFloor: number | undefined
+    Promise.all([track(essential), ringFloorOf(frames.map((f) => f.placed)).then((v) => { ringFloor = v })]).then(() => {
       if (cancelled) return
       draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)
       redrawRef.current = () => draw(nowElapsed()) // 명찰 · 말풍선만 바뀌었을 때(시그니처에 chatVer 가 있어 다시 그린다)
