@@ -85,6 +85,10 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-fadeov[data-fade~="t"] .pb-fadear-t, .pb-fadeov[data-fade~="b"] .pb-fadear-b { opacity: 1; transition-duration: .7s; }
 @keyframes pb-fadenudge-t { 0%, 100% { translate: 0 0; } 45% { translate: 0 -3px; } }
 @keyframes pb-fadenudge-b { 0%, 100% { translate: 0 0; } 45% { translate: 0 3px; } }
+/* 화살표의 흔들림은 **보이는 쪽만** 돈다. 안 보이는(투명도 0) 화살표의 끝없는 애니메이션이 매 프레임 메인 스레드에서 스타일 · 층 짜기를 다시 해
+   가만히 있어도 2초 중 1.4초를 썼다(층 짜기 한 번 1.9ms × 초당 260번 — 실제 크롬 추적). 보이는 쪽만 돌리면 0.3초, 층 짜기 0.02ms(2026-10). */
+.pb-fadeov::before, .pb-fadeov::after, .pb-fadear { animation-play-state: paused; }
+.pb-fadeov[data-fade~="l"]::before, .pb-fadeov[data-fade~="r"]::after, .pb-fadeov[data-fade~="t"] .pb-fadear-t, .pb-fadeov[data-fade~="b"] .pb-fadear-b { animation-play-state: running; }
 @media (prefers-reduced-motion: reduce) { .pb-fadeov::before, .pb-fadeov::after, .pb-fadear { animation: none; } }
 /* 떠 있는 목록의 층은 body 에 고정으로 붙는다(자리 · 둥글기 · 불투명도는 useScrollFade 가 목록을 따라 넣는다) */
 .pb-fadeovfix { position: fixed; }

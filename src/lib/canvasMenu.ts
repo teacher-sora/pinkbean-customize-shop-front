@@ -21,7 +21,7 @@ export function flashToast (msg: string): void {
     Object.assign(toastEl.style, {
       position: 'fixed', bottom: '32px', left: '50%', zIndex: '10000',
       padding: '12px 22px', background: 'linear-gradient(100deg,#ec86ac,#b57bdb)', color: '#fff',
-      borderRadius: '999px', font: '600 13px system-ui, "Malgun Gothic", sans-serif',
+      border: '1.5px solid #fff', borderRadius: '999px', font: '600 13px system-ui, "Malgun Gothic", sans-serif',
       boxShadow: '0 10px 28px rgba(180,123,219,.38)', pointerEvents: 'none',
       transition: 'opacity .28s ease, transform .28s cubic-bezier(.22,.61,.36,1)',
       opacity: '0', transform: 'translate(-50%, 12px)',
@@ -152,7 +152,8 @@ export function openImageMenu (x: number, y: number, getBlob: () => Promise<Blob
 
 // 요소에 "우클릭(데스크톱·안드로이드) + 롱프레스(iOS 등 터치)" 를 모두 걸어 이미지 메뉴를 띄운다.
 // 반환값은 해제 함수. 렌더와 무관한 이벤트 리스너만 붙이므로 성능 영향 없음.
-export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | null>, filename: string | (() => string), gif?: GifMenu): () => void {
+// opts.hold = false: 터치 길게 누르기로 메뉴를 열지 않는다(우클릭 메뉴만) — 그 요소의 길게 누르기를 다른 동작(프리셋 끌기)이 쓸 때
+export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | null>, filename: string | (() => string), gif?: GifMenu, opts?: { hold?: boolean }): () => void {
   // 터치 위주 기기(모바일)면 롱프레스 → 중앙 큰 다이얼로그. 마우스면 우클릭 → 커서 옆 작은 메뉴.
   const coarse = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)')?.matches
   // 우클릭: 마우스 기기에서만 메뉴를 연다. 터치 기기(안드로이드)는 롱프레스 타이머가 중앙 다이얼로그를 열고,
@@ -167,6 +168,8 @@ export function bindImageMenu (el: HTMLElement, getBlob: () => Promise<Blob | nu
   el.setAttribute('draggable', 'false')
   const onDrag = (e: Event) => e.preventDefault() // 이미지 드래그 시작 자체를 차단
   el.addEventListener('dragstart', onDrag)
+
+  if (opts?.hold === false) return () => { el.removeEventListener('contextmenu', onCtx); el.removeEventListener('dragstart', onDrag) }
 
   // 터치 롱프레스 직접 감지(iOS Safari 는 롱프레스에 contextmenu 를 안 쏜다).
   let timer: ReturnType<typeof setTimeout> | null = null
