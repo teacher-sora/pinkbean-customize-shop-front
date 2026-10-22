@@ -297,9 +297,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   }, [])
 
   // 부유 — 보이는 착용 아이템 가운데 부유 아이템이 하나라도 있고 '서기' 동작일 때만. '기본'은 몸이 멈춘 화면이라 뜨지 않는다(사용자 지시).
-  // 이펙트 표시 토글과는 상관없다(동작이다).
-  const floating = useMemo(() => pv.action !== 'basic' && (V.action === 'stand1' || V.action === 'stand2')
-    && Object.entries(equipped).some(([slot, it]) => !!it && !hidden[slot] && !!floatItems[it.id]), [pv.action, V.action, equipped, hidden, floatItems])
+  // 연출 설정 > 이펙트의 '부유 효과'(pv.floatFx)로 끈다(사용자 지시 — 부유는 이펙트로 본다).
+  const floating = useMemo(() => pv.floatFx && pv.action !== 'basic' && (V.action === 'stand1' || V.action === 'stand2')
+    && Object.entries(equipped).some(([slot, it]) => !!it && !hidden[slot] && !!floatItems[it.id]), [pv.floatFx, pv.action, V.action, equipped, hidden, floatItems])
 
   // 명찰 · 말풍선 — 그릴 레이어가 없고 renderCharacter 가 덧그린다(core/chatUi).
   // 말을 보낼 때마다 아래 합성 effect 를 처음부터 다시 돌리지 않는다(프레임 · 스프라이트 준비를 건너뛰고) — 값은 ref 로 넘기고

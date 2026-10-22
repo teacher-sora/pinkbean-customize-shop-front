@@ -95,12 +95,13 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
     { key: 'ear', label: '귀', options: PV_EARS },
     { key: 'gaze', label: '시선', options: PV_GAZES },
   ]
-  const switches: { key: 'wEffect' | 'cEffect' | 'capEffect'; label: string }[] = [
+  const switches: { key: 'wEffect' | 'cEffect' | 'capEffect' | 'floatFx'; label: string }[] = [
     { key: 'wEffect', label: '무기 이펙트' }, { key: 'cEffect', label: '망토 이펙트' }, { key: 'capEffect', label: '모자 이펙트' },
+    { key: 'floatFx', label: '부유 효과' }, // 부유 아이템(별빛 걸음 등)을 끼었을 때 캐릭터가 둥둥 뜨는 것
   ]
   const groups: { key: PvGroup; label: string; summary: string }[] = [
     { key: 'char', label: '캐릭터', summary: `${lb(PV_FORMS, pv.form)} / ${lb(PV_EARS, pv.ear)} / ${lb(PV_GAZES, pv.gaze)}` },
-    { key: 'effect', label: '이펙트', summary: `${[pv.wEffect, pv.cEffect, pv.capEffect].filter(Boolean).length} / 3 켜짐` },
+    { key: 'effect', label: '이펙트', summary: `${switches.filter((r) => pv[r.key]).length} / ${switches.length} 켜짐` },
   ]
   const slides = (
     <>

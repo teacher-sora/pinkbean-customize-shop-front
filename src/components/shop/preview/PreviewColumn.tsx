@@ -131,7 +131,7 @@ export function MobileHero() {
           <IconScene size={15} />
         </button>
         {canChat && (
-          <button type="button" onClick={() => setChat(true)} title="말풍선 띄우기" aria-label="채팅" aria-expanded={chatUp} className={clsx(styles.pvOpenBtn, styles.pvOpenIcon)}>
+          <button type="button" data-guide="chat" onClick={() => setChat(true)} title="말풍선 띄우기" aria-label="채팅" aria-expanded={chatUp} className={clsx(styles.pvOpenBtn, styles.pvOpenIcon)}>
             <IconBubble size={15} />
           </button>
         )}

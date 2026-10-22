@@ -53,7 +53,7 @@ function FilterM({ viewOpts, mode, onMode, gender, onGender, dir, onDir, mobile 
   const now = (viewOpts.find((o) => o.v === mode)?.l ?? '') + (gender === 'all' ? '' : `, ${GENDERS.find((g) => g.v === gender)?.l}`) + (dir === 'y' ? ', 세로' : '')
   return (
     <div className={styles.filterM}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, open && styles.filterBtnOn)}>
+      <button type="button" data-guide="listdir" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, open && styles.filterBtnOn)}>
         <span className={styles.filterText}>보기 설정</span>
         <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
       </button>
@@ -239,7 +239,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       {narrow
         ? <FilterM mobile={false} viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} dir={s.listDir} onDir={s.setListDir} />
         : (
-          <div className={styles.groupA}>
+          <div data-guide="listdir" className={styles.groupA}>
             <Seg title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={thumbs.mode} onPick={s.setListMode} />
             <Seg title="성별" opts={GENDERS} value={s.genderFilter} onPick={s.setGenderFilter} />
             <Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} />
