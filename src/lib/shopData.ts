@@ -110,7 +110,7 @@ export interface ChatMsg { text: string; emo?: ChatEmo; at?: number } // at = �
 export const CHAT_NAME_FALLBACK = '핑크빈' // 프리셋을 고르지 않았거나 이름을 비웠을 때 명찰 이름(사용자 지시)
 export const CHAT_CARD: ChatState = { name: '핑크빈', text: '커마샵' } // 목록 카드의 명찰 이름 · 말풍선 말(고정 — 사용자 지시)
 export const CHAT_TEXT_MAX = 70  // 말 글자 수
-export const CHAT_SHOW_MS = 8000 // 보낸 말풍선이 떠 있는 시간(사용자 지시)
+export const CHAT_SHOW_MS = 10000 // 보낸 말풍선이 떠 있는 시간(사용자 지시 — 10초)
 // 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
 // 말풍선은 보낸 말(msg)이 떠 있는 동안만 그린다.
 export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, name: string, msg: ChatMsg | null, metas?: Map<string, ItemMeta>): ChatDraw | undefined {
