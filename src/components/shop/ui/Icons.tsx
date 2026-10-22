@@ -66,11 +66,20 @@ const ViewIcon = ({ size = 15, h }: P & { h: number }) => (
 export const IconViewBase = (p: P) => <ViewIcon {...p} h={3.4} />
 export const IconViewWide = (p: P) => <ViewIcon {...p} h={6.4} />
 export const IconViewFull = (p: P) => <ViewIcon {...p} h={10} />
-// 목록 넘기는 방향(보기 아이콘과 같은 틀): 두 쪽이 옆으로 나란히 = 가로, 위아래로 = 세로
+// 목록 넘기는 방향: 카드 세 장이 그 방향으로 늘어서고(마지막 장은 옅게 — 더 있다), 나란히 그 방향의 양쪽 화살표(앞뒤로 넘긴다) — '목록이 흐르는 방향'으로 읽힌다
 const DirIcon = ({ size = 15, y }: P & { y?: boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="3.4" />
-    {y ? <><rect x="7" y="7" width="10" height="4" rx="1.2" fill="currentColor" stroke="none" /><rect x="7" y="13" width="10" height="4" rx="1.2" fill="currentColor" stroke="none" opacity=".45" /></>
-      : <><rect x="7" y="7" width="4" height="10" rx="1.2" fill="currentColor" stroke="none" /><rect x="13" y="7" width="4" height="10" rx="1.2" fill="currentColor" stroke="none" opacity=".45" /></>}
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    {y ? <>
+      <rect x="3.6" y="2.8" width="9" height="5" rx="1.4" fill="currentColor" stroke="none" />
+      <rect x="3.6" y="9.5" width="9" height="5" rx="1.4" fill="currentColor" stroke="none" />
+      <rect x="3.6" y="16.2" width="9" height="5" rx="1.4" fill="currentColor" stroke="none" opacity=".4" />
+      <path d="M18.6 4v16M15.8 7l2.8-3 2.8 3M15.8 17l2.8 3 2.8-3" />
+    </> : <>
+      <rect x="2.8" y="3.6" width="5" height="9" rx="1.4" fill="currentColor" stroke="none" />
+      <rect x="9.5" y="3.6" width="5" height="9" rx="1.4" fill="currentColor" stroke="none" />
+      <rect x="16.2" y="3.6" width="5" height="9" rx="1.4" fill="currentColor" stroke="none" opacity=".4" />
+      <path d="M4 18.6h16M7 15.8l-3 2.8 3 2.8M17 15.8l3 2.8-3 2.8" />
+    </>}
   </svg>
 )
 export const IconDirX = (p: P) => <DirIcon {...p} />
