@@ -123,7 +123,7 @@ export interface RenderOpts {
   backImage?: string                 // sprite drawn BEHIND the body (ultimate fallback: no body & no effect)
   effects?: EffectDraw[]             // item effects (망토 등) composited around the body (each carries ox/oy)
   particles?: ParticleDraw[]         // 파티클(제네시스 무기 등) — 입자는 sim 이 들고, 그림은 desc.tex.png. z 음수 = 캐릭터 뒤
-  chat?: ChatDraw                    // 명찰 · 말풍선(dev 전용, core/chatUi) — 모든 것 위에, 시선과 무관하게 뒤집지 않고 그린다
+  chat?: ChatDraw                    // 명찰 · 말풍선(core/chatUi) — 모든 것 위에, 시선과 무관하게 뒤집지 않고 그린다
   ringFloor?: number                 // 변신 그림을 올리거나 내릴 만큼(월드 px) — 동작의 모든 프레임으로 잰 값(ringFloorOf). 없으면 이 프레임만으로 잰다
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
   centerX?: boolean                  // pin the body NAVEL to a fixed box point (center X, anchor.y) in BOTH axes →

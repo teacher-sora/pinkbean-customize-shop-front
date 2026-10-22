@@ -22,7 +22,7 @@ export type ModelShot = {
   override?: Map<string, HTMLCanvasElement>
   effects?: EffectDraw[]
   particles?: ParticleDraw[] // 다 퍼진 한 장(particle.stillSim)
-  chat?: ChatDraw            // 명찰 · 말풍선(dev 전용)
+  chat?: ChatDraw            // 명찰 · 말풍선
   flip?: boolean
   centerX?: boolean; centerXOnly?: boolean; centerMount?: boolean // 라이딩 정렬(renderCharacter 옵션 그대로)
   centerDx?: number; centerDy?: number                            // 뒷모습 등 중심 오프셋(없으면 기본)

@@ -1,6 +1,6 @@
 'use client'
 
-// 미리보기 배경 고르기. 넓으면 다섯 칸, 좁아지면 네 칸 · 세 칸(모바일)씩 놓는다: 첫 칸은 늘 '커스텀 배경'(그림 올리기)이고, 그 뒤로 피팅룸 · 캐시샵 배경 다섯(dev 전용) · 흰색 · 검은색, 올린 그림은 올린 순서대로 맨 뒤에 붙는다.
+// 미리보기 배경 고르기. 넓으면 다섯 칸, 좁아지면 네 칸 · 세 칸(모바일)씩 놓는다: 첫 칸은 늘 '커스텀 배경'(그림 올리기)이고, 그 뒤로 피팅룸 · 캐시샵 배경 다섯 · 흰색 · 검은색, 올린 그림은 올린 순서대로 맨 뒤에 붙는다.
 // 고르면 곧바로 미리보기에 깔린다(창은 닫지 않는다 — 여러 개를 대 볼 수 있게). 올린 그림은 이 브라우저에만 남는다(lib/stageBg).
 
 import clsx from 'clsx'
@@ -25,7 +25,7 @@ export default function StageBgBody() {
   const file = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const full = bg.images.length >= STAGE_BG_MAX
-  // 캐시샵 배경(dev 전용 — 파일이 있을 때만). 피팅룸 · 흰색 · 검은색 뒤, 올린 그림 앞에 둔다
+  // 캐시샵 배경(파일이 있을 때만). 피팅룸 · 흰색 · 검은색 뒤, 올린 그림 앞에 둔다
   const [cash, setCash] = useState(false)
   useEffect(() => { let alive = true; cashBgsOn().then((v) => { if (alive) setCash(v) }); return () => { alive = false } }, [])
 

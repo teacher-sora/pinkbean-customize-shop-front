@@ -1,5 +1,5 @@
-// 명찰 · 말풍선(반지의 info.nameTag · info.chatBalloon → UI.wz 의 NameTag.img · ChatBalloon.img 조각). dev 전용 실험이다
-// (데이터는 public/dev/chatui — main 에는 없어 운영에서는 부위가 나오지 않는다. shopData 의 CHAT_CATS).
+// 명찰 · 말풍선(반지의 info.nameTag · info.chatBalloon → UI.wz 의 NameTag.img · ChatBalloon.img 조각).
+// (데이터는 public/chatui — shopData 의 CHAT_CATS).
 // 조각은 반지마다 그림 한 장(아틀라스)에 모아 두고 잘라 쓴다 — 반지 하나를 그리는 데 요청이 한 번이다.
 //
 // 조각은 모두 반투명(알파 204 안팎)이라 **어느 두 조각도 겹치면 안 된다**(겹친 자리만 진해진다). 조각 배치는 원본 origin 그대로다.

@@ -57,7 +57,7 @@ export const CAT_TO_SLOT: Record<string, string> = {
   eyeacc: 'eyeAcc', earring: 'earring', overall: 'longcoat', top: 'coat', bottom: 'pants',
   shoes: 'shoes', gloves: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
   ring: 'ring', effect: 'effect', riding: 'riding',
-  nametag: 'nameTag', balloon: 'chatBalloon', chatring: 'chatRing', // dev 전용 — 부위 탭은 명찰/말풍선 하나(chatring), 코디 정보 칩은 둘(CHAT_INFO_CATS)
+  nametag: 'nameTag', balloon: 'chatBalloon', chatring: 'chatRing', // 부위 탭은 명찰/말풍선 하나(chatring), 코디 정보 칩은 둘(CHAT_INFO_CATS)
 }
 export const SLOT_TO_CAT: Record<string, string> = {
   ...Object.fromEntries(Object.entries(CAT_TO_SLOT).map(([c, s]) => [s, c])),
@@ -70,7 +70,7 @@ export const EQUIP_SLOTS = [
   'ring', // 일루전 링 — 그릴 레이어 대신 표지 레이어(Layer.illusion)로 캐릭터를 키우거나 바꾼다(assemble.applyIllusion)
   'effect', // 캐시 이펙트 — 그릴 레이어가 없고(빈 meta) 이펙트(effects/<id>.json)만 그린다
   'riding', // 탑승 — 마운트/모프 레이어를 코디처럼 합성
-  'nameTag', 'chatBalloon', // 명찰 · 말풍선(dev 전용 — 그릴 레이어 없이 core/chatUi 가 덧그린다)
+  'nameTag', 'chatBalloon', // 명찰 · 말풍선(그릴 레이어 없이 core/chatUi 가 덧그린다)
 ] as const
 
 /* ── 라이딩(탑승) 공통 규칙 ───────────────────────────────────────────────
@@ -92,19 +92,19 @@ export const ridingSeatedSet = (it: RidingOpts) => (it?.ridingSeated?.length ? n
 export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null): string | undefined =>
   CHAT_FILES[slot] ?? (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
 
-/* ── 명찰 · 말풍선 반지(dev 전용 실험) ──────────────────────────────────────
- * 데이터는 front public/dev/chatui(테스트 서버에서 뽑은 명찰 · 말풍선 603 · 채팅 이모티콘 141)이고, main 병합 때 빠진다(scripts/merge-dev-to-main.sh 의 DEV_ONLY).
- * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats · infoCats) — 운영에는 파일이 없어 부위 탭 · 코디 정보 칩이 생기지 않는다.
+/* ── 명찰 · 말풍선 반지 ──────────────────────────────────────
+ * 데이터는 front public/chatui(테스트 서버에서 뽑은 명찰 · 말풍선 603 · 채팅 이모티콘 141 — parser 의 chatui-build.py 가 통째로 다시 쓴다).
+ * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats · infoCats).
  * 부위 탭은 하나(명찰/말풍선 — 같은 이름의 명찰과 말풍선이 나란히, 세트 순서)이고 코디 정보 칩은 둘이다(따로 끼고 벗는다).
  * 그리기는 core/chatUi(renderCharacter 의 chat). 명찰 이름 = 고른 프리셋 이름, 말풍선 = 미리보기 아래 채팅 칸(preview/ChatBar)에서
  * 보낸 말 · 이모티콘이 CHAT_SHOW_MS 동안 떴다 사라진다(게임 값을 찾지 못해 사용자가 정했다). */
 export const CHAT_TAB = 'chatring'
 export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰 / 말풍선' }] // '/' 양옆은 가는 공백(U+2009 — 보통 공백보다 좁게, 사용자 지시)
 export const CHAT_INFO_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }]
-const CHAT_LIST = '/dev/chatui/list.json'
+const CHAT_LIST = '/chatui/list.json'
 export const CHAT_FILES: Record<string, string> = { nameTag: CHAT_LIST, chatBalloon: CHAT_LIST, chatRing: CHAT_LIST }
-export const CHAT_EMO_FILE = '/dev/chatui/emoticons.json'
-export const CHAT_NEW_FILE = '/dev/chatui/new.json' // 테스트 서버에만 있는(본 서버에 없는) 명찰 · 말풍선 id — NEW 라벨
+export const CHAT_EMO_FILE = '/chatui/emoticons.json'
+export const CHAT_NEW_FILE = '/chatui/new.json' // 테스트 서버에만 있는(본 서버에 없는) 명찰 · 말풍선 id — NEW 라벨
 export interface ChatState { name: string; text: string; emo?: ChatEmo }
 export interface ChatMsg { text: string; emo?: ChatEmo; at?: number } // at = 보낸 시각(performance.now — 움직이는 이모티콘의 시계)
 export const CHAT_NAME_FALLBACK = '핑크빈' // 프리셋을 고르지 않았거나 이름을 비웠을 때 명찰 이름(사용자 지시)

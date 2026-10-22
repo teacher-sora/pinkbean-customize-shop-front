@@ -2,7 +2,7 @@
 # 개발 전용 경로가 main 에 섞이지 않게 막는다(공용 로직 — 훅 셋이 같이 쓴다).
 # 이 파일을 지우거나 경로를 바꾸면 보호가 사라진다. 바꿀 일이 있으면 ARCHITECTURE 의 근거부터 확인할 것.
 
-# /viewer(개발용 화면) · public/dev(dev 전용 실험 데이터 — 명찰 · 말풍선). 공백으로 나눈다.
+# /viewer(개발용 화면) · public/dev(dev 전용 실험 데이터). 공백으로 나눈다.
 DEV_ONLY="src/app/viewer public/dev"
 
 # 인자로 받은 트리(커밋 sha)에 개발 전용 경로가 있으면 1
