@@ -296,5 +296,6 @@ export async function renderCharacter(
   for (const fx of effs) if (fx.e.z >= 0) drawEffect(fx)
   for (const x of parts) if (x.p.z >= 0) drawPart(x)
   ctx.restore()
-  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width })
+  // 움직이는 이모티콘은 보낸 뒤 흐른 시간의 프레임(보낸 시각이 없으면 — 복사 그림 등 — 대표 프레임)
+  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width, t: opts.chat?.t0 != null ? performance.now() - opts.chat.t0 : undefined, main: opts.chat?.emo?.main })
 }

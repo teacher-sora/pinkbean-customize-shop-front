@@ -20,7 +20,7 @@ import { effectDraws, effectGroups, loadImage, renderCharacter } from '@/lib/cor
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
-import type { ChatDraw } from '@/lib/core/chatUi'
+import { emoFrameAt, type ChatDraw } from '@/lib/core/chatUi'
 import { useHeroView } from '@/lib/heroView'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
@@ -313,6 +313,14 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     if (copyRef.current) copyRef.current = { ...copyRef.current, chat }
     redrawRef.current?.()
   }, [chat])
+  // 움직이는 이모티콘이 떠 있는 동안은 캐릭터가 멈춰 있어도 프레임마다 그린다(그리기는 시그니처의 프레임 번호가 바뀔 때만 실제로 합성한다)
+  useEffect(() => {
+    if (!chat?.emo?.frames?.length || chat.t0 == null) return
+    let raf = 0
+    const tick = () => { redrawRef.current?.(); raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [chat])
 
   const effList = useMemo(() => {
     const out: EffectMeta[] = []
@@ -557,7 +565,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 부유: 원래의 프레임(몸 흔들림)은 그대로 두고 캐릭터 전체(이펙트 · 파티클 포함)를 위아래로 부드럽게 띄운다. 바닥 그림자는 그 자리에 둔다.
       // 디바이스 픽셀 단위로 잘라 도트가 흐려지지 않게 하고, 한 칸 움직일 때만 다시 그린다(1초에 십여 번).
       const fy = floating ? Math.round(-FLOAT_AMP * (1 - Math.cos((2 * Math.PI * elapsed) / FLOAT_MS)) / 2 * pl.scale) / pl.scale : 0
-      const sig = fi + '|' + chatVer.current + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';') + (particles.length ? `|${Math.floor(elapsed / 33)}` : '') + (fy ? `|${fy}` : '')
+      const ce = chatRef.current
+      const emoF = ce?.emo?.frames?.length && ce.t0 != null ? emoFrameAt(ce.emo, performance.now() - ce.t0) : -1
+      const sig = fi + '|' + chatVer.current + '|' + emoF + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';') + (particles.length ? `|${Math.floor(elapsed / 33)}` : '') + (fy ? `|${fy}` : '')
       if (sig === lastSig) return
       lastSig = sig
       // 분수 scale = 디바이스 해상도(1:1 표시로 선명). 마네킹 중심을 캔버스 중앙에(anchor 보정) → flip 대칭.

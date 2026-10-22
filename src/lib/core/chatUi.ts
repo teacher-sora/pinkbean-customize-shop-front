@@ -20,6 +20,8 @@
 //        꼬리 그림의 아래 끝을 발끝 위 BALLOON_TIP 에 둔다 — 아래 띠가 두꺼운 디자인도 얼굴을 덮지 않고,
 //        몸통 높이는 디자인마다 다르다. originOffset 은 말풍선 전체를 옮긴다.
 //        이모티콘을 고르면 글 대신 이모티콘을 원래 크기 그대로 안쪽 칸 가운데에 둔다(안쪽 칸이 그 크기에 맞춰 커진다).
+//        움직이는 이모티콘은 프레임 전부가 들어가는 상자로 칸을 한 번만 잡고(프레임마다 칸이 흔들리지 않게), 프레임은 말풍선 그림에 굽지 않고
+//        그릴 때마다 보낸 뒤 흐른 시간의 프레임을 덧그린다(drawChat — 프레임마다 원본의 머무는 시간대로, 끝나면 처음부터).
 // 글자는 돋움 12px 비트맵의 도트를 그대로 찍는다(core/chatGlyphs — 브라우저가 글꼴을 그리지 않아 어느 기기에서나 게임과 같다).
 // 글자 폭(advance) · 왼쪽 여백 · 기준선 높이도 돋움 값 그대로다. 색은 원본 clr. 돋움에 없는 글자만 사이트 글꼴로 그려 알파를 끊는다.
 // 원본에 있지만 아직 쓰지 않는 값: 움직이는 명찰의 heightoffset · bottomoffset(뜻을 확인하지 못했다), fontType(명찰 · 말풍선 각 1개).
@@ -34,9 +36,12 @@ export interface ChatUi {
   originOffset?: Vec; heightoffset?: number; bottomoffset?: number; fontType?: number
   aniFit?: number[] // 움직이는 명찰: 층(ani0, ani1, …)마다 이름이 들어가는 폭(px) — 추출 때 그림의 안쪽 폭을 재어 적는다
 }
-export interface ChatEmo { id: string; name: string; png: string; w: number; h: number; origin: Vec }
+// 이모티콘 프레임: 가로로 이은 그림(strip) 안의 자리 x · 크기 · origin(ox, oy) · 머무는 시간(d, ms)
+export interface EmoFrame { x: number; w: number; h: number; ox: number; oy: number; d: number }
+// png = 대표 그림(mainImg — 고르기 칸 · 정지 그림). 움직이는 것은 strip · frames 가 있다.
+export interface ChatEmo { id: string; name: string; png: string; w: number; h: number; origin: Vec; main?: number; strip?: string; frames?: EmoFrame[] }
 // 그릴 것: 명찰 · 말풍선(없으면 그리지 않는다)과 글자 · 이모티콘.
-export interface ChatDraw { tag?: ChatUi; balloon?: ChatUi; name: string; text: string; emo?: ChatEmo }
+export interface ChatDraw { tag?: ChatUi; balloon?: ChatUi; name: string; text: string; emo?: ChatEmo; t0?: number } // t0 = 보낸 시각(performance.now) — 움직이는 이모티콘의 시계
 
 const LINE = 12            // 글자 한 줄 높이(돋움 12px — 기준선 위 10, 아래 2)
 const GAP = 2              // 줄 사이
@@ -46,7 +51,19 @@ const BASE = 12            // 글자 그림 안의 기준선(위 여백 2 — �
 const TAG_TEXT = 8         // 발끝 아래 명찰 글자 칸 위까지(띠 origin y 6 인 명찰의 윗변이 발끝 2px 아래 — 게임과 같다)
 const BALLOON_TIP = 76     // 발끝 위 말풍선 꼬리 그림 아래 끝까지(두 반지 모두 이 줄 — 몸통은 꼬리 길이만큼 오르내린다)
 
-type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number } // ox, oy = 기준점(발끝)에서 그림 왼쪽 위까지
+// ox, oy = 기준점(발끝)에서 그림 왼쪽 위까지. emo = 덧그릴 움직이는 이모티콘(x, y = 그림 왼쪽 위에서 프레임 origin 이 닿는 점)
+type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number; emo?: { img: HTMLImageElement; frames: EmoFrame[]; x: number; y: number } }
+
+// 보낸 뒤 t ms 에 보일 프레임 번호(머무는 시간을 더해 가며, 끝나면 처음부터). t 가 없으면(정지 그림) 대표 프레임.
+export function emoFrameAt (emo: ChatEmo, t?: number): number {
+  const fr = emo.frames
+  if (!fr?.length) return 0
+  if (t == null) return Math.min(emo.main ?? 0, fr.length - 1)
+  const total = fr.reduce((s, f) => s + Math.max(1, f.d), 0)
+  let r = ((t % total) + total) % total
+  for (let i = 0; i < fr.length; i++) { r -= Math.max(1, fr[i].d); if (r < 0) return i }
+  return fr.length - 1
+}
 // 만든 그림(명찰 · 말풍선 + 글). 최근에 쓴 것 CACHE_MAX 개만 둔다 — 채팅 칸에 적는 동안 글자마다 미리 만들어 두므로(warmChat) 끝없이 쌓이지 않게.
 const cache = new Map<string, Promise<Bitmap | null>>()
 const CACHE_MAX = 48
@@ -172,11 +189,14 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
 // origin 이 조각 크기와 어긋난 디자인(안쪽으로 들어온 모서리, 1px 어긋난 띠, 안쪽 조각 origin 7 등)도 겹치거나 비지 않는다.
 async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap> {
   const A = await loadImage(ui.atlas, true), P = ui.parts
-  const E = emo ? await loadImage(emo.png, true) : null
+  const anim = emo?.frames?.length && emo.strip ? emo.frames : null
+  const E = emo ? await loadImage(anim ? emo.strip! : emo.png, true) : null
   const lines = E ? [] : wrapLines(text).map((l) => textBitmap(l, ui.clr))
   const xt = P.n.w, yt = P.w.h
-  const contentW = E ? E.width : Math.max(0, ...lines.map((l) => l.adv))
-  const contentH = E ? E.height : lines.length * LINE + (lines.length - 1) * GAP
+  // 움직이는 이모티콘: 모든 프레임을 origin 에 맞춰 겹친 상자(origin 왼쪽 · 오른쪽 · 위 · 아래로 가장 먼 것)
+  const box = anim ? { l: Math.max(...anim.map((f) => f.ox)), r: Math.max(...anim.map((f) => f.w - f.ox)), t: Math.max(...anim.map((f) => f.oy)), b: Math.max(...anim.map((f) => f.h - f.oy)) } : null
+  const contentW = box ? box.l + box.r : E ? E.width : Math.max(0, ...lines.map((l) => l.adv))
+  const contentH = box ? box.t + box.b : E ? E.height : lines.length * LINE + (lines.length - 1) * GAP
   const need = Math.max((E ? Math.ceil(contentW / xt) : Math.floor(contentW / xt) + 2) * xt, P.arrow ? P.arrow.w + 2 * P.s.w : 0)
   const hw = P.head?.w ?? 0
   const k = P.head ? Math.max(1, Math.ceil((need - hw) / (2 * xt))) : 0
@@ -213,8 +233,10 @@ async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap
   vfill(pieces, P.w, wx, bottom(nw), sw.y)
   vfill(pieces, P.e, ex, bottom(ne), se.y)
   pieces.push(nw, ne, sw, se)
+  let emoAt: { x: number; y: number } | null = null
   const bm = compose(A, pieces, (g, x0, y0) => {
-    if (E) g.drawImage(E, Math.round(-E.width / 2) - x0, Math.round(T + (H - E.height) / 2) - y0)
+    if (box) emoAt = { x: Math.round(-contentW / 2) + box.l - x0, y: Math.round(T + (H - contentH) / 2) + box.t - y0 } // 프레임은 그릴 때 덧그린다
+    else if (E) g.drawImage(E, Math.round(-E.width / 2) - x0, Math.round(T + (H - E.height) / 2) - y0)
     else {
       // 줄마다 가운데 정렬, 줄 묶음은 안쪽 칸 세로 가운데. 줄 간격은 기준선 기준(LINE + GAP)이다.
       const top = Math.round(T + (H - contentH) / 2)
@@ -223,7 +245,7 @@ async function balloon (ui: ChatUi, text: string, emo?: ChatEmo): Promise<Bitmap
   })
   // 꼬리 그림 아래 끝(tip)이 발끝 위 BALLOON_TIP 에 오게 옮긴다. 안쪽 칸 가운데 = 기준점.
   const oo = ui.originOffset ?? { x: 0, y: 0 }
-  return { c: bm.c, ox: bm.ox + oo.x, oy: bm.oy - tip - BALLOON_TIP + oo.y }
+  return { c: bm.c, ox: bm.ox + oo.x, oy: bm.oy - tip - BALLOON_TIP + oo.y, ...(anim && E && emoAt ? { emo: { img: E, frames: anim, ...(emoAt as { x: number; y: number }) } } : {}) }
 }
 
 const key = (ui: ChatUi, s: string, emo?: ChatEmo) => `${ui.kind}|${ui.atlas}|${emo ? 'emo:' + emo.id : s}`
@@ -238,7 +260,7 @@ function bitmapOf (ui: ChatUi, s: string, keep: boolean, emo?: ChatEmo): Promise
   return p
 }
 
-// 명찰 · 말풍선을 하나씩 따로 만든다(목록 카드가 쓴다 — 몸 없이 그 아이템만). 기준점 정보(ox, oy)는 버리고 그림만.
+// 명찰 · 말풍선을 하나씩 따로 만든다(목록 카드가 쓴다 — 몸 없이 그 아이템만). 기준점 정보(ox, oy)는 버리고 그림만(카드에는 이모티콘이 없다).
 export async function chatPreview (ui: ChatUi, d: Pick<ChatDraw, 'name' | 'text' | 'emo'>): Promise<HTMLCanvasElement | null> {
   const keep = await loadGlyphs([d.name, d.text, ' : '])
   const b = await bitmapOf(ui, ui.kind === 'nameTag' ? d.name : `${d.name} : ${d.text}`, keep, ui.kind === 'nameTag' ? undefined : d.emo)
@@ -261,7 +283,8 @@ export async function prepareChat (d: ChatDraw | undefined): Promise<Bitmap[]> {
 }
 
 // 캐릭터 위에 덧그린다. 시선이 오른쪽(flip)이어도 글자는 뒤집지 않고 자리만 옮긴다. 기준점 = 딛고 선 바닥(탈것이면 탈것의 바닥).
-export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed: PlacedLayer[], o: { anchorX: number; anchorY: number; scale: number; flip?: boolean; width: number }) {
+// t = 보낸 뒤 흐른 시간(ms) — 움직이는 이모티콘의 프레임을 고른다. 없으면 대표 프레임(복사 그림 등).
+export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed: PlacedLayer[], o: { anchorX: number; anchorY: number; scale: number; flip?: boolean; width: number; t?: number; main?: number }) {
   if (!maps.length) return
   const g = groundOf(placed)
   if (!g) return
@@ -269,5 +292,12 @@ export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed:
   const cx = o.flip ? o.width - fx : fx
   const cy = (o.anchorY + g.y) * o.scale
   ctx.imageSmoothingEnabled = false
-  for (const b of maps) ctx.drawImage(b.c, Math.round(cx + b.ox * o.scale), Math.round(cy + b.oy * o.scale), b.c.width * o.scale, b.c.height * o.scale)
+  for (const b of maps) {
+    const bx = Math.round(cx + b.ox * o.scale), by = Math.round(cy + b.oy * o.scale)
+    ctx.drawImage(b.c, bx, by, b.c.width * o.scale, b.c.height * o.scale)
+    if (b.emo) {
+      const f = b.emo.frames[emoFrameAt({ frames: b.emo.frames, main: o.main } as ChatEmo, o.t)]
+      ctx.drawImage(b.emo.img, f.x, 0, f.w, f.h, bx + (b.emo.x - f.ox) * o.scale, by + (b.emo.y - f.oy) * o.scale, f.w * o.scale, f.h * o.scale)
+    }
+  }
 }

@@ -38,7 +38,7 @@ export default function ChatEmoPicker ({ mobile, onPick }: { mobile: boolean; on
         <div className={styles.pvGrid}>
           {cur?.items.map((e) => (
             <button key={e.id} type="button" role="option" aria-selected={false} title={e.name}
-              onClick={() => onPick({ id: e.id, name: e.name, png: e.png, w: e.w, h: e.h, origin: e.origin })} className={styles.pvCell}>
+              onClick={() => onPick(e)} className={styles.pvCell}>
               <span className={styles.pvCellArt}><img src={e.png} alt="" width={e.w} height={e.h} className={styles.chatPx} /></span>
               <span className={styles.pvCellName}>{e.name}</span>
             </button>

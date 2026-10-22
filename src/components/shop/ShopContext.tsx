@@ -562,7 +562,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // 채팅 칸에서 보낸 말 — 게임처럼 잠깐 떴다 사라진다.
   const [chatMsg, setChatMsg] = useState<ChatMsg | null>(null)
-  const sendChat = useCallback((m: ChatMsg) => setChatMsg(m), [])
+  const sendChat = useCallback((m: ChatMsg) => setChatMsg({ ...m, at: performance.now() }), [])
   useEffect(() => { if (!chatMsg) return; const t = setTimeout(() => setChatMsg(null), CHAT_SHOW_MS); return () => clearTimeout(t) }, [chatMsg])
 
   // 피부(skin) = index.base.tones 를 합성 리스트로. 그 외는 lists[slot].
