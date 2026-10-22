@@ -1188,7 +1188,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (primary !== 'share') setPlazaUpload(false) }, [primary])
 
   const openPlazaPost = (post: PlazaPost) => openSurface({ kind: 'plaza', item: null, post })
-  // 건의함 및 가이드 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
+  // 도움 및 가이드 — 탭이 아니라 서피스로 연다(plaza/NoticeBody.tsx).
   const openNotice = () => openSurface({ kind: 'notice', item: null })
   // 공유받은 코디를 프리셋 칸에 저장하는 화면(서피스 ptake) — 공유 링크·코드로 받았을 때도 이 화면이다
   // (저장 화면은 하나다). 칸을 고르면 applySharedToPreset 으로 들어간다.

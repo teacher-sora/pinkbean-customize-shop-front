@@ -39,10 +39,11 @@ export const SHOT_PAD = 4 // 그림 상자 둘레 여백(게임 픽셀)
 
 // 합성 입력을 게임 크기(1배)로 다시 그린 판(SHOT_BOX)과, 그 판에서 불투명 픽셀이 닿는 상자. 그림이 없으면 null.
 // 움짤 저장(lib/gifExport)도 프레임마다 이것으로 그린다 — 한 장 저장과 그리는 규칙이 같다.
-export async function drawShot (shot: ModelShot): Promise<{ c: HTMLCanvasElement; x0: number; y0: number; x1: number; y1: number } | null> {
+// place 를 주면 그 판(상자 · 기준점, 게임 1배)에 그린다 — 배경이 있는 움짤이 미리보기 캔버스와 같은 판에 그려 미리보기 칸에 그대로 얹는다.
+export async function drawShot (shot: ModelShot, place?: { box: { w: number; h: number }; anchor: { x: number; y: number } }): Promise<{ c: HTMLCanvasElement; x0: number; y0: number; x1: number; y1: number } | null> {
   if (!shot.placed.length) return null
   const off = document.createElement('canvas')
-  const pl = computeModelPlacement({ divW: SHOT_BOX, divH: SHOT_BOX, dpr: 1, margin: 1, fraction: 0, scale: 1, centerDx: shot.centerDx, centerDy: shot.centerDy })
+  const pl = place ? { scale: 1, ...place } : computeModelPlacement({ divW: SHOT_BOX, divH: SHOT_BOX, dpr: 1, margin: 1, fraction: 0, scale: 1, centerDx: shot.centerDx, centerDy: shot.centerDy })
   try {
     await renderCharacter(off, shot.placed, {
       scale: pl.scale, box: pl.box, anchor: shot.lift ? { x: pl.anchor.x, y: pl.anchor.y + shot.lift } : pl.anchor, flip: shot.flip,

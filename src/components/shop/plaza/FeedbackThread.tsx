@@ -1,6 +1,6 @@
 'use client'
 
-// 건의 · 오류 글의 부품 — 건의함 및 가이드(NoticeBody)과 운영자 화면(/suggestion)이 함께 쓴다.
+// 건의 · 오류 글의 부품 — 도움 및 가이드(NoticeBody)와 운영자 화면(/suggestion)이 함께 쓴다.
 //  · FeedbackBox  = 목록의 글 하나(상자, 격자로 늘어선다). 누르면 상세로 간다. 본문은 몇 줄만(넘치면 말줄임), 댓글 수, 운영자 답변 여부.
 //    본인 글은 상자에서 바로 지운다(del). 상자 안에 버튼이 있어 상자는 button 이 아니라 role=button 이다.
 //  · FeedbackPost = 상세 맨 위의 글 본문.
@@ -8,7 +8,7 @@
 //    가장 깊은 단에는 '답글'이 없다(DB 트리거도 막는다). 답글 묶음의 왼쪽 줄은 깊이마다 진해진다(--fb-line 을 인라인으로).
 //    답글 칸은 한 번에 하나만 열린다. 지운 글은 답글이 달려 있을 때만 자리가 남는다('지운 글이에요').
 //  · FeedbackComposer = 답글 입력칸(나무 안에 펼친다, 운영자 화면의 댓글 칸). PC 는 Enter 로 보낸다(Shift+Enter 줄바꿈).
-//  · InputBar = 창 아래, 푸터 바로 위에 붙박인 입력 띠. 건의 · 오류 글쓰기, 상세의 댓글 쓰기, 가이드 묻기가 모두 이것이다 —
+//  · InputBar = 창 아래, 푸터 바로 위에 붙박인 입력 띠. 건의 · 오류 글쓰기, 상세의 댓글 쓰기, 도움 탭의 질문이 모두 이것이다 —
 //    목록을 아래위로 보는 중에도 언제든 쓸 수 있게(사용자 지시). 띠는 따뜻한 바탕 + 윗줄로 본문 · 푸터와 갈린다.
 //    입력칸은 한 줄에서 시작해 네 줄까지 늘고, 그 뒤로는 칸 안이 스크롤된다.
 
@@ -104,9 +104,9 @@ export function FeedbackComposer({ value, onChange, onSend, busy, ph, label, sen
 
 // 한 줄 높이 = 띠의 버튼 높이(PC 32 · 휴대폰 36 — 탭과 같은 높이) ~ 네 줄
 const barMin = (mobile: boolean) => (mobile ? 36 : 32)
-export function InputBar({ value, onChange, onSend, busy, ph, label, send = '등록', mobile, max = PLAZA_COMMENT_MAX, enterSend, side, top }: {
+export function InputBar({ value, onChange, onSend, busy, ph, label, send = '등록', mobile, max = PLAZA_COMMENT_MAX, enterSend, top }: {
   value: string; onChange: (v: string) => void; onSend: () => void; busy: boolean; ph: string; label: string
-  send?: string; mobile: boolean; max?: number; enterSend?: boolean; side?: ReactNode; top?: ReactNode
+  send?: string; mobile: boolean; max?: number; enterSend?: boolean; top?: ReactNode
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   // 쓴 만큼 늘린다(네 줄까지). 높이는 한 번에 바뀐다 — 전환하지 않는다
@@ -128,7 +128,6 @@ export function InputBar({ value, onChange, onSend, busy, ph, label, send = '등
           onKeyDown={(e) => { if (enter && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (can) onSend() } }}
           placeholder={ph} aria-label={label} className={clsx('pb-input', 'pb-scroll', styles.hpInput, mobile && styles.hpInputM)} />
         {!mobile && <span className={styles.hpBarLen}>{value.length}/{max}</span>}
-        {side}
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { if (can) onSend() }} disabled={!can}
           title={t0 ? undefined : '내용을 먼저 적어 주세요'} className={clsx(styles.cmtSend, styles.hpSend, !can && styles.cmtSendOff)}>{send}</button>
       </div>

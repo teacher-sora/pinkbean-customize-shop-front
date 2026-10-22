@@ -20,7 +20,6 @@ import { effectDraws, effectGroups, effectPeriods, loadImage, renderCharacter, r
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob } from '@/lib/canvasExport'
-import { animatedGif } from '@/lib/gifExport'
 import { emoFrameAt, type ChatDraw } from '@/lib/core/chatUi'
 import { useHeroView } from '@/lib/heroView'
 import { bindImageMenu, type GifMenu } from '@/lib/canvasMenu'
@@ -92,6 +91,8 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     frames: { placed: PlacedLayer[]; foot: { x: number; y: number }; brow: { x: number; y: number }; navel: { x: number; y: number } }[]
     delays: number[]; animated: boolean; pingpong: boolean; effList: EffectMeta[]; action: string
     spots: ParticleSpot[]; descs: Map<string, ParticleDesc>; floating: boolean; ringFloor?: number
+    // 미리보기 캔버스의 판(게임 1배 상자 · 기준점)과 칸 안 자리(디바이스 px) — 배경 움짤이 같은 자리에 얹는다
+    stage: { box: { w: number; h: number }; anchor: { x: number; y: number }; scale: number; left: number; top: number; w: number; h: number; dpr: number }
   } | null>(null)
 
   // 표시 영역(div) 크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.
@@ -608,7 +609,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     let ringFloor: number | undefined
     Promise.all([track(essential), ringFloorOf(frames.map((f) => f.placed)).then((v) => { ringFloor = v })]).then(() => {
       if (cancelled) return
-      animRef.current = { frames, delays, animated, pingpong, effList, action: V.action, spots: hasPart ? partSpots : [], descs: partDescs, floating, ringFloor }
+      animRef.current = { frames, delays, animated, pingpong, effList, action: V.action, spots: hasPart ? partSpots : [], descs: partDescs, floating, ringFloor, stage: { box: pl.box, anchor: pl.anchor, scale: pl.scale, left: leftDev, top: topDev, w: dims.w, h: dims.h, dpr: dims.dpr } }
       draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)
       redrawRef.current = () => draw(nowElapsed()) // 명찰 · 말풍선만 바뀌었을 때(시그니처에 chatVer 가 있어 다시 그린다)
       // 발색 조절 중/전 프레임 염색 중/정지 뷰면 애니메이션 없이 여기서 끝(정지 프레임 유지).
@@ -666,7 +667,12 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           return sim
         }
         let partT = -1
+        // 배경 판 = 미리보기 칸. 게임 1칸 = 지금 보이는 CSS 크기(배율)를 반올림한 정수 px — 1배 화면에서 보는 크기다
+        const st = a.stage, k = st.scale / st.dpr, S = Math.min(4, Math.max(1, Math.round(k))), f = S / k
+        const wrap = wrapRef.current
+        const [{ animatedGif }, { paintStage }] = await Promise.all([import('@/lib/gifExport'), import('@/lib/stageShot')])
         return animatedGif({
+          stage: wrap ? { w: Math.round(st.w * f), h: Math.round(st.h * f), s: S, ox: Math.round((st.left / st.dpr) * f), oy: Math.round((st.top / st.dpr) * f), place: { box: st.box, anchor: st.anchor }, paint: (g) => paintStage(g, wrap, f, S) } : undefined,
           periods: p.periods,
           flowing: p.flowing,
           sigAt: (t) => `${fiAt(t)}|${liftAt(t)}|${emo ? emoFrameAt(emo, t) : -1}|` + effAt(t).map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';'),
