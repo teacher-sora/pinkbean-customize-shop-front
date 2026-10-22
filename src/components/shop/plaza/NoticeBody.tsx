@@ -1,6 +1,6 @@
 'use client'
 
-// 도움 및 가이드 — 하단 탭 '도움 및 가이드'를 누르면 서피스로 연다. 탭 넷: 도움 · 건의 · 오류 · 공지(처음은 도움 — 사용자 지시).
+// 도움 및 건의함 — 하단 탭 '도움 및 건의함'를 누르면 서피스로 연다. 탭 넷: 도움 · 건의 · 오류 · 공지(처음은 도움 — 사용자 지시).
 //  · 공지는 거의 쓰지 않아 맨 끝에 둔다(이름에서도 뺐다). 운영자가 쓸 때를 위해 탭은 남긴다.
 //  · 공지는 운영자가 Supabase 대시보드(plaza_notices)에서 쓴다. 앱에는 쓰기 화면이 없다. 하나면 바로 그 공지를, 여럿이면 목록부터.
 //  · 건의 · 오류는 같은 표에 종류로 나눠 담는다(lib/plaza 의 loadFeedback · supabase/0018 · 0019). 목록은 글마다 상자 하나,
@@ -88,7 +88,7 @@ export default function NoticeBody({ mobile }: { mobile: boolean }) {
     <>
     <div className={styles.hp}>
       {/* 탭 넷을 폭 가득 같은 너비로 — 그림 + 낱말. 모바일은 그림 위 낱말(하단 탭과 같은 짜임) */}
-      <div role="tablist" aria-label="도움 및 가이드" className={clsx(styles.hpTabs, mobile && styles.hpTabsM)}>
+      <div role="tablist" aria-label="도움 및 건의함" className={clsx(styles.hpTabs, mobile && styles.hpTabsM)}>
         {TABS.map((t) => (
           <button key={t.v} type="button" role="tab" aria-selected={tab === t.v} onClick={() => go(t.v)} title={t.t}
             className={clsx(styles.hpTab, mobile && styles.hpTabM, tab === t.v && styles.hpTabOn)}>

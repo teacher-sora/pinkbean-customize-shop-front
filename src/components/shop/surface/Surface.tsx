@@ -168,7 +168,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
   const k = sf.kind
   const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'emo' ? '이모티콘' : k === 'vs' ? '코디 비교'
-    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? '공유받은 코디' : k === 'notice' ? '도움 및 가이드' : (sf.item?.name || sf.item?.id || '')
+    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? '공유받은 코디' : k === 'notice' ? '도움 및 건의함' : (sf.item?.name || sf.item?.id || '')
   const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' ? '' : k === 'notice' ? ''
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
@@ -230,7 +230,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 // 공용 푸터. 적용은 염색·점 위치만. 부위 염색을 거쳐 들어온 염색·점 위치는 '이전'(부위 고르기로 슬라이드 복귀), 그 외는 '닫기'(즉시 종료).
 // 모바일은 얇고 긴 34px(버튼 하나면 전체 폭, 닫기+적용이면 반씩).
 // onBack: 본문 안에서 화면만 바뀐 경우(염색표 보기 등) 그 화면이 직접 넘겨주는 '이전'. 서피스 종류를 바꾸지 않는다.
-// closeToo: '이전'이 닫기 자리를 차지하지 않고 닫기 왼쪽에 따로 선다(도움 및 가이드의 상세 — 바로 닫고 싶을 수도 있다).
+// closeToo: '이전'이 닫기 자리를 차지하지 않고 닫기 왼쪽에 따로 선다(도움 및 건의함의 상세 — 바로 닫고 싶을 수도 있다).
 export function SurfaceFooter({ onApply, applyLabel = '적용', onBack, closeToo }: { onApply?: () => void; applyLabel?: string; onBack?: () => void; closeToo?: boolean }) {
   const s = useShop()
   const mobile = s.bp === 'mobile'

@@ -544,7 +544,7 @@ export function plazaWhen(iso: string): string {
   return `${dt.getMonth() + 1}월 ${dt.getDate()}일`
 }
 
-// ── 도움 및 가이드(supabase/0011 · 0013 · 0018 · 0019) ──
+// ── 도움 및 건의함(supabase/0011 · 0013 · 0018 · 0019) ──
 // 공지는 운영자가 Supabase 대시보드(Table Editor → plaza_notices)에서 쓴다 — 앱에는 쓰기 화면이 없다. 공지에는 댓글이 없다.
 // 건의 · 오류는 같은 표(plaza_notice_comments)에 종류(kind)로 나눠 담는다. 목록은 원글만, 한 쪽에 20개, 최신이 위.
 // 글을 열면 그 글의 댓글 · 답글이 나무로 붙는다(depth 1 = 댓글, 2 · 3 = 답글 — 댓글부터 세 단까지. 깊이 · 원글은 DB 트리거가 정한다).
