@@ -67,7 +67,7 @@ export function PvInlineFields({ mobile, narrow, onPick }: { mobile: boolean; na
       {fields.map((f) => (f.key === 'zoom'
         ? (
           <Dropdown key={f.key} variant={variant} narrow={narrow} options={f.options} value={f.value} onChange={f.set}
-            title={`${f.title} — ${f.hint}`} ariaLabel={f.title} shortLabel={f.short} isDefault={f.value === f.def} guide={mobile ? undefined : f.key} />
+            title={`${f.title} — ${f.hint}`} ariaLabel={f.title} shortLabel={f.short} isDefault={f.value === f.def} guide={f.key} />
         ) : (
           <PvPicker key={f.key} field={pvFieldOf(f)}
             variant={variant} narrow={narrow} options={f.options} groups={pvGroupsOf(f)}
@@ -108,7 +108,7 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
       <div className={clsx('pb-slide', 'pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.slide, group === 'char' && styles.slideOn)}>
         <div className={styles.slidePad}>
           {selects.map((r) => (
-            <div key={r.key} className={styles.pvRow}>
+            <div key={r.key} data-guide={`pv-${r.key}`} className={styles.pvRow}>
               <span className={labelCls}>{r.label}</span>
               <Dropdown variant={rowVariant} options={r.options} value={pv[r.key]} onChange={(v) => s.setPv(r.key, v)} ariaLabel={r.label}
                 blocked={r.key === 'form' && riding} blockedTitle="라이딩 중에는 형상 변이를 바꿀 수 없어요" />
@@ -116,7 +116,7 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
           ))}
           {/* 기본 명찰: 명찰 반지를 끼지 않았을 때 발밑의 게임 기본 명찰(반투명 검은 판). 반지를 끼면 이 값과 상관없이 반지 명찰이 나온다 */}
           {s.chatOn && (
-            <div className={styles.pvRow} title="명찰 반지를 끼지 않았을 때 발밑에 나오는 기본 명찰">
+            <div data-guide="basetag" className={styles.pvRow} title="명찰 반지를 끼지 않았을 때 발밑에 나오는 기본 명찰">
               <span className={labelCls}>기본 명찰</span>
               <Switch on={pv.baseTag} onToggle={() => s.setPv('baseTag', !pv.baseTag)} title="기본 명찰" />
             </div>
@@ -124,7 +124,7 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
         </div>
       </div>
       <div className={clsx('pb-slide', 'pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.slide, group === 'effect' && styles.slideOn)}>
-        <div className={styles.slidePad}>
+        <div data-guide="pv-effect" className={styles.slidePad}>
           {switches.map((r) => (
             <div key={r.key} className={styles.pvRow}>
               <span className={labelCls}>{r.label}</span>
