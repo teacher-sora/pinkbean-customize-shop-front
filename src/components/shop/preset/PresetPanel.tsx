@@ -3,7 +3,7 @@
 // 프리셋 30칸. 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Preset } from '@/lib/catalog'
 import { CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
 import { presetFileName } from '@/lib/canvasExport'
@@ -86,33 +86,19 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     </button>
   )
 
+  // 카드는 메모된 부품(PresetCard)이다 — 다루는 함수는 늘 같은 ref 로 넘겨, 순서를 바꿔 놓을 때 · 다른 카드를 고를 때 바뀐 카드만 다시 그린다
+  // (30장을 다 다시 그리면 놓는 순간 한 번 멈칫했다 — CPU 4배 느리게에서 최대 140ms)
+  const act = useRef<CardAct>(null!)
+  act.current = {
+    select: (id) => { if (!dnd.swallowClick()) s.selectPreset(id) },
+    down: dnd.onPointerDown, share: s.sharePreset, remove, rename: s.renamePreset, commit: s.commitPresetName,
+  }
+
   const grid = (
     <div ref={gridRef} className={mobile ? styles.gridHM : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
       {s.presets.map((p, i) => {
         const on = s.selectedPreset === p.id
-        const snap = on ? liveSnap : s.presetData[p.id]
-        return (
-          <div key={p.id} data-preset-id={p.id} onClick={() => { if (!sorting && !dnd.swallowClick()) s.selectPreset(p.id) }} onPointerDown={(e) => dnd.onPointerDown(e, p.id)}
-            className={clsx('pb-presetwrap', styles.wrap, sorting && styles.sorting)}>
-            <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
-              <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
-              <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
-              <div className={styles.nameRow}>
-                <span className={styles.nameWrap}>
-                  <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
-                    onChange={(e) => s.renamePreset(p.id, e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                    onBlur={() => s.commitPresetName(p.id, defaultPresetName(i))}
-                    className={clsx('pb-input', 'pb-presetname', styles.nameInput)} />
-                  <IconPencil className={styles.pencil} />
-                </span>
-              </div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); s.sharePreset(p) }} title="프리셋 복사" aria-label="프리셋 복사" className={clsx('pb-presetacts', styles.share, mobile && styles.shareM)}><IconLinkCopy size={11} /></button>
-              <button type="button" onClick={(e) => { e.stopPropagation(); remove(p) }} {...{ [CONFIRM_ATTR]: `preset:${p.id}` }} title="프리셋 삭제" aria-label="삭제" className={clsx('pb-presetacts', styles.del, mobile && styles.delM)}><IconTrashSolid size={11} /></button>
-            </div>
-          </div>
-        )
+        return <PresetCard key={p.id} p={p} i={i} on={on} snap={on ? liveSnap : s.presetData[p.id]} mobile={mobile} sorting={sorting} act={act} />
       })}
     </div>
   )
@@ -159,3 +145,33 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     </section>
   )
 }
+
+type CardAct = {
+  select: (id: string) => void; down: (e: React.PointerEvent<HTMLElement>, id: string) => void
+  share: (p: Preset) => void; remove: (p: Preset) => void; rename: (id: string, name: string) => void; commit: (id: string, fallback: string) => void
+}
+// 프리셋 카드 한 장. 받는 값이 같으면 다시 그리지 않는다(memo) — act 는 늘 같은 ref, p 는 이름이 바뀔 때만 새 객체다
+const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, sorting, act }: { p: Preset; i: number; on: boolean; snap: Snapshot | undefined; mobile: boolean; sorting: boolean; act: React.MutableRefObject<CardAct> }) {
+  return (
+    <div data-preset-id={p.id} onClick={() => { if (!sorting) act.current.select(p.id) }} onPointerDown={(e) => act.current.down(e, p.id)}
+      className={clsx('pb-presetwrap', styles.wrap, sorting && styles.sorting)}>
+      <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
+        <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
+        <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
+        <div className={styles.nameRow}>
+          <span className={styles.nameWrap}>
+            <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
+              onChange={(e) => act.current.rename(p.id, e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+              onBlur={() => act.current.commit(p.id, defaultPresetName(i))}
+              className={clsx('pb-input', 'pb-presetname', styles.nameInput)} />
+            <IconPencil className={styles.pencil} />
+          </span>
+        </div>
+        <button type="button" onClick={(e) => { e.stopPropagation(); act.current.share(p) }} title="프리셋 복사" aria-label="프리셋 복사" className={clsx('pb-presetacts', styles.share, mobile && styles.shareM)}><IconLinkCopy size={11} /></button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); act.current.remove(p) }} {...{ [CONFIRM_ATTR]: `preset:${p.id}` }} title="프리셋 삭제" aria-label="삭제" className={clsx('pb-presetacts', styles.del, mobile && styles.delM)}><IconTrashSolid size={11} /></button>
+      </div>
+    </div>
+  )
+})
