@@ -792,6 +792,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     let out = searchResults
     if (activeCat === 'fav') out = out.filter((it) => favorites.has(it.id))
     else if (activeCat === 'new') out = out.filter((it) => newIds.has(it.id))
+    else if (activeCat === CHAT_TAB) out = out.filter((it) => it.slot === 'nameTag' || it.slot === 'chatBalloon') // 명찰/말풍선 탭은 두 부위를 함께 보인다
     else if (activeCat !== 'all') out = out.filter((it) => it.slot === CAT_TO_SLOT[activeCat])
     return byGender(out, genderFilter)
   }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter])
