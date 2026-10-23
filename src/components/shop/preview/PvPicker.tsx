@@ -16,19 +16,20 @@
 // 고르기는 한 번에 끝난다: 상세가 없는 칸 · 상세의 칸 · 무기 모션 · 표정 모두 누르면 곧바로 창이 닫힌다.
 
 import clsx from 'clsx'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PV_EXPR_ICONS, type Opt } from '@/lib/catalog'
 import { spriteUrl } from '@/lib/core/data'
 import { useShop, type Snapshot } from '../ShopContext'
 import SnapThumb from '../SnapThumb'
 import { useInnerSlide } from '../surface/innerSlide'
-import { ActionFrameGrid, actionInfo, useActionInfo } from './ActionFrames'
+import { ActionFrameGrid, actionInfo, useActionInfo, warmActionFrames } from './ActionFrames'
 import { PopBox, PopFoot, PopScroll, popNear, usePop } from './PopBox'
 import ui from '../ui/ui.module.css'
 import styles from './preview.module.css'
 
 type Group = { group: string; items: Opt[] }
 
+const WARM_DWELL = 120 // 칸 위에 마우스가 이만큼 머물면 미리 합성한다(지나가기만 한 칸까지 합성하지 않게). 누르면 바로
 const MODEL_FRACTION = 0.55 // 칸 안 모델 크기. 0.62 는 위아래가 칸에 닿아 답답하다
 
 export type PvField = 'action' | 'weapon' | 'expr'
@@ -40,11 +41,14 @@ type GridProps = {
   onChange: (v: string) => void
   disabledValues?: Set<string>
   disabledTitle?: string
+  onWarm?: (v: string) => void // 칸에 마우스를 올리거나 누르는 순간(액션 — 상세 자세를 미리 합성한다)
 }
 
 // ── 격자 본체(팝오버 · 모바일 화면 공용) ──────────────────────────────────────
-export function PvGrid({ field, options, groups, value, onChange, disabledValues, disabledTitle, eager = 6 }: GridProps & { eager?: number }) {
+export function PvGrid({ field, options, groups, value, onChange, disabledValues, disabledTitle, onWarm, eager = 6 }: GridProps & { eager?: number }) {
   const s = useShop()
+  const dwell = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => () => clearTimeout(dwell.current), [])
   // 지금 코디는 **열 때 한 번만** 뜬다 — 렌더마다 새 스냅샷을 만들면 칸마다 합성이 다시 돈다.
   const [base] = useState<Snapshot>(() => s.snapshot())
 
@@ -76,6 +80,8 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
       <button key={o.v} ref={on ? onCurrentCell : undefined} type="button" role="option" aria-selected={on} disabled={dis}
         title={dis ? disabledTitle : (field === 'expr' && !icon ? `${o.l} — 짝이 되는 표정 아이템이 없어 그림은 없어요` : o.l)}
         onClick={() => { if (dis) return; onChange(o.v) }}
+        onPointerEnter={onWarm && !dis ? () => { clearTimeout(dwell.current); dwell.current = setTimeout(() => onWarm(o.v), WARM_DWELL) } : undefined}
+        onPointerLeave={onWarm ? () => clearTimeout(dwell.current) : undefined} onPointerDown={onWarm && !dis ? () => onWarm(o.v) : undefined}
         className={clsx(styles.pvCell, on && styles.pvCellOn, dis && styles.pvCellOff)}>
         {icon || snap ? (
           <>
@@ -196,7 +202,8 @@ export function ActionPickBody({ options, groups, current, onPick, onClose, play
               </div>
             </div>
           ) : (
-            <PvGrid field="action" options={options} groups={groups} value={current.action} disabledValues={disabledValues} disabledTitle={disabledTitle} onChange={(v) => { void pick(v) }} />
+            <PvGrid field="action" options={options} groups={groups} value={current.action} disabledValues={disabledValues} disabledTitle={disabledTitle} onChange={(v) => { void pick(v) }}
+              onWarm={(v) => warmActionFrames(s, snap, v)} />
           )}
         </div>
       </PopScroll>

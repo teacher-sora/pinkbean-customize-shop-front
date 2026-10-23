@@ -17,7 +17,7 @@ import { VsPanes } from '../surface/VsBody'
 import { useVsFlip, VS_WRAP_H } from '../surface/sheetMotion'
 import { PvGroups, PvInlineFields, pvFieldOf, pvGroupsOf, usePvFields, type PvGroup } from './pvControls'
 import { PvGrid, type PvField } from './PvPicker'
-import { ActionFrameGrid, actionInfo, useActionInfo } from './ActionFrames'
+import { ActionFrameGrid, actionInfo, useActionInfo, warmActionFrames } from './ActionFrames'
 import { PV_ACTIONS_FLAT } from '@/lib/catalog'
 import styles from './preview.module.css'
 
@@ -259,6 +259,7 @@ export function PvSheetBody() {
               {gridOn && (
                 <PvGrid field={pvFieldOf(picked)} options={picked.options} groups={pvGroupsOf(picked)} value={picked.value}
                   disabledValues={picked.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요"
+                  onWarm={pvFieldOf(picked) === 'action' ? (v) => warmActionFrames(s, frameBase, v) : undefined}
                   onChange={(v) => {
                     if (pvFieldOf(picked) !== 'action') { picked.set(v); back(); return }
                     void actionInfo(s, v).then((i) => { if (i.delays.length > 1) { setDetail(v); go('frames', 1) } else { picked.set(v); back() } })

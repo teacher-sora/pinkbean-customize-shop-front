@@ -22,6 +22,7 @@ import { CHAT_NAME_FALLBACK, CHAT_TEXT_MAX, chatDrawOf } from '@/lib/shopData'
 import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT } from '@/lib/catalog'
 import { animaOnce, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { ActionPickBody } from '../preview/PvPicker'
+import { frameSnap } from '../preview/ActionFrames'
 import { PopBox, PopFoot, PopScroll, popNear, usePop } from '../preview/PopBox'
 import { addStageBg, CASH_BGS, cashBgsOn, getStageBg, STAGE_BG_MAX, useStageBg } from '@/lib/stageBg'
 import { infoRows, shareChips, useSkinItem, useToneName } from '../info/InfoPanel'
@@ -77,17 +78,18 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   // ── 액션: 처음은 미리보기 그대로(pvShot). 고르면 지금 코디를 그 액션 · 자세로 다시 합성한다(카드 · 연출 고르기와 같은 합성기 — view)
   const [pose, setPose] = useState<{ action: string; frame: number } | null>(null)
   const [poseShot, setPoseShot] = useState<ModelShot | null>(null)
+  const [poseBase] = useState(() => s.snapshot())
   useEffect(() => {
     if (!pose || !s.index) { setPoseShot(null); return }
     let alive = true
-    const snap = s.snapshot(), sn = { ...snap, pv: { ...snap.pv!, action: pose.action, frame: pose.frame } }
+    // 액션 상세 칸과 같은 스냅샷(frameSnap · poseBase) — 칸을 그리며(또는 칸에 마우스를 올릴 때) 합성해 둔 것을 그대로 쓴다(다시 합성하지 않는다)
+    const sn = frameSnap(poseBase, pose.action, pose.frame)
     void animaOnce().then((ar) => composeSnapshotCached(snapKey(sn), sn, s.index!, ar, true)).then((r) => {
       if (alive && r) setPoseShot({ placed: r.placed, override: r.overrides, effects: r.effects, particles: r.particles, flip: s.pv.gaze === 'right', centerX: r.center === 'x', centerMount: r.center === 'mount' })
     }).catch(() => {})
     return () => { alive = false }
   }, [pose]) // eslint-disable-line react-hooks/exhaustive-deps -- 연 순간의 코디에 자세만 바꾼다
   const shot = pose ? poseShot : pvShot
-  const [poseBase] = useState(() => s.snapshot())
   const actLabel = (a: string) => PV_ACTIONS_FLAT.find((o) => o.v === a)?.l ?? a
 
   // ── 팝박스(카드 디자인 · 배경 · 액션 · 이모티콘 — 연 버튼 옆에 붙어 나온다) ──
@@ -118,9 +120,13 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   const [board, setBoard] = useState<CardBoard | null>(null)
   // 처음 보기의 배율은 첫 그림으로 한 번만 정한다(말풍선을 적는 동안 크기가 흔들리지 않게). 가운데는 지금 그림(말풍선 · 칭호 포함)에 맞춘다 — 직접 옮기기 전까지
   const firstView = useRef<CardView | null>(null)
+  const lastShot = useRef(shot)
   useEffect(() => {
     if (!shot) return
     let alive = true
+    // 글을 적는 동안만 잠깐 멈췄다 그린다 — 자세 · 처음 그림이 바뀌었으면 바로
+    const wait = board && lastShot.current === shot ? 160 : 0
+    lastShot.current = shot
     const t = setTimeout(() => {
       void drawShot({ ...shot, chat, chatT }).then((d) => {
         if (!alive || !d) return
@@ -128,7 +134,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
         if (!firstView.current) firstView.current = defaultView(b)
         setBoard(b)
       })
-    }, board ? 160 : 0)
+    }, wait)
     return () => { alive = false; clearTimeout(t) }
   }, [shot, chat, chatT]) // eslint-disable-line react-hooks/exhaustive-deps -- board 는 첫 그림인지만 본다
 
@@ -188,49 +194,68 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   // 사진 칸: 그림 · 배경 · 보기가 바뀔 때
   useEffect(() => { live.current.view = view; schedule() }, [view, board, bgImg, bgSel, theme, schedule])
 
-  // ── 사진 자리: 끌어 옮기기 · 휠 · 두 손가락 ──
+  // ── 사진 자리 ──
+  // 카드를 스크롤하는 손짓은 늘 스크롤이다(사용자 지시 — 사진 칸이 넓어 스크롤하려다 사진이 커지거나 옮겨졌다).
+  //  · 휠 · 한 손가락 끌기 = 스크롤. 마우스로 끌면 옮긴다(마우스 끌기는 스크롤이 아니다).
+  //  · 두 손가락 = 옮기기 + 벌려 배율(그동안은 스크롤하지 않는다). Ctrl(⌘) + 휠 · 트랙패드 핀치 = 배율. 사진 칸 안의 [−] [+] [원래 자리].
+  const setZ = (dz: number) => { const v = curView(); const z = clampZ(v.z + dz); if (z !== v.z) setView({ ...v, z }) }
   useEffect(() => {
     const el = grabRef.current
     if (!el) return
-    const ptrs = new Map<number, { x: number; y: number }>()
-    let pinch: { d: number; z: number } | null = null
+    const ptrs = new Map<number, { x: number; y: number; touch: boolean }>()
+    let pinch: { d: number; z: number; cx: number; cy: number } | null = null
     const k = () => (el.parentElement!.clientWidth || 1) / CARD_W // 화면 px / 카드 px
-    const dist = () => { const [a, b] = [...ptrs.values()]; return Math.hypot(a.x - b.x, a.y - b.y) }
+    const two = () => [...ptrs.values()].filter((q) => q.touch)
+    const mid = () => { const [a, b] = two(); return { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 } }
     const down = (e: PointerEvent) => {
-      el.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY })
-      if (ptrs.size === 2) pinch = { d: dist(), z: curView().z }
+      const touch = e.pointerType === 'touch'
+      if (!touch) el.setPointerCapture(e.pointerId)
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, touch })
+      if (two().length === 2) { const m = mid(); pinch = { ...m, z: curView().z } }
     }
     const move = (e: PointerEvent) => {
       const p = ptrs.get(e.pointerId)
       if (!p) return
       const v = curView()
-      if (ptrs.size === 1) {
+      if (!p.touch) {
         const f = k() * v.z
         live.current.view = { ...v, x: v.x - (e.clientX - p.x) / f, y: v.y - (e.clientY - p.y) / f }
+        p.x = e.clientX; p.y = e.clientY
+        schedule(); return
       }
       p.x = e.clientX; p.y = e.clientY
-      if (ptrs.size === 2 && pinch) live.current.view = { ...v, z: clampZ(pinch.z * (dist() / Math.max(1, pinch.d))) }
+      if (!pinch || two().length < 2) return // 한 손가락은 브라우저가 스크롤한다
+      const m = mid(), z = clampZ(pinch.z * (m.d / Math.max(1, pinch.d))), f = k() * z
+      live.current.view = { z, x: v.x - (m.cx - pinch.cx) / f, y: v.y - (m.cy - pinch.cy) / f }
+      pinch = { ...pinch, cx: m.cx, cy: m.cy }
       schedule()
     }
     const up = (e: PointerEvent) => {
-      if (!ptrs.delete(e.pointerId)) return
-      if (ptrs.size < 2) pinch = null
-      if (!ptrs.size) setView(live.current.view)
+      const p = ptrs.get(e.pointerId)
+      if (!p) return
+      ptrs.delete(e.pointerId)
+      if (two().length < 2 && pinch) { pinch = null; setView(live.current.view) }
+      else if (!p.touch) setView(live.current.view)
     }
+    // 두 손가락이 닿아 있는 동안만 스크롤을 막는다(한 손가락은 그대로 스크롤)
+    const tmove = (e: TouchEvent) => { if (e.touches.length >= 2) e.preventDefault() }
     let acc = 0
     const wheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return // 그냥 휠은 카드 스크롤
       e.preventDefault()
       acc += e.deltaY
-      if (Math.abs(acc) < 60) return
-      const v = curView(); const z = clampZ(v.z + (acc < 0 ? 1 : -1)); acc = 0
-      setView({ ...v, z })
+      if (Math.abs(acc) < 40) return
+      const dz = acc < 0 ? 1 : -1; acc = 0
+      const v = curView(); setView({ ...v, z: clampZ(v.z + dz) })
     }
     el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move)
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up)
+    el.addEventListener('touchmove', tmove, { passive: false })
     el.addEventListener('wheel', wheel, { passive: false })
     return () => {
       el.removeEventListener('pointerdown', down); el.removeEventListener('pointermove', move)
       el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up)
+      el.removeEventListener('touchmove', tmove)
       el.removeEventListener('wheel', wheel)
     }
   }, [schedule])
@@ -266,6 +291,8 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   }
 
   // ── 화면 ──
+  const v = view ?? autoView(board)
+  const photoBox: React.CSSProperties = { left: `${(PHOTO.x / CARD_W) * 100}%`, top: `${(PHOTO.y / H) * 100}%`, width: `${(PHOTO.w / CARD_W) * 100}%`, height: `${(PHOTO.h / H) * 100}%` }
   const tile = (id: string, label: string, style: React.CSSProperties, on: boolean, pick: () => void, inner?: React.ReactNode) => (
     <div key={id} className={sf.bgCell}>
       <button type="button" onClick={pick} aria-pressed={on} title={label} className={clsx('pb-partchip', sf.bgTile, on && sf.bgTileOn)}>
@@ -384,12 +411,16 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
           <div ref={wrapRef} className={styles.stage} style={{ aspectRatio: `${CARD_W} / ${H}` }}>
             <canvas ref={canvasRef} className={styles.canvas} />
             {/* 사진 칸 위에만 끌기 판 — 나머지는 그대로 스크롤된다 */}
-            <div ref={grabRef} data-no-sheet-drag title="끌어서 옮기기, 휠로 배율" className={styles.grab}
-              style={{ left: `${(PHOTO.x / CARD_W) * 100}%`, top: `${(PHOTO.y / H) * 100}%`, width: `${(PHOTO.w / CARD_W) * 100}%`, height: `${(PHOTO.h / H) * 100}%` }} />
-            {/* [원래 자리] — 사진 칸 안쪽 오른쪽 아래(사용자 지시: 미리보기 속 사진에). 끌기 판 위에 있어 눌러도 사진이 끌리지 않는다 */}
-            <button type="button" onClick={() => setView(null)} disabled={!view} title={view ? '사진을 처음 자리와 배율로' : '사진이 처음 자리에 있어요'}
-              style={{ right: `calc(${((CARD_W - PHOTO.x - PHOTO.w) / CARD_W) * 100}% + 8px)`, bottom: `calc(${((H - PHOTO.y - PHOTO.h) / H) * 100}% + 8px)` }}
-              className={clsx('pb-ghost', styles.resetBtn)}><IconReset />원래 자리</button>
+            <div ref={grabRef} data-no-sheet-drag title={mobile ? '두 손가락으로 옮기고 벌려 배율' : '끌어서 옮기기, Ctrl + 휠로 배율'} className={styles.grab} style={photoBox} />
+            {/* 사진 칸 안쪽 오른쪽 아래의 [−] [+] [원래 자리](사용자 지시: 미리보기 속 사진에). 사진 칸 아래 끝이 화면 밖이어도 보이는 아래 끝에 붙는다(sticky) */}
+            <div className={styles.photoTools} style={photoBox}>
+              <div className={styles.toolRow}>
+                <button type="button" onClick={() => setZ(-1)} disabled={v.z <= ZOOM_MIN} title="사진 작게" aria-label="사진 작게" className={clsx('pb-ghost', styles.toolBtn)}>−</button>
+                <button type="button" onClick={() => setZ(1)} disabled={v.z >= ZOOM_MAX} title="사진 크게" aria-label="사진 크게" className={clsx('pb-ghost', styles.toolBtn)}>+</button>
+                <button type="button" onClick={() => setView(null)} disabled={!view} title={view ? '사진을 처음 자리와 배율로' : '사진이 처음 자리에 있어요'}
+                  className={clsx('pb-ghost', styles.resetBtn)}><IconReset />원래 자리</button>
+              </div>
+            </div>
             {(!chips || !board || !fonts) && <div className="pb-skel" style={{ position: 'absolute', inset: 0, borderRadius: 8 }} />}
           </div>
         </div>

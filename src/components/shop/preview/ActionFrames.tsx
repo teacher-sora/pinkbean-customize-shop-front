@@ -11,6 +11,8 @@ import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
 import { frameDelays } from '@/lib/core/assemble'
 import { loadMeta } from '@/lib/core/data'
+import { animaOnce, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
+import { enqueueThumb } from '@/lib/thumbQueue'
 import { MOVE_POSTURE_ACTIONS, resolveAction, ridingSeatedSet } from '@/lib/shopData'
 import { useShop, type Snapshot } from '../ShopContext'
 import SnapThumb from '../SnapThumb'
@@ -44,6 +46,22 @@ export function useActionInfo (action: string | null): ActionInfo | null {
   return info?.key === key ? info.v : null
 }
 
+// 그 액션의 i 번째 자세 스냅샷 — 상세 칸 · 미리 합성(warmActionFrames)이 같은 것을 만들어야 같은 캐시 열쇠가 된다
+export const frameSnap = (base: Snapshot, action: string, i: number): Snapshot => ({ ...base, pv: { ...(base.pv || ({} as NonNullable<Snapshot['pv']>)), action, frame: i } })
+// 액션 칸에 마우스를 올리거나 누르는 순간 그 액션의 자세들을 먼저 합성해 둔다(사용자 지시 — 상세 칸이 뜨는 게 보였다).
+// 상세 칸(SnapThumb)은 같은 열쇠의 합성이 끝나 있으면 줄을 서지 않고 바로 그린다. 같은 것을 두 번 부르면 캐시가 한 번만 한다
+export function warmActionFrames (s: Shop, base: Snapshot, action: string): void {
+  const index = s.index
+  if (!index) return
+  void Promise.all([actionInfo(s, action), animaOnce()]).then(([info, ar]) => {
+    if (info.delays.length < 2) return
+    for (let i = 0; i < info.delays.length; i++) {
+      const sn = frameSnap(base, action, i)
+      enqueueThumb(0, () => composeSnapshotCached(snapKey(sn), sn, index, ar, true).then(() => {}))
+    }
+  }).catch(() => {})
+}
+
 // 프레임 순서(왕복이면 0 1 2 1 0 …의 한 바퀴)와 그 시간
 const sequence = (n: number, pingpong: boolean) => (pingpong && n > 2 ? [...Array(n).keys(), ...[...Array(n - 2).keys()].map((i) => n - 2 - i)] : [...Array(n).keys()])
 
@@ -70,7 +88,7 @@ function PlayArt ({ snaps, info }: { snaps: Snapshot[]; info: ActionInfo }) {
 // value = 지금 고른 프레임(-1 = 재생, 그 밖의 음수 = 고른 것 없음). onPick(-1) = 재생, onPick(i) = i 번째 자세에 멈춘다.
 export function ActionFrameGrid ({ action, info, value, onPick, base, play = true }: { action: string; info: ActionInfo | null; value: number; onPick: (frame: number) => void; base: Snapshot; play?: boolean }) {
   const n = info?.delays.length ?? 0
-  const snaps = useMemo(() => [...Array(n).keys()].map((i) => ({ ...base, pv: { ...(base.pv || ({} as NonNullable<Snapshot['pv']>)), action, frame: i } })), [base, action, n])
+  const snaps = useMemo(() => [...Array(n).keys()].map((i) => frameSnap(base, action, i)), [base, action, n])
   if (!info) return <div className={styles.pvGrid}>{[0, 1, 2].map((i) => <span key={i} className={clsx('pb-skel', styles.pvFrameSkel)} />)}</div>
   const cell = (i: number, label: string, art: React.ReactNode) => (
     <button key={i} type="button" role="option" aria-selected={value === i} onClick={() => onPick(i)} title={i < 0 ? '계속 재생해요' : `${label}번째 자세로 멈춰요`}
