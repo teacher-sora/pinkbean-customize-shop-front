@@ -189,7 +189,7 @@ export function ActionPickBody({ options, groups, current, onPick, onClose, play
         <div style={style} className={styles.sheetSlide}>
           {view === 'frames' && detail ? (
             <div className={styles.pvGrid}>
-              <div className={styles.pvDetailHead}>{label}<span className={styles.pvDetailHint}>{play ? '재생하거나 멈출 자세를 골라요' : '멈출 자세를 골라요'}</span></div>
+              <div className={styles.pvDetailHead}>{label}</div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <ActionFrameGrid action={detail} info={info} play={play} value={current.action === detail ? current.frame : -2} base={snap} onPick={(f) => done(detail, f)} />
               </div>

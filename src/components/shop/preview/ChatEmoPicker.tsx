@@ -63,7 +63,7 @@ export default function ChatEmoPicker ({ mobile, onPick, onClose, pickFrame, val
           <>
             <div className={styles.chatEmoHead}>
               <img src={imageSrc(detail.png, true)} crossOrigin="anonymous" alt="" className={styles.chatPx} />
-              {detail.name}<span className={styles.pvDetailHint}>멈출 프레임을 골라요</span>
+              {detail.name}
             </div>
             <div role="listbox" aria-label={`${detail.name} 프레임`} className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.chatEmoScroll)}>
               <div className={styles.pvGrid}>

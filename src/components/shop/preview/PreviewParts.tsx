@@ -246,7 +246,7 @@ export function PvSheetBody() {
       <div className={clsx('pb-scroll', 'pb-fade', styles.sheetBody, styles.sheetSlide)} style={style}>
         {view === 'frames' && detail ? (
           <div className={styles.pickPage}>
-            <div className={styles.pickHead}>{PV_ACTIONS_FLAT.find((a) => a.v === detail)?.l ?? '액션'}<span className={styles.pickHint}>재생하거나 멈출 자세를 골라요</span></div>
+            <div className={styles.pickHead}>{PV_ACTIONS_FLAT.find((a) => a.v === detail)?.l ?? '액션'}</div>
             <div className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.pickScroll)}>
               <ActionFrameGrid action={detail} info={detailInfo} value={s.pv.action === detail ? s.pv.frame : -2} base={frameBase}
                 onPick={(f) => { s.setPv('action', detail); s.setPv('frame', f); back() }} />
