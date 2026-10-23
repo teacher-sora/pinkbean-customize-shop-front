@@ -23,10 +23,14 @@ git push origin dev
 sh scripts/merge-dev-to-main.sh      # 작업 트리가 깨끗해야 한다. main 으로 옮겨 병합 커밋을 만든다
 git push origin main
 git checkout dev
+git merge --ff-only origin/main      # 3) dev 를 main 과 같은 커밋으로 앞당긴다
+git push origin dev
 ```
 
 - `main` 에 직접 커밋하지 않는다.
-- dev 에 아직 운영에 올리면 안 되는 것이 섞여 있으면 스크립트를 쓰지 말고, `origin/main` 에서 브랜치를 떼어 올릴 것만 올린다.
+- **운영 병합은 핫픽스도 늘 dev → main 순서다**(사용자 지시 2026-10-23). main 에서 브랜치를 떼어 main 에 먼저 넣고 dev 에 복사하지 않는다 — 같은 수정이 두 커밋 번호로 갈라져 '밀린 커밋'이 쌓인다.
+- 병합이 끝나면 `git rev-list --count origin/dev..origin/main` 과 `git rev-list --count origin/main..origin/dev` 가 둘 다 0 이어야 한다.
+- 그래서 dev 에 운영에 아직 올리면 안 되는 것을 남겨 두지 않는다(그런 작업은 dev 에 넣기 전에 따로 브랜치에서 한다).
 
 ## 개발 전용 경로
 

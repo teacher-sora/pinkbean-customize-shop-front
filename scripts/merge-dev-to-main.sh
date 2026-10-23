@@ -5,8 +5,8 @@
 # 그래서 "한 번 지우면 끝"이 될 수 없고, 병합할 때마다 걷어내고 **걷어냈는지 확인**해야 한다.
 # 이 스크립트가 마지막 관문이고, 그 앞에 훅(.githooks)과 CI(guard-dev-only.yml)가 더 있다.
 #
-# ⚠️ dev 에는 아직 운영에 올리지 않을 기능이 섞여 있을 수 있다.
-#    그럴 때는 이 스크립트를 쓰지 말고 origin/main 에서 브랜치를 떼어 그 기능만 올린다.
+# 운영 병합은 핫픽스도 늘 dev → main 순서로 이 스크립트를 쓴다(사용자 지시 2026-10-23 — main 에서 브랜치를 떼어 올리고 dev 에 복사하면
+# 기록이 갈라진다). 그래서 dev 에는 운영에 나가도 되는 것만 둔다. push 한 뒤 dev 를 main 으로 앞당긴다(git merge --ff-only origin/main).
 set -e
 
 # 운영에 절대 올라가면 안 되는 경로. 늘어나면 여기에만 추가한다.
@@ -58,5 +58,5 @@ for p in $DEV_ONLY; do
   fi
 done
 
-echo "· 병합 완료(개발 전용 경로 없음 확인). 확인 후 'git push origin main' 하세요."
+echo "· 병합 완료(개발 전용 경로 없음 확인). 확인 후 'git push origin main' → 'git checkout dev && git merge --ff-only origin/main && git push origin dev' 하세요."
 echo "· dev 데이터를 지웠는지 확인하세요: node scripts/clean-test-data.mjs (지우기는 --apply — CLAUDE.md '시험 데이터')"

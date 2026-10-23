@@ -523,7 +523,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     let cancelled = false, raf = 0
     const { frames, delays, animated, pingpong, riding, centerMount, ground } = spec
     // 명찰 · 말풍선 · 칭호 · 훈장의 기준점 — 이 동작 0프레임으로 한 번 잰다(동작 내내 제자리, chatUi.chatRefOf)
-    const chatAt = frames[0] ? chatRefOf(frames[0].placed) : null
+    const chatAt = frames[0] ? chatRefOf(frames[0].placed, centerMount) : null
     const hasEff = effList.length > 0
     const hasPart = partSpots.some((x) => partDescs.has(x.name))
     let partT = -1 // 입자를 마지막으로 흘린 시계(ms)
