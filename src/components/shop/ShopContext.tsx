@@ -283,7 +283,6 @@ export interface ShopCtx {
   equipFromCat: (cat: string, item: ListItem) => void // 슬롯 라디오 토글(재클릭 해제)
   equipItem: (item: ListItem) => void                 // 토글 없이 착용(염색 적용 시)
   isEquippedInCat: (cat: string, itemId: string) => boolean
-  unequipAll: () => void
   unequipSlot: (slot: string, label?: string) => void
   hidden: Record<string, boolean>; setHidden: Dispatch<Record<string, boolean>>
   // 염색(slot 키)
@@ -1090,11 +1089,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setHidden((h) => { if (!h[slot]) return h; const n = { ...h }; delete n[slot]; return n })
     setDyeTarget((t) => (t === slot ? null : t))
     notify(label ? `${label} 부위를 벗었어요` : '부위를 벗었어요')
-  }
-  const unequipAll = () => {
-    setEquipped(Object.fromEntries(EQUIP_SLOTS.map((sl) => [sl, null])))
-    setHidden({}); setDyeTarget(null)
-    notify('모든 부위를 벗었어요')
   }
 
   // 북마크 담기/해제(토글) · 비우기.
@@ -2034,7 +2028,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openPlazaPost, openNotice, guideGo, plazaTakeDirect, wearFromSnap, isWornFromSnap, plazaTakeBack, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
-    equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipAll, unequipSlot, hidden, setHidden,
+    equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipSlot, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
     surface, surfaceClosing, openSheet, openDye, openDot, closeSurface,
     openPartItem, partBack, partSlide, openVs, toggleVs, vsOn, vsPicks, toggleVsPick, swapSnapshot,

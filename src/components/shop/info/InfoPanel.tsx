@@ -10,8 +10,10 @@ import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
-import { IconEye, IconTrashSolid } from '../ui/Icons'
-import { DyeBand, SlotSprite } from './SlotSprite'
+import { IconEye, IconShareImage, IconTrashSolid } from '../ui/Icons'
+import { DyeBand, SlotSprite, dyeBandData, type DyeBandState } from './SlotSprite'
+import { getPreviewShot, saveImage } from '@/lib/canvasExport'
+import type { ShareChip } from '@/lib/shareCard'
 import styles from './info.module.css'
 import ui from '../ui/ui.module.css'
 
@@ -75,13 +77,35 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
     if (DOT_MOVER_IDS.has(r.item.id)) s.openDot(r.item); else s.openDye(r.item)
   }
 
+  const bandState = (r: typeof rows[number]): DyeBandState => (!r.on ? 'empty' : r.dyed ? 'dyed' : (r.isSkin ? !isDyeableSkin(toneName) : r.item?.dyeMode === 'none') ? 'none' : 'plain')
+
+  // 공유 이미지(lib/shareCard): 지금 캐릭터 + 입고 보이는 부위의 칩. 칩 그림은 화면의 칩에 그려진 캔버스를 그대로 쓴다(염색 반영).
+  // 숨긴 부위 · 비어 있는 칸('기본' 명찰 · 말풍선 포함)은 넣지 않는다. 그림은 누를 때만 받아 그린다(동적 import)
+  const [sharing, setSharing] = useState(false)
+  const shareImage = async () => {
+    if (sharing) return
+    setSharing(true)
+    try {
+      const { shareCardBlob } = await import('@/lib/shareCard')
+      const root = slotsRef.current
+      const chips: ShareChip[] = rows.filter((r) => r.on && !r.hidden && r.item).map((r) => ({
+        part: r.c.label, name: r.item!.name || r.item!.id,
+        icon: root?.querySelector<HTMLCanvasElement>(`[data-share-slot="${r.slot}"] canvas`) ?? null,
+        band: dyeBandData(bandState(r), r.slot, s.dyeOff[r.slot] ? undefined : s.dyePalette[r.slot], s.dyeOff[r.slot] ? undefined : s.dyeHsb[r.slot], r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined),
+      }))
+      const shot = await getPreviewShot()
+      const res = await saveImage(() => shareCardBlob({ shot, chips, title: s.saveName }), () => `${s.saveName} 코디`)
+      s.notify(res === 'saved' ? '공유 이미지를 저장했어요' : '공유 이미지를 만들지 못했어요')
+    } finally { setSharing(false) }
+  }
+
   const grid = (
     <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${cols},minmax(0,1fr))` }}>
       {rows.map((r) => {
         const base = baseOf(r)
         const name = r.on ? (r.hidden ? '숨김' : (r.item!.name || r.item!.id)) : base ?? '미착용'
         return (
-          <button key={r.c.id} type="button" onClick={() => pick(r)} title={r.on ? `${r.c.label} - ${r.item!.name || r.item!.id}, 눌러서 염색` : base ? baseTitle(r) : `${r.c.label} - 미착용`}
+          <button key={r.c.id} type="button" data-share-slot={r.slot} onClick={() => pick(r)} title={r.on ? `${r.c.label} - ${r.item!.name || r.item!.id}, 눌러서 염색` : base ? baseTitle(r) : `${r.c.label} - 미착용`}
             className={clsx(r.on && 'pb-slotrow', styles.slot, ui.dyeChip, r.on && styles.slotOn, r.hidden && styles.slotHidden, r.sel && styles.slotSel)}>
             <span className={clsx(styles.slotThumb, r.on && !r.hidden && styles.slotThumbOn)}>
               {r.on && r.item ? (
@@ -112,7 +136,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
                 <IconTrashSolid size={13} />
               </span>
             )}
-            <DyeBand state={!r.on ? 'empty' : r.dyed ? 'dyed' : (r.isSkin ? !isDyeableSkin(toneName) : r.item?.dyeMode === 'none') ? 'none' : 'plain'}
+            <DyeBand state={bandState(r)}
               slot={r.slot} palette={s.dyePalette[r.slot]} hsb={s.dyeHsb[r.slot]} off={r.dyeOff} skinFamily={r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined} />
           </button>
         )
@@ -128,12 +152,16 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
       <span className={styles.chipLabel}>{s.infoCats.length}</span>
     </div>
   )
-  const unequip = <button type="button" data-guide="unequip" onClick={s.unequipAll} title="모든 부위 벗기" className={clsx('pb-ghost', styles.btn, mobile && styles.btnM)}>전체 벗기</button>
+  // 공유 이미지 저장(헤더 오른쪽 — 예전 '전체 벗기' 자리, 사용자 지시. 전부 지우기는 프리셋 삭제로 한다)
+  const share = (
+    <button type="button" data-guide="share-image" onClick={shareImage} disabled={sharing} aria-busy={sharing || undefined} title="캐릭터와 장착 아이템을 한 장으로 저장"
+      className={clsx('pb-ghost', styles.btn, styles.btnIcon, mobile && styles.btnM)}><IconShareImage size={14} /><span>공유 이미지</span></button>
+  )
 
   if (mobile) {
     return (
       <>
-        <div className={styles.headerM}>{chip}<div className={styles.right}>{unequip}</div></div>
+        <div className={styles.headerM}>{chip}<div className={styles.right}>{share}</div></div>
         <div className={styles.hrM} />
         <div className={clsx('pb-scroll', 'pb-norail', 'pb-fade', styles.scrollM)}>
           <div ref={slotsRef}>{grid}</div>
@@ -143,7 +171,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   }
   return (
     <section className={styles.panel}>
-      <div className={styles.header}>{chip}<div className={styles.right}>{unequip}</div></div>
+      <div className={styles.header}>{chip}<div className={styles.right}>{share}</div></div>
       <div className={styles.hr} />
       <div className={clsx('pb-scroll', 'pb-fade', styles.scroll)}>
         <div ref={slotsRef} className={styles.slots}>{grid}</div>

@@ -19,7 +19,7 @@ import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbPa
 import { effectDraws, effectGroups, effectPeriods, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
-import { modelShotBlob } from '@/lib/canvasExport'
+import { modelShotBlob, setPreviewShot, type ModelShot } from '@/lib/canvasExport'
 import { emoFrameAt, type ChatDraw } from '@/lib/core/chatUi'
 import { useHeroView } from '@/lib/heroView'
 import { bindImageMenu, type GifMenu } from '@/lib/canvasMenu'
@@ -631,12 +631,15 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 그림에 맞춘 상자 · 게임 크기 1배).
   const saveNameRef = useRef(shop.saveName)
   saveNameRef.current = shop.saveName
-  const makeBlob = useCallback(async (): Promise<Blob | null> => {
+  const currentShot = useCallback(async (): Promise<ModelShot | null> => {
     for (let i = 0; i < 300 && !copyRef.current; i++) await new Promise((r) => setTimeout(r, 100)) // 불러오는 중이면 첫 그림을 기다린다
     const snap = copyRef.current
     if (!snap) return null
-    return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
+    return { placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy }
   }, [])
+  const makeBlob = useCallback(async (): Promise<Blob | null> => { const shot = await currentShot(); return shot ? modelShotBlob(shot) : null }, [currentShot])
+  // 코디 정보의 공유 이미지(lib/shareCard)가 쓰도록 지금 그림 재료를 등록한다 — 화면의 미리보기만(염색 창 등 src 가 있는 미리보기는 빼고)
+  useEffect(() => { if (src) return; setPreviewShot(currentShot); return () => setPreviewShot(null) }, [src, currentShot])
 
   // 움짤 — 화면과 같은 시계 규칙으로 시각 t 의 그림을 만든다(lib/gifExport 가 한 바퀴를 훑는다). 그리는 법은 위 draw 와 같고,
   // 정렬 · 염색 · 명찰 · 말풍선은 한 장 저장(copyRef)의 것을 쓴다. 입자는 이 움짤만의 시뮬을 새로 돌린다(화면의 입자를 건드리지 않게).

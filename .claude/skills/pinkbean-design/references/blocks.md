@@ -88,6 +88,7 @@
 | 슬롯 줄의 작은 그림 | `info/SlotSprite.tsx` |
 | 그리는 순서 대기열 | `lib/thumbQueue.ts` — `enqueueThumb` |
 | 복사·저장 이미지 | `lib/canvasExport.ts` — `modelShotBlob`·`copyImage`·`saveImage` |
+| 코디 공유 이미지(캐릭터 + 장착 칩 한 장) | `lib/shareCard.ts` — `shareCardBlob`(재료: `canvasExport.getPreviewShot`, 칩 캔버스, `SlotSprite.dyeBandData`) |
 | 합성·염색·가림의 코어 | `lib/core/`(README 가 있다) |
 
 ## 광장에서 가져다 쓸 수 있는 것

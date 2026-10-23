@@ -85,6 +85,12 @@ export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
   return await new Promise((res) => out.toBlob((b) => res(b), 'image/png'))
 }
 
+// 지금 미리보기의 그림 재료(우클릭 저장과 같은 것). 미리보기(PreviewModel, 화면에 하나)가 등록하고 코디 정보의 공유 이미지(lib/shareCard)가 쓴다.
+// 불러오는 중이면 첫 그림을 기다린다(등록한 쪽이 기다려 준다).
+let previewShot: (() => Promise<ModelShot | null>) | null = null
+export const setPreviewShot = (f: typeof previewShot): void => { previewShot = f }
+export const getPreviewShot = (): Promise<ModelShot | null> => (previewShot ? previewShot() : Promise.resolve(null))
+
 // 클립보드에 PNG 복사. getBlob 은 Promise<Blob> 을 반환해 ClipboardItem 에 그대로 넘긴다
 // (사용자 제스처 유지 — Safari 포함).
 export async function copyImage (getBlob: () => Promise<Blob | null>): Promise<boolean> {

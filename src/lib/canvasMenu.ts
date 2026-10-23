@@ -72,7 +72,14 @@ export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[], o
         transition: 'opacity .1s ease',
       } as CSSStyleDeclaration)
 
-  for (const it of items) {
+  for (const [i, it] of items.entries()) {
+    // 버튼 사이 구분선 — 양끝이 메뉴 테두리에 닿지 않는 짧은 선(사용자 지시 — 버튼마다 따로인 기능임이 보이게)
+    if (i) {
+      const hr = document.createElement('div')
+      hr.setAttribute('role', 'separator')
+      Object.assign(hr.style, { height: '1px', margin: centered ? '3px 16px' : '3px 10px', background: '#f1eae2' } as CSSStyleDeclaration)
+      el.appendChild(hr)
+    }
     const b = document.createElement('button')
     b.type = 'button'
     b.textContent = it.label
