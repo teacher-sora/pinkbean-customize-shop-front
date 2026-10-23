@@ -651,9 +651,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (Array.isArray(u.searchResults)) setSearchResults(u.searchResults)
     if (u.plazaFilter && PLAZA_FILTERS.some((f: { id: string }) => f.id === u.plazaFilter)) setPlazaFilter(u.plazaFilter as PlazaFilter)
     if (typeof u.plazaQ === 'string') setPlazaQState(u.plazaQ)
-    // 광장 정렬만 **영구**다(취향에 가까운 값). 나머지는 전부 새로고침까지만.
+    // 광장 정렬 · 목록을 넘기는 방향은 **영구**다(취향에 가까운 값). 나머지는 전부 새로고침까지만.
     const pref = readUiPref()
     if (pref.plazaSort === 'popular' || pref.plazaSort === 'recent') setPlazaSort(pref.plazaSort)
+    if (pref.listDir === 'x' || pref.listDir === 'y') { listDirRef.current = pref.listDir; setListDir(pref.listDir) } // 넘기는 방향도 영구(사용자 지시 — 늘 같은 방향)
     setUiReady(true)
   }, [])
   // 뼈대를 거두는 건 **되살린 화면이 실제로 커밋된 뒤**다(uiReady 가 켜진 다음 렌더).
@@ -666,7 +667,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       aiQ, searchQuery, searchResults: searchResults.slice(0, SEARCH_KEEP),
     })
   }, [uiReady, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
-  useEffect(() => { if (uiReady) writeUiPref({ plazaSort }) }, [uiReady, plazaSort])
+  useEffect(() => { if (uiReady) writeUiPref({ plazaSort, listDir }) }, [uiReady, plazaSort, listDir])
   const [rateResult, setRateResult] = useState<{ lines: RateLine[]; nonce: number } | null>(null) // 코디 평가(핑크빈이 하는 말)
   // 평가는 **눌러 받은 그 한 번만** 나온다(광장처럼 미리보기가 없는 탭에
   // 갔다 와도 지난 평가가 다시 나오지 않는다). PinkbeanRate 는 미리보기와 함께 언마운트됐다가 다시 붙으면서
