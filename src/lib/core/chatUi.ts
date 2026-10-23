@@ -22,6 +22,9 @@
 //        이모티콘을 고르면 글 대신 이모티콘을 원래 크기 그대로 안쪽 칸 가운데에 둔다(안쪽 칸이 그 크기에 맞춰 커진다).
 //        움직이는 이모티콘은 프레임 전부가 들어가는 상자로 칸을 한 번만 잡고(프레임마다 칸이 흔들리지 않게), 프레임은 말풍선 그림에 굽지 않고
 //        그릴 때마다 보낸 뒤 흐른 시간의 프레임을 덧그린다(drawChat — 프레임마다 원본의 머무는 시간대로, 끝나면 처음부터).
+//  훈장 · 칭호: 명찰과 같은 조각(NameTag.img/medal · nick — w · c · e, 움직이는 훈장은 ani0 …)이라 명찰 그리기를 그대로 쓴다. 글자 = 그 아이템 이름.
+//        움직이는 판(ani 프레임 — 훈장 29 · 칭호 22)은 첫 프레임 한 장이고 이름 글자가 그림에 박혀 있어(baked) 글자를 얹지 않는다.
+//        훈장은 명찰 아래(명찰이 없으면 명찰 자리), 칭호는 머리 위 TITLE_LIFT 에 둔다. 칭호가 있으면 말풍선은 칭호 위로 올라간다(사용자 지시).
 // 글자는 돋움 12px 비트맵의 도트를 그대로 찍는다(core/chatGlyphs — 브라우저가 글꼴을 그리지 않아 어느 기기에서나 게임과 같다).
 // 글자 폭(advance) · 왼쪽 여백 · 기준선 높이도 돋움 값 그대로다. 색은 원본 clr. 돋움에 없는 글자만 사이트 글꼴로 그려 알파를 끊는다.
 // 원본에 있지만 아직 쓰지 않는 값: 움직이는 명찰의 heightoffset · bottomoffset(뜻을 확인하지 못했다), fontType(명찰 · 말풍선 각 1개).
@@ -32,18 +35,20 @@ import { imageLoaded, loadImage } from './render'
 
 export interface ChatPart { x: number; y: number; w: number; h: number; origin: Vec } // 아틀라스 안의 자리
 export interface ChatUi {
-  kind: 'nameTag' | 'chatBalloon'; clr: string; atlas: string; parts: Record<string, ChatPart>
+  kind: 'nameTag' | 'chatBalloon' | 'medal' | 'nick'; clr: string; atlas: string; parts: Record<string, ChatPart>
   originOffset?: Vec; heightoffset?: number; bottomoffset?: number; fontType?: number
   aniFit?: number[] // 움직이는 명찰: 층(ani0, ani1, …)마다 이름이 들어가는 폭(px) — 추출 때 그림의 안쪽 폭을 재어 적는다
   plain?: boolean // 기본 명찰(BASE_TAG) — 조각 그림 없이 반투명 검은 판을 그린다
+  baked?: boolean // 훈장 · 칭호: 판 그림에 이름 글자가 박혀 있다(움직이는 판의 첫 프레임) — 글자를 얹지 않는다
   arrowPad?: number // 말풍선 꼬리의 왼쪽 빈 열 수(origin.x 만큼 띠 위에 걸치는 자리 중 띠 높이에서 투명한 열) — 띠를 그만큼 꼬리 밑으로 늘린다
 }
 // 이모티콘 프레임: 가로로 이은 그림(strip) 안의 자리 x · 크기 · origin(ox, oy) · 머무는 시간(d, ms)
 export interface EmoFrame { x: number; w: number; h: number; ox: number; oy: number; d: number }
 // png = 대표 그림(mainImg — 고르기 칸 · 정지 그림). 움직이는 것은 strip · frames 가 있다.
 export interface ChatEmo { id: string; name: string; png: string; w: number; h: number; origin: Vec; main?: number; strip?: string; frames?: EmoFrame[]; still?: boolean } // still = 움직이는 그림이 오기 전 대표 프레임(png)으로 그린다(prepareChat)
-// 그릴 것: 명찰 · 말풍선(없으면 그리지 않는다)과 글자 · 이모티콘.
-export interface ChatDraw { tag?: ChatUi; balloon?: ChatUi; name: string; text: string; emo?: ChatEmo; t0?: number } // t0 = 보낸 시각(performance.now) — 움직이는 이모티콘의 시계
+// 그릴 것: 명찰 · 말풍선 · 칭호 · 훈장(없으면 그리지 않는다)과 글자 · 이모티콘. 칭호 · 훈장의 글자는 그 아이템 이름(name).
+export type ChatLabel = { ui: ChatUi; name: string }
+export interface ChatDraw { tag?: ChatUi; balloon?: ChatUi; title?: ChatLabel; medal?: ChatLabel; name: string; text: string; emo?: ChatEmo; t0?: number } // t0 = 보낸 시각(performance.now) — 움직이는 이모티콘의 시계
 
 const LINE = 12            // 글자 한 줄 높이(돋움 12px — 기준선 위 10, 아래 2)
 const GAP = 2              // 줄 사이
@@ -53,6 +58,8 @@ const BASE = 12            // 글자 그림 안의 기준선(위 여백 2 — �
 // 발끝에서의 두 거리는 원본에 없어 게임 화면(꿈나라 달링 · 벼링 명찰 · 말풍선, 1배 캡처)을 픽셀로 재어 맞췄다.
 const TAG_TEXT = 8         // 발끝 아래 명찰 글자 칸 위까지(띠 origin y 6 인 명찰의 윗변이 발끝 2px 아래 — 게임과 같다)
 const BALLOON_TIP = 76     // 발끝 위 말풍선 꼬리 그림 아래 끝까지(두 반지 모두 이 줄 — 몸통은 꼬리 길이만큼 오르내린다)
+const TITLE_LIFT = 72      // 발끝 위 칭호 그림 아래 끝까지(머리 위 — 말풍선 꼬리 자리)
+const STACK_GAP = 1        // 명찰 아래 훈장 · 칭호 위 말풍선 사이
 
 // ox, oy = 기준점(발끝)에서 그림 왼쪽 위까지. emo = 덧그릴 움직이는 이모티콘(x, y = 그림 왼쪽 위에서 프레임 origin 이 닿는 점)
 type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number; emo?: { img: HTMLImageElement; frames: EmoFrame[]; x: number; y: number } }
@@ -197,7 +204,7 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
   }
   // 글자: 글자 칸 왼끝부터 돋움의 펜 위치대로, 세로는 글자 칸의 기준선에 — 띠가 아니라 글자 칸을 기준으로 놓는다.
   const tl = ani.length ? -Math.floor(t.adv / 2) : -Math.floor((t.adv + 4) / 2)
-  return compose(A, pieces, (g, x0, y0) => g.drawImage(t.c, tl + t.left - x0, T + t.top - y0))
+  return compose(A, pieces, (g, x0, y0) => { if (!ui.baked) g.drawImage(t.c, tl + t.left - x0, T + t.top - y0) })
 }
 
 // 말풍선. 기준점(0,0) = 발끝. 안쪽 칸 높이 = 옆 띠 조각 높이의 배수.
@@ -275,7 +282,7 @@ function bitmapOf (ui: ChatUi, s: string, keep: boolean, emo?: ChatEmo): Promise
   const k = key(ui, s, emo)
   let p = cache.get(k)
   if (p) { cache.delete(k); cache.set(k, p); return p } // 최근에 쓴 것으로 올린다
-  p = (ui.kind === 'nameTag' ? nameTag(ui, s) : balloon(ui, s, emo)).catch(() => null)
+  p = (ui.kind === 'chatBalloon' ? balloon(ui, s, emo) : nameTag(ui, s)).catch(() => null)
   p.then((b) => { if (!b || !keep) cache.delete(k) })
   cache.set(k, p)
   if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value!)
@@ -283,9 +290,11 @@ function bitmapOf (ui: ChatUi, s: string, keep: boolean, emo?: ChatEmo): Promise
 }
 
 // 명찰 · 말풍선을 하나씩 따로 만든다(목록 카드가 쓴다 — 몸 없이 그 아이템만). 기준점 정보(ox, oy)는 버리고 그림만(카드에는 이모티콘이 없다).
+// 칭호 · 훈장은 name 에 그 아이템 이름을 준다.
 export async function chatPreview (ui: ChatUi, d: Pick<ChatDraw, 'name' | 'text' | 'emo'>): Promise<HTMLCanvasElement | null> {
   const keep = await loadGlyphs([d.name, d.text, ' : '])
-  const b = await bitmapOf(ui, ui.kind === 'nameTag' ? d.name : `${d.name} : ${d.text}`, keep, ui.kind === 'nameTag' ? undefined : d.emo)
+  const bub = ui.kind === 'chatBalloon'
+  const b = await bitmapOf(ui, bub ? `${d.name} : ${d.text}` : d.name, keep, bub ? d.emo : undefined)
   return b?.c ?? null
 }
 
@@ -317,11 +326,19 @@ export function warmEmo (emo: ChatEmo): Promise<unknown> {
 export async function prepareChat (d: ChatDraw | undefined, full = false): Promise<Bitmap[]> {
   if (!d) return []
   // 글자 도트를 먼저 받는다(이미 받았으면 바로 끝난다) — 받기 전에 그리지 않는다. 받지 못했으면 그린 그림을 기억하지 않아 다음에 다시 그린다.
-  const keep = await loadGlyphs([d.name, d.text, ' : '])
+  const keep = await loadGlyphs([d.name, d.text, ' : ', d.title?.name ?? '', d.medal?.name ?? ''])
   let emo = d.emo
   if (!full && emo?.strip && emo.frames?.length && !imageLoaded(emo.strip, true)) { void warmEmo(emo); emo = { ...emo, still: true } }
-  const out = await Promise.all([d.balloon ? bitmapOf(d.balloon, `${d.name} : ${d.text}`, keep, emo) : null, d.tag ? bitmapOf(d.tag, d.name, keep) : null])
-  return out.filter((b): b is Bitmap => !!b)
+  const [bub, tag, title, medal] = await Promise.all([
+    d.balloon ? bitmapOf(d.balloon, `${d.name} : ${d.text}`, keep, emo) : null, d.tag ? bitmapOf(d.tag, d.name, keep) : null,
+    d.title ? bitmapOf(d.title.ui, d.title.name, keep) : null, d.medal ? bitmapOf(d.medal.ui, d.medal.name, keep) : null,
+  ])
+  // 쌓기(캐시한 그림은 그대로 두고 자리만 옮긴 사본으로): 훈장 = 명찰 그림 아래(명찰이 없으면 명찰 자리 그대로),
+  // 칭호 = 아래 끝이 머리 위 TITLE_LIFT, 말풍선 = 칭호가 있으면 아래 끝이 칭호 위 끝 위로.
+  const t = title && { ...title, oy: -TITLE_LIFT - title.c.height }
+  const m = medal && (tag ? { ...medal, oy: tag.oy + tag.c.height + STACK_GAP } : medal)
+  const b = bub && t ? { ...bub, oy: bub.oy + Math.min(0, t.oy - STACK_GAP - (bub.oy + bub.c.height)) } : bub
+  return [b, t, tag, m].filter((x): x is Bitmap => !!x)
 }
 
 // 캐릭터 위에 덧그린다. 시선이 오른쪽(flip)이어도 글자는 뒤집지 않고 자리만 옮긴다. 기준점 = 딛고 선 바닥(탈것이면 탈것의 바닥).

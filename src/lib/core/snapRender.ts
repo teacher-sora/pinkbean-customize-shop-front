@@ -7,7 +7,7 @@ import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor } from '.
 import { effectDraws, loadImage, type EffectDraw } from './render'
 import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from './particle'
 import { collectWornEffects } from './thumbEffects'
-import { RIDING_FILE, animaLayers, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW } from '@/lib/shopData'
+import { CHAT_SLOTS, RIDING_FILE, animaLayers, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 
 // center = 라이딩일 때의 가로 정렬 기준(미리보기·부위 카드와 같은 규칙). 'x' = 캐릭터 navel, 'mount' = 메카 bbox.
@@ -30,8 +30,8 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const baseP = Promise.all([loadMeta(te.body), loadMeta(te.head)])
   // 착용 아이템의 meta 는 **한꺼번에** 받는다(순서는 스냅샷 그대로). 하나씩 기다리면 아이템이 열 개인 코디는 왕복 열 번이
   // 줄을 서서, 카드 한 장에 1초 가까이 걸렸다(광장 한 쪽이 다 뜨는 데 5초).
-  // 명찰 · 말풍선은 그릴 레이어가 없고 meta 가 CDN 에 없다 — 받지 않는다(카드의 명찰은 SnapThumb 의 tagName 이 덧그린다).
-  const wornIds = Object.entries(snap.equipped).filter(([slot, id]) => !snap.hidden?.[slot] && id && slot !== 'nameTag' && slot !== 'chatBalloon')
+  // 명찰 · 말풍선 · 칭호 · 훈장은 그릴 레이어가 없고 meta 가 CDN 에 없다 — 받지 않는다(카드의 명찰은 SnapThumb 의 tagName 이 덧그린다. 칭호 · 훈장은 카드 틀 밖으로 나가 그리지 않는다).
+  const wornIds = Object.entries(snap.equipped).filter(([slot, id]) => !snap.hidden?.[slot] && id && !CHAT_SLOTS.has(slot))
   const [[bodyMeta, headMeta], got] = await Promise.all([baseP, Promise.all(wornIds.map(([, id]) => loadMeta(id).catch(() => null)))])
   const equipMetas: { slot: string; meta: ItemMeta }[] = wornIds.flatMap(([slot], i) => (got[i] ? [{ slot, meta: got[i]! }] : []))
   // 표정 얼굴장식(fixedEmotion)이 프리셋에 들어있으면 그 표정으로 굳는다. 없으면 종전대로 THUMB_VIEW.

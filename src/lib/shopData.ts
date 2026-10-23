@@ -14,7 +14,8 @@ export function foldList(l: ListItem[]): ListItem[] {
   if (!l.length) return l
   const hasColor = l[0].colorGroup != null
   // 장비는 이름 + 라벨로 묶는다 — 스페셜 라벨과 일반 아이템은 이름이 같아도 그림이 다른 다른 아이템이다(양머리 수건 01002447 · 01004689, 사용자 제보).
-  const keyOf = (it: ListItem) => (hasColor ? `g${it.colorGroup}` : `n${it.name ?? it.id}|${it.label ?? ''}`)
+  // 명찰 · 말풍선 · 훈장 · 칭호는 그림(아틀라스)까지 — 이름이 같아도 그림이 다른 훈장 14 · 칭호 5가 있다
+  const keyOf = (it: ListItem) => (hasColor ? `g${it.colorGroup}` : `n${it.name ?? it.id}|${it.label ?? ''}|${it.chatUi?.atlas ?? ''}`)
   const rep = new Map<string, ListItem>()
   for (const it of l) {
     if (it.dupOf != null || it.dupId) continue // 복제(헤어 · 성형의 복제 묶음, 그 밖의 재출시 복제)는 목록에 내지 않는다(원본이 같은 그림으로 있다 — data.ts loadBeautyDups · loadItemDups)
@@ -58,6 +59,7 @@ export const CAT_TO_SLOT: Record<string, string> = {
   shoes: 'shoes', gloves: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
   ring: 'ring', effect: 'effect', riding: 'riding',
   nametag: 'nameTag', balloon: 'chatBalloon', chatring: 'chatRing', // 부위 탭은 명찰/말풍선 하나(chatring), 코디 정보 칩은 둘(CHAT_INFO_CATS)
+  title: 'title', medal: 'medal', // 칭호 · 훈장(부위 탭 · 코디 정보 칩 모두 하나씩)
 }
 export const SLOT_TO_CAT: Record<string, string> = {
   ...Object.fromEntries(Object.entries(CAT_TO_SLOT).map(([c, s]) => [s, c])),
@@ -71,6 +73,7 @@ export const EQUIP_SLOTS = [
   'effect', // 캐시 이펙트 — 그릴 레이어가 없고(빈 meta) 이펙트(effects/<id>.json)만 그린다
   'riding', // 탑승 — 마운트/모프 레이어를 코디처럼 합성
   'nameTag', 'chatBalloon', // 명찰 · 말풍선(그릴 레이어 없이 core/chatUi 가 덧그린다)
+  'title', 'medal', // 칭호 · 훈장(명찰과 같다 — 칭호는 머리 위, 훈장은 명찰 아래)
 ] as const
 
 /* ── 라이딩(탑승) 공통 규칙 ───────────────────────────────────────────────
@@ -93,7 +96,7 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
   CHAT_FILES[slot] ?? (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
 
 /* ── 명찰 · 말풍선 반지 ──────────────────────────────────────
- * 데이터는 front public/chatui(테스트 서버에서 뽑은 명찰 · 말풍선 603 · 채팅 이모티콘 141 — parser 의 chatui-build.py 가 통째로 다시 쓴다).
+ * 데이터는 front public/chatui(본 서버에서 뽑은 명찰 · 말풍선 603 · 칭호 431 · 훈장 853 · 채팅 이모티콘 141 — parser 의 chatui-build.py 가 통째로 다시 쓴다).
  * 부위는 그 목록 파일이 실제로 있을 때만 나온다(ShopContext 의 cats · infoCats).
  * 부위 탭은 하나(명찰/말풍선 — 같은 이름의 명찰과 말풍선이 나란히, 세트 순서)이고 코디 정보 칩은 둘이다(따로 끼고 벗는다).
  * 그리기는 core/chatUi(renderCharacter 의 chat). 명찰 이름 = 고른 프리셋 이름, 말풍선 = 미리보기 아래 채팅 칸(preview/ChatBar)에서
@@ -101,10 +104,14 @@ export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null):
  *  연출 설정 > 캐릭터의 기본 명찰(pv.baseTag, 기본 꺼짐)을 켰을 때 — 사용자 지시)
  * 보낸 말 · 이모티콘이 CHAT_SHOW_MS 동안 떴다 사라진다(게임 값을 찾지 못해 사용자가 정했다). */
 export const CHAT_TAB = 'chatring'
-export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰 / 말풍선' }] // '/' 양옆은 가는 공백(U+2009 — 보통 공백보다 좁게, 사용자 지시)
-export const CHAT_INFO_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }]
+// 칭호 · 훈장은 명찰/말풍선 바로 뒤(이펙트 앞 — 사용자 지시). 목록은 명찰 · 말풍선과 따로 받는다(그 탭을 열 때만)
+const TAG_CATS: Cat[] = [{ id: 'title', label: '칭호' }, { id: 'medal', label: '훈장' }]
+export const CHAT_CATS: Cat[] = [{ id: CHAT_TAB, label: '명찰 / 말풍선' }, ...TAG_CATS] // '/' 양옆은 가는 공백(U+2009 — 보통 공백보다 좁게, 사용자 지시)
+export const CHAT_INFO_CATS: Cat[] = [{ id: 'nametag', label: '명찰' }, { id: 'balloon', label: '말풍선' }, ...TAG_CATS]
 const CHAT_LIST = '/chatui/list.json'
-export const CHAT_FILES: Record<string, string> = { nameTag: CHAT_LIST, chatBalloon: CHAT_LIST, chatRing: CHAT_LIST }
+export const CHAT_FILES: Record<string, string> = { nameTag: CHAT_LIST, chatBalloon: CHAT_LIST, chatRing: CHAT_LIST, title: '/chatui/title.json', medal: '/chatui/medal.json' }
+// 그릴 레이어 없이 core/chatUi 가 덧그리는 부위(meta 가 CDN 에 없다)
+export const CHAT_SLOTS = new Set(['nameTag', 'chatBalloon', 'title', 'medal'])
 export const CHAT_EMO_FILE = '/chatui/emoticons.json'
 export const CHAT_DEFAULT_BALLOON = '/chatui/default-balloon.json' // UI.wz ChatBalloon.img/0(parser chatui-build)
 export const CHAT_NEW_FILE = '/chatui/new.json' // 테스트 서버에만 있는(본 서버에 없는) 명찰 · 말풍선 id — NEW 라벨
@@ -119,11 +126,14 @@ export const CHAT_TEXT_MAX = 70  // 말 글자 수
 export const CHAT_SHOW_MS = 10000 // 보낸 말풍선이 떠 있는 시간(사용자 지시 — 10초)
 // 착용 중인(숨기지 않은) 명찰 · 말풍선 → 그릴 것. 목록 아이템이 조각 정보를 들고 있고, 없으면 meta 에서 읽는다.
 // 말풍선은 보낸 말(msg)이 떠 있는 동안만 그린다.
+// 칭호 · 훈장은 끼었고 숨기지 않았으면 늘 그린다(글자 = 그 아이템 이름).
 export function chatDrawOf (equipped: Record<string, ListItem | null | undefined>, hidden: Record<string, boolean>, name: string, msg: ChatMsg | null, metas?: Map<string, ItemMeta>, defBalloon?: ChatUi | null, baseTag?: boolean): ChatDraw | undefined {
   const ui = (slot: string) => { const it = equipped[slot]; return !it || hidden[slot] ? undefined : it.chatUi ?? metas?.get(it.id)?.chatUi }
+  const label = (slot: string) => { const u = ui(slot); return u ? { ui: u, name: equipped[slot]!.name ?? '' } : undefined }
   // 명찰: 반지를 끼었으면 그 명찰(숨겼으면 없음), 칸이 비었으면 연출 설정의 '기본 명찰'(pv.baseTag)이 켜졌을 때만 기본 명찰
   const tag = ui('nameTag') ?? (!equipped.nameTag && baseTag ? BASE_TAG : undefined), balloon = msg ? ui('chatBalloon') ?? defBalloon ?? undefined : undefined
-  return tag || balloon ? { tag, balloon, name, text: msg?.text ?? '', emo: msg?.emo, t0: msg?.at } : undefined
+  const title = label('title'), medal = label('medal')
+  return tag || balloon || title || medal ? { tag, balloon, title, medal, name, text: msg?.text ?? '', emo: msg?.emo, t0: msg?.at } : undefined
 }
 
 // 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아
