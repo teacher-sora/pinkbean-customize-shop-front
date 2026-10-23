@@ -13,8 +13,7 @@
    화면 밖이면 보이는 아래 끝에 붙는다(사용자 지시 — 모바일에서 버튼이 보이지 않았다) */
 .photoTools { position: absolute; z-index: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; pointer-events: none; }
 .toolRow { position: sticky; bottom: 8px; margin: 8px; display: flex; gap: 6px; pointer-events: auto; }
-.resetBtn { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); transition: opacity .2s ease; }
-.resetBtn:disabled { opacity: .5; cursor: default; }
+.resetBtn { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); opacity: .5; } /* 늘 누를 수 있고 늘 반투명(사용자 지시 — 사진이 비쳐 보이게) */
 
 /* 꾸미기: 세 묶음(한 줄 칸 · 토글 · 이름과 말풍선)을 구분선으로 가른다 */
 .side { flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 0 8px; display: flex; flex-direction: column; }
