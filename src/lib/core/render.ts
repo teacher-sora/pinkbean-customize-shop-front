@@ -12,7 +12,10 @@ import type { PlacedLayer } from './assemble'
 import { LRU } from './lru'
 import { canvasReadExact, rememberBytes } from './pngPixels'
 
-const imageCache = new LRU<Promise<HTMLImageElement>>(1200)
+// 다 받은 그림(디코딩된 채로 렌더러 메모리를 차지한다)은 최근에 쓴 IMAGE_MAX 장만 둔다 — 1200 장일 때 목록을 넘기면 렌더러가 400MB 를 넘었다(실측).
+// 미리보기가 한 동작을 도는 데 쓰는 그림(이펙트 많은 코디도 수백 장 아래)보다 넉넉해야 돌 때마다 다시 받지 않는다
+const IMAGE_MAX = 500
+const imageCache = new LRU<Promise<HTMLImageElement>>(IMAGE_MAX)
 
 // cors=false(기본): 일반 렌더용. crossOrigin 없이 로드(drawImage 는 tainted 라도 OK).
 // cors=true: 염색용. getImageData(픽셀리드)가 필요해 CORS 로 로드해야 하는데, Cloudflare 는 Vary:Origin 을

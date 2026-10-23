@@ -1,6 +1,7 @@
 // Static data access. Everything is fetched from DATA_BASE — the Cloudflare R2/CDN bucket
 // (bucket contents live at the bucket root, e.g. <cdn>/index.json). NEXT_PUBLIC_DATA_BASE
 // overrides the base. Index is split per slot for virtualization.
+import { LRU } from './lru'
 import type { ChatUi } from './chatUi'
 import type { ParticleDesc, ParticleSpot } from './particle'
 export const DATA_BASE =
@@ -254,6 +255,15 @@ export function loadSlot(file: string): Promise<ListItem[]> {
   if (!p) {
     p = pre<ListItem[]>(file, () => fetch(url(file), FRESH).then((r) => r.json())).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
+      // 같은 동작 목록은 한 배열을 함께 쓴다 — JSON 은 아이템마다 같은 글자를 새로 만든다(무기 3,961개의 동작 목록은 365가지뿐인데
+      // 문자열 20만 개가 힙에 남았다). 동작 목록은 읽기만 한다
+      const acts = new Map<string, string[]>()
+      for (const it of items) {
+        const a = (it as { actions?: string[] }).actions
+        if (!a) continue
+        const k = a.join('|'), hit = acts.get(k)
+        if (hit) (it as { actions?: string[] }).actions = hit; else acts.set(k, a)
+      }
       return items.map((it) => fixIcon(fixSlotCodes(it)))
     }).then(async (items) => {
       const first = items[0]
@@ -270,7 +280,11 @@ export function loadSlot(file: string): Promise<ListItem[]> {
   }
   return p
 }
-const metaCache = new Map<string, Promise<ItemMeta>>()
+// 아이템 meta(동작마다의 프레임 — 하나에 객체 2천여 개)는 최근에 쓴 META_MAX 개만 둔다. 목록 카드가 카드마다 받으므로 끝없이 두면
+// 목록을 넘길수록 힙이 자랐다(60쪽에 JS 힙 40 → 130MB, 렌더러 510MB — 실측). 밀려나도 브라우저 캐시에서 다시 읽는다.
+// 입고 있는 것 · 미리보기 · 카드가 쓰는 meta 는 그쪽이 참조를 쥐고 있어 그대로 남는다.
+const META_MAX = 160
+const metaCache = new LRU<Promise<ItemMeta>>(META_MAX)
 export function loadMeta(id: string): Promise<ItemMeta> {
   let p = metaCache.get(id)
   // ⚠️ 실패한 결과는 캐시에 남기지 않는다. 라이딩 meta 는 목록(riding.json)이 경로를 등록해 줘야 찾을 수 있는데,
@@ -278,7 +292,7 @@ export function loadMeta(id: string): Promise<ItemMeta> {
   if (!p) {
     const rel = ridingMetaUrl.get(id) ?? `meta/${id}.json`
     p = pre<ItemMeta>(rel, () => fetch(url(rel)).then((r) => r.json())).then(fixSlotCodes)
-    p.catch(() => { if (metaCache.get(id) === p) metaCache.delete(id) })
+    p.catch(() => { if (metaCache.peek(id) === p) metaCache.delete(id) })
     metaCache.set(id, p)
   }
   return p
