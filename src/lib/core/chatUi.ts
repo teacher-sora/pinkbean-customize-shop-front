@@ -40,7 +40,7 @@
 // 글자는 돋움 12px 비트맵의 도트를 그대로 찍는다(core/chatGlyphs — 브라우저가 글꼴을 그리지 않아 어느 기기에서나 게임과 같다).
 // 글자 폭(advance) · 왼쪽 여백 · 기준선 높이도 돋움 값 그대로다. 색은 원본 clr. 돋움에 없는 글자만 사이트 글꼴로 그려 알파를 끊는다.
 // 원본에 있지만 아직 쓰지 않는 값: 움직이는 명찰의 heightoffset · bottomoffset(뜻을 확인하지 못했다), fontType(명찰 · 말풍선 각 1개).
-import { groundOf, type PlacedLayer } from './assemble'
+import { footOf, groundOf, type PlacedLayer } from './assemble'
 import { glyphOf, loadGlyphs } from './chatGlyphs'
 import type { Vec } from './data'
 import { imageLoaded, loadImage } from './render'
@@ -75,14 +75,13 @@ const TAG_TOP = 2          // 발끝 아래 명찰 그림 위까지(기본 명�
 const BALLOON_TIP = 76     // 발끝 위 말풍선 꼬리 그림 아래 끝까지(두 반지 모두 이 줄 — 몸통은 꼬리 길이만큼 오르내린다)
 const TITLE_BOTTOM = 83    // 발끝 위 칭호 그림 아래 끝까지(칭호 5종 · 캐릭터 3명에서 같은 줄)
 const MEDAL_GAP = 1        // 명찰 그림 아래 끝과 훈장 그림 위 사이(게임에서 명찰 → 길드 → 훈장이 모두 이 간격)
-const NAV_FOOT = 8         // 서기 첫 프레임에서 발끝이 배꼽보다 오른쪽인 만큼(몸 00002000 stand1/0 — 가로 기준을 배꼽에 두되 맞춘 자리는 그대로)
 const TAG_MID = -1         // 칭호 · 훈장 그림 가운데의 가로 자리(기준점에서) — 기본 명찰 판의 가운데(게임도 명찰이 기준점보다 1~2px 왼쪽)
 
 // ox, oy = 기준점(발끝)에서 그림 왼쪽 위까지. emo = 덧그릴 움직이는 이모티콘(x, y = 그림 왼쪽 위에서 프레임 origin 이 닿는 점)
 // live = 움직이는 판: 프레임마다의 판(dx, dy = 첫 프레임 그림에서 그 프레임 그림 왼쪽 위까지)과 머무는 시간. 쌓기가 자리를 옮긴 사본도 같은 live 를 본다(받기가 끝나면 채워진다)
 type AnimFrame = { c: HTMLCanvasElement; dx: number; dy: number }
 type Live = { frames?: AnimFrame[]; d: number[]; load: () => Promise<void> }
-type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number; emo?: { img: HTMLImageElement; frames: EmoFrame[]; x: number; y: number }; live?: Live }
+type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number; up?: boolean; emo?: { img: HTMLImageElement; frames: EmoFrame[]; x: number; y: number }; live?: Live }
 
 // 머무는 시간을 더해 가며 t 에 보일 프레임 번호(끝나면 처음부터)
 const cycleAt = (d: number[], t: number) => {
@@ -418,35 +417,54 @@ export async function prepareChat (d: ChatDraw | undefined, full = false): Promi
   const g = tag && { ...tag, oy: TAG_TOP }
   const under = TAG_TOP + (g ? g.c.height : BASE_TAG_H)
   const centered = (b: Bitmap, oy: number): Bitmap => ({ ...b, ox: Math.floor(TAG_MID - b.c.width / 2), oy })
-  const t = title && centered(title, -TITLE_BOTTOM - title.c.height)
+  // up = 머리 위에 서는 것(칭호 · 말풍선) — 탈것을 타면 탄 사람 · 탈것의 높이를 따른다(chatRefOf)
+  const t = title && { ...centered(title, -TITLE_BOTTOM - title.c.height), up: true }
   const m = medal && centered(medal, under + MEDAL_GAP)
-  return [t, g, m, bub].filter((x): x is Bitmap => !!x)
+  const u = bub && { ...bub, up: true }
+  return [t, g, m, u].filter((x): x is Bitmap => !!x)
 }
 
 // 캐릭터 위에 덧그린다. 시선이 오른쪽(flip)이어도 글자는 뒤집지 않고 자리만 옮긴다.
 // 기준점(사용자 지시 — 서기 0프레임의 몸 자리로 한 번 정한 뒤에는 어떤 동작에서도 움직이지 않는다. 게임에서도 제자리에 가만히 있다):
 //  · 맨몸: 발(몸 그림의 origin). 미리보기 · 자세 합성은 모든 프레임을 서기 0프레임의 배꼽에 맞춰 옮겨(stab) 이 점이 동작 내내 서기 0프레임의 발 자리다.
 //    (지금 프레임의 배꼽을 따르면 숨 쉬기 · 동작마다 배꼽이 오르내리고 옆으로 가서 명찰 · 칭호 · 훈장 · 말풍선이 흔들렸다)
-//  · 탈것: 가로 = 배꼽(렌더러가 배꼽을 가로 가운데에 고정한다 — centerXOnly), 세로 = 그 동작 0프레임의 탈것 바닥(groundY — 탈것은 프레임마다 오르내린다).
-//  groundY 가 없으면 이 프레임의 바닥.
+//  · 탈것(사용자 지시 — 몸만 기준으로 두니 탈것의 가운데 · 탄 높이가 어긋났다): chatRefOf. 미리보기 · 움짤은 그 동작 0프레임으로 잰 값(ref)을 넘겨 동작 내내 같다.
+//  ref 가 없으면 이 프레임으로 잰다(한 장 그림).
 // t = 보낸 뒤 흐른 시간(ms) — 움직이는 이모티콘의 프레임을 고른다. 없으면 대표 프레임(복사 그림 등).
 // clock = 움직이는 판의 시계(ms — 미리보기는 지금 시각, 움짤은 그 프레임의 시각). 없으면 첫 프레임.
-export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed: PlacedLayer[], o: { anchorX: number; anchorY: number; scale: number; flip?: boolean; width: number; t?: number; main?: number; clock?: number; groundY?: number }) {
-  if (!maps.length) return
+// 명찰 · 말풍선 · 칭호 · 훈장의 기준점(월드). 맨몸 = 발(x · ground · up 이 모두 발).
+// 탈것을 타면 게임처럼 캐릭터 자리 = 탈것의 origin(딛는 바닥 — 명찰 · 훈장은 그 아래, 가로 가운데도 탈것의 origin):
+//  · dx = 탈것 origin 이 배꼽에서 떨어진 가로 거리 — 렌더러가 탈 때는 배꼽을 가로 가운데에 고정하므로(centerXOnly) 배꼽 + dx 로 놓아야 프레임마다 같은 자리다.
+//  · up = 머리 위에 서는 칭호 · 말풍선의 '발' 높이 = 탄 사람의 발(안장 위로 올라간 만큼). 맨몸에서 머리 위에 서는 간격을 그대로 두고 캐릭터와 함께 올린다.
+//    탈것 그림의 높이는 보지 않는다 — 게임 캡처(사용자 첨부: 재규어 · 메카)에서 칭호 · 말풍선은 탈것이 아니라 탄 캐릭터의 머리 위에 선다.
+export type ChatRef = { x: number; dx?: number; ground: number; up: number }
+export function chatRefOf (placed: PlacedLayer[]): ChatRef | null {
   const g = groundOf(placed)
-  if (!g) return
+  if (!g) return null
   const mount = placed.some((p) => p.slot === 'riding' && p.name.startsWith('mount'))
+  if (!mount) return { x: g.x, ground: g.y, up: g.y }
   const body = placed.find((p) => p.slot === 'body' && p.name === 'body'), nav = body?.map?.navel, k = body?.scale ?? 1
-  // 탈것: 배꼽 + NAV_FOOT(서기 0프레임에서 발이 배꼽보다 오른쪽인 만큼 — 맨몸과 같은 가로 자리)
-  const mx = mount && body && nav ? body.x + (body.origin.x + nav.x + NAV_FOOT) * k : g.x
+  const foot = footOf(placed)
+  const up = Math.min(foot ? foot.y : g.y, g.y)
+  const dx = body && nav ? g.x - (body.x + (body.origin.x + nav.x) * k) : undefined
+  return { x: g.x, dx, ground: g.y, up }
+}
+
+export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed: PlacedLayer[], o: { anchorX: number; anchorY: number; scale: number; flip?: boolean; width: number; t?: number; main?: number; clock?: number; ref?: ChatRef }) {
+  if (!maps.length) return
+  const r = o.ref ?? chatRefOf(placed)
+  if (!r) return
+  const body = placed.find((p) => p.slot === 'body' && p.name === 'body'), nav = body?.map?.navel, k = body?.scale ?? 1
+  // 탈것: 지금 프레임의 배꼽 + dx(렌더러가 고정하는 배꼽에서 잰 거리라 동작 내내 같은 자리)
+  const mx = r.dx != null && body && nav ? body.x + (body.origin.x + nav.x) * k + r.dx : r.x
   const fx = (o.anchorX + mx) * o.scale
   const cx = o.flip ? o.width - fx : fx
-  const cy = (o.anchorY + (o.groundY ?? g.y)) * o.scale
+  const cy = (o.anchorY + r.ground) * o.scale, cyUp = (o.anchorY + r.up) * o.scale
   ctx.imageSmoothingEnabled = false
   for (const b of maps) {
     const fr = b.live?.frames && o.clock != null ? b.live.frames[cycleAt(b.live.d, o.clock)] : undefined
     const c = fr?.c ?? b.c
-    const bx = Math.round(cx + (b.ox + (fr?.dx ?? 0)) * o.scale), by = Math.round(cy + (b.oy + (fr?.dy ?? 0)) * o.scale)
+    const bx = Math.round(cx + (b.ox + (fr?.dx ?? 0)) * o.scale), by = Math.round((b.up ? cyUp : cy) + (b.oy + (fr?.dy ?? 0)) * o.scale)
     ctx.drawImage(c, bx, by, c.width * o.scale, c.height * o.scale)
     if (b.emo) {
       const f = b.emo.frames[emoFrameAt({ frames: b.emo.frames, main: o.main } as ChatEmo, o.t)]
