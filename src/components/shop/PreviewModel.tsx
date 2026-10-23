@@ -330,7 +330,8 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   useEffect(() => {
     if (!(chat?.emo?.frames?.length && chat.t0 != null) && !chatAnimated(chat)) return
     let raf = 0
-    const tick = () => { redrawRef.current?.(); raf = requestAnimationFrame(tick) }
+    // 캐릭터 · 이펙트 루프가 이미 돌고 있으면 그 루프가 그린다(같은 프레임에 그리기 판정을 두 번 하지 않는다 — 시그니처 · 이펙트 자리 계산이 두 배였다)
+    const tick = () => { if (!clockRef.current.running) redrawRef.current?.(); raf = requestAnimationFrame(tick) }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [chat])
