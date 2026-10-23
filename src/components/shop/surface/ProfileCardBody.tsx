@@ -277,7 +277,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
       drawCardBase(g, SS, theme, { name: nameShown, sub }, chips)
       drawCardPhoto(g, SS, theme, bgSel, live.current.img, board, curView(), firstView.current ?? curView(), nameShown)
       const res = await saveImage(() => new Promise((r) => c.toBlob((b) => r(b), 'image/png')), `${fileSafe(name.trim()) || s.saveName} 공유 카드`)
-      s.notify(res === 'saved' ? '코디 프로필을 저장했어요' : '이미지를 만들지 못했어요')
+      if (res !== 'cancel') s.notify(res === 'saved' ? '코디 프로필을 저장했어요' : '이미지를 만들지 못했어요')
     } finally { setSaving(false) }
   }
 

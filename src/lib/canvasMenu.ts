@@ -150,10 +150,10 @@ export function openImageMenu (x: number, y: number, getBlob: () => Promise<Blob
   const nameOf = typeof filename === 'function' ? filename : () => filename
   const items: CanvasMenuItem[] = [
     { label: '이미지 복사', onClick: async () => flashToast((await copyImage(getBlob)) ? '이미지를 복사했어요' : '이미지 복사에 실패했어요') },
-    { label: '이미지 저장', onClick: async () => { const r = await saveImage(getBlob, nameOf); flashToast(r === 'saved' ? '이미지를 저장했어요' : '이미지 저장에 실패했어요') } },
+    { label: '이미지 저장', onClick: async () => { const r = await saveImage(getBlob, nameOf); if (r !== 'cancel') flashToast(r === 'saved' ? '이미지를 저장했어요' : '이미지 저장에 실패했어요') } },
   ]
   // 만드는 데 몇 초 걸릴 수 있어 시작할 때 알린다
-  const saveGif = async (transparent: boolean) => { flashToast('움짤을 만들고 있어요'); const r = await saveImage(() => gif!.getBlob(transparent), nameOf, 'gif'); flashToast(r === 'saved' ? '움짤을 저장했어요' : '움짤 저장에 실패했어요') }
+  const saveGif = async (transparent: boolean) => { flashToast('움짤을 만들고 있어요'); const r = await saveImage(() => gif!.getBlob(transparent), nameOf, 'gif'); if (r !== 'cancel') flashToast(r === 'saved' ? '움짤을 저장했어요' : '움짤 저장에 실패했어요') }
   if (gif) items.push({ label: '움짤 저장', onClick: () => saveGif(false) }, { label: '투명 움짤 저장', onClick: () => saveGif(true) })
   openCanvasMenu(x, y, items, { centered })
 }

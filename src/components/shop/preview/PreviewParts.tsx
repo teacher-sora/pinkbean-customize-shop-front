@@ -139,7 +139,9 @@ export function PvSheetBody() {
   const s = useShop()
   const [detail, setDetail] = useState<string | null>(null)
   const detailInfo = useActionInfo(detail)
-  const [frameBase] = useState(() => s.snapshot())
+  // 액션 상세 칸의 기준 코디 — 고르기 화면을 열 때마다 지금 코디로 다시 잡는다(시트는 열린 채 모션 · 아이템을 바꿀 수 있다 — 처음 것을 쥐고 있으면
+  // 칸 수는 새 모션, 그림은 옛 모션으로 합성돼 어긋났다. 사용자 제보: 모션을 건으로 바꾼 뒤 상세가 다 뜨지 않았다)
+  const [frameBase, setFrameBase] = useState(() => s.snapshot())
   const fields = usePvFields()
   const picked = pick ? fields.find((f) => pvFieldOf(f) === pick && f.key !== 'zoom') : undefined
   // 격자는 **시트가 다 오른 뒤에** 붙인다(움직임이 끝나고 조금 더 뒤). 움직이는 도중에 칸 31개를 마운트하면
@@ -153,6 +155,7 @@ export function PvSheetBody() {
     return () => { if (gridTimer.current) clearTimeout(gridTimer.current) }
   }, [])
   const open = (k: PvField) => {
+    setFrameBase(s.snapshot())
     setPick(k); go('pick', 1)
     setGridOn(false)
     if (gridTimer.current) clearTimeout(gridTimer.current)
