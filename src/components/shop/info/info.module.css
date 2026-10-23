@@ -17,6 +17,7 @@
 .btnM { height: 32px; border-radius: 6px; }
 .btnIcon { display: inline-flex; align-items: center; gap: 6px; }
 .btn:disabled { opacity: .6; cursor: progress; }
+.btnSolid { border-color: #ec86ac; background: #ec86ac; color: #fff; }
 
 .scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; justify-content: space-between; }
 .scrollM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 8px 12px; }

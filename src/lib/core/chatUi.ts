@@ -24,7 +24,9 @@
 //        그릴 때마다 보낸 뒤 흐른 시간의 프레임을 덧그린다(drawChat — 프레임마다 원본의 머무는 시간대로, 끝나면 처음부터).
 //  훈장 · 칭호: 명찰과 같은 조각(NameTag.img/medal · nick — w · c · e, 움직이는 훈장은 ani0 …)이라 명찰 그리기를 그대로 쓴다. 글자 = 그 아이템 이름.
 //        움직이는 판(ani 프레임 — 훈장 29 · 칭호 22)은 첫 프레임 한 장이고 이름 글자가 그림에 박혀 있어(baked) 글자를 얹지 않는다.
-//        훈장은 명찰 아래(명찰이 없으면 명찰 자리), 칭호는 머리 위 TITLE_LIFT 에 둔다. 칭호가 있으면 말풍선은 칭호 위로 올라간다(사용자 지시).
+//        틀(fx — 판 위에 덧붙는 장식, 가운데가 띠 한 장 폭만큼 뚫렸다)이 있는 칭호는 띠를 제 폭으로 깔고 틀을 씌운다. 가장 넓은 층에도 이름이
+//        들어가지 않는 훈장은 판 가운데 세로줄을 이어 늘린다. 글자가 박힌 판은 캐릭터 가운데에 둔다(원본 기준점이 치우친 것이 많다).
+//        훈장은 명찰 아래 MEDAL_GAP(명찰이 없으면 기본 명찰 자리 아래), 칭호는 글자 칸 아래가 머리 위 TITLE_TEXT. 칭호가 있으면 말풍선은 칭호 위로 올라간다(사용자 지시).
 // 글자는 돋움 12px 비트맵의 도트를 그대로 찍는다(core/chatGlyphs — 브라우저가 글꼴을 그리지 않아 어느 기기에서나 게임과 같다).
 // 글자 폭(advance) · 왼쪽 여백 · 기준선 높이도 돋움 값 그대로다. 색은 원본 clr. 돋움에 없는 글자만 사이트 글꼴로 그려 알파를 끊는다.
 // 원본에 있지만 아직 쓰지 않는 값: 움직이는 명찰의 heightoffset · bottomoffset(뜻을 확인하지 못했다), fontType(명찰 · 말풍선 각 1개).
@@ -58,8 +60,10 @@ const BASE = 12            // 글자 그림 안의 기준선(위 여백 2 — �
 // 발끝에서의 두 거리는 원본에 없어 게임 화면(꿈나라 달링 · 벼링 명찰 · 말풍선, 1배 캡처)을 픽셀로 재어 맞췄다.
 const TAG_TEXT = 8         // 발끝 아래 명찰 글자 칸 위까지(띠 origin y 6 인 명찰의 윗변이 발끝 2px 아래 — 게임과 같다)
 const BALLOON_TIP = 76     // 발끝 위 말풍선 꼬리 그림 아래 끝까지(두 반지 모두 이 줄 — 몸통은 꼬리 길이만큼 오르내린다)
-const TITLE_LIFT = 72      // 발끝 위 칭호 그림 아래 끝까지(머리 위 — 말풍선 꼬리 자리)
-const STACK_GAP = 1        // 명찰 아래 훈장 · 칭호 위 말풍선 사이
+const TITLE_TEXT = 86      // 발끝 위 칭호 글자 칸 아래까지(머리 위 — 그림 끝이 아니라 글자 칸으로 잰다: 판 아래로 처지는 장식이 디자인마다 달라
+                           // 그림 끝으로 맞추면 칭호마다 높이가 들쭉날쭉했다. 사용자 지적: 칭호가 대체로 낮았다)
+const MEDAL_GAP = 4        // 명찰 그림 아래 훈장 그림 위까지(사용자 지적: 명찰에 너무 붙었다)
+const BALLOON_GAP = 2      // 칭호 그림 위 말풍선 그림 아래까지
 
 // ox, oy = 기준점(발끝)에서 그림 왼쪽 위까지. emo = 덧그릴 움직이는 이모티콘(x, y = 그림 왼쪽 위에서 프레임 origin 이 닿는 점)
 type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number; emo?: { img: HTMLImageElement; frames: EmoFrame[]; x: number; y: number } }
@@ -190,10 +194,31 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
   const T = TAG_TEXT
   const pieces: Piece[] = []
   const ani = Object.keys(P).filter((k) => /^ani\d+$/.test(k)).sort((a, b) => +a.slice(3) - +b.slice(3))
-  if (ani.length) {
+  let tl = -Math.floor((t.adv + 4) / 2) // 글자 칸 왼끝(펜 시작)
+  if (ani.length && ui.baked) {
+    // 글자가 박힌 움직이는 판(훈장 · 칭호): 판 한 장을 캐릭터 가운데에 — 원본 기준점은 한쪽으로 치우친 것이 많다(사용자 지적: 칭호가 옆으로 비켜 섰다)
+    const p = P[ani[0]]
+    pieces.push({ p, x: -Math.floor(p.w / 2), y: T - p.origin.y })
+  } else if (ani.length) {
     // 이름이 들어가는 가장 작은 층(없으면 가장 넓은 층). origin = 글자 칸 가운데 위.
-    const i = (ui.aniFit ?? []).findIndex((f) => t.adv <= f)
-    pieces.push(at(P[ani[i < 0 ? ani.length - 1 : i]], 0, T))
+    const fits = ui.aniFit ?? []
+    const i = fits.findIndex((f) => t.adv <= f), li = i < 0 ? ani.length - 1 : i
+    const p = P[ani[li]], extra = ui.kind !== 'nameTag' && i < 0 && fits[li] ? t.adv - fits[li] + 6 : 0
+    if (extra > 0) {
+      // 가장 넓은 층에도 이름이 들어가지 않는 훈장: 판 가운데(기준점의 세로줄)를 이어 늘린다(사용자 지적: 글자가 판 밖으로 잘렸다)
+      const ox = p.origin.x, x0 = -ox - Math.floor(extra / 2), y = T - p.origin.y
+      pieces.push({ p, x: x0, y, w: ox })
+      for (let k = 0; k < extra; k++) pieces.push({ p, x: x0 + ox + k, y, sx: ox, w: 1 })
+      pieces.push({ p, x: x0 + ox + extra, y, sx: ox, w: p.w - ox })
+    } else pieces.push(at(p, 0, T))
+    tl = -Math.floor(t.adv / 2)
+  } else if (P.fx) {
+    // 틀(fx)이 있는 칭호(SWEET WISH 등): 틀은 가운데 띠(c) 한 장 폭만큼 뚫린 그림이다 — 띠는 이름 폭이 아니라 제 폭(이름이 더 길면 그만큼)으로 깔고,
+    // 틀의 origin 을 띠 왼끝에 맞춘다. 이름은 띠 가운데
+    const inner = Math.max(t.adv, P.c.w), L = -Math.floor(inner / 2)
+    hfill(pieces, P.c, L, L + inner, T - P.c.origin.y)
+    pieces.push(at(P.fx, L, T))
+    tl = L + Math.floor((inner - t.adv) / 2)
   } else {
     // 글자 칸 = 이름 폭. 이름이 아주 짧아도 양끝 조각이 안쪽으로 들어온 만큼은 남겨 서로 겹치지 않게.
     const inner = Math.max(t.adv, P.w.w - P.w.origin.x + P.e.origin.x)
@@ -203,7 +228,6 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
     pieces.push(w, e)
   }
   // 글자: 글자 칸 왼끝부터 돋움의 펜 위치대로, 세로는 글자 칸의 기준선에 — 띠가 아니라 글자 칸을 기준으로 놓는다.
-  const tl = ani.length ? -Math.floor(t.adv / 2) : -Math.floor((t.adv + 4) / 2)
   return compose(A, pieces, (g, x0, y0) => { if (!ui.baked) g.drawImage(t.c, tl + t.left - x0, T + t.top - y0) })
 }
 
@@ -333,11 +357,11 @@ export async function prepareChat (d: ChatDraw | undefined, full = false): Promi
     d.balloon ? bitmapOf(d.balloon, `${d.name} : ${d.text}`, keep, emo) : null, d.tag ? bitmapOf(d.tag, d.name, keep) : null,
     d.title ? bitmapOf(d.title.ui, d.title.name, keep) : null, d.medal ? bitmapOf(d.medal.ui, d.medal.name, keep) : null,
   ])
-  // 쌓기(캐시한 그림은 그대로 두고 자리만 옮긴 사본으로): 훈장 = 명찰 그림 아래(명찰이 없으면 명찰 자리 그대로),
-  // 칭호 = 아래 끝이 머리 위 TITLE_LIFT, 말풍선 = 칭호가 있으면 아래 끝이 칭호 위 끝 위로.
-  const t = title && { ...title, oy: -TITLE_LIFT - title.c.height }
-  const m = medal && (tag ? { ...medal, oy: tag.oy + tag.c.height + STACK_GAP } : medal)
-  const b = bub && t ? { ...bub, oy: bub.oy + Math.min(0, t.oy - STACK_GAP - (bub.oy + bub.c.height)) } : bub
+  // 쌓기(캐시한 그림은 그대로 두고 자리만 옮긴 사본으로): 훈장 = 명찰 그림 아래(명찰이 없으면 기본 명찰 자리 아래 — 발에 붙지 않게),
+  // 칭호 = 글자 칸 아래가 머리 위 TITLE_TEXT(그림의 글자 칸은 TAG_TEXT ~ +12 에 있다), 말풍선 = 칭호가 있으면 아래 끝이 칭호 위 끝 위로.
+  const t = title && { ...title, oy: title.oy - TITLE_TEXT - (TAG_TEXT + LINE) }
+  const m = medal && { ...medal, oy: (tag ? tag.oy + tag.c.height : BASE_TAG_TOP + BASE_TAG_H) + MEDAL_GAP }
+  const b = bub && t ? { ...bub, oy: bub.oy + Math.min(0, t.oy - BALLOON_GAP - (bub.oy + bub.c.height)) } : bub
   return [b, t, tag, m].filter((x): x is Bitmap => !!x)
 }
 

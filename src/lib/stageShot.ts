@@ -20,7 +20,7 @@ const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => {
 const smooth = (e0: number, e1: number, x: number) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t) }
 
 // 무대 그림 한 장(ROOM.w × ROOM.h, 1칸 = 게임 1칸)에 지금 시각의 빛 · 발밑 그림자를 입힌다 — sceneCore 의 QUAD_FS 무대 식(종류 6 창밖 · 7 매장).
-async function roomLit (shadow: number): Promise<HTMLCanvasElement> {
+export async function roomLit (shadow: number): Promise<HTMLCanvasElement> {
   const [far, main] = await Promise.all(SCENE_SRC.room.map(loadImg))
   const st = skyNow(), dim = 1 - 0.3 * st.night
   const amb = st.amb.map((v) => v * dim), lamp = st.lamp

@@ -45,7 +45,7 @@ function drawSprite(canvas: HTMLCanvasElement, src: CanvasImageSource, w: number
   ctx.drawImage(src, 0, 0, dw, dh)
 }
 
-// 칩 그림 한 장을 **이미지로 내보낼 수 있게**(CORS) 그린다 — 코디 공유 이미지(lib/shareCard)가 쓴다. 규칙은 아래 DyeSprite 와 같다
+// 칩 그림 한 장을 **이미지로 내보낼 수 있게**(CORS) 그린다 — 코디 프로필(lib/profileCard)이 쓴다. 규칙은 아래 DyeSprite 와 같다
 // (헤어 · 성형 = 발색 합성, 그 외 = 아이콘에 프리즘 HSB). 화면의 칩 캔버스는 비-CORS 그림으로 그린 것이 있어 내보낼 수 없다(오염).
 export async function chipIcon(o: { id: string; icon?: string | null; mix: boolean; palette?: PaletteParams; hsb?: HsbParams; dyeable: boolean; zmap: string[] }): Promise<HTMLCanvasElement | null> {
   const c = document.createElement('canvas')

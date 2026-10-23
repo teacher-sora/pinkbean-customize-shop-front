@@ -13,7 +13,7 @@ import { isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { DyeSprite, INFO_FRAC, INFO_FRAC_HAIR, SKIN_ICON_FRACTION, SkinModel } from '../render/DyeSprite'
 import ui from '../ui/ui.module.css'
-import type { ShareBand } from '@/lib/shareCard'
+import type { ShareBand } from '@/lib/profileCard'
 
 const defHsb = (): HsbParams => ({ h: 0, s: 0, b: 0, t: 0 })
 const hsbActive = (h?: HsbParams) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0)
@@ -93,7 +93,7 @@ export function DyeBand({ state, slot, palette, hsb, off, skinFamily }: {
   )
 }
 
-// 같은 띠를 그림(공유 이미지 — lib/shareCard)에 그릴 값으로. 화면의 DyeBand 와 같은 규칙이다
+// 같은 띠를 그림(코디 프로필 — lib/profileCard)에 그릴 값으로. 화면의 DyeBand 와 같은 규칙이다
 const HUE_DOT = ['all', 'hsl(0,68%,60%)', 'hsl(48,68%,60%)', 'hsl(120,68%,60%)', 'hsl(174,68%,60%)', 'hsl(220,68%,60%)', 'hsl(300,68%,60%)']
 export function dyeBandData (state: DyeBandState, slot: string, palette?: PaletteParams, hsb?: HsbParams, skinFamily?: number): ShareBand {
   if (state !== 'dyed') return { muted: state === 'plain' ? '염색 없음' : state === 'none' ? '염색 불가' : '' }

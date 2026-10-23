@@ -26,8 +26,9 @@ import { useShop, type Snapshot } from './ShopContext'
 // 명찰 조각 정보(id → chatUi). 명찰 · 말풍선 목록 파일을 처음 쓸 때 한 번만 받는다.
 let tagUis: Promise<Map<string, ChatUi>> | null = null
 const loadTagUis = () => (tagUis ??= fetch(CHAT_FILES.nameTag).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === 'nameTag' && x.chatUi).map((x) => [x.id, x.chatUi!]))).catch(() => new Map()))
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, fileName, holdMenu = true }: {
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
+  baseTag?: boolean // 명찰 반지가 없을 때 기본 명찰을 그릴지(없으면 스냅샷의 연출 설정 pv.baseTag) — 닉네임 불러오기 카드는 늘 켠다(사용자 지시)
   holdMenu?: boolean // false = 터치 길게 누르기로 메뉴를 열지 않는다(프리셋 카드 — 길게 누르기는 끌기다, preset/usePresetDrag)
 }) {
   const { index } = useShop()
@@ -54,7 +55,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     loadTagUis().then((m) => { if (alive) setTagUi(m.get(tagId)) })
     return () => { alive = false }
   }, [tagId])
-  const baseTag = tagName != null && !snap.equipped.nameTag && !!snap.pv?.baseTag
+  const baseTag = tagName != null && !snap.equipped.nameTag && (forceBase ?? !!snap.pv?.baseTag)
   const chat = useMemo(() => { const tag = tagUi ?? (baseTag ? BASE_TAG : undefined); return tag && tagName != null ? { tag, name: tagName, text: '' } : undefined }, [tagUi, tagName, baseTag])
 
   const prioRef = useRef(priority)

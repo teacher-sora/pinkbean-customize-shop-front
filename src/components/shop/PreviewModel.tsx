@@ -638,7 +638,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     return { placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy }
   }, [])
   const makeBlob = useCallback(async (): Promise<Blob | null> => { const shot = await currentShot(); return shot ? modelShotBlob(shot) : null }, [currentShot])
-  // 코디 정보의 공유 이미지(lib/shareCard)가 쓰도록 지금 그림 재료를 등록한다 — 화면의 미리보기만(염색 창 등 src 가 있는 미리보기는 빼고)
+  // 코디 프로필(lib/profileCard)이 쓰도록 지금 그림 재료를 등록한다 — 화면의 미리보기만(염색 창 등 src 가 있는 미리보기는 빼고)
   useEffect(() => { if (src) return; setPreviewShot(currentShot); return () => setPreviewShot(null) }, [src, currentShot])
 
   // 움짤 — 화면과 같은 시계 규칙으로 시각 t 의 그림을 만든다(lib/gifExport 가 한 바퀴를 훑는다). 그리는 법은 위 draw 와 같고,

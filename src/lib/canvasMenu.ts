@@ -58,14 +58,14 @@ export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[], o
   Object.assign(el.style, centered
     ? {
         position: 'fixed', zIndex: '9999', left: '50%', top: '50%',
-        transform: 'translate(-50%,-50%) scale(.96)', width: 'min(320px, 84vw)', padding: '9px',
+        transform: 'translate(-50%,-50%) scale(.96)', width: 'min(320px, 84vw)', padding: '0', overflow: 'hidden',
         background: '#fff', border: '1px solid #efe8e0', borderRadius: '12px',
         boxShadow: '0 18px 50px rgba(42,37,33,.24)', font: '15px system-ui, "Malgun Gothic", sans-serif',
         color: '#2a2521', userSelect: 'none', opacity: '0',
         transition: 'opacity .14s ease, transform .14s cubic-bezier(.22,.61,.36,1)',
       } as unknown as CSSStyleDeclaration
     : {
-        position: 'fixed', zIndex: '9999', minWidth: '176px', padding: '5px',
+        position: 'fixed', zIndex: '9999', minWidth: '176px', padding: '0', overflow: 'hidden',
         background: '#fff', border: '1px solid #e7ded4', borderRadius: '8px',
         boxShadow: '0 10px 30px rgba(42,37,33,.16)', font: '13px system-ui, "Malgun Gothic", sans-serif',
         color: '#2a2521', userSelect: 'none', left: '0px', top: '0px', opacity: '0',
@@ -73,11 +73,12 @@ export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[], o
       } as CSSStyleDeclaration)
 
   for (const [i, it] of items.entries()) {
-    // 버튼 사이 구분선 — 양끝이 메뉴 테두리에 닿지 않는 짧은 선(사용자 지시 — 버튼마다 따로인 기능임이 보이게)
+    // 버튼 사이 구분선 — 양끝이 메뉴 테두리에 닿지 않는 짧은 선(사용자 지시 — 버튼마다 따로인 기능임이 보이게).
+    // 여백은 버튼의 8px 하나뿐이다(메뉴 상자에는 여백이 없다 — 사용자 지시: 두 겹으로 깊었다)
     if (i) {
       const hr = document.createElement('div')
       hr.setAttribute('role', 'separator')
-      Object.assign(hr.style, { height: '1px', margin: centered ? '3px 16px' : '3px 10px', background: '#f1eae2' } as CSSStyleDeclaration)
+      Object.assign(hr.style, { height: '1px', margin: '0 8px', background: '#f1eae2' } as CSSStyleDeclaration)
       el.appendChild(hr)
     }
     const b = document.createElement('button')
@@ -85,13 +86,13 @@ export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[], o
     b.textContent = it.label
     Object.assign(b.style, centered
       ? {
-          display: 'block', width: '100%', textAlign: 'center', padding: '15px 16px',
-          border: 'none', background: 'transparent', borderRadius: '8px', cursor: 'pointer',
+          display: 'block', width: '100%', textAlign: 'center', padding: '8px',
+          border: 'none', background: 'transparent', borderRadius: '0', cursor: 'pointer',
           font: 'inherit', fontWeight: '600', color: it.danger ? '#c0392b' : '#2a2521', whiteSpace: 'nowrap',
         } as unknown as CSSStyleDeclaration
       : {
-          display: 'block', width: '100%', textAlign: 'left', padding: '8px 11px',
-          border: 'none', background: 'transparent', borderRadius: '4px', cursor: 'pointer',
+          display: 'block', width: '100%', textAlign: 'left', padding: '8px',
+          border: 'none', background: 'transparent', borderRadius: '0', cursor: 'pointer',
           font: 'inherit', color: it.danger ? '#c0392b' : '#2a2521', whiteSpace: 'nowrap',
         } as CSSStyleDeclaration)
     b.onmouseenter = () => { b.style.background = it.danger ? '#fdecea' : '#f6edf2' }

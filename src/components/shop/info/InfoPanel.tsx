@@ -12,9 +12,8 @@ import { useShop } from '../ShopContext'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { IconEye, IconShareImage, IconTrashSolid } from '../ui/Icons'
 import { DyeBand, SlotSprite, dyeBandData, type DyeBandState } from './SlotSprite'
-import { getPreviewShot, saveImage } from '@/lib/canvasExport'
 import { chipIcon } from '../render/DyeSprite'
-import type { ShareChip } from '@/lib/shareCard'
+import type { ShareChip } from '@/lib/profileCard'
 import styles from './info.module.css'
 import ui from '../ui/ui.module.css'
 
@@ -28,11 +27,44 @@ export function useSkinItem(): ListItem | null {
   return { id: te.body, slot: 'skin', isCash: false, grade: 'none', islot: null, vslot: null, dyeMode: 'hsb', thumb: `sprites/${te.body}/thumb.png`, headId: te.head, name: te.name || `피부 ${te.tone}`, actions: [] }
 }
 
+type Shop = ReturnType<typeof useShop>
+// 부위 행(코디 정보 칩 하나씩) — 코디 정보 탭과 코디 프로필 창(surface/ProfileCardBody)이 함께 쓴다
+export function infoRows (s: Shop, skinItem: ListItem | null, toneName: string) {
+  return s.infoCats.map((c) => {
+    const slot = CAT_TO_SLOT[c.id]
+    const isSkin = c.id === 'skin'
+    const isMix = s.isMixSlot(slot)
+    const item = isSkin ? skinItem : s.equipped[slot] || null
+    const on = isSkin ? !!skinItem : !!item
+    const hidden = !isSkin && !!s.hidden[slot]
+    let dyed = false
+    if (isSkin) dyed = isDyeableSkin(toneName) && hsbActive(s.dyeHsb.skin)
+    else if (isMix) { const p = s.dyePalette[slot]; dyed = !!p && (p.baseColor !== 0 || (p.mixColor != null && p.ratio > 0)) }
+    else dyed = hsbActive(s.dyeHsb[slot])
+    return { c, slot, isSkin, isMix, item, on, hidden, dyed, dyeOff: !!s.dyeOff[slot], sel: s.dyeTarget === slot }
+  })
+}
+type Row = ReturnType<typeof infoRows>[number]
+const bandStateOf = (r: Row, toneName: string): DyeBandState => (!r.on ? 'empty' : r.dyed ? 'dyed' : (r.isSkin ? !isDyeableSkin(toneName) : r.item?.dyeMode === 'none') ? 'none' : 'plain')
+export const useToneName = () => { const s = useShop(); return s.index?.base.tones.find((t) => t.tone === s.tone)?.name || `피부 ${s.tone}` }
+
+// 카드의 칩: 입고 보이는 부위만(숨긴 부위 · 비어 있는 칸 — '기본' 명찰 · 말풍선 포함 — 은 넣지 않는다).
+// 그림은 피부만 화면의 칩 캔버스(내보낼 수 있다), 그 밖은 같은 규칙으로 CORS 로 다시 그린다(화면 칩은 비-CORS 그림이 섞여 내보낼 수 없다)
+export async function shareChips (s: Shop, rows: Row[], toneName: string): Promise<ShareChip[]> {
+  const readable = (c: HTMLCanvasElement | null | undefined) => { if (!c || !c.width) return null; try { c.getContext('2d')!.getImageData(0, 0, 1, 1); return c } catch { return null } }
+  const zmap = s.index?.zmap || []
+  return Promise.all(rows.filter((r) => r.on && !r.hidden && r.item).map(async (r) => ({
+    part: r.c.label, name: r.item!.name || r.item!.id,
+    icon: r.isSkin ? readable(document.querySelector<HTMLCanvasElement>(`[data-share-slot="${r.slot}"] canvas`))
+      : await chipIcon({ id: r.item!.id, icon: r.item!.icon, mix: r.isMix, palette: s.renderPalette[r.slot], hsb: s.renderHsb[r.slot], dyeable: r.item!.dyeMode !== 'none', zmap }),
+    band: dyeBandData(bandStateOf(r, toneName), r.slot, s.dyeOff[r.slot] ? undefined : s.dyePalette[r.slot], s.dyeOff[r.slot] ? undefined : s.dyeHsb[r.slot], r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined),
+  })))
+}
+
 export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const narrow = isNarrow(s.bp)
-  const toneEntry = s.index?.base.tones.find((t) => t.tone === s.tone)
-  const toneName = toneEntry?.name || `피부 ${s.tone}`
+  const toneName = useToneName()
   const skinItem = useSkinItem()
 
   // 부위 그리드 열 = min(최대 열, 150px 카드가 들어가는 수)
@@ -50,19 +82,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const fit = infoW > 0 ? Math.floor((infoW - 20 + 8) / (150 + 8)) : maxCols
   const cols = Math.max(1, Math.min(maxCols, fit > 0 ? fit : maxCols))
 
-  const rows = s.infoCats.map((c) => {
-    const slot = CAT_TO_SLOT[c.id]
-    const isSkin = c.id === 'skin'
-    const isMix = s.isMixSlot(slot)
-    const item = isSkin ? skinItem : s.equipped[slot] || null
-    const on = isSkin ? !!skinItem : !!item
-    const hidden = !isSkin && !!s.hidden[slot]
-    let dyed = false
-    if (isSkin) dyed = isDyeableSkin(toneName) && hsbActive(s.dyeHsb.skin)
-    else if (isMix) { const p = s.dyePalette[slot]; dyed = !!p && (p.baseColor !== 0 || (p.mixColor != null && p.ratio > 0)) }
-    else dyed = hsbActive(s.dyeHsb[slot])
-    return { c, slot, isSkin, isMix, item, on, hidden, dyed, dyeOff: !!s.dyeOff[slot], sel: s.dyeTarget === slot }
-  })
+  const rows = infoRows(s, skinItem, toneName)
   const wornCount = rows.filter((r) => r.on).length
 
   // 명찰 · 말풍선 칸이 비었을 때는 '기본'(게임처럼 반지가 없으면 기본 명찰 · 말풍선). 기본 명찰은 연출 설정 > 캐릭터의 토글로 켜고 끈다(pv.baseTag)
@@ -78,31 +98,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
     if (DOT_MOVER_IDS.has(r.item.id)) s.openDot(r.item); else s.openDye(r.item)
   }
 
-  const bandState = (r: typeof rows[number]): DyeBandState => (!r.on ? 'empty' : r.dyed ? 'dyed' : (r.isSkin ? !isDyeableSkin(toneName) : r.item?.dyeMode === 'none') ? 'none' : 'plain')
-
-  // 공유 이미지(lib/shareCard): 지금 캐릭터 + 입고 보이는 부위의 칩. 칩 그림은 화면의 칩에 그려진 캔버스를 그대로 쓴다(염색 반영).
-  // 숨긴 부위 · 비어 있는 칸('기본' 명찰 · 말풍선 포함)은 넣지 않는다. 그림은 누를 때만 받아 그린다(동적 import)
-  const [sharing, setSharing] = useState(false)
-  const shareImage = async () => {
-    if (sharing) return
-    setSharing(true)
-    try {
-      const { shareCardBlob } = await import('@/lib/shareCard')
-      const root = slotsRef.current
-      // 칩 그림: 피부는 화면의 칩 캔버스(내보낼 수 있다), 그 밖은 같은 규칙으로 CORS 로 다시 그린다(화면 칩은 비-CORS 그림이 섞여 내보낼 수 없다)
-      const readable = (c: HTMLCanvasElement | null | undefined) => { if (!c || !c.width) return null; try { c.getContext('2d')!.getImageData(0, 0, 1, 1); return c } catch { return null } }
-      const zmap = s.index?.zmap || []
-      const chips: ShareChip[] = await Promise.all(rows.filter((r) => r.on && !r.hidden && r.item).map(async (r) => ({
-        part: r.c.label, name: r.item!.name || r.item!.id,
-        icon: r.isSkin ? readable(root?.querySelector<HTMLCanvasElement>(`[data-share-slot="${r.slot}"] canvas`))
-          : await chipIcon({ id: r.item!.id, icon: r.item!.icon, mix: r.isMix, palette: s.renderPalette[r.slot], hsb: s.renderHsb[r.slot], dyeable: r.item!.dyeMode !== 'none', zmap }),
-        band: dyeBandData(bandState(r), r.slot, s.dyeOff[r.slot] ? undefined : s.dyePalette[r.slot], s.dyeOff[r.slot] ? undefined : s.dyeHsb[r.slot], r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined),
-      })))
-      const shot = await getPreviewShot()
-      const res = await saveImage(() => shareCardBlob({ shot, chips, title: s.saveName }), () => `${s.saveName} 코디`)
-      s.notify(res === 'saved' ? '코디 정보 이미지를 저장했어요' : '이미지를 만들지 못했어요')
-    } finally { setSharing(false) }
-  }
+  const bandState = (r: Row) => bandStateOf(r, toneName)
 
   const grid = (
     <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${cols},minmax(0,1fr))` }}>
@@ -157,10 +153,11 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
       <span className={styles.chipLabel}>{s.infoCats.length}</span>
     </div>
   )
-  // 공유 이미지 저장(헤더 오른쪽 — 예전 '전체 벗기' 자리, 사용자 지시. 전부 지우기는 프리셋 삭제로 한다)
+  // 코디 프로필 저장(헤더 오른쪽 — 예전 '전체 벗기' 자리). 눈에 띄게 진한 핑크(사용자 지시 — 옅은 버튼은 있는 줄도 몰랐다).
+  // 누르면 꾸미는 창(코디 프로필 — 디자인 · 배경 · 명찰 · 말풍선 · 자리)이 열리고 거기서 저장한다
   const share = (
-    <button type="button" data-guide="share-image" onClick={shareImage} disabled={sharing} aria-busy={sharing || undefined} title="캐릭터와 장착 아이템 · 염색 정보를 한 장의 이미지로 저장"
-      className={clsx('pb-ghost', styles.btn, styles.btnIcon, mobile && styles.btnM)}><IconShareImage size={14} /><span>코디 정보 이미지 저장</span></button>
+    <button type="button" data-guide="share-image" onClick={s.openCard} title="내 캐릭터와 코디 정보를 카드 한 장으로 꾸며 저장"
+      className={clsx('pb-solid', styles.btn, styles.btnIcon, styles.btnSolid, mobile && styles.btnM)}><IconShareImage size={14} /><span>코디 프로필 저장</span></button>
   )
 
   if (mobile) {

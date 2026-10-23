@@ -88,7 +88,7 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'vs' | 'plaza' | 'ptake' | 'notice' | 'emo'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'vs' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
@@ -176,12 +176,15 @@ const loadPresetStore = (): PresetStore | null => {
   try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
 }
 // 넥슨 캐시아이템 part → 내부 slot. (part 로 매핑: '한벌옷'=longcoat, '상의'=coat 구분)
-// 반지는 일루전 링만 목록에 있어(rings/list.json) 이름이 맞는 것만 들어온다 — 명찰 · 말풍선 반지는 맞는 것이 없어 빠진다(사용자 지시).
+// 반지(칸 넷)는 일루전 링 · 명찰 · 말풍선 반지 목록을 차례로 찾아 맞는 아이템의 부위로 끼운다(NEXON_RING_SLOTS — 사용자 지시: 사이트가 다루는 부위는 모두 가져온다).
+// 훈장 · 칭호는 서버가 외형 이름으로 넘긴다(/api/nick 의 regularVisible).
 const NEXON_PART_SLOT: Record<string, string> = {
   '모자': 'cap', '얼굴장식': 'faceAcc', '눈장식': 'eyeAcc', '귀고리': 'earring',
-  '망토': 'cape', '장갑': 'glove', '신발': 'shoes', '무기': 'weapon', '방패': 'shield',
+  '망토': 'cape', '장갑': 'glove', '신발': 'shoes', '무기': 'weapon', '방패': 'shield', '보조무기': 'shield',
   '한벌옷': 'longcoat', '상의': 'coat', '하의': 'pants', '헤어': 'hair', '성형': 'face', '반지': 'ring',
+  '훈장': 'medal', '칭호': 'title',
 }
+const NEXON_RING_SLOTS = ['ring', 'nameTag', 'chatBalloon']
 // 이름 정규화(성별 접미사·공백 제거)로 넥슨 이름 ↔ 내부 리스트 이름 매칭.
 const nrmName = (n: string) => (n || '').replace(/\s*\((여|남)\)\s*$/, '').replace(/\s+/g, ' ').trim()
 // prism = 캐시 아이템 염색(컬러 프리즘). 넥슨의 color_range/hue/saturation/value/black_inclusive_flag 를 그대로 받는다.
@@ -297,6 +300,7 @@ export interface ShopCtx {
   surface: Surface | null; surfaceClosing: boolean
   openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg' | 'emo') => void // emo = 채팅 이모티콘(모바일)
   openDye: (item: ListItem) => void
+  openCard: () => void // 코디 프로필(공유 카드) 만들기 창
   openDot: (item: ListItem) => void
   closeSurface: () => void
   // 부위 염색: 칩 선택 → 염색/점 위치로(가로 슬라이드), 이전 → 부위 고르기로. partSlide = 본문 translateX(px).
@@ -1447,6 +1451,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }, SURFACE_UNMOUNT_MS + 20)
   }
   const openDye = (item: ListItem) => openSurface({ kind: 'dye', item })
+  const openCard = () => openSurface({ kind: 'card', item: null })
   const openDot = (item: ListItem) => openSurface({ kind: 'dot', item })
   // 부위 염색 ↔ 염색/점 위치: 다이얼로그는 그대로 두고 본문만 가로 슬라이드(진입 = 왼쪽으로 빠지고 오른쪽에서 들어옴, 이전 = 반대).
   const slideTo = (dir: 1 | -1, next: Surface) => {
@@ -1530,10 +1535,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
   const loadSlotFolded = async (slot: string): Promise<ListItem[]> => {
     const idx = indexRef.current
-    const summary = idx?.slots.find((s) => s.slot === slot)
-    if (!summary) return []
+    // 목록 파일은 slotFile 하나로 고른다(CDN 색인 밖의 일루전 링 · 명찰과 말풍선 · 칭호 · 훈장 · 라이딩 · 이펙트도 — 색인만 보면 반지가 늘 빈 목록이었다)
+    const file = slotFile(slot, idx)
+    if (!file) return []
     try {
-      const folded = foldList(await loadSlot(summary.file))
+      const folded = foldList(await loadSlot(file)).filter((it) => !CHAT_FILES[slot] || it.slot === slot) // 명찰 · 말풍선은 한 파일에 함께 있다
       setLists((m) => (m[slot] ? m : { ...m, [slot]: folded }))
       return folded
     } catch { return [] }
@@ -1689,9 +1695,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
     // 캐시 아이템(옷·모자·무기 등) + 그 아이템에 걸린 컬러 프리즘 염색
     for (const it of items) {
-      const slot = NEXON_PART_SLOT[it.part]
+      let slot = NEXON_PART_SLOT[it.part]
       if (!slot) continue
-      const found = matchByName(await loadSlotFolded(slot), it.name, it.gender ?? gender)
+      let found: ListItem | null = null
+      if (slot === 'ring') {
+        for (const rs of NEXON_RING_SLOTS) { if (equipped[rs]) continue; found = matchByName(await loadSlotFolded(rs), it.name, it.gender ?? gender); if (found) { slot = rs; break } }
+      } else found = matchByName(await loadSlotFolded(slot), it.name, it.gender ?? gender)
       if (found) {
         equipped[slot] = found.id; matched++
         if (it.prism) dyeHsb[slot] = prismToHsb(it.prism)
@@ -2030,7 +2039,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipSlot, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
-    surface, surfaceClosing, openSheet, openDye, openDot, closeSurface,
+    surface, surfaceClosing, openSheet, openDye, openCard, openDot, closeSurface,
     openPartItem, partBack, partSlide, openVs, toggleVs, vsOn, vsPicks, toggleVsPick, swapSnapshot,
     dotPos, setDot, resetDot,
     pv, setPv,
