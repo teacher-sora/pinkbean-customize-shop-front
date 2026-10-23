@@ -136,13 +136,14 @@
 .fabCount { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; display: flex; align-items: center; justify-content: center; border-radius: 20px; background: #fff; border: 1px solid #f8e0ea; color: #d76d9a; font-size: 9.5px; font-weight: 700; }
 
 /* ── 팝박스(PopBox — 연출 설정 고르기 · 채팅 이모티콘 · 코디 프로필의 액션 · 이모티콘이 함께 쓰는 하나의 창) ─────────────────────
-   넓은 영역 안쪽 아래에서 올라온다(자리 · 높이는 PopBox 가 재서 준다 — 높이 고정). 등장·퇴장 같은 곡선으로 짧게(.22s / .18s).
+   연 버튼 바로 아래 · 위에 붙는다(자리 · 방향 · 높이는 PopBox.popNear — 높이 고정, 아래면 위에서 내려오며 나타난다). 등장·퇴장 같은 곡선으로 짧게(.22s / .18s).
    창 = 세로 줄: 스크롤 칸(popScroll — 상하좌우 같은 여백 8) + 아래 줄(pvFoot). 창 자체는 스크롤하지 않는다. */
 .pvPanel { position: fixed; z-index: 120; display: flex; flex-direction: column; padding: 0; border: 1px solid #f5e8ee; border-radius: 8px; background: #fff; box-shadow: 0 12px 32px rgba(42,37,33,.12); overflow: hidden;
   transform: translateY(16px); opacity: 0; transition: opacity .18s ease, transform .18s cubic-bezier(.45,0,.55,1); }
 /* 스크롤 칸: 양쪽 스크롤바 자리(pb-gutter, 8px)가 곧 옆 여백 — 터치는 자리 대신 여백 8. 격자가 창 폭에 맞춰 열 수를 바꾼다(container) */
 .popScroll { flex: 1 1 auto; min-height: 0; padding: 8px 0; overflow: hidden auto; overscroll-behavior: contain; container-type: inline-size; }
 @media (hover: none), (pointer: coarse) { .popScroll { padding: 8px; } }
+.pvPanelDown { transform: translateY(-16px); } /* 버튼 아래에 붙은 창은 아래로 내려오며 나타나고 위로 올라가며 사라진다 */
 .pvPanelOn { transform: translateY(0); opacity: 1; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
 .pvGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 /* 그룹(액션 3묶음)은 격자 흐름을 끊지 않게 contents 로 편다 — 제목만 한 줄 차지한다. */

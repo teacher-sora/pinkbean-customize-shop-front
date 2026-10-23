@@ -18,10 +18,9 @@ import { CHAT_TEXT_MAX } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { IconSmile } from '../ui/Icons'
 import ChatEmoPicker from './ChatEmoPicker'
-import { PopBox, popIn, usePop } from './PopBox'
+import { PopBox, popNear, usePop } from './PopBox'
 import styles from './preview.module.css'
 
-const GAP = 8       // 칸과 창 사이
 const WARM_MS = 90  // 적다가 이만큼 멈추면 말풍선을 미리 만든다
 
 export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; show: boolean; onClose?: () => void }) {
@@ -32,13 +31,13 @@ export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; s
   const open = !!pop.pos
   const sheetOn = s.surface?.kind === 'emo' && !s.surfaceClosing
 
-  // 창은 칸 위(칸과 GAP)부터 미리보기 위 끝 안쪽까지 — 가로는 미리보기 가득(연출 설정 고르기와 같은 폭)
+  // 창은 칸 바로 위(미리보기 영역 안쪽) — 가로는 미리보기 가득(연출 설정 고르기와 같은 폭)
   const toggle = () => {
     if (mobile) { s.openSheet('emo'); return } // 모바일: 넓은 아래 시트로
     if (open) { pop.close(); return }
     const r = box.current?.getBoundingClientRect(); if (!r) return
     const a = box.current?.closest('[data-pv-stage]')?.getBoundingClientRect() ?? { left: r.left - 10, width: r.width + 20, top: 0, bottom: r.bottom }
-    pop.open(popIn(a, r.top - GAP))
+    pop.open(popNear(r, a))
   }
   // 모바일: 바깥을 누르거나 Esc 면 칸을 내린다(창은 PopBox 가 닫는다). 시트(이모티콘 시트) 안을 누른 것은 바깥이 아니다.
   useEffect(() => {

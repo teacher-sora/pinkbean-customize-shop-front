@@ -8,7 +8,7 @@
 //    것보다 훨씬 가볍고 작게 봐도 표정이 또렷하다. 짝이 없는 '기본'·'눈깜빡'은 이름만 보여 준다.
 //
 // 펼치는 방식은 폭에 따라 다르다.
-//  · PC·태블릿 = 미리보기 영역 안쪽 아래에서 올라오는 팝박스(PopBox — 채팅 이모티콘 · 코디 프로필과 같은 창). 아래 줄 [닫기].
+//  · PC·태블릿 = 버튼 바로 위에 붙어 올라오는 팝박스(PopBox — 채팅 이모티콘 · 코디 프로필과 같은 창). 아래 줄 [닫기].
 //  · 모바일 = 시트를 **가로로 슬라이드**해 시트 안의 다음 화면으로 간다(부위 염색 → 염색과 같은 몸짓, PvSheetBody).
 //    좁은 화면에서 시트 위에 팝오버를 또 띄우면 층이 겹쳐 보여, 이미 쓰고 있는 전환을 그대로 쓴다.
 // 액션은 한 단계 더 있다(사용자 건의): 자세가 여럿인 액션을 누르면 같은 창 안에서 **액션 상세**(재생 · 자세 1, 2, …)로 가로로 넘어간다.
@@ -23,7 +23,7 @@ import { useShop, type Snapshot } from '../ShopContext'
 import SnapThumb from '../SnapThumb'
 import { useInnerSlide } from '../surface/innerSlide'
 import { ActionFrameGrid, actionInfo, useActionInfo } from './ActionFrames'
-import { PopBox, PopFoot, PopScroll, popIn, usePop } from './PopBox'
+import { PopBox, PopFoot, PopScroll, popNear, usePop } from './PopBox'
 import ui from '../ui/ui.module.css'
 import styles from './preview.module.css'
 
@@ -127,12 +127,13 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
   const btnRef = useRef<HTMLButtonElement>(null)
   const open = !!pop.pos
   const current = (options.find((o) => o.v === value) || options[0] || { l: '' }).l
-  // 자리는 미리보기 영역(data-pv-stage) 안쪽 아래 — 가로로 가득 차고, 밖으로 비어져 나가지 않는다.
+  // 자리는 버튼 바로 위(미리보기 아래 줄의 버튼이라 늘 위 — 미리보기 영역 data-pv-stage 안쪽). 가로로 가득 차고, 밖으로 비어져 나가지 않는다.
   const toggle = () => {
     if (onOpenPage) { onOpenPage(); return }
     if (open) { pop.close(); return }
+    const b = btnRef.current?.getBoundingClientRect(); if (!b) return
     const stage = document.querySelector('[data-pv-stage]')?.getBoundingClientRect()
-    pop.open(popIn(stage ?? { left: 0, width: window.innerWidth, top: 0, bottom: window.innerHeight }))
+    pop.open(popNear(b, stage ?? { left: 0, width: window.innerWidth, top: 0, bottom: window.innerHeight }))
   }
 
   const isField = variant === 'field' || variant === 'fieldM'

@@ -6,7 +6,7 @@
 //  · 꾸미기 = 구분선으로 가른 세 묶음(사용자 지시): ① [카드 디자인] [배경] [액션] 한 줄(연출 설정의 액션 · 모션 · 표정과 같은 칸 — 누르면 팝박스),
 //    ② 명찰 · 칭호 · 훈장 보이기 토글, ③ 이름 · 말풍선. 고를 것이 많은 것은 모두 팝박스 안에서 스크롤한다 — 꾸미기 칸 안에 스크롤을 겹치지 않는다
 //    (사용자 지시: 스크롤이 몇 겹으로 쌓여 불편했다). 무엇을 골라도 꾸미기의 배치가 밀리지 않는다(Layout Shift 금지).
-//  · 팝박스(PopBox — 미리보기 · 채팅과 같은 창)는 꾸미기 칸 안쪽 아래에서 올라온다. 디자인 · 배경은 칸 격자, 액션 · 이모티콘은 ActionPickBody · ChatEmoPicker.
+//  · 팝박스(PopBox — 미리보기 · 채팅과 같은 창)는 연 버튼 바로 아래(또는 위)에 붙어 나온다. 디자인 · 배경은 칸 격자, 액션 · 이모티콘은 ActionPickBody · ChatEmoPicker.
 //    정지 그림을 저장하므로 액션 · 이모티콘에 '재생'이 없다. 고르면 창이 닫힌다.
 //  · 오른쪽 아래 [저장] = 미리보기 그대로 저장(lib/profileCard 의 같은 함수 — 저장만 두 배 해상도). 파일 이름은 '<이름> 공유 카드'.
 // 그리기: 판(사진 칸 밖)은 디자인 · 이름 · 칩이 바뀔 때만, 사진 칸은 끌 때 프레임마다(React 를 다시 그리지 않고 ref + rAF).
@@ -22,7 +22,7 @@ import { CHAT_NAME_FALLBACK, CHAT_TEXT_MAX, chatDrawOf } from '@/lib/shopData'
 import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT } from '@/lib/catalog'
 import { animaOnce, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { ActionPickBody } from '../preview/PvPicker'
-import { PopBox, PopFoot, PopScroll, popIn, usePop } from '../preview/PopBox'
+import { PopBox, PopFoot, PopScroll, popNear, usePop } from '../preview/PopBox'
 import { addStageBg, CASH_BGS, cashBgsOn, getStageBg, STAGE_BG_MAX, useStageBg } from '@/lib/stageBg'
 import { infoRows, shareChips, useSkinItem, useToneName } from '../info/InfoPanel'
 import ChatEmoPicker from '../preview/ChatEmoPicker'
@@ -90,15 +90,16 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   const [poseBase] = useState(() => s.snapshot())
   const actLabel = (a: string) => PV_ACTIONS_FLAT.find((o) => o.v === a)?.l ?? a
 
-  // ── 팝박스(카드 디자인 · 배경 · 액션 · 이모티콘 — 꾸미기 칸 안쪽 아래에서 올라온다) ──
+  // ── 팝박스(카드 디자인 · 배경 · 액션 · 이모티콘 — 연 버튼 옆에 붙어 나온다) ──
   const sideRef = useRef<HTMLDivElement>(null)
   const themePop = usePop(), bgPop = usePop(), actPop = usePop(), emoPop = usePop()
   const themeBtn = useRef<HTMLButtonElement>(null), bgBtn = useRef<HTMLButtonElement>(null), actBtn = useRef<HTMLButtonElement>(null), emoBtn = useRef<HTMLButtonElement>(null)
   const [theme0] = useState(themeId), [bg0] = useState(bgSel) // 연 순간의 값 — 그대로면 칸에 칸 이름을 적는다
-  const openPop = (p: ReturnType<typeof usePop>) => {
+  // 연 버튼 바로 아래(자리가 넉넉하면) 또는 위 — 꾸미기 칸 안쪽 폭 가득
+  const openPop = (p: ReturnType<typeof usePop>, btn: React.RefObject<HTMLButtonElement>) => {
     if (p.pos) { p.close(); return }
-    const r = sideRef.current?.getBoundingClientRect()
-    if (r) p.open(popIn(r))
+    const r = sideRef.current?.getBoundingClientRect(), b = btn.current?.getBoundingClientRect()
+    if (r && b) p.open(popNear(b, r))
   }
 
   // ── 명찰 · 말풍선 · 칭호 · 훈장(미리보기와 같은 규칙 — shopData.chatDrawOf) ──
@@ -156,7 +157,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   }, [])
   const S = Math.max(1, Math.min(2, Math.ceil((cssW * (typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)) / CARD_W)))
   const H = cardHeight(chips?.length ?? 0)
-  const sub = `착용 아이템 ${chips?.length ?? 0}개 | ${today()}`
+  const sub = today() // 착용 개수는 카드 오른쪽에 큰 숫자로 따로 그린다
   const baseRef = useRef<HTMLCanvasElement | null>(null)
   const [view, setView] = useState<CardView | null>(null) // null = 처음 보기
   const live = useRef({ view: null as CardView | null, theme, bgSel, img: null as HTMLImageElement | HTMLCanvasElement | null, board: null as CardBoard | null, S })
@@ -282,7 +283,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   )
   // 한 줄 칸(연출 설정의 액션 · 모션 · 표정과 같다 — 처음 그대로면 칸 이름, 바꾸면 고른 값)
   const field = (label: string, value: string, isDef: boolean, pop: ReturnType<typeof usePop>, ref: React.RefObject<HTMLButtonElement>) => (
-    <button ref={ref} type="button" onClick={() => openPop(pop)} aria-expanded={!!pop.pos} title={isDef ? label : `${label} — ${value}`} aria-label={label}
+    <button ref={ref} type="button" onClick={() => openPop(pop, ref)} aria-expanded={!!pop.pos} title={isDef ? label : `${label} — ${value}`} aria-label={label}
       className={clsx('pb-ddbtn', mobile ? ui.ddFieldM : ui.ddField, styles.field, pop.pos && ui.ddOpen)}>
       <span className={clsx(ui.ddFieldText, isDef && ui.ddFieldTextDef)}>{isDef ? label : value}</span>
       <span className={clsx(ui.caret, pop.pos && ui.caretOpen)}>▾</span>
@@ -325,7 +326,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
             ) : (
               <input value={text} onChange={(e) => setText(e.target.value.slice(0, CHAT_TEXT_MAX))} placeholder="메시지..." aria-label="말풍선 글" className={clsx('pb-input', styles.input)} />
             )}
-            <button ref={emoBtn} type="button" onClick={() => openPop(emoPop)} aria-expanded={!!emoPop.pos} title="이모티콘" aria-label="이모티콘"
+            <button ref={emoBtn} type="button" onClick={() => openPop(emoPop, emoBtn)} aria-expanded={!!emoPop.pos} title="이모티콘" aria-label="이모티콘"
               className={clsx('pb-ghost', styles.iconBtn, emoPop.pos && styles.iconBtnOn)}><IconSmile size={16} /></button>
           </div>
         )}
