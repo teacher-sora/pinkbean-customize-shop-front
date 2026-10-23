@@ -216,7 +216,8 @@ function fixSlotCodes<T extends { slot?: string; islot?: string | null; vslot?: 
 // 원본의 아이콘이 다른 물건 그림인 아이템 → 같은 이름의 올바른 아이콘으로 바꿔 끼운다.
 //  · 투명 방패 01092056: 원본 아이콘이 투명 장갑 그림이다. 같은 이름의 01092067 은 방패 그림이다(둘 다 입으면 아무것도 안 보인다).
 //    목록은 같은 이름 가운데 가장 낮은 id 를 대표로 쓰므로(foldList) 장갑 그림이 방패 칸에 떴다.
-const ICON_FIX: Record<string, string> = { '01092056': 'sprites/01092067/icon.png' }
+//  · 투명 얼굴장식 01012104: 원본 아이콘이 투명 귀고리 그림이다. 같은 이름의 01012289 는 가면 그림이다(사용자 지적).
+const ICON_FIX: Record<string, string> = { '01092056': 'sprites/01092067/icon.png', '01012104': 'sprites/01012289/icon.png' }
 const fixIcon = <T extends { id: string; icon?: string | null }>(it: T): T => (ICON_FIX[it.id] ? { ...it, icon: ICON_FIX[it.id] } : it)
 
 // 라이딩(프론트 public) 아이템의 meta 경로를 id→url 로 등록. 슬롯 로드 시 채워지고 loadMeta 가 이걸 우선 쓴다.
