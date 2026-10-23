@@ -162,7 +162,7 @@ button:focus-visible { outline: 2px solid #f8e0ea; outline-offset: 2px; }
 /* 염색 조절 인라인(공용): 컨테이너 폭에 따라 한 줄 ↔ 두 줄 */
 .pb-dyecol { container-type: inline-size; }
 .pb-dyerow { display: flex; flex-wrap: nowrap; align-items: center; gap: 9px; margin-bottom: 7px; }
-.pb-dyerow > .pb-dyelabel { flex: 0 0 38px; font-size: 11px; font-weight: 600; color: #a89e93; }
+.pb-dyerow > .pb-dyelabel { flex: 0 0 38px; font-size: 11.5px; font-weight: 600; color: #a89e93; }
 .pb-dyerow > .pb-slider { flex: 1 1 auto; min-width: 0; max-width: 300px; order: 2; }
 .pb-dyerow > .pb-dyestep { order: 3; display: flex; }
 .pb-dyecol > .pb-dyerow:last-child { margin-bottom: 0; }

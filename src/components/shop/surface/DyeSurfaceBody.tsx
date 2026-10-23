@@ -134,7 +134,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
   )
   const preview = <DyeModelPreview item={item} hsb={NO_HSB} palette={off || cleared ? undefined : commit} zoom={zoom} model={model} />
   // 염색 보관함 — 고르면 그 색 조합이 조절 칸으로 들어온다(적용은 [적용])
-  const vault = <DyeVault item={item} current={{ pal: commit }} onPick={(d) => { if ('pal' in d) { setCleared(false); setPal({ ...d.pal }) } }} />
+  const vault = <DyeVault item={item} mobile={mobile} current={{ pal: commit }} onPick={(d) => { if ('pal' in d) { setCleared(false); setPal({ ...d.pal }) } }} />
 
   const custom = mobile ? (
     <div className={clsx('pb-scroll', 'pb-fade', styles.hsvM)}>
@@ -239,7 +239,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
     </button>
   )
   // 염색 보관함 — 고르면 그 값이 조절 칸으로 들어온다(적용은 [적용])
-  const vault = <DyeVault item={item} current={{ hsb }} onPick={(d) => { if ('hsb' in d) { setHsb({ ...d.hsb }); setRaw({}) } }} />
+  const vault = <DyeVault item={item} mobile={mobile} current={{ hsb }} onPick={(d) => { if ('hsb' in d) { setHsb({ ...d.hsb }); setRaw({}) } }} />
   const families = <FamilyDots noShrink value={hsb.t ?? 0} onPick={(t) => setHsb((h) => ({ ...h, t }))} />
   // 테두리(순수 검정) 포함 — 명도로만, 회색으로만 바뀐다(lib/core/dye 설명). 그래서 명도가 0 이하면 눌러도
   // 보이는 변화가 없어, 그때만 이유를 알려 준다(버튼은 그대로 눌린다 — 값은 저장돼야 하므로).

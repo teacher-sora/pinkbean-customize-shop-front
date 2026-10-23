@@ -37,5 +37,6 @@ export function useDyeVault (itemId: string) {
     if (next.length) out[itemId] = next; else delete out[itemId]
     write(out)
   }
-  return { list, put, remove }
+  const clear = () => { const st = read(); if (!st[itemId]) return; const out = { ...st }; delete out[itemId]; write(out) }
+  return { list, put, remove, clear }
 }

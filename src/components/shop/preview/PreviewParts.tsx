@@ -4,6 +4,7 @@
 
 import clsx from 'clsx'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import type { ListItem } from '@/lib/core/data'
 import { takePvIntent } from '@/lib/guide'
 import { SLOT_TO_CAT } from '@/lib/shopData'
@@ -35,11 +36,20 @@ export function BookmarkSprite({ item }: { item: ListItem }) {
 
 const wornOf = (s: ReturnType<typeof useShop>, it: ListItem) => s.isEquippedInCat(SLOT_TO_CAT[it.slot], it.id)
 
+// 북마크 [비우기] — 두 번 눌러야 비운다(lib/confirmTwice — 누른 단추 위에 되묻는 말풍선, 사용자 지시). PC · 모바일 같은 단추
+function ClearBookmarks({ n }: { n: number }) {
+  const s = useShop()
+  return (
+    <button type="button" onClick={() => { if (confirmTwice('bm:clear', '한 번 더 누르면 북마크를 비워요')) s.clearBookmarks() }} disabled={n === 0} {...{ [CONFIRM_ATTR]: 'bm:clear' }}
+      title={n ? '북마크 전체 비우기' : '비울 북마크가 없어요'} className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
+  )
+}
+
 function PinCount({ n }: { n: number }) {
   return <span className={clsx(styles.count, n > 0 && styles.countOn)}>{n}</span>
 }
 
-// PC: 미리보기 아래 8칸 박스. 슬롯을 누르면 입혀보기(토글), ✕ 로 해제. VS = 코디 비교 다이얼로그(비우기 왼쪽, 한 그룹).
+// PC: 미리보기 아래 8칸 박스. 슬롯을 누르면 입혀보기(토글), ✕ 로 해제. VS = 코디 비교 다이얼로그(비우기 오른쪽, 한 그룹 — 사용자 지시로 자리를 바꿨다). ✕ · 비우기는 두 번 눌러야 지운다(lib/confirmTwice).
 export function BookmarkBox() {
   const s = useShop()
   const n = s.bookmarks.length
@@ -48,8 +58,8 @@ export function BookmarkBox() {
       <div className={styles.pinHead}>
         <span className={styles.pinTitle}>북마크<PinCount n={n} /></span>
         <span className={styles.pinActs}>
+          <ClearBookmarks n={n} />
           <button type="button" data-guide="vs" onClick={s.openVs} title="북마크한 아이템을 나란히 비교하기" className={clsx('pb-ghost', styles.vsBtn, s.surface?.kind === 'vs' && styles.vsBtnOn)}>비교</button>
-          <button type="button" onClick={s.clearBookmarks} disabled={n === 0} title={n ? '북마크 전체 비우기' : '비울 북마크가 없어요'} className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
         </span>
       </div>
       <div className={styles.pinGrid}>
@@ -62,7 +72,8 @@ export function BookmarkBox() {
             <div key={it.id} onClick={() => s.equipFromCat(SLOT_TO_CAT[it.slot], it)} title={`${name} — ${worn ? '현재 장착 중' : '눌러서 입혀보기'}`}
               className={clsx('pb-slot', styles.slot, styles.slotFilled, worn && styles.slotWorn)}>
               <div className={styles.slotSprite}><BookmarkSprite item={it} /></div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleBookmark(it) }} title="북마크 해제" aria-label="북마크 해제" className={clsx('pb-slot-x', styles.slotX)}>✕</button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); if (confirmTwice(`bm:x:${it.id}`, '한 번 더 누르면 북마크에서 빼요')) s.toggleBookmark(it) }} title="북마크 해제" aria-label="북마크 해제"
+                {...{ [CONFIRM_ATTR]: `bm:x:${it.id}` }} className={clsx('pb-slot-x', styles.slotX)}>✕</button>
             </div>
           )
         })}
@@ -90,8 +101,8 @@ export function BookmarkSheetBody() {
       <div className={styles.bmRow}>
         <span className={styles.bmTitle}>북마크<PinCount n={n} /></span>
         <span className={styles.pinActs}>
+          <ClearBookmarks n={n} />
           <button type="button" onClick={flip.toggle} title="북마크한 아이템을 나란히 비교하기" aria-pressed={s.vsOn} className={clsx('pb-ghost', styles.vsBtn, s.vsOn && styles.vsBtnOn)}>비교</button>
-          <button type="button" onClick={s.clearBookmarks} disabled={n === 0} title={n ? '북마크 전체 비우기' : '비울 북마크가 없어요'} className={clsx('pb-ghost', styles.clear, n > 0 && styles.clearOn)}>비우기</button>
         </span>
       </div>
       <div className={styles.bmBody}>
@@ -111,9 +122,9 @@ export function BookmarkSheetBody() {
               <button key={it.id} type="button" onClick={pick} title={`${name} — ${s.vsOn ? (picked ? '비교에서 빼기' : '오른쪽에 끼워 비교') : worn ? '장착 중' : '눌러서 입혀보기'}`}
                 className={clsx(styles.chip, on && styles.chipWorn)}>
                 <span className={styles.chipSprite}><BookmarkSprite item={it} /></span>
-                <span role="button" tabIndex={0} title="북마크 해제" aria-label="북마크 해제" className={styles.chipX}
-                  onClick={(e) => { e.stopPropagation(); s.toggleBookmark(it) }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); s.toggleBookmark(it) } }}>✕</span>
+                <span role="button" tabIndex={0} title="북마크 해제" aria-label="북마크 해제" className={styles.chipX} {...{ [CONFIRM_ATTR]: `bm:x:${it.id}` }}
+                  onClick={(e) => { e.stopPropagation(); if (confirmTwice(`bm:x:${it.id}`, '한 번 더 누르면 북마크에서 빼요')) s.toggleBookmark(it) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (confirmTwice(`bm:x:${it.id}`, '한 번 더 누르면 북마크에서 빼요')) s.toggleBookmark(it) } }}>✕</span>
               </button>
             )
           })}

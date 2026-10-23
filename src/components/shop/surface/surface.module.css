@@ -180,10 +180,29 @@
 .tickOn { background: #ec86ac; border-color: #ec86ac; }
 .tickOn svg { opacity: 1; }
 
-/* 염색 보관함(surface/DyeVault) — 조절 칸 맨 아래(margin-top: auto). 칸은 북마크 칸 부품(pb-slot), 한 줄 가로 스크롤.
-   줄 높이는 고정(위 5px = ✕ 가 칸 밖으로 4px 나오는 자리, 아래 = 가로 스크롤바 자리) — 칸이 늘거나 스크롤바가 생겨도 밀리지 않는다 */
-.vault { flex: 0 0 auto; margin-top: auto; padding-top: 14px; border-top: 1px solid #f0e9e1; container-type: inline-size; }
-/* 칸 = 줄 폭에 다섯 칸이 딱 드는 크기(오른쪽 5px = ✕ 자리). 높이 = 칸 + 위 5px + 아래 12px(가로 스크롤바 자리)로 고정 */
-.vaultStrip { --cell: calc((100cqw - 37px) / 5); height: calc(var(--cell) + 17px); display: grid; grid-auto-flow: column; grid-auto-columns: var(--cell); gap: 8px; align-content: start; padding: 5px 5px 0 0; overflow: auto hidden; overscroll-behavior-x: contain; }
-.vaultCell { width: var(--cell); }
-.vaultPut:disabled { opacity: .5; cursor: default; }
+/* 염색 보관함(surface/DyeVault) — 이 창만의 부품(북마크는 참조만). 조절 칸의 자식 둘: margin-top: auto 인 구분선(.hrEnd) + 보관함 묶음.
+   간격은 조절 칸의 묶음 안 간격(10px)을 따르고, 라벨은 베이스 · 믹스 · 색조 · 채도 · 명도와 같은 글자(11.5 / 600 / #a89e93), 단추는 [염색 초기화]와 같은 모양.
+   칸 줄 = 바탕을 깐 목록. 칸은 44px 고정(늘면 줄지 않고 가로 스크롤 — 스크롤바는 숨기고 양 끝은 pb-fade 흐림 · 화살표, 하단 부위 줄과 같다).
+   줄 높이는 고정(칸 위아래 10px — ✕ 가 칸 밖으로 5px 나오는 자리) — 칸이 늘어도 밀리지 않는다. + 칸(.vaultAdd)은 늘 맨 끝 */
+.hrEnd { margin-top: auto; }
+.vault { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.vaultHead { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.vaultLabel { display: flex; align-items: baseline; gap: 6px; font-size: 11.5px; font-weight: 600; color: #a89e93; }
+.vaultCount { font-size: 11.5px; font-weight: 500; color: #c9bfb4; }
+.vaultActs { display: flex; gap: 6px; }
+.vaultBtn:disabled { opacity: .5; cursor: default; }
+.vaultStrip { flex: 0 0 auto; height: 64px; display: flex; align-items: center; gap: 8px; padding: 0 10px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; border: 1px solid #f0e9e1; border-radius: 8px; background: #faf7f3; }
+.vaultItem { position: relative; flex: 0 0 44px; height: 44px; }
+.vaultCell { width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #ebe3da; border-radius: 6px; background: #fff; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
+.vaultCellOn { border-color: #ec86ac; background: #fdf1f6; }
+.vaultSprite { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
+.vaultX { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f5e2eb; border-radius: 50%; background: #fff; color: #d76d9a; font-family: inherit; font-size: 9px; line-height: 1; cursor: pointer; transition: opacity .18s ease; }
+.vaultAdd { width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px dashed #ddd3c8; border-radius: 6px; background: #fff; color: #d76d9a; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
+.vaultAdd:disabled { color: #cdc2b7; cursor: default; }
+/* ✕ 는 마우스면 칸에 올렸을 때(되묻는 중에는 늘), 터치면 늘 보인다 */
+@media (hover: hover) and (pointer: fine) {
+  .vaultX { opacity: 0; }
+  .vaultItem:hover .vaultX, .vaultX:focus-visible { opacity: 1; }
+  .vaultCell:hover { border-color: #f1c3d6; }
+  .vaultAdd:not(:disabled):hover { border-color: #ec86ac; background: #fdf1f6; }
+}
