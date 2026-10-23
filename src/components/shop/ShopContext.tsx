@@ -107,10 +107,11 @@ function copyAsyncText(make: () => Promise<string>): Promise<void> {
   return make().then((t) => navigator.clipboard?.writeText(t)).then(() => {}).catch(() => {})
 }
 
-// ── 프리셋: 30칸, 초깃값은 코디 기본(밤의 레아 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
-// 칸 id 는 'd0'…'d29' 다. 칸 수를 늘려도 앞 칸의 id 는 그대로이고,
+// ── 프리셋: 100칸, 초깃값은 코디 기본(밤의 레아 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
+// 칸 id 는 'd0'…'d99' 다. 칸 수를 늘려도 앞 칸의 id 는 그대로이고,
 // 복원은 저장소에 있는 칸만 읽어 오므로(아래 PRESET_IDS.forEach) 기존 코디·이름은 손대지 않는다. 새 칸만 기본값으로 생긴다.
-const PRESET_COUNT = 30
+const PRESET_COUNT = 100 // 사용자 지시(30 → 100). 기기의 localStorage 에만 있고 서버에 오르지 않는다(공유 · 광장 등록 때만)
+const PRESET_WARM = 30   // 한가할 때 미리 합성하는 프리셋은 앞의 이만큼(첫 화면을 덮는다) — 100칸 전부면 합성 캐시(120)를 넘어 광장 첫 쪽과 서로 밀어낸다
 const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
 // 되돌리기 기록용: 프리셋 이름 전체(id → 이름)와, 기록 한 건을 가르는 상태키(코디 + 선택 프리셋 + 이름).
 const namesOf = (ps: Preset[]): Record<string, string> => Object.fromEntries(ps.map((p) => [p.id, p.name]))
@@ -835,7 +836,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       warmDye()   // 염색 연산의 WebAssembly 조각도 한가할 때 받아 둔다(첫 염색부터 빠르게)
       animaOnce().then((races) => {
         const seen = new Set<string>()
-        for (const snap of [...Object.values(presetData), ...warmPosts]) {
+        for (const snap of [...presets.slice(0, PRESET_WARM).map((p) => presetData[p.id]).filter(Boolean), ...warmPosts]) {
           const key = snapKey(snap)
           if (seen.has(key) || composePeek(key, index, races) !== undefined) continue
           seen.add(key)
@@ -844,7 +845,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }).catch(() => {})
     }, 1500)
     return () => { window.clearTimeout(t); for (const j of jobs) j.cancel() }
-  }, [index, dataLoading, presetData, warmPosts])
+  }, [index, dataLoading, presetData, presets, warmPosts])
   const pagedList = primary === 'search' ? searchResultsView : activeList
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
   //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다
