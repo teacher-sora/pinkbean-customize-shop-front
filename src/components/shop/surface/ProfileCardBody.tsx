@@ -163,13 +163,13 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   }, [])
   const S = Math.max(1, Math.min(2, Math.ceil((cssW * (typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)) / CARD_W)))
   const H = cardHeight(chips?.length ?? 0)
-  const sub = today() // 착용 개수는 카드 오른쪽에 큰 숫자로 따로 그린다
+  const sub = `착용 아이템 ${chips?.length ?? 0}개 | ${today()}`
   const baseRef = useRef<HTMLCanvasElement | null>(null)
   const [view, setView] = useState<CardView | null>(null) // null = 처음 보기
-  const live = useRef({ view: null as CardView | null, theme, bgSel, img: null as HTMLImageElement | HTMLCanvasElement | null, board: null as CardBoard | null, S })
+  const live = useRef({ view: null as CardView | null, theme, bgSel, img: null as HTMLImageElement | HTMLCanvasElement | null, board: null as CardBoard | null, S, name: '' })
   const autoView = (b: CardBoard | null): CardView => { const d = defaultView(b); return firstView.current ? { ...d, z: firstView.current.z } : d }
   const curView = () => live.current.view ?? autoView(live.current.board)
-  live.current = { ...live.current, theme, bgSel, img: bgImg?.sel === bgSel ? bgImg.img : null, board, S }
+  live.current = { ...live.current, theme, bgSel, img: bgImg?.sel === bgSel ? bgImg.img : null, board, S, name: nameShown }
   const paint = useCallback(() => {
     const c = canvasRef.current, b = baseRef.current
     if (!c || !b) return
@@ -177,7 +177,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
     const g = c.getContext('2d')!
     g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(b, 0, 0)
     const L = live.current
-    drawCardPhoto(g, L.S, L.theme, L.bgSel, L.img, L.board, curView(), firstView.current ?? curView())
+    drawCardPhoto(g, L.S, L.theme, L.bgSel, L.img, L.board, curView(), firstView.current ?? curView(), L.name)
   }, [])
   const raf = useRef(0)
   const schedule = useCallback(() => { if (!raf.current) raf.current = requestAnimationFrame(() => { raf.current = 0; paint() }) }, [paint])
@@ -284,7 +284,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
       const g = c.getContext('2d')!
       await cardFonts()
       drawCardBase(g, SS, theme, { name: nameShown, sub }, chips)
-      drawCardPhoto(g, SS, theme, bgSel, live.current.img, board, curView(), firstView.current ?? curView())
+      drawCardPhoto(g, SS, theme, bgSel, live.current.img, board, curView(), firstView.current ?? curView(), nameShown)
       const res = await saveImage(() => new Promise((r) => c.toBlob((b) => r(b), 'image/png')), `${fileSafe(name.trim()) || s.saveName} 공유 카드`)
       s.notify(res === 'saved' ? '코디 프로필을 저장했어요' : '이미지를 만들지 못했어요')
     } finally { setSaving(false) }
