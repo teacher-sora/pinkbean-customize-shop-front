@@ -42,10 +42,11 @@ type GridProps = {
   disabledValues?: Set<string>
   disabledTitle?: string
   onWarm?: (v: string) => void // 칸에 마우스를 올리거나 누르는 순간(액션 — 상세 자세를 미리 합성한다)
+  focus?: string // 붙을 때 가운데로 올 칸(없으면 고른 값). 상세에서 [이전]으로 돌아오면 들어갔던 칸 — 보던 자리에서 이어 본다(사용자 지시)
 }
 
 // ── 격자 본체(팝오버 · 모바일 화면 공용) ──────────────────────────────────────
-export function PvGrid({ field, options, groups, value, onChange, disabledValues, disabledTitle, onWarm, eager = 6 }: GridProps & { eager?: number }) {
+export function PvGrid({ field, options, groups, value, onChange, disabledValues, disabledTitle, onWarm, focus, eager = 6 }: GridProps & { eager?: number }) {
   const s = useShop()
   const dwell = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => () => clearTimeout(dwell.current), [])
@@ -68,8 +69,10 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
     const id = PV_EXPR_ICONS[v]
     return id ? spriteUrl(`sprites/${id}/icon.png`) : undefined
   }
-  // 고른 값이 **가운데**에 오도록 열자마자 스크롤한다(끝에 걸쳐 보이면 찾기 어렵다).
+  // 고른 값이 **가운데**에 오도록 열자마자 스크롤한다(끝에 걸쳐 보이면 찾기 어렵다). 맨 위 · 아래 칸이면 스크롤 끝에서 멈춘다.
+  // 상세에서 [이전]으로 돌아오면 고른 값이 아니라 들어갔던 칸(focus)이 가운데다 — 새로 열 때만 고른 값.
   const onCurrentCell = (el: HTMLButtonElement | null) => { if (el) el.scrollIntoView({ block: 'center', inline: 'nearest' }) }
+  const centerOn = focus ?? value
 
   const cells = (list: Opt[], from: number) => list.map((o, i) => {
     const on = o.v === value
@@ -77,7 +80,7 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
     const icon = iconOf(o.v)
     const snap = snaps?.get(o.v)
     return (
-      <button key={o.v} ref={on ? onCurrentCell : undefined} type="button" role="option" aria-selected={on} disabled={dis}
+      <button key={o.v} ref={o.v === centerOn ? onCurrentCell : undefined} type="button" role="option" aria-selected={on} disabled={dis}
         title={dis ? disabledTitle : (field === 'expr' && !icon ? `${o.l} — 짝이 되는 표정 아이템이 없어 그림은 없어요` : o.l)}
         onClick={() => { if (dis) return; onChange(o.v) }}
         onPointerEnter={onWarm && !dis ? () => { clearTimeout(dwell.current); dwell.current = setTimeout(() => onWarm(o.v), WARM_DWELL) } : undefined}
@@ -184,6 +187,7 @@ export function ActionPickBody({ options, groups, current, onPick, onClose, play
   const [snap] = useState<Snapshot>(() => base ?? s.snapshot())
   const { view, go, style } = useInnerSlide<'list' | 'frames'>('list')
   const [detail, setDetail] = useState<string | null>(null)
+  const [backTo, setBackTo] = useState<string | null>(null) // 상세에서 [이전]으로 돌아온 칸 — 격자가 그 칸을 가운데에 두고 붙는다
   const info = useActionInfo(detail)
   const done = (a: string, f: number) => { onPick(a, f); onClose() }
   const pick = async (v: string) => {
@@ -203,11 +207,11 @@ export function ActionPickBody({ options, groups, current, onPick, onClose, play
             </div>
           ) : (
             <PvGrid field="action" options={options} groups={groups} value={current.action} disabledValues={disabledValues} disabledTitle={disabledTitle} onChange={(v) => { void pick(v) }}
-              onWarm={(v) => warmActionFrames(s, snap, v)} />
+              onWarm={(v) => warmActionFrames(s, snap, v)} focus={backTo ?? undefined} />
           )}
         </div>
       </PopScroll>
-      <PopFoot onBack={view === 'frames' ? () => go('list', -1) : undefined} onClose={onClose} />
+      <PopFoot onBack={view === 'frames' ? () => { setBackTo(detail); go('list', -1) } : undefined} onClose={onClose} />
     </>
   )
 }
