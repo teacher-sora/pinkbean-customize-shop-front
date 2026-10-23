@@ -68,8 +68,13 @@ export function cardHeight (n: number): number {
 export type CardText = { name: string; sub: string }
 const FAM = () => getComputedStyle(document.body).fontFamily || 'sans-serif'
 const font = (wt: number, px: number) => `${wt} ${px}px ${FAM()}`
+const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = src })
+// 머리 줄 로고(사이트 머리의 로고와 같은 그림). 글꼴과 함께 미리 받아 두고, 못 받으면 로고 없이 그린다
+let logo: HTMLImageElement | null = null
 export async function cardFonts (): Promise<void> {
-  try { await Promise.all([500, 600, 700].map((wt) => document.fonts.load(font(wt, 20), '핑크빈 커마샵 코디 프로필 가나다 0123'))) } catch { /* 없으면 지금 있는 글꼴로 */ }
+  const fonts = Promise.all([500, 600, 700].map((wt) => document.fonts.load(font(wt, 20), '핑크빈 커마샵 코디 프로필 가나다 0123'))).catch(() => { /* 없으면 지금 있는 글꼴로 */ })
+  const img = logo ? null : loadImg('/logo.png').then((i) => { logo = i }).catch(() => {})
+  await Promise.all([fonts, img])
 }
 
 function round (g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -147,24 +152,27 @@ export function drawCardBase (g: CanvasRenderingContext2D, S: number, t: CardThe
   round(g, FR, FR, CARD_W - FR * 2, H - FR * 2, 30); g.stroke()
   if (t.frame === 'double') { g.setLineDash([]); g.lineWidth = 1; g.globalAlpha = 0.3; round(g, FR + 9, FR + 9, CARD_W - FR * 2 - 18, H - FR * 2 - 18, 22); g.stroke() }
   g.restore()
-  // 머리 줄: 반짝이 + 로고 글자 | '코디 프로필'
-  const hy = (FR + PHOTO.y) / 2 + 4
+  // 머리 줄: 로고 + 로고 글자 | '코디 프로필' 알약. 알약 높이 = 로고 높이(글자는 작아도 왼쪽 타이틀과 같은 크기로 보인다)
+  const hy = (FR + PHOTO.y) / 2 + 4, HEAD_H = 36
   g.textBaseline = 'middle'
-  g.fillStyle = t.accent; sparkle(g, PAD + 10, hy, 10); g.save(); g.globalAlpha = 0.6; sparkle(g, PAD + 24, hy - 9, 4); g.restore()
-  g.fillStyle = t.brand; g.font = font(700, 23); g.textAlign = 'left'; g.fillText('핑크빈 커마샵', PAD + 34, hy + 1)
-  g.fillStyle = t.sub; g.font = font(600, 18); g.textAlign = 'right'; g.fillText('코디 프로필', CARD_W - PAD, hy + 1)
+  if (logo) g.drawImage(logo, PAD, hy - HEAD_H / 2, HEAD_H, HEAD_H)
+  g.fillStyle = t.brand; g.font = font(700, 23); g.textAlign = 'left'; g.fillText('핑크빈 커마샵', PAD + (logo ? HEAD_H + 10 : 0), hy + 1)
+  g.font = font(600, 16)
+  const pw = g.measureText('코디 프로필').width + 34, px = CARD_W - PAD - pw
+  g.save(); round(g, px + 0.75, hy - HEAD_H / 2 + 0.75, pw - 1.5, HEAD_H - 1.5, (HEAD_H - 1.5) / 2); g.strokeStyle = t.accent; g.lineWidth = 1.5; g.globalAlpha = 0.8; g.stroke(); g.restore()
+  g.fillStyle = t.sub; g.textAlign = 'center'; g.fillText('코디 프로필', px + pw / 2, hy + 1)
   // 사진 바깥 가는 둘째 테두리(안쪽 테두리 · 이름 알약은 drawCardPhoto — 사진 위에 겹친다)
   g.save(); g.strokeStyle = t.accent; g.globalAlpha = 0.35; g.lineWidth = 1; round(g, PHOTO.x - 7, PHOTO.y - 7, PHOTO.w + 14, PHOTO.h + 14, PHOTO.r + 7); g.stroke(); g.restore()
   // 한 줄 정보(아이콘 + 가는 세로 구분선). 이름은 사진 아래 끝의 알약(photoBadge)
+  // 두 칸이면 구분선이 늘 카드 가운데 — 왼쪽 칸은 구분선에 오른쪽 끝을, 오른쪽 칸은 왼쪽 끝을 붙인다(글 길이가 달라도 구분선이 움직이지 않는다)
   const parts = text.sub.split(' | ')
   g.font = font(600, 21)
-  const widths = parts.map((p) => g.measureText(p).width + 30), sep = 28
-  let x = CARD_W / 2 - (widths.reduce((a, b) => a + b, 0) + sep * (parts.length - 1)) / 2
-  parts.forEach((p, i) => {
-    if (i) { g.save(); g.strokeStyle = t.sub; g.globalAlpha = 0.5; g.lineWidth = 1; g.beginPath(); g.moveTo(x - sep / 2 + 0.5, INFO_Y - 9); g.lineTo(x - sep / 2 + 0.5, INFO_Y + 9); g.stroke(); g.restore() }
+  const widths = parts.map((p) => g.measureText(p).width + 30), sep = 28, cx = CARD_W / 2
+  const xs = parts.length === 2 ? [cx - sep / 2 - widths[0], cx + sep / 2] : [cx - widths[0] / 2]
+  if (parts.length === 2) { g.save(); g.strokeStyle = t.sub; g.globalAlpha = 0.5; g.lineWidth = 1; g.beginPath(); g.moveTo(Math.round(cx) + 0.5, INFO_Y - 9); g.lineTo(Math.round(cx) + 0.5, INFO_Y + 9); g.stroke(); g.restore() }
+  xs.forEach((x, i) => {
     ;(i ? iconCalendar : iconHanger)(g, x, INFO_Y - 11, t.accent)
-    g.textAlign = 'left'; g.fillStyle = t.sub; g.fillText(p, x + 30, INFO_Y + 1)
-    x += widths[i] + sep
+    g.textAlign = 'left'; g.fillStyle = t.sub; g.fillText(parts[i], x + 30, INFO_Y + 1)
   })
   sparkleRule(g, CARD_W / 2, DIV_Y, 260, t.accent)
   // 목록: 2열, 칸은 상자 없이 가는 가로줄로 가르고 가운데에 가는 세로줄
@@ -245,7 +253,6 @@ export function defaultView (b: CardBoard | null): CardView {
 }
 
 const imgCache = new Map<string, Promise<HTMLImageElement | HTMLCanvasElement>>()
-const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = src })
 // 배경 그림(피팅룸 = 지금 시각의 빛을 입힌 한 장 — 한 번만 만든다)
 export function cardBgImage (sel: string, images: StageBgImage[]): Promise<HTMLImageElement | HTMLCanvasElement> | null {
   const src = sel === 'room' ? 'room' : CASH_BGS.find((c) => c.id === sel)?.src ?? images.find((i) => i.id === sel)?.src

@@ -1,7 +1,7 @@
 'use client'
 
 // 코디 프로필 — 공유 카드 꾸미기(Surface 'card', 코디 정보 탭의 [코디 프로필 저장]). 사용자 지시:
-//  · 창을 둘로 나눈다 — 왼쪽(모바일은 위) = 저장될 카드 그대로의 미리보기(사진은 끌어 옮기기 · 휠 · 두 손가락 배율, 오른쪽 아래 [원래 자리]),
+//  · 창을 둘로 나눈다 — 왼쪽(모바일은 위) = 저장될 카드 그대로의 미리보기(사진은 끌어 옮기기, 휠 · 두 손가락 배율, 오른쪽 아래 [위치 초기화]),
 //    오른쪽(모바일은 아래) = 꾸미기.
 //  · 꾸미기 = 구분선으로 가른 세 묶음(사용자 지시): ① [카드 디자인] [배경] [액션] 한 줄(연출 설정의 액션 · 모션 · 표정과 같은 칸 — 누르면 팝박스),
 //    ② 명찰 · 칭호 · 훈장 보이기 토글, ③ 이름 · 말풍선. 고를 것이 많은 것은 모두 팝박스 안에서 스크롤한다 — 꾸미기 칸 안에 스크롤을 겹치지 않는다
@@ -195,53 +195,46 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   useEffect(() => { live.current.view = view; schedule() }, [view, board, bgImg, bgSel, theme, schedule])
 
   // ── 사진 자리 ──
-  // 카드를 스크롤하는 손짓은 늘 스크롤이다(사용자 지시 — 사진 칸이 넓어 스크롤하려다 사진이 커지거나 옮겨졌다).
-  //  · 휠 · 한 손가락 끌기 = 스크롤. 마우스로 끌면 옮긴다(마우스 끌기는 스크롤이 아니다).
-  //  · 두 손가락 = 옮기기 + 벌려 배율(그동안은 스크롤하지 않는다). Ctrl(⌘) + 휠 · 트랙패드 핀치 = 배율. 사진 칸 안의 [−] [+] [원래 자리].
-  const setZ = (dz: number) => { const v = curView(); const z = clampZ(v.z + dz); if (z !== v.z) setView({ ...v, z }) }
+  // 사진 칸 안의 손짓은 사진을 다룬다(사용자 지시 — 배율 버튼 대신 손짓으로).
+  //  · 마우스 끌기 · 한 손가락 끌기 = 옮기기. 두 손가락 = 옮기기 + 벌려 배율. 휠 · 트랙패드 핀치 = 배율.
+  //  · 카드 스크롤은 사진 칸 밖에서. 사진 칸 안쪽 오른쪽 아래의 [위치 초기화]로 처음 보기로.
   useEffect(() => {
     const el = grabRef.current
     if (!el) return
-    const ptrs = new Map<number, { x: number; y: number; touch: boolean }>()
+    const ptrs = new Map<number, { x: number; y: number }>()
     let pinch: { d: number; z: number; cx: number; cy: number } | null = null
     const k = () => (el.parentElement!.clientWidth || 1) / CARD_W // 화면 px / 카드 px
-    const two = () => [...ptrs.values()].filter((q) => q.touch)
-    const mid = () => { const [a, b] = two(); return { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 } }
+    const mid = () => { const [a, b] = [...ptrs.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 } }
     const down = (e: PointerEvent) => {
-      const touch = e.pointerType === 'touch'
-      if (!touch) el.setPointerCapture(e.pointerId)
-      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, touch })
-      if (two().length === 2) { const m = mid(); pinch = { ...m, z: curView().z } }
+      el.setPointerCapture(e.pointerId)
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (ptrs.size === 2) pinch = { ...mid(), z: curView().z }
     }
     const move = (e: PointerEvent) => {
       const p = ptrs.get(e.pointerId)
       if (!p) return
       const v = curView()
-      if (!p.touch) {
+      if (ptrs.size === 1) {
         const f = k() * v.z
         live.current.view = { ...v, x: v.x - (e.clientX - p.x) / f, y: v.y - (e.clientY - p.y) / f }
         p.x = e.clientX; p.y = e.clientY
         schedule(); return
       }
       p.x = e.clientX; p.y = e.clientY
-      if (!pinch || two().length < 2) return // 한 손가락은 브라우저가 스크롤한다
+      if (!pinch || ptrs.size !== 2) return
       const m = mid(), z = clampZ(pinch.z * (m.d / Math.max(1, pinch.d))), f = k() * z
       live.current.view = { z, x: v.x - (m.cx - pinch.cx) / f, y: v.y - (m.cy - pinch.cy) / f }
       pinch = { ...pinch, cx: m.cx, cy: m.cy }
       schedule()
     }
     const up = (e: PointerEvent) => {
-      const p = ptrs.get(e.pointerId)
-      if (!p) return
-      ptrs.delete(e.pointerId)
-      if (two().length < 2 && pinch) { pinch = null; setView(live.current.view) }
-      else if (!p.touch) setView(live.current.view)
+      if (!ptrs.delete(e.pointerId)) return
+      pinch = null
+      // 두 손가락에서 한 손가락이 남으면 그 손가락의 지금 자리부터 이어서 옮긴다
+      setView(live.current.view)
     }
-    // 두 손가락이 닿아 있는 동안만 스크롤을 막는다(한 손가락은 그대로 스크롤)
-    const tmove = (e: TouchEvent) => { if (e.touches.length >= 2) e.preventDefault() }
     let acc = 0
     const wheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return // 그냥 휠은 카드 스크롤
       e.preventDefault()
       acc += e.deltaY
       if (Math.abs(acc) < 40) return
@@ -250,12 +243,10 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
     }
     el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move)
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up)
-    el.addEventListener('touchmove', tmove, { passive: false })
     el.addEventListener('wheel', wheel, { passive: false })
     return () => {
       el.removeEventListener('pointerdown', down); el.removeEventListener('pointermove', move)
       el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up)
-      el.removeEventListener('touchmove', tmove)
       el.removeEventListener('wheel', wheel)
     }
   }, [schedule])
@@ -291,7 +282,6 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   }
 
   // ── 화면 ──
-  const v = view ?? autoView(board)
   const photoBox: React.CSSProperties = { left: `${(PHOTO.x / CARD_W) * 100}%`, top: `${(PHOTO.y / H) * 100}%`, width: `${(PHOTO.w / CARD_W) * 100}%`, height: `${(PHOTO.h / H) * 100}%` }
   const tile = (id: string, label: string, style: React.CSSProperties, on: boolean, pick: () => void, inner?: React.ReactNode) => (
     <div key={id} className={sf.bgCell}>
@@ -411,14 +401,12 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
           <div ref={wrapRef} className={styles.stage} style={{ aspectRatio: `${CARD_W} / ${H}` }}>
             <canvas ref={canvasRef} className={styles.canvas} />
             {/* 사진 칸 위에만 끌기 판 — 나머지는 그대로 스크롤된다 */}
-            <div ref={grabRef} data-no-sheet-drag title={mobile ? '두 손가락으로 옮기고 벌려 배율' : '끌어서 옮기기, Ctrl + 휠로 배율'} className={styles.grab} style={photoBox} />
-            {/* 사진 칸 안쪽 오른쪽 아래의 [−] [+] [원래 자리](사용자 지시: 미리보기 속 사진에). 사진 칸 아래 끝이 화면 밖이어도 보이는 아래 끝에 붙는다(sticky) */}
+            <div ref={grabRef} data-no-sheet-drag title={mobile ? '끌어서 옮기기, 두 손가락으로 배율' : '끌어서 옮기기, 휠로 배율'} className={styles.grab} style={photoBox} />
+            {/* 사진 칸 안쪽 오른쪽 아래의 [위치 초기화](사용자 지시: 미리보기 속 사진에). 사진 칸 아래 끝이 화면 밖이어도 보이는 아래 끝에 붙는다(sticky) */}
             <div className={styles.photoTools} style={photoBox}>
               <div className={styles.toolRow}>
-                <button type="button" onClick={() => setZ(-1)} disabled={v.z <= ZOOM_MIN} title="사진 작게" aria-label="사진 작게" className={clsx('pb-ghost', styles.toolBtn)}>−</button>
-                <button type="button" onClick={() => setZ(1)} disabled={v.z >= ZOOM_MAX} title="사진 크게" aria-label="사진 크게" className={clsx('pb-ghost', styles.toolBtn)}>+</button>
                 <button type="button" onClick={() => setView(null)} disabled={!view} title={view ? '사진을 처음 자리와 배율로' : '사진이 처음 자리에 있어요'}
-                  className={clsx('pb-ghost', styles.resetBtn)}><IconReset />원래 자리</button>
+                  className={clsx('pb-ghost', styles.resetBtn)}><IconReset />위치 초기화</button>
               </div>
             </div>
             {(!chips || !board || !fonts) && <div className="pb-skel" style={{ position: 'absolute', inset: 0, borderRadius: 8 }} />}
