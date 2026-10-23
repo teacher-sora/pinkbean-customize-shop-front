@@ -405,7 +405,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
             {/* 사진 칸 안쪽 오른쪽 아래의 [위치 초기화](사용자 지시: 미리보기 속 사진에). 사진 칸 아래 끝이 화면 밖이어도 보이는 아래 끝에 붙는다(sticky) */}
             <div className={styles.photoTools} style={photoBox}>
               <div className={styles.toolRow}>
-                <button type="button" onClick={() => setView(null)} disabled={!view} title={view ? '사진을 처음 자리와 배율로' : '사진이 처음 자리에 있어요'}
+                <button type="button" onClick={() => setView(null)} title="사진을 처음 자리와 배율로"
                   className={clsx('pb-ghost', styles.resetBtn)}><IconReset />위치 초기화</button>
               </div>
             </div>
