@@ -134,7 +134,8 @@ export function PvSheetBody() {
   const [group, setGroup] = useState<PvGroup>(intent?.group ?? 'char')
   const [pick, setPick] = useState<PvField | null>(intent?.pick ?? null)
   const { view, go, style } = useInnerSlide<'main' | 'pick' | 'frames'>(intent?.pick ? 'pick' : 'main')
-  // 액션 상세(재생 · 자세 — ActionFrames): 액션을 고르면 그 액션이 재생되고 이 화면으로 한 번 더 넘어간다. 자세가 하나뿐이면 예전처럼 설정으로 돌아간다
+  // 액션 상세(재생 · 자세 — ActionFrames): 자세가 여럿인 액션은 이 화면으로 한 번 더 넘어가기만 하고(미리보기는 아직 그대로 — 시트에 가려 보이지 않는다),
+  // 여기서 고르면 그 액션 · 자세로 바꾸고 설정으로 돌아간다. 자세가 하나뿐이면 바로 바꾸고 돌아간다(다른 고르기와 같다 — 고르기는 한 번에 끝난다)
   const s = useShop()
   const [detail, setDetail] = useState<string | null>(null)
   const detailInfo = useActionInfo(detail)
@@ -247,8 +248,8 @@ export function PvSheetBody() {
           <div className={styles.pickPage}>
             <div className={styles.pickHead}>{PV_ACTIONS_FLAT.find((a) => a.v === detail)?.l ?? '액션'}<span className={styles.pickHint}>재생하거나 멈출 자세를 골라요</span></div>
             <div className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.pickScroll)}>
-              <ActionFrameGrid action={detail} info={detailInfo} value={s.pv.action === detail ? s.pv.frame : -1} base={frameBase}
-                onPick={(f) => { if (s.pv.action !== detail) s.setPv('action', detail); s.setPv('frame', f) }} />
+              <ActionFrameGrid action={detail} info={detailInfo} value={s.pv.action === detail ? s.pv.frame : -2} base={frameBase}
+                onPick={(f) => { s.setPv('action', detail); s.setPv('frame', f); back() }} />
             </div>
           </div>
         ) : view === 'pick' && picked ? (
@@ -259,9 +260,8 @@ export function PvSheetBody() {
                 <PvGrid field={pvFieldOf(picked)} options={picked.options} groups={pvGroupsOf(picked)} value={picked.value}
                   disabledValues={picked.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요"
                   onChange={(v) => {
-                    picked.set(v)
-                    if (pvFieldOf(picked) !== 'action') { back(); return }
-                    void actionInfo(s, v).then((i) => { if (i.delays.length > 1) { setDetail(v); go('frames', 1) } else back() })
+                    if (pvFieldOf(picked) !== 'action') { picked.set(v); back(); return }
+                    void actionInfo(s, v).then((i) => { if (i.delays.length > 1) { setDetail(v); go('frames', 1) } else { picked.set(v); back() } })
                   }} />
               )}
             </div>

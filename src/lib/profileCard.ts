@@ -198,7 +198,8 @@ export type CardBg = { sel: string; images: StageBgImage[] }
 export function defaultView (b: CardBoard | null): CardView {
   if (!b) return { z: 5, x: 0, y: -30 }
   const w = b.x1 - b.x0 + 1, h = b.y1 - b.y0 + 1
-  const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.floor(Math.min((PHOTO.h * 0.62) / h, (PHOTO.w * 0.8) / w))))
+  // 그림(캐릭터 + 명찰 · 말풍선 · 칭호)이 사진 칸 높이의 84% · 폭의 94% 안에 드는 가장 큰 정수 배율(사용자 지시 — 0.62 · 0.8 은 멀었다)
+  const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.floor(Math.min((PHOTO.h * 0.84) / h, (PHOTO.w * 0.94) / w))))
   return { z, x: (b.x0 + b.x1 + 1) / 2 - b.foot.x, y: (b.y0 + b.y1 + 1) / 2 - b.foot.y }
 }
 

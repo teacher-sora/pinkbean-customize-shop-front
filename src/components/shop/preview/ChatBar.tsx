@@ -7,68 +7,49 @@
 //  · 모바일 = 미리보기가 낮아 늘 띄워 두면 명찰을 가린다. 아래 줄의 말풍선 버튼을 누르면 아래 줄 자리에 칸이 올라오고, 바깥을 누르면 내려간다.
 // 게임 채팅에는 줄바꿈이 없다 — Enter(휴대폰 자판의 보내기 · 완료 포함)가 곧 전송이다. 칸을 form 으로 감싸 제출로 보낸다:
 // 한글 조합 중 Enter 도 조합이 끝난 뒤 한 번만 제출되고, 휴대폰 자판의 Enter 는 keydown 이 오지 않는 기기도 제출은 온다.
-// 이모티콘(ChatEmoPicker): PC 는 표정 · 모션 고르기와 같은 작은 창(3열 · 미리보기 안쪽 10px)이 칸 위에, 모바일은 아래 시트(Surface 'emo')로.
+// 이모티콘(ChatEmoPicker): PC 는 표정 · 모션 고르기와 같은 팝박스(PopBox — 미리보기 안쪽 10px)가 칸 위에, 모바일은 아래 시트(Surface 'emo')로.
 // 말풍선을 끼었을 때만 나온다. 명찰 이름은 고른 프리셋의 이름을 그대로 쓴다(ShopContext.chatName).
 
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { warmChat, warmChatUi } from '@/lib/core/chatUi'
 import { CHAT_TEXT_MAX } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { IconSmile } from '../ui/Icons'
 import ChatEmoPicker from './ChatEmoPicker'
+import { PopBox, popIn, usePop } from './PopBox'
 import styles from './preview.module.css'
 
-const PANEL_H = 250 // 묶음 줄 + 3열 × 2줄 남짓(표정 · 모션 고르기와 같다)
-const INSET = 10    // 미리보기 안쪽 여백(표정 · 모션 고르기와 같다)
 const GAP = 8       // 칸과 창 사이
-const OUT_MS = 180  // 닫힘 전환이 끝난 뒤 떼어낸다
 const WARM_MS = 90  // 적다가 이만큼 멈추면 말풍선을 미리 만든다
-type Pos = { left: number; w: number; maxH: number; bottom: number }
 
 export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; show: boolean; onClose?: () => void }) {
   const s = useShop()
   const [text, setText] = useState('')
-  const [pos, setPos] = useState<Pos | null>(null)
-  const [shown, setShown] = useState(false)
-  const box = useRef<HTMLFormElement>(null), btn = useRef<HTMLButtonElement>(null), panel = useRef<HTMLDivElement>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const open = !!pos
+  const pop = usePop()
+  const box = useRef<HTMLFormElement>(null), btn = useRef<HTMLButtonElement>(null)
+  const open = !!pop.pos
   const sheetOn = s.surface?.kind === 'emo' && !s.surfaceClosing
 
-  const close = () => { setShown(false); if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(() => setPos(null), OUT_MS) }
+  // 창은 칸 위(칸과 GAP)부터 미리보기 위 끝 안쪽까지 — 가로는 미리보기 가득(연출 설정 고르기와 같은 폭)
   const toggle = () => {
     if (mobile) { s.openSheet('emo'); return } // 모바일: 넓은 아래 시트로
-    if (open) { close(); return }
-    if (timer.current) clearTimeout(timer.current)
+    if (open) { pop.close(); return }
     const r = box.current?.getBoundingClientRect(); if (!r) return
-    const a = box.current?.closest('[data-pv-stage]')?.getBoundingClientRect() ?? { left: r.left - INSET, width: r.width + INSET * 2, top: 0 }
-    setPos({ left: Math.round(a.left) + INSET, w: Math.round(a.width) - INSET * 2, bottom: Math.round(window.innerHeight - r.top) + GAP,
-      maxH: Math.max(150, Math.min(PANEL_H, Math.round(r.top - a.top) - GAP - INSET)) })
+    const a = box.current?.closest('[data-pv-stage]')?.getBoundingClientRect() ?? { left: r.left - 10, width: r.width + 20, top: 0, bottom: r.bottom }
+    pop.open(popIn(a, r.top - GAP))
   }
+  // 모바일: 바깥을 누르거나 Esc 면 칸을 내린다(창은 PopBox 가 닫는다). 시트(이모티콘 시트) 안을 누른 것은 바깥이 아니다.
   useEffect(() => {
-    if (!pos) return
-    let r2 = 0
-    const r1 = requestAnimationFrame(() => { r2 = requestAnimationFrame(() => setShown(true)) })
-    return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2) }
-  }, [pos])
-  // 바깥을 누르거나 Esc: 이모티콘 창이 열려 있으면 창만, 아니면(모바일) 칸을 내린다. 떠 있는 창 · 시트(이모티콘 시트) 안을 누른 것은 바깥이 아니다.
-  useEffect(() => {
-    if (!open && !(mobile && show)) return
-    const inside = (t: Node) => !!(box.current?.contains(t) || panel.current?.contains(t) || (t instanceof Element && t.closest('[role="dialog"]')))
-    const onDown = (e: PointerEvent) => {
-      const t = e.target as Node
-      if (open) { if (btn.current?.contains(t) || panel.current?.contains(t)) return; close(); if (!inside(t)) onClose?.(); return }
-      if (!inside(t)) onClose?.()
-    }
-    const onKey = (e: KeyboardEvent) => { if (e.key !== 'Escape' || sheetOn) return; e.stopImmediatePropagation(); if (open) close(); else onClose?.() }
+    if (!(mobile && show)) return
+    const inside = (t: Node) => !!(box.current?.contains(t) || (t instanceof Element && t.closest('[role="dialog"]')))
+    const onDown = (e: PointerEvent) => { if (!inside(e.target as Node)) onClose?.() }
+    const onKey = (e: KeyboardEvent) => { if (e.key !== 'Escape' || sheetOn) return; e.stopImmediatePropagation(); onClose?.() }
     window.addEventListener('pointerdown', onDown, true); window.addEventListener('keydown', onKey, true)
     return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey, true) }
-  }, [open, mobile, show, onClose, sheetOn])
-  useEffect(() => { if (!show && open) close() }, [show]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  }, [mobile, show, onClose, sheetOn])
+  useEffect(() => { if (!show && open) pop.close() }, [show]) // eslint-disable-line react-hooks/exhaustive-deps
   // 모바일: 칸이 올라오면 바로 적을 수 있게
   useEffect(() => { if (mobile && show) box.current?.querySelector('input')?.focus({ preventScroll: true }) }, [mobile, show])
 
@@ -93,13 +74,9 @@ export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; s
         className={clsx(styles.chatEmoBtn, (open || sheetOn) && styles.chatEmoBtnOn)}><IconSmile size={16} /></button>
       <button type="submit" disabled={!can} title={can ? '말풍선 띄우기' : '말을 적으면 보낼 수 있어요'}
         className={clsx('pb-solid', styles.chatSend)}>전송</button>
-      {open && typeof document !== 'undefined' && createPortal(
-        <div ref={panel} role="dialog" aria-label="이모티콘" className={clsx(styles.pvPanel, styles.chatEmoPanel, shown && styles.pvPanelOn)}
-          style={{ left: pos!.left, bottom: pos!.bottom, width: pos!.w, height: pos!.maxH }}>
-          <ChatEmoPicker mobile={false} onPick={(emo) => { s.sendChat({ text: '', emo }); close() }} />
-        </div>,
-        document.body,
-      )}
+      <PopBox pop={pop} label="이모티콘" keep={[btn]}>
+        <ChatEmoPicker mobile={false} onClose={pop.close} onPick={(emo) => { s.sendChat({ text: '', emo }); pop.close() }} />
+      </PopBox>
     </form>
   )
 }
