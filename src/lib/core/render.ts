@@ -5,7 +5,7 @@
 // (world 0,0) is nailed to a FIXED canvas coordinate inside a fixed world box,
 // so the body never shifts when hair/hats/weapons change extent. All scaling is
 // integer (x1/x2/x3) with smoothing off and integer pixel snapping -> crisp dots.
-import { drawChat, prepareChat, type ChatDraw } from './chatUi'
+import { drawChat, prepareChat, type ChatDraw, type ChatRef } from './chatUi'
 import { drawParticles, type ParticleDraw } from './particle'
 import { spriteUrl, type EffectGroup, type EffectMeta, type Vec } from './data'
 import type { PlacedLayer } from './assemble'
@@ -151,7 +151,7 @@ export interface RenderOpts {
   chatT?: number                     // 움직이는 이모티콘의 시각(ms) — 주면 보낸 시각(t0) 대신 쓴다(움짤 저장이 프레임마다 정한다)
   chatClock?: number                 // 움직이는 명찰 · 칭호 · 훈장의 시계(ms — 미리보기는 지금 시각, 움짤은 그 프레임의 시각). 없으면 첫 프레임
   chatWait?: boolean                 // 움직이는 판의 프레임을 다 받을 때까지 기다린다(움짤)
-  chatGround?: number                // 명찰 · 말풍선 · 칭호 · 훈장의 바닥 높이(월드) — 동작 내내 같은 값(chatUi.drawChat). 없으면 이 프레임의 바닥
+  chatRef?: ChatRef                  // 명찰 · 말풍선 · 칭호 · 훈장의 기준점(chatUi.chatRefOf — 그 동작 0프레임으로 잰 값이라 동작 내내 같다). 없으면 이 프레임으로 잰다
   ringFloor?: number                 // 변신 그림을 올리거나 내릴 만큼(월드 px) — 동작의 모든 프레임으로 잰 값(ringFloorOf). 없으면 이 프레임만으로 잰다
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
   centerX?: boolean                  // pin the body NAVEL to a fixed box point (center X, anchor.y) in BOTH axes →
@@ -356,5 +356,5 @@ export async function renderCharacter(
   for (const x of parts) if (x.p.z >= 0) drawPart(x)
   ctx.restore()
   // 움직이는 이모티콘은 보낸 뒤 흐른 시간의 프레임(보낸 시각이 없으면 — 복사 그림 등 — 대표 프레임)
-  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width, t: opts.chatT ?? (opts.chat?.t0 != null ? performance.now() - opts.chat.t0 : undefined), main: opts.chat?.emo?.main, clock: opts.chatClock, groundY: opts.chatGround })
+  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width, t: opts.chatT ?? (opts.chat?.t0 != null ? performance.now() - opts.chat.t0 : undefined), main: opts.chat?.emo?.main, clock: opts.chatClock, ref: opts.chatRef })
 }
