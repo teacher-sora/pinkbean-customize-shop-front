@@ -10,7 +10,7 @@
 //  · 칸은 크기가 고정이다 — 늘면 줄어들지 않고 가로로 스크롤된다(스크롤바는 숨기고 양 끝은 흐림 · 화살표 — 하단 부위 줄과 같은 pb-norail · pb-fade).
 //    + 칸은 늘 맨 끝. 아무것도 없으면 + 칸 하나뿐이다. 새로 담은 것은 + 칸 바로 앞에 붙고 그 자리까지 스크롤한다. 마우스 휠은 가로로 넘긴다.
 import clsx from 'clsx'
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import type { ListItem } from '@/lib/core/data'
 import { DYE_VAULT_MAX, dyeSaveKey, useDyeVault, type DyeSave } from '@/lib/dyeVault'
@@ -18,6 +18,39 @@ import { useShop } from '../ShopContext'
 import { LookSprite } from '../info/SlotSprite'
 import { IconAdd } from '../ui/Icons'
 import styles from './surface.module.css'
+
+// 칸 하나 — 메모해서 수치를 바꿀 때(조절 칸이 매번 다시 그려질 때) 칸들은 다시 그리지 않는다(실측: 20칸이면 수치를 바꿀 때마다 칸이 통째로 다시 그려져
+// 휴대폰 수준 CPU(4배 느리게)에서 40번에 스크립트 +0.2~0.27초였고, 메모한 뒤로는 0개일 때와 차이가 측정 오차 안이다).
+// 그림(LookSprite)은 줄에서 보이는 칸(과 옆 한 칸 남짓)만 그린다 — 한 번 보인 칸은 그대로 둔다(되돌아가도 다시 그리지 않게).
+// 실측(20칸, 휴대폰 폭 · CPU 4배 느리게, 4번씩 번갈아): 칸이 다 그려지기까지 전부 그리기 506ms → 보이는 칸만 436ms(그리는 칸 20 → 8)
+const VaultCell = memo(function VaultCell ({ d, on, item, tone, root, pick, drop }: {
+  d: DyeSave; on: boolean; item: ListItem; tone: number; root: React.RefObject<HTMLDivElement | null>
+  pick: (d: DyeSave) => void; drop: (d: DyeSave) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [seen, setSeen] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || seen) return
+    if (typeof IntersectionObserver === 'undefined') { setSeen(true); return }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setSeen(true); io.disconnect() } }, { root: root.current, rootMargin: '0px 60px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [seen, root])
+  const k = dyeSaveKey(d), xKey = `vault:x:${item.id}:${k}`
+  return (
+    <div ref={ref} role="listitem" className={styles.vaultItem}>
+      <button type="button" onClick={() => pick(d)} title={`${valueText(d)}${on ? ' — 지금 값' : ' — 눌러서 불러오기'}`} aria-pressed={on}
+        className={clsx(styles.vaultCell, on && styles.vaultCellOn)}>
+        <span className={styles.vaultSprite}>
+          {seen && <LookSprite slot={item.slot} item={item} tone={tone} palette={'pal' in d ? d.pal : undefined} hsb={'hsb' in d ? d.hsb : undefined} />}
+        </span>
+      </button>
+      <button type="button" title="보관함에서 빼기" aria-label="보관함에서 빼기" {...{ [CONFIRM_ATTR]: xKey }}
+        onClick={() => { if (confirmTwice(xKey, '한 번 더 누르면 빼요')) drop(d) }} className={styles.vaultX}>✕</button>
+    </div>
+  )
+})
 
 const valueText = (d: DyeSave) => ('hsb' in d ? `색조 ${d.hsb.h} / 채도 ${d.hsb.s} / 명도 ${d.hsb.b}` : `${d.pal.mixColor == null || d.pal.mixColor === d.pal.baseColor ? '단색' : `비율 ${d.pal.ratio}`}`)
 
@@ -39,6 +72,10 @@ export default function DyeVault ({ item, current, onPick, mobile }: { item: Lis
     el.addEventListener('wheel', wheel, { passive: false })
     return () => el.removeEventListener('wheel', wheel)
   }, [])
+  // 칸에 넘기는 함수는 늘 같은 것(메모한 칸이 다시 그려지지 않게) — 최신 onPick · remove 는 ref 로
+  const fns = useRef({ onPick, remove }); fns.current = { onPick, remove }
+  const [pick] = useState(() => (d: DyeSave) => fns.current.onPick(d))
+  const [drop] = useState(() => (d: DyeSave) => fns.current.remove(d))
   // 담은 칸은 + 칸 바로 앞(맨 끝)에 붙는다 — 그려진 뒤 끝까지 스크롤해 보이게
   const shown = [...list].reverse()
   const save = () => { put(current); requestAnimationFrame(() => { const el = strip.current; el?.scrollTo({ left: el.scrollWidth, behavior: 'smooth' }) }) }
@@ -58,21 +95,7 @@ export default function DyeVault ({ item, current, onPick, mobile }: { item: Lis
           </span>
         </div>
         <div ref={strip} className={clsx('pb-norail', 'pb-fade', styles.vaultStrip)} role="list" aria-label="저장한 염색">
-          {shown.map((d) => {
-            const k = dyeSaveKey(d), on = k === curKey, xKey = `vault:x:${item.id}:${k}`
-            return (
-              <div key={k} role="listitem" className={styles.vaultItem}>
-                <button type="button" onClick={() => onPick(d)} title={`${valueText(d)}${on ? ' — 지금 값' : ' — 눌러서 불러오기'}`} aria-pressed={on}
-                  className={clsx(styles.vaultCell, on && styles.vaultCellOn)}>
-                  <span className={styles.vaultSprite}>
-                    <LookSprite slot={item.slot} item={item} tone={tone} palette={'pal' in d ? d.pal : undefined} hsb={'hsb' in d ? d.hsb : undefined} />
-                  </span>
-                </button>
-                <button type="button" title="보관함에서 빼기" aria-label="보관함에서 빼기" {...{ [CONFIRM_ATTR]: xKey }}
-                  onClick={() => { if (confirmTwice(xKey, '한 번 더 누르면 빼요')) remove(d) }} className={styles.vaultX}>✕</button>
-              </div>
-            )
-          })}
+          {shown.map((d) => { const k = dyeSaveKey(d); return <VaultCell key={k} d={d} on={k === curKey} item={item} tone={tone} root={strip} pick={pick} drop={drop} /> })}
           <div role="listitem" className={styles.vaultItem}>
             <button type="button" onClick={save} disabled={has || full} title={why} aria-label="염색 저장" className={styles.vaultAdd}><IconAdd size={16} /></button>
           </div>

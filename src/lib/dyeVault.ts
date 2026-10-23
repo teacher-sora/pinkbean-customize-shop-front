@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import type { HsbParams, PaletteParams } from './core/dye'
 
 export type DyeSave = { hsb: HsbParams } | { pal: PaletteParams }
-export const DYE_VAULT_MAX = 12
+export const DYE_VAULT_MAX = 20
 const KEY = 'pb_dye_vault_v1'
 
 type Store = Record<string, DyeSave[]>
