@@ -149,7 +149,7 @@ export function PvSheetBody() {
   // 여기서 고르면 그 액션 · 자세로 바꾸고 설정으로 돌아간다. 자세가 하나뿐이면 바로 바꾸고 돌아간다(다른 고르기와 같다 — 고르기는 한 번에 끝난다)
   const s = useShop()
   const [detail, setDetail] = useState<string | null>(null)
-  const [backTo, setBackTo] = useState<string | null>(null) // 상세에서 [이전]으로 돌아온 칸 — 고르기 격자가 그 칸을 가운데에 두고 붙는다(새로 열면 고른 값)
+  const listScroll = useRef<number | null>(null) // 상세로 들어갈 때의 고르기 격자 스크롤 좌표 — [이전]으로 돌아오면 그대로 되돌린다(고르기를 새로 열면 비운다)
   const detailInfo = useActionInfo(detail)
   // 액션 상세 칸의 기준 코디 — 고르기 화면을 열 때마다 지금 코디로 다시 잡는다(시트는 열린 채 모션 · 아이템을 바꿀 수 있다 — 처음 것을 쥐고 있으면
   // 칸 수는 새 모션, 그림은 옛 모션으로 합성돼 어긋났다. 사용자 제보: 모션을 건으로 바꾼 뒤 상세가 다 뜨지 않았다)
@@ -168,7 +168,7 @@ export function PvSheetBody() {
   }, [])
   const open = (k: PvField) => {
     setFrameBase(s.snapshot())
-    setBackTo(null)
+    listScroll.current = null
     setPick(k); go('pick', 1)
     setGridOn(false)
     if (gridTimer.current) clearTimeout(gridTimer.current)
@@ -274,7 +274,7 @@ export function PvSheetBody() {
             <div className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.pickScroll)}>
               {gridOn && (
                 <PvGrid field={pvFieldOf(picked)} options={picked.options} groups={pvGroupsOf(picked)} value={picked.value}
-                  disabledValues={picked.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요" focus={backTo ?? undefined}
+                  disabledValues={picked.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요" scrollMemo={listScroll}
                   onWarm={pvFieldOf(picked) === 'action' ? (v) => warmActionFrames(s, frameBase, v) : undefined}
                   onChange={(v) => {
                     if (pvFieldOf(picked) !== 'action') { picked.set(v); back(); return }
@@ -293,7 +293,7 @@ export function PvSheetBody() {
         )}
       </div>
       </div>
-      <SurfaceFooter onBack={view === 'frames' ? () => { setBackTo(detail); go('pick', -1) } : view === 'pick' ? back : undefined} />
+      <SurfaceFooter onBack={view === 'frames' ? () => go('pick', -1) : view === 'pick' ? back : undefined} />
     </>
   )
 }
