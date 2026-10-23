@@ -128,6 +128,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
 // 염색 캔버스를 참조로 붙들고 있으므로 무한정 키우지 않는다(모바일 메모리).
 const composeCache = new LRU<SnapComposite | null>(120)
 const composeFlight = new Map<string, Promise<SnapComposite | null>>()
+const FLIGHT_MS = 8000
 
 export const snapKey = (snap: Snapshot): string => JSON.stringify(snap)
 // 카탈로그(index)는 loadIndex 를 부를 때마다 **새 객체**다(공유 카드 만들기 등에서 따로 받는다). 내용이 달라지면
@@ -154,8 +155,11 @@ export function composeSnapshotCached(key: string, snap: Snapshot, index: Index,
   if (!p) {
     p = composeSnapshot(snap, index, animaRaces, view)
       .then((r) => { composeCache.set(k, r); return r })
-      .finally(() => { composeFlight.delete(k) })
+      .finally(() => { if (composeFlight.get(k) === p) composeFlight.delete(k) })
     composeFlight.set(k, p)
+    // 오래 끝나지 않는 합성은 진행 중 목록에서 뺀다 — 다시 부르면 새로 시작한다(SnapThumb 의 다시 줄서기). 늦게라도 끝나면 캐시에는 남는다
+    const mine = p
+    setTimeout(() => { if (composeFlight.get(k) === mine) composeFlight.delete(k) }, FLIGHT_MS)
   }
   return p
 }

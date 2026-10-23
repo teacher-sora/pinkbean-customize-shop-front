@@ -65,21 +65,27 @@ export function warmActionFrames (s: Shop, base: Snapshot, action: string): void
 // 프레임 순서(왕복이면 0 1 2 1 0 …의 한 바퀴)와 그 시간
 const sequence = (n: number, pingpong: boolean) => (pingpong && n > 2 ? [...Array(n).keys(), ...[...Array(n - 2).keys()].map((i) => n - 2 - i)] : [...Array(n).keys()])
 
-// 재생 칸 — 프레임 그림을 겹쳐 두고 차례로 하나만 보인다(같은 스냅샷이라 합성은 프레임 칸과 함께 한 번)
+// 재생 칸 — 프레임 그림을 겹쳐 두고 차례로 하나만 보인다(같은 스냅샷이라 합성은 프레임 칸과 함께 한 번).
+// 모든 프레임이 그려진 뒤에 돌기 시작한다 — 그 전에는 첫 자세에 멈춰 있다(사용자 제보: 아직 안 그려진 프레임 차례에 빈 칸이 깜빡였다)
 function PlayArt ({ snaps, info }: { snaps: Snapshot[]; info: ActionInfo }) {
   const seq = useMemo(() => sequence(snaps.length, info.pingpong), [snaps.length, info.pingpong])
   const [k, setK] = useState(0)
+  const [drawn, setDrawn] = useState(() => new Set<number>())
+  useEffect(() => { setDrawn(new Set()); setK(0) }, [snaps])
+  const ready = drawn.size >= snaps.length
   useEffect(() => {
-    if (seq.length < 2) return
+    if (seq.length < 2 || !ready) return
     let i = 0, t: ReturnType<typeof setTimeout>
     const tick = () => { t = setTimeout(() => { i = (i + 1) % seq.length; setK(i); tick() }, Math.max(60, info.delays[seq[i]] || 120)) }
     tick()
     return () => clearTimeout(t)
-  }, [seq, info.delays])
+  }, [seq, info.delays, ready])
   return (
     <>
       {snaps.map((sn, i) => (
-        <span key={i} className={styles.pvFrameLayer} style={{ opacity: seq[k] === i ? 1 : 0 }}><SnapThumb snap={sn} fraction={MODEL_FRACTION} view /></span>
+        <span key={i} className={styles.pvFrameLayer} style={{ opacity: (ready ? seq[k] : 0) === i ? 1 : 0 }}>
+          <SnapThumb snap={sn} fraction={MODEL_FRACTION} view onDrawn={() => setDrawn((d) => (d.has(i) ? d : new Set(d).add(i)))} />
+        </span>
       ))}
     </>
   )

@@ -121,11 +121,24 @@ export const presetFileName = (name: string | undefined, i: number): string => f
 //  · 위치를 고르고 싶으면 브라우저 설정의 '다운로드 전에 각 파일의 저장 위치 확인'을 켜면 저장 창이 뜬다.
 // 반환: 'saved' 내려받기 시작 · 'error' 그림을 못 만들었다.
 // filename 이 함수면 그림을 다 만든 뒤에 부른다(불러오는 중에 눌러도 그때의 프리셋 이름으로).
-export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string | (() => string), kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'error'> {
+// 휴대폰(터치)에서는 내려받기 대신 공유 창에 파일을 넘긴다 — 웹은 갤러리에 직접 쓸 수 없고, 공유 창의 '이미지 저장'(iOS) · 갤러리 · 포토(안드로이드)가
+// 사진 앱에 넣는다(사용자 지시 — 브라우저 내려받기 폴더가 아니라 갤러리에). 공유를 못 쓰거나(데스크톱 · 옛 브라우저) 막히면(눌러서 시간이 오래 지난 뒤 등)
+// 예전처럼 내려받는다. 사용자가 공유 창을 닫으면 'cancel'(알림을 띄우지 않는다).
+const touchDevice = () => typeof matchMedia !== 'undefined' && matchMedia('(hover: none), (pointer: coarse)').matches
+export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string | (() => string), kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'cancel' | 'error'> {
   try {
     const b = await getBlob(); if (!b) return 'error'
     const base = fileSafe(typeof filename === 'function' ? filename() : filename) || 'pinkbean' // 부르는 쪽이 이름을 정한다(프리셋은 presetFileName) — 여기는 마지막 안전망
     const name = base.endsWith(`.${kind}`) ? base : `${base}.${kind}`
+    if (touchDevice() && typeof navigator.share === 'function' && typeof File !== 'undefined') {
+      const file = new File([b], name, { type: kind === 'gif' ? 'image/gif' : 'image/png' })
+      if (navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); return 'saved' } catch (e) {
+          if ((e as DOMException)?.name === 'AbortError') return 'cancel'
+          // NotAllowedError 등 — 아래 내려받기로
+        }
+      }
+    }
     const url = URL.createObjectURL(b)
     const a = document.createElement('a')
     a.href = url; a.download = name
