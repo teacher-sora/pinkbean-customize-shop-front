@@ -437,15 +437,22 @@ export async function prepareChat (d: ChatDraw | undefined, full = false): Promi
 //  · dx = 탈것 origin 이 배꼽에서 떨어진 가로 거리 — 렌더러가 탈 때는 배꼽을 가로 가운데에 고정하므로(centerXOnly) 배꼽 + dx 로 놓아야 프레임마다 같은 자리다.
 //  · up = 머리 위에 서는 칭호 · 말풍선의 '발' 높이 = 탄 사람의 발(안장 위로 올라간 만큼). 맨몸에서 머리 위에 서는 간격을 그대로 두고 캐릭터와 함께 올린다.
 //    탈것 그림의 높이는 보지 않는다 — 게임 캡처(사용자 첨부: 재규어 · 메카)에서 칭호 · 말풍선은 탈것이 아니라 탄 캐릭터의 머리 위에 선다.
+//    다만 메탈아머(tall — 렌더러가 메카 기준으로 가운데를 잡는 탈것)는 머리보다 높이 솟은 증기관이 있어, 칭호 아래 끝이 탈것 그림 위 끝보다 TALL_GAP 위에 오도록 더 올린다
+//    (게임 캡처: 칭호가 관보다 살짝 위 — 사용자 지적: 관에 걸려 낮았다)
 export type ChatRef = { x: number; dx?: number; ground: number; up: number }
-export function chatRefOf (placed: PlacedLayer[]): ChatRef | null {
+const TALL_GAP = 3
+export function chatRefOf (placed: PlacedLayer[], tall = false): ChatRef | null {
   const g = groundOf(placed)
   if (!g) return null
   const mount = placed.some((p) => p.slot === 'riding' && p.name.startsWith('mount'))
   if (!mount) return { x: g.x, ground: g.y, up: g.y }
   const body = placed.find((p) => p.slot === 'body' && p.name === 'body'), nav = body?.map?.navel, k = body?.scale ?? 1
   const foot = footOf(placed)
-  const up = Math.min(foot ? foot.y : g.y, g.y)
+  let up = Math.min(foot ? foot.y : g.y, g.y)
+  if (tall) {
+    const top = Math.min(...placed.filter((p) => p.slot === 'riding').map((p) => p.y))
+    if (Number.isFinite(top)) up = Math.min(up, top - TALL_GAP + TITLE_BOTTOM)
+  }
   const dx = body && nav ? g.x - (body.x + (body.origin.x + nav.x) * k) : undefined
   return { x: g.x, dx, ground: g.y, up }
 }
