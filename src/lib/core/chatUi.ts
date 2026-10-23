@@ -424,21 +424,24 @@ export async function prepareChat (d: ChatDraw | undefined, full = false): Promi
 }
 
 // 캐릭터 위에 덧그린다. 시선이 오른쪽(flip)이어도 글자는 뒤집지 않고 자리만 옮긴다.
-// 기준점(사용자 지시 — 명찰 · 말풍선 · 칭호 · 훈장 모두 몸이 기준): 가로 = 몸의 배꼽(렌더러가 화면에 고정하는 점 — 아이템 · 동작 · 탈것과 상관없이
-// 흔들리지 않는다. 발끝 origin 은 동작 프레임마다 배꼽과의 거리가 달라지고, 탈것의 바닥은 몸과 따로 움직인다), 세로 = 딛고 선 바닥(탈것이면 탈것의 바닥).
+// 기준점(사용자 지시 — 서기 0프레임의 몸 자리로 한 번 정한 뒤에는 어떤 동작에서도 움직이지 않는다. 게임에서도 제자리에 가만히 있다):
+//  · 맨몸: 발(몸 그림의 origin). 미리보기 · 자세 합성은 모든 프레임을 서기 0프레임의 배꼽에 맞춰 옮겨(stab) 이 점이 동작 내내 서기 0프레임의 발 자리다.
+//    (지금 프레임의 배꼽을 따르면 숨 쉬기 · 동작마다 배꼽이 오르내리고 옆으로 가서 명찰 · 칭호 · 훈장 · 말풍선이 흔들렸다)
+//  · 탈것: 가로 = 배꼽(렌더러가 배꼽을 가로 가운데에 고정한다 — centerXOnly), 세로 = 그 동작 0프레임의 탈것 바닥(groundY — 탈것은 프레임마다 오르내린다).
+//  groundY 가 없으면 이 프레임의 바닥.
 // t = 보낸 뒤 흐른 시간(ms) — 움직이는 이모티콘의 프레임을 고른다. 없으면 대표 프레임(복사 그림 등).
 // clock = 움직이는 판의 시계(ms — 미리보기는 지금 시각, 움짤은 그 프레임의 시각). 없으면 첫 프레임.
-export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed: PlacedLayer[], o: { anchorX: number; anchorY: number; scale: number; flip?: boolean; width: number; t?: number; main?: number; clock?: number }) {
+export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed: PlacedLayer[], o: { anchorX: number; anchorY: number; scale: number; flip?: boolean; width: number; t?: number; main?: number; clock?: number; groundY?: number }) {
   if (!maps.length) return
   const g = groundOf(placed)
   if (!g) return
+  const mount = placed.some((p) => p.slot === 'riding' && p.name.startsWith('mount'))
   const body = placed.find((p) => p.slot === 'body' && p.name === 'body'), nav = body?.map?.navel, k = body?.scale ?? 1
-  // 배꼽 + NAV_FOOT(서기 첫 프레임의 발끝 — 게임 캡처로 맞춘 자리가 그 프레임에서 예전과 같다). 서기만 해도 발끝은 배꼽에서 −8 · −7 · −6 으로 움직여
-  // 발끝을 따르면 명찰 · 칭호 · 훈장이 숨 쉴 때마다 좌우로 1~2px 흔들렸다
-  const mx = body && nav ? body.x + (body.origin.x + nav.x + NAV_FOOT) * k : g.x
+  // 탈것: 배꼽 + NAV_FOOT(서기 0프레임에서 발이 배꼽보다 오른쪽인 만큼 — 맨몸과 같은 가로 자리)
+  const mx = mount && body && nav ? body.x + (body.origin.x + nav.x + NAV_FOOT) * k : g.x
   const fx = (o.anchorX + mx) * o.scale
   const cx = o.flip ? o.width - fx : fx
-  const cy = (o.anchorY + g.y) * o.scale
+  const cy = (o.anchorY + (o.groundY ?? g.y)) * o.scale
   ctx.imageSmoothingEnabled = false
   for (const b of maps) {
     const fr = b.live?.frames && o.clock != null ? b.live.frames[cycleAt(b.live.d, o.clock)] : undefined
