@@ -1,6 +1,6 @@
 'use client'
 
-// 프리셋 30칸. 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
+// 프리셋 100칸(사용자 지시 — 기기에만 저장되고 공유할 때만 서버에 오른다). 카드 그림은 스크롤 칸에서 보일 즈음에만 합성 · 그린다(ui/useSeen). 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -10,6 +10,7 @@ import { presetFileName } from '@/lib/canvasExport'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { usePresetDrag } from './usePresetDrag'
+import { useSeen } from '../ui/useSeen'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
@@ -98,7 +99,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     <div ref={gridRef} className={mobile ? styles.gridHM : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
       {s.presets.map((p, i) => {
         const on = s.selectedPreset === p.id
-        return <PresetCard key={p.id} p={p} i={i} on={on} snap={on ? liveSnap : s.presetData[p.id]} mobile={mobile} sorting={sorting} act={act} />
+        return <PresetCard key={p.id} p={p} i={i} on={on} snap={on ? liveSnap : s.presetData[p.id]} mobile={mobile} sorting={sorting} act={act} root={boxRef} />
       })}
     </div>
   )
@@ -151,13 +152,16 @@ type CardAct = {
   share: (p: Preset) => void; remove: (p: Preset) => void; rename: (id: string, name: string) => void; commit: (id: string, fallback: string) => void
 }
 // 프리셋 카드 한 장. 받는 값이 같으면 다시 그리지 않는다(memo) — act 는 늘 같은 ref, p 는 이름이 바뀔 때만 새 객체다
-const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, sorting, act }: { p: Preset; i: number; on: boolean; snap: Snapshot | undefined; mobile: boolean; sorting: boolean; act: React.MutableRefObject<CardAct> }) {
+// 그림은 스크롤 칸(root)에서 보일 즈음에만 그린다(useSeen) — 100칸을 한꺼번에 합성 · 그리지 않게. 한 번 그린 것은 그대로 둔다
+const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, sorting, act, root }: { p: Preset; i: number; on: boolean; snap: Snapshot | undefined; mobile: boolean; sorting: boolean; act: React.MutableRefObject<CardAct>; root: React.RefObject<HTMLDivElement | null> }) {
+  const thumbRef = useRef<HTMLDivElement>(null)
+  const seen = useSeen(thumbRef, root)
   return (
     <div data-preset-id={p.id} onClick={() => { if (!sorting) act.current.select(p.id) }} onPointerDown={(e) => act.current.down(e, p.id)}
       className={clsx('pb-presetwrap', styles.wrap, sorting && styles.sorting)}>
       <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
         <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
-        <div className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
+        <div ref={thumbRef} className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && seen && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
         <div className={styles.nameRow}>
           <span className={styles.nameWrap}>
             <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
