@@ -256,6 +256,7 @@ export async function renderDyedSprite(
   zmap: string[],
   size = 60,
   frac?: number, // 채움 비율(지정 시 분수-맞춤: 원본이 커도 넘치지 않게 축소). 미지정=기존(발색표) 동작.
+  cors = false, // 단색도 CORS 로 받는다 — 결과 캔버스를 이미지로 내보낼 때(공유 이미지). 기본은 목록이 받아 둔 비-CORS 캐시를 쓴다
 ): Promise<void> {
   if (meta.colorGroup == null) return
   const layers = getFrameLayers(meta, view)
@@ -276,7 +277,7 @@ export async function renderDyedSprite(
         ])
         src = blendPalette(baseImg, mixImg, ratio, `${l.png}:${baseId}:${mixId}`)
       } else {
-        src = await loadImage(swapId(l.png, meta.id, baseId), false)
+        src = await loadImage(swapId(l.png, meta.id, baseId), cors)
       }
       const w = (src as HTMLImageElement).width, h = (src as HTMLImageElement).height
       const bx = l.map.brow?.x ?? 0, by = l.map.brow?.y ?? 0

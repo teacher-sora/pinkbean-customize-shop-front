@@ -13,6 +13,7 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { IconEye, IconShareImage, IconTrashSolid } from '../ui/Icons'
 import { DyeBand, SlotSprite, dyeBandData, type DyeBandState } from './SlotSprite'
 import { getPreviewShot, saveImage } from '@/lib/canvasExport'
+import { chipIcon } from '../render/DyeSprite'
 import type { ShareChip } from '@/lib/shareCard'
 import styles from './info.module.css'
 import ui from '../ui/ui.module.css'
@@ -88,14 +89,18 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
     try {
       const { shareCardBlob } = await import('@/lib/shareCard')
       const root = slotsRef.current
-      const chips: ShareChip[] = rows.filter((r) => r.on && !r.hidden && r.item).map((r) => ({
+      // 칩 그림: 피부는 화면의 칩 캔버스(내보낼 수 있다), 그 밖은 같은 규칙으로 CORS 로 다시 그린다(화면 칩은 비-CORS 그림이 섞여 내보낼 수 없다)
+      const readable = (c: HTMLCanvasElement | null | undefined) => { if (!c || !c.width) return null; try { c.getContext('2d')!.getImageData(0, 0, 1, 1); return c } catch { return null } }
+      const zmap = s.index?.zmap || []
+      const chips: ShareChip[] = await Promise.all(rows.filter((r) => r.on && !r.hidden && r.item).map(async (r) => ({
         part: r.c.label, name: r.item!.name || r.item!.id,
-        icon: root?.querySelector<HTMLCanvasElement>(`[data-share-slot="${r.slot}"] canvas`) ?? null,
+        icon: r.isSkin ? readable(root?.querySelector<HTMLCanvasElement>(`[data-share-slot="${r.slot}"] canvas`))
+          : await chipIcon({ id: r.item!.id, icon: r.item!.icon, mix: r.isMix, palette: s.renderPalette[r.slot], hsb: s.renderHsb[r.slot], dyeable: r.item!.dyeMode !== 'none', zmap }),
         band: dyeBandData(bandState(r), r.slot, s.dyeOff[r.slot] ? undefined : s.dyePalette[r.slot], s.dyeOff[r.slot] ? undefined : s.dyeHsb[r.slot], r.isSkin ? skinDyeFamily(toneName) ?? undefined : undefined),
-      }))
+      })))
       const shot = await getPreviewShot()
       const res = await saveImage(() => shareCardBlob({ shot, chips, title: s.saveName }), () => `${s.saveName} 코디`)
-      s.notify(res === 'saved' ? '공유 이미지를 저장했어요' : '공유 이미지를 만들지 못했어요')
+      s.notify(res === 'saved' ? '코디 정보 이미지를 저장했어요' : '이미지를 만들지 못했어요')
     } finally { setSharing(false) }
   }
 
@@ -154,8 +159,8 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   )
   // 공유 이미지 저장(헤더 오른쪽 — 예전 '전체 벗기' 자리, 사용자 지시. 전부 지우기는 프리셋 삭제로 한다)
   const share = (
-    <button type="button" data-guide="share-image" onClick={shareImage} disabled={sharing} aria-busy={sharing || undefined} title="캐릭터와 장착 아이템을 한 장으로 저장"
-      className={clsx('pb-ghost', styles.btn, styles.btnIcon, mobile && styles.btnM)}><IconShareImage size={14} /><span>공유 이미지</span></button>
+    <button type="button" data-guide="share-image" onClick={shareImage} disabled={sharing} aria-busy={sharing || undefined} title="캐릭터와 장착 아이템 · 염색 정보를 한 장의 이미지로 저장"
+      className={clsx('pb-ghost', styles.btn, styles.btnIcon, mobile && styles.btnM)}><IconShareImage size={14} /><span>코디 정보 이미지 저장</span></button>
   )
 
   if (mobile) {
