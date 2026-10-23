@@ -31,19 +31,19 @@ export type CardTheme = {
 }
 export const CARD_THEMES: CardTheme[] = [
   { id: 'midnight', label: '미드나잇', bg: ['#1c2540', '#2c3b5e'], accent: '#d4b072', brand: '#e9cf9c', text: '#f6eedd', sub: '#b9ac92',
-    chip: 'rgba(255,255,255,0.06)', chipLine: 'rgba(212,176,114,0.34)', iconBg: 'rgba(255,255,255,0.08)', key: '#a99d86', val: '#efe4cc', photo: ['#2e3d62', '#1f2a46'], pattern: 'sheen', frame: 'double' },
+    chip: 'rgba(255,255,255,0.06)', chipLine: 'rgba(212,176,114,0.34)', iconBg: 'rgba(255,255,255,0.15)', key: '#a99d86', val: '#efe4cc', photo: ['#2e3d62', '#1f2a46'], pattern: 'sheen', frame: 'double' },
   { id: 'noir', label: '블랙 메탈', bg: ['#121214', '#2d2e33'], accent: '#c9ced6', brand: '#e6e9ee', text: '#f3f4f6', sub: '#9da1a9',
-    chip: 'rgba(255,255,255,0.05)', chipLine: 'rgba(201,206,214,0.26)', iconBg: 'rgba(255,255,255,0.07)', key: '#8f939b', val: '#e3e6ea', photo: ['#34353b', '#1b1b1e'], pattern: 'sheen', frame: 'double' },
+    chip: 'rgba(255,255,255,0.05)', chipLine: 'rgba(201,206,214,0.26)', iconBg: 'rgba(255,255,255,0.14)', key: '#8f939b', val: '#e3e6ea', photo: ['#34353b', '#1b1b1e'], pattern: 'sheen', frame: 'double' },
   { id: 'pinkbean', label: '핑크빈', bg: ['#ffcfe1', '#ff93bf'], accent: '#ffffff', brand: '#ffffff', text: '#5e2442', sub: '#a64f7a',
-    chip: '#fff8fb', chipLine: '#ffd3e4', iconBg: '#ffeef5', key: '#c18aa5', val: '#7a3b5a', photo: ['#fff1f7', '#ffd6e7'], pattern: 'hearts', frame: 'dash' },
+    chip: '#fff8fb', chipLine: '#ffd3e4', iconBg: '#fff5f9', key: '#c18aa5', val: '#7a3b5a', photo: ['#fff1f7', '#ffd6e7'], pattern: 'hearts', frame: 'dash' },
   { id: 'milk', label: '딸기우유', bg: ['#fffaf5', '#ffe5ee'], accent: '#ee8fb2', brand: '#ec86ac', text: '#5a3a45', sub: '#b3878f',
-    chip: '#ffffff', chipLine: '#f6d6e1', iconBg: '#fff3f7', key: '#c3a1aa', val: '#7d5560', photo: ['#fff5f8', '#ffe7ef'], pattern: 'dots', frame: 'dash' },
+    chip: '#ffffff', chipLine: '#f6d6e1', iconBg: '#fff8fa', key: '#c3a1aa', val: '#7d5560', photo: ['#fff5f8', '#ffe7ef'], pattern: 'dots', frame: 'dash' },
   { id: 'lavender', label: '라벤더', bg: ['#f3eeff', '#d6c8ff'], accent: '#8b70e0', brand: '#7a5fd6', text: '#3a2e62', sub: '#8679b0',
-    chip: '#ffffff', chipLine: '#e3daff', iconBg: '#f5f1ff', key: '#a297c4', val: '#55488a', photo: ['#f7f4ff', '#e6ddff'], pattern: 'stars', frame: 'double' },
+    chip: '#ffffff', chipLine: '#e3daff', iconBg: '#f9f7ff', key: '#a297c4', val: '#55488a', photo: ['#f7f4ff', '#e6ddff'], pattern: 'stars', frame: 'double' },
   { id: 'mint', label: '민트', bg: ['#e8f8f1', '#b8e6d4'], accent: '#3c947b', brand: '#2f8169', text: '#21443a', sub: '#5d8b7c',
-    chip: '#ffffff', chipLine: '#cdebdf', iconBg: '#effaf5', key: '#8cb0a4', val: '#356a5a', photo: ['#f2fbf7', '#d5f0e5'], pattern: 'dots', frame: 'double' },
+    chip: '#ffffff', chipLine: '#cdebdf', iconBg: '#f5fcf9', key: '#8cb0a4', val: '#356a5a', photo: ['#f2fbf7', '#d5f0e5'], pattern: 'dots', frame: 'double' },
   { id: 'cream', label: '크림', bg: ['#fbf8f4', '#f4ede5'], accent: '#ec86ac', brand: '#ec86ac', text: '#3d372f', sub: '#a39a90',
-    chip: '#ffffff', chipLine: '#ebe3da', iconBg: '#f7f2ec', key: '#b0a599', val: '#6f655b', photo: ['#ffffff', '#f6f0e9'], pattern: 'none', frame: 'single' },
+    chip: '#ffffff', chipLine: '#ebe3da', iconBg: '#faf7f4', key: '#b0a599', val: '#6f655b', photo: ['#ffffff', '#f6f0e9'], pattern: 'none', frame: 'single' },
 ]
 
 // ── 배치(카드 px — 저장은 S 배) ───────────────────────────────────
@@ -53,7 +53,7 @@ export const CARD_THEMES: CardTheme[] = [
 export const CARD_W = 1080
 const FR = 26                 // 바깥 둘레선의 안쪽 여백
 const PAD = 72                // 내용의 옆 여백
-const CHIP_H = 104, COLGAP = 40, CHIP_W = (CARD_W - PAD * 2 - COLGAP) / 2
+const CHIP_H = 124, COLGAP = 40, CHIP_W = (CARD_W - PAD * 2 - COLGAP) / 2
 export const PHOTO = { x: PAD, y: 112, w: CARD_W - PAD * 2, h: 720, r: 24 }
 const NAME_H = 76                                   // 사진 아래 끝에 걸친 이름 알약의 높이(절반이 사진 위)
 const INFO_Y = PHOTO.y + PHOTO.h + NAME_H / 2 + 46
@@ -193,34 +193,38 @@ export function drawCardBase (g: CanvasRenderingContext2D, S: number, t: CardThe
 }
 
 // 목록 한 칸: 가는 테두리의 아이콘 칸 + 부위(강조색 작은 글) · 이름 · 염색 값 한 줄
+// 크기(사용자 지시 — 작아서 잘 안 보였다): 칸 높이 124, 아이콘 칸 84, 글 17 · 24 · 17
 function drawChip (g: CanvasRenderingContext2D, t: CardTheme, ch: ShareChip, x: number, y: number) {
-  const ib = 68, ix = x + 4, iy = y + (CHIP_H - ib) / 2
-  round(g, ix, iy, ib, ib, 14); g.fillStyle = t.iconBg; g.fill(); g.strokeStyle = t.chipLine; g.lineWidth = 1; g.stroke()
+  const ib = 84, ix = x + 4, iy = y + (CHIP_H - ib) / 2
+  round(g, ix, iy, ib, ib, 16); g.fillStyle = t.iconBg; g.fill()
   if (ch.icon && ch.icon.width && ch.icon.height) {
-    // 칩 캔버스는 디바이스 px 로 그려져 있다 — 칸에 맞게 줄이되 도트는 nearest(키울 때) / 부드럽게(줄일 때)
-    const sc = Math.min((ib - 12) / ch.icon.width, (ib - 12) / ch.icon.height)
+    // 칩 캔버스는 디바이스 px 로 그려져 있다 — 칸 안쪽 여백 없이 칸에 꽉 맞게(사용자 지시 — 피부처럼 넓은 그림 옆이 비었다), 칸 모서리로 자른다.
+    // 도트는 nearest(키울 때) / 부드럽게(줄일 때)
+    const sc = Math.min(ib / ch.icon.width, ib / ch.icon.height)
+    g.save(); round(g, ix, iy, ib, ib, 16); g.clip()
     g.imageSmoothingEnabled = sc < 1
     const w = ch.icon.width * sc, h = ch.icon.height * sc
     g.drawImage(ch.icon, Math.round(ix + (ib - w) / 2), Math.round(iy + (ib - h) / 2), w, h)
-    g.imageSmoothingEnabled = true
+    g.restore()
   }
-  const tx = ix + ib + 18, tw = CHIP_W - (tx - x) - 4
+  round(g, ix, iy, ib, ib, 16); g.strokeStyle = t.chipLine; g.lineWidth = 1; g.stroke()
+  const tx = ix + ib + 20, tw = CHIP_W - (tx - x) - 4
   g.textAlign = 'left'; g.textBaseline = 'middle'
-  g.fillStyle = t.sub; g.font = font(600, 14); g.fillText(fit(g, ch.part, tw), tx, y + 28)
-  g.fillStyle = t.text; g.font = font(700, 20); g.fillText(fit(g, ch.name, tw), tx, y + 53)
-  const cy = y + 80, cells = ch.band.cells?.length ? ch.band.cells : null
-  if (!cells) { g.fillStyle = t.key; g.font = font(500, 14); g.fillText(fit(g, ch.band.muted || '', tw), tx, cy); return }
+  g.fillStyle = t.sub; g.font = font(600, 17); g.fillText(fit(g, ch.part, tw), tx, y + 32)
+  g.fillStyle = t.text; g.font = font(700, 24); g.fillText(fit(g, ch.name, tw), tx, y + 62)
+  const cy = y + 94, cells = ch.band.cells?.length ? ch.band.cells : null
+  if (!cells) { g.fillStyle = t.key; g.font = font(500, 17); g.fillText(fit(g, ch.band.muted || '', tw), tx, cy); return }
   let px = tx
   cells.forEach((cell, k) => {
     if (px > tx + tw - 24) return
-    if (k) { g.save(); g.strokeStyle = t.chipLine; g.lineWidth = 1; g.beginPath(); g.moveTo(px - 8 + 0.5, cy - 7); g.lineTo(px - 8 + 0.5, cy + 7); g.stroke(); g.restore() }
+    if (k) { g.save(); g.strokeStyle = t.chipLine; g.lineWidth = 1; g.beginPath(); g.moveTo(px - 9 + 0.5, cy - 8); g.lineTo(px - 9 + 0.5, cy + 8); g.stroke(); g.restore() }
     if (cell.dot) {
-      g.beginPath(); g.arc(px + 5, cy, 5, 0, Math.PI * 2)
-      if (cell.dot === 'all') { const gr = g.createConicGradient(0, px + 5, cy); ['#ff6f8f', '#ffd36b', '#7fd88a', '#6bb8ff', '#c79bff', '#ff6f8f'].forEach((col, j, a) => gr.addColorStop(j / (a.length - 1), col)); g.fillStyle = gr } else g.fillStyle = cell.dot
-      g.fill(); px += 15
+      g.beginPath(); g.arc(px + 6, cy, 6, 0, Math.PI * 2)
+      if (cell.dot === 'all') { const gr = g.createConicGradient(0, px + 6, cy); ['#ff6f8f', '#ffd36b', '#7fd88a', '#6bb8ff', '#c79bff', '#ff6f8f'].forEach((col, j, a) => gr.addColorStop(j / (a.length - 1), col)); g.fillStyle = gr } else g.fillStyle = cell.dot
+      g.fill(); px += 18
     }
-    g.fillStyle = t.key; g.font = font(500, 14); g.fillText(cell.key, px, cy); px += g.measureText(cell.key).width + 4
-    g.fillStyle = t.val; g.font = font(700, 14); g.fillText(cell.val, px, cy); px += g.measureText(cell.val).width + 17
+    g.fillStyle = t.key; g.font = font(500, 17); g.fillText(cell.key, px, cy); px += g.measureText(cell.key).width + 5
+    g.fillStyle = t.val; g.font = font(700, 17); g.fillText(cell.val, px, cy); px += g.measureText(cell.val).width + 19
   })
 }
 
