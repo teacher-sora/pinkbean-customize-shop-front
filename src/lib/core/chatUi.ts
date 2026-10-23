@@ -33,7 +33,8 @@
 //  쌓기(게임 1배 캡처 13장을 조각 대조로 재어 맞췄다 — 글자 칸이 아니라 **다 그린 그림의 모서리**로 놓인다):
 //        명찰 그림 위 = 발끝 아래 TAG_TOP(반지마다 띠가 글자 칸 위로 올라오는 만큼이 달라도 그림 위가 같은 줄 — 글자 줄은 반지마다 오르내린다),
 //        훈장 그림 위 = 명찰 그림 아래 + MEDAL_GAP(명찰이 없으면 기본 명찰 자리 아래 — 훈장마다 글자 줄이 다른 것은 판 모양 탓이다),
-//        칭호 그림 아래 = 발끝 위 TITLE_BOTTOM. 칭호 · 훈장은 그림 가운데를 명찰 그림 가운데에 둔다(원본 기준점 · 글자 칸이 치우친 판이 많다).
+//        칭호 그림 아래 = 발끝 위 TITLE_BOTTOM. 칭호 · 훈장은 그림 가운데를 고정된 가로 자리 TAG_MID 에 둔다 — 명찰 생김새 · 유무와 상관없이 x 가 움직이지 않는다(사용자 지시.
+//        명찰 그림 가운데에 맞추면 명찰마다 양끝 조각 폭이 달라 흔들렸다). y 는 칭호 = 발끝 기준 고정, 훈장 = 명찰 그림 아래 끝을 따른다.
 //        길드 이름 줄은 그리지 않는다(서비스가 길드를 다루지 않는다 — 게임에서는 명찰과 훈장 사이에 같은 규칙으로 한 줄 낀다).
 //        말풍선은 제자리에서 칭호를 덮는다(게임과 같다 — 사용자 캡처).
 // 글자는 돋움 12px 비트맵의 도트를 그대로 찍는다(core/chatGlyphs — 브라우저가 글꼴을 그리지 않아 어느 기기에서나 게임과 같다).
@@ -74,6 +75,8 @@ const TAG_TOP = 2          // 발끝 아래 명찰 그림 위까지(기본 명�
 const BALLOON_TIP = 76     // 발끝 위 말풍선 꼬리 그림 아래 끝까지(두 반지 모두 이 줄 — 몸통은 꼬리 길이만큼 오르내린다)
 const TITLE_BOTTOM = 83    // 발끝 위 칭호 그림 아래 끝까지(칭호 5종 · 캐릭터 3명에서 같은 줄)
 const MEDAL_GAP = 1        // 명찰 그림 아래 끝과 훈장 그림 위 사이(게임에서 명찰 → 길드 → 훈장이 모두 이 간격)
+const NAV_FOOT = 8         // 서기 첫 프레임에서 발끝이 배꼽보다 오른쪽인 만큼(몸 00002000 stand1/0 — 가로 기준을 배꼽에 두되 맞춘 자리는 그대로)
+const TAG_MID = -1         // 칭호 · 훈장 그림 가운데의 가로 자리(기준점에서) — 기본 명찰 판의 가운데(게임도 명찰이 기준점보다 1~2px 왼쪽)
 
 // ox, oy = 기준점(발끝)에서 그림 왼쪽 위까지. emo = 덧그릴 움직이는 이모티콘(x, y = 그림 왼쪽 위에서 프레임 origin 이 닿는 점)
 // live = 움직이는 판: 프레임마다의 판(dx, dy = 첫 프레임 그림에서 그 프레임 그림 왼쪽 위까지)과 머무는 시간. 쌓기가 자리를 옮긴 사본도 같은 live 를 본다(받기가 끝나면 채워진다)
@@ -410,24 +413,30 @@ export async function prepareChat (d: ChatDraw | undefined, full = false): Promi
   // 움직이는 판의 프레임: 움짤(full)은 기다리고, 미리보기는 기다리지 않고 첫 프레임으로 먼저 그린다(받으면 다음 그리기부터 움직인다)
   const moving = [tag, title, medal].filter((b): b is Bitmap => !!b?.live && !b.live.frames).map((b) => b.live!.load().catch(() => {}))
   if (full && moving.length) await Promise.all(moving)
-  // 쌓기(캐시한 그림은 그대로 두고 자리만 옮긴 사본으로 — 머리말의 '쌓기'). 명찰이 없으면 기본 명찰 자리(가운데 0)를 기준으로.
+  // 쌓기(캐시한 그림은 그대로 두고 자리만 옮긴 사본으로 — 머리말의 '쌓기'). 훈장 높이만 명찰을 따르고(없으면 기본 명찰 자리 아래), 가로는 늘 TAG_MID.
   // 말풍선은 제자리 — 게임에서도 칭호 위로 비켜 가지 않고 칭호를 덮는다(사용자 캡처: 미소노미카쨩 · 신비한 정원). 그래서 칭호보다 나중에(위에) 그린다.
   const g = tag && { ...tag, oy: TAG_TOP }
-  const mid = g ? g.ox + g.c.width / 2 : 0, under = TAG_TOP + (g ? g.c.height : BASE_TAG_H)
-  const centered = (b: Bitmap, oy: number): Bitmap => ({ ...b, ox: Math.floor(mid - b.c.width / 2), oy })
+  const under = TAG_TOP + (g ? g.c.height : BASE_TAG_H)
+  const centered = (b: Bitmap, oy: number): Bitmap => ({ ...b, ox: Math.floor(TAG_MID - b.c.width / 2), oy })
   const t = title && centered(title, -TITLE_BOTTOM - title.c.height)
   const m = medal && centered(medal, under + MEDAL_GAP)
   return [t, g, m, bub].filter((x): x is Bitmap => !!x)
 }
 
-// 캐릭터 위에 덧그린다. 시선이 오른쪽(flip)이어도 글자는 뒤집지 않고 자리만 옮긴다. 기준점 = 딛고 선 바닥(탈것이면 탈것의 바닥).
+// 캐릭터 위에 덧그린다. 시선이 오른쪽(flip)이어도 글자는 뒤집지 않고 자리만 옮긴다.
+// 기준점(사용자 지시 — 명찰 · 말풍선 · 칭호 · 훈장 모두 몸이 기준): 가로 = 몸의 배꼽(렌더러가 화면에 고정하는 점 — 아이템 · 동작 · 탈것과 상관없이
+// 흔들리지 않는다. 발끝 origin 은 동작 프레임마다 배꼽과의 거리가 달라지고, 탈것의 바닥은 몸과 따로 움직인다), 세로 = 딛고 선 바닥(탈것이면 탈것의 바닥).
 // t = 보낸 뒤 흐른 시간(ms) — 움직이는 이모티콘의 프레임을 고른다. 없으면 대표 프레임(복사 그림 등).
 // clock = 움직이는 판의 시계(ms — 미리보기는 지금 시각, 움짤은 그 프레임의 시각). 없으면 첫 프레임.
 export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed: PlacedLayer[], o: { anchorX: number; anchorY: number; scale: number; flip?: boolean; width: number; t?: number; main?: number; clock?: number }) {
   if (!maps.length) return
   const g = groundOf(placed)
   if (!g) return
-  const fx = (o.anchorX + g.x) * o.scale
+  const body = placed.find((p) => p.slot === 'body' && p.name === 'body'), nav = body?.map?.navel, k = body?.scale ?? 1
+  // 배꼽 + NAV_FOOT(서기 첫 프레임의 발끝 — 게임 캡처로 맞춘 자리가 그 프레임에서 예전과 같다). 서기만 해도 발끝은 배꼽에서 −8 · −7 · −6 으로 움직여
+  // 발끝을 따르면 명찰 · 칭호 · 훈장이 숨 쉴 때마다 좌우로 1~2px 흔들렸다
+  const mx = body && nav ? body.x + (body.origin.x + nav.x + NAV_FOOT) * k : g.x
+  const fx = (o.anchorX + mx) * o.scale
   const cx = o.flip ? o.width - fx : fx
   const cy = (o.anchorY + g.y) * o.scale
   ctx.imageSmoothingEnabled = false
