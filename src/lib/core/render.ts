@@ -12,7 +12,10 @@ import type { PlacedLayer } from './assemble'
 import { LRU } from './lru'
 import { canvasReadExact, rememberBytes } from './pngPixels'
 
-const imageCache = new LRU<Promise<HTMLImageElement>>(1200)
+// 다 받은 그림(디코딩된 채로 렌더러 메모리를 차지한다)은 최근에 쓴 IMAGE_MAX 장만 둔다 — 1200 장일 때 목록을 넘기면 렌더러가 400MB 를 넘었다(실측).
+// 미리보기가 한 동작을 도는 데 쓰는 그림(이펙트 많은 코디도 수백 장 아래)보다 넉넉해야 돌 때마다 다시 받지 않는다
+const IMAGE_MAX = 500
+const imageCache = new LRU<Promise<HTMLImageElement>>(IMAGE_MAX)
 
 // cors=false(기본): 일반 렌더용. crossOrigin 없이 로드(drawImage 는 tainted 라도 OK).
 // cors=true: 염색용. getImageData(픽셀리드)가 필요해 CORS 로 로드해야 하는데, Cloudflare 는 Vary:Origin 을
@@ -146,6 +149,8 @@ export interface RenderOpts {
   particles?: ParticleDraw[]         // 파티클(제네시스 무기 등) — 입자는 sim 이 들고, 그림은 desc.tex.png. z 음수 = 캐릭터 뒤
   chat?: ChatDraw                    // 명찰 · 말풍선(core/chatUi) — 모든 것 위에, 시선과 무관하게 뒤집지 않고 그린다
   chatT?: number                     // 움직이는 이모티콘의 시각(ms) — 주면 보낸 시각(t0) 대신 쓴다(움짤 저장이 프레임마다 정한다)
+  chatClock?: number                 // 움직이는 명찰 · 칭호 · 훈장의 시계(ms — 미리보기는 지금 시각, 움짤은 그 프레임의 시각). 없으면 첫 프레임
+  chatWait?: boolean                 // 움직이는 판의 프레임을 다 받을 때까지 기다린다(움짤)
   ringFloor?: number                 // 변신 그림을 올리거나 내릴 만큼(월드 px) — 동작의 모든 프레임으로 잰 값(ringFloorOf). 없으면 이 프레임만으로 잰다
   shouldCancel?: () => boolean       // true once a newer render superseded this one → don't paint stale content
   centerX?: boolean                  // pin the body NAVEL to a fixed box point (center X, anchor.y) in BOTH axes →
@@ -231,7 +236,7 @@ export async function renderCharacter(
 
   // Image loads above are async; if a newer render started while we awaited (fast item
   // swaps), bail BEFORE touching the canvas so this stale pass can't overwrite it.
-  const chat = await prepareChat(opts.chat, opts.chatT != null).catch(() => []) // 움짤(chatT)은 움직이는 이모티콘을 기다린다
+  const chat = await prepareChat(opts.chat, opts.chatT != null || !!opts.chatWait).catch(() => []) // 움짤은 움직이는 이모티콘 · 판을 기다린다
   if (opts.shouldCancel?.()) return
 
   // 정수 배율이면 확대가 nearest 로 완벽히 선명. 카드/미리보기는 캔버스를 "디바이스 픽셀" 해상도로 맞추려고
@@ -350,5 +355,5 @@ export async function renderCharacter(
   for (const x of parts) if (x.p.z >= 0) drawPart(x)
   ctx.restore()
   // 움직이는 이모티콘은 보낸 뒤 흐른 시간의 프레임(보낸 시각이 없으면 — 복사 그림 등 — 대표 프레임)
-  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width, t: opts.chatT ?? (opts.chat?.t0 != null ? performance.now() - opts.chat.t0 : undefined), main: opts.chat?.emo?.main })
+  drawChat(ctx, chat, placed, { anchorX, anchorY, scale, flip: opts.flip, width: canvas.width, t: opts.chatT ?? (opts.chat?.t0 != null ? performance.now() - opts.chat.t0 : undefined), main: opts.chat?.emo?.main, clock: opts.chatClock })
 }

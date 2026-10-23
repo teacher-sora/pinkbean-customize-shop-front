@@ -37,7 +37,10 @@
 | 미리보기 배경 | `lib/stageBg.ts`(`useStageBg`·`setStageBg`·`addStageBg`·`removeStageBg`) + `preview/StageBg.tsx`(미리보기 칸에 까는 것) + `surface/StageBgBody.tsx`(고르는 격자) |
 | 펼침·접힘 움직임 | `surface/glide.ts`(`place`·`glideTo`·`release`), `surface/sheetMotion.ts` |
 | 창 안에서 옆으로 바꿔 끼우기 | `surface/innerSlide.ts` — `useInnerSlide` |
-| 격자에서 하나 고르기(액션·무기 모션·표정) | `preview/PvPicker.tsx` — PC 는 작은 팝오버, 모바일은 시트 안 슬라이드 |
+| 팝박스(연 버튼 바로 아래 · 위에 붙어 나오는 고르기 창 — 아래면 내려오며, 위면 올라오며 — 높이 330, 아래 줄 [이전] [닫기]) | `preview/PopBox.tsx` — `usePop` · `popNear`(버튼 · 영역 → 자리 · 방향) · `PopBox` · `PopScroll` · `PopFoot`. 액션 · 무기 모션 · 표정 · 채팅 이모티콘 · 코디 프로필이 모두 이것 |
+| 격자에서 하나 고르기(액션·무기 모션·표정) | `preview/PvPicker.tsx` — PC 는 팝박스, 모바일은 시트 안 슬라이드. 액션 목록 ↔ 상세는 `ActionPickBody`(play 로 재생 칸 끄기) |
+| 이모티콘 고르기(묶음 줄 + 격자, 프레임 고르기) | `preview/ChatEmoPicker.tsx` — 채팅 · 코디 프로필 공용(`pickFrame` · `onClose`) |
+| 접었다 펴는 칸(높이 전환 없이 translateY 로) | `surface/ProfileCardBody.tsx` 의 `Sec`(움직임은 `surface/glide`) |
 
 ## 알림 · 되묻기
 
@@ -88,6 +91,7 @@
 | 슬롯 줄의 작은 그림 | `info/SlotSprite.tsx` |
 | 그리는 순서 대기열 | `lib/thumbQueue.ts` — `enqueueThumb` |
 | 복사·저장 이미지 | `lib/canvasExport.ts` — `modelShotBlob`·`copyImage`·`saveImage` |
+| 코디 프로필(공유 카드 — 꾸미기 창 + 세로형 카드) | `surface/ProfileCardBody.tsx`(서피스 'card') · `lib/profileCard.ts` — `drawCardBase` · `drawCardPhoto` · `CARD_THEMES`(재료: `canvasExport.getPreviewShot` · `drawShot`, `InfoPanel.shareChips`) |
 | 합성·염색·가림의 코어 | `lib/core/`(README 가 있다) |
 
 ## 광장에서 가져다 쓸 수 있는 것

@@ -19,8 +19,8 @@ import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbPa
 import { effectDraws, effectGroups, effectPeriods, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
-import { modelShotBlob } from '@/lib/canvasExport'
-import { emoFrameAt, type ChatDraw } from '@/lib/core/chatUi'
+import { modelShotBlob, setPreviewShot, type ModelShot } from '@/lib/canvasExport'
+import { chatAnimPeriods, chatAnimSig, chatAnimated, emoFrameAt, type ChatDraw } from '@/lib/core/chatUi'
 import { useHeroView } from '@/lib/heroView'
 import { bindImageMenu, type GifMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
@@ -272,8 +272,12 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // 바닥에 닿는 높이(navel 기준). 맨몸은 발, 탑승 중이면 탈것의 원점 — 배경 장면이 이 높이에 바닥을 깐다(lib/stageFloor).
     const mount = riding ? frames[0]?.placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount')) : undefined
     const ground = mount ? mount.y + mount.origin.y : frames[0]?.foot.y ?? 21
-    return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action) }
-  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, V, viewInfo.isStatic, weaponMotion])
+    // 멈춘 프레임(pv.frame — 연출 설정 > 액션에서 고른 자세): 그 한 장만 남긴다. 복사 · 움짤 · 염색이 모두 이 목록을 보므로 함께 따른다.
+    // 이펙트 · 입자는 계속 돈다(몸만 멈춘다 — 게임에서 멈춰 선 캐릭터의 망토 이펙트가 도는 것과 같다)
+    const fz = !viewInfo.isStatic && pv.frame >= 0 && pv.frame < N ? pv.frame : -1
+    if (fz >= 0) return { frames: [frames[fz]], delays: [delays[fz]], N: 1, riding, centerMount, ground, animated: false, pingpong: false, frozen: fz }
+    return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action), frozen: -1 }
+  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, pv.frame, V, viewInfo.isStatic, weaponMotion])
 
   // 그릴 파티클 자리 — 이펙트와 같은 규칙으로 끈다(부위 숨김 · 무기 이펙트 끔 · 이펙트를 숨기는 링).
   const partSpots = useMemo(() => {
@@ -321,11 +325,13 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     if (copyRef.current) copyRef.current = { ...copyRef.current, chat }
     redrawRef.current?.()
   }, [chat])
-  // 움직이는 이모티콘이 떠 있는 동안은 캐릭터가 멈춰 있어도 프레임마다 그린다(그리기는 시그니처의 프레임 번호가 바뀔 때만 실제로 합성한다)
+  // 움직이는 이모티콘이 떠 있거나 움직이는 명찰 · 칭호 · 훈장을 끼었으면 캐릭터가 멈춰 있어도 프레임마다 그린다
+  // (그리기는 시그니처의 프레임 번호가 바뀔 때만 실제로 합성한다). 판은 캐릭터 동작과 상관없는 제 시계(지금 시각)로 돈다 — 사용자 지시
   useEffect(() => {
-    if (!chat?.emo?.frames?.length || chat.t0 == null) return
+    if (!(chat?.emo?.frames?.length && chat.t0 != null) && !chatAnimated(chat)) return
     let raf = 0
-    const tick = () => { redrawRef.current?.(); raf = requestAnimationFrame(tick) }
+    // 캐릭터 · 이펙트 루프가 이미 돌고 있으면 그 루프가 그린다(같은 프레임에 그리기 판정을 두 번 하지 않는다 — 시그니처 · 이펙트 자리 계산이 두 배였다)
+    const tick = () => { if (!clockRef.current.running) redrawRef.current?.(); raf = requestAnimationFrame(tick) }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [chat])
@@ -380,8 +386,8 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // (겨울여우 솜펀치 등)나 이펙트가 0번이 아닌 프레임에 멈췄을 때 그 부위만 염색이 풀려 보였다. 그래서 이 프레임도 함께 칠한다.
     const clk = clockRef.current
     const shownAt = clk.running ? clk.elapsed + (performance.now() - clk.since) : clk.elapsed
-    const shownFi = spec?.animated ? Math.min((spec.pingpong ? frameAtElapsedAlt : frameAtElapsed)(spec.delays, shownAt), spec.frames.length - 1) : 0
-    const shownFrame = spec?.frames[shownFi]
+    const shownFi = spec && spec.frozen >= 0 ? spec.frozen : spec?.animated ? Math.min((spec.pingpong ? frameAtElapsedAlt : frameAtElapsed)(spec.delays, shownAt), spec.frames.length - 1) : 0
+    const shownFrame = spec?.frames[spec.frozen >= 0 ? 0 : shownFi]
     const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, shownFi || false, dyeBack).catch(() => new Map<string, HTMLCanvasElement>())
     // 이펙트/피부 프레임 염색을 override(ov)에 추가. allFrames=false 면 프레임0만, true 면 전 프레임.
     // ⚠️ 프레임 png 는 반드시 "병렬 로드"(Promise.all)로 받는다 — 순차 fetch(프레임마다 await)면 큰 이펙트(망토)
@@ -448,7 +454,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       setDyeOverrides(new Map(ov))
       if (willDyeFrames) setDyeSettling(false)
     }
-  }, [equipped, metas, effMetas, dyePalette, dyeHsb, V, hidden, pv.gaze, pv.action, bodyMeta, headMeta, toneEntry, dyeInteracting])
+  }, [equipped, metas, effMetas, dyePalette, dyeHsb, V, hidden, pv.gaze, pv.action, pv.frame, bodyMeta, headMeta, toneEntry, dyeInteracting])
 
   // 연출 변경 즉시 반영용 유휴 프리페치: 지금 착용·시선·귀 기준으로 "다른 액션 / 표정 / 무기 모션"의 첫 프레임
   // 스프라이트를 미리 받고, 염색이 있으면 그 발색(override)도 미리 구워 캐시를 데운다. 바꾸는 순간엔 네트워크·리컬러
@@ -575,7 +581,8 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       const fy = floating ? Math.round(-FLOAT_AMP * (1 - Math.cos((2 * Math.PI * elapsed) / FLOAT_MS)) / 2 * pl.scale) / pl.scale : 0
       const ce = chatRef.current
       const emoF = ce?.emo?.frames?.length && ce.t0 != null ? emoFrameAt(ce.emo, performance.now() - ce.t0) : -1
-      const sig = fi + '|' + chatVer.current + '|' + emoF + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';') + (particles.length ? `|${Math.floor(elapsed / 33)}` : '') + (fy ? `|${fy}` : '')
+      const now = performance.now()
+      const sig = fi + '|' + chatVer.current + '|' + emoF + '|' + chatAnimSig(ce, now) + '|' + effects.map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';') + (particles.length ? `|${Math.floor(elapsed / 33)}` : '') + (fy ? `|${fy}` : '')
       if (sig === lastSig) return
       lastSig = sig
       // 분수 scale = 디바이스 해상도(1:1 표시로 선명). 마네킹 중심을 캔버스 중앙에(anchor 보정) → flip 대칭.
@@ -583,7 +590,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
       const seq = ++drawSeqRef.current
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat: chatRef.current, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat: chatRef.current, chatClock: now, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
@@ -631,12 +638,15 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 그림에 맞춘 상자 · 게임 크기 1배).
   const saveNameRef = useRef(shop.saveName)
   saveNameRef.current = shop.saveName
-  const makeBlob = useCallback(async (): Promise<Blob | null> => {
+  const currentShot = useCallback(async (): Promise<ModelShot | null> => {
     for (let i = 0; i < 300 && !copyRef.current; i++) await new Promise((r) => setTimeout(r, 100)) // 불러오는 중이면 첫 그림을 기다린다
     const snap = copyRef.current
     if (!snap) return null
-    return modelShotBlob({ placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy })
+    return { placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy }
   }, [])
+  const makeBlob = useCallback(async (): Promise<Blob | null> => { const shot = await currentShot(); return shot ? modelShotBlob(shot) : null }, [currentShot])
+  // 코디 프로필(lib/profileCard)이 쓰도록 지금 그림 재료를 등록한다 — 화면의 미리보기만(염색 창 등 src 가 있는 미리보기는 빼고)
+  useEffect(() => { if (src) return; setPreviewShot(currentShot); return () => setPreviewShot(null) }, [src, currentShot])
 
   // 움짤 — 화면과 같은 시계 규칙으로 시각 t 의 그림을 만든다(lib/gifExport 가 한 바퀴를 훑는다). 그리는 법은 위 draw 와 같고,
   // 정렬 · 염색 · 명찰 · 말풍선은 한 장 저장(copyRef)의 것을 쓴다. 입자는 이 움짤만의 시뮬을 새로 돌린다(화면의 입자를 건드리지 않게).
@@ -650,6 +660,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
         ...a.effList.flatMap((em) => effectPeriods(em, a.action)),
         a.floating ? FLOAT_MS : 0,
         emo ? (emo.frames ?? []).reduce((n, f) => n + Math.max(1, f.d), 0) : 0,
+        ...chatAnimPeriods(snap.chat), // 움직이는 명찰 · 칭호 · 훈장의 한 바퀴
       ].filter((p) => p > 0)
       return { a, snap, emo, periods, flowing: a.spots.length > 0 }
     }
@@ -679,12 +690,12 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           stage: { place: { box: st.box, anchor: st.anchor }, paint: async (g, x0, y0, s) => !!wrap && paintStage(g, wrap, (s * st.dpr) / st.scale, s, -(st.left / st.scale + x0) * s, -(st.top / st.scale + y0) * s) },
           periods: p.periods,
           flowing: p.flowing,
-          sigAt: (t) => `${fiAt(t)}|${liftAt(t)}|${emo ? emoFrameAt(emo, t) : -1}|` + effAt(t).map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';'),
+          sigAt: (t) => `${fiAt(t)}|${liftAt(t)}|${emo ? emoFrameAt(emo, t) : -1}|${chatAnimSig(snap.chat, t)}|` + effAt(t).map((e) => `${e.png},${Math.round(e.origin.x)},${Math.round(e.origin.y)}`).join(';'),
           shotAt: (t) => {
             const f = a.frames[fiAt(t)]
             const particles = a.spots.length ? placeParticles(a.spots, a.descs, f.foot, simOf) : []
             if (particles.length) { const dt = partT < 0 ? 0 : (t - partT) / 1000; partT = t; for (const sim of new Set(particles.map((x) => x.sim))) sim.step(dt) }
-            return { placed: f.placed, override: snap.override, effects: effAt(t), particles, chat: snap.chat, chatT: emo ? t : undefined, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy, lift: liftAt(t), ringFloor: a.ringFloor }
+            return { placed: f.placed, override: snap.override, effects: effAt(t), particles, chat: snap.chat, chatT: emo ? t : undefined, chatClock: t, chatWait: true, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy, lift: liftAt(t), ringFloor: a.ringFloor }
           },
         }, transparent)
       },

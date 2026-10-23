@@ -38,6 +38,15 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 .pb-scroll-thin { scrollbar-width: thin; scrollbar-color: #eecfdd transparent; }
 .pb-scroll-thin::-webkit-scrollbar { width: 8px; }
 .pb-scroll-thin::-webkit-scrollbar-thumb { border-width: 2px; }
+/* 스크롤이 생길 수 있는 칸(목록 · 창 본문 · 팝박스)은 이것을 단다 — 양쪽 스크롤바 자리를 늘 잡아 두어(both-edges) 막대가 생겨도 내용이 밀리지 않고
+   좌우 여백이 같다. 마우스 화면에서만 막대를 8px 로 맞춘다(크롬 · 사파리의 thin 은 10px). 터치 기기는 자리를 잡지 않는다 — 칸이 그만큼 여백을 더 둔다 */
+.pb-gutter { scrollbar-gutter: stable both-edges; }
+@media (hover: hover) and (pointer: fine) {
+  @supports selector(::-webkit-scrollbar) { .pb-gutter.pb-gutter { scrollbar-width: auto; scrollbar-color: auto; } }
+  .pb-gutter.pb-gutter::-webkit-scrollbar { width: 8px; }
+  .pb-gutter.pb-gutter::-webkit-scrollbar-thumb { border-width: 2px; }
+}
+@media (hover: none), (pointer: coarse) { .pb-gutter { scrollbar-gutter: auto; } }
 .pb-norail { scrollbar-width: none; }
 .pb-norail::-webkit-scrollbar { display: none; }
 

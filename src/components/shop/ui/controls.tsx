@@ -31,9 +31,10 @@ export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', tit
 }
 
 /* ── 스위치 ── */
-export function Switch({ on, onToggle, title }: { on: boolean; onToggle: () => void; title: string }) {
+// disabled = 켤 수 없다(title 에 까닭을 적는다)
+export function Switch({ on, onToggle, title, disabled }: { on: boolean; onToggle: () => void; title: string; disabled?: boolean }) {
   return (
-    <button type="button" onClick={onToggle} title={title} aria-label={title} aria-pressed={on} className={clsx(styles.track, on && styles.trackOn)}>
+    <button type="button" onClick={onToggle} disabled={disabled} title={title} aria-label={title} aria-pressed={on} className={clsx(styles.track, on && styles.trackOn)}>
       <span className={styles.knob} />
     </button>
   )

@@ -76,12 +76,13 @@ function shrink(file: File): Promise<string> {
     img.src = url
   })
 }
-// 그림을 올려 맨 뒤에 붙이고 그것을 고른다. 'full' = 여덟 장이 찼다 · 'bad' = 그림이 아니다 · 'store' = 담을 자리가 없다
-export async function addStageBg(file: File): Promise<'ok' | 'full' | 'bad' | 'store'> {
+// 그림을 올려 맨 뒤에 붙이고 그것을 고른다(select=false 면 미리보기 배경은 그대로 — 코디 프로필 창이 제 배경으로만 쓴다).
+// 돌려주는 값: 올린 그림의 id · 'full' = 여덟 장이 찼다 · 'bad' = 그림이 아니다 · 'store' = 담을 자리가 없다
+export async function addStageBg(file: File, select = true): Promise<{ id: string } | 'full' | 'bad' | 'store'> {
   const s = read()
   if (s.images.length >= STAGE_BG_MAX) return 'full'
   let src: string
   try { src = await shrink(file) } catch { return 'bad' }
   const id = `c${Date.now().toString(36)}`
-  return write({ sel: id, images: [...read().images, { id, src }] }) ? 'ok' : 'store'
+  return write({ sel: select ? id : read().sel, images: [...read().images, { id, src }] }) ? { id } : 'store'
 }

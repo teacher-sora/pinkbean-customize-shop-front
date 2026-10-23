@@ -5,7 +5,7 @@
  *  - sprite  : 아이템 아이콘/스프라이트 이미지(가장 가벼움). 헤어는 몸 없이 모든 파츠 합성(염색표와 동일)
  *  - model   : 베이스 몸통+머리에 이 아이템을 올린 미니 합성
  *  - mymodel : 현재 내 착용(해당 슬롯 제외)에 이 아이템을 올린 미니 합성
- *  명찰 · 말풍선(나중에 훈장 · 칭호도)은 model · mymodel 에서 몸 없이 그 아이템만 그린다(ChatThumb) — 몸에 달면 말풍선이 카드 위로 넘친다.
+ *  명찰 · 말풍선 · 칭호 · 훈장은 model · mymodel 에서 몸 없이 그 아이템만 그린다(ChatThumb) — 몸에 달면 말풍선이 카드 위로 넘친다.
  * 이 아이템에 이펙트가 있으면(effects/index.json) 함께 합성한다. centerX 로 sprite 처럼 정중앙 정렬.
  */
 
@@ -90,7 +90,7 @@ function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
   )
 }
 
-// 명찰 · 말풍선 카드: 몸 없이 그 아이템만 카드 가운데에. 배율은 정수(디바이스 픽셀 기준) — 게임 크기(CSS 1px = 게임 1px)를 넘지 않고,
+// 명찰 · 말풍선 · 칭호 · 훈장 카드: 몸 없이 그 아이템만 카드 가운데에. 칭호 · 훈장의 글자는 그 아이템 이름. 배율은 정수(디바이스 픽셀 기준) — 게임 크기(CSS 1px = 게임 1px)를 넘지 않고,
 // 카드 안쪽 CHAT_FIT 에 다 들어오지 않으면 들어오는 단계까지 줄인다(카드마다 크기가 들쭉날쭉하지 않게 키우지는 않는다).
 // 디바이스 픽셀 1:1 로도 넘치면(배율 1 화면의 넓은 말풍선) 카드에 맞춰 부드럽게 줄인다 — 잘려서 생김새를 못 보는 것보다 낫다(사용자 지시).
 const CHAT_FIT = 0.9
@@ -99,12 +99,14 @@ function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [bmp, setBmp] = useState<HTMLCanvasElement | null>(null)
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
+  const kind = item.chatUi?.kind
+  const name = kind === 'medal' || kind === 'nick' ? item.name ?? '' : chat.name
   useEffect(() => {
     let alive = true
     setBmp(null)
-    if (item.chatUi) chatPreview(item.chatUi, chat).then((c) => { if (alive) setBmp(c) }).catch(() => {})
+    if (item.chatUi) chatPreview(item.chatUi, { name, text: chat.text }).then((c) => { if (alive) setBmp(c) }).catch(() => {})
     return () => { alive = false }
-  }, [item.chatUi, chat])
+  }, [item.chatUi, name, chat.text])
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return

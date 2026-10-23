@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 //  1) /maplestory/v1/id?character_name → ocid
 //  2) /maplestory/v1/character/cashitem-equipment?ocid → 착용 캐시 아이템
 //  3) /maplestory/v1/character/beauty-equipment?ocid    → 헤어/성형/피부
+//  4) /maplestory/v1/character/item-equipment?ocid      → 일반 장비(캐시의 베이스 레이어) · 훈장 외형(medal_shape) · 칭호(title)
 //
 // ⚠️ 제로·엔젤릭버스터는 코디가 **두 벌**이다(제로=알파/베타, 엔버=일반/드레스업).
 //    넥슨은 이걸 `additional_*` 접두 필드로 따로 준다(실측 확인):
@@ -129,22 +130,33 @@ function regularVisible(idata: Cash | null): LookItem[] {
   const out: LookItem[] = []
   for (const it of arr) {
     const p = it.item_equipment_part || '', s = it.item_equipment_slot || ''
-    const part = WEAR_PARTS.has(p) ? p : (s || p)
+    const ring = p === '반지' // 반지는 칸(반지1~4)이 넷이라 칸 이름을 slot 으로 남긴다(mergeLayers 가 칸마다 따로 둔다)
+    const part = WEAR_PARTS.has(p) || ring ? p : (s || p)
     // 모루(외형 덮어쓰기)를 쓴 장비는 **보이는 게 `item_shape_name`** 이다(예:
     // '소라사키히나'의 모자가 에테르넬 나이트헬름으로 불러와졌지만 게임에선 브옐 데빌스 혼으로 보인다).
     // 실측(그 캐릭터 장비 25종): 모루를 안 쓴 장비는 shape 가 이름과 **같게** 오고, 모루를 쓴 모자만 달랐다.
     // 우리는 외형만 그리므로 shape 를 먼저 쓴다. 부위(part)는 모루가 같은 분류끼리만 되므로 그대로 둔다.
     const name = it.item_shape_name || it.item_name
     if (!part || !name) continue // 파트명(한벌옷/상의/무기 등)은 프론트 NEXON_PART_SLOT 이 화이트리스트로 걸러낸다
-    out.push({ part, slot: part, name, gender: null, prism: null, customOrigin: null })
+    out.push({ part, slot: ring ? s : part, name, gender: null, prism: null, customOrigin: null })
   }
+  // 훈장 · 칭호의 외형. 훈장은 외형을 바꾼 이름(medal_shape_changed_name)이 보이는 것이고, 장비 '훈장' 칸보다 앞선다.
+  // 칭호는 지금 장비 프리셋의 칭호(title — 외형을 바꿨으면 title_shape_name). 둘 다 치장 프리셋과 무관하게 캐릭터에 하나다
+  const medal = idata?.medal_shape as { medal_shape_name?: string | null; medal_shape_changed_name?: string | null } | null | undefined
+  const medalName = medal?.medal_shape_changed_name || medal?.medal_shape_name
+  if (medalName) { for (let i = out.length - 1; i >= 0; i--) if (out[i].part === '훈장') out.splice(i, 1); out.push({ part: '훈장', slot: '훈장', name: medalName, gender: null, prism: null, customOrigin: null }) }
+  const title = idata?.title as { title_name?: string | null; title_shape_name?: string | null } | null | undefined
+  const titleName = title?.title_shape_name || title?.title_name
+  if (titleName) out.push({ part: '칭호', slot: '칭호', name: titleName, gender: null, prism: null, customOrigin: null })
   return out
 }
 // 일반(베이스) + 캐시(치장) 병합: 같은 부위는 캐시가 덮는다. 한벌옷↔상의/하의는 배타(치장 레이어 우선).
 function mergeLayers(reg: LookItem[], cash: LookItem[]): LookItem[] {
   const byPart: Record<string, LookItem & { _l?: 'reg' | 'cash' }> = {}
-  for (const it of reg) byPart[it.part] = { ...it, _l: 'reg' }
-  for (const it of cash) byPart[it.part] = { ...it, _l: 'cash' } // 캐시가 일반을 덮어씀
+  // 반지는 칸(반지1~4)마다 따로 — 부위로 묶으면 일루전 링 · 명찰 · 말풍선 반지 가운데 마지막 하나만 남았다
+  const keyOf = (it: LookItem) => (it.part === '반지' ? it.slot : it.part)
+  for (const it of reg) byPart[keyOf(it)] = { ...it, _l: 'reg' }
+  for (const it of cash) byPart[keyOf(it)] = { ...it, _l: 'cash' } // 캐시가 일반을 덮어씀
   const ov = byPart['한벌옷'], top = byPart['상의'], bot = byPart['하의']
   if (ov && (top || bot)) {
     const ovCash = ov._l === 'cash', tbCash = top?._l === 'cash' || bot?._l === 'cash'

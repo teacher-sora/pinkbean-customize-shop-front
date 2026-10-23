@@ -3,9 +3,8 @@
 // 조각은 반지마다 그림 한 장(아틀라스)에 모아 두고 잘라 쓴다 — 반지 하나를 그리는 데 요청이 한 번이다.
 //
 // 조각은 모두 반투명(알파 204 안팎)이라 **어느 두 조각도 겹치면 안 된다**(겹친 자리만 진해진다). 조각 배치는 원본 origin 그대로다.
-//  명찰: origin = **글자 칸**(높이 12)의 모서리 · 가운데 위 기준. 글자 칸을 발끝 아래 TAG_TEXT 에 두고 띠는 origin 대로 놓는다.
+//  명찰: origin = **글자 칸**(높이 12)의 모서리 · 가운데 위 기준. 띠는 글자 칸에 origin 대로 붙이고, 다 그린 그림을 발끝 아래 TAG_TOP 에 둔다(아래 '쌓기').
 //        글자 칸 폭 = 이름 폭 그대로, 왼끝 = 기준점에서 (이름 폭 + 4) / 2 왼쪽 — 게임 화면과 점 단위로 맞춘 값이다(게임도 명찰이 2px 왼쪽).
-//        디자인마다 띠가 글자 칸 위로 올라오는 만큼이 달라 명찰마다 높이가 다르다 —
 //        디자인마다 띠가 글자 칸 위로 올라오는 만큼이 달라 명찰마다 높이가 다르다.
 //        w(왼쪽)는 오른쪽 끝이 글자 칸 왼쪽에, c(가운데)는 글자 칸 폭만큼 이어 붙이고, e(오른쪽)는 글자 칸 오른쪽에서 시작한다.
 //        움직이는 명찰(aniNameTag)의 층 0, 1, 2(, 3) = 이름 폭에 따라 고르는 **명찰 통째 그림**이다(층마다 24px 안팎씩 넓다).
@@ -22,6 +21,22 @@
 //        이모티콘을 고르면 글 대신 이모티콘을 원래 크기 그대로 안쪽 칸 가운데에 둔다(안쪽 칸이 그 크기에 맞춰 커진다).
 //        움직이는 이모티콘은 프레임 전부가 들어가는 상자로 칸을 한 번만 잡고(프레임마다 칸이 흔들리지 않게), 프레임은 말풍선 그림에 굽지 않고
 //        그릴 때마다 보낸 뒤 흐른 시간의 프레임을 덧그린다(drawChat — 프레임마다 원본의 머무는 시간대로, 끝나면 처음부터).
+//  훈장 · 칭호: 명찰과 같은 조각(NameTag.img/medal · nick — w · c · e, 움직이는 훈장은 ani0 …)이라 명찰 그리기를 그대로 쓴다. 글자 = 그 아이템 이름.
+//        글자가 박힌 움직이는 판(ani 프레임만 있는 것)은 글자를 얹지 않는다(baked).
+//  움직이는 판(움직이는 명찰 · 훈장 · 칭호의 판 · 틀 — 137벌): **캐릭터 동작과 상관없는 제 시계로 늘 재생한다**(사용자 지시 — 기본 상태는 캐릭터 · 무기가
+//        가만히 있고 이펙트 · 망토 · 명찰 · 칭호 · 훈장의 고유 애니메이션은 돈다). 첫 프레임은 아틀라스에, 나머지는 animAtlas 한 장에 따로 있다(프레임까지
+//        한 장이면 최대 820KB 라 목록 카드 · 첫 그림이 늦다). 처음에는 첫 프레임으로 그리고, 미리보기가 그릴 때 animAtlas 를 받아 프레임마다 판을
+//        한 장씩 만들어 둔다(움직이는 판 = 바뀌는 조각 하나 — 나머지 조각은 그대로). 그릴 때 clock(ms)의 프레임을 고른다. clock 이 없으면(복사 그림 ·
+//        코디 프로필) 첫 프레임. 목록 카드(chatPreview)는 첫 프레임만 그린다.
+//        틀(fx — 판 위에 덧붙는 장식, 가운데가 띠 한 장 폭만큼 뚫렸다)이 있는 칭호는 띠를 제 폭으로 깔고 틀을 씌운다. 가장 넓은 층에도 이름이
+//        들어가지 않는 훈장은 판 가운데 세로줄을 이어 늘린다. 글자가 박힌 판은 캐릭터 가운데에 둔다(원본 기준점이 치우친 것이 많다).
+//  쌓기(게임 1배 캡처 13장을 조각 대조로 재어 맞췄다 — 글자 칸이 아니라 **다 그린 그림의 모서리**로 놓인다):
+//        명찰 그림 위 = 발끝 아래 TAG_TOP(반지마다 띠가 글자 칸 위로 올라오는 만큼이 달라도 그림 위가 같은 줄 — 글자 줄은 반지마다 오르내린다),
+//        훈장 그림 위 = 명찰 그림 아래 + MEDAL_GAP(명찰이 없으면 기본 명찰 자리 아래 — 훈장마다 글자 줄이 다른 것은 판 모양 탓이다),
+//        칭호 그림 아래 = 발끝 위 TITLE_BOTTOM. 칭호 · 훈장은 그림 가운데를 고정된 가로 자리 TAG_MID 에 둔다 — 명찰 생김새 · 유무와 상관없이 x 가 움직이지 않는다(사용자 지시.
+//        명찰 그림 가운데에 맞추면 명찰마다 양끝 조각 폭이 달라 흔들렸다). y 는 칭호 = 발끝 기준 고정, 훈장 = 명찰 그림 아래 끝을 따른다.
+//        길드 이름 줄은 그리지 않는다(서비스가 길드를 다루지 않는다 — 게임에서는 명찰과 훈장 사이에 같은 규칙으로 한 줄 낀다).
+//        말풍선은 제자리에서 칭호를 덮는다(게임과 같다 — 사용자 캡처).
 // 글자는 돋움 12px 비트맵의 도트를 그대로 찍는다(core/chatGlyphs — 브라우저가 글꼴을 그리지 않아 어느 기기에서나 게임과 같다).
 // 글자 폭(advance) · 왼쪽 여백 · 기준선 높이도 돋움 값 그대로다. 색은 원본 clr. 돋움에 없는 글자만 사이트 글꼴로 그려 알파를 끊는다.
 // 원본에 있지만 아직 쓰지 않는 값: 움직이는 명찰의 heightoffset · bottomoffset(뜻을 확인하지 못했다), fontType(명찰 · 말풍선 각 1개).
@@ -32,18 +47,22 @@ import { imageLoaded, loadImage } from './render'
 
 export interface ChatPart { x: number; y: number; w: number; h: number; origin: Vec } // 아틀라스 안의 자리
 export interface ChatUi {
-  kind: 'nameTag' | 'chatBalloon'; clr: string; atlas: string; parts: Record<string, ChatPart>
+  kind: 'nameTag' | 'chatBalloon' | 'medal' | 'nick'; clr: string; atlas: string; parts: Record<string, ChatPart>
   originOffset?: Vec; heightoffset?: number; bottomoffset?: number; fontType?: number
   aniFit?: number[] // 움직이는 명찰: 층(ani0, ani1, …)마다 이름이 들어가는 폭(px) — 추출 때 그림의 안쪽 폭을 재어 적는다
   plain?: boolean // 기본 명찰(BASE_TAG) — 조각 그림 없이 반투명 검은 판을 그린다
+  baked?: boolean // 훈장 · 칭호: 판 그림에 이름 글자가 박혀 있다(움직이는 판의 첫 프레임) — 글자를 얹지 않는다
+  anim?: Record<string, number[]> // 움직이는 조각 → 프레임마다 머무는 시간(ms). 프레임 i(1부터)의 조각 = animParts['<키>#i']
+  animAtlas?: string; animParts?: Record<string, ChatPart>
   arrowPad?: number // 말풍선 꼬리의 왼쪽 빈 열 수(origin.x 만큼 띠 위에 걸치는 자리 중 띠 높이에서 투명한 열) — 띠를 그만큼 꼬리 밑으로 늘린다
 }
 // 이모티콘 프레임: 가로로 이은 그림(strip) 안의 자리 x · 크기 · origin(ox, oy) · 머무는 시간(d, ms)
 export interface EmoFrame { x: number; w: number; h: number; ox: number; oy: number; d: number }
 // png = 대표 그림(mainImg — 고르기 칸 · 정지 그림). 움직이는 것은 strip · frames 가 있다.
 export interface ChatEmo { id: string; name: string; png: string; w: number; h: number; origin: Vec; main?: number; strip?: string; frames?: EmoFrame[]; still?: boolean } // still = 움직이는 그림이 오기 전 대표 프레임(png)으로 그린다(prepareChat)
-// 그릴 것: 명찰 · 말풍선(없으면 그리지 않는다)과 글자 · 이모티콘.
-export interface ChatDraw { tag?: ChatUi; balloon?: ChatUi; name: string; text: string; emo?: ChatEmo; t0?: number } // t0 = 보낸 시각(performance.now) — 움직이는 이모티콘의 시계
+// 그릴 것: 명찰 · 말풍선 · 칭호 · 훈장(없으면 그리지 않는다)과 글자 · 이모티콘. 칭호 · 훈장의 글자는 그 아이템 이름(name).
+export type ChatLabel = { ui: ChatUi; name: string }
+export interface ChatDraw { tag?: ChatUi; balloon?: ChatUi; title?: ChatLabel; medal?: ChatLabel; name: string; text: string; emo?: ChatEmo; t0?: number } // t0 = 보낸 시각(performance.now) — 움직이는 이모티콘의 시계
 
 const LINE = 12            // 글자 한 줄 높이(돋움 12px — 기준선 위 10, 아래 2)
 const GAP = 2              // 줄 사이
@@ -51,11 +70,32 @@ const WRAP = 108           // 말풍선 한 줄의 최대 폭(px, 한글 9자) �
                            // 게임에서 '강도시로코쨩 : 테스트'(122px)는 '강도시로코쨩 :' 뒤에서 줄이 바뀐다(사용자 지시 — 144 는 길었다)
 const BASE = 12            // 글자 그림 안의 기준선(위 여백 2 — 기준선 위로 10보다 높은 글자가 있어도 잘리지 않게)
 // 발끝에서의 두 거리는 원본에 없어 게임 화면(꿈나라 달링 · 벼링 명찰 · 말풍선, 1배 캡처)을 픽셀로 재어 맞췄다.
-const TAG_TEXT = 8         // 발끝 아래 명찰 글자 칸 위까지(띠 origin y 6 인 명찰의 윗변이 발끝 2px 아래 — 게임과 같다)
+const TAG_TEXT = 8         // 명찰을 만들 때 글자 칸 위(띠 origin y 6 인 명찰 기준) — 다 만든 그림은 prepareChat 이 TAG_TOP 으로 옮긴다
+const TAG_TOP = 2          // 발끝 아래 명찰 그림 위까지(기본 명찰 판 · 반지 명찰 모두)
 const BALLOON_TIP = 76     // 발끝 위 말풍선 꼬리 그림 아래 끝까지(두 반지 모두 이 줄 — 몸통은 꼬리 길이만큼 오르내린다)
+const TITLE_BOTTOM = 83    // 발끝 위 칭호 그림 아래 끝까지(칭호 5종 · 캐릭터 3명에서 같은 줄)
+const MEDAL_GAP = 1        // 명찰 그림 아래 끝과 훈장 그림 위 사이(게임에서 명찰 → 길드 → 훈장이 모두 이 간격)
+const NAV_FOOT = 8         // 서기 첫 프레임에서 발끝이 배꼽보다 오른쪽인 만큼(몸 00002000 stand1/0 — 가로 기준을 배꼽에 두되 맞춘 자리는 그대로)
+const TAG_MID = -1         // 칭호 · 훈장 그림 가운데의 가로 자리(기준점에서) — 기본 명찰 판의 가운데(게임도 명찰이 기준점보다 1~2px 왼쪽)
 
 // ox, oy = 기준점(발끝)에서 그림 왼쪽 위까지. emo = 덧그릴 움직이는 이모티콘(x, y = 그림 왼쪽 위에서 프레임 origin 이 닿는 점)
-type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number; emo?: { img: HTMLImageElement; frames: EmoFrame[]; x: number; y: number } }
+// live = 움직이는 판: 프레임마다의 판(dx, dy = 첫 프레임 그림에서 그 프레임 그림 왼쪽 위까지)과 머무는 시간. 쌓기가 자리를 옮긴 사본도 같은 live 를 본다(받기가 끝나면 채워진다)
+type AnimFrame = { c: HTMLCanvasElement; dx: number; dy: number }
+type Live = { frames?: AnimFrame[]; d: number[]; load: () => Promise<void> }
+type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number; emo?: { img: HTMLImageElement; frames: EmoFrame[]; x: number; y: number }; live?: Live }
+
+// 머무는 시간을 더해 가며 t 에 보일 프레임 번호(끝나면 처음부터)
+const cycleAt = (d: number[], t: number) => {
+  const total = d.reduce((s, x) => s + Math.max(1, x), 0)
+  let r = ((t % total) + total) % total
+  for (let i = 0; i < d.length; i++) { r -= Math.max(1, d[i]); if (r < 0) return i }
+  return d.length - 1
+}
+const animsOf = (d: ChatDraw | undefined) => (d ? [d.tag, d.title?.ui, d.medal?.ui].filter((u): u is ChatUi => !!u?.anim) : [])
+// 움직이는 판이 있는가(미리보기가 캐릭터가 멈춰 있어도 프레임마다 그린다) · t 에 보일 프레임 번호들(같으면 다시 합성하지 않는다) · 한 바퀴 길이들(움짤)
+export const chatAnimated = (d: ChatDraw | undefined) => animsOf(d).length > 0
+export const chatAnimSig = (d: ChatDraw | undefined, t: number) => animsOf(d).map((u) => Object.values(u.anim!).map((x) => cycleAt(x, t)).join(',')).join(';')
+export const chatAnimPeriods = (d: ChatDraw | undefined) => animsOf(d).flatMap((u) => Object.values(u.anim!).map((x) => x.reduce((s, v) => s + Math.max(1, v), 0)))
 
 // 보낸 뒤 t ms 에 보일 프레임 번호(머무는 시간을 더해 가며, 끝나면 처음부터). t 가 없으면(정지 그림) 대표 프레임.
 export function emoFrameAt (emo: ChatEmo, t?: number): number {
@@ -138,7 +178,7 @@ function textBitmap (str: string, clr: string): { c: HTMLCanvasElement; adv: num
 }
 
 // 그릴 조각: 그림 위 왼쪽 위 자리(x, y)와 조각 안에서 잘라 쓸 범위((sx, sy) 부터 w × h — 이어 붙일 때 양끝에서 자른다).
-type Piece = { p: ChatPart; x: number; y: number; sx?: number; sy?: number; w?: number; h?: number }
+type Piece = { p: ChatPart; x: number; y: number; sx?: number; sy?: number; w?: number; h?: number; img?: HTMLImageElement } // img = 다른 그림(움직이는 판의 프레임 — animAtlas)
 const at = (p: ChatPart, ax: number, ay: number): Piece => ({ p, x: ax - p.origin.x, y: ay - p.origin.y }) // origin 이 (ax, ay) 에 닿게
 const right = (q: Piece) => q.x + (q.w ?? q.p.w), bottom = (q: Piece) => q.y + (q.h ?? q.p.h)
 // 조각 p 를 [a, b) 에 조각 폭 단위로 깐다. 'start' = a 에서 무늬가 시작(끝 조각은 b 에서 자른다),
@@ -154,7 +194,7 @@ function compose (A: HTMLImageElement, pieces: Piece[], extra: (g: CanvasRenderi
   const x0 = Math.min(...live.map((q) => q.x)), y0 = Math.min(...live.map((q) => q.y))
   const c = canvasOf(Math.max(...live.map(right)) - x0, Math.max(...live.map(bottom)) - y0), g = c.getContext('2d')!
   g.imageSmoothingEnabled = false
-  for (const q of live) { const w = q.w ?? q.p.w, h = q.h ?? q.p.h; g.drawImage(A, q.p.x + (q.sx ?? 0), q.p.y + (q.sy ?? 0), w, h, q.x - x0, q.y - y0, w, h) }
+  for (const q of live) { const w = q.w ?? q.p.w, h = q.h ?? q.p.h; g.drawImage(q.img ?? A, q.p.x + (q.sx ?? 0), q.p.y + (q.sy ?? 0), w, h, q.x - x0, q.y - y0, w, h) }
   extra(g, x0, y0)
   return { c, ox: x0, oy: y0 }
 }
@@ -162,7 +202,7 @@ function compose (A: HTMLImageElement, pieces: Piece[], extra: (g: CanvasRenderi
 // 기본 명찰 — 명찰 반지를 끼지 않았을 때의 게임 명찰. 원본에 그림이 없다(클라이언트가 직접 그린다) — 게임 화면을 점 단위로 재어 맞췄다:
 // 판 = 이름 폭 + 5(펜 시작 2칸 왼쪽부터) × 16(글자 줄 12 의 위 2, 아래 2), 위 끝이 발끝 2칸 아래, 네 모서리 1칸씩 깎음, 검정 55% 불투명. 글자는 흰색, 글자 줄의 위 = 판 위 + 2.
 export const BASE_TAG: ChatUi = { kind: 'nameTag', clr: '#ffffff', atlas: 'base', parts: {}, plain: true }
-const BASE_TAG_TOP = 2, BASE_TAG_H = 16, BASE_TAG_ALPHA = 0.55
+const BASE_TAG_H = 16, BASE_TAG_ALPHA = 0.55
 function plainTag (name: string): Bitmap {
   const t = textBitmap(name, BASE_TAG.clr)
   const pen = -Math.floor((t.adv + 4) / 2), x = pen - 2, w = t.adv + 5, h = BASE_TAG_H
@@ -170,7 +210,7 @@ function plainTag (name: string): Bitmap {
   g.fillStyle = `rgba(0,0,0,${BASE_TAG_ALPHA})`
   g.fillRect(1, 0, w - 2, 1); g.fillRect(0, 1, w, h - 2); g.fillRect(1, h - 1, w - 2, 1)
   g.drawImage(t.c, pen + t.left - x, 2 + t.top)
-  return { c, ox: x, oy: BASE_TAG_TOP }
+  return { c, ox: x, oy: TAG_TOP }
 }
 
 // 명찰. 기준점(0,0) = 발끝. 글자 칸(높이 12)의 위 = TAG_TEXT, 글자 칸의 왼끝 = -(이름 폭 + 4) / 2.
@@ -183,10 +223,35 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
   const T = TAG_TEXT
   const pieces: Piece[] = []
   const ani = Object.keys(P).filter((k) => /^ani\d+$/.test(k)).sort((a, b) => +a.slice(3) - +b.slice(3))
-  if (ani.length) {
+  let tl = -Math.floor((t.adv + 4) / 2) // 글자 칸 왼끝(펜 시작)
+  let moving: string | undefined // 움직이는 조각(이 판에서 프레임마다 바뀌는 것)
+  if (ani.length && ui.baked) {
+    moving = ani[0]
+    // 글자가 박힌 움직이는 판(훈장 · 칭호): 판 한 장을 캐릭터 가운데에 — 원본 기준점은 한쪽으로 치우친 것이 많다(사용자 지적: 칭호가 옆으로 비켜 섰다)
+    const p = P[ani[0]]
+    pieces.push({ p, x: -Math.floor(p.w / 2), y: T - p.origin.y })
+  } else if (ani.length) {
     // 이름이 들어가는 가장 작은 층(없으면 가장 넓은 층). origin = 글자 칸 가운데 위.
-    const i = (ui.aniFit ?? []).findIndex((f) => t.adv <= f)
-    pieces.push(at(P[ani[i < 0 ? ani.length - 1 : i]], 0, T))
+    const fits = ui.aniFit ?? []
+    const i = fits.findIndex((f) => t.adv <= f), li = i < 0 ? ani.length - 1 : i
+    const p = P[ani[li]], extra = ui.kind !== 'nameTag' && i < 0 && fits[li] ? t.adv - fits[li] + 6 : 0
+    moving = ani[li]
+    if (extra > 0) {
+      // 가장 넓은 층에도 이름이 들어가지 않는 훈장: 판 가운데(기준점의 세로줄)를 이어 늘린다(사용자 지적: 글자가 판 밖으로 잘렸다)
+      const ox = p.origin.x, x0 = -ox - Math.floor(extra / 2), y = T - p.origin.y
+      pieces.push({ p, x: x0, y, w: ox })
+      for (let k = 0; k < extra; k++) pieces.push({ p, x: x0 + ox + k, y, sx: ox, w: 1 })
+      pieces.push({ p, x: x0 + ox + extra, y, sx: ox, w: p.w - ox })
+    } else pieces.push(at(p, 0, T))
+    tl = -Math.floor(t.adv / 2)
+  } else if (P.fx) {
+    // 틀(fx)이 있는 칭호(SWEET WISH 등): 틀은 가운데 띠(c) 한 장 폭만큼 뚫린 그림이다 — 띠는 이름 폭이 아니라 제 폭(이름이 더 길면 그만큼)으로 깔고,
+    // 틀의 origin 을 띠 왼끝에 맞춘다. 이름은 띠 가운데
+    const inner = Math.max(t.adv, P.c.w), L = -Math.floor(inner / 2)
+    hfill(pieces, P.c, L, L + inner, T - P.c.origin.y)
+    pieces.push(at(P.fx, L, T))
+    moving = 'fx'
+    tl = L + Math.floor((inner - t.adv) / 2)
   } else {
     // 글자 칸 = 이름 폭. 이름이 아주 짧아도 양끝 조각이 안쪽으로 들어온 만큼은 남겨 서로 겹치지 않게.
     const inner = Math.max(t.adv, P.w.w - P.w.origin.x + P.e.origin.x)
@@ -196,8 +261,27 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
     pieces.push(w, e)
   }
   // 글자: 글자 칸 왼끝부터 돋움의 펜 위치대로, 세로는 글자 칸의 기준선에 — 띠가 아니라 글자 칸을 기준으로 놓는다.
-  const tl = ani.length ? -Math.floor(t.adv / 2) : -Math.floor((t.adv + 4) / 2)
-  return compose(A, pieces, (g, x0, y0) => g.drawImage(t.c, tl + t.left - x0, T + t.top - y0))
+  const text = (g: CanvasRenderingContext2D, x0: number, y0: number) => { if (!ui.baked) g.drawImage(t.c, tl + t.left - x0, T + t.top - y0) }
+  const bm = compose(A, pieces, text)
+  const d = moving ? ui.anim?.[moving] : undefined
+  if (!d || !moving || !ui.animAtlas || !ui.animParts) return bm
+  // 움직이는 판: 바뀌는 조각만 그 프레임의 조각으로 바꿔(같은 자리 — origin 차이만큼 옮긴다) 프레임마다 한 장씩. animAtlas 는 load() 때 받는다
+  const base = P[moving], key = moving, AP = ui.animParts, src = ui.animAtlas
+  const live: Live = { d, load: () => {
+    const p = loadImage(src, true).then((B) => {
+      live.frames = d.map((_, i) => {
+        const f = i ? AP[`${key}#${i}`] : undefined
+        if (!f) return { c: bm.c, dx: 0, dy: 0 }
+        const fb = compose(A, pieces.map((q) => (q.p === base ? { ...q, p: f, img: B, x: q.x + base.origin.x - f.origin.x, y: q.y + base.origin.y - f.origin.y } : q)), text)
+        return { c: fb.c, dx: fb.ox - bm.ox, dy: fb.oy - bm.oy }
+      })
+    })
+    p.catch(() => { live.load = once }) // 받지 못하면 다음 그리기에서 다시 받는다
+    live.load = () => p
+    return p
+  } }
+  const once = live.load
+  return { ...bm, live }
 }
 
 // 말풍선. 기준점(0,0) = 발끝. 안쪽 칸 높이 = 옆 띠 조각 높이의 배수.
@@ -275,7 +359,7 @@ function bitmapOf (ui: ChatUi, s: string, keep: boolean, emo?: ChatEmo): Promise
   const k = key(ui, s, emo)
   let p = cache.get(k)
   if (p) { cache.delete(k); cache.set(k, p); return p } // 최근에 쓴 것으로 올린다
-  p = (ui.kind === 'nameTag' ? nameTag(ui, s) : balloon(ui, s, emo)).catch(() => null)
+  p = (ui.kind === 'chatBalloon' ? balloon(ui, s, emo) : nameTag(ui, s)).catch(() => null)
   p.then((b) => { if (!b || !keep) cache.delete(k) })
   cache.set(k, p)
   if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value!)
@@ -283,9 +367,11 @@ function bitmapOf (ui: ChatUi, s: string, keep: boolean, emo?: ChatEmo): Promise
 }
 
 // 명찰 · 말풍선을 하나씩 따로 만든다(목록 카드가 쓴다 — 몸 없이 그 아이템만). 기준점 정보(ox, oy)는 버리고 그림만(카드에는 이모티콘이 없다).
+// 칭호 · 훈장은 name 에 그 아이템 이름을 준다.
 export async function chatPreview (ui: ChatUi, d: Pick<ChatDraw, 'name' | 'text' | 'emo'>): Promise<HTMLCanvasElement | null> {
   const keep = await loadGlyphs([d.name, d.text, ' : '])
-  const b = await bitmapOf(ui, ui.kind === 'nameTag' ? d.name : `${d.name} : ${d.text}`, keep, ui.kind === 'nameTag' ? undefined : d.emo)
+  const bub = ui.kind === 'chatBalloon'
+  const b = await bitmapOf(ui, bub ? `${d.name} : ${d.text}` : d.name, keep, bub ? d.emo : undefined)
   return b?.c ?? null
 }
 
@@ -317,26 +403,48 @@ export function warmEmo (emo: ChatEmo): Promise<unknown> {
 export async function prepareChat (d: ChatDraw | undefined, full = false): Promise<Bitmap[]> {
   if (!d) return []
   // 글자 도트를 먼저 받는다(이미 받았으면 바로 끝난다) — 받기 전에 그리지 않는다. 받지 못했으면 그린 그림을 기억하지 않아 다음에 다시 그린다.
-  const keep = await loadGlyphs([d.name, d.text, ' : '])
+  const keep = await loadGlyphs([d.name, d.text, ' : ', d.title?.name ?? '', d.medal?.name ?? ''])
   let emo = d.emo
   if (!full && emo?.strip && emo.frames?.length && !imageLoaded(emo.strip, true)) { void warmEmo(emo); emo = { ...emo, still: true } }
-  const out = await Promise.all([d.balloon ? bitmapOf(d.balloon, `${d.name} : ${d.text}`, keep, emo) : null, d.tag ? bitmapOf(d.tag, d.name, keep) : null])
-  return out.filter((b): b is Bitmap => !!b)
+  const [bub, tag, title, medal] = await Promise.all([
+    d.balloon ? bitmapOf(d.balloon, `${d.name} : ${d.text}`, keep, emo) : null, d.tag ? bitmapOf(d.tag, d.name, keep) : null,
+    d.title ? bitmapOf(d.title.ui, d.title.name, keep) : null, d.medal ? bitmapOf(d.medal.ui, d.medal.name, keep) : null,
+  ])
+  // 움직이는 판의 프레임: 움짤(full)은 기다리고, 미리보기는 기다리지 않고 첫 프레임으로 먼저 그린다(받으면 다음 그리기부터 움직인다)
+  const moving = [tag, title, medal].filter((b): b is Bitmap => !!b?.live && !b.live.frames).map((b) => b.live!.load().catch(() => {}))
+  if (full && moving.length) await Promise.all(moving)
+  // 쌓기(캐시한 그림은 그대로 두고 자리만 옮긴 사본으로 — 머리말의 '쌓기'). 훈장 높이만 명찰을 따르고(없으면 기본 명찰 자리 아래), 가로는 늘 TAG_MID.
+  // 말풍선은 제자리 — 게임에서도 칭호 위로 비켜 가지 않고 칭호를 덮는다(사용자 캡처: 미소노미카쨩 · 신비한 정원). 그래서 칭호보다 나중에(위에) 그린다.
+  const g = tag && { ...tag, oy: TAG_TOP }
+  const under = TAG_TOP + (g ? g.c.height : BASE_TAG_H)
+  const centered = (b: Bitmap, oy: number): Bitmap => ({ ...b, ox: Math.floor(TAG_MID - b.c.width / 2), oy })
+  const t = title && centered(title, -TITLE_BOTTOM - title.c.height)
+  const m = medal && centered(medal, under + MEDAL_GAP)
+  return [t, g, m, bub].filter((x): x is Bitmap => !!x)
 }
 
-// 캐릭터 위에 덧그린다. 시선이 오른쪽(flip)이어도 글자는 뒤집지 않고 자리만 옮긴다. 기준점 = 딛고 선 바닥(탈것이면 탈것의 바닥).
+// 캐릭터 위에 덧그린다. 시선이 오른쪽(flip)이어도 글자는 뒤집지 않고 자리만 옮긴다.
+// 기준점(사용자 지시 — 명찰 · 말풍선 · 칭호 · 훈장 모두 몸이 기준): 가로 = 몸의 배꼽(렌더러가 화면에 고정하는 점 — 아이템 · 동작 · 탈것과 상관없이
+// 흔들리지 않는다. 발끝 origin 은 동작 프레임마다 배꼽과의 거리가 달라지고, 탈것의 바닥은 몸과 따로 움직인다), 세로 = 딛고 선 바닥(탈것이면 탈것의 바닥).
 // t = 보낸 뒤 흐른 시간(ms) — 움직이는 이모티콘의 프레임을 고른다. 없으면 대표 프레임(복사 그림 등).
-export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed: PlacedLayer[], o: { anchorX: number; anchorY: number; scale: number; flip?: boolean; width: number; t?: number; main?: number }) {
+// clock = 움직이는 판의 시계(ms — 미리보기는 지금 시각, 움짤은 그 프레임의 시각). 없으면 첫 프레임.
+export function drawChat (ctx: CanvasRenderingContext2D, maps: Bitmap[], placed: PlacedLayer[], o: { anchorX: number; anchorY: number; scale: number; flip?: boolean; width: number; t?: number; main?: number; clock?: number }) {
   if (!maps.length) return
   const g = groundOf(placed)
   if (!g) return
-  const fx = (o.anchorX + g.x) * o.scale
+  const body = placed.find((p) => p.slot === 'body' && p.name === 'body'), nav = body?.map?.navel, k = body?.scale ?? 1
+  // 배꼽 + NAV_FOOT(서기 첫 프레임의 발끝 — 게임 캡처로 맞춘 자리가 그 프레임에서 예전과 같다). 서기만 해도 발끝은 배꼽에서 −8 · −7 · −6 으로 움직여
+  // 발끝을 따르면 명찰 · 칭호 · 훈장이 숨 쉴 때마다 좌우로 1~2px 흔들렸다
+  const mx = body && nav ? body.x + (body.origin.x + nav.x + NAV_FOOT) * k : g.x
+  const fx = (o.anchorX + mx) * o.scale
   const cx = o.flip ? o.width - fx : fx
   const cy = (o.anchorY + g.y) * o.scale
   ctx.imageSmoothingEnabled = false
   for (const b of maps) {
-    const bx = Math.round(cx + b.ox * o.scale), by = Math.round(cy + b.oy * o.scale)
-    ctx.drawImage(b.c, bx, by, b.c.width * o.scale, b.c.height * o.scale)
+    const fr = b.live?.frames && o.clock != null ? b.live.frames[cycleAt(b.live.d, o.clock)] : undefined
+    const c = fr?.c ?? b.c
+    const bx = Math.round(cx + (b.ox + (fr?.dx ?? 0)) * o.scale), by = Math.round(cy + (b.oy + (fr?.dy ?? 0)) * o.scale)
+    ctx.drawImage(c, bx, by, c.width * o.scale, c.height * o.scale)
     if (b.emo) {
       const f = b.emo.frames[emoFrameAt({ frames: b.emo.frames, main: o.main } as ChatEmo, o.t)]
       ctx.drawImage(b.emo.img, f.x, 0, f.w, f.h, bx + (b.emo.x - f.ox) * o.scale, by + (b.emo.y - f.oy) * o.scale, f.w * o.scale, f.h * o.scale)

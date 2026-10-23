@@ -16,6 +16,7 @@
  */
 
 import clsx from 'clsx'
+import dynamic from 'next/dynamic'
 import { useEffect, useRef, useState } from 'react'
 import { useShop, type Surface as SurfaceState } from '../ShopContext'
 import { BookmarkSheetBody, PvSheetBody } from '../preview/PreviewParts'
@@ -33,6 +34,9 @@ import { useMaskClose } from '../ui/useMaskClose'
 import DotSurfaceBody from './DotSurfaceBody'
 import DyeSurfaceBody from './DyeSurfaceBody'
 import styles from './surface.module.css'
+
+// 코디 프로필(공유 카드) 창은 누를 때만 받는다 — 카드 그리기 · 디자인이 첫 화면 코드에 들어가지 않게
+const ProfileCardBody = dynamic(() => import('./ProfileCardBody'), { ssr: false, loading: () => <div className={styles.partBody} /> })
 
 export default function Surface() {
   const s = useShop()
@@ -167,9 +171,9 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   })
 
   const k = sf.kind
-  const title = k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'emo' ? '이모티콘' : k === 'vs' ? '코디 비교'
+  const title = k === 'card' ? '코디 프로필' : k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'emo' ? '이모티콘' : k === 'vs' ? '코디 비교'
     : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? '공유받은 코디' : k === 'notice' ? '도움 및 건의함' : (sf.item?.name || sf.item?.id || '')
-  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' ? '' : k === 'notice' ? ''
+  const sub = k === 'pv' ? '미리보기 연출' : k === 'vs' ? '현재 코디 vs 북마크' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' || k === 'card' ? '' : k === 'notice' ? ''
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
 
@@ -218,6 +222,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {/* 공유받은 코디 — 광장 상세를 거쳐 왔으면(post 있음) '이전'으로 상세로 되돌아가고, 링크·코드로 받은 경우는 '닫기'. */}
             {k === 'ptake' && sf.take && <><PlazaTakeBody snap={sf.take} mobile={mobile} /><SurfaceFooter onBack={sf.post ? s.plazaTakeBack : undefined} /></>}
             {k === 'notice' && <NoticeBody mobile={mobile} />}   {/* 푸터는 본문이 그린다(상세에서 '이전') */}
+            {k === 'card' && <ProfileCardBody mobile={mobile} />}   {/* 푸터(닫기 · 저장)는 본문이 그린다 */}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
             {k === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}
           </div>

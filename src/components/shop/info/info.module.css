@@ -15,6 +15,9 @@
 .right { flex: 1 1 0; min-width: 0; display: flex; justify-content: flex-end; }
 .btn { flex: 0 0 auto; height: 34px; padding: 0 12px; border: 1px solid #f0e9e1; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; white-space: nowrap; cursor: pointer; }
 .btnM { height: 32px; border-radius: 6px; }
+.btnIcon { display: inline-flex; align-items: center; gap: 6px; }
+.btn:disabled { opacity: .6; cursor: progress; }
+.btnSolid { border-color: #ec86ac; background: #ec86ac; color: #fff; }
 
 .scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; justify-content: space-between; }
 .scrollM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 8px 12px; }

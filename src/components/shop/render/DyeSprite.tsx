@@ -45,6 +45,28 @@ function drawSprite(canvas: HTMLCanvasElement, src: CanvasImageSource, w: number
   ctx.drawImage(src, 0, 0, dw, dh)
 }
 
+// 칩 그림 한 장을 **이미지로 내보낼 수 있게**(CORS) 그린다 — 코디 프로필(lib/profileCard)이 쓴다. 규칙은 아래 DyeSprite 와 같다
+// (헤어 · 성형 = 발색 합성, 그 외 = 아이콘에 프리즘 HSB). 화면의 칩 캔버스는 비-CORS 그림으로 그린 것이 있어 내보낼 수 없다(오염).
+export async function chipIcon(o: { id: string; icon?: string | null; mix: boolean; palette?: PaletteParams; hsb?: HsbParams; dyeable: boolean; zmap: string[] }): Promise<HTMLCanvasElement | null> {
+  const c = document.createElement('canvas')
+  try {
+    if (o.mix) {
+      const meta = await loadMeta(o.id)
+      const base = o.palette?.baseColor ?? 0, mixC = o.palette?.mixColor ?? base, ratio = o.palette?.ratio ?? 0
+      await renderDyedSprite(c, meta, base, mixC, base === mixC ? 0 : ratio, THUMB_VIEW, o.zmap, 112, INFO_FRAC, true)
+      return c.width ? c : null
+    }
+    const rel = o.icon || `sprites/${o.id}/icon.png`
+    const active = o.dyeable && hsbActive(o.hsb)
+    const img = active ? await loadDyeImage(rel) : await loadImage(rel, true)
+    const src: CanvasImageSource = active ? applyHsb(img, o.hsb!, rel) : img
+    const w = (src as HTMLCanvasElement).width, h = (src as HTMLCanvasElement).height
+    if (!w || !h) return null
+    c.width = w; c.height = h; c.getContext('2d')!.drawImage(src, 0, 0)
+    return c
+  } catch { return null }
+}
+
 // 아이템 "스프라이트"(발색 반영) — 아이콘/미리보기 공용. 절대 모델 착용 베이크(thumb.png)를 쓰지 않는다.
 //  - 헤어/성형(mix): renderDyedSprite 로 모든 부위 합성 + 팔레트 발색(frac 지정 → 넘침 없이 안정 축소).
 //  - 그 외(HSB): 아이템 인벤 스프라이트(sprites/{id}/icon.png)에 Prism HSB 를 적용해 그린다(몸 없이 아이템만).

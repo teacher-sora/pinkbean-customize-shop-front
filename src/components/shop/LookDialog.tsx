@@ -102,7 +102,8 @@ export default function LookDialog() {
                   onMouseEnter={() => setHover(hk)} onMouseLeave={() => setHover(null)}
                   style={css(`display:flex; flex-direction:column; align-items:stretch; height:100%; min-height:0; gap:0; padding:0; border-radius:8px; cursor:pointer; overflow:hidden; font-family:inherit; background:#faf7f3; border:2px solid ${on ? '#ec86ac' : '#e7ded4'}; transition:border-color .14s ease, transform .14s ease; transform:translateY(${on ? -2 : 0}px);`)}>
                   <div style={css('position:relative; flex:1 1 0; min-height:0; width:100%; background:#f7f2ec; overflow:hidden;')}>
-                    <SnapThumb snap={p.snap} />
+                    {/* 프리셋 카드처럼 명찰을 닉네임으로(명찰 반지가 없으면 기본 명찰 — 사용자 지시) */}
+                    <SnapThumb snap={p.snap} tagName={lp.nick} baseTag />
                     {p.active && (
                       <span style={css('position:absolute; top:7px; left:7px; height:20px; padding:0 8px; display:inline-flex; align-items:center; border-radius:20px; background:rgba(255,255,255,0.94); border:1px solid #f8e0ea; color:#d76d9a; font-size:10px; font-weight:600; white-space:nowrap; box-shadow:0 2px 8px rgba(214,109,154,.18);')}>착용 중</span>
                     )}

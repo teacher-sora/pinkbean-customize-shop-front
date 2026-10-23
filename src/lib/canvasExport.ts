@@ -29,6 +29,8 @@ export type ModelShot = {
   centerDx?: number; centerDy?: number                            // 뒷모습 등 중심 오프셋(없으면 기본)
   lift?: number              // 캐릭터 전체를 올릴 만큼(월드 px, 위가 음수) — 부유
   chatT?: number             // 움직이는 이모티콘의 시각(ms)
+  chatClock?: number         // 움직이는 명찰 · 칭호 · 훈장의 시계(ms). 없으면 첫 프레임
+  chatWait?: boolean         // 움직이는 판의 프레임을 기다린다(움짤)
   ringFloor?: number         // 변신 그림을 올리거나 내릴 만큼 — 동작 전체로 잰 값(움짤). 없으면 그리는 한 프레임으로 잰다
 }
 
@@ -40,15 +42,18 @@ export const SHOT_PAD = 4 // 그림 상자 둘레 여백(게임 픽셀)
 // 합성 입력을 게임 크기(1배)로 다시 그린 판(SHOT_BOX)과, 그 판에서 불투명 픽셀이 닿는 상자. 그림이 없으면 null.
 // 움짤 저장(lib/gifExport)도 프레임마다 이것으로 그린다 — 한 장 저장과 그리는 규칙이 같다.
 // place 를 주면 그 판(상자 · 기준점, 게임 1배)에 그린다 — 배경이 있는 움짤이 미리보기 캔버스와 같은 판에 그려 미리보기 칸에 그대로 얹는다.
+// 판 안에서 캐릭터가 딛는 자리(발 — 미리보기의 stageFloor 와 같은 점: 판 가로 가운데, 기준점 아래 21칸). 부유해도 바닥은 그대로다.
+export const shotFoot = (shot: ModelShot): { x: number; y: number } => { const pl = shotPlace(shot); return { x: pl.box.w / 2, y: pl.anchor.y + 21 } }
+const shotPlace = (shot: ModelShot) => computeModelPlacement({ divW: SHOT_BOX, divH: SHOT_BOX, dpr: 1, margin: 1, fraction: 0, scale: 1, centerDx: shot.centerDx, centerDy: shot.centerDy })
 export async function drawShot (shot: ModelShot, place?: { box: { w: number; h: number }; anchor: { x: number; y: number } }): Promise<{ c: HTMLCanvasElement; x0: number; y0: number; x1: number; y1: number } | null> {
   if (!shot.placed.length) return null
   const off = document.createElement('canvas')
-  const pl = place ? { scale: 1, ...place } : computeModelPlacement({ divW: SHOT_BOX, divH: SHOT_BOX, dpr: 1, margin: 1, fraction: 0, scale: 1, centerDx: shot.centerDx, centerDy: shot.centerDy })
+  const pl = place ? { scale: 1, ...place } : shotPlace(shot)
   try {
     await renderCharacter(off, shot.placed, {
       scale: pl.scale, box: pl.box, anchor: shot.lift ? { x: pl.anchor.x, y: pl.anchor.y + shot.lift } : pl.anchor, flip: shot.flip,
       centerX: shot.centerX, centerXOnly: shot.centerXOnly, centerMount: shot.centerMount,
-      override: shot.override, effects: shot.effects, particles: shot.particles, chat: shot.chat, chatT: shot.chatT, ringFloor: shot.ringFloor,
+      override: shot.override, effects: shot.effects, particles: shot.particles, chat: shot.chat, chatT: shot.chatT, chatClock: shot.chatClock, chatWait: shot.chatWait, ringFloor: shot.ringFloor,
     })
   } catch { return null }
   const w = off.width, h = off.height
@@ -84,6 +89,12 @@ export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
   ctx.drawImage(d.c, d.x0 - SHOT_PAD, d.y0 - SHOT_PAD, bw, bh, 0, 0, bw, bh)
   return await new Promise((res) => out.toBlob((b) => res(b), 'image/png'))
 }
+
+// 지금 미리보기의 그림 재료(우클릭 저장과 같은 것). 미리보기(PreviewModel, 화면에 하나)가 등록하고 코디 프로필(lib/profileCard)이 쓴다.
+// 불러오는 중이면 첫 그림을 기다린다(등록한 쪽이 기다려 준다).
+let previewShot: (() => Promise<ModelShot | null>) | null = null
+export const setPreviewShot = (f: typeof previewShot): void => { previewShot = f }
+export const getPreviewShot = (): Promise<ModelShot | null> => (previewShot ? previewShot() : Promise.resolve(null))
 
 // 클립보드에 PNG 복사. getBlob 은 Promise<Blob> 을 반환해 ClipboardItem 에 그대로 넘긴다
 // (사용자 제스처 유지 — Safari 포함).

@@ -17,6 +17,8 @@ import { VsPanes } from '../surface/VsBody'
 import { useVsFlip, VS_WRAP_H } from '../surface/sheetMotion'
 import { PvGroups, PvInlineFields, pvFieldOf, pvGroupsOf, usePvFields, type PvGroup } from './pvControls'
 import { PvGrid, type PvField } from './PvPicker'
+import { ActionFrameGrid, actionInfo, useActionInfo, warmActionFrames } from './ActionFrames'
+import { PV_ACTIONS_FLAT } from '@/lib/catalog'
 import styles from './preview.module.css'
 
 const BOOKMARK_FRAC = 0.9
@@ -131,7 +133,13 @@ export function PvSheetBody() {
   const [intent] = useState(takePvIntent)
   const [group, setGroup] = useState<PvGroup>(intent?.group ?? 'char')
   const [pick, setPick] = useState<PvField | null>(intent?.pick ?? null)
-  const { view, go, style } = useInnerSlide<'main' | 'pick'>(intent?.pick ? 'pick' : 'main')
+  const { view, go, style } = useInnerSlide<'main' | 'pick' | 'frames'>(intent?.pick ? 'pick' : 'main')
+  // 액션 상세(재생 · 자세 — ActionFrames): 자세가 여럿인 액션은 이 화면으로 한 번 더 넘어가기만 하고(미리보기는 아직 그대로 — 시트에 가려 보이지 않는다),
+  // 여기서 고르면 그 액션 · 자세로 바꾸고 설정으로 돌아간다. 자세가 하나뿐이면 바로 바꾸고 돌아간다(다른 고르기와 같다 — 고르기는 한 번에 끝난다)
+  const s = useShop()
+  const [detail, setDetail] = useState<string | null>(null)
+  const detailInfo = useActionInfo(detail)
+  const [frameBase] = useState(() => s.snapshot())
   const fields = usePvFields()
   const picked = pick ? fields.find((f) => pvFieldOf(f) === pick && f.key !== 'zoom') : undefined
   // 격자는 **시트가 다 오른 뒤에** 붙인다(움직임이 끝나고 조금 더 뒤). 움직이는 도중에 칸 31개를 마운트하면
@@ -185,7 +193,7 @@ export function PvSheetBody() {
     window.addEventListener('resize', m)
     return () => window.removeEventListener('resize', m)
   }, [])
-  const want = view === 'pick' ? pickH : mainH
+  const want = view === 'pick' || view === 'frames' ? pickH : mainH
   // 실제로 시트에 걸리는 높이. **늘 때와 줄 때 순서가 다르다**(VS 펼침/접힘과 같은 규칙).
   //  · 늘 때  = 레이아웃 먼저 바꾸고 → 직전 모습으로 되돌려 놓은 뒤 0 으로 미끄러진다.
   //  · 줄 때  = 큰 레이아웃 그대로 두고 먼저 미끄러진 뒤 → 다 내려간 자리에서 레이아웃을 줄인다.
@@ -236,14 +244,26 @@ export function PvSheetBody() {
     <>
       <div ref={wrapRef} className={styles.sheetWrap} style={h ? { height: h } : undefined}>
       <div className={clsx('pb-scroll', 'pb-fade', styles.sheetBody, styles.sheetSlide)} style={style}>
-        {view === 'pick' && picked ? (
+        {view === 'frames' && detail ? (
+          <div className={styles.pickPage}>
+            <div className={styles.pickHead}>{PV_ACTIONS_FLAT.find((a) => a.v === detail)?.l ?? '액션'}</div>
+            <div className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.pickScroll)}>
+              <ActionFrameGrid action={detail} info={detailInfo} value={s.pv.action === detail ? s.pv.frame : -2} base={frameBase}
+                onPick={(f) => { s.setPv('action', detail); s.setPv('frame', f); back() }} />
+            </div>
+          </div>
+        ) : view === 'pick' && picked ? (
           <div className={styles.pickPage}>
             <div className={styles.pickHead}>{picked.title}<span className={styles.pickHint}>{picked.hint}</span></div>
             <div className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.pickScroll)}>
               {gridOn && (
                 <PvGrid field={pvFieldOf(picked)} options={picked.options} groups={pvGroupsOf(picked)} value={picked.value}
                   disabledValues={picked.disabled} disabledTitle="라이딩 중에는 사용할 수 없어요"
-                  onChange={(v) => { picked.set(v); back() }} />
+                  onWarm={pvFieldOf(picked) === 'action' ? (v) => warmActionFrames(s, frameBase, v) : undefined}
+                  onChange={(v) => {
+                    if (pvFieldOf(picked) !== 'action') { picked.set(v); back(); return }
+                    void actionInfo(s, v).then((i) => { if (i.delays.length > 1) { setDetail(v); go('frames', 1) } else { picked.set(v); back() } })
+                  }} />
               )}
             </div>
           </div>
@@ -257,7 +277,7 @@ export function PvSheetBody() {
         )}
       </div>
       </div>
-      <SurfaceFooter onBack={view === 'pick' ? back : undefined} />
+      <SurfaceFooter onBack={view === 'frames' ? () => go('pick', -1) : view === 'pick' ? back : undefined} />
     </>
   )
 }
