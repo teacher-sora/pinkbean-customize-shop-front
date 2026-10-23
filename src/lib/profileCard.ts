@@ -243,13 +243,15 @@ export type CardView = { z: number; x: number; y: number }
 // 배경: 'theme' = 카드 색, 'room' 피팅룸, 캐시샵 배경(cs0~), 'white' · 'black', 올린 그림의 id
 export type CardBg = { sel: string; images: StageBgImage[] }
 
-// 처음 보기 — 그림 상자가 사진 칸 높이의 62%(폭은 80%)가 되는 가장 큰 정수 배율, 상자 가운데를 칸 가운데에
+// 처음 보기 — 그림이 사진 칸에 드는 가장 큰 정수 배율, 몸통을 칸 가로 가운데에
 export function defaultView (b: CardBoard | null): CardView {
   if (!b) return { z: 5, x: 0, y: -30 }
-  const w = b.x1 - b.x0 + 1, h = b.y1 - b.y0 + 1
+  // 가로 가운데는 그림 상자가 아니라 몸통(마네킹 시각 중심 = foot.x — 미리보기와 같은 기준, 사용자 지시: 긴 무기 쪽으로 쏠렸다).
+  // 그래서 폭은 몸통에서 더 먼 쪽 끝까지의 두 배로 잰다. 세로 가운데는 그림 상자 그대로
+  const w = 2 * Math.max(b.foot.x - b.x0, b.x1 + 1 - b.foot.x), h = b.y1 - b.y0 + 1
   // 그림(캐릭터 + 명찰 · 말풍선 · 칭호)이 사진 칸 높이의 84% · 폭의 94% 안에 드는 가장 큰 정수 배율(사용자 지시 — 0.62 · 0.8 은 멀었다)
   const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.floor(Math.min((PHOTO.h * 0.84) / h, (PHOTO.w * 0.94) / w))))
-  return { z, x: (b.x0 + b.x1 + 1) / 2 - b.foot.x, y: (b.y0 + b.y1 + 1) / 2 - b.foot.y }
+  return { z, x: 0, y: (b.y0 + b.y1 + 1) / 2 - b.foot.y }
 }
 
 const imgCache = new Map<string, Promise<HTMLImageElement | HTMLCanvasElement>>()
