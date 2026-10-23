@@ -26,7 +26,7 @@
 //        움직이는 판(ani 프레임 — 훈장 29 · 칭호 22)은 첫 프레임 한 장이고 이름 글자가 그림에 박혀 있어(baked) 글자를 얹지 않는다.
 //        틀(fx — 판 위에 덧붙는 장식, 가운데가 띠 한 장 폭만큼 뚫렸다)이 있는 칭호는 띠를 제 폭으로 깔고 틀을 씌운다. 가장 넓은 층에도 이름이
 //        들어가지 않는 훈장은 판 가운데 세로줄을 이어 늘린다. 글자가 박힌 판은 캐릭터 가운데에 둔다(원본 기준점이 치우친 것이 많다).
-//        훈장은 명찰 아래 MEDAL_GAP(명찰이 없으면 기본 명찰 자리 아래), 칭호는 글자 칸 아래가 머리 위 TITLE_TEXT. 칭호가 있으면 말풍선은 칭호 위로 올라간다(사용자 지시).
+//        훈장은 명찰 아래 MEDAL_GAP(명찰이 없으면 기본 명찰 자리 아래), 칭호는 글자 칸 아래가 머리 위 TITLE_TEXT. 말풍선은 제자리에서 칭호를 덮는다(게임과 같다 — 사용자 캡처).
 // 글자는 돋움 12px 비트맵의 도트를 그대로 찍는다(core/chatGlyphs — 브라우저가 글꼴을 그리지 않아 어느 기기에서나 게임과 같다).
 // 글자 폭(advance) · 왼쪽 여백 · 기준선 높이도 돋움 값 그대로다. 색은 원본 clr. 돋움에 없는 글자만 사이트 글꼴로 그려 알파를 끊는다.
 // 원본에 있지만 아직 쓰지 않는 값: 움직이는 명찰의 heightoffset · bottomoffset(뜻을 확인하지 못했다), fontType(명찰 · 말풍선 각 1개).
@@ -63,7 +63,6 @@ const BALLOON_TIP = 76     // 발끝 위 말풍선 꼬리 그림 아래 끝까�
 const TITLE_TEXT = 86      // 발끝 위 칭호 글자 칸 아래까지(머리 위 — 그림 끝이 아니라 글자 칸으로 잰다: 판 아래로 처지는 장식이 디자인마다 달라
                            // 그림 끝으로 맞추면 칭호마다 높이가 들쭉날쭉했다. 사용자 지적: 칭호가 대체로 낮았다)
 const MEDAL_GAP = 4        // 명찰 그림 아래 훈장 그림 위까지(사용자 지적: 명찰에 너무 붙었다)
-const BALLOON_GAP = 2      // 칭호 그림 위 말풍선 그림 아래까지
 
 // ox, oy = 기준점(발끝)에서 그림 왼쪽 위까지. emo = 덧그릴 움직이는 이모티콘(x, y = 그림 왼쪽 위에서 프레임 origin 이 닿는 점)
 type Bitmap = { c: HTMLCanvasElement; ox: number; oy: number; emo?: { img: HTMLImageElement; frames: EmoFrame[]; x: number; y: number } }
@@ -358,11 +357,11 @@ export async function prepareChat (d: ChatDraw | undefined, full = false): Promi
     d.title ? bitmapOf(d.title.ui, d.title.name, keep) : null, d.medal ? bitmapOf(d.medal.ui, d.medal.name, keep) : null,
   ])
   // 쌓기(캐시한 그림은 그대로 두고 자리만 옮긴 사본으로): 훈장 = 명찰 그림 아래(명찰이 없으면 기본 명찰 자리 아래 — 발에 붙지 않게),
-  // 칭호 = 글자 칸 아래가 머리 위 TITLE_TEXT(그림의 글자 칸은 TAG_TEXT ~ +12 에 있다), 말풍선 = 칭호가 있으면 아래 끝이 칭호 위 끝 위로.
+  // 칭호 = 글자 칸 아래가 머리 위 TITLE_TEXT(그림의 글자 칸은 TAG_TEXT ~ +12 에 있다). 말풍선은 제자리 — 게임에서도 칭호 위로 비켜 가지 않고
+  // 칭호를 덮는다(사용자 캡처: 미소노미카쨩 · 신비한 정원). 그래서 말풍선을 칭호보다 나중에(위에) 그린다.
   const t = title && { ...title, oy: title.oy - TITLE_TEXT - (TAG_TEXT + LINE) }
   const m = medal && { ...medal, oy: (tag ? tag.oy + tag.c.height : BASE_TAG_TOP + BASE_TAG_H) + MEDAL_GAP }
-  const b = bub && t ? { ...bub, oy: bub.oy + Math.min(0, t.oy - BALLOON_GAP - (bub.oy + bub.c.height)) } : bub
-  return [b, t, tag, m].filter((x): x is Bitmap => !!x)
+  return [t, tag, m, bub].filter((x): x is Bitmap => !!x)
 }
 
 // 캐릭터 위에 덧그린다. 시선이 오른쪽(flip)이어도 글자는 뒤집지 않고 자리만 옮긴다. 기준점 = 딛고 선 바닥(탈것이면 탈것의 바닥).

@@ -2,7 +2,8 @@
 
 // 코디 프로필 — 공유 카드 꾸미기(Surface 'card', 코디 정보 탭의 [코디 프로필 저장]). 사용자 지시:
 //  · 창을 둘로 나눈다 — 왼쪽(모바일은 위) = 저장될 카드 그대로의 미리보기, 오른쪽(모바일은 아래) = 꾸미기.
-//  · 꾸미기: 카드 디자인 · 배경(올린 그림 포함) · 사진 자리(끌어 옮기기 · 배율) · 명찰과 이름 · 칭호 · 훈장 · 말풍선(이모티콘과 그 프레임 < N >).
+//  · 꾸미기: 카드 디자인 · 배경(올린 그림 포함) · 사진 자리(끌어 옮기기 · 배율) · 자세(액션 → 그 액션의 자세, 연출 설정과 같은 고르기) ·
+//    명찰과 이름 · 칭호 · 훈장 · 말풍선(이모티콘과 그 프레임 — 프레임 그림 3열에서 고른다).
 //  · 오른쪽 아래 [저장] = 미리보기 그대로 저장(lib/profileCard 의 같은 함수 — 저장만 두 배 해상도). 파일 이름은 '<이름> 공유 카드'.
 // 그리기: 판(사진 칸 밖)은 디자인 · 이름 · 칩이 바뀔 때만, 사진 칸은 끌 때 프레임마다(React 를 다시 그리지 않고 ref + rAF).
 // 캐릭터 그림(canvasExport.drawShot)은 명찰 · 말풍선 · 프레임이 바뀔 때만 다시 그린다(글을 적는 동안은 잠깐 멈춘 뒤).
@@ -14,6 +15,12 @@ import type { ChatEmo } from '@/lib/core/chatUi'
 import { imageSrc } from '@/lib/core/render'
 import { CARD_THEMES, CARD_W, PHOTO, ZOOM_MAX, ZOOM_MIN, cardBgImage, cardFonts, cardHeight, defaultView, drawCardBase, drawCardPhoto, type CardBoard, type CardView, type ShareChip } from '@/lib/profileCard'
 import { CHAT_NAME_FALLBACK, CHAT_TEXT_MAX, chatDrawOf } from '@/lib/shopData'
+import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT } from '@/lib/catalog'
+import { animaOnce, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
+import { ActionFrameGrid, actionInfo, useActionInfo } from '../preview/ActionFrames'
+import { PvGrid } from '../preview/PvPicker'
+import { useInnerSlide } from './innerSlide'
+import pvs from '../preview/preview.module.css'
 import { addStageBg, CASH_BGS, cashBgsOn, getStageBg, STAGE_BG_MAX, useStageBg } from '@/lib/stageBg'
 import { infoRows, shareChips, useSkinItem, useToneName } from '../info/InfoPanel'
 import ChatEmoPicker from '../preview/ChatEmoPicker'
@@ -75,14 +82,38 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   // ── 재료: 글꼴 · 칩 · 미리보기의 그림 재료(창을 열 때 한 번) ──
   const [fonts, setFonts] = useState(false)
   const [chips, setChips] = useState<ShareChip[] | null>(null)
-  const [shot, setShot] = useState<ModelShot | null | undefined>(undefined)
+  const [pvShot, setPvShot] = useState<ModelShot | null | undefined>(undefined)
   useEffect(() => {
     let alive = true
     void cardFonts().then(() => { if (alive) setFonts(true) })
-    void getPreviewShot().then((v) => { if (alive) setShot(v) })
+    void getPreviewShot().then((v) => { if (alive) setPvShot(v) })
     void shareChips(s, infoRows(s, skinItem, toneName), toneName).then((v) => { if (alive) setChips(v) }).catch(() => { if (alive) setChips([]) })
     return () => { alive = false }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- 연 순간의 코디로 만든다
+
+  // ── 자세: 처음은 미리보기 그대로(pvShot). 고르면 지금 코디를 그 액션 · 자세로 다시 합성한다(카드 · 연출 고르기와 같은 합성기 — view)
+  const [pose, setPose] = useState<{ action: string; frame: number } | null>(null)
+  const [poseShot, setPoseShot] = useState<ModelShot | null>(null)
+  useEffect(() => {
+    if (!pose || !s.index) { setPoseShot(null); return }
+    let alive = true
+    const snap = s.snapshot(), sn = { ...snap, pv: { ...snap.pv!, action: pose.action, frame: pose.frame } }
+    void animaOnce().then((ar) => composeSnapshotCached(snapKey(sn), sn, s.index!, ar, true)).then((r) => {
+      if (alive && r) setPoseShot({ placed: r.placed, override: r.overrides, effects: r.effects, particles: r.particles, flip: s.pv.gaze === 'right', centerX: r.center === 'x', centerMount: r.center === 'mount' })
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [pose]) // eslint-disable-line react-hooks/exhaustive-deps -- 연 순간의 코디에 자세만 바꾼다
+  const shot = pose ? poseShot : pvShot
+  const [poseOpen, setPoseOpen] = useState(false)
+  const poseSlide = useInnerSlide<'list' | 'frames'>('list')
+  const [poseDetail, setPoseDetail] = useState<string | null>(null)
+  const poseInfo = useActionInfo(poseDetail)
+  const [poseBase] = useState(() => s.snapshot())
+  const pickAction = async (v: string) => {
+    setPose({ action: v, frame: -1 })
+    if ((await actionInfo(s, v)).delays.length > 1) { setPoseDetail(v); poseSlide.go('frames', 1) } else setPoseOpen(false)
+  }
+  const actLabel = (a: string) => PV_ACTIONS_FLAT.find((o) => o.v === a)?.l ?? a
 
   // ── 명찰 · 말풍선 · 칭호 · 훈장(미리보기와 같은 규칙 — shopData.chatDrawOf) ──
   const nameShown = name.trim() || CHAT_NAME_FALLBACK
@@ -157,7 +188,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   }, [])
   const raf = useRef(0)
   const schedule = useCallback(() => { if (!raf.current) raf.current = requestAnimationFrame(() => { raf.current = 0; paint() }) }, [paint])
-  useEffect(() => () => cancelAnimationFrame(raf.current), [])
+  useEffect(() => () => { cancelAnimationFrame(raf.current); raf.current = 0 }, []) // 표시도 지운다 — 남아 있으면 다시 붙은 뒤(개발 모드의 두 번 실행) 다시 그리기가 막힌다
   // 판: 디자인 · 이름 · 칩 · 해상도가 바뀔 때
   useEffect(() => {
     if (!chips || !fonts) return
@@ -300,6 +331,30 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
         </div>
       </section>
 
+      <section className={styles.sec}>
+        <div className={styles.secHead}>자세</div>
+        <div className={styles.row}>
+          <span className={styles.rowFill}>{pose ? `${actLabel(pose.action)} | ${pose.frame < 0 ? '대표 자세' : `${pose.frame + 1}번째 자세`}` : '미리보기 그대로'}</span>
+          {pose && <button type="button" onClick={() => { setPose(null); setPoseOpen(false) }} className={clsx('pb-ghost', styles.btn)}>미리보기대로</button>}
+          <button type="button" onClick={() => { setPoseOpen((x) => !x); poseSlide.go('list', -1) }} aria-pressed={poseOpen} className={clsx('pb-ghost', styles.btn, poseOpen && styles.btnOn)}>고르기</button>
+        </div>
+        {poseOpen && (
+          <div className={styles.poseBox}>
+            <div className={styles.poseHead}>
+              {poseSlide.view === 'frames' && poseDetail ? <>{actLabel(poseDetail)}<span className={styles.hint}>멈출 자세를 골라요</span></> : <span>액션</span>}
+              {poseSlide.view === 'frames' && <button type="button" onClick={() => poseSlide.go('list', -1)} className={clsx('pb-ghost', styles.btnSm)}>이전</button>}
+            </div>
+            <div className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.poseScroll)}>
+              <div style={poseSlide.style} className={pvs.sheetSlide}>
+                {poseSlide.view === 'frames' && poseDetail
+                  ? <ActionFrameGrid action={poseDetail} info={poseInfo} value={pose?.action === poseDetail ? pose.frame : -1} base={poseBase} onPick={(f) => setPose({ action: poseDetail, frame: f })} />
+                  : <PvGrid field="action" options={PV_ACTIONS_FLAT} groups={PV_ACTION_GROUPS} value={pose?.action ?? s.pv.action} onChange={(v) => { void pickAction(v) }} />}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
       {s.chatOn && (
         <section className={styles.sec}>
           <div className={styles.secHead}>명찰</div>
@@ -345,7 +400,23 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
                 <span className={styles.emoName}>{emo.name}</span>
                 <button type="button" onClick={() => { setEmo(null); setFrame(1) }} title="이모티콘 빼기" aria-label="이모티콘 빼기" className={styles.emoDel}><IconClose size={12} /></button>
               </span>
-              {frames && <><span className={styles.rowLabel}>프레임</span><Pager value={Math.min(frame, frames.length)} min={1} max={frames.length} label="프레임" onSet={setFrame} /></>}
+            </div>
+          )}
+          {/* 움직이는 이모티콘: 프레임마다의 그림을 3열로 늘어놓고 눈으로 보고 고른다(사용자 지시 — 숫자 < N > 대신) */}
+          {emo && frames && emo.strip && (
+            <div className={pvs.pvGrid} role="listbox" aria-label="이모티콘 프레임">
+              {frames.map((f, i) => {
+                const k = Math.min(1, 60 / Math.max(f.w, f.h))
+                return (
+                  <button key={i} type="button" role="option" aria-selected={frame === i + 1} onClick={() => setFrame(i + 1)} title={`${i + 1}번째 프레임`}
+                    className={clsx(pvs.pvCell, frame === i + 1 && pvs.pvCellOn)}>
+                    <span className={pvs.pvCellArt}>
+                      <span className={styles.emoFrame} style={{ width: f.w, height: f.h, backgroundImage: `url("${imageSrc(emo.strip!, true)}")`, backgroundPosition: `-${f.x}px 0`, transform: k < 1 ? `scale(${k})` : undefined }} />
+                    </span>
+                    <span className={pvs.pvCellName}>{i + 1}</span>
+                  </button>
+                )
+              })}
             </div>
           )}
           {emoOpen && (

@@ -272,8 +272,12 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // 바닥에 닿는 높이(navel 기준). 맨몸은 발, 탑승 중이면 탈것의 원점 — 배경 장면이 이 높이에 바닥을 깐다(lib/stageFloor).
     const mount = riding ? frames[0]?.placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount')) : undefined
     const ground = mount ? mount.y + mount.origin.y : frames[0]?.foot.y ?? 21
-    return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action) }
-  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, V, viewInfo.isStatic, weaponMotion])
+    // 멈춘 프레임(pv.frame — 연출 설정 > 액션에서 고른 자세): 그 한 장만 남긴다. 복사 · 움짤 · 염색이 모두 이 목록을 보므로 함께 따른다.
+    // 이펙트 · 입자는 계속 돈다(몸만 멈춘다 — 게임에서 멈춰 선 캐릭터의 망토 이펙트가 도는 것과 같다)
+    const fz = !viewInfo.isStatic && pv.frame >= 0 && pv.frame < N ? pv.frame : -1
+    if (fz >= 0) return { frames: [frames[fz]], delays: [delays[fz]], N: 1, riding, centerMount, ground, animated: false, pingpong: false, frozen: fz }
+    return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action), frozen: -1 }
+  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, pv.frame, V, viewInfo.isStatic, weaponMotion])
 
   // 그릴 파티클 자리 — 이펙트와 같은 규칙으로 끈다(부위 숨김 · 무기 이펙트 끔 · 이펙트를 숨기는 링).
   const partSpots = useMemo(() => {
@@ -380,8 +384,8 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     // (겨울여우 솜펀치 등)나 이펙트가 0번이 아닌 프레임에 멈췄을 때 그 부위만 염색이 풀려 보였다. 그래서 이 프레임도 함께 칠한다.
     const clk = clockRef.current
     const shownAt = clk.running ? clk.elapsed + (performance.now() - clk.since) : clk.elapsed
-    const shownFi = spec?.animated ? Math.min((spec.pingpong ? frameAtElapsedAlt : frameAtElapsed)(spec.delays, shownAt), spec.frames.length - 1) : 0
-    const shownFrame = spec?.frames[shownFi]
+    const shownFi = spec && spec.frozen >= 0 ? spec.frozen : spec?.animated ? Math.min((spec.pingpong ? frameAtElapsedAlt : frameAtElapsed)(spec.delays, shownAt), spec.frames.length - 1) : 0
+    const shownFrame = spec?.frames[spec.frozen >= 0 ? 0 : shownFi]
     const ov = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, shownFi || false, dyeBack).catch(() => new Map<string, HTMLCanvasElement>())
     // 이펙트/피부 프레임 염색을 override(ov)에 추가. allFrames=false 면 프레임0만, true 면 전 프레임.
     // ⚠️ 프레임 png 는 반드시 "병렬 로드"(Promise.all)로 받는다 — 순차 fetch(프레임마다 await)면 큰 이펙트(망토)
@@ -448,7 +452,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       setDyeOverrides(new Map(ov))
       if (willDyeFrames) setDyeSettling(false)
     }
-  }, [equipped, metas, effMetas, dyePalette, dyeHsb, V, hidden, pv.gaze, pv.action, bodyMeta, headMeta, toneEntry, dyeInteracting])
+  }, [equipped, metas, effMetas, dyePalette, dyeHsb, V, hidden, pv.gaze, pv.action, pv.frame, bodyMeta, headMeta, toneEntry, dyeInteracting])
 
   // 연출 변경 즉시 반영용 유휴 프리페치: 지금 착용·시선·귀 기준으로 "다른 액션 / 표정 / 무기 모션"의 첫 프레임
   // 스프라이트를 미리 받고, 염색이 있으면 그 발색(override)도 미리 구워 캐시를 데운다. 바꾸는 순간엔 네트워크·리컬러

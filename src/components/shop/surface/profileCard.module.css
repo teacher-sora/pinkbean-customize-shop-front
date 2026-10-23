@@ -41,3 +41,11 @@
 .emoName { flex: 1 1 auto; min-width: 0; font-size: 12px; color: #5c534b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .emoDel { flex: 0 0 auto; width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 4px; background: transparent; color: #a89e93; cursor: pointer; }
 .emoBox { height: 260px; display: flex; flex-direction: column; border: 1px solid #f0e9e1; border-radius: 8px; overflow: hidden; }
+.btnOn { border-color: #ec86ac; background: #fef5f8; color: #d76d9a; }
+.btnSm { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid #f0e9e1; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; cursor: pointer; }
+/* 자세 고르기 — 연출 설정의 액션 창과 같은 격자 · 같은 전환(액션 → 그 액션의 자세) */
+.poseBox { height: 330px; display: flex; flex-direction: column; border: 1px solid #f0e9e1; border-radius: 8px; overflow: hidden; }
+.poseHead { flex: 0 0 auto; height: 40px; padding: 0 8px 0 10px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0e9e1; font-size: 12px; font-weight: 600; color: #5c534b; }
+.poseHead > button { margin-left: auto; }
+.poseScroll { flex: 1 1 auto; min-height: 0; padding: 8px; overflow: hidden auto; overscroll-behavior: contain; }
+.emoFrame { display: block; flex: 0 0 auto; background-repeat: no-repeat; image-rendering: pixelated; }

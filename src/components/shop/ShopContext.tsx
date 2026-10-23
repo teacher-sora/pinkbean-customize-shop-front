@@ -55,9 +55,9 @@ export const isMultiCat = (cat: string) => cat === 'all' || cat === 'new' || cat
 //  · 보기 설정(PV_VIEW_DEFAULT) = 시선·액션·표정·배율. **정보로만** 담아 프리셋을 쓸 때 화면에 되살리고, 카드에는 적용하지 않는다.
 // 보기 설정은 광장에 올릴 때 빠진다(lib/plazaLook.plazaSnapshot) → 없을 수 있고, 없으면 지금 보던 값을 유지한다.
 export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; floatFx?: boolean; baseTag?: boolean // floatFx = 부유 아이템의 둥둥 뜨기(없으면 켜짐), baseTag = 명찰 반지가 없을 때 기본 명찰(없으면 꺼짐)
-  gaze?: string; action?: string; expr?: string; zoom?: number }
+  gaze?: string; action?: string; frame?: number; expr?: string; zoom?: number }
 export const PV_LOOK_DEFAULT = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, floatFx: true, baseTag: false }
-export const PV_VIEW_DEFAULT = { gaze: 'left', action: 'basic', expr: 'default', zoom: 2 }
+export const PV_VIEW_DEFAULT = { gaze: 'left', action: 'basic', frame: -1, expr: 'default', zoom: 2 }
 export const PV_SNAP_DEFAULT: PvSnap = { ...PV_LOOK_DEFAULT, ...PV_VIEW_DEFAULT }
 // 점(애교점) 위치 오프셋: 레이어이름(accessoryEye/accessoryEye2) → 월드 오프셋. 사소한 변경점/쩜 전용.
 export type DotOffsets = Record<string, Vec>
@@ -119,7 +119,7 @@ const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, stri
 // 연출 설정 기본값 — 첫 상태이자 '프리셋 초기화'가 되돌릴 값이다(한곳에서 관리).
 // 시선·액션·표정·fps 는 스냅샷에 담기지 않지만, 초기화는 **이것까지 전부** 되돌린다.
 const PV_DEFAULT: Pv = {
-  action: 'basic', weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
+  action: 'basic', frame: -1, weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
   gaze: 'left', wEffect: true, cEffect: true, capEffect: true, floatFx: true, baseTag: false, fps: 12, zoom: 2,
 }
 const defaultSnapshot = (): Snapshot => ({
@@ -1054,7 +1054,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [pagedList, curIdx, itemsPerPage, snapping, pv.action, pv.expr, pv.ear, pv.weapon, pv.gaze])
 
   // ── 핸들러 ──
-  const setPv = (key: keyof Pv, val: Pv[keyof Pv]) => setPvState((s) => ({ ...s, [key]: val }))
+  // 액션 · 무기 모션 · 시선을 바꾸면 멈춘 프레임은 재생으로 돌아간다(프레임 수 · 자세가 달라진다). 프레임은 그 뒤에 setPv('frame', n) 으로 고른다
+  const setPv = (key: keyof Pv, val: Pv[keyof Pv]) => setPvState((s) => (s[key] === val ? s : { ...s, [key]: val, ...(key === 'action' || key === 'weapon' || key === 'gaze' ? { frame: -1 } : {}) }))
   const notify = useCallback((msg: string) => {
     setToastText(msg); setToast(true)
     if (toastT.current) clearTimeout(toastT.current)
@@ -1521,7 +1522,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       ...(Object.keys(dyeOff).length ? { dyeOff: { ...dyeOff } } : {}),
       pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, floatFx: pv.floatFx, baseTag: pv.baseTag,
         // 보기 설정은 **정보로만** 담는다 — 프리셋을 쓸 때 화면을 되살리는 데만 쓰이고 카드에는 그려지지 않는다.
-        gaze: pv.gaze, action: pv.action, expr: pv.expr, zoom: pv.zoom } }
+        gaze: pv.gaze, action: pv.action, frame: pv.frame, expr: pv.expr, zoom: pv.zoom } }
   }
   // 스냅샷의 연출설정을 라이브 pv 에 반영. 코디에 속하는 연출(형상변이·귀·무기모션·이펙트)은 없으면 기본값으로,
   // 보기 설정(시선·액션·표정·배율)은 **담겨 있을 때만** 되살린다 — 광장 코디나 오래된 프리셋처럼 담기지 않은 것을
@@ -1530,7 +1531,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const s = v ?? PV_LOOK_DEFAULT
     setPvState((prev) => ({ ...prev,
       form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, floatFx: s.floatFx ?? true, baseTag: s.baseTag ?? false,
-      gaze: v?.gaze ?? prev.gaze, action: v?.action ?? prev.action, expr: v?.expr ?? prev.expr, zoom: v?.zoom ?? prev.zoom }))
+      gaze: v?.gaze ?? prev.gaze, action: v?.action ?? prev.action, frame: v?.frame ?? (v?.action != null ? -1 : prev.frame), expr: v?.expr ?? prev.expr, zoom: v?.zoom ?? prev.zoom }))
   }
   // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
   const loadSlotFolded = async (slot: string): Promise<ListItem[]> => {

@@ -1,6 +1,6 @@
 // 스냅샷(착용+톤+염색+점 위치+연출설정 일부) → 합성 결과(placed·염색 override·이펙트). 렌더 캔버스와 무관한 순수 조립.
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
-import { assemble, dropWeaponEffects, getFrameLayers, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
+import { assemble, dropWeaponEffects, frameDelays, getFrameLayers, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
 import { loadMeta, loadAnima, loadParticle, loadParticleIndex, loadSlot, type AnimaRace, type Index, type ItemMeta, type ListItem } from './data'
 import { LRU } from './lru'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor } from './dye'
@@ -56,23 +56,29 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const shown = equipMetas.filter(({ slot }) => !(rideId && slot === 'shield') && !(seated && slot === 'weapon'))
   // 정지 프레임(0번)이 하필 뒷모습인 액션이 있다 — 두손 스윙(마무리) 0번. 미리보기와 같은 규칙으로 판단한다
   // (안 하면 긴 헤어가 backBody 를 덮어 카드가 '머리만' 나온다 — assemble.isBackFrame 주석 참고).
-  const backFrame = isBackFrame(bodyMeta, charTV)
+  // 멈춘 프레임(연출 고르기의 프레임 칸 · 코디 프로필 — view 일 때만): 그 액션의 fi 번째 자세. 없으면 대표 프레임(지금까지와 같다)
+  const fi = view && spv.frame != null && spv.frame >= 0 && !seated && spv.frame < frameDelays(bodyMeta, charTV).length ? spv.frame : undefined
+  const backFrame = isBackFrame(bodyMeta, charTV, fi)
   // 무기 이펙트를 끄면 **무기 자신의 이펙트 레이어**도 뺀다 — 미리보기(PreviewModel)와 같은 규칙(assemble.dropWeaponEffects).
   //   이펙트는 ItemEff(별도 png)뿐 아니라 무기 프레임 안에 레이어로 박혀 있기도 해서(예 01703646: effect 90장),
   //   ItemEff 만 걸러서는 꺼지지 않는다.
   const wornLayers = (slot: string, meta: ItemMeta) => {
     // 탈것만 자기 액션(TV)을 돈다 — 캐릭터의 뒷프레임 판단도 붙이지 않는다(별도 모델).
-    const ls = slot === 'riding' ? getFrameLayers(meta, rideTV) : getFrameLayers(meta, charTV, undefined, backFrame) // 정지 화면 = 대표 프레임
+    const ls = slot === 'riding' ? getFrameLayers(meta, rideTV) : getFrameLayers(meta, charTV, fi, backFrame) // 정지 화면 = 대표 프레임(fi 가 있으면 그 프레임)
     return dropWeaponEffects(slot, ls, spv.wEffect)
   }
   const items: AssembleInput[] = [
-    { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, charTV) },
-    { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, charTV, 0, backFrame) },
+    { itemId: bodyMeta.id, slot: 'body', vslot: null, layers: getFrameLayers(bodyMeta, charTV, fi) },
+    { itemId: headMeta.id, slot: 'head', vslot: null, layers: getFrameLayers(headMeta, charTV, fi ?? 0, backFrame) },
     // name 은 투명 아이템 판별에 쓰인다 — 없으면 투명 모자/장식이 헤어·얼굴을 가려 구멍이 생긴다.
     ...shown.map(({ slot, meta }) => ({ itemId: meta.id, slot, vslot: meta.vslot ?? null, layers: wornLayers(slot, meta), invisibleFace: meta.invisibleFace, name: meta.name, dotOffsets: snap.dotPos?.[meta.id] })),
     ...animaLayers(spv.form, animaRaces), // 형상변이 — 프리셋에 저장된 값
   ]
-  const { placed, anchors } = assemble(items, index.zmap, index.smap)
+  const asm = assemble(items, index.zmap, index.smap), anchors = asm.anchors
+  // 프레임을 골랐으면 미리보기와 같이 배꼽을 stand1 기준으로 되돌린다(발은 고정, 몸통 · 팔다리만 움직인다 — 프레임 칸끼리 캐릭터가 흔들리지 않게)
+  const refNav = fi != null ? bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel : undefined
+  const curNav = refNav ? asm.placed.find((p) => p.slot === 'body' && p.name === 'body')?.map?.navel : undefined
+  const placed = refNav && curNav && (curNav.x !== refNav.x || curNav.y !== refNav.y) ? asm.placed.map((p) => ({ ...p, x: p.x + curNav.x - refNav.x, y: p.y + curNav.y - refNav.y })) : asm.placed
   // 그릴 그림을 지금 받기 시작한다(그리는 쪽 renderCharacter 가 같은 캐시를 쓴다) — 아래의 염색 · 이펙트를 기다리는 동안 함께 온다.
   for (const p of placed) void loadImage(p.png, true).catch(() => {})
   // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (오래된 프리셋엔 dye 키가 없을 수 있어 방어)
@@ -80,17 +86,17 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const off = snap.dyeOff || {}
   const onlyOn = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
   const snapPal = onlyOn(snap.dyePalette), snapHsb = onlyOn(snap.dyeHsb)
-  const overrides = await buildOverrides(shown.map((e) => e.meta), { palette: snapPal, hsb: snapHsb }, charTV, false, backFrame)
+  const overrides = await buildOverrides(shown.map((e) => e.meta), { palette: snapPal, hsb: snapHsb }, charTV, fi ?? false, backFrame)
   const skinHsb = snapHsb['skin']
   const skinFam = skinDyeFamily(te.name)
   if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && skinFam != null) {
-    for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, charTV, 0, backFrame)) {
+    for (const meta of [bodyMeta, headMeta]) for (const l of getFrameLayers(meta, charTV, fi ?? 0, backFrame)) {
       try { overrides.set(l.png, applyHsb(await loadDyeImage(l.png), skinHsbFor(skinHsb, skinFam), l.png)) } catch (_) {}
     }
   }
   // 이펙트(망토 등 ItemEff): 착용 아이템의 이펙트를 정지 프레임0으로 합성.
   const curBody = placed.find((pl) => pl.slot === 'body' && pl.name === 'body')
-  const bnav = curBody?.map?.navel
+  const bnav = refNav && curNav ? refNav : curBody?.map?.navel // 배꼽을 되돌렸으면 발도 그만큼(= stand1 배꼽 기준)
   const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
   const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
   // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기와 같은 규칙.

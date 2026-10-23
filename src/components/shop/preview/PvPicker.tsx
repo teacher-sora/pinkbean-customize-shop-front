@@ -12,6 +12,9 @@
 //    아래 붙음)에 자리 잡아 밖으로 비어져 나가지 않는다. 뜨고 질 때 같은 곡선으로 살짝 올라오고 내려간다.
 //  · 모바일 = 시트를 **가로로 슬라이드**해 시트 안의 다음 화면으로 간다(부위 염색 → 염색과 같은 몸짓, PvSheetBody).
 //    좁은 화면에서 시트 위에 팝오버를 또 띄우면 층이 겹쳐 보여, 이미 쓰고 있는 전환을 그대로 쓴다.
+// 액션은 한 단계 더 있다(사용자 건의): 액션을 누르면 곧바로 그 액션이 재생되고, 같은 창 안에서 **액션 상세**(재생 · 자세 1, 2, …)로
+// 가로로 넘어가 멈출 자세를 고른다(ActionFrames). 자세가 하나뿐인 액션(기본 · 뒷모습 · 탑승해 앉기)은 예전처럼 바로 닫는다.
+// PC 창에는 시트처럼 아래 줄([이전] [닫기])을 둔다 — 화면이 둘이 되어 돌아갈 길이 보여야 한다.
 
 import clsx from 'clsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -20,6 +23,8 @@ import { PV_EXPR_ICONS, type Opt } from '@/lib/catalog'
 import { spriteUrl } from '@/lib/core/data'
 import { useShop, type Snapshot } from '../ShopContext'
 import SnapThumb from '../SnapThumb'
+import { useInnerSlide } from '../surface/innerSlide'
+import { ActionFrameGrid, actionInfo, useActionInfo } from './ActionFrames'
 import ui from '../ui/ui.module.css'
 import styles from './preview.module.css'
 
@@ -27,6 +32,7 @@ type Pos = { left: number; bottom: number; w: number; maxH: number }
 type Group = { group: string; items: Opt[] }
 
 const PANEL_H = 250   // 3열 × 2줄 + 다음 줄 살짝(스크롤이 있다는 신호)
+const PANEL_H_ACTION = 330 // 액션 창은 아래 줄([이전] [닫기])이 있어 한 줄만큼 더 높다
 const INSET = 10      // 미리보기 안쪽 여백 — 이만큼은 늘 미리보기 테두리와 떨어진다
 const OUT_MS = 180    // 닫힘 전환이 끝난 뒤 떼어낸다(등장 .22s · 퇴장 .18s — 양방향 대칭)
 const MODEL_FRACTION = 0.55 // 칸 안 모델 크기. 0.62 는 위아래가 칸에 닿아 답답하다
@@ -52,7 +58,8 @@ export function PvGrid({ field, options, groups, value, onChange, disabledValues
   const snaps = useMemo(() => {
     if (field === 'expr') return null
     const m = new Map<string, Snapshot>()
-    for (const o of options) m.set(o.v, { ...base, pv: { ...(base.pv || ({} as NonNullable<Snapshot['pv']>)), [field]: o.v } })
+    // 액션 칸은 늘 재생(대표 프레임)으로 — 지금 멈춰 둔 프레임 번호를 다른 액션에 옮기지 않는다
+    for (const o of options) m.set(o.v, { ...base, pv: { ...(base.pv || ({} as NonNullable<Snapshot['pv']>)), [field]: o.v, ...(field === 'action' ? { frame: -1 } : {}) } })
     return m
   }, [base, field, options])
 
@@ -143,7 +150,7 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
     const stage = document.querySelector('[data-pv-stage]')?.getBoundingClientRect()
     const box = stage ?? { left: 0, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight }
     const w = Math.max(200, Math.round(box.width) - INSET * 2)
-    const maxH = Math.max(150, Math.min(PANEL_H, Math.round(box.height) - INSET * 2))
+    const maxH = Math.max(150, Math.min(field === 'action' ? PANEL_H_ACTION : PANEL_H, Math.round(box.height) - INSET * 2))
     setPos({ left: Math.round(box.left) + INSET, bottom: Math.round(window.innerHeight - box.bottom) + INSET, w, maxH })
   }
   // 등장 전환이 보이도록 마운트 후 한 프레임 뒤에 켠다.
@@ -185,11 +192,49 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
       {open && typeof document !== 'undefined' && createPortal(
         <div ref={panelRef} role="listbox" aria-label={ariaLabel} className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', 'pb-fadepop', styles.pvPanel, shown && styles.pvPanelOn)}
           style={{ left: pos!.left, bottom: pos!.bottom, width: pos!.w, maxHeight: pos!.maxH }}>
-          <PvGrid field={field} options={options} groups={groups} value={value} disabledValues={disabledValues} disabledTitle={disabledTitle}
-            onChange={(v) => { onChange(v); close() }} />
+          {field === 'action'
+            ? <ActionPick options={options} groups={groups} value={value} onChange={onChange} disabledValues={disabledValues} disabledTitle={disabledTitle} onClose={close} />
+            : <PvGrid field={field} options={options} groups={groups} value={value} disabledValues={disabledValues} disabledTitle={disabledTitle}
+              onChange={(v) => { onChange(v); close() }} />}
         </div>,
         document.body,
       )}
+    </>
+  )
+}
+
+// ── PC 액션 창: 액션 격자 ↔ 액션 상세(재생 · 자세) ─────────────────────────────────
+function ActionPick({ options, groups, value, onChange, disabledValues, disabledTitle, onClose }: Omit<GridProps, 'field'> & { onClose: () => void }) {
+  const s = useShop()
+  const [base] = useState<Snapshot>(() => s.snapshot())
+  const { view, go, style } = useInnerSlide<'list' | 'frames'>('list')
+  const [detail, setDetail] = useState<string | null>(null)
+  const info = useActionInfo(detail)
+  const pick = async (v: string) => {
+    onChange(v)
+    const n = (await actionInfo(s, v)).delays.length
+    if (n > 1) { setDetail(v); go('frames', 1) } else onClose()
+  }
+  const label = options.find((o) => o.v === detail)?.l ?? ''
+  return (
+    <>
+      <div style={style} className={styles.sheetSlide}>
+        {view === 'frames' && detail ? (
+          <div className={styles.pvGrid}>
+            <div className={styles.pvDetailHead}>{label}<span className={styles.pvDetailHint}>재생하거나 멈출 자세를 골라요</span></div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <ActionFrameGrid action={detail} info={info} value={s.pv.action === detail ? s.pv.frame : -1} base={base}
+                onPick={(f) => { if (s.pv.action !== detail) s.setPv('action', detail); s.setPv('frame', f) }} />
+            </div>
+          </div>
+        ) : (
+          <PvGrid field="action" options={options} groups={groups} value={value} disabledValues={disabledValues} disabledTitle={disabledTitle} onChange={(v) => { void pick(v) }} />
+        )}
+      </div>
+      <div className={styles.pvFoot}>
+        {view === 'frames' && <button type="button" onClick={() => go('list', -1)} className={clsx('pb-ghost', styles.pvFootBtn)}>이전</button>}
+        <button type="button" onClick={onClose} className={clsx('pb-ghost', styles.pvFootBtn)}>닫기</button>
+      </div>
     </>
   )
 }
