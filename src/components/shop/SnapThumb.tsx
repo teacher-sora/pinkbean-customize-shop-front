@@ -23,11 +23,13 @@ import { useShop, type Snapshot } from './ShopContext'
 // view: 스냅샷의 연출 설정(액션·표정)까지 그려 준다 — 연출 설정 고르기의 작은 미리보기 전용.
 // tagName: 끼운 명찰(칸이 비었으면 그 프리셋의 기본 명찰 — pv.baseTag)을 이 이름으로 함께 그린다 — 프리셋 카드만(프리셋 이름, 사용자 지시). 말풍선은 그리지 않는다.
 
+const RETRY_MS = 9000
 // 명찰 조각 정보(id → chatUi). 명찰 · 말풍선 목록 파일을 처음 쓸 때 한 번만 받는다.
 let tagUis: Promise<Map<string, ChatUi>> | null = null
 const loadTagUis = () => (tagUis ??= fetch(CHAT_FILES.nameTag).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === 'nameTag' && x.chatUi).map((x) => [x.id, x.chatUi!]))).catch(() => new Map()))
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true }: {
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
+  onDrawn?: () => void // 캔버스에 다 그렸을 때(액션 상세의 재생 칸이 다 그려진 프레임만 번갈아 보인다)
   baseTag?: boolean // 명찰 반지가 없을 때 기본 명찰을 그릴지(없으면 스냅샷의 연출 설정 pv.baseTag) — 닉네임 불러오기 카드는 늘 켠다(사용자 지시)
   holdMenu?: boolean // false = 터치 길게 누르기로 메뉴를 열지 않는다(프리셋 카드 — 길게 누르기는 끌기다, preset/usePresetDrag)
 }) {
@@ -58,13 +60,18 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const baseTag = tagName != null && !snap.equipped.nameTag && (forceBase ?? !!snap.pv?.baseTag)
   const chat = useMemo(() => { const tag = tagUi ?? (baseTag ? BASE_TAG : undefined); return tag && tagName != null ? { tag, name: tagName, text: '' } : undefined }, [tagUi, tagName, baseTag])
 
+  const drawnRef = useRef(onDrawn)
+  drawnRef.current = onDrawn
   const prioRef = useRef(priority)
   prioRef.current = priority
   const jobRef = useRef<ReturnType<typeof enqueueThumb> | null>(null)
+  // 합성이 RETRY_MS 안에 끝나지 않으면(느린 휴대폰 네트워크에서 그림 하나가 멈춘 경우) 다시 줄을 선다 — 새로고침 전까지 빈 칸으로 남지 않게
+  const [retry, setRetry] = useState(0)
   useEffect(() => {
     if (!index || !animaRaces) return
-    let alive = true
+    let alive = true, got = false
     const done = (r: SnapComposite | null) => {
+      got = true
       if (alive && r) { setPlaced(r.placed); setOv(r.overrides); setEffects(r.effects); setParticles(r.particles); setCenter(r.center) }
     }
     // 이미 합성해 둔 코디면 줄(thumbQueue)을 서지 않고 그 자리에서 그린다 — 필터를 오가도 계산이 0 이고
@@ -74,8 +81,9 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     setPlaced(null)
     const job = enqueueThumb(prioRef.current, () => composeSnapshotCached(key, snap, index, animaRaces, view).then(done))
     jobRef.current = job
-    return () => { alive = false; job.cancel() }
-  }, [key, index, animaRaces, view])
+    const t = retry < 3 ? setTimeout(() => { if (alive && !got) setRetry((n) => n + 1) }, RETRY_MS) : undefined
+    return () => { alive = false; job.cancel(); clearTimeout(t) }
+  }, [key, index, animaRaces, view, retry])
   useEffect(() => { jobRef.current?.setPrio(priority) }, [priority])
 
   useEffect(() => {
@@ -98,7 +106,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, snap: true, drop: true })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
     return () => { cancelled = true }
   }, [placed, ov, effects, particles, center, dims, fraction, margin, chat])
 

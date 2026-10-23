@@ -17,6 +17,7 @@ type Job = { prio: number; seq: number; run: () => Promise<void>; state: 'wait' 
 
 const MAX_TOP = 12
 const MAX_IDLE = 4
+const JOB_MS = 8000
 let seq = 0
 let running = 0
 let runningTop = 0
@@ -27,11 +28,12 @@ function start(j: Job) {
   running++
   if (j.prio === 0) runningTop++
   const top = j.prio === 0
-  j.run().catch(() => undefined).finally(() => {
-    running--
-    if (top) runningTop--
-    pump()
-  })
+  // 끝나지 않는 합성(느린 네트워크에서 멈춘 그림 받기)이 자리를 영영 쥐면 뒤의 칸이 새로고침 전까지 기다리기만 한다(사용자 제보 — 액션 상세가
+  // 1번 칸까지만 떴다). JOB_MS 가 지나면 자리만 먼저 비운다(합성은 그대로 이어져 끝나면 그린다)
+  let freed = false
+  const free = () => { if (freed) return; freed = true; running--; if (top) runningTop--; pump() }
+  const t = setTimeout(free, JOB_MS)
+  j.run().catch(() => undefined).finally(() => { clearTimeout(t); free() })
 }
 
 function pump() {
