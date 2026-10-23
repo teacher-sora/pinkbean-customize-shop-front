@@ -37,6 +37,7 @@
 | 미리보기 배경 | `lib/stageBg.ts`(`useStageBg`·`setStageBg`·`addStageBg`·`removeStageBg`) + `preview/StageBg.tsx`(미리보기 칸에 까는 것) + `surface/StageBgBody.tsx`(고르는 격자) |
 | 펼침·접힘 움직임 | `surface/glide.ts`(`place`·`glideTo`·`release`), `surface/sheetMotion.ts` |
 | 창 안에서 옆으로 바꿔 끼우기 | `surface/innerSlide.ts` — `useInnerSlide` |
+| 담아 두고 고르는 한 줄 칸(바탕 깐 목록 · 칸 크기 고정 · 가로 스크롤 · 스크롤바 숨김 + 양 끝 흐림 · [+] 칸은 맨 끝 · ✕ 는 두 번 누르기) | `surface/DyeVault.tsx`(염색 보관함) — 이 창만의 부품(`surface.module.css` 의 `.vault*`). 스크롤은 `pb-norail` · `pb-fade` |
 | 팝박스(연 버튼 바로 아래 · 위에 붙어 나오는 고르기 창 — 아래면 내려오며, 위면 올라오며 — 높이 330, 아래 줄 [이전] [닫기]) | `preview/PopBox.tsx` — `usePop` · `popNear`(버튼 · 영역 → 자리 · 방향) · `PopBox` · `PopScroll` · `PopFoot`. 액션 · 무기 모션 · 표정 · 채팅 이모티콘 · 코디 프로필이 모두 이것 |
 | 격자에서 하나 고르기(액션·무기 모션·표정) | `preview/PvPicker.tsx` — PC 는 팝박스, 모바일은 시트 안 슬라이드. 액션 목록 ↔ 상세는 `ActionPickBody`(play 로 재생 칸 끄기) |
 | 이모티콘 고르기(묶음 줄 + 격자, 프레임 고르기) | `preview/ChatEmoPicker.tsx` — 채팅 · 코디 프로필 공용(`pickFrame` · `onClose`) |
