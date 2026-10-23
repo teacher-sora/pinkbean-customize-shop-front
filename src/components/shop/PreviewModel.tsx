@@ -84,13 +84,13 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const copyRef = useRef<{
     placed: PlacedLayer[]; effects: EffectDraw[]; particles: ParticleDraw[]; chat?: ChatDraw; flip: boolean
     centerXOnly: boolean; centerMount: boolean; override: Map<string, HTMLCanvasElement>
-    cDx: number; cDy: number
+    cDx: number; cDy: number; chatGround: number
   } | null>(null)
   // 우클릭 "움짤 저장"용 — 지금 그리는 동작의 전 프레임과 움직이는 것들(이펙트 · 입자 · 부유). draw effect 가 그림을 그리기 시작할 때 갱신한다.
   const animRef = useRef<{
     frames: { placed: PlacedLayer[]; foot: { x: number; y: number }; brow: { x: number; y: number }; navel: { x: number; y: number } }[]
     delays: number[]; animated: boolean; pingpong: boolean; effList: EffectMeta[]; action: string
-    spots: ParticleSpot[]; descs: Map<string, ParticleDesc>; floating: boolean; ringFloor?: number
+    spots: ParticleSpot[]; descs: Map<string, ParticleDesc>; floating: boolean; ringFloor?: number; ground: number
     // 미리보기 캔버스의 판(게임 1배 상자 · 기준점)과 칸 안 자리(디바이스 px) — 배경 움짤이 같은 자리에 얹는다
     stage: { box: { w: number; h: number }; anchor: { x: number; y: number }; scale: number; left: number; top: number; dpr: number }
   } | null>(null)
@@ -590,7 +590,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
       const seq = ++drawSeqRef.current
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat: chatRef.current, chatClock: now, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat: chatRef.current, chatClock: now, chatGround: ground, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
@@ -606,6 +606,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
           flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides,
           cDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx,
           cDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy,
+          chatGround: ground,
         }
       : null
     const essential = new Set<string>()
@@ -616,7 +617,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     let ringFloor: number | undefined
     Promise.all([track(essential), ringFloorOf(frames.map((f) => f.placed)).then((v) => { ringFloor = v })]).then(() => {
       if (cancelled) return
-      animRef.current = { frames, delays, animated, pingpong, effList, action: V.action, spots: hasPart ? partSpots : [], descs: partDescs, floating, ringFloor, stage: { box: pl.box, anchor: pl.anchor, scale: pl.scale, left: leftDev, top: topDev, dpr: dims.dpr } }
+      animRef.current = { frames, delays, animated, pingpong, effList, action: V.action, spots: hasPart ? partSpots : [], descs: partDescs, floating, ringFloor, ground, stage: { box: pl.box, anchor: pl.anchor, scale: pl.scale, left: leftDev, top: topDev, dpr: dims.dpr } }
       draw(e0) // 지금 시계의 프레임을 즉시 합성(장착 지연 제거, 프레임 되감기 없음)
       redrawRef.current = () => draw(nowElapsed()) // 명찰 · 말풍선만 바뀌었을 때(시그니처에 chatVer 가 있어 다시 그린다)
       // 발색 조절 중/전 프레임 염색 중/정지 뷰면 애니메이션 없이 여기서 끝(정지 프레임 유지).
@@ -642,7 +643,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     for (let i = 0; i < 300 && !copyRef.current; i++) await new Promise((r) => setTimeout(r, 100)) // 불러오는 중이면 첫 그림을 기다린다
     const snap = copyRef.current
     if (!snap) return null
-    return { placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy }
+    return { placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy, chatGround: snap.chatGround }
   }, [])
   const makeBlob = useCallback(async (): Promise<Blob | null> => { const shot = await currentShot(); return shot ? modelShotBlob(shot) : null }, [currentShot])
   // 코디 프로필(lib/profileCard)이 쓰도록 지금 그림 재료를 등록한다 — 화면의 미리보기만(염색 창 등 src 가 있는 미리보기는 빼고)
@@ -695,7 +696,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
             const f = a.frames[fiAt(t)]
             const particles = a.spots.length ? placeParticles(a.spots, a.descs, f.foot, simOf) : []
             if (particles.length) { const dt = partT < 0 ? 0 : (t - partT) / 1000; partT = t; for (const sim of new Set(particles.map((x) => x.sim))) sim.step(dt) }
-            return { placed: f.placed, override: snap.override, effects: effAt(t), particles, chat: snap.chat, chatT: emo ? t : undefined, chatClock: t, chatWait: true, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy, lift: liftAt(t), ringFloor: a.ringFloor }
+            return { placed: f.placed, override: snap.override, effects: effAt(t), particles, chat: snap.chat, chatT: emo ? t : undefined, chatClock: t, chatWait: true, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy, lift: liftAt(t), ringFloor: a.ringFloor, chatGround: a.ground }
           },
         }, transparent)
       },

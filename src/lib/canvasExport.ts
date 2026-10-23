@@ -31,6 +31,7 @@ export type ModelShot = {
   chatT?: number             // 움직이는 이모티콘의 시각(ms)
   chatClock?: number         // 움직이는 명찰 · 칭호 · 훈장의 시계(ms). 없으면 첫 프레임
   chatWait?: boolean         // 움직이는 판의 프레임을 기다린다(움짤)
+  chatGround?: number        // 명찰 · 말풍선 · 칭호 · 훈장의 바닥 높이(월드 — 동작 내내 같은 값, render.RenderOpts)
   ringFloor?: number         // 변신 그림을 올리거나 내릴 만큼 — 동작 전체로 잰 값(움짤). 없으면 그리는 한 프레임으로 잰다
 }
 
@@ -53,7 +54,7 @@ export async function drawShot (shot: ModelShot, place?: { box: { w: number; h: 
     await renderCharacter(off, shot.placed, {
       scale: pl.scale, box: pl.box, anchor: shot.lift ? { x: pl.anchor.x, y: pl.anchor.y + shot.lift } : pl.anchor, flip: shot.flip,
       centerX: shot.centerX, centerXOnly: shot.centerXOnly, centerMount: shot.centerMount,
-      override: shot.override, effects: shot.effects, particles: shot.particles, chat: shot.chat, chatT: shot.chatT, chatClock: shot.chatClock, chatWait: shot.chatWait, ringFloor: shot.ringFloor,
+      override: shot.override, effects: shot.effects, particles: shot.particles, chat: shot.chat, chatT: shot.chatT, chatClock: shot.chatClock, chatWait: shot.chatWait, chatGround: shot.chatGround, ringFloor: shot.ringFloor,
     })
   } catch { return null }
   const w = off.width, h = off.height
