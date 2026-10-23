@@ -18,6 +18,7 @@ import DyeCellCanvas from '../render/DyeCellCanvas'
 import DyeModelPreview from '../render/DyeModelPreview'
 import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/controls'
 import { IconCheck, IconReset, IconViewModel } from '../ui/Icons'
+import DyeVault from './DyeVault'
 import { useInnerSlide } from './innerSlide'
 import { SurfaceFooter } from './Surface'
 import styles from './surface.module.css'
@@ -132,6 +133,8 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
     </div>
   )
   const preview = <DyeModelPreview item={item} hsb={NO_HSB} palette={off || cleared ? undefined : commit} zoom={zoom} model={model} />
+  // 염색 보관함 — 고르면 그 색 조합이 조절 칸으로 들어온다(적용은 [적용])
+  const vault = <DyeVault item={item} current={{ pal: commit }} onPick={(d) => { if ('pal' in d) { setCleared(false); setPal({ ...d.pal }) } }} />
 
   const custom = mobile ? (
     <div className={clsx('pb-scroll', 'pb-fade', styles.hsvM)}>
@@ -143,6 +146,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
       <div className={styles.hr} />
       <div className={styles.rowsCol}>{ratioRows}</div>
       {actsRow(true)}
+      {vault}
     </div>
   ) : (
     <div className={styles.hsvPc}>
@@ -155,6 +159,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
         <div className={styles.hr} />
         <div className={styles.rows}>{ratioRows}</div>
         {actsRow(false)}
+        {vault}
       </div>
     </div>
   )
@@ -233,6 +238,8 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
       <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>비활성화
     </button>
   )
+  // 염색 보관함 — 고르면 그 값이 조절 칸으로 들어온다(적용은 [적용])
+  const vault = <DyeVault item={item} current={{ hsb }} onPick={(d) => { if ('hsb' in d) { setHsb({ ...d.hsb }); setRaw({}) } }} />
   const families = <FamilyDots noShrink value={hsb.t ?? 0} onPick={(t) => setHsb((h) => ({ ...h, t }))} />
   // 테두리(순수 검정) 포함 — 명도로만, 회색으로만 바뀐다(lib/core/dye 설명). 그래서 명도가 0 이하면 눌러도
   // 보이는 변화가 없어, 그때만 이유를 알려 준다(버튼은 그대로 눌린다 — 값은 저장돼야 하므로).
@@ -264,6 +271,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
             {offBtn(true)}
             <button type="button" onClick={reset} title="수치 초기화" aria-label="수치 초기화" className={styles.resetIcon}><IconReset />초기화</button>
           </div>
+          {vault}
         </div>
         <SurfaceFooter onApply={apply} />
       </>
@@ -285,6 +293,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
             {offBtn(false)}
             <button type="button" onClick={reset} className={clsx('pb-ghost', styles.resetBtn)}>염색 초기화</button>
           </div>
+          {vault}
         </div>
       </div>
       <SurfaceFooter onApply={apply} />

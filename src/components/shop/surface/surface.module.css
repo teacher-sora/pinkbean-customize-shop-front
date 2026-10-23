@@ -180,3 +180,10 @@
 .tickOn { background: #ec86ac; border-color: #ec86ac; }
 .tickOn svg { opacity: 1; }
 
+/* 염색 보관함(surface/DyeVault) — 조절 칸 맨 아래(margin-top: auto). 칸은 북마크 칸 부품(pb-slot), 한 줄 가로 스크롤.
+   줄 높이는 고정(위 5px = ✕ 가 칸 밖으로 4px 나오는 자리, 아래 = 가로 스크롤바 자리) — 칸이 늘거나 스크롤바가 생겨도 밀리지 않는다 */
+.vault { flex: 0 0 auto; margin-top: auto; padding-top: 14px; border-top: 1px solid #f0e9e1; container-type: inline-size; }
+/* 칸 = 줄 폭에 다섯 칸이 딱 드는 크기(오른쪽 5px = ✕ 자리). 높이 = 칸 + 위 5px + 아래 12px(가로 스크롤바 자리)로 고정 */
+.vaultStrip { --cell: calc((100cqw - 37px) / 5); height: calc(var(--cell) + 17px); display: grid; grid-auto-flow: column; grid-auto-columns: var(--cell); gap: 8px; align-content: start; padding: 5px 5px 0 0; overflow: auto hidden; overscroll-behavior-x: contain; }
+.vaultCell { width: var(--cell); }
+.vaultPut:disabled { opacity: .5; cursor: default; }
