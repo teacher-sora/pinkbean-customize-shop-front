@@ -140,7 +140,9 @@
    창 = 세로 줄: 스크롤 칸(popScroll — 상하좌우 같은 여백 8) + 아래 줄(pvFoot). 창 자체는 스크롤하지 않는다. */
 .pvPanel { position: fixed; z-index: 120; display: flex; flex-direction: column; padding: 0; border: 1px solid #f5e8ee; border-radius: 8px; background: #fff; box-shadow: 0 12px 32px rgba(42,37,33,.12); overflow: hidden;
   transform: translateY(16px); opacity: 0; transition: opacity .18s ease, transform .18s cubic-bezier(.45,0,.55,1); }
-.popScroll { flex: 1 1 auto; min-height: 0; padding: 8px; overflow: hidden auto; overscroll-behavior: contain; }
+/* 스크롤 칸: 양쪽 스크롤바 자리(pb-gutter, 8px)가 곧 옆 여백 — 터치는 자리 대신 여백 8. 격자가 창 폭에 맞춰 열 수를 바꾼다(container) */
+.popScroll { flex: 1 1 auto; min-height: 0; padding: 8px 0; overflow: hidden auto; overscroll-behavior: contain; container-type: inline-size; }
+@media (hover: none), (pointer: coarse) { .popScroll { padding: 8px; } }
 .pvPanelOn { transform: translateY(0); opacity: 1; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
 .pvGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 /* 그룹(액션 3묶음)은 격자 흐름을 끊지 않게 contents 로 편다 — 제목만 한 줄 차지한다. */
@@ -236,12 +238,14 @@
 .chatEmoSet { flex: 0 0 40px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 3px; border: 1px solid transparent; border-radius: 6px; background: #fff; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .chatEmoSet > img { width: 32px; height: 32px; object-fit: contain; }
 .chatEmoSetOn { border-color: #ec86ac; background: #fef8fa; }
-.chatEmoScroll { flex: 1 1 auto; min-height: 0; padding: 8px; overflow: hidden auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.chatEmoScroll { flex: 1 1 auto; min-height: 0; padding: 8px 0; overflow: hidden auto; overscroll-behavior: contain; } /* 양쪽 스크롤바 자리(pb-gutter)가 옆 여백 */
+@media (hover: none), (pointer: coarse) { .chatEmoScroll { padding: 8px; } }
 .chatEmoM .chatEmoSets { padding: 12px; }
 .chatEmoHead { flex: 0 0 auto; height: 57px; padding: 0 10px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0e9e1; font-size: 12px; font-weight: 600; color: #5c534b; }
 .chatEmoHead > img { flex: 0 0 auto; max-width: 40px; max-height: 40px; }
 .emoFrame { display: block; flex: 0 0 auto; background-repeat: no-repeat; image-rendering: pixelated; }
-.chatEmoM .chatEmoScroll { flex: 0 1 auto; height: calc(24px + 2.5 * (76px + 25px) + 2 * 6px); padding: 12px; }
+.chatEmoM .chatEmoScroll { flex: 0 1 auto; height: calc(24px + 2.5 * (76px + 25px) + 2 * 6px); padding: 12px 4px; }
+@media (hover: none), (pointer: coarse) { .chatEmoM .chatEmoScroll { padding: 12px; } }
 .chatPx { display: block; flex: 0 0 auto; image-rendering: pixelated; } /* 이모티콘은 게임 크기 그대로(1배) — 칸(76px 높이)보다 작다 */
 @media (hover: hover) and (pointer: fine) {
   .chatBox:hover { border-color: #eeb2ce; }

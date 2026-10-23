@@ -1,41 +1,32 @@
-/* 코디 프로필 창(ProfileCardBody). 왼쪽(모바일은 위) = 카드 미리보기, 오른쪽(모바일은 아래) = 꾸미기 */
+/* 코디 프로필 창(ProfileCardBody). 왼쪽(모바일은 위) = 카드 미리보기, 오른쪽(모바일은 아래) = 꾸미기.
+   두 칸 모두 스크롤이 생길 수 있어 양쪽 스크롤바 자리(pb-gutter — 마우스 화면은 8px)를 잡아 두고, 그 자리 + 8px 가 옆 여백이다.
+   터치 기기는 자리를 잡지 않으므로 여백으로 채운다 */
 .body { flex: 1 1 auto; min-height: 0; display: flex; }
 .bodyM { flex-direction: column; }
-/* 미리보기 칸: 스크롤 칸 + 오른쪽 아래 [원래 자리](스크롤과 함께 움직이지 않는다) */
-.viewWrap { flex: 0 0 46%; min-width: 0; min-height: 0; position: relative; display: flex; border-right: 1px solid #f0e9e1; }
-.viewWrapM { flex-basis: 44%; border-right: none; border-bottom: 1px solid #f0e9e1; }
-.view { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden auto; padding: 16px; background: #f7f2ec; }
-.viewM { padding: 12px; }
+.view { flex: 0 0 46%; min-width: 0; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 16px 8px; background: #f7f2ec; border-right: 1px solid #f0e9e1; }
+.viewM { flex-basis: 44%; padding: 12px 4px; border-right: none; border-bottom: 1px solid #f0e9e1; }
 .stage { position: relative; width: 100%; }
 .canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 8px; }
 .grab { position: absolute; touch-action: none; cursor: grab; border-radius: 12px; }
 .grab:active { cursor: grabbing; }
-.resetBtn { position: absolute; right: 12px; bottom: 12px; z-index: 1; height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); transition: opacity .2s ease; }
+/* [원래 자리] — 사진 칸 안쪽 오른쪽 아래(자리는 ProfileCardBody 가 사진 칸 비율로 준다) */
+.resetBtn { position: absolute; z-index: 1; height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); transition: opacity .2s ease; }
 .resetBtn:disabled { opacity: .5; cursor: default; }
 
-/* 꾸미기: 접었다 펴는 칸(Sec)이 구분선(rule)으로 갈린다 */
-.side { flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden auto; padding: 4px 16px 16px; display: flex; flex-direction: column; container-type: inline-size; }
-.sideM { padding: 0 12px 12px; }
+/* 꾸미기: 세 묶음(한 줄 칸 · 토글 · 이름과 말풍선)을 구분선으로 가른다 */
+.side { flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 0 8px; display: flex; flex-direction: column; }
+.sideM { padding: 0 4px; }
+@media (hover: none), (pointer: coarse) { .view { padding: 16px; } .viewM { padding: 12px; } .side { padding: 0 16px; } .sideM { padding: 0 12px; } }
 .rule { flex: 0 0 auto; height: 1px; margin: 0; border: none; background: #f0e9e1; }
-.sec { flex: 0 0 auto; display: flex; flex-direction: column; padding: 6px 0 16px; }
-.secHead { height: 40px; padding: 0; display: flex; align-items: center; justify-content: space-between; border: none; background: transparent; font-family: inherit; font-size: 13px; font-weight: 600; color: #2a2521; cursor: pointer; }
-.secCaret { flex: 0 0 auto; color: #a89e93; transition: transform .26s cubic-bezier(.45,0,.55,1); transform: rotate(180deg); }
-.secCaretOff { transform: rotate(0deg); }
-/* 접힘 · 펼침: 겉은 자르고 안쪽만 translateY 로 말려 들어간다(높이 전환 없음) */
-.secClip { overflow: hidden; }
-.secClip[hidden] { display: none; }
-.secIn { display: flex; flex-direction: column; gap: 8px; }
-
-/* 디자인 · 배경: 높이를 미리 잡은 스크롤 칸 — 2줄 + 다음 줄이 조금(스크롤이 있다는 신호). 칸 높이 고정(그림 칸이 남는 높이를 채운다) */
-.tileBox { height: calc(2 * 96px + 8px + 22px); overflow: hidden auto; overscroll-behavior: contain; }
-.tileGrid { grid-auto-rows: 96px; }
-.tile .thumb { flex: 1 1 auto; min-height: 0; aspect-ratio: auto; }
+.fields { flex: 0 0 auto; display: flex; gap: 6px; padding: 18px 0; }
+.field { height: 34px; }
+.group { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; padding: 18px 0; }
+.sideM .fields, .sideM .group { padding: 14px 0; } /* 모바일은 꾸미기 칸이 낮아 묶음 여백을 줄여 스크롤 없이 다 들어가게 */
 .thumb { position: relative; }
 .themeLine { position: absolute; inset: 5px; border: 1.5px solid; border-radius: 3px; opacity: .8; }
 
 .row { height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-.rowLabel { flex: 0 0 auto; font-size: 13px; font-weight: 500; color: #5c534b; }
-.pick { flex: 0 1 220px; min-width: 0; height: 34px; }
+.rowLabel { flex: 0 0 44px; font-size: 13px; font-weight: 500; color: #5c534b; }
 .input { flex: 1 1 auto; min-width: 0; width: 100%; height: 34px; padding: 0 12px; border: 1px solid #e7ded4; border-radius: 6px; background: #faf7f3; font-family: inherit; font-size: 13px; color: #3d372f; outline: none; }
 .input:focus { border-color: #ec86ac; background: #fff; }
 .iconBtn { flex: 0 0 auto; width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border-radius: 6px; background: #fff; color: #a89e93; cursor: pointer; }
@@ -46,8 +37,4 @@
 .emoImg { flex: 0 0 auto; width: 24px; height: 24px; object-fit: contain; image-rendering: pixelated; }
 .emoName { flex: 1 1 auto; min-width: 0; font-size: 12px; color: #5c534b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .emoDel { flex: 0 0 auto; width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 4px; background: transparent; color: #a89e93; cursor: pointer; }
-@media (hover: hover) and (pointer: fine) {
-  .secHead:hover .secCaret { color: #d76d9a; }
-  .emoDel:hover { color: #d76d9a; }
-}
-@media (prefers-reduced-motion: reduce) { .secCaret { transition-duration: .01s; } }
+@media (hover: hover) and (pointer: fine) { .emoDel:hover { color: #d76d9a; } }

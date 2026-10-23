@@ -65,7 +65,7 @@ export default function ChatEmoPicker ({ mobile, onPick, onClose, pickFrame, val
               <img src={imageSrc(detail.png, true)} crossOrigin="anonymous" alt="" className={styles.chatPx} />
               {detail.name}
             </div>
-            <div role="listbox" aria-label={`${detail.name} 프레임`} className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.chatEmoScroll)}>
+            <div role="listbox" aria-label={`${detail.name} 프레임`} className={clsx('pb-scroll', 'pb-gutter', 'pb-fade', styles.chatEmoScroll)}>
               <div className={styles.pvGrid}>
                 {fr.map((f, i) => {
                   const k = Math.min(1, FRAME_BOX / Math.max(f.w, f.h))
@@ -92,7 +92,7 @@ export default function ChatEmoPicker ({ mobile, onPick, onClose, pickFrame, val
                 </button>
               ))}
             </div>
-            <div role="listbox" aria-label={cur?.name ?? '이모티콘'} className={clsx('pb-scroll', 'pb-scroll-thin', 'pb-fade', styles.chatEmoScroll)}>
+            <div role="listbox" aria-label={cur?.name ?? '이모티콘'} className={clsx('pb-scroll', 'pb-gutter', 'pb-fade', styles.chatEmoScroll)}>
               <div className={styles.pvGrid}>
                 {cur?.items.map((e) => (
                   <button key={e.id} type="button" role="option" aria-selected={value?.id === e.id} title={e.name}
