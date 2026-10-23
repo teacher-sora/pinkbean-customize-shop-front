@@ -32,7 +32,7 @@ export type UiSession = {
   // 스크립트가 이 한 글자로 판단한다(거기선 앱 기본값을 알 수 없다).
   dirty?: boolean
 }
-export type UiPref = { plazaSort?: string }
+export type UiPref = { plazaSort?: string; listDir?: string } // listDir = 목록을 넘기는 방향(x 가로 · y 세로) — 고른 방향을 늘 유지한다(사용자 지시)
 
 const SESSION_KEY = 'pb_ui_session_v1'
 const PREF_KEY = 'pb_ui_pref_v1'
