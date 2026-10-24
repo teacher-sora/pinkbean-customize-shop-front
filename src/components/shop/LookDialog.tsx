@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react'
 import { css } from '@/lib/style'
 import { isStacked } from '@/lib/useBreakpoint'
 import SnapThumb from './SnapThumb'
-import { useShop } from './ShopContext'
+import { NICK_TAKE_SLOTS, useShop } from './ShopContext'
+import { readUiPref, writeUiPref } from '@/lib/uiState'
+import pst from './preset/preset.module.css'
 import { useDialogFade } from './ui/useDialogFade'
 import { useMaskClose } from './ui/useMaskClose'
 
@@ -51,6 +53,11 @@ export default function LookDialog() {
     return () => window.removeEventListener('keydown', onKeyCap, true)
   }, [lp])
 
+  // 가져올 장식 — 고른 값은 늘 유지(lib/uiState 의 UiPref.nickTake)
+  const [take, setTake] = useState<Record<string, boolean>>({})
+  useEffect(() => { if (lp) setTake(readUiPref().nickTake ?? {}) }, [lp])
+  const flip = (slot: string) => setTake((t) => { const n = { ...t, [slot]: t[slot] === false }; writeUiPref({ nickTake: n }); return n })
+
   if (!lp) return null
   const look = lp.options.find((o) => o.key === lookKey) ?? lp.options[0]
   if (!look) return null
@@ -76,6 +83,16 @@ export default function LookDialog() {
               </span>
             </div>
             {closeBtn}
+          </div>
+
+          {/* 가져올 장식(간이 — 사용자 지시: 디자인은 나중에 확정). 꺼 둔 것은 빼고 프리셋에 넣는다(ShopContext.chooseLook) */}
+          <div style={css('flex:0 0 auto; padding:12px 22px 0;')}>
+            <div className={pst.takeRow}>
+              {NICK_TAKE_SLOTS.map((t) => {
+                const on = take[t.slot] !== false
+                return <button key={t.slot} type="button" aria-pressed={on} onClick={() => flip(t.slot)} title={on ? `${t.label} 가져오기 (누르면 빼기)` : `${t.label} 빼기 (누르면 가져오기)`} className={clsx(pst.takePill, on && pst.takePillOn)}>{t.label}</button>
+              })}
+            </div>
           </div>
 
           {multiLook && (
