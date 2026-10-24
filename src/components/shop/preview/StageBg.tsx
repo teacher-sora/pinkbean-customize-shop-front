@@ -18,7 +18,7 @@ import styles from './preview.module.css'
 
 export const STAGE_COLORS: Record<string, string> = { white: '#ffffff', black: '#141210' }
 // 시스템 테마(사용자 지시): 라이트면 프리셋 카드 바탕 #f7f2ec, 다크면 다크 카드 색. 화면은 CSS 변수(--pb-sys-bg, globals.css), 그림으로 내보낼 때는 이 값
-export const SYS_BG = { light: '#f7f2ec', dark: '#2a2622' }
+export const SYS_BG = { light: '#f7f2ec', dark: '#3b3d45' }
 export const SYS_BG_CSS = 'var(--pb-sys-bg)'
 export const stageColor = (sel: string): string | undefined => sel === 'system' ? (isDarkTheme() ? SYS_BG.dark : SYS_BG.light) : STAGE_COLORS[sel]
 

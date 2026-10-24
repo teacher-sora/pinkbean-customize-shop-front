@@ -58,10 +58,11 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
           <span className={styles.logoTextM}>커마샵</span>
         </button>
         <div className={styles.headerActsM}>
-          <button type="button" onClick={nextTheme} title={themeTitle} aria-label={themeTitle} className={clsx('pb-ghost', styles.themeBtnM)}><IconTheme mode={theme} size={14} /></button>
           <div data-guide="view" className={styles.viewSegM}>
             <Seg variant="mobileFit" opts={viewOpts} value={noHero ? 'base' : hv} onPick={setHeroView} title="미리보기 크기" />
           </div>
+          {/* 테마 — 뷰어 전환과 평가 사이(사용자 지시) */}
+          <button type="button" onClick={nextTheme} title={themeTitle} aria-label={themeTitle} className={clsx('pb-ghost', styles.themeBtnM)}><IconTheme mode={theme} size={14} /></button>
           <button type="button" data-guide="rate" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.rateBtnM)}>
             <IconRate size={13} />평가
           </button>
@@ -78,11 +79,8 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
         <Image src="/logo.png" alt="핑크빈 커마샵 로고" width={30} height={30} priority className={styles.logoImg} />
         <span className={styles.logoText}>핑크빈 커마샵</span>
       </button>
-      {/* 도구 모음 한 칸: 배경을 다루는 둘(시간대 · 배경 보기) | 코디를 다루는 둘(평가 · 복사) */}
+      {/* 도구 모음 한 칸: 배경을 다루는 둘(시간대 · 배경 보기) | 테마 · 평가 · 복사 */}
       <div className={styles.tools}>
-        <button type="button" onClick={nextTheme} title={themeTitle} className={clsx('pb-ghost', styles.tool)}>
-          <IconTheme mode={theme} /><Swap now={THEMES[themeAt].label} all={THEMES.map((t) => t.label)} />
-        </button>
         <button type="button" onClick={nextSky} title={`배경 시간대: ${SKY_MODES[skyAt].label} (누르면 다음으로)`} className={clsx('pb-ghost', styles.tool)}>
           <IconSky mode={sky} /><Swap now={SKY_MODES[skyAt].label} all={SKY_MODES.map((m) => m.label)} />
         </button>
@@ -90,6 +88,10 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
           <IconScene /><Swap now={bgOnly ? '돌아가기' : '배경 보기'} all={['배경 보기', '돌아가기']} />
         </button>
         <span className={styles.toolSep} aria-hidden />
+        {/* 테마 — 구분선 오른쪽, 코디 평가 · 프리셋 복사와 같은 묶음(사용자 지시) */}
+        <button type="button" onClick={nextTheme} title={themeTitle} className={clsx('pb-ghost', styles.tool)}>
+          <IconTheme mode={theme} /><Swap now={THEMES[themeAt].label} all={THEMES.map((t) => t.label)} />
+        </button>
         <button type="button" data-guide="rate" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.tool)}>
           <IconRate />코디 평가
         </button>

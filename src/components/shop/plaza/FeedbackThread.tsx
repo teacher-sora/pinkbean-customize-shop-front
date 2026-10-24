@@ -19,7 +19,7 @@ import { IconBubble } from '../ui/Icons'
 import styles from './plaza.module.css'
 
 // 답글 묶음 왼쪽 줄: 부모 깊이 1(댓글) 아래 2단은 옅게, 2 아래 3단은 진하게
-const LINE: Record<number, string> = { 1: '#f4cfdf', 2: '#ec86ac' }
+const LINE: Record<number, string> = { 1: 'light-dark(#f4cfdf, #654050)', 2: 'light-dark(#ec86ac, #d15785)' }
 type Who = { owner: string; op: boolean; mine: boolean }
 
 function WhoLine({ n, time, del }: { n: Who; time: string; del?: ReactNode }) {
