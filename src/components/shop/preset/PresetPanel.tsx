@@ -17,6 +17,7 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 const PRESET_FRACTION = 0.38
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
+import { useStageBg } from '@/lib/stageBg'
 import { IconCheck, IconLinkCopy, IconPencil, IconReorder, IconTakeDown, IconTrashSolid } from '../ui/Icons'
 import styles from './preset.module.css'
 
@@ -26,7 +27,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   // 라이브 모델 → Snapshot(선택된 카드가 이걸로 그려진다). 자동저장(100ms)을 기다리지 않고 즉시 반영.
   //  ⚠️ 반드시 context 의 snapshot() 을 그대로 쓴다 — 필드를 직접 나열하면 새 상태(점 위치·염색 등)를 빠뜨려
   //     "선택됨" 카드에만 반영이 안 되는 버그가 난다(과거 dotPos 누락 사례).
-  const liveSnap: Snapshot = useMemo(() => s.snapshot(), [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos, s.pv])
+  const bgSel = useStageBg().sel // 미리보기 배경을 바꾸면 선택 카드 바탕도 바로(사용자 지시)
+  const liveSnap: Snapshot = useMemo(() => s.snapshot(), [s.equipped, s.tone, s.dyePalette, s.dyeHsb, s.hidden, s.dotPos, s.pv, bgSel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 고른 칸이 **가운데**에 오도록 탭을 열자마자 스크롤한다(연출 설정 고르기와 같다). 탭을 열 때 한 번만 — 저장된 선택은 첫 그리기 뒤에 온다.
   // 스크롤 영역만 움직인다(scrollIntoView 는 모바일에서 문서까지 같이 끌고 간다).

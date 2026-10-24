@@ -32,7 +32,8 @@ export type UiSession = {
   // 스크립트가 이 한 글자로 판단한다(거기선 앱 기본값을 알 수 없다).
   dirty?: boolean
 }
-export type UiPref = { plazaSort?: string; listDir?: string } // listDir = 목록을 넘기는 방향(x 가로 · y 세로) — 고른 방향을 늘 유지한다(사용자 지시)
+export type UiPref = { plazaSort?: string; listDir?: string; listMode?: string; dyeModel?: string; dyeZoom?: number } // listMode = 목록 보기(아이템 · 기본 캐릭터 · 내 캐릭터), dyeModel · dyeZoom = 염색 창의 보기 · 배율 — 늘 유지(사용자 지시)
+//  // listDir = 목록을 넘기는 방향(x 가로 · y 세로) — 고른 방향을 늘 유지한다(사용자 지시)
 
 const SESSION_KEY = 'pb_ui_session_v1'
 const PREF_KEY = 'pb_ui_pref_v1'
@@ -86,4 +87,5 @@ export type PresetOver<S> = { id: string; prev: S; prevName: string; next: S; ne
 // 되돌리기 기록은 저장하지 않는다(새로고침하면 비운다). 예전 판이 남긴 것이 있으면 지운다.
 export function dropUiHistory(): void { try { window.sessionStorage.removeItem(HIST_KEY) } catch { /* 못 지워도 쓰지 않는다 */ } }
 export const readUiPref = (): UiPref => read<UiPref>('localStorage', PREF_KEY)
-export const writeUiPref = (v: UiPref): void => { write('localStorage', PREF_KEY, v) }
+// 고친 칸만 덮는다(여러 곳이 제 칸만 적는다 — 목록 방향 · 염색 창)
+export const writeUiPref = (v: UiPref): void => { write('localStorage', PREF_KEY, { ...readUiPref(), ...v }) }
