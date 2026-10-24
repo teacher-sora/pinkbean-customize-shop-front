@@ -15,7 +15,7 @@ const MULTI = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, {
 export const TABS = [
   { id: 'codi', label: '코디', short: '코디' },
   { id: 'search', label: 'AI 코디 검색', short: 'AI 검색' },
-  { id: 'info', label: '코디 정보 / 염색', short: '염색' },
+  { id: 'info', label: '코디 정보 / 염색', short: '정보 / 염색' }, // 모바일 = PC 와 같은 뜻, 구분자 옆은 좁은 공백(thin space — 사용자 지시)
   { id: 'preset', label: '프리셋', short: '프리셋' },
   { id: 'share', label: '코디 광장', short: '광장' },
   { id: 'notice', label: '도움 및 건의함', short: '도움' },

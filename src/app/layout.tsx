@@ -160,7 +160,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           빠져나간다 → SSG 출력이 그대로 쓰인다(연산·지연 0).
           표시를 끄는 건 되살린 화면이 실제로 커밋된 뒤(ShopContext) — 고정 대기 시간은 쓰지 않는다.
         */}
-        <script dangerouslySetInnerHTML={{ __html: "try{var r=sessionStorage.getItem('pb_ui_session_v1');if(r&&JSON.parse(r).dirty)document.documentElement.setAttribute('data-pb-csr','1')}catch(e){}" }} />
+        <script dangerouslySetInnerHTML={{ __html: "try{var r=sessionStorage.getItem('pb_ui_session_v1');if(r&&JSON.parse(r).dirty)document.documentElement.setAttribute('data-pb-csr','1')}catch(e){}try{var t=localStorage.getItem('pb_theme_v1');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}" }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
         {/* NEXON Open API Analytics — 넥슨 콘솔 발급 스크립트 그대로. 연동 확인이 SSR HTML 의 태그를 보므로 next/script 대신 원형 태그. */}
         <script type="text/javascript" src="https://openapi.nexon.com/js/analytics.js?app_id=316464" async />

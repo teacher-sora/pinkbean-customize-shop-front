@@ -32,7 +32,9 @@ input::placeholder, textarea::placeholder { color: #b7ada2; opacity: 1; }
 :root { color-scheme: light; }
 /* 미리보기 배경 '시스템'(lib/stageBg) · 손대지 않은 프리셋 카드 바탕 — OS 테마를 따른다(라이트 = 프리셋 카드 바탕, 다크 = 다크 카드 색 — StageBg.SYS_BG 와 같은 값) */
 :root { --pb-sys-bg: #f7f2ec; }
-@media (prefers-color-scheme: dark) { :root { --pb-sys-bg: #2a2622; } }
+/* 헤더의 테마 버튼(lib/theme): 시스템이면 OS 를, 라이트 · 다크면 그 값을(<html data-theme>) */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --pb-sys-bg: #2a2622; } }
+:root[data-theme="dark"] { --pb-sys-bg: #2a2622; }
 
 .pb-scroll { scrollbar-width: thin; scrollbar-color: #e7c3d4 transparent; }
 .pb-scroll::-webkit-scrollbar { width: 9px; height: 9px; }
