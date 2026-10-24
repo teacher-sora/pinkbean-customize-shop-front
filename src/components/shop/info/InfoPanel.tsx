@@ -108,7 +108,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
         return (
           <button key={r.c.id} type="button" data-share-slot={r.slot} onClick={() => pick(r)} title={r.on ? `${r.c.label} - ${r.item!.name || r.item!.id}, 눌러서 염색` : base ? baseTitle(r) : `${r.c.label} - 미착용`}
             className={clsx(r.on && 'pb-slotrow', styles.slot, ui.dyeChip, r.on && styles.slotOn, r.hidden && styles.slotHidden, r.sel && styles.slotSel)}>
-            <span className={clsx(styles.slotThumb, r.on && !r.hidden && styles.slotThumbOn)}>
+            <span className={clsx('pb-chipthumb', styles.slotThumb, r.on && !r.hidden && styles.slotThumbOn)}>
               {r.on && r.item ? (
                 <span className={clsx(styles.slotSprite, r.hidden && styles.slotSpriteHidden)}>
                   <SlotSprite slot={r.slot} item={r.item} grayscale={r.hidden} />

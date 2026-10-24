@@ -119,6 +119,8 @@ const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
 const namesOf = (ps: Preset[]): Record<string, string> => Object.fromEntries(ps.map((p) => [p.id, p.name]))
 // 배율(pv.zoom)은 되돌리기 · 다시 실행과 무관한 보기 값이다(사용자 지시) — 키에서 빼서 배율만 바꾼 것은 기록하지 않고, 되돌릴 때도 지금 배율을 둔다(applyHistory)
 // 미리보기 배경(bg)도 같다 — 되돌리기로 바뀌지 않는다
+// 닉네임으로 불러올 때 따로 끄고 켤 수 있는 장식(프리셋 탭)
+export const NICK_TAKE_SLOTS = [{ slot: 'title', label: '칭호' }, { slot: 'nameTag', label: '명찰' }, { slot: 'medal', label: '훈장' }, { slot: 'chatBalloon', label: '말풍선' }]
 const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, string>) => JSON.stringify({ s: { ...snap, bg: undefined, ...(snap.pv ? { pv: { ...snap.pv, zoom: undefined } } : {}) }, p: sel, n: names })
 // 연출 설정 기본값 — 첫 상태이자 '프리셋 초기화'가 되돌릴 값이다(한곳에서 관리).
 // 시선·액션·표정·fps 는 스냅샷에 담기지 않지만, 초기화는 **이것까지 전부** 되돌린다.
@@ -1800,7 +1802,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!lp) return
     const opt = lp.options.find((o) => o.key === lookKey)?.presets.find((p) => p.key === presetKey)
     setLookPick(null)
-    if (opt) await applyImported(opt.snap, lp.nick)
+    if (!opt) return
+    // 꺼 둔 장식(칭호 · 명찰 · 훈장 · 말풍선 — 프리셋 탭의 '불러올 장식')은 빼고 넣는다(사용자 지시)
+    const take = readUiPref().nickTake ?? {}
+    const eq = { ...opt.snap.equipped }
+    for (const sl of NICK_TAKE_SLOTS) if (take[sl.slot] === false) delete eq[sl.slot]
+    await applyImported({ ...opt.snap, equipped: eq }, lp.nick)
   }
   // 공유 링크 복사: 링크는 로컬에서 즉시 만들어 바로 클립보드에 넣고, 카드 이미지·서버 저장은 뒤에서 한다(shareCode).
   const copyShareLink = (snap: Snapshot, done = '프리셋을 복사했어요') => {

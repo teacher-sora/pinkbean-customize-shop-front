@@ -232,7 +232,7 @@ function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; m
                 {items.map((w) => (
                   <span key={w.slot} title={`${w.label} - ${w.name}${w.dyed ? (w.off ? ' (염색 꺼짐)' : ' (염색)') : ''}`}
                     className={clsx(surf.partChip, styles.wornChip, ui.dyeChip)}>
-                    <span className={surf.partThumb}>
+                    <span className={clsx('pb-chipthumb', surf.partThumb)}>
                       <span className={surf.partSprite}>
                         <LookSprite slot={w.slot} item={w.item} tone={snap.tone}
                           palette={w.off ? undefined : snap.dyePalette?.[w.slot]} hsb={w.off ? undefined : snap.dyeHsb?.[w.slot]} />
