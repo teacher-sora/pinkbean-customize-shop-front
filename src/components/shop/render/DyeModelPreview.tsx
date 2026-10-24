@@ -3,7 +3,8 @@
 // 염색 미리보기. 보기 모델(model)은 목록의 보기 방식과 같은 세 가지다.
 //  - mymodel(기본): 지금 착용한 코디(숨긴 부위 제외, 그 염색 포함)에 이 아이템을 입힌다. 피부는 내 착용을 이 피부에 입힌다.
 //  - model: 엘프 마네킹에 이 아이템만 입힌다(아이템 카드의 기본 캐릭터와 같다). 형상 변이 · 귀는 내 캐릭터에만.
-//  - sprite: 몸 없이 아이템 그림만(DyeSprite — 헤어·성형은 모든 파츠 합성, 그 외는 아이콘). 피부는 '아이템'을 잠근다.
+//  - sprite: 몸 없이 아이템 그림만(DyeSprite whole — 모든 아이템을 헤어·성형처럼 모든 부위 합성: 기본 캐릭터에서 몸만 뺀 모습. 사용자 지시). 피부는 '아이템'을 잠근다.
+//    염색 보관함 칸은 그대로 아이콘 스프라이트다(LookSprite).
 // 캐릭터 보기는 우측 미리보기(PreviewModel)를 그대로 쓴다 — 연출 설정의 액션 · 표정 · 무기 모션 · 이펙트 토글과
 // 애니메이션이 미리보기와 똑같이 나온다(사용자 지시). 착용 · 피부 · 염색 · 배율만 이 창의 값으로 바꿔 넘긴다.
 
@@ -71,7 +72,7 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, model }: Pro
   }, [s.index, s.tone, s.equipped, s.hidden, s.renderPalette, s.renderHsb, s.dotPos, s.pv, item, isSkin, mix, mine, hsb, palette, zoom, interacting])
 
   if (model === 'sprite' && !isSkin) {
-    return <DyeSprite id={item.id} thumb={item.icon || `sprites/${item.id}/icon.png`} mix={mix} palette={mix ? palette : undefined} hsb={mix ? undefined : hsb} zmap={s.index?.zmap || []} frac={SPRITE_FRAC[zoom] ?? SPRITE_FRAC[2]} />
+    return <DyeSprite id={item.id} thumb={item.icon || `sprites/${item.id}/icon.png`} mix={mix} palette={mix ? palette : undefined} hsb={mix ? undefined : hsb} zmap={s.index?.zmap || []} frac={SPRITE_FRAC[zoom] ?? SPRITE_FRAC[2]} whole />
   }
   if (!src) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 8 }} />
   return <PreviewModel src={src} />
