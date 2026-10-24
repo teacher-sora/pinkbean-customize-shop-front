@@ -9,7 +9,7 @@ import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, type StageBgImage } fro
 import { roomLit } from './stageShot'
 import { ROOM } from '@/components/shop/scene/sceneData'
 import { sceneFallback } from '@/components/shop/scene/skyTime'
-import { STAGE_COLORS } from '@/components/shop/preview/StageBg'
+import { stageColor } from '@/components/shop/preview/StageBg'
 
 export type ShareChip = {
   part: string                // 부위 이름(헤어 · 모자 …)
@@ -296,7 +296,7 @@ export function drawCardPhoto (g: CanvasRenderingContext2D, S: number, t: CardTh
     g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'
     g.drawImage(img, cx - (nw * cover) / 2, cy - (nh * cover) / 2, nw * cover, nh * cover)
     g.imageSmoothingEnabled = false
-  } else if (sel === 'white' || sel === 'black') fill(STAGE_COLORS[sel])
+  } else if (sel === 'white' || sel === 'black' || sel === 'system') fill(stageColor(sel)!)
   else {
     const gr = g.createLinearGradient(0, py, 0, py + ph); gr.addColorStop(0, t.photo[0]); gr.addColorStop(1, t.photo[1])
     g.fillStyle = gr; g.fillRect(px, py, pw, ph)

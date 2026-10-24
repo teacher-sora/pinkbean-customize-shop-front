@@ -8,7 +8,7 @@
 import { ROOM } from '@/components/shop/scene/sceneData'
 import { SCENE_SRC } from '@/components/shop/scene/sceneSrc'
 import { sceneFallback, skyNow } from '@/components/shop/scene/skyTime'
-import { STAGE_COLORS } from '@/components/shop/preview/StageBg'
+import { STAGE_COLORS, stageColor } from '@/components/shop/preview/StageBg'
 import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, getStageBg } from './stageBg'
 import { getStageFloor } from './stageFloor'
 
@@ -83,6 +83,6 @@ export async function paintStage (g: CanvasRenderingContext2D, wrap: HTMLElement
     g.drawImage(img, hx + (hw - w) / 2, hy + (hh - h) / 2, w, h)
     return true
   }
-  fill(STAGE_COLORS[bg.sel] ?? STAGE_COLORS.white)
+  fill(stageColor(bg.sel) ?? STAGE_COLORS.white)
   return false
 }

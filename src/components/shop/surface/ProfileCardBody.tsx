@@ -27,7 +27,7 @@ import { PopBox, PopFoot, PopScroll, popNear, usePop } from '../preview/PopBox'
 import { addStageBg, CASH_BGS, cashBgsOn, getStageBg, STAGE_BG_MAX, useStageBg } from '@/lib/stageBg'
 import { infoRows, shareChips, useSkinItem, useToneName } from '../info/InfoPanel'
 import ChatEmoPicker from '../preview/ChatEmoPicker'
-import { STAGE_COLORS } from '../preview/StageBg'
+import { STAGE_COLORS, SYS_BG_CSS } from '../preview/StageBg'
 import { SCENE_SRC } from '../scene/sceneSrc'
 import { useShop } from '../ShopContext'
 import { Switch } from '../ui/controls'
@@ -377,6 +377,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
             {cash && CASH_BGS.map((c) => bgTile(c.id, c.label, { backgroundImage: `url("${c.src}")`, backgroundSize: 'cover', backgroundPosition: 'center 70%', backgroundColor: c.top }))}
             {bgTile('white', '흰색', { background: STAGE_COLORS.white })}
             {bgTile('black', '검은색', { background: STAGE_COLORS.black })}
+            {bgTile('system', '시스템', { background: SYS_BG_CSS })}
             {bgTile('theme', '카드 색', { background: `linear-gradient(${theme.photo[0]}, ${theme.photo[1]})` })}
             {stage.images.map((im, i) => bgTile(im.id, `내 그림 ${i + 1}`, { backgroundImage: `url("${im.src}")` }))}
           </div>

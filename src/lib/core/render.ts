@@ -215,7 +215,7 @@ function opaqueBottom (src: HTMLImageElement | HTMLCanvasElement): number {
 
 // Draw the placed character with the navel pinned to a fixed canvas coordinate.
 // 몸 없이 아이템만 그릴 때의 기준 크기(게임 px) — 머리 전체를 덮는 큰 모자의 긴 변. 배율은 이 범위 안에서만 곱한다(아주 작은 점 장식이 화면을 덮지 않게)
-const BARE_REF = 64, BARE_K_MIN = 0.5, BARE_K_MAX = 3
+const BARE_REF = 42, BARE_K_MIN = 0.5, BARE_K_MAX = 3
 
 export async function renderCharacter(
   canvas: HTMLCanvasElement,

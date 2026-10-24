@@ -6,7 +6,7 @@
 // 복사 시점에 브라우저에서 그려 /api/share 로 코드와 함께 올린다(서버는 캔버스·염색 로직이 없어 여기서 그린다).
 import { ROOM } from '@/components/shop/scene/sceneData'
 import { SCENE_SRC } from '@/components/shop/scene/sceneSrc'
-import { STAGE_COLORS } from '@/components/shop/preview/StageBg'
+import { stageColor } from '@/components/shop/preview/StageBg'
 import { getStageBg } from '@/lib/stageBg'
 import { loadAnima, loadIndex } from '@/lib/core/data'
 import { MODEL_REF, computeModelPlacement } from '@/lib/core/modelPlacement'
@@ -29,7 +29,7 @@ const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => {
 // 성공 시 base64(데이터 URL 접두어 제외) JPEG, 실패 시 null(링크는 기본 카드 이미지로 동작).
 export async function renderShareImage(snap: Snapshot): Promise<string | null> {
   try {
-    const sel = getStageBg().sel, color = STAGE_COLORS[sel]
+    const sel = getStageBg().sel, color = stageColor(sel)
     const [index, animaRaces, room] = await Promise.all([loadIndex(), loadAnima().catch(() => []), color ? Promise.resolve(null) : Promise.all(SCENE_SRC.room.map(loadImg))])
     const comp = await composeSnapshot(snap, index, animaRaces)
     if (!comp) return null
@@ -53,7 +53,7 @@ export async function renderShareImage(snap: Snapshot): Promise<string | null> {
       ctx.fillStyle = '#17120f'; ctx.fillRect(0, 0, SHARE_IMG_W, SHARE_IMG_H)
       const x = Math.round(SHARE_IMG_W / 2 - ROOM.foot[0] * ROOM_PX), y = Math.round(footY - ROOM.foot[1] * ROOM_PX)
       for (const img of room) ctx.drawImage(img, x, y, ROOM.w * ROOM_PX, ROOM.h * ROOM_PX)
-    } else { ctx.fillStyle = color; ctx.fillRect(0, 0, SHARE_IMG_W, SHARE_IMG_H) }
+    } else { ctx.fillStyle = color ?? "#ffffff"; ctx.fillRect(0, 0, SHARE_IMG_W, SHARE_IMG_H) }
     ctx.drawImage(ch, Math.round((SHARE_IMG_W - ch.width) / 2), Math.round((SHARE_IMG_H - ch.height) / 2) + dy)
     return out.toDataURL('image/jpeg', 0.92).split(',')[1] || null
   } catch { return null }

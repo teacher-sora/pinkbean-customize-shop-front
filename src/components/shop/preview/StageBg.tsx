@@ -7,12 +7,43 @@
 // 바닥을 알리지 않는 칸(still)은 칸에 맞춰 채우기만 한다.
 
 import { useEffect, useState } from 'react'
-import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, useStageBg, type CashBg } from '@/lib/stageBg'
+import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, getStageBg, stageSelOf, useStageBg, type CashBg } from '@/lib/stageBg'
+import { MODEL_REF } from '@/lib/core/modelPlacement'
+import { SCENE_SRC } from '../scene/sceneSrc'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import SceneCanvas from '../scene/SceneCanvas'
 import styles from './preview.module.css'
 
 export const STAGE_COLORS: Record<string, string> = { white: '#ffffff', black: '#141210' }
+// 시스템 테마(사용자 지시): 라이트면 프리셋 카드 바탕 #f7f2ec, 다크면 다크 카드 색. 화면은 CSS 변수(--pb-sys-bg, globals.css), 그림으로 내보낼 때는 이 값
+export const SYS_BG = { light: '#f7f2ec', dark: '#2a2622' }
+export const SYS_BG_CSS = 'var(--pb-sys-bg)'
+export const stageColor = (sel: string): string | undefined => sel === 'system'
+  ? (typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches ? SYS_BG.dark : SYS_BG.light)
+  : STAGE_COLORS[sel]
+
+// 프리셋 카드의 배경(사용자 지시: 프리셋마다 미리보기 배경). 카드 캐릭터는 배율 없이 fraction(마네킹 높이 ÷ 칸 높이)으로만 그려지므로
+// 캐시샵 배경은 그 크기에 맞춰 키운다 — 게임 1px = fraction × 칸 높이 ÷ bodyRefH. 그림의 바닥 줄은 캐릭터 발(배꼽 + 21px,
+// 배꼽 = 칸 가운데 − centerDy)에, 그림 가운데는 배꼽에. 모두 칸 높이에 대한 비율이라 칸 크기가 바뀌어도 맞는다.
+const FOOT_FROM_NAVEL = 21
+export function CardStageBg({ sel, fraction }: { sel?: string; fraction: number }) {
+  const v = stageSelOf(sel)
+  if (v === 'room') return <div aria-hidden className={styles.stageBg} style={{ backgroundImage: `url("${SCENE_SRC.room[1]}")` }} />
+  const cash = CASH_BGS.find((c) => c.id === v)
+  if (cash) {
+    const k = fraction / MODEL_REF.bodyRefH // 칸 높이 1 에 대한 게임 1px
+    const top = 0.5 + (-MODEL_REF.centerDy + FOOT_FROM_NAVEL - CASH_BG_GROUND) * k
+    return (
+      <div aria-hidden className={styles.stageBg} style={{ background: `linear-gradient(to bottom, ${cash.top} 50%, ${cash.bottom} 50%)` }}>
+        <img alt="" src={cash.src} className={styles.stageCardImg}
+          style={{ height: `${CASH_BG_H * k * 100}%`, top: `${top * 100}%`, transform: `translateX(-${((CASH_BG_W / 2 + MODEL_REF.centerDx) / CASH_BG_W) * 100}%)` }} />
+      </div>
+    )
+  }
+  const img = getStageBg().images.find((i) => i.id === v)?.src
+  return <div aria-hidden className={styles.stageBg} style={img ? { backgroundImage: `url("${img}")` } : { background: v === 'system' ? SYS_BG_CSS : STAGE_COLORS[v] }} />
+}
+
 
 function CashStage({ bg, still }: { bg: CashBg; still?: boolean }) {
   const [floor, setFloor] = useState(getStageFloor)
@@ -33,5 +64,6 @@ export default function StageBg({ still }: { still?: boolean }) {
   const cash = CASH_BGS.find((c) => c.id === bg.sel)
   if (cash) return <CashStage bg={cash} still={still} />
   const img = bg.images.find((i) => i.id === bg.sel)
-  return <div aria-hidden className={styles.stageBg} style={img ? { backgroundImage: `url("${img.src}")` } : { background: STAGE_COLORS[bg.sel] }} />
+  return <div aria-hidden className={styles.stageBg} style={img ? { backgroundImage: `url("${img.src}")` } : { background: bg.sel === 'system' ? SYS_BG_CSS : STAGE_COLORS[bg.sel] }} />
 }
+

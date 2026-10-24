@@ -5,7 +5,7 @@
 import { useSyncExternalStore } from 'react'
 
 export interface StageBgImage { id: string; src: string }
-export interface StageBg { sel: string; images: StageBgImage[] }   // sel = 'room' | 'white' | 'black' | 캐시샵 배경(cs0~cs4) | 올린 그림의 id
+export interface StageBg { sel: string; images: StageBgImage[] }   // sel = 'room' | 'white' | 'black' | 'system'(시스템 테마 — 라이트 #f7f2ec · 다크 카드 색) | 캐시샵 배경(cs0~cs4) | 올린 그림의 id
 
 // 캐시샵 배경(public/stagebg). 게임 캐시샵(리마스터) 미리보기의 배경 다섯 장
 // (UI.wz UICashShop.img/avatarView/layer:preview_back0~4, 516×512 — 원본 그대로 무손실 WebP). 짝인 preview_cover 는 위아래 가장자리를
@@ -25,6 +25,8 @@ export const cashBgsOn = () => (cashOn ??= fetch(CASH_BGS[0].src, { method: 'HEA
 export const STAGE_BG_MAX = 8
 const KEY = 'pb_stage_bg_v1'
 const DEFAULT: StageBg = { sel: 'room', images: [] }
+// 없는 값(지운 그림 · 오래된 값)은 피팅룸
+const validSel = (sel: unknown, images: StageBgImage[]): string => typeof sel === 'string' && (['room', 'white', 'black', 'system'].includes(sel) || CASH_BGS.some((c) => c.id === sel) || images.some((i) => i.id === sel)) ? sel : 'room'
 
 let state: StageBg | null = null
 const subs = new Set<() => void>()
@@ -35,7 +37,7 @@ function read(): StageBg {
     const v = JSON.parse(localStorage.getItem(KEY) || 'null') as StageBg | null
     if (v && typeof v.sel === 'string' && Array.isArray(v.images)) {
       const images = v.images.filter((i) => i && typeof i.id === 'string' && typeof i.src === 'string').slice(0, STAGE_BG_MAX).map((i) => ({ id: i.id, src: i.src }))
-      state = { sel: ['room', 'white', 'black'].includes(v.sel) || CASH_BGS.some((c) => c.id === v.sel) || images.some((i) => i.id === v.sel) ? v.sel : 'room', images }
+      state = { sel: validSel(v.sel, images), images }
     }
   } catch { /* 저장소를 못 쓰면 기본 배경 */ }
   return state
@@ -52,7 +54,10 @@ const subscribe = (fn: () => void) => { subs.add(fn); return () => { subs.delete
 // 서버와 첫 그리기에서는 기본 배경이고, 화면이 뜬 뒤에 저장된 것으로 바뀐다.
 export function useStageBg(): StageBg { return useSyncExternalStore(subscribe, read, () => DEFAULT) }
 export function getStageBg(): StageBg { return read() }
-export function setStageBg(sel: string) { const s = read(); if (s.sel !== sel) write({ ...s, sel }) }
+// 프리셋마다 배경이 다르다(ShopContext 가 프리셋을 고를 때 그 프리셋의 값으로 부른다 — Snapshot.bg)
+export function setStageBg(sel: string) { const s = read(), v = validSel(sel, s.images); if (s.sel !== v) write({ ...s, sel: v }) }
+// 카드(프리셋) 배경 그리기용 — 그 값이 아직 쓸 수 있는지(지운 그림이면 피팅룸)
+export const stageSelOf = (sel: string | undefined): string => validSel(sel, read().images)
 export function removeStageBg(id: string) {
   const s = read()
   write({ sel: s.sel === id ? 'room' : s.sel, images: s.images.filter((i) => i.id !== id) })

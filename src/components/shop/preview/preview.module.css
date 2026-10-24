@@ -20,6 +20,7 @@
 /* 고른 배경(흰색 · 검은색 · 올린 그림). 그림은 칸을 꽉 채우게 놓는다 */
 .stageBg { position: absolute; inset: 0; background-position: center; background-size: cover; background-repeat: no-repeat; }
 /* 캐시샵 배경: 캐릭터와 같은 정수 배율이라 도트를 그대로 키운다(크기 · 자리는 StageBg 가 준다) */
+.stageCardImg { position: absolute; left: 50%; width: auto; max-width: none; image-rendering: pixelated; pointer-events: none; }
 .stageBgCash { position: absolute; inset: 0; background-repeat: no-repeat; image-rendering: pixelated; }
 .model { position: absolute; inset: 0; }
 .dotBtn { position: absolute; right: 10px; top: 10px; z-index: 4; display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid #f8e0ea; border-radius: 6px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 600; color: #d76d9a; cursor: pointer; transition: opacity .24s ease, transform .24s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); pointer-events: none; }
