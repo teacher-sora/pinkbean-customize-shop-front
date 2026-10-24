@@ -11,6 +11,7 @@ import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, getStageBg, stageSelOf,
 import { MODEL_REF } from '@/lib/core/modelPlacement'
 import { isDarkTheme } from '@/lib/theme'
 import { SCENE_SRC } from '../scene/sceneSrc'
+import { ROOM } from '../scene/sceneData'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import SceneCanvas from '../scene/SceneCanvas'
 import styles from './preview.module.css'
@@ -25,17 +26,20 @@ export const stageColor = (sel: string): string | undefined => sel === 'system' 
 // 캐시샵 배경은 그 크기에 맞춰 키운다 — 게임 1px = fraction × 칸 높이 ÷ bodyRefH. 그림의 바닥 줄은 캐릭터 발(배꼽 + 21px,
 // 배꼽 = 칸 가운데 − centerDy)에, 그림 가운데는 배꼽에. 모두 칸 높이에 대한 비율이라 칸 크기가 바뀌어도 맞는다.
 const FOOT_FROM_NAVEL = 21
+// 그림(게임 px w×h, 그 안의 발 자리 fx · fy)을 카드 캐릭터와 같은 도트 크기로 키워 발을 캐릭터 발에 — 미리보기(SceneCanvas · CashStage)와 같은 규칙을 카드 비율로
+function CardLayer({ src, w, h, fx, fy, fraction }: { src: string; w: number; h: number; fx: number; fy: number; fraction: number }) {
+  const k = fraction / MODEL_REF.bodyRefH // 칸 높이 1 에 대한 게임 1px
+  const top = 0.5 + (-MODEL_REF.centerDy + FOOT_FROM_NAVEL - fy) * k
+  return <img alt="" src={src} className={styles.stageCardImg} style={{ height: `${h * k * 100}%`, top: `${top * 100}%`, transform: `translateX(-${((fx + MODEL_REF.centerDx) / w) * 100}%)` }} />
+}
 export function CardStageBg({ sel, fraction }: { sel?: string; fraction: number }) {
   const v = stageSelOf(sel)
-  if (v === 'room') return <div aria-hidden className={styles.stageBg} style={{ backgroundImage: `url("${SCENE_SRC.room[1]}")` }} />
+  if (v === 'room') return <div aria-hidden className={styles.stageBg} style={{ background: '#14110f' }}>{SCENE_SRC.room.map((src) => <CardLayer key={src} src={src} w={ROOM.w} h={ROOM.h} fx={ROOM.foot[0]} fy={ROOM.foot[1]} fraction={fraction} />)}</div>
   const cash = CASH_BGS.find((c) => c.id === v)
   if (cash) {
-    const k = fraction / MODEL_REF.bodyRefH // 칸 높이 1 에 대한 게임 1px
-    const top = 0.5 + (-MODEL_REF.centerDy + FOOT_FROM_NAVEL - CASH_BG_GROUND) * k
     return (
       <div aria-hidden className={styles.stageBg} style={{ background: `linear-gradient(to bottom, ${cash.top} 50%, ${cash.bottom} 50%)` }}>
-        <img alt="" src={cash.src} className={styles.stageCardImg}
-          style={{ height: `${CASH_BG_H * k * 100}%`, top: `${top * 100}%`, transform: `translateX(-${((CASH_BG_W / 2 + MODEL_REF.centerDx) / CASH_BG_W) * 100}%)` }} />
+        <CardLayer src={cash.src} w={CASH_BG_W} h={CASH_BG_H} fx={CASH_BG_W / 2} fy={CASH_BG_GROUND} fraction={fraction} />
       </div>
     )
   }

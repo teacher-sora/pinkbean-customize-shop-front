@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useIsoLayoutEffect } from '@/lib/uiState'
 import { type PlacedLayer } from '@/lib/core/assemble'
 import { type AnimaRace } from '@/lib/core/data'
 import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
@@ -67,7 +68,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const jobRef = useRef<ReturnType<typeof enqueueThumb> | null>(null)
   // 합성이 RETRY_MS 안에 끝나지 않으면(느린 휴대폰 네트워크에서 그림 하나가 멈춘 경우) 다시 줄을 선다 — 새로고침 전까지 빈 칸으로 남지 않게
   const [retry, setRetry] = useState(0)
-  useEffect(() => {
+  // 그리기 전에(layout effect) 캐시를 본다 — 합성해 둔 코디는 첫 페인트부터 그림이라 탭을 오갈 때 뼈대가 깜빡이지 않는다(사용자 지시: 프리셋 탭). 바뀐 코디만 새로 합성한다
+  useIsoLayoutEffect(() => {
     if (!index || !animaRaces) return
     let alive = true, got = false
     const done = (r: SnapComposite | null) => {

@@ -20,6 +20,7 @@ import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/contro
 import { IconCheck, IconReset, IconViewModel } from '../ui/Icons'
 import DyeVault from './DyeVault'
 import { useInnerSlide } from './innerSlide'
+import { readUiPref, writeUiPref } from '@/lib/uiState'
 import { SurfaceFooter } from './Surface'
 import styles from './surface.module.css'
 
@@ -38,8 +39,11 @@ const VIEW_MODELS: { v: ListMode; l: string }[] = [
   { v: 'mymodel', l: '내 캐릭터' },
 ]
 function useViewPills(skin: boolean) {
-  const [zoom, setZoom] = useState(2)
-  const [model, setModel] = useState<ListMode>('mymodel')
+  // 보기 · 배율은 늘 유지(사용자 지시 — 열 때마다 다시 고르지 않게, lib/uiState 의 UiPref)
+  const [zoom, setZoom0] = useState(() => { const z = readUiPref().dyeZoom; return z === 1 || z === 2 || z === 3 ? z : 2 })
+  const [model, setModel0] = useState<ListMode>(() => { const m = readUiPref().dyeModel; return m === 'sprite' || m === 'model' || m === 'mymodel' ? m : 'mymodel' })
+  const setZoom = (z: number) => { setZoom0(z); writeUiPref({ dyeZoom: z }) }
+  const setModel = (m: ListMode) => { setModel0(m); writeUiPref({ dyeModel: m }) }
   const on = (v: boolean) => clsx(v ? 'pb-solid' : 'pb-soft', styles.zoom, v && styles.zoomOn)
   const pills = (
     <>
