@@ -31,7 +31,7 @@
   width: 46%;
   height: clamp(180px, 38vh, 380px);
   border-radius: 12px;
-  background: linear-gradient(100deg, #f6edf2 30%, #fbe3ec 48%, #f6edf2 66%); background: linear-gradient(100deg, light-dark(#f6edf2, #2b1e25) 30%, light-dark(#fbe3ec, #361722) 48%, light-dark(#f6edf2, #2b1e25) 66%);
+  background: linear-gradient(100deg, #f6edf2 30%, #fbe3ec 48%, #f6edf2 66%); background: linear-gradient(100deg, light-dark(#f6edf2, #543647) 30%, light-dark(#fbe3ec, #573743) 48%, light-dark(#f6edf2, #543647) 66%);
   background-size: 220% 100%;
   animation: pbShimmer 1.25s ease-in-out infinite;
 }

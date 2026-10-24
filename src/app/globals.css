@@ -11,7 +11,7 @@ html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 /* PC = 100svh 고정·문서 스크롤 없음. 모바일 = 페이지 높이 max(100vh, 리스트 최소 높이) +
    **페이지(문서) 스크롤 허용** → 스크롤하면 브라우저 하단 툴바가 접힌다. 리스트 안의 세로 스크롤은 만들지 않는다. */
 html, body { margin: 0; padding: 0; height: 100%; min-height: 100svh; }
-body { font-family: var(--font-wanted), "Wanted Sans Rest", -apple-system, BlinkMacSystemFont, sans-serif; color: #2a2521; color: light-dark(#2a2521, #cbc7c4); overflow: hidden; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; background: linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%); background: linear-gradient(165deg, light-dark(#fdf2f8, #2c1321) 0%, light-dark(#f6ecf6, #2c1d2c) 55%, light-dark(#efe8f7, #251c30) 100%); }
+body { font-family: var(--font-wanted), "Wanted Sans Rest", -apple-system, BlinkMacSystemFont, sans-serif; color: #2a2521; color: light-dark(#2a2521, #d4d5d8); overflow: hidden; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; background: linear-gradient(165deg, #fdf2f8 0%, #f6ecf6 55%, #efe8f7 100%); background: linear-gradient(165deg, light-dark(#fdf2f8, #4e3241) 0%, light-dark(#f6ecf6, #553655) 55%, light-dark(#efe8f7, #3d3f46) 100%); }
 /* 터치 기기: 모바일 셸을 풀어 **문서(루트)** 가 스크롤되게 한다(브라우저는 루트 스크롤일 때만 툴바를 접는다).
    ⚠️ 반드시 위 공통 body{overflow:hidden} **뒤**에 둔다 — 앞에 두면 덮여서 문서가 안 스크롤되고 페이지가 잘린다.
    html/body 는 height:auto — 100% 면 body 가 스크롤 주체가 돼 툴바가 안 접힌다. */
@@ -20,15 +20,15 @@ body { font-family: var(--font-wanted), "Wanted Sans Rest", -apple-system, Blink
   body { overflow-x: hidden; }
   .pb-shell { position: relative !important; inset: auto !important; height: auto !important; }
 }
-a { color: #ec86ac; color: light-dark(#ec86ac, #ec86ac); text-decoration: none; }
-@media (hover: hover) and (pointer: fine) { a:hover { color: #d76d9a; color: light-dark(#d76d9a, #d76d9a); } }
-input, select, button { font-family: inherit; color: #2a2521; color: light-dark(#2a2521, #cbc7c4); }
+a { color: #ec86ac; color: light-dark(#ec86ac, #d881a1); text-decoration: none; }
+@media (hover: hover) and (pointer: fine) { a:hover { color: #d76d9a; color: light-dark(#d76d9a, #d293ae); } }
+input, select, button { font-family: inherit; color: #2a2521; color: light-dark(#2a2521, #d4d5d8); }
 /* 입력칸만 드문 한글 음절을 swap 글꼴로 — 조합 중에 생기는 드문 음절(얔·밐 …)을 block 글꼴로 그리면 파일이 올 때까지 글자가 사라져 깜빡인다. */
 /* !important: 입력칸마다 모듈 CSS 가 font-family: inherit 를 줘서(부모의 block 글꼴을 물려받는다) 이것이 밀린다. */
 input, textarea { font-family: var(--font-wanted), "Wanted Sans Rest Swap", -apple-system, BlinkMacSystemFont, sans-serif !important; }
 input, textarea, select, button { -webkit-text-fill-color: currentColor; } /* iOS 가 폼 글자색을 덮어쓰는 것 방지 */
 /* textarea 도 포함 — 빠지면 설명·댓글 칸만 브라우저 기본(진한 회색)으로 보인다. */
-input::placeholder, textarea::placeholder { color: #b7ada2; color: light-dark(#b7ada2, #625c55); opacity: 1; }
+input::placeholder, textarea::placeholder { color: #b7ada2; color: light-dark(#b7ada2, #858893); opacity: 1; }
 /* 다크 모드(사용자 지시 — 모든 요소): CSS 의 색은 light-dark(라이트, 다크) 로 적혀 있고(앞 줄의 원래 값은 light-dark 를 모르는 브라우저용),
    어느 쪽을 쓸지는 color-scheme 이 정한다 — 시스템이면 OS 를, 헤더의 테마 버튼(lib/theme)이 라이트 · 다크를 고르면 그 값을(<html data-theme>). */
 :root { color-scheme: light dark; }
@@ -37,14 +37,14 @@ input::placeholder, textarea::placeholder { color: #b7ada2; color: light-dark(#b
 /* 미리보기 배경 '시스템'(lib/stageBg) · 손대지 않은 프리셋 카드 바탕 — OS 테마를 따른다(라이트 = 프리셋 카드 바탕, 다크 = 다크 카드 색 — StageBg.SYS_BG 와 같은 값) */
 :root { --pb-sys-bg: #f7f2ec; }
 /* 헤더의 테마 버튼(lib/theme): 시스템이면 OS 를, 라이트 · 다크면 그 값을(<html data-theme>) — 그림으로 내보낼 때도 같은 값(lib/theme isDarkTheme) */
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --pb-sys-bg: #2a2622; } }
-:root[data-theme="dark"] { --pb-sys-bg: #2a2622; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --pb-sys-bg: #3b3d45; } }
+:root[data-theme="dark"] { --pb-sys-bg: #3b3d45; }
 
-.pb-scroll { scrollbar-width: thin; scrollbar-color: #e7c3d4 transparent; scrollbar-color: light-dark(#e7c3d4, #e7c3d4) transparent; }
+.pb-scroll { scrollbar-width: thin; scrollbar-color: #e7c3d4 transparent; scrollbar-color: light-dark(#e7c3d4, #72495c) transparent; }
 .pb-scroll::-webkit-scrollbar { width: 9px; height: 9px; }
-.pb-scroll::-webkit-scrollbar-thumb { background: #e7c3d4; background: light-dark(#e7c3d4, #e7c3d4); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+.pb-scroll::-webkit-scrollbar-thumb { background: #e7c3d4; background: light-dark(#e7c3d4, #72495c); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
 .pb-scroll::-webkit-scrollbar-track { background: transparent; }
-.pb-scroll-thin { scrollbar-width: thin; scrollbar-color: #eecfdd transparent; scrollbar-color: light-dark(#eecfdd, #412632) transparent; }
+.pb-scroll-thin { scrollbar-width: thin; scrollbar-color: #eecfdd transparent; scrollbar-color: light-dark(#eecfdd, #684253) transparent; }
 .pb-scroll-thin::-webkit-scrollbar { width: 8px; }
 .pb-scroll-thin::-webkit-scrollbar-thumb { border-width: 2px; }
 /* 스크롤이 생길 수 있는 칸(목록 · 창 본문 · 팝박스)은 이것을 단다 — 양쪽 스크롤바 자리를 늘 잡아 두어(both-edges) 막대가 생겨도 내용이 밀리지 않고
@@ -115,39 +115,39 @@ input::placeholder, textarea::placeholder { color: #b7ada2; color: light-dark(#b
 button:disabled { cursor: not-allowed; }
 
 button, input, select { transition: background-color .24s ease, border-color .22s ease, color .22s ease, transform .2s ease, opacity .22s ease, filter .2s ease; }
-.pb-card { border: 1px solid #eee6dc; border: 1px solid light-dark(#eee6dc, #372f25); position: relative; transition: transform .18s ease, border-color .2s ease, background-color .22s ease; }
+.pb-card { border: 1px solid #eee6dc; border: 1px solid light-dark(#eee6dc, #454850); position: relative; transition: transform .18s ease, border-color .2s ease, background-color .22s ease; }
 .pb-cardwrap { display: grid; min-width: 0; min-height: 0; cursor: pointer; }
 .pb-slot-x { opacity: 0; transition: opacity .18s ease; }
 
 @media (hover: hover) and (pointer: fine) {
-  .pb-cardwrap:hover > .pb-card { transform: translateY(-4px); border-color: #ec86ac; border-color: light-dark(#ec86ac, #ec86ac); }
+  .pb-cardwrap:hover > .pb-card { transform: translateY(-4px); border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); }
   .pb-slot:hover .pb-slot-x { opacity: 1; }
-  .pb-solid:hover:not(:disabled) { background-color: #d5578e !important; background-color: light-dark(#d5578e, #d65c91) !important; }
-  .pb-ghost:hover:not(:disabled) { background-color: #fcebf3 !important; background-color: light-dark(#fcebf3, #311522) !important; border-color: #ec86ac !important; border-color: light-dark(#ec86ac, #ec86ac) !important; color: #c05a94 !important; color: light-dark(#c05a94, #c76b9f) !important; }
-  .pb-soft:hover:not(:disabled) { background-color: #f9e8f0 !important; background-color: light-dark(#f9e8f0, #311924) !important; color: #c85d8a !important; color: light-dark(#c85d8a, #cb6791) !important; }
-  .pb-cardact:hover:not(:disabled) { background-color: #fdf1f6 !important; background-color: light-dark(#fdf1f6, #2d131e) !important; color: #d76d9a !important; color: light-dark(#d76d9a, #d76d9a) !important; }
-  .pb-icon:hover:not(:disabled) { background-color: #faf3f6 !important; background-color: light-dark(#faf3f6, #28191f) !important; color: #c85d8a !important; color: light-dark(#c85d8a, #cb6791) !important; }
-  .pb-ddbtn:hover:not(:disabled) { border-color: #eeb2ce !important; border-color: light-dark(#eeb2ce, #eeb2ce) !important; background-color: #fff !important; background-color: light-dark(#fff, #1a1a1a) !important; }
-  .pb-ddrow:hover:not(:disabled) { background-color: #fef6f9 !important; background-color: light-dark(#fef6f9, #2a111a) !important; color: #c85d8a !important; color: light-dark(#c85d8a, #cb6791) !important; }
-  .pb-accbar:hover:not(:disabled) { background-color: #fbf0f5 !important; background-color: light-dark(#fbf0f5, #2c1720) !important; }
-  .pb-arrow:hover:not(:disabled) { background-color: #fdf1f6 !important; background-color: light-dark(#fdf1f6, #2d131e) !important; color: #d76d9a !important; color: light-dark(#d76d9a, #d76d9a) !important; }
-  .pb-input:hover { border-color: #eeb2ce !important; border-color: light-dark(#eeb2ce, #eeb2ce) !important; }
-  .pb-step:hover:not(:disabled) { background-color: #faf3f6 !important; background-color: light-dark(#faf3f6, #28191f) !important; color: #d76d9a !important; color: light-dark(#d76d9a, #d76d9a) !important; }
-  .pb-slotrow:hover:not(:disabled) { background: #fdf1f6 !important; background: light-dark(#fdf1f6, #2d131e) !important; border-color: #eeb2ce !important; border-color: light-dark(#eeb2ce, #eeb2ce) !important; }
-  .pb-partchip:hover:not(:disabled) { background: #fef8fa !important; background: light-dark(#fef8fa, #291119) !important; border-color: #eeb2ce !important; border-color: light-dark(#eeb2ce, #eeb2ce) !important; }
-  .pb-pageinput:hover { background: #ead9e2 !important; background: light-dark(#ead9e2, #392932) !important; color: #a1657f !important; color: light-dark(#a1657f, #8d6c7a) !important; }
-  .pb-presetname:hover { background: #ead9e2 !important; background: light-dark(#ead9e2, #392932) !important; color: #a1657f !important; color: light-dark(#a1657f, #8d6c7a) !important; }
+  .pb-solid:hover:not(:disabled) { background-color: #d5578e !important; background-color: light-dark(#d5578e, #b04071) !important; }
+  .pb-ghost:hover:not(:disabled) { background-color: #fcebf3 !important; background-color: light-dark(#fcebf3, #523442) !important; border-color: #ec86ac !important; border-color: light-dark(#ec86ac, #d15785) !important; color: #c05a94 !important; color: light-dark(#c05a94, #cb9ab6) !important; }
+  .pb-soft:hover:not(:disabled) { background-color: #f9e8f0 !important; background-color: light-dark(#f9e8f0, #553645) !important; color: #c85d8a !important; color: light-dark(#c85d8a, #ce97ae) !important; }
+  .pb-cardact:hover:not(:disabled) { background-color: #fdf1f6 !important; background-color: light-dark(#fdf1f6, #4e323e) !important; color: #d76d9a !important; color: light-dark(#d76d9a, #d293ae) !important; }
+  .pb-icon:hover:not(:disabled) { background-color: #faf3f6 !important; background-color: light-dark(#faf3f6, #373940) !important; color: #c85d8a !important; color: light-dark(#c85d8a, #ce97ae) !important; }
+  .pb-ddbtn:hover:not(:disabled) { border-color: #eeb2ce !important; border-color: light-dark(#eeb2ce, #d37aa3) !important; background-color: #fff !important; background-color: light-dark(#fff, #303238) !important; }
+  .pb-ddrow:hover:not(:disabled) { background-color: #fef6f9 !important; background-color: light-dark(#fef6f9, #4b303a) !important; color: #c85d8a !important; color: light-dark(#c85d8a, #ce97ae) !important; }
+  .pb-accbar:hover:not(:disabled) { background-color: #fbf0f5 !important; background-color: light-dark(#fbf0f5, #503340) !important; }
+  .pb-arrow:hover:not(:disabled) { background-color: #fdf1f6 !important; background-color: light-dark(#fdf1f6, #4e323e) !important; color: #d76d9a !important; color: light-dark(#d76d9a, #d293ae) !important; }
+  .pb-input:hover { border-color: #eeb2ce !important; border-color: light-dark(#eeb2ce, #d37aa3) !important; }
+  .pb-step:hover:not(:disabled) { background-color: #faf3f6 !important; background-color: light-dark(#faf3f6, #373940) !important; color: #d76d9a !important; color: light-dark(#d76d9a, #d293ae) !important; }
+  .pb-slotrow:hover:not(:disabled) { background: #fdf1f6 !important; background: light-dark(#fdf1f6, #4e323e) !important; border-color: #eeb2ce !important; border-color: light-dark(#eeb2ce, #d37aa3) !important; }
+  .pb-partchip:hover:not(:disabled) { background: #fef8fa !important; background: light-dark(#fef8fa, #33363c) !important; border-color: #eeb2ce !important; border-color: light-dark(#eeb2ce, #d37aa3) !important; }
+  .pb-pageinput:hover { background: #ead9e2 !important; background: light-dark(#ead9e2, #654054) !important; color: #a1657f !important; color: light-dark(#a1657f, #c0a5b1) !important; }
+  .pb-presetname:hover { background: #ead9e2 !important; background: light-dark(#ead9e2, #654054) !important; color: #a1657f !important; color: light-dark(#a1657f, #c0a5b1) !important; }
 }
 /* 터치 기기: hover 로만 드러나던 요소는 상시 노출 */
 @media (hover: none), (pointer: coarse) {
   .pb-slot-x { opacity: 1; }
 }
-.pb-input:focus { border-color: #ec86ac !important; border-color: light-dark(#ec86ac, #ec86ac) !important; outline: none; }
-.pb-presetname:focus { background: #fff !important; background: light-dark(#fff, #1a1a1a) !important; border-color: #ec86ac !important; border-color: light-dark(#ec86ac, #ec86ac) !important; color: #ec86ac !important; color: light-dark(#ec86ac, #ec86ac) !important; }
-.pb-pageinput:focus { background: #fff !important; background: light-dark(#fff, #1a1a1a) !important; border-color: #ec86ac !important; border-color: light-dark(#ec86ac, #ec86ac) !important; color: #ec86ac !important; color: light-dark(#ec86ac, #ec86ac) !important; }
-button:focus-visible { outline: 2px solid #f8e0ea; outline: 2px solid light-dark(#f8e0ea, #371b26); outline-offset: 2px; }
+.pb-input:focus { border-color: #ec86ac !important; border-color: light-dark(#ec86ac, #d15785) !important; outline: none; }
+.pb-presetname:focus { background: #fff !important; background: light-dark(#fff, #303238) !important; border-color: #ec86ac !important; border-color: light-dark(#ec86ac, #d15785) !important; color: #ec86ac !important; color: light-dark(#ec86ac, #d881a1) !important; }
+.pb-pageinput:focus { background: #fff !important; background: light-dark(#fff, #303238) !important; border-color: #ec86ac !important; border-color: light-dark(#ec86ac, #d15785) !important; color: #ec86ac !important; color: light-dark(#ec86ac, #d881a1) !important; }
+button:focus-visible { outline: 2px solid #f8e0ea; outline: 2px solid light-dark(#f8e0ea, #5a3947); outline-offset: 2px; }
 
-.pb-drawer { position: absolute; left: 0; right: 0; z-index: 4; display: flex; flex-direction: column; background: #fff; background: light-dark(#fff, #1a1a1a); border-top: 1px solid #f0e9e1; border-top: 1px solid light-dark(#f0e9e1, #332c24); transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
+.pb-drawer { position: absolute; left: 0; right: 0; z-index: 4; display: flex; flex-direction: column; background: #fff; background: light-dark(#fff, #303238); border-top: 1px solid #f0e9e1; border-top: 1px solid light-dark(#f0e9e1, #42454d); transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
 .pb-slide { position: absolute; inset: 0; overflow: hidden auto; scrollbar-gutter: stable; transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
 
 /* 슬라이더: 트랙을 썸 이동 범위(양끝 9px 인셋)에 맞춰 별도 div 로 깔아, 0 일 때 썸이 트랙 끝에 정확히 붙는다 */
@@ -160,18 +160,18 @@ button:focus-visible { outline: 2px solid #f8e0ea; outline: 2px solid light-dark
 /* 단일 칸 그리드 — 칸 폭을 minmax(0,1fr) 로 묶는다. auto 면 줄바꿈 없는 긴 이름 폭만큼 칸이 늘어나 말줄임이 안 걸리고
    옆 카드를 덮는다(광장 카드 이름). */
 .pb-presetwrap { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; padding-top: 3px; }
-.pb-presetwrap > .pb-preset { border: 1.5px solid #eee6dc; border: 1.5px solid light-dark(#eee6dc, #372f25); border-radius: 8px; overflow: visible; background: #fff; background: light-dark(#fff, #1a1a1a); display: flex; flex-direction: column; position: relative; transition: transform .18s ease, border-color .22s ease, background-color .24s ease; }
+.pb-presetwrap > .pb-preset { border: 1.5px solid #eee6dc; border: 1.5px solid light-dark(#eee6dc, #454850); border-radius: 8px; overflow: visible; background: #fff; background: light-dark(#fff, #303238); display: flex; flex-direction: column; position: relative; transition: transform .18s ease, border-color .22s ease, background-color .24s ease; }
 @media (hover: hover) and (pointer: fine) {
-  .pb-presetwrap:hover > .pb-preset { transform: translateY(-4px); border-color: #ec86ac; border-color: light-dark(#ec86ac, #ec86ac); }
+  .pb-presetwrap:hover > .pb-preset { transform: translateY(-4px); border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); }
 }
 /* 선택 상태는 hover 이동(-4px)보다 우선(-5px 고정) — hover 규칙 뒤에 둔다. */
-.pb-cardwrap > .pb-card.pb-card-sel { border-color: #ec86ac; border-color: light-dark(#ec86ac, #ec86ac); background: #fef5f8; background: light-dark(#fef5f8, #2b1019); transform: translateY(-5px); }
-.pb-presetwrap > .pb-preset.pb-preset-sel { border-color: #ec86ac; border-color: light-dark(#ec86ac, #ec86ac); background: #fef5f8; background: light-dark(#fef5f8, #2b1019); transform: translateY(-5px); }
+.pb-cardwrap > .pb-card.pb-card-sel { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fef5f8; background: light-dark(#fef5f8, #4c3039); transform: translateY(-5px); }
+.pb-presetwrap > .pb-preset.pb-preset-sel { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fef5f8; background: light-dark(#fef5f8, #4c3039); transform: translateY(-5px); }
 
 /* 염색 조절 인라인(공용): 컨테이너 폭에 따라 한 줄 ↔ 두 줄 */
 .pb-dyecol { container-type: inline-size; }
 .pb-dyerow { display: flex; flex-wrap: nowrap; align-items: center; gap: 9px; margin-bottom: 7px; }
-.pb-dyerow > .pb-dyelabel { flex: 0 0 38px; font-size: 11.5px; font-weight: 600; color: #a89e93; color: light-dark(#a89e93, #6e6861); }
+.pb-dyerow > .pb-dyelabel { flex: 0 0 38px; font-size: 11.5px; font-weight: 600; color: #a89e93; color: light-dark(#a89e93, #8e919a); }
 .pb-dyerow > .pb-slider { flex: 1 1 auto; min-width: 0; max-width: 300px; order: 2; }
 .pb-dyerow > .pb-dyestep { order: 3; display: flex; }
 .pb-dyecol > .pb-dyerow:last-child { margin-bottom: 0; }
@@ -182,9 +182,9 @@ button:focus-visible { outline: 2px solid #f8e0ea; outline: 2px solid light-dark
 .pb-dyerow[data-stack] > .pb-slider { flex: 1 1 100%; min-width: 100%; max-width: none; order: 3; }
 .pb-dyerow[data-stack] > .pb-dyestep { order: 2; margin-left: auto; }
 .pb-slider .pb-track { position: absolute; top: 7px; left: 9px; right: 9px; height: 8px; border-radius: 99px; border: none; overflow: hidden; pointer-events: none; }
-.pb-track-h { background: linear-gradient(90deg,#ff5a5a 0%,#ffd24d 15%,#7fe07f 33%,#4fd6d6 50%,#5aa6ff 66%,#c48cff 80%,#ff6fc0 92%,#ff5a5a 100%); background: linear-gradient(90deg,light-dark(#ff5a5a, #ff5a5a) 0%,light-dark(#ffd24d, #ffd24d) 15%,light-dark(#7fe07f, #7fe07f) 33%,light-dark(#4fd6d6, #5ad8d8) 50%,light-dark(#5aa6ff, #5aa6ff) 66%,light-dark(#c48cff, #c48cff) 80%,light-dark(#ff6fc0, #ff6fc0) 92%,light-dark(#ff5a5a, #ff5a5a) 100%); }
-.pb-track-s { background: linear-gradient(90deg,#d8d2cb 0%,#f2c6d8 50%,#ec86ac 100%); background: linear-gradient(90deg,light-dark(#d8d2cb, #433e39) 0%,light-dark(#f2c6d8, #482332) 50%,light-dark(#ec86ac, #ec86ac) 100%); }
-.pb-track-v { background: linear-gradient(90deg,#4a3f38 0%,#e9dfd6 50%,#fdfbf9 100%); background: linear-gradient(90deg,light-dark(#4a3f38, #b7b0ac) 0%,light-dark(#e9dfd6, #3b322a) 50%,light-dark(#fdfbf9, #251d15) 100%); }
+.pb-track-h { background: linear-gradient(90deg,#ff5a5a 0%,#ffd24d 15%,#7fe07f 33%,#4fd6d6 50%,#5aa6ff 66%,#c48cff 80%,#ff6fc0 92%,#ff5a5a 100%); background: linear-gradient(90deg,light-dark(#ff5a5a, #e52f2f) 0%,light-dark(#ffd24d, #e4b425) 15%,light-dark(#7fe07f, #56c356) 33%,light-dark(#4fd6d6, #3caeae) 50%,light-dark(#5aa6ff, #2f83e5) 66%,light-dark(#c48cff, #9c52ea) 80%,light-dark(#ff6fc0, #e73e9d) 92%,light-dark(#ff5a5a, #e52f2f) 100%); }
+.pb-track-s { background: linear-gradient(90deg,#d8d2cb 0%,#f2c6d8 50%,#ec86ac 100%); background: linear-gradient(90deg,light-dark(#d8d2cb, #545862) 0%,light-dark(#f2c6d8, #6a4454) 50%,light-dark(#ec86ac, #d15785) 100%); }
+.pb-track-v { background: linear-gradient(90deg,#4a3f38 0%,#e9dfd6 50%,#fdfbf9 100%); background: linear-gradient(90deg,light-dark(#4a3f38, #c3c5ca) 0%,light-dark(#e9dfd6, #494c55) 50%,light-dark(#fdfbf9, #33363c) 100%); }
 /* touch-action:none → 스크롤 영역·시트 안에서도 가로 드래그가 스크롤로 새지 않고 썸을 끈다 */
 .pb-slider { touch-action: none; cursor: pointer; }
 /* 터치 기기: 슬라이더 위아래 3px 씩 보이지 않는 터치 영역을 덧댄다. 레이아웃 크기는 그대로(주변 위치 영향 없음).
@@ -195,12 +195,12 @@ button:focus-visible { outline: 2px solid #f8e0ea; outline: 2px solid light-dark
 }
 .pb-range { position: absolute; inset: 0; width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; touch-action: none; pointer-events: none; } /* 포인터는 .pb-slider 가 처리(DyeRow) */
 .pb-range::-webkit-slider-runnable-track { height: 8px; background: transparent; border: none; }
-.pb-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -5px; border-radius: 50%; background: #fff; background: light-dark(#fff, #1a1a1a); border: 2px solid #ec86ac; border: 2px solid light-dark(#ec86ac, #ec86ac); }
+.pb-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -5px; border-radius: 50%; background: #fff; background: light-dark(#fff, #303238); border: 2px solid #ec86ac; border: 2px solid light-dark(#ec86ac, #d15785); }
 .pb-range::-moz-range-track { height: 8px; background: transparent; }
-.pb-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; background: light-dark(#fff, #1a1a1a); border: 2px solid #ec86ac; border: 2px solid light-dark(#ec86ac, #ec86ac); }
+.pb-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; background: light-dark(#fff, #303238); border: 2px solid #ec86ac; border: 2px solid light-dark(#ec86ac, #d15785); }
 .pb-ddmenu { animation: pbDdIn .16s ease both; }
 @keyframes pbDdIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-input[type=range] { accent-color: #ec86ac; accent-color: light-dark(#ec86ac, #ec86ac); }
+input[type=range] { accent-color: #ec86ac; accent-color: light-dark(#ec86ac, #d15785); }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 /* 새로고침 복원 중(html[data-pb-csr]) — 뼈대만 남긴다.
    헤더·하단 탭·부위 칩 줄은 그대로 두고, 본문 두 칸(패널 + 오른쪽 칸)을 빈 상자로 바꾼다.
@@ -211,7 +211,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 [data-pb-panel] { display: contents; }
 [data-pb-stub] { display: none; }
 html[data-pb-csr] [data-pb-panel] { display: none; }
-html[data-pb-csr] [data-pb-stub] { display: block; background: #fff; background: light-dark(#fff, #1a1a1a); border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #3c352c); border-radius: 10px; }
+html[data-pb-csr] [data-pb-stub] { display: block; background: #fff; background: light-dark(#fff, #303238); border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; }
 html[data-pb-csr] [data-pb-stub='main'] { flex: 1 1 auto; min-width: 0; min-height: 0; }
 /* 오른쪽 칸 = 미리보기(코디·프리셋·정보) 또는 등록 폼(광장). 둘의 폭이 같아 한 상자로 덮인다.
    폭은 JS(useBreakpoint) 가 아니라 미디어쿼리로 잡는다 — 하이드레이션 전에도 정확해야 하므로. */
@@ -227,7 +227,7 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
   html[data-pb-csr] [data-pb-stub='main'] { position: fixed; inset: 0; z-index: 3; border: 0; border-radius: 0; }
   /* 머리글(46px)·하단 탭(56px) 경계선만 그려 둔다 — 비어 있어도 '틀'로 읽히게. */
   html[data-pb-csr] [data-pb-stub='main']::before,
-  html[data-pb-csr] [data-pb-stub='main']::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: #f4efe8; background: light-dark(#f4efe8, #2f2820); }
+  html[data-pb-csr] [data-pb-stub='main']::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: #f4efe8; background: light-dark(#f4efe8, #3e4048); }
   html[data-pb-csr] [data-pb-stub='main']::before { top: 46px; }
   html[data-pb-csr] [data-pb-stub='main']::after { bottom: 56px; }
 }
@@ -252,7 +252,7 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
 /* 리스트 카드 헤어 '아이템' 보기: 셀 짧은 변 크기의 정사각 캔버스를 중앙에 */
 .pb-hairsprite { position: absolute; inset: 0; container-type: size; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .pb-hairsprite-box { width: 100cqmin; height: 100cqmin; }
-.pb-skel { background: linear-gradient(100deg, #f4ede4 30%, #efe6da 48%, #f4ede4 66%); background: linear-gradient(100deg, light-dark(#f4ede4, #322a1f) 30%, light-dark(#efe6da, #393025) 48%, light-dark(#f4ede4, #322a1f) 66%); background-size: 220% 100%; animation: pbSkelShimmer 1.25s ease-in-out infinite; }
+.pb-skel { background: linear-gradient(100deg, #f4ede4 30%, #efe6da 48%, #f4ede4 66%); background: linear-gradient(100deg, light-dark(#f4ede4, #3f424a) 30%, light-dark(#efe6da, #454850) 48%, light-dark(#f4ede4, #3f424a) 66%); background-size: 220% 100%; animation: pbSkelShimmer 1.25s ease-in-out infinite; }
 @keyframes pbSkelShimmer { 0% { background-position: 220% 0; } 100% { background-position: -220% 0; } }
 
 /* ── 다이얼로그(LookDialog)가 쓰는 클래스 ── */
@@ -279,4 +279,4 @@ html[data-pb-bgonly] [data-pb-body] { opacity: 0; transform: translateY(10px); v
 /* ── 기능 안내의 '열어 보기'가 도착한 요소를 잠깐 가리킨다(lib/guide 의 guideSpot — 붙였다가 1.9초 뒤 뗀다) ── */
 /* 들어올 때와 나갈 때 모두 테두리 색만 전환한다(움직이지 않는다). :where 로 무게를 0 으로 둬, 요소가 제 transition · outline 을 가지면 그것이 이긴다 */
 :where([data-guide]) { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .3s cubic-bezier(.45,0,.55,1); }
-[data-guide].pb-guidehit { outline: 2px solid #ec86ac !important; outline: 2px solid light-dark(#ec86ac, #ec86ac) !important; outline-offset: 2px; }
+[data-guide].pb-guidehit { outline: 2px solid #ec86ac !important; outline: 2px solid light-dark(#ec86ac, #d15785) !important; outline-offset: 2px; }

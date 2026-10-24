@@ -59,19 +59,19 @@ export default function LookDialog() {
 
   const closeBtn = (
     <button onClick={() => close()} title="닫기 (Esc)"
-      style={css('flex:0 0 auto; width:34px; height:34px; border:1px solid #e7ded4; background:#faf7f3; border-radius:6px; cursor:pointer; font-family:inherit; font-size:15px; color:#8a8075; transition:border-color .14s ease, color .14s ease;')}>✕</button>
+      style={css('flex:0 0 auto; width:34px; height:34px; border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); background: #faf7f3; background: light-dark(#faf7f3, #373940); border-radius:6px; cursor:pointer; font-family:inherit; font-size:15px; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); transition:border-color .14s ease, color .14s ease;')}>✕</button>
   )
 
   return (
     <div {...mask} className={clsx('pb-dlg-mask', hidden && 'pb-dlg-hidden')}
-      style={css(`position:fixed; inset:0; z-index:60; background:rgba(42,37,33,0.42); display:flex; align-items:center; justify-content:center; padding:${stacked ? 14 : 32}px;`)}>
+      style={css(`position:fixed; inset:0; z-index:60; background: rgba(42,37,33,0.42); background: light-dark(rgba(42,37,33,0.42), rgba(14, 15, 17, 0.483)); display:flex; align-items:center; justify-content:center; padding:${stacked ? 14 : 32}px;`)}>
       <div onClick={(e) => e.stopPropagation()} className={clsx('pb-dlg-panel', hidden && 'pb-dlg-hidden')}
-        style={css('width:100%; max-width:560px; height:min(620px, 88svh); background:#fff; border-radius:12px; display:flex; flex-direction:column; overflow:hidden;')}>
+        style={css('width:100%; max-width:560px; height:min(620px, 88svh); background: #fff; background: light-dark(#fff, #303238); border-radius:12px; display:flex; flex-direction:column; overflow:hidden;')}>
         <div style={css('display:flex; flex-direction:column; min-height:0; flex:1 1 auto;')}>
           <div style={css('flex:0 0 auto; padding:18px 22px 0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;')}>
             <div style={css('display:flex; flex-direction:column; gap:4px; min-width:0;')}>
-              <span style={css('font-size:15px; font-weight:700; color:#2a2521;')}>가져올 코디 선택</span>
-              <span style={css('font-size:12px; color:#a89e93; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>
+              <span style={css('font-size:15px; font-weight:700; color: #2a2521; color: light-dark(#2a2521, #d4d5d8);')}>가져올 코디 선택</span>
+              <span style={css('font-size:12px; color: #a89e93; color: light-dark(#a89e93, #8e919a); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>
                 {multiLook ? `'${lp.nick}' 은(는) 코디가 두 벌이에요, 프리셋을 골라 주세요` : `'${lp.nick}' 의 치장 프리셋을 골라 주세요`}
               </span>
             </div>
@@ -80,12 +80,12 @@ export default function LookDialog() {
 
           {multiLook && (
             <div style={css('flex:0 0 auto; padding:12px 22px 0;')}>
-              <div style={css('display:flex; align-items:center; gap:4px; padding:3px; background:#f4ecf3; border-radius:8px;')}>
+              <div style={css('display:flex; align-items:center; gap:4px; padding:3px; background: #f4ecf3; background: light-dark(#f4ecf3, #563752); border-radius:8px;')}>
                 {lp.options.map((o) => {
                   const on = o.key === look.key
                   return (
                     <button key={o.key} onClick={() => setLookKey(o.key)}
-                      style={css(`flex:1 1 auto; height:32px; padding:0 12px; border:none; border-radius:6px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? '#fff' : '#8a8075'}; background:${on ? '#ec86ac' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{o.label}</button>
+                      style={css(`flex:1 1 auto; height:32px; padding:0 12px; border:none; border-radius:6px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:${on ? 600 : 500}; white-space:nowrap; color:${on ? 'light-dark(#fff, #303238)' : 'light-dark(#8a8075, #9fa2aa)'}; background:${on ? 'light-dark(#ec86ac, #d15785)' : 'transparent'}; transition:background .22s ease, color .22s ease;`)}>{o.label}</button>
                   )
                 })}
               </div>
@@ -100,15 +100,15 @@ export default function LookDialog() {
               return (
                 <button key={hk} onClick={() => close(() => s.chooseLook(look.key, p.key))}
                   onMouseEnter={() => setHover(hk)} onMouseLeave={() => setHover(null)}
-                  style={css(`display:flex; flex-direction:column; align-items:stretch; height:100%; min-height:0; gap:0; padding:0; border-radius:8px; cursor:pointer; overflow:hidden; font-family:inherit; background:#faf7f3; border:2px solid ${on ? '#ec86ac' : '#e7ded4'}; transition:border-color .14s ease, transform .14s ease; transform:translateY(${on ? -2 : 0}px);`)}>
-                  <div style={css('position:relative; flex:1 1 0; min-height:0; width:100%; background:#f7f2ec; overflow:hidden;')}>
+                  style={css(`display:flex; flex-direction:column; align-items:stretch; height:100%; min-height:0; gap:0; padding:0; border-radius:8px; cursor:pointer; overflow:hidden; font-family:inherit; background:#faf7f3; border:2px solid ${on ? 'light-dark(#ec86ac, #d15785)' : 'light-dark(#e7ded4, #4b4e57)'}; transition:border-color .14s ease, transform .14s ease; transform:translateY(${on ? -2 : 0}px);`)}>
+                  <div style={css('position:relative; flex:1 1 0; min-height:0; width:100%; background: #f7f2ec; background: light-dark(#f7f2ec, #3b3d45); overflow:hidden;')}>
                     {/* 프리셋 카드처럼 명찰을 닉네임으로(명찰 반지가 없으면 기본 명찰 — 사용자 지시) */}
                     <SnapThumb snap={p.snap} tagName={lp.nick} baseTag />
                     {p.active && (
-                      <span style={css('position:absolute; top:7px; left:7px; height:20px; padding:0 8px; display:inline-flex; align-items:center; border-radius:20px; background:rgba(255,255,255,0.94); border:1px solid #f8e0ea; color:#d76d9a; font-size:10px; font-weight:600; white-space:nowrap; box-shadow:0 2px 8px rgba(214,109,154,.18);')}>착용 중</span>
+                      <span style={css('position:absolute; top:7px; left:7px; height:20px; padding:0 8px; display:inline-flex; align-items:center; border-radius:20px; background: rgba(255,255,255,0.94); background: light-dark(rgba(255,255,255,0.94), rgba(48, 50, 56, 0.94)); border: 1px solid #f8e0ea; border: 1px solid light-dark(#f8e0ea, #5a3947); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); font-size:10px; font-weight:600; white-space:nowrap; box-shadow: 0 2px 8px rgba(214,109,154,.18); box-shadow: 0 2px 8px light-dark(rgba(214,109,154,.18), rgba(164, 62, 106, 0.18));')}>착용 중</span>
                     )}
                   </div>
-                  <span style={css(`flex:0 0 auto; padding:8px; font-size:13px; font-weight:600; text-align:center; color:${on ? '#d76d9a' : '#6e645c'}; background:#fff; border-top:1px solid #f0e9e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .14s ease;`)}>{p.label}</span>
+                  <span style={css(`flex:0 0 auto; padding:8px; font-size:13px; font-weight:600; text-align:center; color:${on ? 'light-dark(#d76d9a, #b94a79)' : 'light-dark(#6e645c, #aeb1b8)'}; background:#fff; border-top:1px solid #f0e9e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .14s ease;`)}>{p.label}</span>
                 </button>
               )
             })}
