@@ -257,20 +257,25 @@ export async function renderDyedSprite(
   size = 60,
   frac?: number, // 채움 비율(지정 시 분수-맞춤: 원본이 커도 넘치지 않게 축소). 미지정=기존(발색표) 동작.
   cors = false, // 단색도 CORS 로 받는다 — 결과 캔버스를 이미지로 내보낼 때(공유 이미지). 기본은 목록이 받아 둔 비-CORS 캐시를 쓴다
-): Promise<void> {
-  if (meta.colorGroup == null) return
+  hsb?: HsbParams, // 색 계열이 없는 아이템(HSB 염색)도 같은 합성으로 — 모든 부위를 착용 자리대로 겹치고 레이어마다 HSB(염색 창의 '아이템' 보기)
+): Promise<boolean> {
+  const cg = meta.colorGroup
+  if (cg == null && hsb === undefined) return false
   const layers = getFrameLayers(meta, view)
-  if (!layers.length) return
-  const cg = meta.colorGroup, slot = meta.slot
-  const useMix = mix !== base && ratio > 0
-  const baseId = variantId(cg, base, slot), mixId = variantId(cg, mix, slot)
+  if (!layers.length) return false
+  const slot = meta.slot
+  const useMix = cg != null && mix !== base && ratio > 0
+  const baseId = cg != null ? variantId(cg, base, slot) : meta.id, mixId = cg != null ? variantId(cg, mix, slot) : meta.id
+  const hsbOn = !!hsb && (hsb.h !== 0 || hsb.s !== 0 || hsb.b !== 0)
   type P = { src: CanvasImageSource; x: number; y: number; w: number; h: number; z: string }
   // 모든 레이어(및 믹스의 base/mix)를 병렬 로드 → 순차 fetch 지연 제거(발색이 즉시 보임).
   //  - 단색: 비-CORS(리스트가 받아둔 캐시 재사용). 블렌드: CORS(픽셀리드).
   const placed: P[] = (await Promise.all(layers.map(async (l): Promise<P | null> => {
     try {
       let src: CanvasImageSource
-      if (useMix) {
+      if (cg == null) {
+        src = hsbOn ? applyHsb(await loadDyeImage(l.png), hsb!, l.png) : await loadImage(l.png, cors)
+      } else if (useMix) {
         const [baseImg, mixImg] = await Promise.all([
           loadDyeImage(swapId(l.png, meta.id, baseId)),
           loadDyeImage(swapId(l.png, meta.id, mixId)),
@@ -284,7 +289,7 @@ export async function renderDyedSprite(
       return { src, x: -(l.origin.x + bx), y: -(l.origin.y + by), w, h, z: l.z }
     } catch (_) { return null }
   }))).filter((x): x is P => x !== null)
-  if (!placed.length) return
+  if (!placed.length) return false
   const zi = (z: string) => { const i = zmap.indexOf(z); return i < 0 ? 9999 : i }
   placed.sort((a, b) => zi(b.z) - zi(a.z)) // 먼 레이어(zmap 큰 값) 먼저 그림
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
@@ -320,6 +325,7 @@ export async function renderDyedSprite(
   const offX = (size - bw * scale) / 2 - minX * scale
   const offY = (size - bh * scale) / 2 - minY * scale
   for (const p of placed) ctx.drawImage(p.src, Math.round(p.x * scale + offX), Math.round(p.y * scale + offY), Math.round(p.w * scale), Math.round(p.h * scale))
+  return true
 }
 
 // Build per-layer dyed source overrides (png path -> canvas) for equipped items.
