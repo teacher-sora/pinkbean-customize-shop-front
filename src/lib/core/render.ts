@@ -159,7 +159,7 @@ export interface RenderOpts {
   centerXOnly?: boolean              // 가로(X)만 body navel 로 동적 중앙정렬, 세로(Y)는 anchor.y 그대로 → navel 이
                                      //   프레임마다 상하로 "드리프트"할 수 있다(전투대기 등에서 다리 고정·상체 상하 모션 유지).
                                      //   라이딩처럼 포즈별 가로 폭이 달라 X 정렬은 필요하지만 Y 는 애니메이션대로 둬야 할 때.
-  centerBox?: { x?: number; y?: number } // 몸 없이 아이템만(염색 창 '아이템' 보기): 처음 그린 프레임의 그림 bbox 가운데를 상자 가운데에 — 값을 여기 적어 두고 다음 프레임도 같은 자리(애니메이션 중 흔들리지 않게)
+  centerBox?: { x?: number; y?: number; k?: number } // 몸 없이 아이템만(염색 창 '아이템' 보기): 처음 그린 프레임의 그림 bbox 가운데를 상자 가운데에 — 값을 여기 적어 두고 다음 프레임도 같은 자리(애니메이션 중 흔들리지 않게)
   centerMount?: boolean              // 캐릭터가 아니라 "마운트(mount* 레이어)"의 실제 스프라이트 bbox 가로중심을 캔버스
                                      //   중앙에 둔다(메탈아머처럼 메카가 주 비주얼일 때 — 조종사 중앙정렬하면 메카가 치우침).
   cors?: boolean                     // load sprites with CORS(?cors=1). DEFAULT true so ALL canvas renders(코디 카드·
@@ -214,6 +214,9 @@ function opaqueBottom (src: HTMLImageElement | HTMLCanvasElement): number {
 }
 
 // Draw the placed character with the navel pinned to a fixed canvas coordinate.
+// 몸 없이 아이템만 그릴 때의 기준 크기(게임 px) — 머리 전체를 덮는 큰 모자의 긴 변. 배율은 이 범위 안에서만 곱한다(아주 작은 점 장식이 화면을 덮지 않게)
+const BARE_REF = 64, BARE_K_MIN = 0.5, BARE_K_MAX = 3
+
 export async function renderCharacter(
   canvas: HTMLCanvasElement,
   placed: PlacedLayer[],
@@ -243,7 +246,7 @@ export async function renderCharacter(
 
   // 정수 배율이면 확대가 nearest 로 완벽히 선명. 카드/미리보기는 캔버스를 "디바이스 픽셀" 해상도로 맞추려고
   // 분수 배율을 넘긴다(1:1 표시 → CSS 재확대 없음, nearest). dx/dy 는 아래에서 정수 스냅한다.
-  const scale = Math.max(0.01, opts.scale ?? 1)
+  let scale = Math.max(0.01, opts.scale ?? 1) // centerBox 면 아래에서 아이템 크기에 맞춰 곱한다(캔버스 크기는 그대로)
   // 크기가 같으면 재할당하지 않는다 — width 대입은 같은 값이어도 비트맵을 새로 잡아(GPU 캔버스 재할당) 애니메이션·
   // 착용 변경 중 한 프레임 비거나 세로줄이 찢겨 보였다. 같은 크기면 clearRect 만으로 충분.
   const cw = Math.round(opts.box.w * scale), ch = Math.round(opts.box.h * scale)
@@ -269,9 +272,17 @@ export async function renderCharacter(
         const k = p.scale ?? 1
         minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x + src.width * k); maxY = Math.max(maxY, p.y + src.height * k)
       }
-      if (minX < maxX) { cb.x = (minX + maxX) / 2; cb.y = (minY + maxY) / 2 }
+      if (minX < maxX) {
+        cb.x = (minX + maxX) / 2; cb.y = (minY + maxY) / 2
+        // 크기 맞춤(사용자 지시): 머리 전체에 씌우는 큰 모자(흐드러진 악몽 — 머리를 덮는 그림의 긴 변 ≈ BARE_REF 게임 px)가 마네킹 배율에서 보이는 크기로
+        // 모든 아이템을 맞춘다. k = BARE_REF / 이 아이템의 긴 변 — 한벌옷 · 신발처럼 몸의 일부에만 붙는 작은 그림은 키우고, 큰 그림은 줄인다.
+        cb.k = Math.min(BARE_K_MAX, Math.max(BARE_K_MIN, BARE_REF / Math.max(maxX - minX, maxY - minY)))
+      }
     }
-    if (cb.x != null && cb.y != null) { anchorX = Math.round(opts.box.w / 2 - cb.x); anchorY = Math.round(opts.box.h / 2 - cb.y) }
+    if (cb.x != null && cb.y != null) {
+      scale *= cb.k ?? 1
+      anchorX = Math.round(cw / scale / 2 - cb.x); anchorY = Math.round(ch / scale / 2 - cb.y)
+    }
   } else if (opts.centerMount && placed.length) {
     // 마운트(mount* 레이어)의 실제 스프라이트 가로 bbox 중심을 캔버스 중앙에. 스프라이트 폭은 로드된 이미지에서.
     let minX = Infinity, maxX = -Infinity
