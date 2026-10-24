@@ -6,8 +6,9 @@ import { useEffect, useState } from 'react'
 import { useShop } from '../ShopContext'
 import { resetHeroView, setHeroView, useHeroView, type HeroView } from '@/lib/heroView'
 import { SKY_MODES, getSkyMode, setSkyMode, type SkyMode } from '../scene/skyTime'
+import { THEMES, setTheme, useTheme } from '@/lib/theme'
 import { Seg } from '../ui/controls'
-import { IconLinkCopy, IconRate, IconScene, IconSky, IconViewBase, IconViewFull, IconViewWide } from '../ui/Icons'
+import { IconLinkCopy, IconRate, IconScene, IconSky, IconTheme, IconViewBase, IconViewFull, IconViewWide } from '../ui/Icons'
 import styles from './frame.module.css'
 
 // 글자가 바뀌는 버튼의 라벨. 나올 수 있는 글자를 모두 같은 자리에 겹쳐 두고 지금 것만 보인다 →
@@ -33,6 +34,11 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
   const [sky, setSky] = useState<SkyMode>('auto')
   useEffect(() => { setSky(getSkyMode()) }, [])
   const skyAt = SKY_MODES.findIndex((m) => m.id === sky)
+  // 테마(PC · 모바일): 누를 때마다 시스템 → 라이트 → 다크(lib/theme)
+  const theme = useTheme()
+  const themeAt = Math.max(0, THEMES.findIndex((t) => t.id === theme))
+  const nextTheme = () => setTheme(THEMES[(themeAt + 1) % THEMES.length].id)
+  const themeTitle = `테마: ${THEMES[themeAt].label} (누르면 다음으로)`
   const nextSky = () => { const m = SKY_MODES[(skyAt + 1) % SKY_MODES.length].id; setSkyMode(m); setSky(m) }
   // 미리보기 크기(모바일 만, lib/heroView): 기본 · 크게 · 캐릭터만. 코디 광장에는 미리보기가 없어 고를 수 없다(그때는 기본으로 돌린다).
   const hv = useHeroView()
@@ -52,6 +58,7 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
           <span className={styles.logoTextM}>커마샵</span>
         </button>
         <div className={styles.headerActsM}>
+          <button type="button" onClick={nextTheme} title={themeTitle} aria-label={themeTitle} className={clsx('pb-ghost', styles.themeBtnM)}><IconTheme mode={theme} size={14} /></button>
           <div data-guide="view" className={styles.viewSegM}>
             <Seg variant="mobileFit" opts={viewOpts} value={noHero ? 'base' : hv} onPick={setHeroView} title="미리보기 크기" />
           </div>
@@ -73,6 +80,9 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
       </button>
       {/* 도구 모음 한 칸: 배경을 다루는 둘(시간대 · 배경 보기) | 코디를 다루는 둘(평가 · 복사) */}
       <div className={styles.tools}>
+        <button type="button" onClick={nextTheme} title={themeTitle} className={clsx('pb-ghost', styles.tool)}>
+          <IconTheme mode={theme} /><Swap now={THEMES[themeAt].label} all={THEMES.map((t) => t.label)} />
+        </button>
         <button type="button" onClick={nextSky} title={`배경 시간대: ${SKY_MODES[skyAt].label} (누르면 다음으로)`} className={clsx('pb-ghost', styles.tool)}>
           <IconSky mode={sky} /><Swap now={SKY_MODES[skyAt].label} all={SKY_MODES.map((m) => m.label)} />
         </button>

@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, getStageBg, stageSelOf, useStageBg, type CashBg } from '@/lib/stageBg'
 import { MODEL_REF } from '@/lib/core/modelPlacement'
+import { isDarkTheme } from '@/lib/theme'
 import { SCENE_SRC } from '../scene/sceneSrc'
 import { getStageFloor, onStageFloor } from '@/lib/stageFloor'
 import SceneCanvas from '../scene/SceneCanvas'
@@ -18,9 +19,7 @@ export const STAGE_COLORS: Record<string, string> = { white: '#ffffff', black: '
 // 시스템 테마(사용자 지시): 라이트면 프리셋 카드 바탕 #f7f2ec, 다크면 다크 카드 색. 화면은 CSS 변수(--pb-sys-bg, globals.css), 그림으로 내보낼 때는 이 값
 export const SYS_BG = { light: '#f7f2ec', dark: '#2a2622' }
 export const SYS_BG_CSS = 'var(--pb-sys-bg)'
-export const stageColor = (sel: string): string | undefined => sel === 'system'
-  ? (typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches ? SYS_BG.dark : SYS_BG.light)
-  : STAGE_COLORS[sel]
+export const stageColor = (sel: string): string | undefined => sel === 'system' ? (isDarkTheme() ? SYS_BG.dark : SYS_BG.light) : STAGE_COLORS[sel]
 
 // 프리셋 카드의 배경(사용자 지시: 프리셋마다 미리보기 배경). 카드 캐릭터는 배율 없이 fraction(마네킹 높이 ÷ 칸 높이)으로만 그려지므로
 // 캐시샵 배경은 그 크기에 맞춰 키운다 — 게임 1px = fraction × 칸 높이 ÷ bodyRefH. 그림의 바닥 줄은 캐릭터 발(배꼽 + 21px,
