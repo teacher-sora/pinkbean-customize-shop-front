@@ -36,6 +36,7 @@ import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { confirmTwice } from '@/lib/confirmTwice'
+import { setStageBg, useStageBg } from '@/lib/stageBg'
 import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, dropUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
@@ -75,7 +76,8 @@ function rateSlotOf(text: string, equipped: Record<string, ListItem | null>): st
   return ''
 }
 
-export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; dotPos?: Record<string, DotOffsets>; dyeOff?: Record<string, boolean>; pv?: PvSnap; name?: string }
+export type Snapshot = { equipped: Record<string, string>; tone: number; dyePalette: Record<string, PaletteParams>; dyeHsb: Record<string, HsbParams>; hidden: Record<string, boolean>; dotPos?: Record<string, DotOffsets>; dyeOff?: Record<string, boolean>; pv?: PvSnap; name?: string
+  bg?: string } // bg = 미리보기 배경(lib/stageBg 의 sel) — 프리셋마다 다르다(사용자 지시). 이 브라우저의 값이라 광장 · 공유에는 싣지 않는다. 없으면 피팅룸
 // 공유·광장에서 받은 코디는 메타 정보(연출·시선·액션·표정·배율)를 **전부 그 코디의 값**으로 가져온다.
 // 담겨 있지 않은 칸은 기본값이다 — 공유 코드는 기본값과 같은 칸을 아예 빼고 싣고(shareCode.minPv), 오래된 광장 글엔
 // 보기 설정이 없다. 빠진 칸을 '보던 화면의 값'으로 두면 3배로 보던 중에 가져온 코디가 3배로 저장돼
@@ -115,7 +117,9 @@ const PRESET_WARM = 30   // 한가할 때 미리 합성하는 프리셋은 앞�
 const PRESET_IDS = Array.from({ length: PRESET_COUNT }, (_, i) => 'd' + i)
 // 되돌리기 기록용: 프리셋 이름 전체(id → 이름)와, 기록 한 건을 가르는 상태키(코디 + 선택 프리셋 + 이름).
 const namesOf = (ps: Preset[]): Record<string, string> => Object.fromEntries(ps.map((p) => [p.id, p.name]))
-const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, string>) => JSON.stringify({ s: snap, p: sel, n: names })
+// 배율(pv.zoom)은 되돌리기 · 다시 실행과 무관한 보기 값이다(사용자 지시) — 키에서 빼서 배율만 바꾼 것은 기록하지 않고, 되돌릴 때도 지금 배율을 둔다(applyHistory)
+// 미리보기 배경(bg)도 같다 — 되돌리기로 바뀌지 않는다
+const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, string>) => JSON.stringify({ s: { ...snap, bg: undefined, ...(snap.pv ? { pv: { ...snap.pv, zoom: undefined } } : {}) }, p: sel, n: names })
 // 연출 설정 기본값 — 첫 상태이자 '프리셋 초기화'가 되돌릴 값이다(한곳에서 관리).
 // 시선·액션·표정·fps 는 스냅샷에 담기지 않지만, 초기화는 **이것까지 전부** 되돌린다.
 const PV_DEFAULT: Pv = {
@@ -462,6 +466,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [pageInput, setPageInput] = useState('')
   const [pv, setPvState] = useState<Pv>(PV_DEFAULT)
   const [presets, setPresets] = useState<Preset[]>(() => PRESET_IDS.map((id, i) => ({ id, name: defaultPresetName(i) })))
+  const stageBg = useStageBg() // 미리보기 배경 — 지금 프리셋에 담긴다(snapshot().bg)
   const [presetData, setPresetData] = useState<Record<string, Snapshot>>(() => Object.fromEntries(PRESET_IDS.map((id) => [id, defaultSnapshot()])))
   // 처음엔 **아무것도 선택하지 않는다**. 'd0' 으로 시작하면 저장소를 읽기 전 잠깐 1번 칸에
   // '선택됨' 띠지가 붙었다가 실제 프리셋으로 옮겨 간다. 아래 초기 로드에서 채운다.
@@ -1522,7 +1527,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       ...(Object.keys(dyeOff).length ? { dyeOff: { ...dyeOff } } : {}),
       pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, floatFx: pv.floatFx, baseTag: pv.baseTag,
         // 보기 설정은 **정보로만** 담는다 — 프리셋을 쓸 때 화면을 되살리는 데만 쓰이고 카드에는 그려지지 않는다.
-        gaze: pv.gaze, action: pv.action, frame: pv.frame, expr: pv.expr, zoom: pv.zoom } }
+        gaze: pv.gaze, action: pv.action, frame: pv.frame, expr: pv.expr, zoom: pv.zoom }, bg: stageBg.sel }
   }
   // 스냅샷의 연출설정을 라이브 pv 에 반영. 코디에 속하는 연출(형상변이·귀·무기모션·이펙트)은 없으면 기본값으로,
   // 보기 설정(시선·액션·표정·배율)은 **담겨 있을 때만** 되살린다 — 광장 코디나 오래된 프리셋처럼 담기지 않은 것을
@@ -1570,6 +1575,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setDyeOff({ ...(snap.dyeOff || {}) }); setHidden({ ...(snap.hidden || {}) })
     setDotPos({ ...(snap.dotPos || {}) })
     applyPvSnap(snap.pv)
+    setStageBg(snap.bg ?? 'room') // 그 프리셋의 미리보기 배경(담기지 않은 오래된 프리셋 · 받은 코디는 피팅룸)
     if (sel !== undefined) setSelectedPreset(sel)
     // 되돌리기/다시실행은 편집 중이던 아이템 선택(dyeTarget)을 유지(여전히 착용/스킨일 때) → 염색만 되돌아가고 선택은 유지.
     if (keepTarget) setDyeTarget((t) => (t && (t === 'skin' || eq[t]) ? t : null))
@@ -1915,7 +1921,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 저장 대상 pv 변경도 자동저장 트리거에 포함해야 새로고침 후 유지된다 — 코디 연출(형상변이·귀·무기모션·이펙트)과
     // 보기 설정(시선·액션·표정·배율) 모두. (fps 만 담지 않는다.)
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, presets,
-      pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.floatFx, pv.baseTag, pv.zoom, pv.gaze, pv.action, pv.expr])
+      pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.floatFx, pv.baseTag, pv.zoom, pv.gaze, pv.action, pv.expr, stageBg.sel])
 
   // 연출설정(pv) 전체를 새로고침 후에도 유지 — 프리셋 스냅샷엔 서브셋만 담기므로 전체 pv 를 별도 키에 영속.
   useEffect(() => {
@@ -1952,7 +1958,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset])
 
 
-  const applyHistory = (e: { snap: Snapshot; sel: string | null; names?: Record<string, string> }) => {
+  const applyHistory = (e0: { snap: Snapshot; sel: string | null; names?: Record<string, string> }) => {
+    // 배율 · 같은 프리셋의 배경은 지금 그대로(되돌리기와 무관한 값). 다른 프리셋으로 돌아가면 그 프리셋에 저장된 배경
+    const keepBg = e0.sel === selectedPreset ? stageBg.sel : (e0.sel ? presetData[e0.sel]?.bg : undefined) ?? e0.snap.bg
+    const e = { ...e0, snap: { ...e0.snap, bg: keepBg, ...(e0.snap.pv ? { pv: { ...e0.snap.pv, zoom: pv.zoom } } : {}) } }
     // 이름 전체도 그 시점으로(오래된 기록엔 없으면 지금 이름 유지). 코디가 같아도 이름만 바뀌는 기록이 있다.
     const names = e.names ?? namesOf(presets)
     if (e.names) setPresets((ps) => ps.map((p) => (e.names![p.id] != null ? { ...p, name: e.names![p.id] } : p)))

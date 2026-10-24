@@ -15,7 +15,8 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
 const PRESET_FRACTION = 0.38
-import { useShop, type Snapshot } from '../ShopContext'
+import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
+import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
 import { IconCheck, IconLinkCopy, IconPencil, IconReorder, IconTakeDown, IconTrashSolid } from '../ui/Icons'
 import styles from './preset.module.css'
 
@@ -161,7 +162,10 @@ const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, sorting, 
       className={clsx('pb-presetwrap', styles.wrap, sorting && styles.sorting)}>
       <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
         <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
-        <div ref={thumbRef} className={clsx(styles.thumb, mobile && styles.thumbM)}>{snap && seen && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
+        {/* 바탕(사용자 지시): 손대지 않은 프리셋(광장 등록의 올릴 프리셋 판정과 같다)은 시스템 테마 색, 꾸민 프리셋은 그 프리셋의 미리보기 배경 */}
+        <div ref={thumbRef} className={clsx(styles.thumb, mobile && styles.thumbM)} style={snap && !isCustomSnapshot(snap) ? { background: SYS_BG_CSS } : undefined}>
+          {snap && isCustomSnapshot(snap) && <div className={styles.thumbBg}><CardStageBg sel={snap.bg} fraction={PRESET_FRACTION} /></div>}
+          {snap && seen && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
         <div className={styles.nameRow}>
           <span className={styles.nameWrap}>
             <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}

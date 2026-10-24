@@ -347,7 +347,7 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
   // (이메일 저장이 따로 실패해 이메일 없는 출품작이 생기던 틈을 막는다). 기기 제한·마감도 여기서 걸린다.
   const ins = await c.rpc('plaza_submit', {
     p: {
-      name: d.name, description: d.description, tags: d.tags, snapshot: d.snapshot, share_code: d.shareCode,
+      name: d.name, description: d.description, tags: d.tags, snapshot: { ...d.snapshot, bg: undefined }, share_code: d.shareCode, // 배경(bg)은 이 브라우저의 값이라 올리지 않는다
       image_path: imagePath, image_view: imagePath ? d.imageView : null, contest: d.contest,
     },
     email: d.contest ? d.email : null,

@@ -7,7 +7,7 @@ import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { addStageBg, CASH_BGS, cashBgsOn, removeStageBg, setStageBg, STAGE_BG_MAX, useStageBg } from '@/lib/stageBg'
-import { STAGE_COLORS } from '../preview/StageBg'
+import { STAGE_COLORS, SYS_BG_CSS } from '../preview/StageBg'
 import { SCENE_SRC } from '../scene/sceneSrc'
 import { useShop } from '../ShopContext'
 import { IconAdd, IconClose } from '../ui/Icons'
@@ -17,6 +17,7 @@ const FIXED = [
   { id: 'room', label: '피팅룸', style: { backgroundImage: `url("${SCENE_SRC.room[1]}")` } },
   { id: 'white', label: '흰색', style: { background: STAGE_COLORS.white } },
   { id: 'black', label: '검은색', style: { background: STAGE_COLORS.black } },
+  { id: 'system', label: '시스템', style: { background: SYS_BG_CSS } }, // OS 테마를 따른다(라이트 · 다크) — 기본 제공의 맨 끝(사용자 지시)
 ]
 
 export default function StageBgBody() {
