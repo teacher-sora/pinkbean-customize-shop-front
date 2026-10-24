@@ -15,7 +15,8 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
 const PRESET_FRACTION = 0.38
-import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
+import { isCustomSnapshot, NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
+import { readUiPref, writeUiPref } from '@/lib/uiState'
 import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
 import { useStageBg } from '@/lib/stageBg'
 import { IconCheck, IconLinkCopy, IconPencil, IconReorder, IconTakeDown, IconTrashSolid } from '../ui/Icons'
@@ -62,6 +63,19 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <span className={styles.chipSlash}>/</span>
       {/* 칸 수는 **실제 프리셋 목록**에서 센다 — 숫자를 박아 두면 칸 수를 바꿀 때 어긋난다. */}
       <span className={styles.chipLabel}>{s.presets.length}</span>
+    </div>
+  )
+  // 불러올 장식(간이 — 사용자 지시: 디자인은 나중에 확정). 켜 둔 것만 닉네임 불러오기에 담긴다
+  const [take, setTake] = useState<Record<string, boolean>>({})
+  useEffect(() => { setTake(readUiPref().nickTake ?? {}) }, [])
+  const flip = (slot: string) => setTake((t) => { const n = { ...t, [slot]: t[slot] === false }; writeUiPref({ nickTake: n }); return n })
+  const takeRow = (
+    <div className={clsx(styles.takeRow, mobile && styles.takeRowM)} title="닉네임으로 불러올 때 함께 가져올 장식">
+      <span className={styles.takeLabel}>불러올 장식</span>
+      {NICK_TAKE_SLOTS.map((t) => {
+        const on = take[t.slot] !== false
+        return <button key={t.slot} type="button" aria-pressed={on} onClick={() => flip(t.slot)} title={on ? `${t.label} 가져오기 (누르면 빼기)` : `${t.label} 빼기 (누르면 가져오기)`} className={clsx(styles.takePill, on && styles.takePillOn)}>{t.label}</button>
+      })}
     </div>
   )
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') s.importFetch() }
@@ -119,6 +133,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
             <button type="button" onClick={s.importFetch} disabled={s.importing} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconTakeDown size={15} /></button>
           </div>
         </div>
+        {takeRow}
         <div className={styles.hrM} />
         {/* 모바일: 코디 리스트처럼 가로 스크롤(열 단위 스냅, 스크롤바 숨김) — 2줄 × 폭에 따라 2열/3열 */}
         <div ref={boxRef} className={clsx('pb-norail', styles.hscrollM)}>{grid}</div>
@@ -144,6 +159,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           </div>
         </div>
       </div>
+      {takeRow}
       <div className={styles.hr} />
       <div ref={boxRef} className={clsx('pb-scroll', styles.scroll)}>{grid}</div>
     </section>

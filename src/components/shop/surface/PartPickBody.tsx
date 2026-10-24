@@ -42,7 +42,7 @@ export default function PartPickBody({ mobile }: { mobile: boolean }) {
             const off = !!s.dyeOff[slot]
             return (
               <button key={slot} type="button" onClick={() => s.openPartItem(item)} title={`${label} - ${name}`} className={clsx('pb-partchip', styles.partChip)}>
-                <span className={styles.partThumb}>
+                <span className={clsx('pb-chipthumb', styles.partThumb)}>
                   <span className={styles.partSprite}><SlotSprite slot={slot} item={item} /></span>
                   {dyedOf(slot) && <span title={off ? '염색 비활성화됨' : '염색됨'} className={clsx(styles.partDot, off && styles.partDotOff)} />}
                 </span>

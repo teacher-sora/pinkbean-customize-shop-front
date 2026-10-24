@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useShop } from '../ShopContext'
 import { resetHeroView, setHeroView, useHeroView, type HeroView } from '@/lib/heroView'
 import { SKY_MODES, getSkyMode, setSkyMode, type SkyMode } from '../scene/skyTime'
-import { THEMES, setTheme, useTheme } from '@/lib/theme'
+import { THEMES, applyThemeAttr, setTheme, useTheme } from '@/lib/theme'
 import { Seg } from '../ui/controls'
 import { IconLinkCopy, IconRate, IconScene, IconSky, IconTheme, IconViewBase, IconViewFull, IconViewWide } from '../ui/Icons'
 import styles from './frame.module.css'
@@ -36,6 +36,7 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
   const skyAt = SKY_MODES.findIndex((m) => m.id === sky)
   // 테마(PC · 모바일): 누를 때마다 시스템 → 라이트 → 다크(lib/theme)
   const theme = useTheme()
+  useEffect(() => { applyThemeAttr() }, [theme]) // 새로고침 뒤에도 테마 유지(사용자 제보: 프리셋 탭에서 새로고침하면 라이트로 고정)
   const themeAt = Math.max(0, THEMES.findIndex((t) => t.id === theme))
   const nextTheme = () => setTheme(THEMES[(themeAt + 1) % THEMES.length].id)
   const themeTitle = `테마: ${THEMES[themeAt].label} (누르면 다음으로)`

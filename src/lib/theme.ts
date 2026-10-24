@@ -14,6 +14,11 @@ const read = (): Theme => {
   try { const v = localStorage.getItem(THEME_KEY); cur = v === 'light' || v === 'dark' ? v : 'system' } catch { cur = 'system' }
   return cur
 }
+// <html data-theme> 를 지금 값으로(React 가 <html> 을 다시 그리면 인라인 스크립트가 단 속성이 지워질 수 있다 — 헤더가 붙을 때 다시 단다)
+export function applyThemeAttr () {
+  const t = read()
+  if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t)
+}
 export function setTheme (t: Theme) {
   cur = t
   try { if (t === 'system') localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, t) } catch { /* 이번 화면에서만 */ }
