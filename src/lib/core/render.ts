@@ -159,6 +159,7 @@ export interface RenderOpts {
   centerXOnly?: boolean              // 가로(X)만 body navel 로 동적 중앙정렬, 세로(Y)는 anchor.y 그대로 → navel 이
                                      //   프레임마다 상하로 "드리프트"할 수 있다(전투대기 등에서 다리 고정·상체 상하 모션 유지).
                                      //   라이딩처럼 포즈별 가로 폭이 달라 X 정렬은 필요하지만 Y 는 애니메이션대로 둬야 할 때.
+  centerBox?: { x?: number; y?: number } // 몸 없이 아이템만(염색 창 '아이템' 보기): 처음 그린 프레임의 그림 bbox 가운데를 상자 가운데에 — 값을 여기 적어 두고 다음 프레임도 같은 자리(애니메이션 중 흔들리지 않게)
   centerMount?: boolean              // 캐릭터가 아니라 "마운트(mount* 레이어)"의 실제 스프라이트 bbox 가로중심을 캔버스
                                      //   중앙에 둔다(메탈아머처럼 메카가 주 비주얼일 때 — 조종사 중앙정렬하면 메카가 치우침).
   cors?: boolean                     // load sprites with CORS(?cors=1). DEFAULT true so ALL canvas renders(코디 카드·
@@ -258,7 +259,20 @@ export async function renderCharacter(
   // 커지거나 액션으로 팔·다리가 움직여도 몸통(navel)은 절대 이동하지 않는다. 확대 기준도 합성 스프라이트
   // 전체 bbox 가 아니라 항상 몸통 기준(고정 박스). 이것이 스프라이트를 제외한 모든 모델 뷰의 단일 규칙이다.
   let anchorX = opts.anchor.x, anchorY = opts.anchor.y
-  if (opts.centerMount && placed.length) {
+  if (opts.centerBox && placed.length) {
+    const cb = opts.centerBox
+    if (cb.x == null || cb.y == null) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const p of placed) {
+        const src = (opts.override?.get(p.png) ?? imgs.get(p.png)) as HTMLImageElement | HTMLCanvasElement | undefined
+        if (!src?.width) continue
+        const k = p.scale ?? 1
+        minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x + src.width * k); maxY = Math.max(maxY, p.y + src.height * k)
+      }
+      if (minX < maxX) { cb.x = (minX + maxX) / 2; cb.y = (minY + maxY) / 2 }
+    }
+    if (cb.x != null && cb.y != null) { anchorX = Math.round(opts.box.w / 2 - cb.x); anchorY = Math.round(opts.box.h / 2 - cb.y) }
+  } else if (opts.centerMount && placed.length) {
     // 마운트(mount* 레이어)의 실제 스프라이트 가로 bbox 중심을 캔버스 중앙에. 스프라이트 폭은 로드된 이미지에서.
     let minX = Infinity, maxX = -Infinity
     for (const p of placed) {

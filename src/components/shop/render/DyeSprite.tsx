@@ -70,20 +70,19 @@ export async function chipIcon(o: { id: string; icon?: string | null; mix: boole
 // 아이템 "스프라이트"(발색 반영) — 아이콘/미리보기 공용. 절대 모델 착용 베이크(thumb.png)를 쓰지 않는다.
 //  - 헤어/성형(mix): renderDyedSprite 로 모든 부위 합성 + 팔레트 발색(frac 지정 → 넘침 없이 안정 축소).
 //  - 그 외(HSB): 아이템 인벤 스프라이트(sprites/{id}/icon.png)에 Prism HSB 를 적용해 그린다(몸 없이 아이템만).
-// whole = 믹스가 아닌 아이템도 아이콘 대신 모든 부위 합성(기본 캐릭터에서 몸만 뺀 모습 — 염색 창의 '아이템' 보기. 사용자 지시). 합성할 부위가 없으면 아이콘.
-export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = false, frac = INFO_FRAC, whole = false }: {
-  id: string; thumb?: string | null; mix: boolean; palette?: PaletteParams; hsb?: HsbParams; zmap: string[]; grayscale?: boolean; frac?: number; whole?: boolean
+export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = false, frac = INFO_FRAC }: {
+  id: string; thumb?: string | null; mix: boolean; palette?: PaletteParams; hsb?: HsbParams; zmap: string[]; grayscale?: boolean; frac?: number
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const boxRef = useRef<HTMLSpanElement>(null)
   const [meta, setMeta] = useState<ItemMeta | null>(null)
   const [box, setBox] = useState({ w: 0, h: 0 })
   useEffect(() => {
-    if (!mix && !whole) { setMeta(null); return }
+    if (!mix) { setMeta(null); return }
     let a = true
     loadMeta(id).then((m) => { if (a) setMeta(m) }).catch(() => {})
     return () => { a = false }
-  }, [id, mix, whole])
+  }, [id, mix])
   // 칸 크기를 재고, 바뀌면(다이얼로그 전환·화면 회전 등) 그 크기로 다시 그린다 — 처음 잰 크기로만 그리면
   // 나중에 커진 칸에서는 CSS 가 캔버스를 늘려 도트가 깨진다. 캔버스는 그림 크기로 줄어드므로 바깥 칸을 잰다.
   useEffect(() => {
@@ -100,13 +99,8 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
     const el = ref.current; if (!el) return
     const dpr = window.devicePixelRatio || 1
     const boxW = box.w || 48, boxH = box.h || box.w || 48 // CSS 픽셀(칸)
-    let over = 1, drawn = false
-    if (whole && !mix && meta) { // 헤어 · 성형과 같은 합성(0.25 단계 배율도 같다) — 부위가 없으면 아래 아이콘으로
-      over = oversampleFor(dpr)
-      drawn = await renderDyedSprite(el, meta, 0, 0, 0, THUMB_VIEW, zmap, Math.round(Math.min(boxW, boxH) * dpr) * over, frac, false, hsb ?? { h: 0, s: 0, b: 0 })
-      if (!drawn) over = 1
-    }
-    if (drawn) { /* 합성으로 그렸다 */ } else if (mix) {
+    let over = 1
+    if (mix) {
       if (!meta) return
       const base = palette?.baseColor ?? 0, mixC = palette?.mixColor ?? base, ratio = palette?.ratio ?? 0
       // 0.25 단계 배율.
@@ -123,7 +117,7 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
       drawSprite(el, src, (src as HTMLCanvasElement).width, (src as HTMLCanvasElement).height, boxW, boxH, frac, dpr)
     }
     fitCanvas(el, boxRef.current, el.width / over, el.height / over, boxW, boxH, dpr)
-  }, [meta, id, thumb, mix, palette, hsb, zmap, frac, box.w, box.h, whole])
+  }, [meta, id, thumb, mix, palette, hsb, zmap, frac, box.w, box.h])
   // 바깥 span = 칸(크기 측정 기준), 캔버스 = 그린 그림 크기로 화면 픽셀 격자에 맞춰 가운데(fitCanvas).
   return (
     <span ref={boxRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%', overflow: 'hidden' }}>

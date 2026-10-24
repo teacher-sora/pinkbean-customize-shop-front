@@ -39,6 +39,7 @@ import styles from './PreviewModel.module.css'
 export type PreviewSource = {
   equipped: Record<string, ListItem | null>; hidden: Record<string, boolean>; tone: number
   palette: Record<string, PaletteParams>; hsb: Record<string, HsbParams>; dotPos: Record<string, DotOffsets>
+  bare?: boolean // 몸 · 머리를 그리지 않고(뼈대로만 쓰고) 아이템만, 그 그림의 가운데를 상자 가운데에 — 염색 창의 '아이템' 보기(사용자 지시)
   pv: Pv; interacting: boolean                       // interacting = 발색 조절 중(애니메이션을 멈추고 보이는 프레임만 칠한다)
   zoomMults: Record<number, number>; fraction: (h: number) => number
 }
@@ -71,6 +72,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
   const fraction = src ? src.fraction(dims.h) : isStacked(bp)
     ? (heroGrow > 1 && dims.h > 0 ? (PREVIEW_FRACTION_MOBILE * HERO_BASE_H * heroGrow) / dims.h : PREVIEW_FRACTION_MOBILE)
     : PREVIEW_FRACTION
+  const bare = !!src?.bare
   const [dyeSettling, setDyeSettling] = useState(false) // 이펙트/피부 전 프레임 염색 중(애니메이션 잠깐 정지 → 점멸 방지)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -262,7 +264,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       const bf = footOf(raw)
       const foot = bf ? { x: bf.x + stab.x, y: bf.y + stab.y } : { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
       const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
-      return { placed, foot, brow, navel: stab } // navel = 배꼽(월드 원점) + 같은 보정 — 허리에 붙는 이펙트(pos 4)
+      return { placed: bare ? placed.filter((p) => p.slot !== 'body' && p.slot !== 'head') : placed, foot, brow, navel: stab } // navel = 배꼽(월드 원점) + 같은 보정 — 허리에 붙는 이펙트(pos 4)
     })
     // 핑퐁(왕복)은 "캐릭터가 클럭"일 때(전투대기 등 일어선 액션)만. 앉은 채(seated)는 재규어가 클럭이고 4족
     // 보행은 루프여야 뒷발이 되돌아가며 움찔하지 않는다. (전투대기가 중간에 툭 끊기던 건 라이딩 전체를 loop 로
@@ -277,7 +279,9 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
     const fz = !viewInfo.isStatic && pv.frame >= 0 && pv.frame < N ? pv.frame : -1
     if (fz >= 0) return { frames: [frames[fz]], delays: [delays[fz]], N: 1, riding, centerMount, ground, animated: false, pingpong: false, frozen: fz }
     return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action), frozen: -1 }
-  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, pv.frame, V, viewInfo.isStatic, weaponMotion])
+  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, pv.frame, V, viewInfo.isStatic, weaponMotion, bare])
+  // 아이템만 볼 때의 가운데 — 합성이 바뀔 때마다 새로(첫 프레임의 bbox 로 한 번 정하고 애니메이션 내내 같은 자리)
+  const bareBox = useMemo(() => (bare ? {} : undefined), [bare, spec, dims, pv.zoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 그릴 파티클 자리 — 이펙트와 같은 규칙으로 끈다(부위 숨김 · 무기 이펙트 끔 · 이펙트를 숨기는 링).
   const partSpots = useMemo(() => {
@@ -592,7 +596,7 @@ export default function PreviewModel({ src }: { src?: PreviewSource } = {}) {
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
       const seq = ++drawSeqRef.current
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides, effects, particles, chat: chatRef.current, chatClock: now, chatRef: chatAt ?? undefined, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, centerBox: bareBox, override: dyeOverrides, effects, particles, chat: chatRef.current, chatClock: now, chatRef: chatAt ?? undefined, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).catch(() => {})
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]
