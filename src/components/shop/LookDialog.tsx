@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { css } from '@/lib/style'
 import { isStacked } from '@/lib/useBreakpoint'
 import SnapThumb from './SnapThumb'
-import { NICK_TAKE_SLOTS, useShop } from './ShopContext'
+import { NICK_TAKE_SLOTS, useShop, type Snapshot } from './ShopContext'
 import { readUiPref, writeUiPref } from '@/lib/uiState'
 import pst from './preset/preset.module.css'
 import { useDialogFade } from './ui/useDialogFade'
@@ -56,6 +56,7 @@ export default function LookDialog() {
   // 가져올 장식 — 고른 값은 늘 유지(lib/uiState 의 UiPref.nickTake)
   const [take, setTake] = useState<Record<string, boolean>>({})
   useEffect(() => { if (lp) setTake(readUiPref().nickTake ?? {}) }, [lp])
+  const takeSnap = (sn: Snapshot): Snapshot => { const eq = { ...sn.equipped }; for (const t of NICK_TAKE_SLOTS) if (take[t.slot] === false) delete eq[t.slot]; return { ...sn, equipped: eq } }
   const flip = (slot: string) => setTake((t) => { const n = { ...t, [slot]: t[slot] === false }; writeUiPref({ nickTake: n }); return n })
 
   if (!lp) return null
@@ -117,15 +118,15 @@ export default function LookDialog() {
               return (
                 <button key={hk} onClick={() => close(() => s.chooseLook(look.key, p.key))}
                   onMouseEnter={() => setHover(hk)} onMouseLeave={() => setHover(null)}
-                  style={css(`display:flex; flex-direction:column; align-items:stretch; height:100%; min-height:0; gap:0; padding:0; border-radius:8px; cursor:pointer; overflow:hidden; font-family:inherit; background:#faf7f3; border:2px solid ${on ? 'light-dark(#ec86ac, #d15785)' : 'light-dark(#e7ded4, #4b4e57)'}; transition:border-color .14s ease, transform .14s ease; transform:translateY(${on ? -2 : 0}px);`)}>
+                  style={css(`display:flex; flex-direction:column; align-items:stretch; height:100%; min-height:0; gap:0; padding:0; border-radius:8px; cursor:pointer; overflow:hidden; font-family:inherit; background:light-dark(#faf7f3, #303238); border:2px solid ${on ? 'light-dark(#ec86ac, #d15785)' : 'light-dark(#e7ded4, #4b4e57)'}; transition:border-color .14s ease, transform .14s ease; transform:translateY(${on ? -2 : 0}px);`)}>
                   <div style={css('position:relative; flex:1 1 0; min-height:0; width:100%; background: #f7f2ec; background: light-dark(#f7f2ec, #3b3d45); overflow:hidden;')}>
                     {/* 프리셋 카드처럼 명찰을 닉네임으로(명찰 반지가 없으면 기본 명찰 — 사용자 지시) */}
-                    <SnapThumb snap={p.snap} tagName={lp.nick} baseTag />
+                    <SnapThumb snap={takeSnap(p.snap)} tagName={lp.nick} baseTag={take.nameTag !== false} deco /> {/* 가져올 장식 토글을 미리보기에도(꺼 둔 것은 빼고 그린다 — 사용자 지시) */}
                     {p.active && (
                       <span style={css('position:absolute; top:7px; left:7px; height:20px; padding:0 8px; display:inline-flex; align-items:center; border-radius:20px; background: rgba(255,255,255,0.94); background: light-dark(rgba(255,255,255,0.94), rgba(48, 50, 56, 0.94)); border: 1px solid #f8e0ea; border: 1px solid light-dark(#f8e0ea, #5a3947); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); font-size:10px; font-weight:600; white-space:nowrap; box-shadow: 0 2px 8px rgba(214,109,154,.18); box-shadow: 0 2px 8px light-dark(rgba(214,109,154,.18), rgba(164, 62, 106, 0.18));')}>착용 중</span>
                     )}
                   </div>
-                  <span style={css(`flex:0 0 auto; padding:8px; font-size:13px; font-weight:600; text-align:center; color:${on ? 'light-dark(#d76d9a, #b94a79)' : 'light-dark(#6e645c, #aeb1b8)'}; background:#fff; border-top:1px solid #f0e9e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .14s ease;`)}>{p.label}</span>
+                  <span style={css(`flex:0 0 auto; padding:8px; font-size:13px; font-weight:600; text-align:center; color:${on ? 'light-dark(#d76d9a, #b94a79)' : 'light-dark(#6e645c, #aeb1b8)'}; background:light-dark(#fff, #303238); border-top:1px solid light-dark(#f0e9e1, #3e4048); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .14s ease;`)}>{p.label}</span>
                 </button>
               )
             })}

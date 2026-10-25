@@ -3,6 +3,7 @@
 // 프리셋 100칸(사용자 지시 — 기기에만 저장되고 공유할 때만 서버에 오른다). 카드 그림은 스크롤 칸에서 보일 즈음에만 합성 · 그린다(ui/useSeen). 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
+import { CatTabsM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Preset } from '@/lib/catalog'
 import { CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
@@ -110,6 +111,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   if (mobile) {
     return (
       <>
+        <CatTabsM jump />
         <div className={styles.headerM}>
           {chip}
           {sortBtn}
