@@ -27,9 +27,21 @@ import { useShop, type Snapshot } from './ShopContext'
 const RETRY_MS = 9000
 // 명찰 조각 정보(id → chatUi). 명찰 · 말풍선 목록 파일을 처음 쓸 때 한 번만 받는다.
 let tagUis: Promise<Map<string, ChatUi>> | null = null
+// 칭호 · 훈장 · 말풍선(deco 일 때만 — 불러오기 창이 가져올 장식을 미리 보여 준다). 부위별 목록을 한 번만 받는다
+type DecoEntry = { ui: ChatUi; name: string }
+const decoLists = new Map<string, Promise<Map<string, DecoEntry>>>()
+const loadDeco = (slot: 'title' | 'medal' | 'chatBalloon') => {
+  let p = decoLists.get(slot)
+  if (!p) {
+    p = fetch(CHAT_FILES[slot]).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; name?: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === slot && x.chatUi).map((x) => [x.id, { ui: x.chatUi!, name: x.name ?? '' }]))).catch(() => new Map())
+    decoLists.set(slot, p)
+  }
+  return p
+}
 const loadTagUis = () => (tagUis ??= fetch(CHAT_FILES.nameTag).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === 'nameTag' && x.chatUi).map((x) => [x.id, x.chatUi!]))).catch(() => new Map()))
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn }: {
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
+  deco?: boolean // 칭호 · 훈장 · 말풍선도 그린다(불러오기 창 — 가져올 장식 토글이 무엇을 바꾸는지 보이게. 말풍선은 '안녕하세요')
   onDrawn?: () => void // 캔버스에 다 그렸을 때(액션 상세의 재생 칸이 다 그려진 프레임만 번갈아 보인다)
   baseTag?: boolean // 명찰 반지가 없을 때 기본 명찰을 그릴지(없으면 스냅샷의 연출 설정 pv.baseTag) — 닉네임 불러오기 카드는 늘 켠다(사용자 지시)
   holdMenu?: boolean // false = 터치 길게 누르기로 메뉴를 열지 않는다(프리셋 카드 — 길게 누르기는 끌기다, preset/usePresetDrag)
@@ -59,7 +71,23 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     return () => { alive = false }
   }, [tagId])
   const baseTag = tagName != null && !snap.equipped.nameTag && (forceBase ?? !!snap.pv?.baseTag)
-  const chat = useMemo(() => { const tag = tagUi ?? (baseTag ? BASE_TAG : undefined); return tag && tagName != null ? { tag, name: tagName, text: '' } : undefined }, [tagUi, tagName, baseTag])
+  const decoId = (sl: string) => (deco && !snap.hidden?.[sl] ? snap.equipped[sl] : undefined)
+  const titleId = decoId('title'), medalId = decoId('medal'), balloonId = decoId('chatBalloon')
+  const [decoUi, setDecoUi] = useState<{ title?: DecoEntry; medal?: DecoEntry; balloon?: DecoEntry }>({})
+  useEffect(() => {
+    if (!titleId && !medalId && !balloonId) { setDecoUi({}); return }
+    let alive = true
+    Promise.all([titleId ? loadDeco('title') : null, medalId ? loadDeco('medal') : null, balloonId ? loadDeco('chatBalloon') : null]).then(([t, m, b]) => {
+      if (alive) setDecoUi({ title: titleId ? t?.get(titleId) : undefined, medal: medalId ? m?.get(medalId) : undefined, balloon: balloonId ? b?.get(balloonId) : undefined })
+    })
+    return () => { alive = false }
+  }, [titleId, medalId, balloonId])
+  const chat = useMemo(() => {
+    const tag = tagName != null ? tagUi ?? (baseTag ? BASE_TAG : undefined) : undefined
+    const { title, medal, balloon } = decoUi
+    if (!tag && !title && !medal && !balloon) return undefined
+    return { tag, title, medal, balloon: balloon?.ui, name: tagName ?? '', text: balloon ? '안녕하세요' : '' }
+  }, [tagUi, tagName, baseTag, decoUi])
 
   const drawnRef = useRef(onDrawn)
   drawnRef.current = onDrawn

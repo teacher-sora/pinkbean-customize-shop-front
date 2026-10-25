@@ -24,7 +24,8 @@ const READY = new Set(['codi', 'search', 'info', 'preset', 'share'])
 
 // 모바일 목록 머리의 부위 탭(밑줄 탭). 미리보기 위 둥근 버튼들과 다른 모양이라 '이 목록에서 무엇을 볼지'로 읽힌다.
 // 부위를 바꾸면(다른 곳에서 바뀌어도) 고른 탭이 보이도록 가로로 당겨 온다.
-export function CatTabsM() {
+// jump = 코디 정보 / 염색 · 프리셋 탭에서 쓸 때 — 부위를 누르면 그 부위의 아이템을 보려는 것이라 코디 탭으로 넘어간다(하단 줄에 있던 때와 같다)
+export function CatTabsM({ jump }: { jump?: boolean } = {}) {
   const s = useShop()
   const railRef = useWheelRail()
   useEffect(() => {
@@ -40,7 +41,7 @@ export function CatTabsM() {
       {[...MULTI, ...s.cats].map((p) => {
         const on = s.activeCat === p.id
         return (
-          <button key={p.id} type="button" onClick={() => s.setActiveCat(p.id)} aria-pressed={on} title={p.label}
+          <button key={p.id} type="button" onClick={() => { s.setActiveCat(p.id); if (jump) s.setPrimary('codi') }} aria-pressed={on} title={p.label}
             className={clsx(styles.catTabM, on && styles.catTabMOn)}>{p.label}</button>
         )
       })}
@@ -69,7 +70,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   }
 
   if (mobile) {
-    const listTab = s.primary === 'codi' || s.primary === 'search' // 부위는 목록 머리(CatTabsM)에 있다
+    const listTab = s.primary !== 'share' // 부위는 목록 머리(CatTabsM)에 있다 — 코디 · AI 검색 · 코디 정보 / 염색 · 프리셋 모두(사용자 지시). 하단 줄은 광장 분류만
     return (
       <>
         {!listTab && <div data-hero-below className={styles.partNavM}>

@@ -8,7 +8,7 @@
 // 적용 = 보던 아이템 착용 + 염색 커밋. 카드의 염색 버튼 자체는 착용을 바꾸지 않는다.
 
 import clsx from 'clsx'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { MIX_PALETTE, paletteFor } from '@/lib/catalog'
 import { clampDye } from '@/lib/color'
 import { loadMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
@@ -66,6 +66,33 @@ function useViewPills(skin: boolean) {
     </>
   )
   return { zoom, model, pills }
+}
+
+// 모바일 염색 시트의 위칸(미리보기 + 오른쪽 세로줄). 세로줄(보기 모델 · 배율 · 옷걸이)이 잘리지 않게 그 내용 높이를 재서 위칸의 최소 높이로 둔다(사용자 지시).
+// 세로줄 자체 높이를 재면 늘어난 위칸 높이가 되먹여 줄지 않으므로, 안의 칸 높이 + 간격을 더한다.
+function TopM ({ pills, children }: { pills: React.ReactNode; children: React.ReactNode }) {
+  const col = useRef<HTMLDivElement>(null)
+  const [need, setNeed] = useState(0)
+  useLayoutEffect(() => {
+    const el = col.current
+    if (!el) return
+    const m = () => {
+      const kids = [...el.children] as HTMLElement[]
+      const gap = parseFloat(getComputedStyle(el).rowGap) || 0
+      const h = Math.ceil(kids.reduce((a, k) => a + k.offsetHeight, 0) + gap * Math.max(0, kids.length - 1))
+      setNeed((p) => (p === h ? p : h))
+    }
+    m()
+    const ro = new ResizeObserver(m)
+    for (const k of el.children) ro.observe(k)
+    return () => ro.disconnect()
+  }, [])
+  return (
+    <div className={styles.topM} style={need > 150 ? { minHeight: need } : undefined}>
+      <div className={styles.pvBoxM}>{children}</div>
+      <div ref={col} className={styles.zoomCol}>{pills}</div>
+    </div>
+  )
 }
 
 export default function DyeSurfaceBody({ item, mobile }: { item: ListItem; mobile: boolean }) {
@@ -142,10 +169,7 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
 
   const custom = mobile ? (
     <div className={clsx('pb-scroll', 'pb-fade', styles.hsvM)}>
-      <div className={styles.topM}>
-        <div className={styles.pvBoxM}>{preview}</div>
-        <div className={styles.zoomCol}>{pills}</div>
-      </div>
+      <TopM pills={pills}>{preview}</TopM>
       <div className={styles.rowsCol}>{swatchRows}</div>
       <div className={styles.hr} />
       <div className={styles.rowsCol}>{ratioRows}</div>
@@ -263,10 +287,7 @@ function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
     return (
       <>
         <div className={clsx('pb-scroll', 'pb-fade', styles.hsvM)}>
-          <div className={styles.topM}>
-            <div className={styles.pvBoxM}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} model={model} /></div>
-            <div className={styles.zoomCol}>{pills}</div>
-          </div>
+          <TopM pills={pills}><DyeModelPreview item={item} hsb={pvHsb} zoom={zoom} model={model} /></TopM>
           <div className={styles.famRow}>{families}</div>
           <div className={styles.hr} />
           <div className={clsx('pb-dyecol', styles.rowsCol)}>{rows()}</div>
