@@ -29,6 +29,7 @@ import ui from '../ui/ui.module.css'
 import styles from './combo.module.css'
 
 const FRACTION = 0.4, FRACTION_M = 0.5
+const FIT_W = 0.55 // 카드 그림: 캐릭터 높이 ≤ 칸 폭 × 0.55 — 칸이 좁고 길면 1배, 폭이 넉넉할 때만 2배(SnapThumb fitW)
 
 export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'codi' | 'plaza' }) {
   const s = useShop()
@@ -62,12 +63,12 @@ function HeadItem({ item, mobile, host, total }: { item: ListItem | null; mobile
   const showSub = mobile || isNarrow(s.bp) // 넓은 PC 는 쪽 칩 왼쪽에 코디 수가 있다
   const thumbOnly = mobile && host === 'plaza'
   return (
-    <div className={styles.headItem}>
+    <div className={clsx(styles.headItem, thumbOnly && styles.headItemFill)}>
       {host === 'codi' && (
         <button type="button" onClick={s.closeCombo} title="목록으로 (Esc)" aria-label="목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
       )}
       {item && (
-        <span className={styles.itemTag} title={item.name || item.id}>
+        <span className={clsx(styles.itemTag, mobile && styles.itemTagM)} title={item.name || item.id}>
           <span className={clsx('pb-chipthumb', styles.itemThumb, mobile && styles.itemThumbM)}><LookSprite slot={item.slot} item={item.slot === 'skin' ? null : item} tone={s.index?.base.tones.find((t) => t.body === item.id)?.tone ?? s.tone} /></span>
           {!thumbOnly && <span className={styles.itemText}>
             <span className={clsx(styles.itemName, mobile && styles.itemNameM)}>{item.name || item.id}</span>
@@ -353,7 +354,6 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
   }
   return (
     <div className={clsx(styles.dyes, slide && 'pb-norail', slide && styles.dyesSlide, mobile && styles.dyesM)}>
-      <span className={clsx(styles.dyesLabel, mobile && styles.dyesLabelM)}>자주 쓴<br />염색</span>
       <div className={clsx(styles.dyeChips, slide && styles.dyeChipsM)}>
         {dyes.map((d, i) => {
           const on = live(d)
@@ -384,7 +384,7 @@ function LookCard({ row, mobile, prio, onOpen }: { row: LookRow; mobile: boolean
   return (
     <div onClick={() => { if (!s.consumeSwipeClick()) onOpen(row) }} onPointerEnter={() => warmSnap(row.s, s.index)} title="코디 자세히 보기" className="pb-presetwrap" style={{ cursor: 'pointer' }}>
       <div className={clsx('pb-preset', styles.card)}>
-        <div className={styles.thumb}><SnapThumb snap={row.s} fraction={mobile ? FRACTION_M : FRACTION} priority={prio} /></div>
+        <div className={styles.thumb}><SnapThumb snap={row.s} fraction={mobile ? FRACTION_M : FRACTION} fitW={FIT_W} priority={prio} /></div>
       </div>
     </div>
   )
