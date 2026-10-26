@@ -152,7 +152,7 @@ function ComboEmpty({ mobile }: { mobile: boolean }) {
         <div aria-hidden className={clsx(styles.dyes, styles.dyesM, styles.hold)} style={{ '--dye-n': 3 } as React.CSSProperties}><DyeSkels n={3} mobile /></div>
         <div aria-hidden className={clsx(styles.dyesSep, styles.dyesSepM, styles.hold)} />
       </>}
-      <div ref={vpRef} className={clsx(list.viewport, styles.emptyWrap)}>
+      <div ref={vpRef} className={clsx(list.viewport, mobile && list.viewportM, styles.emptyWrap)}>{/* 모바일 목록 칸과 같은 좌우 여백 — 최소 높이를 같은 칸 폭으로 잰다 */}
         <div className={mobile ? list.emptyM : list.empty}>
           <span className={mobile ? list.emptyTitleM : list.emptyTitle}>아이템을 골라 주세요</span>
           <span className={mobile ? list.emptyHintM : list.emptyHint}>그 아이템을 입은 실제 유저 코디와 자주 쓴 염색이 보여요.</span>
