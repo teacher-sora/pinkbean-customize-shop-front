@@ -1,12 +1,13 @@
 'use client'
 
 import clsx from 'clsx'
+import { useRef } from 'react'
 import { badgeUrl, type ListItem } from '@/lib/core/data'
 import { CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 import { IconStar } from '../ui/Icons'
-import { countLabel, useLookCount } from '@/lib/looks'
+import { countLabel, lookChunk, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
 
@@ -37,6 +38,11 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const dye = (e: React.MouseEvent) => { e.stopPropagation(); if (isDot) s.openDot(item); else s.openDye(item) }
   // 코디 조합 — 목록 자리에 이 아이템을 입은 코디와 자주 쓴 염색을 펼친다(combo/ComboPanel). 숨은 기능이 되지 않게 늘 보인다(사용자 지시)
   const combo = (e: React.MouseEvent) => { e.stopPropagation(); if (s.consumeSwipeClick()) return; s.openCombo(item) }
+  // 미리 받기(칩에 120ms 머물면 — 지나가기만 하면 받지 않는다): 첫 묶음만 받아 둔다. 그림 합성은 미리 걸지 않는다 —
+  // 머무는 동안 · 누르는 순간 합성을 걸면 그 일이 화면을 붙잡아 패널이 늦게 떴다(실측 CPU ×4: 패널 367 → 1149 · 1671ms)
+  const hover = useRef(0)
+  const comboEnter = () => { window.clearTimeout(hover.current); hover.current = window.setTimeout(() => { lookChunk(item.id, 0).catch(() => {}) }, 120) }
+  const comboLeave = () => window.clearTimeout(hover.current)
 
   return (
     <div onClick={equip} onPointerDown={warm} className="pb-cardwrap" title={name}>
@@ -59,7 +65,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
               className={clsx(styles.labelBadge, badgeKind === 'cash' && styles.labelBadgeCash)} />
           )}
           {looks > 0 && (
-            <button type="button" onClick={combo} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 조합 ${looks.toLocaleString()}벌`}
+            <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 조합 ${looks.toLocaleString()}벌`}
               className={clsx(styles.combo, mobile && styles.comboM)}>코디 {countLabel(looks)}</button>
           )}
         </div>

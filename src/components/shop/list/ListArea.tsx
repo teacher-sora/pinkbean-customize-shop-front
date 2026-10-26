@@ -26,7 +26,7 @@ const GENDERS: SegOpt<GenderFilter>[] = [
   { v: 'm', l: '남', t: '남자 캐릭터가 입을 수 있는 것' },
 ]
 // 넘기는 방향 — 기본 가로. 세로여도 PC · 절반 · 태블릿은 한 쪽씩 넘기고, 모바일은 목록 안에서 세로로 스크롤한다(넘기는 방향만 바뀐다).
-const DIRS: SegOpt<ListDir>[] = [
+export const DIRS: SegOpt<ListDir>[] = [
   { v: 'x', l: '가로로 넘기기', t: '가로로 넘겨 보기', icon: <IconDirX /> },
   { v: 'y', l: '세로로 넘기기', t: '세로로 넘겨 보기', icon: <IconDirY /> },
 ]

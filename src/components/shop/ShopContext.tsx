@@ -308,6 +308,7 @@ export interface ShopCtx {
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   // 코디 조합(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 조합 탭)
   comboItem: ListItem | null; comboOpen: boolean; openCombo: (item: ListItem) => void; closeCombo: () => void; pickCombo: (item: ListItem) => void
+  comboTotal: number; setComboTotal: (id: string, n: number) => void; holdPager: (b: boolean) => void
   searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
@@ -866,15 +867,28 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => { window.clearTimeout(t); for (const j of jobs) j.cancel() }
   }, [index, dataLoading, presetData, presets, warmPosts])
   const pagedList = primary === 'search' ? searchResultsView : activeList
+  // 코디 조합(combo/ComboPanel)도 이 쪽 넘김을 쓴다(사용자 지시 — 코디 탭 · AI 코디 검색 목록과 같은 목록). 쪽 크기는 그 자리의 격자
+  // (코디 탭 = 목록 격자, 광장 = 광장 격자), 쪽 수는 그 아이템의 코디 수(패널이 첫 쪽을 받고 알려 준다 — setComboTotal)
+  const [comboItem, setComboItem] = useState<ListItem | null>(null)
+  const [comboOpen, setComboOpen] = useState(false)
+  const [comboCount, setComboCount] = useState<{ id: string; n: number }>({ id: '', n: 0 })
+  const setComboTotal = useCallback((id: string, n: number) => setComboCount((c) => (c.id === id && c.n === n ? c : { id, n })), [])
+  const comboPaging = !!comboItem && ((comboOpen && primary !== 'share') || (primary === 'share' && plazaFilter === 'combo'))
+  const comboTotal = comboItem && comboCount.id === comboItem.id ? comboCount.n : 0
+  // 상세를 보는 동안은 방향키 · 휠로 목록 쪽이 넘어가지 않는다(돌아오면 보던 쪽 그대로)
+  const pagerHold = useRef(false)
+  const holdPager = useCallback((b: boolean) => { pagerHold.current = b }, [])
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
   //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다
   //   (setIdx 를 거치지 않으니 스냅 전환·스크롤 애니메이션 없이 리스트가 그대로 유지되는 인상).
-  const pageKey = primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : activeCat
+  const pageKey = comboPaging ? 'combo:' + comboItem!.id : primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : activeCat
 
   // ── 페이지네이션 ── (광장은 자기 그리드·목록 길이를 쓴다)
   const isPlazaTab = primary === 'share'
   const perPage = isPlazaTab ? plazaGrid.cols * plazaGrid.rows : itemsPerPage
-  const pageCount = Math.max(1, Math.ceil((isPlazaTab ? plazaList.length : pagedList.length) / perPage))
+  const pageCount = Math.max(1, Math.ceil((comboPaging ? comboTotal : isPlazaTab ? plazaList.length : pagedList.length) / perPage))
+  // 광장 목록은 가로로만 넘긴다(세로 넘기기는 코디 · AI 코디 검색 · 코디 조합 목록) — 끌기 · 방향키가 그 축을 따른다
+  listDirRef.current = isPlazaTab && !comboPaging ? 'x' : listDir
   const maxIndex = pageCount - 1
   const curIdx = Math.max(0, Math.min(maxIndex, Math.floor((pageByCat[pageKey] || 0) / perPage)))
 
@@ -1033,7 +1047,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return
-      if (comboOpenRef.current) return // 코디 조합 패널이 목록 자리에 있으면 방향키는 패널 몫이다(combo/ComboPanel)
+      if (pagerHold.current) return // 코디 조합 상세를 보는 중
       if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1)
       else if (listDirRef.current === 'y' && bpRef.current !== 'mobile' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); step(e.key === 'ArrowUp' ? -1 : 1) }
     }
@@ -1122,10 +1136,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 코디 조합 — 목록 카드의 '코디' 칩으로 연다. 열려 있으면 목록 자리가 패널이 된다(PinkbeanShop). 목록의 쪽 · 부위 · 검색은 여기 그대로라
   // 닫으면 보던 쪽으로 돌아온다. 광장의 코디 조합 탭은 같은 아이템(comboItem)을 이어 보여 준다
-  const [comboItem, setComboItem] = useState<ListItem | null>(null)
-  const [comboOpen, setComboOpen] = useState(false)
-  const comboOpenRef = useRef(false)
-  comboOpenRef.current = comboOpen
   const openCombo = (item: ListItem) => { setComboItem(item); setComboOpen(true) }
   const closeCombo = () => setComboOpen(false)
   useEffect(() => { if (primary !== 'codi' && primary !== 'search') setComboOpen(false) }, [primary])
@@ -1983,7 +1993,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
-    comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems,
+    comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems, comboTotal, setComboTotal, holdPager,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
     warmForPreview, listMode, setListMode, bgSel, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,

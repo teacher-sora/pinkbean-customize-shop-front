@@ -63,3 +63,7 @@ export function fetchLooks(ids: string[], page: number, size: number): Promise<L
   p.then((d) => { if (!d.ready) pages.delete(k) }).catch(() => pages.delete(k)) // 서버가 표본을 아직 못 받았으면 다음에 다시
   return p
 }
+// 목록은 쪽 크기와 상관없이 60벌(서버가 한 번에 주는 최대) 묶음으로 받는다 — 창 크기 · 격자가 바뀌어도 받은 묶음을 그대로 쓰고,
+// 목록 카드의 칩에 올리거나 누르는 순간 첫 묶음을 미리 받아 둘 수 있다(쪽 크기는 패널을 연 뒤에야 정해진다)
+export const LOOK_CHUNK = 60
+export const lookChunk = (id: string, c: number): Promise<LookPage> => fetchLooks([id], c, LOOK_CHUNK)

@@ -31,10 +31,11 @@
 .finderNone { padding: 10px 8px; font-size: 12px; color: #b7ada2; color: light-dark(#b7ada2, #858893); }
 .emptyWrap { display: flex; }
 
-/* 자주 쓴 염색 줄 — PC 는 한 줄에 다 들어가게 나누고, 모바일은 옆으로 민다 */
-.dyes { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; gap: 10px; }
+/* 자주 쓴 염색 — 머리 구분선 아래, 내용 쪽의 한 묶음(옅은 바탕 + 1px 테두리 — 머리에 붙어 보이지 않게, 사용자 지시).
+   PC 는 한 줄에 다 들어가게 나누고, 좁은 폭 · 모바일은 옆으로 민다. 아래 목록과는 목록 쪽 여백(8)만큼 떨어진다 */
+.dyes { flex: 0 0 auto; margin: 8px 8px 0; padding: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fcfaf7; background: light-dark(#fcfaf7, #34363c); }
 .dyesSlide { overflow-x: auto; }
-.dyesM { padding: 0 12px 8px; }
+.dyesM { margin: 8px 12px 0; }
 .dyesLabel { flex: 0 0 auto; width: 38px; white-space: nowrap; font-size: 11px; font-weight: 600; line-height: 1.35; color: #a89e93; color: light-dark(#a89e93, #8e919a); }
 .dyesLabelM { width: 36px; }
 .dyeChips { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
@@ -44,13 +45,7 @@
 @media (hover: hover) and (pointer: fine) { .dyeChip:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); } }
 .dyeChipOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fef5f8; background: light-dark(#fef5f8, #4c3039); }
 
-/* 코디 목록 — 세로로 이어지는 쪽(지금 ±1 만 카드, 나머지는 같은 높이의 빈 칸) */
-.viewport { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden auto; overscroll-behavior-y: contain; }
-.viewportM { margin: 0 7px; }
-.track { position: relative; width: 100%; }
-.page { position: absolute; left: 0; width: 100%; }
-.grid { display: grid; height: 100%; }
-.skel { border-radius: 8px; }
+/* 코디 카드(목록 칸 안 — 쪽 넘김 · 격자는 목록의 것) */
 .card { height: 100%; }
 .thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; background: #f7f2ec; background: light-dark(#f7f2ec, #3b3d45); border-radius: 7px 7px 0 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .meta { flex: 0 0 auto; padding: 5px 8px; border-top: 1px solid #f4efe8; border-top: 1px solid light-dark(#f4efe8, #3e4048); font-size: 11.5px; font-weight: 600; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); text-align: center; font-variant-numeric: tabular-nums; }
