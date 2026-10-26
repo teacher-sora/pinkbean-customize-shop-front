@@ -20,7 +20,7 @@ import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
-import { DIRS, FilterM, GENDERS, type FilterGroup } from '../list/ListArea'
+import { DIRS, FilterM, GENDERS, useMobileRows, type FilterGroup } from '../list/ListArea'
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
@@ -36,8 +36,8 @@ const FIT_W = 0.55 // 카드 그림: 캐릭터 높이 ≤ 칸 폭 × 0.55 — �
 export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'codi' | 'plaza' }) {
   const s = useShop()
   const item = s.comboItem
-  const [detail, setDetail] = useState<LookRow | null>(null)
-  useEffect(() => { setDetail(null) }, [item?.id])
+  // 보던 상세는 ShopContext 가 기억한다(탭을 오가도 그대로 — 아이템을 바꾸면 비운다)
+  const detail = s.comboDetail, setDetail = s.setComboDetail
   const holdPager = s.holdPager
   useEffect(() => { holdPager(!!detail); return () => holdPager(false) }, [detail, holdPager])
   // Esc: 상세 → 목록, 목록 → 패널 닫기(코디 탭). 창(서피스)이 떠 있으면 그 창의 몫이다
@@ -226,6 +226,8 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
+  // 모바일은 늘 두 줄 이상(사용자 지시 — 빠른 파악). 칸이 모자라면 목록처럼 페이지를 늘려 화면 스크롤로 흡수한다(같은 훅). 2열(광장)은 카드가 넓어 낮게 잡는다
+  useMobileRows(vpRef, mobile, cols, cols >= 3 ? 1.34 : 1.05, 2, true)
   const live = useRef({ idx: cur, setIdx: s.setIdx, cols, rows })
   live.current = { idx: cur, setIdx: s.setIdx, cols, rows }
   useEffect(() => {
@@ -346,7 +348,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
       </div>
       <div className={mobile ? list.hrM : list.hr} />
       {/* 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다) */}
-      {dyes.length > 0 && <DyeRow item={item} dyes={dyes} mobile={mobile} />}
+      {dyes.length > 0 && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>}
       {viewport}
       <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
     </>
@@ -382,13 +384,13 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
           const on = live(d)
           return (
             <button key={i} type="button" onClick={() => apply(d)} aria-pressed={on} title={`${d.n.toLocaleString()}명이 쓴 염색 입기`}
-              className={clsx(surf.partChip, ui.dyeChip, styles.dyeChip, on && styles.dyeChipOn)}>
-              <span className={clsx('pb-chipthumb', surf.partThumb)}>
+              className={clsx(surf.partChip, ui.dyeChip, styles.dyeChip, mobile && styles.dyeChipM, on && styles.dyeChipOn)}>
+              <span className={clsx('pb-chipthumb', surf.partThumb, mobile && styles.dyeThumbM)}>
                 <span className={surf.partSprite}>
                   <LookSprite slot={item.slot} item={skin ? null : item} tone={te?.tone ?? s.tone} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} />
                 </span>
               </span>
-              <span className={surf.partText}>
+              <span className={clsx(surf.partText, mobile && styles.dyeTextM)}>
                 <span className={surf.partSlot}>{i + 1}위</span>
                 <span className={surf.partName}>{d.n.toLocaleString()}명</span>
               </span>

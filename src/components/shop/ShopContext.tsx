@@ -21,7 +21,7 @@ import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, typ
 import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
-import { comboLive } from '@/lib/looks'
+import { comboLive, type LookRow } from '@/lib/looks'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
@@ -307,7 +307,7 @@ export interface ShopCtx {
   snapshot: () => Snapshot
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   // 코디 조합(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 조합 탭)
-  comboItem: ListItem | null; comboOpen: boolean; openCombo: (item: ListItem) => void; closeCombo: () => void; pickCombo: (item: ListItem) => void
+  comboItem: ListItem | null; comboOpen: boolean; comboShown: boolean; comboDetail: LookRow | null; setComboDetail: (r: LookRow | null) => void; openCombo: (item: ListItem) => void; closeCombo: () => void; pickCombo: (item: ListItem) => void
   cardPv: PvSnap
   comboGender: GenderFilter; setComboGender: (g: GenderFilter) => void
   comboTotal: number; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot) => void
@@ -767,6 +767,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const bpRef = useRef(bp)
   bpRef.current = bp
   const primaryRef = useRef(primary)
+  const plazaComboRef = useRef(false) // 광장의 코디 조합 분류 — 모바일도 최소 2줄(사용자 지시 — 미리보기는 빠른 파악을 위해 늘 두 줄 이상)
   primaryRef.current = primary
   const [grid, setGrid] = useState<{ cols: number; rows: number }>({ cols: 6, rows: 3 })
   const measure = useCallback(() => {
@@ -780,7 +781,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const pcols = mob ? 2 : (vp === 'half' || vp === 'tablet') ? 3 : 6
       const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10
       const avail = el.clientHeight - 20
-      const prows = Math.max(1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx))))
+      const prows = Math.max(mob && plazaComboRef.current ? 2 : 1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx))))
       setPlazaGrid((g) => (g.cols === pcols && g.rows === prows ? g : { cols: pcols, rows: prows }))
       return
     }
@@ -815,7 +816,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (best.rows > fitRows) best = { ...best, rows: fitRows }
     apply(best.cols, best.rows)
   }, [])
-  useEffect(() => { measure() }, [bp, primary, measure])
+  plazaComboRef.current = plazaFilter === 'combo'
+  useEffect(() => { measure() }, [bp, primary, plazaFilter, measure])
   const { cols, rows } = grid
   const itemsPerPage = cols * rows
 
@@ -873,11 +875,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // (코디 탭 = 목록 격자, 광장 = 광장 격자), 쪽 수는 그 아이템의 코디 수(패널이 첫 쪽을 받고 알려 준다 — setComboTotal)
   const [comboItem, setComboItem] = useState<ListItem | null>(null)
   const [comboOpen, setComboOpen] = useState(false)
+  // 화면 기억(사용자 지시 — 프리셋처럼 다른 탭에 갔다 와도 보던 코디 조합 화면 그대로): 연 탭(comboTab) · 보던 상세(comboDetail)를 여기 둔다.
+  // 패널은 탭을 옮기면 떨어지지만(PinkbeanShop) 여기 값으로 그대로 다시 붙는다. 쪽 위치는 쪽 넘김(pageByCat)이 기억한다
+  const [comboTab, setComboTab] = useState<string>('codi')
+  const [comboDetail, setComboDetail] = useState<LookRow | null>(null)
+  const comboShown = comboOpen && primary === comboTab
   // 성별(전체 · 여 · 남 — 코디의 성별은 parser looks/build.ts 가 입은 아이템으로 센다). 쪽 위치 · 코디 수도 성별마다 따로다
   const [comboGender, setComboGender] = useState<GenderFilter>('all')
   const [comboCount, setComboCount] = useState<{ id: string; n: number }>({ id: '', n: 0 })
   const setComboTotal = useCallback((id: string, n: number) => setComboCount((c) => (c.id === id && c.n === n ? c : { id, n })), [])
-  const comboPaging = !!comboItem && ((comboOpen && primary !== 'share') || (primary === 'share' && plazaFilter === 'combo'))
+  const comboPaging = !!comboItem && (comboShown || (primary === 'share' && plazaFilter === 'combo'))
   const comboKey = comboItem ? `${comboItem.id}|${comboGender}` : '' // setComboTotal 에 넘기는 키
   const comboTotal = comboItem && comboCount.id === comboKey ? comboCount.n : 0
   // 상세를 보는 동안은 방향키 · 휠로 목록 쪽이 넘어가지 않는다(돌아오면 보던 쪽 그대로)
@@ -1145,9 +1152,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 코디 조합 — 목록 카드의 '코디' 칩으로 연다. 열려 있으면 목록 자리가 패널이 된다(PinkbeanShop). 목록의 쪽 · 부위 · 검색은 여기 그대로라
   // 닫으면 보던 쪽으로 돌아온다. 광장의 코디 조합 탭은 같은 아이템(comboItem)을 이어 보여 준다
-  const openCombo = (item: ListItem) => { setComboItem(item); setComboOpen(true) }
-  const closeCombo = () => setComboOpen(false)
-  useEffect(() => { if (primary !== 'codi' && primary !== 'search') setComboOpen(false) }, [primary])
+  const openCombo = (item: ListItem) => { setComboItem(item); setComboDetail(null); setComboTab(primary); setComboOpen(true) }
+  const closeCombo = () => { setComboOpen(false); setComboDetail(null) }
+  const pickCombo = (item: ListItem) => { setComboItem(item); setComboDetail(null) }
   // 이름으로 아이템 찾기(코디 조합의 아이템 찾기) — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
   const searchItems = async (q: string): Promise<ListItem[]> => {
     const match = nameMatcher(q) // 목록 · 광장 검색과 같은 규칙(영문 자판으로 친 한글 en2ko, 띄어쓰기 무시)
@@ -2014,7 +2021,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
-    comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems, comboTotal, setComboTotal, holdPager, warmWear, comboGender, setComboGender,
+    comboItem, comboOpen, openCombo, closeCombo, comboShown, comboDetail, setComboDetail, pickCombo, searchItems, comboTotal, setComboTotal, holdPager, warmWear, comboGender, setComboGender,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
     warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,

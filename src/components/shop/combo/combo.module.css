@@ -38,12 +38,19 @@
 .emptyWrap { display: flex; }
 
 /* 자주 쓴 염색 — 머리 구분선 아래, 내용 쪽의 한 묶음(옅은 바탕 + 1px 테두리 — 머리에 붙어 보이지 않게, 사용자 지시).
-   PC 는 한 줄에 다 들어가게 나누고, 좁은 폭 · 모바일은 옆으로 민다. 아래 목록과는 목록 쪽 여백(8)만큼 떨어진다 */
-.dyes { flex: 0 0 auto; margin: 8px 8px 0; padding: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fcfaf7; background: light-dark(#fcfaf7, #34363c); }
-.dyesM { margin: 8px 12px 0; }
+   둘레 여백은 위아래 · 좌우끼리 같고, 아래 목록과는 구분선으로 가른다(pinkbean-design — 8px 8px 0 처럼 아래만 비우지 않는다).
+   구분선 위아래 = 묶음의 아래 여백 8 · 목록 쪽의 위 여백 8 */
+.dyes { flex: 0 0 auto; margin: 8px; padding: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fcfaf7; background: light-dark(#fcfaf7, #34363c); }
+.dyesM { margin: 8px 12px; padding: 6px; }
+.dyesSep { flex: 0 0 auto; height: 1px; margin: 0 8px; background: #f2ebe3; background: light-dark(#f2ebe3, #40434b); }
+.dyesSepM { margin: 0 12px; }
 /* 칩 줄: 한 번에 --dye-n 칸(넓은 PC 5 · 그 밖 3)이 줄 폭을 똑같이 나눠 갖고, 나머지는 가로로 민다(10위까지) */
 .dyeRail { flex: 1 1 0; min-width: 0; display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-behavior: smooth; }
 .dyeChip { flex: 0 0 calc((100% - 8px * (var(--dye-n) - 1)) / var(--dye-n)); min-width: 0; padding: 6px 8px 7px; gap: 7px; }
+/* 모바일: 칩을 작게(사용자 지시 — 칩이 커서 카드가 작아졌다). 그림 28, '1위 N명' 한 줄, 여백 · 줄 사이를 줄인다 */
+.dyeChip.dyeChipM { padding: 5px 7px 6px; gap: 6px; row-gap: 5px; }
+.dyeThumbM { width: 28px; height: 28px; }
+.dyeTextM { flex-direction: row; align-items: baseline; gap: 4px; }
 @media (hover: hover) and (pointer: fine) { .dyeChip:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); } }
 .dyeChipOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fef5f8; background: light-dark(#fef5f8, #4c3039); }
 

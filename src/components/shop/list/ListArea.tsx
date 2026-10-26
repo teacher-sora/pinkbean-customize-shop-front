@@ -75,6 +75,32 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
   )
 }
 
+// 모바일: 카드가 세로형(높이/폭 ≥ ratio)으로 rows 줄 들어갈 최소 뷰포트 높이를 보장한다. 부족하면 페이지 컬럼
+// 높이(--pb-min-h)를 늘려 페이지 스크롤로 흡수(리스트 안 세로 스크롤은 만들지 않음). 그 외 요소 높이(chrome)는
+// 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다. 코디 탭 목록(3열 × 2줄)과 코디 조합(최소 2줄 — 사용자 지시)이 함께 쓴다.
+// ⚠️ 목록은 언마운트(염색·프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
+//    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다. restore 면(코디 조합 — 목록보다 길 수 있다) 떠날 때 붙기 전 값으로 되돌린다.
+export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false) {
+  useEffect(() => {
+    if (!mobile) return
+    const vp = vpRef.current
+    const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
+    if (!vp || !col) return
+    const before = col.style.getPropertyValue('--pb-min-h')
+    const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
+    const m = () => {
+      const chrome = col.clientHeight - vp.clientHeight
+      const cardW = (vp.clientWidth - PAD_X - GAP * (cols - 1)) / cols
+      const need = Math.ceil(chrome + PAD_Y + GAP * (rows - 1) + rows * cardW * ratio) + 'px'
+      if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
+    }
+    m()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
+    ro?.observe(col); ro?.observe(vp)
+    return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
+  }, [vpRef, mobile, cols, ratio, rows, restore])
+}
+
 export default function ListArea({ mobile }: { mobile: boolean }) {
   const { primary } = useShop()
   return primary === 'search' ? <SearchList mobile={mobile} /> : <CodiList mobile={mobile} />
@@ -112,31 +138,10 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
 }) {
   const s = useShop()
   const narrow = isNarrow(s.bp)
-  // 모바일: 카드가 세로형(높이/폭 ≥ CARD_MIN_RATIO)으로 2줄 들어갈 최소 뷰포트 높이를 보장한다. 부족하면 페이지 컬럼
-  // 높이(--pb-min-h)를 늘려 페이지 스크롤로 흡수(리스트 안 세로 스크롤은 만들지 않음). 그 외 요소 높이(chrome)는
-  // 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다.
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
-  useEffect(() => {
-    if (!mobile) return
-    const vp = vpRef.current
-    const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
-    if (!vp || !col) return
-    const CARD_MIN_RATIO = 1.34, PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
-    const m = () => {
-      const chrome = col.clientHeight - vp.clientHeight
-      const cardW = (vp.clientWidth - PAD_X - GAP * 2) / 3
-      const need = Math.ceil(chrome + PAD_Y + GAP + 2 * cardW * CARD_MIN_RATIO) + 'px'
-      if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
-    }
-    m()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
-    ro?.observe(col); ro?.observe(vp)
-    // ⚠️ 언마운트(염색·프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
-    //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다(컬럼 높이는 탭과 무관한 숫자일 뿐).
-    return () => { ro?.disconnect() }
-  }, [mobile])
+  useMobileRows(vpRef, mobile, 3, 1.34) // 모바일: 세로형 카드 2줄이 들어갈 높이를 보장한다(위 훅 주석)
   // ── 모바일: 네이티브 자유 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화. 가로면 가로, 세로면 세로(쪽 = 3열 × 2줄) ──
   //  세로: 쪽 높이 = 뷰포트 높이(100cqh), 줄 = 높이/2 — 스크롤 → 인덱스는 줄 = round(스크롤/(높이/2)), 쪽 = floor(줄/2).
   //  페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라 열 위치가 정확히 폭/3 배수(페이지 = 3열).
