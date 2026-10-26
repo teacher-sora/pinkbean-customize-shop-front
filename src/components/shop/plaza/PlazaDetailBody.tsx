@@ -130,7 +130,7 @@ type Worn = { slot: string; label: string; item: ListItem | null; name: string; 
 //  · 펼침: 커밋(칩 등장) → 칩·아래 구역을 칩 높이만큼 위로 되돌려 놓고 0 으로.
 //  · 접힘: 먼저 transform 으로 접힌 자리까지 옮긴 뒤 칩을 뺀다(먼저 빼면 칩이 툭 사라진다).
 //  · 창의 윗변은 막대 hover 면(아래로 6px 튀어나옴)의 **아래**에 둔다 — 칩이 막대 면 위로 올라와 잘려 보이지 않게.
-function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; mobile: boolean }) {
+export function WornItems({ snap, postId, mobile }: { snap: Snapshot; postId: string; mobile: boolean }) {
   const s = useShop()
   // 이름·아이콘 경로는 부위 리스트를 읽어야 알 수 있어 비동기로 채운다(리스트 JSON 이라 가볍다 — 스프라이트는 펼칠 때 받는다).
   const [items, setItems] = useState<Worn[] | null>(null)

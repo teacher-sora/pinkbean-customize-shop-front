@@ -20,7 +20,7 @@ import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
-import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
+import { lookToSnapshot, nrmName, type LookDeps, type NexonLook } from '@/lib/nexonLook'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
@@ -91,7 +91,8 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
 export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
-export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot }
+// combo = 코디 조합에서 연 저장(창 제목이 '코디 조합'이다)
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
@@ -245,6 +246,7 @@ export interface ShopCtx {
   // 기능 안내의 '열어 보기': 창을 닫고 그 탭 · 창으로 가서 요소를 잠깐 가리킨다(lib/guide)
   guideGo: (g: { go?: GuideGo }) => void
   plazaTakeDirect: (post: PlazaPost) => void
+  takeCombo: (snap: Snapshot) => void // 코디 조합의 코디를 고른 프리셋에 저장(공유받은 코디와 같은 창)
   wearFromSnap: (snap: Snapshot, slots: string[], label?: string) => Promise<void>
   isWornFromSnap: (snap: Snapshot, slot: string, item: ListItem | null) => boolean
   plazaTakeBack: () => void
@@ -301,6 +303,9 @@ export interface ShopCtx {
   //  ⚠️ 미리보기에 영향 주는 새 상태(점 위치·염색 등)를 추가하면 snapshot()만 갱신하면 프리셋 카드에도 자동 반영된다.
   snapshot: () => Snapshot
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
+  // 코디 조합(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 조합 탭)
+  comboItem: ListItem | null; comboOpen: boolean; openCombo: (item: ListItem) => void; closeCombo: () => void; pickCombo: (item: ListItem) => void
+  searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
   reorderPresets: (ids: string[]) => void // 카드를 끌어 옮긴 순서(프리셋 id 전부)
@@ -1025,6 +1030,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return
+      if (comboOpenRef.current) return // 코디 조합 패널이 목록 자리에 있으면 방향키는 패널 몫이다(combo/ComboPanel)
       if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1)
       else if (listDirRef.current === 'y' && bpRef.current !== 'mobile' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); step(e.key === 'ArrowUp' ? -1 : 1) }
     }
@@ -1110,6 +1116,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (isBookmarked(item.id)) { const next = bookmarks.filter((b) => b.id !== item.id); setBookmarks(next); saveBookmarks(next); return }
     if (bookmarks.length >= BOOKMARK_MAX) { notify('북마크는 8개까지 담을 수 있어요'); return }
     const next = [...bookmarks, item]; setBookmarks(next); saveBookmarks(next)
+  }
+  // 코디 조합 — 목록 카드의 '코디' 칩으로 연다. 열려 있으면 목록 자리가 패널이 된다(PinkbeanShop). 목록의 쪽 · 부위 · 검색은 여기 그대로라
+  // 닫으면 보던 쪽으로 돌아온다. 광장의 코디 조합 탭은 같은 아이템(comboItem)을 이어 보여 준다
+  const [comboItem, setComboItem] = useState<ListItem | null>(null)
+  const [comboOpen, setComboOpen] = useState(false)
+  const comboOpenRef = useRef(false)
+  comboOpenRef.current = comboOpen
+  const openCombo = (item: ListItem) => { setComboItem(item); setComboOpen(true) }
+  const closeCombo = () => setComboOpen(false)
+  useEffect(() => { if (primary !== 'codi' && primary !== 'search') setComboOpen(false) }, [primary])
+  // 이름으로 아이템 찾기 — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
+  const searchItems = async (q: string): Promise<ListItem[]> => {
+    const t = nrmName(q)
+    if (!t) return []
+    const lists = await Promise.all(EQUIP_SLOTS.filter((sl) => slotFile(sl, indexRef.current)).map((sl) => loadSlotFolded(sl)))
+    return [...lists.flat(), ...skinList].filter((it) => nrmName(it.name || '').includes(t))
   }
   const clearBookmarks = () => {
     if (!bookmarks.length) return
@@ -1958,6 +1980,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
+    comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
     warmForPreview, listMode, setListMode, bgSel, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
@@ -1966,7 +1989,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,
-    openPlazaPost, openNotice, guideGo, plazaTakeDirect, wearFromSnap, isWornFromSnap, plazaTakeBack, resolveSnapItems: resolveEquipped,
+    openPlazaPost, openNotice, guideGo, plazaTakeDirect, takeCombo: (snap: Snapshot) => openSurface({ kind: 'ptake', item: null, take: snap, combo: true }), wearFromSnap, isWornFromSnap, plazaTakeBack, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipSlot, hidden, setHidden,
