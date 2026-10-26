@@ -9,6 +9,8 @@
 //  · 팝박스(PopBox — 미리보기 · 채팅과 같은 창)는 연 버튼 바로 아래(또는 위)에 붙어 나온다. 디자인 · 배경은 칸 격자, 액션 · 이모티콘은 ActionPickBody · ChatEmoPicker.
 //    정지 그림을 저장하므로 액션 · 이모티콘에 '재생'이 없다. 고르면 창이 닫힌다.
 //  · 오른쪽 아래 [저장] = 미리보기 그대로 저장(lib/profileCard 의 같은 함수 — 저장만 두 배 해상도). 파일 이름은 '<이름> 공유 카드'.
+//  · 카드 맨 아래 불러오기 QR(사용자 지시 — 사진 앱에서 QR 을 누르거나 카메라로 비추면 바로 이 코디를 불러온다). 연 순간의 코디로 짧은 공유 링크를 만들고
+//    (lib/shareCode prepareShare — 프리셋 복사와 같은 링크), 저장할 때 그 코드를 서버에 올린다(uploadShare). 꾸미기에서 끌 수 있다.
 // 그리기: 판(사진 칸 밖)은 디자인 · 이름 · 칩이 바뀔 때만, 사진 칸은 끌 때 프레임마다(React 를 다시 그리지 않고 ref + rAF).
 // 캐릭터 그림(canvasExport.drawShot)은 명찰 · 말풍선 · 프레임이 바뀔 때만 다시 그린다(글을 적는 동안은 잠깐 멈춘 뒤).
 
@@ -17,7 +19,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { drawShot, fileSafe, getPreviewShot, saveImage, shotFoot, type ModelShot } from '@/lib/canvasExport'
 import type { ChatEmo } from '@/lib/core/chatUi'
 import { imageSrc } from '@/lib/core/render'
-import { CARD_THEMES, CARD_W, PHOTO, ZOOM_MAX, ZOOM_MIN, cardBgImage, cardFonts, cardHeight, defaultView, drawCardBase, drawCardPhoto, type CardBoard, type CardView, type ShareChip } from '@/lib/profileCard'
+import { CARD_THEMES, CARD_W, PHOTO, ZOOM_MAX, ZOOM_MIN, cardBgImage, cardFonts, cardHeight, defaultView, drawCardBase, drawCardPhoto, type CardBoard, type CardQr, type CardView, type ShareChip } from '@/lib/profileCard'
+import { makeQr } from '@/lib/qr'
+import { prepareShare, uploadShare, type SharePrep } from '@/lib/shareCode'
 import { CHAT_NAME_FALLBACK, CHAT_TEXT_MAX, chatDrawOf } from '@/lib/shopData'
 import { PV_ACTION_GROUPS, PV_ACTIONS_FLAT } from '@/lib/catalog'
 import { animaOnce, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
@@ -38,6 +42,7 @@ import ui from '../ui/ui.module.css'
 import styles from './profileCard.module.css'
 
 const THEME_KEY = 'pb_card_theme_v1' // 마지막에 고른 카드 디자인(이 브라우저만 — 편의)
+const QR_KEY = 'pb_card_qr_v1' // 불러오기 QR 을 껐는가(이 브라우저만 — 편의)
 const readTheme = () => { try { return localStorage.getItem(THEME_KEY) } catch { return null } }
 const today = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}` }
 const clampZ = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(z)))
@@ -79,6 +84,20 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   const [pose, setPose] = useState<{ action: string; frame: number } | null>(null)
   const [poseShot, setPoseShot] = useState<ModelShot | null>(null)
   const [poseBase] = useState(() => s.snapshot())
+  // ── 불러오기 QR: 연 순간의 코디(이름 없이 — 이름을 고쳐도 링크가 바뀌지 않게)로 짧은 공유 링크. 짧은 코드를 못 만들면(옛 브라우저) QR 을 넣지 않는다
+  const [qrOn, setQrOn] = useState(() => { try { return localStorage.getItem(QR_KEY) !== 'off' } catch { return true } })
+  const flipQr = () => setQrOn((v) => { try { localStorage.setItem(QR_KEY, v ? 'off' : 'on') } catch { /* 기억 못 해도 된다 */ } return !v })
+  const [share, setShare] = useState<{ prep: SharePrep; qr: CardQr } | null>(null)
+  useEffect(() => {
+    let alive = true
+    void prepareShare(location.origin, poseBase).then((prep) => {
+      if (!alive || !prep.id) return
+      const qr = makeQr(`${location.origin}/?c=${prep.id}`, 'Q')
+      if (qr) setShare({ prep, qr: { qr, code: prep.id } })
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [poseBase])
+  const cardQr = qrOn ? share?.qr ?? null : null
   useEffect(() => {
     if (!pose || !s.index) { setPoseShot(null); return }
     let alive = true
@@ -162,7 +181,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
     return () => ro.disconnect()
   }, [])
   const S = Math.max(1, Math.min(2, Math.ceil((cssW * (typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)) / CARD_W)))
-  const H = cardHeight(chips?.length ?? 0)
+  const H = cardHeight(chips?.length ?? 0, !!cardQr)
   const sub = `착용 아이템 ${chips?.length ?? 0}개 | ${today()}`
   const baseRef = useRef<HTMLCanvasElement | null>(null)
   const [view, setView] = useState<CardView | null>(null) // null = 처음 보기
@@ -187,10 +206,10 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
     if (!chips || !fonts) return
     const c = baseRef.current ?? document.createElement('canvas')
     c.width = CARD_W * S; c.height = H * S
-    drawCardBase(c.getContext('2d')!, S, theme, { name: nameShown, sub }, chips)
+    drawCardBase(c.getContext('2d')!, S, theme, { name: nameShown, sub }, chips, cardQr)
     baseRef.current = c
     paint()
-  }, [chips, fonts, theme, nameShown, sub, S, H, paint])
+  }, [chips, fonts, theme, nameShown, sub, S, H, paint, cardQr])
   // 사진 칸: 그림 · 배경 · 보기가 바뀔 때
   useEffect(() => { live.current.view = view; schedule() }, [view, board, bgImg, bgSel, theme, schedule])
 
@@ -274,8 +293,10 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
       c.width = CARD_W * SS; c.height = H * SS
       const g = c.getContext('2d')!
       await cardFonts()
-      drawCardBase(g, SS, theme, { name: nameShown, sub }, chips)
+      drawCardBase(g, SS, theme, { name: nameShown, sub }, chips, cardQr)
       drawCardPhoto(g, SS, theme, bgSel, live.current.img, board, curView(), firstView.current ?? curView(), nameShown)
+      // QR 이 가리키는 코드를 서버에 올린다(링크를 연 사람이 불러올 수 있게 — 저장을 기다리게 하지 않는다)
+      if (cardQr && share) void uploadShare(share.prep, poseBase)
       const res = await saveImage(() => new Promise((r) => c.toBlob((b) => r(b), 'image/png')), `${fileSafe(name.trim()) || s.saveName} 공유 카드`)
       if (res !== 'cancel') s.notify(res === 'saved' ? '코디 프로필을 저장했어요' : '이미지를 만들지 못했어요')
     } finally { setSaving(false) }
@@ -326,6 +347,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
       </>}
       <hr className={styles.rule} />
       <div className={styles.group}>
+        {toggleRow('QR 코드', qrOn && !!share, flipQr, share ? undefined : 'QR을 만드는 중이에요')}
         <div className={styles.row}>
           <span className={styles.rowLabel}>이름</span>
           <input value={name} onChange={(e) => setName(e.target.value.slice(0, 20))} placeholder={CHAT_NAME_FALLBACK} aria-label="이름" className={clsx('pb-input', styles.input)} />
