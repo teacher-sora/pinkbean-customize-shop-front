@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import { type PlacedLayer } from '@/lib/core/assemble'
 import { type AnimaRace, type Index } from '@/lib/core/data'
-import { canvasBitmap, computeModelPlacement, fitCanvas, zoomStepScale } from '@/lib/core/modelPlacement'
+import { canvasBitmap, computeModelPlacement, fitCanvas, MODEL_REF, zoomStepScale } from '@/lib/core/modelPlacement'
 import type { ParticleDraw } from '@/lib/core/particle'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { animaNow, animaOnce, composePeek, composeSnapshotCached, snapKey, type SnapComposite } from '@/lib/core/snapRender'
@@ -150,13 +150,17 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     if (!canvas || !placed || !dims.w || !dims.h) return
     let cancelled = false
     const scale = zoom != null ? zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: zoom, mults: ZOOM_WORLD }) : undefined
-    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, scale, snap: true, drop: true })
+    // view 면 몸통 중심도 미리보기와 같은 값 — 뒷쪽 · 맨몸 사다리 · 밧줄은 등반 자세용 중심(PreviewModel 의 climbCenter)
+    const sp = snap.pv, rideOn = !!snap.equipped.riding && !snap.hidden?.riding
+    const climb = !!view && (sp?.gaze === 'back' || (!rideOn && (sp?.action === 'ladder' || sp?.action === 'rope')))
+    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, scale, snap: true, drop: true,
+      ...(climb ? { centerDx: MODEL_REF.previewBackDx, centerDy: MODEL_REF.previewBackDy } : {}) })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
     // view 면 그 코디의 시선도 따른다(오른쪽 = 좌우 반전 — 미리보기와 같은 규칙. 코디 비교의 정지 칸)
     renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip: view && snap.pv?.gaze === 'right', centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, ov, effects, particles, center, dims, fraction, margin, chat, zoom, view, snap.pv?.gaze])
+  }, [placed, ov, effects, particles, center, dims, fraction, margin, chat, zoom, view, snap.pv?.gaze, snap.pv?.action, snap.equipped.riding, snap.hidden?.riding])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
   // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 게임 크기 1배).
