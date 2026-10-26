@@ -266,9 +266,10 @@
 /* 채팅 칸(PC)은 칸 아래 줄에 자리를 따로 둔다 — 칸 위에 겹치지 않게. 칸 8 + 채팅 34 + 아래 줄까지 10 */
 .cmpBoardChat { padding-bottom: 52px; }
 .colCmp .chatDock { left: 8px; right: 8px; } /* 칸 · 아래 줄과 같은 여백(8) — 선이 맞게 */
-/* 아래 줄(배율 · 액션 · 모션 · 표정)은 넓어진 열에서도 평소 폭 그대로 — 평소 폭 = (열 폭 − 테두리 · 여백 · 사이 38 − 연출 설정 버튼) ÷ 4. 연출 설정은 오른쪽 끝 */
+/* 아래 줄(배율 · 액션 · 모션 · 표정)은 넓어진 열에서도 평소 폭 그대로 — 평소 폭 = (열 폭 − 테두리 · 여백 · 사이 38 − 연출 설정 버튼) ÷ 4.
+   연출 설정과 평소 사이(5)로 붙여 함께 오른쪽 끝에 둔다(사용자 지시 — 칸이 넓어져도 연출 설정과 떨어지지 않게) */
 .colCmp .ctrlRow > :not(.pvAll) { flex: 0 0 calc((var(--pin-col) - 38px - var(--pv-all-w)) / 4); }
-.colCmp .pvAll { margin-left: auto; }
+.colCmp .ctrlRow > :first-child { margin-left: auto; }
 /* 모바일: 히어로의 위(되돌리기) · 아래(연출 설정 · 부위 염색 · 비교 · 북마크) 버튼 줄 사이. 히어로 높이는 그대로 */
 .cmpBoardM { inset: 46px 8px 50px; padding: 0; gap: 6px; }
 .cmpBoardLine { gap: 6px; }
