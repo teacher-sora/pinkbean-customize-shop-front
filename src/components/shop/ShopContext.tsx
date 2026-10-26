@@ -153,7 +153,7 @@ const LEGACY_DEFAULT_CORE_KEY = (() => { const d = defaultSnapshot(); return sna
 const migrateLegacyDefault = (s: Snapshot): Snapshot => (snapCoreKey(s) === LEGACY_DEFAULT_CORE_KEY ? { ...s, equipped: defaultSnapshot().equipped } : s)
 const PRESET_KEY = 'pb_presets_v1'
 const FAV_KEY = 'pb_favorites_v1' // 즐겨찾기 아이템 id 목록(localStorage 영속, 서버 없음)
-const BOOKMARK_KEY = 'pb_bookmarks_v1' // 북마크(간이 가방) 아이템 — 최대 8개, 즐겨찾기와 별개
+const BOOKMARK_KEY = 'pb_bookmarks_v1' // 북마크(간이 가방) 아이템 — 최대 8개, 즐겨찾기와 별개. sessionStorage(사용자 지시 — 새로고침에는 남고 창을 닫으면 사라진다)
 const BOOKMARK_MAX = 8
 // 연출설정(pv) 전체 영속 — 새로고침 후에도 마지막 상태(무기모션·액션·표정·형상·시선·이펙트·배율)를 그대로 유지.
 // 프리셋 스냅샷엔 일부(pv 서브셋)만 담기므로, 전체 pv 는 프리셋과 별개의 전역 키에 저장해 정확히 복원한다.
@@ -187,11 +187,13 @@ const loadPresetStore = (): PresetStore | null => {
 // **고른 칸 = 그 프리셋**: 고른 칸을 고치면 back 에도 저장되고, 칸을 바꿔 고르면 그 칸의 코디가 back 이 된다(끄면 back 이 마지막 칸의 코디로 남는다)
 export const CMP_MAX = 4
 export const CMP_MIN = 2 // 비교는 늘 두 칸 이상(사용자 지시)
-const CMP_KEY = 'pb_compare_v1'
+const CMP_KEY = 'pb_compare_v1' // sessionStorage(북마크와 같다 — 새로고침에는 남고 창을 닫으면 사라진다)
+// 예전에는 두 값을 localStorage 에 두었다 — 남은 것을 한 번 지운다
+if (typeof window !== 'undefined') { try { localStorage.removeItem(CMP_KEY); localStorage.removeItem(BOOKMARK_KEY) } catch { /* noop */ } }
 export const isCmpId = (id: string | null | undefined): id is string => !!id && id.startsWith('cmp')
 type CmpStore = { ids: string[]; data: Record<string, Snapshot>; on: boolean; last: string | null; back: string | null }
 const loadCmpStore = (): CmpStore | null => {
-  try { const raw = localStorage.getItem(CMP_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && Array.isArray(s.ids) && s.data ? s : null } catch { return null }
+  try { const raw = sessionStorage.getItem(CMP_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && Array.isArray(s.ids) && s.data ? s : null } catch { return null }
 }
 // 비교 칸의 보기 설정(시선 · 액션 · 프레임 · 표정)은 칸마다 따로 둔다 — 칸을 고르면 그 칸의 설정이 연출 설정 · 목록에 그대로 온다(사용자 지시:
 // 목록은 고른 칸에 맞춘다). 배율만 모든 칸이 지금 값을 함께 쓴다 — 같은 크기여야 견줄 수 있다
@@ -380,13 +382,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  // 북마크(간이 가방): 아이템을 임시로 담아뒀다가 눌러서 입혀보는 용도. 최대 8개, localStorage 영속.
+  // 북마크(간이 가방): 아이템을 임시로 담아뒀다가 눌러서 입혀보는 용도. 최대 8개, 이 창 동안만(sessionStorage).
   // 슬롯 리스트를 다시 받지 않아도 그릴 수 있게 ListItem 을 그대로 저장한다.
   const [bookmarks, setBookmarks] = useState<ListItem[]>([])
   useEffect(() => {
-    try { const raw = localStorage.getItem(BOOKMARK_KEY); if (raw) { const v = JSON.parse(raw); if (Array.isArray(v)) setBookmarks(v.slice(0, BOOKMARK_MAX)) } } catch { /* noop */ }
+    try { const raw = sessionStorage.getItem(BOOKMARK_KEY); if (raw) { const v = JSON.parse(raw); if (Array.isArray(v)) setBookmarks(v.slice(0, BOOKMARK_MAX)) } } catch { /* noop */ }
   }, [])
-  const saveBookmarks = (next: ListItem[]) => { try { localStorage.setItem(BOOKMARK_KEY, JSON.stringify(next)) } catch { /* noop */ } }
+  const saveBookmarks = (next: ListItem[]) => { try { sessionStorage.setItem(BOOKMARK_KEY, JSON.stringify(next)) } catch { /* noop */ } }
 
   // 공유 링크 수신: ?n=<이름>&c=<짧은 코드 PB-…|긴 코드> 또는 #c=<code>(해시 형식 링크)로 접속하면 디코드해 '공유받은 코디' 화면(서피스 ptake)을 띄운다.
   //  · 쿼리(?c=)를 쓰는 이유: 모바일 카톡 등 일부 링크파서가 '#' 이후를 하이퍼링크로 인식하지 못한다.
@@ -1846,7 +1848,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const real: Record<string, Snapshot> = {}; for (const id of PRESET_IDS) if (data[id]) real[id] = data[id]
       localStorage.setItem(PRESET_KEY, JSON.stringify({ data: real, names, sel: cmpOn ? cmpBack : selectedPreset, order: presets.map((p) => p.id), v: PRESET_STORE_V } as PresetStore))
       const cdata: Record<string, Snapshot> = {}; for (const id of cmpIds) if (data[id]) cdata[id] = data[id]
-      localStorage.setItem(CMP_KEY, JSON.stringify({ ids: cmpIds, data: cdata, on: cmpOn, last: cmpOn ? selectedPreset : cmpLast.current, back: cmpBack } as CmpStore))
+      sessionStorage.setItem(CMP_KEY, JSON.stringify({ ids: cmpIds, data: cdata, on: cmpOn, last: cmpOn ? selectedPreset : cmpLast.current, back: cmpBack } as CmpStore))
     } catch {}
   }
   // 자동 저장: 라이브 모델이 바뀔 때마다 선택된 프리셋에 저장(100ms 디바운스). 프리셋 적용으로 인한
