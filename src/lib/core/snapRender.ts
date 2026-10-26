@@ -78,8 +78,9 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
     ...animaLayers(spv.form, animaRaces), // 형상변이 — 프리셋에 저장된 값
   ]
   const asm = assemble(items, index.zmap, index.smap), anchors = asm.anchors
-  // 프레임을 골랐으면 미리보기와 같이 배꼽을 stand1 기준으로 되돌린다(발은 고정, 몸통 · 팔다리만 움직인다 — 프레임 칸끼리 캐릭터가 흔들리지 않게)
-  const refNav = fi != null ? bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel : undefined
+  // 프레임을 골랐거나 view 면 미리보기와 같이 배꼽을 stand1 기준으로 되돌린다(발은 고정, 몸통 · 팔다리만 움직인다 — 프레임 칸끼리,
+  // 코디 비교의 정지 칸과 움직이는 칸이 같은 자리에 서게. 액션 · 뒷쪽마다 배꼽이 그림 안에서 달라 그대로 두면 몸통이 옮겨 간다). 탑승해 앉으면 미리보기처럼 되돌리지 않는다
+  const refNav = fi != null || (view && !seated) ? bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel : undefined
   const curNav = refNav ? asm.placed.find((p) => p.slot === 'body' && p.name === 'body')?.map?.navel : undefined
   const placed = refNav && curNav && (curNav.x !== refNav.x || curNav.y !== refNav.y) ? asm.placed.map((p) => ({ ...p, x: p.x + curNav.x - refNav.x, y: p.y + curNav.y - refNav.y })) : asm.placed
   // 그릴 그림을 지금 받기 시작한다(그리는 쪽 renderCharacter 가 같은 캐시를 쓴다) — 아래의 염색 · 이펙트를 기다리는 동안 함께 온다.
