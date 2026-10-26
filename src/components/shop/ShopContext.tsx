@@ -21,6 +21,7 @@ import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, typ
 import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { lookToSnapshot, nrmName, type LookDeps, type NexonLook } from '@/lib/nexonLook'
+import { comboLive } from '@/lib/looks'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
@@ -667,7 +668,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (typeof u.aiQ === 'string') setAiQ(u.aiQ)
     if (typeof u.searchQuery === 'string') setSearchQuery(u.searchQuery)
     if (Array.isArray(u.searchResults)) setSearchResults(u.searchResults)
-    if (u.plazaFilter && PLAZA_FILTERS.some((f: { id: string }) => f.id === u.plazaFilter)) setPlazaFilter(u.plazaFilter as PlazaFilter)
+    if (u.plazaFilter && (u.plazaFilter !== 'combo' || comboLive()) && PLAZA_FILTERS.some((f: { id: string }) => f.id === u.plazaFilter)) setPlazaFilter(u.plazaFilter as PlazaFilter)
     if (typeof u.plazaQ === 'string') setPlazaQState(u.plazaQ)
     // 광장 정렬 · 목록을 넘기는 방향은 **영구**다(취향에 가까운 값). 나머지는 전부 새로고침까지만.
     const pref = readUiPref()

@@ -17,6 +17,12 @@ export type LookMeta = { looks: number; chars: number; from: string; to: string;
 
 const BASE = `${DATA_BASE}/looks/v1`
 
+// 아직 dev 에서만 연다(사용자 지시 — 운영 서버에는 /looks 가 없다). 고르는 기준은 backApi 와 같은 호스트다. 서버 그림에서는 늘 꺼져 있고
+// 브라우저에서만 켜진다(useComboLive) — 운영은 칩 · 광장 탭이 아예 없다.
+export const comboLive = () => typeof window !== 'undefined' && !/^(www\.)?pinkbean-customize\.com$/.test(window.location.hostname)
+const noSub = () => () => {}
+export const useComboLive = () => useSyncExternalStore(noSub, comboLive, () => false)
+
 // ── 목록 카드의 코디 수 ─────────────────────────────────────────────
 let counts: Record<string, number> | null = null
 let countsP: Promise<void> | null = null
@@ -26,7 +32,7 @@ function loadCounts() {
     .then((c: Record<string, number>) => { counts = c; subs.forEach((f) => f()) })
   return countsP
 }
-const subscribe = (f: () => void) => { subs.add(f); void loadCounts(); return () => { subs.delete(f) } }
+const subscribe = (f: () => void) => { subs.add(f); if (comboLive()) void loadCounts(); return () => { subs.delete(f) } }
 // 그 아이템이 든 코디 수(표본에 없으면 0). 처음 부르면 counts.json 을 받기 시작하고, 받으면 다시 그린다
 export function useLookCount(id: string): number {
   return useSyncExternalStore(subscribe, () => counts?.[id] ?? 0, () => 0)

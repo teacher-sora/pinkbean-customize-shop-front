@@ -114,7 +114,7 @@ export const fileSafe = (name: string): string => name.replace(/[\\/:*?"<>|\u000
 // 프리셋의 저장 이름 — 프리셋 이름, 비었거나 못 쓰는 글자뿐이면 그 프리셋 번호의 기본 이름(코디 N — 사용자 지시)
 export const presetFileName = (name: string | undefined, i: number): string => fileSafe(name ?? '') || defaultPresetName(i)
 
-// PNG(움짤은 GIF) 파일로 저장 — 브라우저의 다운로드로 내려받는다(사용자 지시). 그래서
+// PNG(움짤은 GIF, 코디 프로필 카드는 JPEG) 파일로 저장 — 브라우저의 다운로드로 내려받는다(사용자 지시). 그래서
 //  · 브라우저 다운로드 기록(크롬 오른쪽 위 다운로드 목록)에 남는다. 'showSaveFilePicker'(파일 시스템 API)로 직접 쓰면 남지 않았다.
 //  · 같은 이름 · 형식의 파일이 이미 있으면 브라우저가 이름 끝에 (1), (2) … 를 붙인다(크롬 · 엣지 · 파이어폭스). 페이지는 사용자의 폴더를
 //    볼 수 없어 이 일은 브라우저만 할 수 있다.
@@ -125,13 +125,13 @@ export const presetFileName = (name: string | undefined, i: number): string => f
 // 사진 앱에 넣는다(사용자 지시 — 브라우저 내려받기 폴더가 아니라 갤러리에). 공유를 못 쓰거나(데스크톱 · 옛 브라우저) 막히면(눌러서 시간이 오래 지난 뒤 등)
 // 예전처럼 내려받는다. 사용자가 공유 창을 닫으면 'cancel'(알림을 띄우지 않는다).
 const touchDevice = () => typeof matchMedia !== 'undefined' && matchMedia('(hover: none), (pointer: coarse)').matches
-export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string | (() => string), kind: 'png' | 'gif' = 'png'): Promise<'saved' | 'cancel' | 'error'> {
+export async function saveImage (getBlob: () => Promise<Blob | null>, filename: string | (() => string), kind: 'png' | 'gif' | 'jpg' = 'png'): Promise<'saved' | 'cancel' | 'error'> {
   try {
     const b = await getBlob(); if (!b) return 'error'
     const base = fileSafe(typeof filename === 'function' ? filename() : filename) || 'pinkbean' // 부르는 쪽이 이름을 정한다(프리셋은 presetFileName) — 여기는 마지막 안전망
     const name = base.endsWith(`.${kind}`) ? base : `${base}.${kind}`
     if (touchDevice() && typeof navigator.share === 'function' && typeof File !== 'undefined') {
-      const file = new File([b], name, { type: kind === 'gif' ? 'image/gif' : 'image/png' })
+      const file = new File([b], name, { type: kind === 'gif' ? 'image/gif' : kind === 'jpg' ? 'image/jpeg' : 'image/png' })
       if (navigator.canShare?.({ files: [file] })) {
         try { await navigator.share({ files: [file] }); return 'saved' } catch (e) {
           if ((e as DOMException)?.name === 'AbortError') return 'cancel'
