@@ -179,9 +179,10 @@ interface ModelProps {
   isMy?: boolean                            // "내 모델" 카드 여부. 아이템 자체 이펙트(연출)는 내 모델에만 그린다.
   dotOffsets?: Record<string, { x: number; y: number }> // 내 모델: 후보가 변경점/변경쩜이면 내가 옮긴 점 위치
   stance?: boolean                          // 배경이 무기모션 자세(두손=stand2)로 구워졌으면 후보 아이템도 같은 자세로
+  fraction?: number                         // 마네킹 높이 비율(없으면 CARD_FRACTION — 모바일 목록은 CARD_FRACTION_M)
   ctxAction?: string                        // 배경이 내 무기 때문에 다른 자세로 구워졌으면 그 액션(thumbCtx.action) — 후보도 같은 자세로
 }
-function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets }: ModelProps) {
+function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets, fraction = CARD_FRACTION }: ModelProps) {
   // 합성 입력 전부(아래 합성 effect 의 의존과 같다) — 같으면 기억해 둔 그림을 쓴다
   const mkey = [item.id, ctxKey, skinHeadId, gaze, item.fixedEmotion || ctxExpr, ear, weapon, stance, ctxAction, oid(ctxEffs), pvEff ? `${+pvEff.wEffect}${+pvEff.cEffect}` : "", oid(faceMeta), oid(override), oid(dotOffsets)].join('|')
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(() => modelDone.get(mkey)?.placed ?? null)
@@ -328,7 +329,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     let cancelled = false
     const back = gaze === 'back'
     // snap: 배율을 정수로 스냅해 카드 도트가 항상 완전히 선명(모든 카드 동일, 화면 크기별로만 살짝 다름).
-    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: CARD_FRACTION, snap: true, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy, drop: true })
+    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction, snap: true, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy, drop: true })
     // 캔버스를 화면 픽셀 격자에 맞춰 가운데(미리보기와 같은 규칙 — translate(-50%) 는 소수 px 라 도트가 뭉갠다).
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
@@ -338,7 +339,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     // 우클릭 복사용 입력 — 화면과 같은 값(중심 오프셋·반전·라이딩 정렬)으로 다시 그린다(lib/canvasExport.modelShotBlob).
     shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
     return () => { cancelled = true }
-  }, [placed, effs, parts, flip, dims, gaze, ovr])
+  }, [placed, effs, parts, flip, dims, gaze, ovr, fraction])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). item 바뀌면 파일명 갱신 위해 재바인딩.
   useEffect(() => {
@@ -369,8 +370,9 @@ export default function ItemThumb(props: {
   ear?: string; weapon?: string; isMy?: boolean; stance?: boolean; ctxAction?: string
   dotOffsets?: Record<string, { x: number; y: number }>
   chat?: ChatState
+  fraction?: number
 }) {
   if (props.mode !== 'sprite' && props.item.chatUi && props.chat) return <ChatThumb item={props.item} chat={props.chat} />
   if (props.mode === 'sprite') return props.item.slot === 'hair' ? <HairSprite item={props.item} zmap={props.zmap} /> : <Sprite item={props.item} />
-  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} />
+  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} fraction={props.fraction} />
 }

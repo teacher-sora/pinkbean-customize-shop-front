@@ -11,13 +11,14 @@ import { useShop } from '../ShopContext'
 import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
 import { IconHeart, IconLinkCopy, IconTakeDown, IconTrashSolid } from '../ui/Icons'
 import styles from './plaza.module.css'
+import { CARD_FRACTION_M } from '@/lib/shopData'
 
+// 모바일 마네킹 비율은 목록 · 코디 조합과 같은 값(shopData.CARD_FRACTION_M)
 const CARD_FRACTION = 0.38 // 프리셋 카드와 같은 마네킹 비율
 // 모바일은 2열이라 칸이 프리셋 탭(3열)보다 넓은데 같은 비율이면 인물이 작아 보인다.
 // ⚠️ 도트가 뭉개지지 않게 배율이 **정수로 스냅**되므로(modelPlacement) 조금 올려서는 안 바뀐다 — 0.46 은 그대로였다.
 //    칸 높이 ≈142px(폭 390) 기준 0.54 면: DPR 3 → 3→4배(64→85px) · 2.75 → 2→3배(46→70px) · DPR 2 는 2배 그대로(64px).
 //    DPR 2 까지 올리면(0.57) 3배 = 96px 라 머리가 오른쪽 아이콘 레일에 닿았다 — 그래서 한 단계 아래에서 멈춘다.
-const CARD_FRACTION_M = 0.54
 
 export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaPost; mobile: boolean; priority?: number }) {
   const s = useShop()

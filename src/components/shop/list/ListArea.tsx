@@ -6,6 +6,7 @@
 import clsx from 'clsx'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
+import { MOBILE_GRID } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
@@ -33,10 +34,11 @@ export const DIRS: SegOpt<ListDir>[] = [
 // 보이는 순서대로 적는다. keep = 자리가 좁아 줄일 때 남기는 순서(작을수록 끝까지 남는다) — 모바일은 둘, 좁은 화면은 셋만 보인다
 const AI_EXAMPLES = [{ q: '동물 귀', keep: 2 }, { q: '한벌옷 스타킹', keep: 0 }, { q: '귀여운 얼굴', keep: 3 }, { q: '단발 헤어', keep: 1 }]
 
-// 모바일 뷰포트의 스크롤 위치 → 쪽 번호(쪽 = 3열 × 2줄). 가로는 열 = 폭/3, 세로는 줄 = 높이/2 단위로 반올림한 뒤 쪽으로. 크기가 없으면 -1.
+// 모바일 뷰포트의 스크롤 위치 → 쪽 번호(쪽 = MOBILE_GRID 열 × 줄). 가로는 열 = 폭/열 수, 세로는 줄 = 높이/줄 수 단위로 반올림한 뒤 쪽으로. 크기가 없으면 -1.
 const scrollIdx = (vp: HTMLElement, y: boolean) => {
   const w = y ? vp.clientHeight : vp.clientWidth; if (!w) return -1
-  return y ? Math.floor(Math.round(vp.scrollTop / (w / 2)) / 2) : Math.floor(Math.round(vp.scrollLeft / (w / 3)) / 3)
+  const n = y ? MOBILE_GRID.rows : MOBILE_GRID.cols
+  return Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / n)) / n)
 }
 
 // 모바일 · 절반 · 태블릿: 한번 정해 두고 쓰는 보기 값들(목록 = 보기 · 성별 · 방향, 코디 조합 = 성별 · 방향)을 버튼 하나에 접어 둔다(넓은 PC 는 펼쳐 둔다).
@@ -77,10 +79,16 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 
 // 모바일: 카드가 세로형(높이/폭 ≥ ratio)으로 rows 줄 들어갈 최소 뷰포트 높이를 보장한다. 부족하면 페이지 컬럼
 // 높이(--pb-min-h)를 늘려 페이지 스크롤로 흡수(리스트 안 세로 스크롤은 만들지 않음). 그 외 요소 높이(chrome)는
-// 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다. 코디 탭 목록(3열 × 2줄)과 코디 조합(최소 2줄 — 사용자 지시)이 함께 쓴다.
+// 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다. 코디 탭 목록(MOBILE_GRID)과 코디 조합(최소 2줄 — 사용자 지시)이 함께 쓴다.
 // ⚠️ 목록은 언마운트(염색·프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
 //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다. restore 면(코디 조합 — 목록보다 길 수 있다) 떠날 때 붙기 전 값으로 되돌린다.
-export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false) {
+// 모바일 목록 카드의 최소 크기 = 그림 칸 높이 ≥ 폭 × CARD_RATIO_M + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) CARD_FOOT_M.
+// 예전에는 카드 전체를 폭 × 1.34 로만 잡아, 화면이 낮으면(실제 휴대폰 · 위를 줄인 창) 아래 57px 를 빼고 남은 그림 칸이 75px 까지 줄어
+// 캐릭터가 45px 로 아주 작았다(사용자 지적 — 실측 343 × 684). 그림 칸을 따로 보장해 어느 높이에서든 캐릭터가 줄지 않는다
+const CARD_RATIO_M = 1.45, CARD_FOOT_M = 57 // 1.45 = 좁은 폭(343 · 360)도 캐릭터가 한 단계 크게(정수 배율 — 실측 68 → 90px)
+// 목록과 같은 최소 높이 — 코디 탭 · AI 코디 검색 목록과 프리셋 탭이 함께 쓴다(같은 값이라 탭을 오가도 페이지 높이가 그대로다)
+export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M)
+export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0) {
   useEffect(() => {
     if (!mobile) return
     const vp = vpRef.current
@@ -91,14 +99,14 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const m = () => {
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - PAD_X - GAP * (cols - 1)) / cols
-      const need = Math.ceil(chrome + PAD_Y + GAP * (rows - 1) + rows * cardW * ratio) + 'px'
+      const need = Math.ceil(chrome + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
     }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
     ro?.observe(col); ro?.observe(vp)
     return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
-  }, [vpRef, mobile, cols, ratio, rows, restore])
+  }, [vpRef, mobile, cols, ratio, rows, restore, foot])
 }
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
@@ -141,11 +149,11 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
-  useMobileRows(vpRef, mobile, 3, 1.34) // 모바일: 세로형 카드 2줄이 들어갈 높이를 보장한다(위 훅 주석)
-  // ── 모바일: 네이티브 자유 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화. 가로면 가로, 세로면 세로(쪽 = 3열 × 2줄) ──
+  useListMinHeight(vpRef, mobile) // 모바일: 카드 2줄이 들어갈 높이를 보장한다(위 주석)
+  // ── 모바일: 네이티브 자유 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화. 가로면 가로, 세로면 세로(쪽 = MOBILE_GRID 열 × 줄) ──
   //  세로: 쪽 높이 = 뷰포트 높이(100cqh), 줄 = 높이/2 — 스크롤 → 인덱스는 줄 = round(스크롤/(높이/2)), 쪽 = floor(줄/2).
-  //  페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라 열 위치가 정확히 폭/3 배수(페이지 = 3열).
-  //  스크롤 → 인덱스: 열 = round(스크롤/(폭/3)), 페이지 = floor(열/3).
+  //  페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라 열 위치가 정확히 폭/열 수의 배수.
+  //  스크롤 → 인덱스: 열 = round(스크롤/(폭/열 수)), 페이지 = floor(열/열 수).
   //  인덱스 → 스크롤: 화살표·페이지 입력 등으로 인덱스가 바뀌어 스크롤 위치와 어긋날 때만 이동(같으면 아무것도 안 함 →
   //  사용자 스크롤·프로그램 스크롤이 서로 싸우지 않는다). 부위·탭이 바뀌면 애니메이션 없이 즉시.
   //  가상화 유지: 트랙 폭만 페이지 수만큼 잡고, 페이지 DOM 은 현재 ±1 만 만든다(아래 pages).

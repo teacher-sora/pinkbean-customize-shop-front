@@ -14,7 +14,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ListItem } from '@/lib/core/data'
 import { COMBO_SKIP, LOOK_CHUNK, withCardPv, countLabel, loadLookCounts, loadLookMeta, lookChunk, type LookDye, type LookGender, type LookMeta, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
-import { SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
+import { CARD_FRACTION_M, SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
@@ -30,7 +30,7 @@ import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
 import styles from './combo.module.css'
 
-const FRACTION = 0.4, FRACTION_M = 0.5
+const FRACTION = 0.4, FRACTION_M = CARD_FRACTION_M // 모바일은 목록 · 광장 카드와 같은 비율
 const FIT_W = 0.55 // 카드 그림: 캐릭터 높이 ≤ 칸 폭 × 0.55 — 칸이 좁고 길면 1배, 폭이 넉넉할 때만 2배(SnapThumb fitW)
 
 export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'codi' | 'plaza' }) {

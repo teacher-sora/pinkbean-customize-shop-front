@@ -6,7 +6,8 @@ import clsx from 'clsx'
 import { CatTabsM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Preset } from '@/lib/catalog'
-import { CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
+import { CARD_FRACTION_M, CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
+import { useListMinHeight } from '../list/ListArea'
 import { presetFileName } from '@/lib/canvasExport'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
@@ -16,6 +17,7 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
 const PRESET_FRACTION = 0.38
+const PRESET_FRACTION_M = CARD_FRACTION_M // 모바일은 목록 · 광장 카드와 같은 비율(사용자 지시 — 모바일 카드의 캐릭터가 너무 작았다)
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
 import { IconCheck, IconLinkCopy, IconPencil, IconReorder, IconTakeDown, IconTrashSolid } from '../ui/Icons'
@@ -34,6 +36,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   // 스크롤 영역만 움직인다(scrollIntoView 는 모바일에서 문서까지 같이 끌고 간다).
   // 탭을 눌러 들어올 때는 칸 폭(cqw)이 자리 잡기 전에 불릴 수 있어, 그린 뒤 두 프레임 동안 다시 맞춘다(이미 맞으면 아무 일도 없다).
   const boxRef = useRef<HTMLDivElement>(null)
+  useListMinHeight(boxRef, mobile) // 모바일: 목록과 같은 최소 높이(이 탭에서 바로 열어도 카드가 작아지지 않게)
   const centered = useRef(false)
   useLayoutEffect(() => {
     if (centered.current || !s.selectedPreset) return
@@ -167,8 +170,8 @@ const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, sorting, 
         <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
         {/* 바탕(사용자 지시): 손대지 않은 프리셋(광장 등록의 올릴 프리셋 판정과 같다)은 시스템 테마 색, 꾸민 프리셋은 그 프리셋의 미리보기 배경 */}
         <div ref={thumbRef} className={clsx(styles.thumb, mobile && styles.thumbM)} style={snap && !isCustomSnapshot(snap) ? { background: SYS_BG_CSS } : undefined}>
-          {snap && isCustomSnapshot(snap) && <div className={styles.thumbBg}><CardStageBg sel={snap.bg} fraction={PRESET_FRACTION} /></div>}
-          {snap && seen && <SnapThumb snap={snap} fraction={PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
+          {snap && isCustomSnapshot(snap) && <div className={styles.thumbBg}><CardStageBg sel={snap.bg} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} /></div>}
+          {snap && seen && <SnapThumb snap={snap} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
         <div className={styles.nameRow}>
           <span className={styles.nameWrap}>
             <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
