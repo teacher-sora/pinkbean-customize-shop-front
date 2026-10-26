@@ -49,10 +49,12 @@ export function warmSnap (snap: Snapshot, index: Index | null | undefined, view?
   if (composePeek(key, index, ar, view) !== undefined) return Promise.resolve()
   return composeSnapshotCached(key, snap, index, ar, view).catch(() => {})
 }
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom }: {
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom, chatText, defBalloon }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
   zoom?: number // 미리보기 배율 단계(1~3)로 그린다 — 코디 비교의 칸들이 고른 칸(PreviewModel)과 같은 도트 크기가 되게(zoomStepScale)
   deco?: boolean // 칭호 · 훈장 · 말풍선도 그린다(불러오기 창 — 가져올 장식 토글이 무엇을 바꾸는지 보이게. 말풍선은 '안녕하세요')
+  // 말풍선을 미리보기와 같은 규칙으로(코디 비교의 정지 칸): null = 보낸 말이 없어 말풍선 없음, 글 = 그 칸의 말풍선 반지(없으면 defBalloon)에 그 글
+  chatText?: string | null; defBalloon?: ChatUi | null
   onDrawn?: () => void // 캔버스에 다 그렸을 때(액션 상세의 재생 칸이 다 그려진 프레임만 번갈아 보인다)
   baseTag?: boolean // 명찰 반지가 없을 때 기본 명찰을 그릴지(없으면 스냅샷의 연출 설정 pv.baseTag) — 닉네임 불러오기 카드는 늘 켠다(사용자 지시)
   holdMenu?: boolean // false = 터치 길게 누르기로 메뉴를 열지 않는다(프리셋 카드 — 길게 누르기는 끌기다, preset/usePresetDrag)
@@ -83,7 +85,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   }, [tagId])
   const baseTag = tagName != null && !snap.equipped.nameTag && (forceBase ?? !!snap.pv?.baseTag)
   const decoId = (sl: string) => (deco && !snap.hidden?.[sl] ? snap.equipped[sl] : undefined)
-  const titleId = decoId('title'), medalId = decoId('medal'), balloonId = decoId('chatBalloon')
+  const titleId = decoId('title'), medalId = decoId('medal'), balloonId = chatText === null ? undefined : decoId('chatBalloon')
   const [decoUi, setDecoUi] = useState<{ title?: DecoEntry; medal?: DecoEntry; balloon?: DecoEntry }>({})
   useEffect(() => {
     if (!titleId && !medalId && !balloonId) { setDecoUi({}); return }
@@ -95,10 +97,12 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   }, [titleId, medalId, balloonId])
   const chat = useMemo(() => {
     const tag = tagName != null ? tagUi ?? (baseTag ? BASE_TAG : undefined) : undefined
-    const { title, medal, balloon } = decoUi
+    const { title, medal } = decoUi
+    const said = deco && typeof chatText === 'string'
+    const balloon = chatText === null ? undefined : decoUi.balloon?.ui ?? (said && defBalloon ? defBalloon : undefined)
     if (!tag && !title && !medal && !balloon) return undefined
-    return { tag, title, medal, balloon: balloon?.ui, name: tagName ?? '', text: balloon ? '안녕하세요' : '' }
-  }, [tagUi, tagName, baseTag, decoUi])
+    return { tag, title, medal, balloon, name: tagName ?? '', text: balloon ? (said ? chatText : '안녕하세요') : '' }
+  }, [tagUi, tagName, baseTag, decoUi, deco, chatText, defBalloon])
 
   const drawnRef = useRef(onDrawn)
   drawnRef.current = onDrawn
