@@ -12,6 +12,10 @@ import type { Snapshot } from '@/components/shop/ShopContext'
 import { nameMatcher } from '@/lib/nameSearch'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { plazaDeviceFp } from '@/lib/plazaDevice'
+import { CASH_BGS } from '@/lib/stageBg'
+
+// 광장에 올리는 배경: 기본 제공(피팅룸 · 흰색 · 검은색 · 시스템 · 캐시샵)은 그대로, 직접 올린 그림(id)은 '시스템'(사용자 지시), 없으면 싣지 않는다
+const plazaBg = (bg: string | undefined): string | undefined => !bg ? undefined : ['room', 'white', 'black', 'system'].includes(bg) || CASH_BGS.some((c) => c.id === bg) ? bg : 'system'
 
 export type PlazaSort = 'popular' | 'recent'
 export type PlazaFilter = 'all' | 'contest' | 'mine' | 'liked'
@@ -347,7 +351,7 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
   // (이메일 저장이 따로 실패해 이메일 없는 출품작이 생기던 틈을 막는다). 기기 제한·마감도 여기서 걸린다.
   const ins = await c.rpc('plaza_submit', {
     p: {
-      name: d.name, description: d.description, tags: d.tags, snapshot: { ...d.snapshot, bg: undefined }, share_code: d.shareCode, // 배경(bg)은 이 브라우저의 값이라 올리지 않는다
+      name: d.name, description: d.description, tags: d.tags, snapshot: { ...d.snapshot, bg: plazaBg(d.snapshot.bg) }, share_code: d.shareCode, // 배경은 메타로 함께(상세가 깐다) — 직접 올린 그림은 이 브라우저에만 있어 '시스템'으로
       image_path: imagePath, image_view: imagePath ? d.imageView : null, contest: d.contest,
     },
     email: d.contest ? d.email : null,

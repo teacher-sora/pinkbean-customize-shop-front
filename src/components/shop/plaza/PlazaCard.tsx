@@ -6,7 +6,7 @@
 
 import { CONFIRM_ATTR } from '@/lib/confirmTwice'
 import clsx from 'clsx'
-import SnapThumb from '../SnapThumb'
+import SnapThumb, { warmSnap } from '../SnapThumb'
 import { useShop } from '../ShopContext'
 import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
 import { IconHeart, IconLinkCopy, IconTakeDown, IconTrashSolid } from '../ui/Icons'
@@ -24,7 +24,7 @@ export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaP
   const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn() }
   const name = post.name || '이름 없는 코디'
   return (
-    <div onClick={() => s.openPlazaPost(post)} title={name} className="pb-presetwrap" style={{ cursor: 'pointer' }}>
+    <div onClick={() => s.openPlazaPost(post)} onPointerEnter={() => warmSnap(post.snapshot, s.index)} onPointerDown={() => warmSnap(post.snapshot, s.index)} title={name} className="pb-presetwrap" style={{ cursor: 'pointer' }}>
       <div className="pb-preset">
         <div className={clsx(styles.rail, mobile && styles.railM)}>
           <button type="button" onClick={stop(() => s.plazaTakeDirect(post))} title="내 프리셋으로 가져오기" aria-label="가져오기"

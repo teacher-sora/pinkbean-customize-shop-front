@@ -19,7 +19,7 @@
 
 import clsx from 'clsx'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import StageBg from '../preview/StageBg'
+import { CardStageBg } from '../preview/StageBg'
 import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
 import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
@@ -59,8 +59,9 @@ export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mob
           </span>
         )}
         <div className={styles.stage}>
-          <StageBg still />
-          <SnapThumb snap={post.snapshot} fraction={DETAIL_FRACTION} />
+          {/* 그 글의 배경(Snapshot.bg — 올린 사람의 미리보기 배경, 직접 올린 그림은 '시스템'으로 올라온다). 담기지 않은 옛 글은 피팅룸. 캐릭터와 같은 도트 크기 · 발 자리 */}
+          <CardStageBg sel={post.snapshot.bg} fraction={DETAIL_FRACTION} />
+          <SnapThumb snap={post.snapshot} fraction={DETAIL_FRACTION} priority={-1} />
         </div>
         {post.imageUrl && (
           <div className={clsx(styles.stage, styles.stageRef)}>

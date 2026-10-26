@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import { type PlacedLayer } from '@/lib/core/assemble'
-import { type AnimaRace } from '@/lib/core/data'
+import { type AnimaRace, type Index } from '@/lib/core/data'
 import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import type { ParticleDraw } from '@/lib/core/particle'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
@@ -39,6 +39,15 @@ const loadDeco = (slot: 'title' | 'medal' | 'chatBalloon') => {
   return p
 }
 const loadTagUis = () => (tagUis ??= fetch(CHAT_FILES.nameTag).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === 'nameTag' && x.chatUi).map((x) => [x.id, x.chatUi!]))).catch(() => new Map()))
+// 미리 합성(줄을 서지 않고 바로) — 광장 카드에 마우스를 올리거나 누르는 순간 상세의 그림을 먼저 만든다(사용자 지시: 상세가 더 빨리 뜨게).
+// 같은 코디를 그리는 쪽(카드 · 상세)은 캐시 · 진행 중 합성을 함께 쓴다(snapRender)
+export function warmSnap (snap: Snapshot, index: Index | null | undefined, view?: boolean) {
+  const ar = animaNow()
+  if (!index || !ar) return
+  const key = snapKey(snap)
+  if (composePeek(key, index, ar, view) !== undefined) return
+  void composeSnapshotCached(key, snap, index, ar, view).catch(() => {})
+}
 export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
   deco?: boolean // 칭호 · 훈장 · 말풍선도 그린다(불러오기 창 — 가져올 장식 토글이 무엇을 바꾸는지 보이게. 말풍선은 '안녕하세요')

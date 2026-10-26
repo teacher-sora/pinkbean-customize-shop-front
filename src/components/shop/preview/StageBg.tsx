@@ -6,9 +6,9 @@
 // 캐릭터가 딛는 줄에, 그림 가운데를 캐릭터 가운데에 맞춘다 — 게임처럼 캐릭터가 땅 위에 선다. 그림 밖은 위 · 아래 끝 색으로 채운다.
 // 바닥을 알리지 않는 칸(still)은 칸에 맞춰 채우기만 한다.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, getStageBg, stageSelOf, useStageBg, type CashBg } from '@/lib/stageBg'
-import { MODEL_REF } from '@/lib/core/modelPlacement'
+import { MODEL_DROP, MODEL_REF } from '@/lib/core/modelPlacement'
 import { isDarkTheme } from '@/lib/theme'
 import { SCENE_SRC } from '../scene/sceneSrc'
 import { ROOM } from '../scene/sceneData'
@@ -22,31 +22,46 @@ export const SYS_BG = { light: '#f7f2ec', dark: '#3b3d45' }
 export const SYS_BG_CSS = 'var(--pb-sys-bg)'
 export const stageColor = (sel: string): string | undefined => sel === 'system' ? (isDarkTheme() ? SYS_BG.dark : SYS_BG.light) : STAGE_COLORS[sel]
 
-// 프리셋 카드의 배경(사용자 지시: 프리셋마다 미리보기 배경). 카드 캐릭터는 배율 없이 fraction(마네킹 높이 ÷ 칸 높이)으로만 그려지므로
-// 캐시샵 배경은 그 크기에 맞춰 키운다 — 게임 1px = fraction × 칸 높이 ÷ bodyRefH. 그림의 바닥 줄은 캐릭터 발(배꼽 + 21px,
-// 배꼽 = 칸 가운데 − centerDy)에, 그림 가운데는 배꼽에. 모두 칸 높이에 대한 비율이라 칸 크기가 바뀌어도 맞는다.
-const FOOT_FROM_NAVEL = 21
-// 그림(게임 px w×h, 그 안의 발 자리 fx · fy)을 카드 캐릭터와 같은 도트 크기로 키워 발을 캐릭터 발에 — 미리보기(SceneCanvas · CashStage)와 같은 규칙을 카드 비율로
-function CardLayer({ src, w, h, fx, fy, fraction }: { src: string; w: number; h: number; fx: number; fy: number; fraction: number }) {
-  const k = fraction / MODEL_REF.bodyRefH // 칸 높이 1 에 대한 게임 1px
-  const top = 0.5 + (-MODEL_REF.centerDy + FOOT_FROM_NAVEL - fy) * k
-  return <img alt="" src={src} className={styles.stageCardImg} style={{ height: `${h * k * 100}%`, top: `${top * 100}%`, transform: `translateX(-${((fx + MODEL_REF.centerDx) / w) * 100}%)` }} />
+// 카드(프리셋 · 광장 상세)의 배경 — 그 칸의 캐릭터(SnapThumb)와 같은 도트 크기 · 같은 발 자리에 깐다(사용자 지시: 카드 캐릭터는 배율 없이 그려지니
+// 미리보기와 같은 모습이 되게). 미리보기(PreviewModel 의 setStageFloor)와 같은 식이다:
+//  · 배율 = SnapThumb 의 computeModelPlacement(snap: true) — 기기 픽셀 정수 round(fraction × 칸 높이 × dpr ÷ bodyRefH), CSS 1게임px = 배율 ÷ dpr
+//  · 발 = 칸 가운데에서 (−centerDy + MODEL_DROP + 21) 게임px 아래, 가로는 칸 가운데
+// 그래서 칸 크기를 직접 잰다(칸마다 · 화면마다 반올림이 다르다).
+function useBox (ref: React.RefObject<HTMLDivElement | null>) {
+  const [b, setB] = useState({ w: 0, h: 0, dpr: 1 })
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const m = () => { const w = el.clientWidth, h = el.clientHeight, dpr = window.devicePixelRatio || 1; setB((p) => (p.w === w && p.h === h && p.dpr === dpr ? p : { w, h, dpr })) }
+    m()
+    const ro = new ResizeObserver(m); ro.observe(el)
+    window.addEventListener('resize', m)
+    return () => { ro.disconnect(); window.removeEventListener('resize', m) }
+  }, [ref])
+  return b
 }
+const FOOT_FROM_NAVEL = 21 // 배꼽 → 발(게임px) — PreviewModel 의 바닥 줄과 같은 값
+type Layer = { src: string; w: number; h: number; fx: number; fy: number } // 그림 크기와 그 안의 발 자리(게임px)
 export function CardStageBg({ sel, fraction }: { sel?: string; fraction: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const box = useBox(ref)
   const v = stageSelOf(sel)
-  if (v === 'room') return <div aria-hidden className={styles.stageBg} style={{ background: '#14110f' }}>{SCENE_SRC.room.map((src) => <CardLayer key={src} src={src} w={ROOM.w} h={ROOM.h} fx={ROOM.foot[0]} fy={ROOM.foot[1]} fraction={fraction} />)}</div>
   const cash = CASH_BGS.find((c) => c.id === v)
-  if (cash) {
-    return (
-      <div aria-hidden className={styles.stageBg} style={{ background: `linear-gradient(to bottom, ${cash.top} 50%, ${cash.bottom} 50%)` }}>
-        <CardLayer src={cash.src} w={CASH_BG_W} h={CASH_BG_H} fx={CASH_BG_W / 2} fy={CASH_BG_GROUND} fraction={fraction} />
-      </div>
-    )
-  }
-  const img = getStageBg().images.find((i) => i.id === v)?.src
-  return <div aria-hidden className={styles.stageBg} style={img ? { backgroundImage: `url("${img}")` } : { background: v === 'system' ? SYS_BG_CSS : STAGE_COLORS[v] }} />
+  const layers: Layer[] = v === 'room' ? SCENE_SRC.room.map((src) => ({ src, w: ROOM.w, h: ROOM.h, fx: ROOM.foot[0], fy: ROOM.foot[1] }))
+    : cash ? [{ src: cash.src, w: CASH_BG_W, h: CASH_BG_H, fx: CASH_BG_W / 2, fy: CASH_BG_GROUND }] : []
+  const img = !layers.length ? getStageBg().images.find((i) => i.id === v)?.src : undefined
+  const fill = v === 'room' ? '#14110f' : cash ? `linear-gradient(to bottom, ${cash.top} 50%, ${cash.bottom} 50%)` : v === 'system' ? SYS_BG_CSS : STAGE_COLORS[v]
+  const sc = box.h ? Math.max(1, Math.round((fraction * box.h * box.dpr) / MODEL_REF.bodyRefH)) : 0
+  const k = sc / box.dpr
+  const fx = box.w / 2, fy = box.h / 2 + (-MODEL_REF.centerDy + MODEL_DROP + FOOT_FROM_NAVEL) * k
+  return (
+    <div ref={ref} aria-hidden className={styles.stageBg} style={img ? { backgroundImage: `url("${img}")` } : { background: fill }}>
+      {k > 0 && layers.map((l) => (
+        <img key={l.src} alt="" src={l.src} className={styles.stageCardImg} style={{ left: fx - l.fx * k, top: fy - l.fy * k, width: l.w * k, height: l.h * k }} />
+      ))}
+    </div>
+  )
 }
-
 
 function CashStage({ bg, still }: { bg: CashBg; still?: boolean }) {
   const [floor, setFloor] = useState(getStageFloor)
