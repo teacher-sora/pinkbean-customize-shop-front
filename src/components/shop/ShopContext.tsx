@@ -14,14 +14,13 @@ import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
 import { nameMatcher } from '@/lib/nameSearch'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
-import { clampDye } from '@/lib/color'
 import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
-import { getFrameLayers } from '@/lib/core/assemble'
+import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
@@ -30,7 +29,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, isDyeableSkin, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -196,49 +195,9 @@ const loadCmpStore = (): CmpStore | null => {
 // 비교 칸의 보기 설정(시선 · 액션 · 프레임 · 표정)은 칸마다 따로 둔다 — 칸을 고르면 그 칸의 설정이 연출 설정 · 목록에 그대로 온다(사용자 지시:
 // 목록은 고른 칸에 맞춘다). 배율만 모든 칸이 지금 값을 함께 쓴다 — 같은 크기여야 견줄 수 있다
 export const withView = (v: PvSnap | undefined, cur: Pv): PvSnap => ({ ...PV_SNAP_DEFAULT, ...(v || {}), zoom: cur.zoom })
-// 넥슨 캐시아이템 part → 내부 slot. (part 로 매핑: '한벌옷'=longcoat, '상의'=coat 구분)
-// 반지(칸 넷)는 일루전 링 · 명찰 · 말풍선 반지 목록을 차례로 찾아 맞는 아이템의 부위로 끼운다(NEXON_RING_SLOTS — 사용자 지시: 사이트가 다루는 부위는 모두 가져온다).
-// 훈장 · 칭호는 서버가 외형 이름으로 넘긴다(/api/nick 의 regularVisible).
-const NEXON_PART_SLOT: Record<string, string> = {
-  '모자': 'cap', '얼굴장식': 'faceAcc', '눈장식': 'eyeAcc', '귀고리': 'earring',
-  '망토': 'cape', '장갑': 'glove', '신발': 'shoes', '무기': 'weapon', '방패': 'shield', '보조무기': 'shield',
-  '한벌옷': 'longcoat', '상의': 'coat', '하의': 'pants', '헤어': 'hair', '성형': 'face', '반지': 'ring',
-  '훈장': 'medal', '칭호': 'title',
-}
-const NEXON_RING_SLOTS = ['ring', 'nameTag', 'chatBalloon']
-// 이름 정규화(성별 접미사·공백 제거)로 넥슨 이름 ↔ 내부 리스트 이름 매칭.
-const nrmName = (n: string) => (n || '').replace(/\s*\((여|남)\)\s*$/, '').replace(/\s+/g, ' ').trim()
-// prism = 캐시 아이템 염색(컬러 프리즘). 넥슨의 color_range/hue/saturation/value/black_inclusive_flag 를 그대로 받는다.
-// blackInclusive = 인게임 '순수 검정 포함'(우리 '테두리 포함', HsbParams.edge).
-type NexonPrism = { colorRange: string | null; hue: number; saturation: number; value: number; blackInclusive?: boolean }
-type NexonCustomOrigin = { no: number; x: number; y: number }
-type NexonItem = { part: string; slot: string; name: string; gender: string | null; prism?: NexonPrism | null; customOrigin?: NexonCustomOrigin[] | null }
-type NexonBeauty = { name: string; baseColor: string | null; mixColor: string | null; mixRate: string }
-// 넥슨이 주는 코디 1벌. 제로/엔젤릭버스터는 2벌이 온다(제로=알파/베타, 엔버=일반/드레스업) — /api/nick 참고.
-// gender 는 코디별로 다를 수 있다 — 제로는 캐릭터 성별이 '기타'로 오고 알파=남/베타=여 이므로
-// 이걸 쓰지 않으면 헤어·성형의 (남)/(여) 변형이 엉뚱하게 잡힌다.
-// 치장 프리셋 한 벌 = base + preset_n 덮어쓰기(items 는 서버에서 이미 병합된 결과). active = 지금 게임에서 입고 있는 것.
-type NexonPreset = { key: string; label: string; items: NexonItem[]; active: boolean }
-type NexonLook = { key: string; label: string; gender: string | null; presets: NexonPreset[]; hair: NexonBeauty | null; face: NexonBeauty | null; skin: { name: string; prism?: NexonPrism | null } | null }
 // 불러오기 후보. 다이얼로그 구조 = [코디 탭(제로/엔버만 2개)] + [그 코디의 프리셋 카드들].
 export type PresetOption = { key: string; label: string; active: boolean; snap: Snapshot }
 export type LookOption = { key: string; label: string; presets: PresetOption[] }
-// 넥슨 색상명 → 내부 믹스 팔레트 인덱스(MIX_PALETTE: 검정0 빨강1 주황2 노랑3 초록4 파랑5 보라6 갈색7).
-const COLOR_IDX: Record<string, number> = {
-  '검은색': 0, '검정': 0, '빨간색': 1, '빨강': 1, '주황색': 2, '주황': 2, '노란색': 3, '노랑': 3,
-  '초록색': 4, '초록': 4, '녹색': 4, '파란색': 5, '파랑': 5, '보라색': 6, '보라': 6, '갈색': 7, '밤색': 7,
-}
-// 성형(눈) 발색 순서(FACE_PALETTE): 검정0·파랑1·빨강2·초록3·갈색4·에메랄드5·보라6·자수정7.
-// ★ 헤어와 인덱스 의미가 다르다(갈색: 헤어 7 vs 눈 4 / 파랑: 헤어 5 vs 눈 1). 프리셋 가져올 때 성형은 반드시
-//    이 맵을 써야 갈색 눈이 자수정(7)으로, 파란 눈이 에메랄드(5)로 잘못 들어가지 않는다.
-const FACE_COLOR_IDX: Record<string, number> = {
-  '검은색': 0, '검정': 0, '파란색': 1, '파랑': 1, '빨간색': 2, '빨강': 2,
-  '초록색': 3, '초록': 3, '녹색': 3, '갈색': 4, '밤색': 4, '브라운': 4,
-  '에메랄드': 5, '에메랄드색': 5, '보라색': 6, '보라': 6, '자수정': 7, '자수정색': 7,
-}
-// 헤어 이름의 색 접두어("빨간색 리르하 헤어" → "리르하 헤어") 제거.
-const stripColorPrefix = (name: string, color: string | null) => (color && name.startsWith(color) ? name.slice(color.length).trim() : name)
-
 export interface ShopCtx {
   // 데이터
   index: Index | null
@@ -1679,111 +1638,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const nm = snap.name || presets.find((p) => p.id === targetId)?.name
     notify(nm ? `공유받은 코디를 '${nm}'에 저장했어요` : '공유받은 코디를 프리셋에 불러왔어요')
   }
-  // 넥슨 이름 → 내부 리스트에서 매칭(성별 접미사 있는 경우 캐릭터 성별 우선).
-  const matchByName = (list: ListItem[], name: string, gender: string | null): ListItem | null => {
-    const target = nrmName(name)
-    const ms = list.filter((it) => nrmName(it.name || '') === target)
-    if (ms.length <= 1) return ms[0] || null
-    const suffix = gender === '남' ? '(남)' : gender === '여' ? '(여)' : null
-    if (suffix) { const g = ms.find((it) => (it.name || '').includes(suffix)); if (g) return g }
-    return ms[0]
-  }
-  // 헤어·성형: 넥슨 이름에는 (남)/(여) 가 없고, 같은 이름의 묶음이 여럿이며 그림도 다를 수 있다(차차 얼굴).
-  // 후보가 여럿이면 캐릭터 이미지로 고르고(lib/lookMatch), 가려지지 않으면 이름 규칙(matchByName)으로 돌아간다.
-  const matchBeauty = async (list: ListItem[], name: string, gender: string | null, look: ImageData | null, pal: PaletteParams): Promise<ListItem | null> => {
-    const target = nrmName(name)
-    const ms = list.filter((it) => nrmName(it.name || '') === target)
-    if (ms.length > 1 && look) { const g = await pickBySprite(look, ms, pal); if (g) return matchByName(g, name, gender) } // 같은 그림끼리는 이름 규칙으로
-    return matchByName(list, name, gender)
-  }
-  // 넥슨 헤어/성형 색상 → 내부 믹스 팔레트(baseColor/mixColor 인덱스 + 비율).
-  const colorPalette = (b: NexonBeauty, isFace = false): PaletteParams => {
-    const idx = isFace ? FACE_COLOR_IDX : COLOR_IDX  // 성형은 눈 색 순서(FACE_PALETTE)로 매핑
-    const base = idx[b.baseColor ?? ''] ?? 0
-    const mix = b.mixColor ? (idx[b.mixColor] ?? null) : null
-    return { baseColor: base, mixColor: mix, ratio: mix != null ? (parseInt(b.mixRate, 10) || 50) : 0 }
-  }
-  // 넥슨 색상계열 문자열 → 내부 DYE_FAMILIES 인덱스. 캐시(color_range="파란 색상 계열")와 피부(color_style="파란색 계열")
-  // 표기가 조금 달라 정확 매칭(indexOf)이 실패한다 → 색 키워드로 견고하게 매핑. (0 전체·1 빨강·2 노랑·3 초록·4 청록·5 파랑·6 자주)
-  const familyIdx = (name?: string | null): number => {
-    const t = name || ''
-    if (t.includes('빨')) return 1
-    if (t.includes('노')) return 2
-    if (t.includes('청')) return 4 // '청록'은 '초'를 포함하지 않으므로 먼저 검사
-    if (t.includes('초') || t.includes('녹')) return 3
-    if (t.includes('파')) return 5
-    if (t.includes('자') || t.includes('보')) return 6
-    return 0
-  }
-  // 넥슨 컬러 프리즘 → 내부 HSB. color_range/color_style 는 색상계열(t), 나머지는 그대로 대응된다.
-  // clampDye 와 같은 범위로 자른다(h 0~359, s/b -99~99) — 넥슨 값이 범위를 벗어나도 렌더가 깨지지 않게.
-  const prismToHsb = (p: NexonPrism): HsbParams => ({
-    h: clampDye('h', p.hue), s: clampDye('s', p.saturation), b: clampDye('b', p.value),
-    t: familyIdx(p.colorRange),
-    ...(p.blackInclusive ? { edge: true } : {}),
+  // 넥슨 코디 → 스냅샷(lib/nexonLook — 수집 배치와 같은 규칙). 목록 · 피부 톤 · 헤어와 성형 그림 대조를 여기서 채운다
+  const nickDeps = (lookPx: ImageData | null): LookDeps => ({
+    list: loadSlotFolded, tones: indexRef.current?.base.tones ?? [],
+    ...(lookPx ? { pickBeauty: (cands: ListItem[], pal: PaletteParams) => pickBySprite(lookPx, cands, pal) } : {}),
   })
-  // 넥슨 코디 1벌(= 코디 × 프리셋) → 내부 스냅샷(착용 + 톤 + 염색). 매칭이 0건이면 null(=보여줄 게 없는 코디).
-  // 헤어/성형/피부는 프리셋과 무관하게 코디(look) 단위로 하나다 → 프리셋만 items 로 갈아끼운다.
-  const lookToSnapshot = async (look: NexonLook, items: NexonItem[], gender: string | null, lookPx: ImageData | null = null): Promise<Snapshot | null> => {
-    const equipped: Record<string, string> = {}
-    const dyePalette: Record<string, PaletteParams> = {}
-    const dyeHsb: Record<string, HsbParams> = {}
-    const dotPos: Record<string, DotOffsets> = {}
-    let tone = DEFAULT_TONE
-    let matched = 0
-    // 헤어(색 접두어 제거 + 염색색상)
-    if (look.hair?.name) {
-      const pal = colorPalette(look.hair)
-      const found = await matchBeauty(await loadSlotFolded('hair'), stripColorPrefix(look.hair.name, look.hair.baseColor), gender, lookPx, pal)
-      if (found) { equipped.hair = found.id; dyePalette.hair = pal; matched++ }
-    }
-    if (!equipped.hair && DEFAULT_EQUIP.hair) equipped.hair = DEFAULT_EQUIP.hair.id
-    // 성형(염색색상)
-    if (look.face?.name) {
-      const pal = colorPalette(look.face, true)
-      const found = await matchBeauty(await loadSlotFolded('face'), stripColorPrefix(look.face.name, look.face.baseColor), gender, lookPx, pal)
-      if (found) { equipped.face = found.id; dyePalette.face = pal; matched++ }
-    }
-    if (!equipped.face && DEFAULT_EQUIP.face) equipped.face = DEFAULT_EQUIP.face.id
-    // 피부(톤 이름 매칭)
-    if (look.skin?.name) {
-      const te = indexRef.current?.base.tones.find((t) => nrmName(t.name || '') === nrmName(look.skin!.name))
-      if (te) {
-        tone = te.tone; matched++
-        // 컬러라인(커스텀) 피부는 HSB 염색까지 반영 — 안 하면 기본 컬러라인 색으로 들어와 "피부 색이 안 들어온다".
-        if (look.skin.prism && isDyeableSkin(te.name)) dyeHsb.skin = prismToHsb(look.skin.prism)
-      }
-    }
-    // 캐시 아이템(옷·모자·무기 등) + 그 아이템에 걸린 컬러 프리즘 염색
-    for (const it of items) {
-      let slot = NEXON_PART_SLOT[it.part]
-      if (!slot) continue
-      let found: ListItem | null = null
-      if (slot === 'ring') {
-        for (const rs of NEXON_RING_SLOTS) { if (equipped[rs]) continue; found = matchByName(await loadSlotFolded(rs), it.name, it.gender ?? gender); if (found) { slot = rs; break } }
-      } else found = matchByName(await loadSlotFolded(slot), it.name, it.gender ?? gender)
-      if (found) {
-        equipped[slot] = found.id; matched++
-        if (it.prism) dyeHsb[slot] = prismToHsb(it.prism)
-        // 점 위치(사소한 변경점/쩜): 넥슨 custom_origin(no/x/y) → 우리 오프셋. 그림 규칙 topLeft = brow − origin 이라
-        // custom_origin(=게임이 쓰는 origin)으로 그리려면 오프셋 = WZ기본origin − custom_origin. no 1→첫째 점(accessoryEye).
-        if (DOT_MOVER_IDS.has(found.id) && it.customOrigin && it.customOrigin.length) {
-          const m = await loadMeta(found.id).catch(() => null)
-          if (m) {
-            const dl = getFrameLayers(m, THUMB_VIEW).filter((l) => /^accessoryEye\d*$/.test(l.name)).sort((a, b) => a.name.localeCompare(b.name))
-            const off: DotOffsets = {}
-            for (const co of it.customOrigin) {
-              const layer = dl[(co.no || 1) - 1]
-              if (layer) off[layer.name] = { x: layer.origin.x - co.x, y: layer.origin.y - co.y }
-            }
-            if (Object.keys(off).length) dotPos[found.id] = off
-          }
-        }
-      }
-    }
-    if (!matched) return null
-    return { equipped, tone, dyePalette, dyeHsb, hidden: {}, dotPos }
-  }
   // 닉네임 → 코디 후보 목록: 내부 프록시(/api/nick)로 넥슨 착용(캐시아이템 + 헤어/성형/피부)을 받아 내부 아이템에 매칭.
   // 일반 직업은 1벌, 제로/엔젤릭버스터는 2벌이 나온다.
   const importByNick = async (nick: string): Promise<LookOption[] | null> => {
@@ -1803,7 +1662,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         const g = lk.gender ?? gender
         const presets: PresetOption[] = []
         for (const pr of lk.presets || []) {
-          const snap = await lookToSnapshot(lk, pr.items, g, lk.key === imgKey ? lookPx : null)
+          const snap = await lookToSnapshot(lk, pr.items, g, nickDeps(lk.key === imgKey ? lookPx : null))
           if (snap) presets.push({ key: pr.key, label: pr.label, active: pr.active, snap })
         }
         if (presets.length) out.push({ key: lk.key, label: lk.label, presets })
