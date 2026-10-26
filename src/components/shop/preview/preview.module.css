@@ -296,7 +296,8 @@
 /* 점 위치는 고른 칸의 오른쪽 아래(오른쪽 위는 칸 버튼 자리) */
 .cmpDot { top: auto; bottom: 8px; right: 8px; }
 
-/* PC 아래 칸 머리의 탭(북마크 · 비교) */
+/* PC 아래 칸 머리의 탭(북마크 · 비교). 비교 탭의 본문은 북마크 줄과 같은 높이의 빈 자리 */
+.pinBlank { height: calc((var(--pin-col) - 18px - 42px) / 8); }
 .pinTabs { display: flex; }
 @media (hover: hover) and (pointer: fine) {
   .cmpPaneOff:hover .cmpRing { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); }

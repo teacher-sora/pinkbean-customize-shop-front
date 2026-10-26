@@ -186,6 +186,7 @@ const loadPresetStore = (): PresetStore | null => {
 // ids = 칸 순서(A B C D), on = 비교 중에 닫았는지(새로고침해도 그대로), last = 마지막으로 고른 칸, back = 비교 전에 고르던 프리셋.
 // **고른 칸 = 그 프리셋**: 고른 칸을 고치면 back 에도 저장되고, 칸을 바꿔 고르면 그 칸의 코디가 back 이 된다(끄면 back 이 마지막 칸의 코디로 남는다)
 export const CMP_MAX = 4
+export const CMP_MIN = 2 // 비교는 늘 두 칸 이상(사용자 지시)
 const CMP_KEY = 'pb_compare_v1'
 export const isCmpId = (id: string | null | undefined): id is string => !!id && id.startsWith('cmp')
 type CmpStore = { ids: string[]; data: Record<string, Snapshot>; on: boolean; last: string | null; back: string | null }
@@ -552,7 +553,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // 비교 칸(따로 저장). 비교 중에 닫았으면 그 칸으로 다시 연다
       const cs = loadCmpStore()
       const cids = (cs?.ids ?? []).filter((id) => isCmpId(id) && cs!.data[id]).slice(0, CMP_MAX)
-      for (const id of cids) data[id] = cs!.data[id]
+      // 두 칸이 안 되는 저장(예전에 한 칸까지 뺄 수 있었다)은 첫 칸의 복사본으로 채운다
+      while (cids.length && cids.length < CMP_MIN) { const id = 'cmp' + Date.now().toString(36) + cids.length; data[id] = cs!.data[cids[0]]; cids.push(id) }
+      for (const id of cids) data[id] = data[id] ?? cs!.data[id]
       cmpLast.current = cs?.last && cids.includes(cs.last) ? cs.last : null
       const sel = cs?.on && cmpLast.current ? cmpLast.current : back
       // 선택된 프리셋을 라이브 모델로 해석(필요한 슬롯 리스트 로드). 그 뒤 index/프리셋/모델을 한 배치로 세팅
@@ -1535,9 +1538,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setCmpIds((ids) => [...ids, id])
     setSelectedPreset(id)
   }
-  // 칸 빼기 — 한 칸은 남긴다. 고른 칸을 빼면 그 자리(없으면 앞)의 칸으로. 내용은 메모리에 남겨 되돌리기가 그 칸을 되살릴 수 있다(applyHistory)
+  // 칸 빼기 — 두 칸은 남긴다(CMP_MIN). 고른 칸을 빼면 그 자리(없으면 앞)의 칸으로. 내용은 메모리에 남겨 되돌리기가 그 칸을 되살릴 수 있다(applyHistory)
   const removeCmp = (id: string) => {
-    if (cmpIds.length <= 1 || !cmpIds.includes(id)) return
+    if (cmpIds.length <= CMP_MIN || !cmpIds.includes(id)) return
     const rest = cmpIds.filter((x) => x !== id)
     if (id === selectedPreset) { const to = rest[Math.min(cmpIds.indexOf(id), rest.length - 1)]; switchPreset(to, presetData[to] ?? defaultSnapshot(), 'all') }
     setCmpIds(rest)

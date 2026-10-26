@@ -8,7 +8,7 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import type { ListItem } from '@/lib/core/data'
 import { takePvIntent } from '@/lib/guide'
 import { SLOT_TO_CAT } from '@/lib/shopData'
-import { useShop } from '../ShopContext'
+import { CMP_MIN, useShop } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconClose } from '../ui/Icons'
 import { useCmpLeave } from './PreviewStage'
@@ -50,19 +50,19 @@ function PinCount({ n }: { n: number }) {
   return <span className={clsx(styles.count, n > 0 && styles.countOn)}>{n}</span>
 }
 
-// 비교 칸 다루기 — [빼기](한 칸은 남긴다, 두 번 눌러야 한다 — lib/confirmTwice). 고른 비교 칸의 오른쪽 위(PreviewStage)에 둔다.
+// 비교 칸 다루기 — [빼기](두 칸은 남긴다, 두 번 눌러야 한다 — lib/confirmTwice). 고른 비교 칸의 오른쪽 위(PreviewStage)에 둔다.
 export function CmpActs({ id }: { id: string }) {
   const s = useShop()
-  const one = s.cmpIds.length <= 1
+  const one = s.cmpIds.length <= CMP_MIN
   return (
-    <button type="button" disabled={one} title={one ? '칸은 하나 이상 있어야 해요' : '이 칸 빼기'} aria-label="이 칸 빼기" {...{ [CONFIRM_ATTR]: `cmp:x:${id}` }}
+    <button type="button" disabled={one} title={one ? '비교는 두 칸 이상이어야 해요' : '이 칸 빼기'} aria-label="이 칸 빼기" {...{ [CONFIRM_ATTR]: `cmp:x:${id}` }}
       onClick={(e) => { e.stopPropagation(); if (confirmTwice(`cmp:x:${id}`, '한 번 더 누르면 이 칸을 빼요')) s.removeCmp(id) }}
       className={clsx(styles.heroIcon, styles.cmpActBtn, !one && styles.heroIconOn)}><IconClose size={13} /></button>
   )
 }
 
 // PC: 미리보기 아래 칸 — 북마크 8칸 + 머리 줄 오른쪽의 탭 [북마크] [비교](사용자 지시: 모드처럼 — 열 폭이 바뀌어도 늘 같은 자리라 오른쪽, [비우기]는 왼쪽).
-// 비교 탭을 고르면 코디 비교가 켜지고(미리보기가 칸 판으로), 북마크 탭으로 돌아오면 꺼진다. 비교 중에도 북마크 칸은 그대로 쓴다(고른 칸에 입혀 본다).
+// 비교 탭을 고르면 코디 비교가 켜지고(미리보기가 칸 판으로), 북마크 탭으로 돌아오면 꺼진다. 비교 탭의 본문은 지금은 빈 자리다(사용자 지시 — 북마크 줄과 같은 높이, [비우기]도 자리만 남긴다).
 // 슬롯을 누르면 입혀보기, ✕ 로 해제. ✕ · 비우기는 두 번 눌러야 지운다(lib/confirmTwice).
 // 칸 높이는 탭과 상관없이 같다 — 비교 중에 열이 넓어져도 줄 높이는 비교 전 열 폭으로 잰 값(preview.module.css 의 --pin-col).
 const BOX_TABS: SegOpt<'bm' | 'cmp'>[] = [{ v: 'bm', l: '북마크', t: '북마크한 아이템' }, { v: 'cmp', l: '비교', t: '여러 코디를 나란히 놓고 비교하기' }]
@@ -75,9 +75,10 @@ export function BookmarkBox() {
   return (
     <div data-guide="bm" className={clsx('pb-pinbox', styles.pinbox)}>
       <div className={styles.pinHead}>
-        <span className={styles.pinActs}><PinCount n={n} /><ClearBookmarks n={n} /></span>
+        <span className={styles.pinActs} style={tab === 'cmp' ? { visibility: 'hidden' } : undefined} aria-hidden={tab === 'cmp' || undefined}><PinCount n={n} /><ClearBookmarks n={n} /></span>
         <span data-guide="vs" className={styles.pinTabs}><Seg opts={BOX_TABS} value={tab} onPick={pick} /></span>
       </div>
+      {tab === 'cmp' ? <div aria-hidden className={styles.pinBlank} /> : (
       <div className={styles.pinGrid}>
         {Array.from({ length: 8 }, (_, i) => {
           const it = s.bookmarks[i]
@@ -94,6 +95,7 @@ export function BookmarkBox() {
           )
         })}
       </div>
+      )}
     </div>
   )
 }
