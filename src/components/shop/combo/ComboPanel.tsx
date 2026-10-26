@@ -382,10 +382,9 @@ const sortKeys = (o: object) => Object.fromEntries(Object.entries(o).sort(([a], 
 function LookCard({ row, mobile, prio, onOpen }: { row: LookRow; mobile: boolean; prio: number; onOpen: (r: LookRow) => void }) {
   const s = useShop()
   return (
-    <div onClick={() => { if (!s.consumeSwipeClick()) onOpen(row) }} onPointerEnter={() => warmSnap(row.s, s.index)} title={`${row.n.toLocaleString()}명이 입은 코디`} className="pb-presetwrap" style={{ cursor: 'pointer' }}>
+    <div onClick={() => { if (!s.consumeSwipeClick()) onOpen(row) }} onPointerEnter={() => warmSnap(row.s, s.index)} title="코디 자세히 보기" className="pb-presetwrap" style={{ cursor: 'pointer' }}>
       <div className={clsx('pb-preset', styles.card)}>
         <div className={styles.thumb}><SnapThumb snap={row.s} fraction={mobile ? FRACTION_M : FRACTION} priority={prio} /></div>
-        <div className={clsx(styles.meta, mobile && styles.metaM)}>{row.n.toLocaleString()}명</div>
       </div>
     </div>
   )
@@ -403,7 +402,6 @@ function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListIt
           <button type="button" onClick={onBack} title="코디 목록으로 (Esc)" aria-label="코디 목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
           <span className={styles.itemText}>
             <span className={clsx(styles.itemName, mobile && styles.itemNameM)}>{item.name || item.id} 코디</span>
-            <span className={styles.itemSub}>{row.n.toLocaleString()}명이 입었어요</span>
           </span>
         </div>
         <div className={styles.detailActs}>
