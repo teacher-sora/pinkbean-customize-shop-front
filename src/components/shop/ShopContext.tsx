@@ -231,6 +231,7 @@ export interface ShopCtx {
   listMode: ListMode; setListMode: Dispatch<ListMode>
   bgSel: string // 지금 프리셋의 미리보기 배경(snapshot().bg 와 같은 값)
   listDir: ListDir; setListDir: Dispatch<ListDir> // 목록을 넘기는 방향(가로 · 세로) — 기본 가로
+  presetDir: ListDir | null; setPresetDir: (d: ListDir) => void // 프리셋 탭의 방향(null = 고르기 전 — PC 세로 · 모바일 가로)
   bindVp: (el: HTMLDivElement | null) => void
   bindTrack: (el: HTMLDivElement | null) => void // 스와이프 중 손가락 따라가기(DOM 직접 갱신)
   snapFrom: number // 스냅 애니메이션 직전 페이지 — 애니메이션 중엔 새 페이지 마운트를 미룬다
@@ -412,6 +413,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=기본 캐릭터(코디는 모델이 기본)
   // 목록 넘기는 방향. 가로 = 지금까지의 넘기기, 세로 = 같은 넘기기를 위아래로(PC · 절반 · 태블릿은 한 쪽씩, 모바일은 목록 안 세로 스크롤 — ListArea).
   const [listDir, setListDir] = useState<ListDir>('x')
+  // 프리셋 탭의 넘기는 방향(사용자 지시 — 프리셋에도). 목록과 따로다: 고르기 전에는 지금까지의 배치(PC 세로 스크롤 · 모바일 가로 스크롤)를 그대로 둔다(null)
+  const [presetDir, setPresetDir] = useState<ListDir | null>(null)
   const listDirRef = useRef<ListDir>('x')
   listDirRef.current = listDir
   const [search, setSearch] = useState('')
@@ -678,6 +681,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (pref.plazaSort === 'popular' || pref.plazaSort === 'recent') setPlazaSort(pref.plazaSort)
     if (pref.listMode === 'sprite' || pref.listMode === 'model' || pref.listMode === 'mymodel') setListMode(pref.listMode)
     if (pref.listDir === 'x' || pref.listDir === 'y') { listDirRef.current = pref.listDir; setListDir(pref.listDir) } // 넘기는 방향도 영구(사용자 지시 — 늘 같은 방향)
+    if (pref.presetDir === 'x' || pref.presetDir === 'y') setPresetDir(pref.presetDir)
     setUiReady(true)
   }, [])
   // 뼈대를 거두는 건 **되살린 화면이 실제로 커밋된 뒤**다(uiReady 가 켜진 다음 렌더).
@@ -690,7 +694,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       aiQ, searchQuery, searchResults: searchResults.slice(0, SEARCH_KEEP),
     })
   }, [uiReady, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
-  useEffect(() => { if (uiReady) writeUiPref({ plazaSort, listDir, listMode }) }, [uiReady, plazaSort, listDir, listMode])
+  useEffect(() => { if (uiReady) writeUiPref({ plazaSort, listDir, listMode, ...(presetDir ? { presetDir } : {}) }) }, [uiReady, plazaSort, listDir, listMode, presetDir])
   const [rateResult, setRateResult] = useState<{ lines: RateLine[]; nonce: number } | null>(null) // 코디 평가(핑크빈이 하는 말)
   // 평가는 **눌러 받은 그 한 번만** 나온다(광장처럼 미리보기가 없는 탭에
   // 갔다 와도 지난 평가가 다시 나오지 않는다). PinkbeanRate 는 미리보기와 함께 언마운트됐다가 다시 붙으면서
@@ -899,8 +903,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const isPlazaTab = primary === 'share'
   const perPage = isPlazaTab ? plazaGrid.cols * plazaGrid.rows : itemsPerPage
   const pageCount = Math.max(1, Math.ceil((comboPaging ? comboTotal : isPlazaTab ? plazaList.length : pagedList.length) / perPage))
-  // 광장 목록은 가로로만 넘긴다(세로 넘기기는 코디 · AI 코디 검색 · 코디 조합 목록) — 끌기 · 방향키가 그 축을 따른다
-  listDirRef.current = isPlazaTab && !comboPaging ? 'x' : listDir
   const maxIndex = pageCount - 1
   const curIdx = Math.max(0, Math.min(maxIndex, Math.floor((pageByCat[pageKey] || 0) / perPage)))
 
@@ -2024,7 +2026,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     comboItem, comboOpen, openCombo, closeCombo, comboShown, comboDetail, setComboDetail, pickCombo, searchItems, comboTotal, setComboTotal, holdPager, warmWear, comboGender, setComboGender,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
-    warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
+    warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, presetDir, setPresetDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,
     bp, cols, rows, itemsPerPage,
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),

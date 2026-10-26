@@ -41,6 +41,16 @@
 .hscrollM { flex: 1 1 auto; min-height: 0; margin: 0 7px; padding: 8px 5px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; container-type: inline-size; }
 .gridHM { display: grid; height: 100%; grid-auto-flow: column; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-columns: calc((100cqw - 10px) / 2); gap: 10px; }
 @container (min-width: 330px) { .gridHM { grid-auto-columns: calc((100cqw - 20px) / 3); } }
+/* 모바일 세로(presetDir 'y'): 한 화면에 2줄, 열은 폭에 따라 2 / 3 — cqh = 이 칸 높이(줄 높이가 한 화면의 절반) */
+.vscrollM { flex: 1 1 auto; min-height: 0; margin: 0 7px; padding: 8px 5px; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-x pan-y pinch-zoom; container-type: size; }
+.gridVM { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: calc((100cqh - 10px) / 2); gap: 10px; }
+@container (min-width: 330px) { .gridVM { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.gridVM > :global(.pb-presetwrap), .gridVM :global(.pb-preset) { min-height: 0; }
+/* PC 가로(presetDir 'x'): 2줄 가로 스크롤, 한 화면 5열(좁은 폭 3열) — 카드는 줄 높이를 채운다(.thumbM) */
+.hscroll { flex: 1 1 auto; min-height: 0; padding: 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; container-type: inline-size; }
+.gridH { display: grid; height: 100%; grid-auto-flow: column; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-columns: calc((100cqw - 40px) / 5); gap: 10px; }
+.gridHNarrow { grid-auto-columns: calc((100cqw - 16px) / 3); gap: 8px; }
+.gridH > :global(.pb-presetwrap), .gridH :global(.pb-preset) { min-height: 0; }
 /* 줄 높이를 채운다(고정 3:4 대신). ⚠️ .thumb 보다 앞에 있어 단일 클래스로는 3:4 에 덮였다(카드가 칸보다 길어져 줄이 어긋남) → 복합 선택자로 우선순위를 올린다. */
 .thumb.thumbM { aspect-ratio: auto; min-height: 0; }
 .gridHM > :global(.pb-presetwrap), .gridHM :global(.pb-preset) { min-height: 0; }

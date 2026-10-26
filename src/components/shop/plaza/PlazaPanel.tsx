@@ -11,12 +11,14 @@ import { isNarrow } from '@/lib/useBreakpoint'
 import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, plazaContestClosed, type PlazaSort } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
+import { DIRS, FilterM, type FilterGroup } from '../list/ListArea'
+import { Seg, type SegOpt } from '../ui/controls'
 import { IconChevronLeft, IconChevronRight, IconClose, IconPlus, IconSearch } from '../ui/Icons'
 import PlazaCard from './PlazaCard'
 import PlazaUpload from './PlazaUpload'
 import styles from './plaza.module.css'
 
-const SORTS = [{ v: 'popular', l: '인기순' }, { v: 'recent', l: '최신순' }]
+const SORTS: SegOpt<PlazaSort>[] = [{ v: 'popular', l: '인기순' }, { v: 'recent', l: '최신순' }]
 
 export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   const s = useShop()
@@ -31,8 +33,10 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
 
   // 모바일: 가로 스크롤 ↔ 페이지 인덱스 양방향 동기화(광장 뷰포트에도 따로 연결해야 인덱스가 멈추지 않는다).
-  const live = useRef({ idx: s.curIdx, setIdx: s.setIdx, cols: s.plazaCols })
-  live.current = { idx: s.curIdx, setIdx: s.setIdx, cols: s.plazaCols }
+  // 넘기는 방향은 목록과 같은 설정(ShopContext listDir — 사용자 지시: 광장에도). 세로면 PC 는 트랙이 위아래로, 모바일은 세로 스크롤 칸(한 쪽 = 한 화면 높이)
+  const dirY = s.listDir === 'y'
+  const live = useRef({ idx: s.curIdx, setIdx: s.setIdx, cols: s.plazaCols, rows: s.plazaRows, y: dirY })
+  live.current = { idx: s.curIdx, setIdx: s.setIdx, cols: s.plazaCols, rows: s.plazaRows, y: dirY }
   useEffect(() => {
     const vp = vpRef.current
     if (!mobile || !vp) return
@@ -41,27 +45,27 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
       if (raf) return
       raf = requestAnimationFrame(() => {
         raf = 0
-        const w = vp.clientWidth; if (!w) return
-        const c = live.current.cols
-        const i = Math.floor(Math.round(vp.scrollLeft / (w / c)) / c)
+        const y = live.current.y, w = y ? vp.clientHeight : vp.clientWidth; if (!w) return
+        const c = y ? live.current.rows : live.current.cols
+        const i = Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / c)) / c)
         if (i !== live.current.idx) live.current.setIdx(i, false)
       })
     }
     vp.addEventListener('scroll', onScroll, { passive: true })
     return () => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
-  }, [mobile])
-  const scrollKey = `plaza|${s.plazaFilter}|${s.plazaQ}|${s.plazaSort}`
+  }, [mobile, dirY])
+  const scrollKey = `plaza|${s.plazaFilter}|${s.plazaQ}|${s.plazaSort}|${s.listDir}`
   const lastKey = useRef(scrollKey)
   const scrolledOnce = useRef(false)
   useLayoutEffect(() => {
     const vp = vpRef.current
     if (!mobile || !vp) return
-    const w = vp.clientWidth; if (!w) return
+    const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
     const jump = lastKey.current !== scrollKey || !scrolledOnce.current
     lastKey.current = scrollKey
     scrolledOnce.current = true
-    const c = live.current.cols
-    if (Math.floor(Math.round(vp.scrollLeft / (w / c)) / c) === s.curIdx && !jump) return
+    const c = dirY ? live.current.rows : live.current.cols
+    if (Math.floor(Math.round((dirY ? vp.scrollTop : vp.scrollLeft) / (w / c)) / c) === s.curIdx && !jump) return
     const target = s.curIdx * w
     const smooth = !jump
     // ⚠️ 트랙 폭은 `pageCount * 100cqw`(컨테이너 쿼리 단위)라, 페이지 수가 늘어난 **그 커밋의 layout effect
@@ -74,13 +78,14 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
       raf = 0
       if (!vp.isConnected) return
       // 트랙이 목표까지 자랐으면 이동. 아직이면 다음 프레임에 다시 본다(보통 1~3프레임).
-      if (vp.scrollWidth - vp.clientWidth < target && left-- > 0) { raf = requestAnimationFrame(go); return }
-      const max = Math.max(0, vp.scrollWidth - vp.clientWidth)
-      vp.scrollTo({ left: Math.min(target, max), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
+      const room = dirY ? vp.scrollHeight - vp.clientHeight : vp.scrollWidth - vp.clientWidth
+      if (room < target && left-- > 0) { raf = requestAnimationFrame(go); return }
+      const to = Math.min(target, Math.max(0, room))
+      vp.scrollTo({ ...(dirY ? { top: to, left: 0 } : { left: to, top: 0 }), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
     }
     go()
     return () => { if (raf) cancelAnimationFrame(raf) }
-  }, [mobile, s.curIdx, scrollKey, s.pageCount])
+  }, [mobile, s.curIdx, scrollKey, s.pageCount, dirY])
 
   const pageChip = (
     <div className={mobile ? styles.pageChipM : styles.pageChip}>
@@ -105,6 +110,14 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
       <Dropdown variant="row" options={SORTS} value={s.plazaSort} onChange={(v) => { s.setPlazaSort(v as PlazaSort); s.setIdx(0, false) }} ariaLabel="정렬" title="정렬" />
     </div>
   )
+  // 정렬 · 방향: 넓은 PC 는 [정렬] 옆에 방향을 펼치고, 좁은 폭 · 모바일은 [보기 설정] 하나에 접는다(목록 머리와 같은 규칙 · 같은 부품 FilterM —
+  // 사용자 지시: 이미 꽉 찬 머리에 칸을 더하지 않는다)
+  const fold = mobile || narrow
+  const filterGroups: FilterGroup[] = [
+    { label: '정렬', title: '정렬', opts: SORTS, value: s.plazaSort, onPick: (v: PlazaSort) => { s.setPlazaSort(v); s.setIdx(0, false) } },
+    { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
+  ]
+  const viewCtl = fold ? <FilterM mobile={mobile} groups={filterGroups} /> : <>{sortDd}<Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} /></>
   const search = (
     <input value={s.plazaQ} onChange={(e) => s.setPlazaQ(e.target.value)} placeholder="이름, 태그 검색"
       aria-label="코디 검색" className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
@@ -127,7 +140,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   for (let pi = Math.max(0, s.curIdx - 1); pi <= Math.min(s.pageCount - 1, s.curIdx + 1); pi++) pages.push({ pi, items: list.slice(pi * per, pi * per + per) })
 
   const viewport = (
-    <div ref={setVp} className={clsx(styles.viewport, mobile && 'pb-norail', mobile && styles.viewportM)}>
+    <div ref={setVp} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
       {s.plazaLoading ? (
         <div className={mobile ? styles.pageM : styles.page} style={{ left: 0 }}>
           <div className={styles.grid} style={gridStyle}>
@@ -147,10 +160,11 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
       ) : (
         <div ref={mobile ? undefined : s.bindTrack} className={styles.track}
           style={mobile
-            ? { width: `calc(${s.pageCount} * 100cqw)` }
-            : { transform: `translateX(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
+            ? (dirY ? { height: `calc(${s.pageCount} * 100cqh)` } : { width: `calc(${s.pageCount} * 100cqw)` })
+            : { transform: `${dirY ? 'translateY' : 'translateX'}(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
           {pages.map(({ pi, items }) => (
-            <div key={pi} className={clsx('pb-page', mobile ? styles.pageM : styles.page)} style={{ left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
+            <div key={pi} className={clsx('pb-page', mobile ? (dirY ? styles.pageMY : styles.pageM) : styles.page)}
+              style={dirY ? { top: mobile ? `calc(${pi} * 100cqh)` : `${pi * 100}%`, left: 0 } : { left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
               {(!s.snapping || pi === s.curIdx || Math.abs(pi - s.snapFrom) <= 1) && (
                 <div className={styles.grid} style={gridStyle}>
                   {/* 보이는 쪽을 먼저 그리고 앞뒤 쪽은 그다음(lib/thumbQueue) */}
@@ -169,7 +183,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
       <>
         {/* 한 줄(다른 탭의 머리와 같은 높이 48): 정렬 · 쪽 번호 · 검색 · 등록 */}
         <div className={styles.controlsM}>
-          {sortDd}
+          {viewCtl}
           {pageChip}
           <div className={styles.searchWrapM}><IconSearch className={styles.searchIconM} />{search}</div>
           <button type="button" onClick={() => s.setPlazaUpload(!s.plazaUpload)} title={s.plazaUpload ? '닫기' : '내 코디 등록'} aria-label={s.plazaUpload ? '닫기' : '내 코디 등록'} className={styles.upBtn}>
@@ -184,7 +198,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   return (
     <section className={styles.panel}>
       <div className={styles.header}>
-        {sortDd}
+        {viewCtl}
         <div className={styles.groupB}>
           {pageChip}
           <div className={styles.searchWrap}><IconSearch className={styles.searchIcon} />{search}</div>
@@ -196,7 +210,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
         {/* 대회 필터에서는 조작 안내 대신 대회 기간을 알린다(규칙 안내는 기간이면 충분). */}
         <span className={styles.hintText}>{s.plazaFilter === 'contest'
           ? `${PLAZA_CONTEST} | ${plazaContestClosed() ? '마감됐어요' : PLAZA_CONTEST_PERIOD ?? '기간은 곧 안내돼요'}`
-          : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'}</span>
+          : dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'}</span>
       </div>
     </section>
   )

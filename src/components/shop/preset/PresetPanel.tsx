@@ -7,7 +7,9 @@ import { CatTabsM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Preset } from '@/lib/catalog'
 import { CARD_FRACTION_M, CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
-import { useListMinHeight } from '../list/ListArea'
+import { DIRS, useListMinHeight } from '../list/ListArea'
+import { Seg } from '../ui/controls'
+import { useWheelRail } from '../ui/useWheelRail'
 import { presetFileName } from '@/lib/canvasExport'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
@@ -35,7 +37,11 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   // 고른 칸이 **가운데**에 오도록 탭을 열자마자 스크롤한다(연출 설정 고르기와 같다). 탭을 열 때 한 번만 — 저장된 선택은 첫 그리기 뒤에 온다.
   // 스크롤 영역만 움직인다(scrollIntoView 는 모바일에서 문서까지 같이 끌고 간다).
   // 탭을 눌러 들어올 때는 칸 폭(cqw)이 자리 잡기 전에 불릴 수 있어, 그린 뒤 두 프레임 동안 다시 맞춘다(이미 맞으면 아무 일도 없다).
-  const boxRef = useRef<HTMLDivElement>(null)
+  // 넘기는 방향(사용자 지시 — 프리셋에도). 고르기 전에는 지금까지의 배치: PC 세로 스크롤 · 모바일 가로 스크롤(2줄). 가로 = 줄 수 고정(PC · 모바일 2줄),
+  // 세로 = 열 수 고정. 끌어서 순서 바꾸기(usePresetDrag)는 칸 모양을 읽어 어느 쪽이든 그대로 된다. PC 가로는 마우스 휠을 가로로(useWheelRail)
+  const dir = s.presetDir ?? (mobile ? 'x' : 'y')
+  const across = dir === 'x'
+  const boxRef = useWheelRail<HTMLDivElement>(across && !mobile)
   useListMinHeight(boxRef, mobile) // 모바일: 목록과 같은 최소 높이(이 탭에서 바로 열어도 카드가 작아지지 않게)
   const centered = useRef(false)
   useLayoutEffect(() => {
@@ -58,9 +64,10 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     if (confirmTwice(`preset:${p.id}`, '한 번 더 누르면 삭제해요')) s.resetPreset(p.id)
   }
 
+  const dirSeg = <Seg variant={mobile ? 'mobileFit' : 'pc'} title="넘기는 방향" opts={DIRS} value={dir} onPick={s.setPresetDir} />
   const chip = (
     <div title="선택된 프리셋에 자동 저장돼요" className={clsx(styles.chip, mobile && styles.chipM)}>
-      <span className={styles.chipLabel}>프리셋</span>
+      {!mobile && <span className={styles.chipLabel}>프리셋</span>}{/* 모바일은 머리에 방향이 더 들어가 글자를 뺀다 — 바로 위 탭 이름이 '프리셋'이다 */}
       <span className={styles.chipNum}>{s.presetUsed}</span>
       <span className={styles.chipSlash}>/</span>
       {/* 칸 수는 **실제 프리셋 목록**에서 센다 — 숫자를 박아 두면 칸 수를 바꿀 때 어긋난다. */}
@@ -80,7 +87,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   }, [sorting])
   const toggleSort = () => setSorting((v) => { if (!v) s.notify('카드를 끌어 순서를 바꿔요'); return !v })
   const gridRef = useRef<HTMLDivElement>(null)
-  const dnd = usePresetDrag(sorting, s.presets.map((p) => p.id), gridRef, boxRef, s.reorderPresets, styles.dragging, mobile ? 'm' : narrow ? 'n' : 'pc')
+  const dnd = usePresetDrag(sorting, s.presets.map((p) => p.id), gridRef, boxRef, s.reorderPresets, styles.dragging, `${mobile ? 'm' : narrow ? 'n' : 'pc'}${dir}`)
   // 켜짐 = 채운 핑크 + '완료'. 두 문구를 한 칸에 겹쳐 폭이 바뀌지 않는다(불러오기 버튼과 같다)
   const sortBtn = (
     <button type="button" data-guide="sort" onClick={toggleSort} aria-pressed={sorting} title={sorting ? '순서 변경 끝내기' : '카드를 끌어 순서 바꾸기'}
@@ -102,10 +109,10 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   }
 
   const grid = (
-    <div ref={gridRef} className={mobile ? styles.gridHM : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
+    <div ref={gridRef} className={mobile ? (across ? styles.gridHM : styles.gridVM) : across ? clsx(styles.gridH, narrow && styles.gridHNarrow) : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
       {s.presets.map((p, i) => {
         const on = s.selectedPreset === p.id
-        return <PresetCard key={p.id} p={p} i={i} on={on} snap={on ? liveSnap : s.presetData[p.id]} mobile={mobile} sorting={sorting} act={act} root={boxRef} />
+        return <PresetCard key={p.id} p={p} i={i} on={on} snap={on ? liveSnap : s.presetData[p.id]} mobile={mobile} fill={mobile || across} sorting={sorting} act={act} root={boxRef} />
       })}
     </div>
   )
@@ -117,6 +124,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         <div className={styles.headerM}>
           {chip}
           {sortBtn}
+          {dirSeg}
           {/* 불러오기: 입력과 버튼을 한 칸에 묶는다(아래 PC 와 같은 모양) */}
           <div className={clsx(styles.importBox, styles.importBoxM)}>
             <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
@@ -125,14 +133,14 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         </div>
         <div className={styles.hrM} />
         {/* 모바일: 코디 리스트처럼 가로 스크롤(열 단위 스냅, 스크롤바 숨김) — 2줄 × 폭에 따라 2열/3열 */}
-        <div ref={boxRef} className={clsx('pb-norail', styles.hscrollM)}>{grid}</div>
+        <div ref={boxRef} className={clsx('pb-norail', across ? styles.hscrollM : styles.vscrollM)}>{grid}</div>
       </>
     )
   }
   return (
     <section className={styles.panel}>
       <div className={styles.header}>
-        <div className={styles.groupA}>{chip}{sortBtn}</div>
+        <div className={styles.groupA}>{chip}{sortBtn}{dirSeg}</div>
         <div className={styles.groupB}>
           {/* 불러오기: 아이콘 + 입력 + 채운 버튼을 한 테두리 안에. 칸의 생김새는 다른 탭의 검색 칸과 같고(면 · 테두리 · 아이콘), 채운 버튼 하나로만 눈에 띈다 */}
           <div className={clsx(styles.importBox, narrow && styles.importBoxNarrow)}>
@@ -149,7 +157,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         </div>
       </div>
       <div className={styles.hr} />
-      <div ref={boxRef} className={clsx('pb-scroll', styles.scroll)}>{grid}</div>
+      <div ref={boxRef} className={across ? clsx('pb-norail', 'pb-fade', styles.hscroll) : clsx('pb-scroll', styles.scroll)}>{grid}</div>
     </section>
   )
 }
@@ -160,7 +168,7 @@ type CardAct = {
 }
 // 프리셋 카드 한 장. 받는 값이 같으면 다시 그리지 않는다(memo) — act 는 늘 같은 ref, p 는 이름이 바뀔 때만 새 객체다
 // 그림은 스크롤 칸(root)에서 보일 즈음에만 그린다(useSeen) — 100칸을 한꺼번에 합성 · 그리지 않게. 한 번 그린 것은 그대로 둔다
-const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, sorting, act, root }: { p: Preset; i: number; on: boolean; snap: Snapshot | undefined; mobile: boolean; sorting: boolean; act: React.MutableRefObject<CardAct>; root: React.RefObject<HTMLDivElement | null> }) {
+const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, fill, sorting, act, root }: { p: Preset; i: number; on: boolean; snap: Snapshot | undefined; mobile: boolean; fill: boolean; sorting: boolean; act: React.MutableRefObject<CardAct>; root: React.RefObject<HTMLDivElement | null> }) {
   const thumbRef = useRef<HTMLDivElement>(null)
   const seen = useSeen(thumbRef, root)
   return (
@@ -169,7 +177,7 @@ const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, sorting, 
       <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
         <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
         {/* 바탕(사용자 지시): 손대지 않은 프리셋(광장 등록의 올릴 프리셋 판정과 같다)은 시스템 테마 색, 꾸민 프리셋은 그 프리셋의 미리보기 배경 */}
-        <div ref={thumbRef} className={clsx(styles.thumb, mobile && styles.thumbM)} style={snap && !isCustomSnapshot(snap) ? { background: SYS_BG_CSS } : undefined}>
+        <div ref={thumbRef} className={clsx(styles.thumb, fill && styles.thumbM)} style={snap && !isCustomSnapshot(snap) ? { background: SYS_BG_CSS } : undefined}>
           {snap && isCustomSnapshot(snap) && <div className={styles.thumbBg}><CardStageBg sel={snap.bg} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} /></div>}
           {snap && seen && <SnapThumb snap={snap} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
         <div className={styles.nameRow}>
