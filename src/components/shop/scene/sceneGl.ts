@@ -127,16 +127,21 @@ function watchEnv() {
 function layout(v: View) {
   const host = v.host
   if (!host) return
-  const hw = host.clientWidth, hh = host.clientHeight
+  // 칸 크기는 소수까지(getBoundingClientRect) — clientWidth · clientHeight 는 정수로 반올림돼(382.5 → 383), 비트맵이 칸보다 커져
+  // 칸에 맞춰 눌려 그려졌다(도트가 1:1 이 아니고, 아래로 갈수록 최대 1px 어긋나 코디 비교의 고른 칸 배경이 다른 칸보다 1px 내려가 보였다 — 사용자 지적)
+  const hb = host.getBoundingClientRect(), hw = hb.width, hh = hb.height
   if (!hw || !hh) return
   const dpr = window.devicePixelRatio || 1
   const r = v.kind === 'room' ? dpr : Math.min(dpr, slow >= 2 ? 1 : MAX_RATIO)
+  // 캔버스의 CSS 크기 = 비트맵 ÷ 배율 — 브라우저가 늘이거나 줄이지 않는다(캐릭터 캔버스의 fitCanvas 와 같은 규칙)
+  const bw = Math.round(hw * r), bh = Math.round(hh * r)
+  v.canvas.style.width = `${bw / r}px`; v.canvas.style.height = `${bh / r}px`
   let foot: [number, number] = [0, 0], px = 1, shadow = 13
   if (v.kind === 'room') {
     const f = getStageFloor()
     if (f && f.wrap.isConnected && host.parentElement?.contains(f.wrap)) {
-      const wr = f.wrap.getBoundingClientRect(), hr = host.getBoundingClientRect()
-      foot = [Math.round((wr.left - hr.left + f.cx) * r), Math.round((wr.top - hr.top + f.footY) * r)]
+      const wr = f.wrap.getBoundingClientRect()
+      foot = [Math.round((wr.left - hb.left + f.cx) * r), Math.round((wr.top - hb.top + f.footY) * r)]
       px = f.scale; shadow = f.shadow
     } else {
       // 캐릭터가 아직 안 그려졌을 때: 그려질 자리와 거의 같은 값으로 미리 잡는다.
@@ -144,7 +149,7 @@ function layout(v: View) {
       foot = [Math.round((hw / 2) * r), Math.round((hh / 2 + 38.4) * r)]
     }
   }
-  v.post({ t: 'layout', kind: v.kind, w: Math.round(hw * r), h: Math.round(hh * r), ratio: r, foot, px, shadow })
+  v.post({ t: 'layout', kind: v.kind, w: bw, h: bh, ratio: r, foot, px, shadow })
 }
 
 // 그림을 받아도 되는 때를 그리는 쪽에 알린다. 화면에 <img> 로 깔리는 그림(SceneCanvas 의 data-scene)은 그 <img> 가 다 받은 뒤에,

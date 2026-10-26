@@ -499,10 +499,11 @@ function LookCard({ row, mobile, prio, onOpen }: { row: LookRow; mobile: boolean
 function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListItem; mobile: boolean; onBack: () => void }) {
   const s = useShop()
   const snap = row.s
-  const slots = useMemo(() => ['skin', ...Object.keys(snap.equipped)], [snap])
   const warmWear = s.warmWear
   const shown = useMemo(() => withCardPv(snap, s.cardPv), [snap, s.cardPv])
   useEffect(() => { warmWear(snap) }, [snap]) // [전부 입기]가 바로 반영되게 받아 둔다
+  // [전부 입기] = 광장 가져오기와 같은 길(applySharedToPreset — 지금 프리셋에, 그 코디의 연출로, 되돌리기 한 건). 이름은 지금 프리셋 이름 그대로(이름 없이 넘긴다)
+  const wearAll = () => { if (s.selectedPreset) s.applySharedToPreset({ ...snap, name: undefined }, s.selectedPreset, '이 코디를 전부 입었어요') }
   return (
     <>
       <div className={mobile ? list.controlsM : list.header}>
@@ -513,8 +514,8 @@ function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListIt
           </span>
         </div>
         <div className={styles.detailActs}>
-          <button type="button" onClick={() => { s.wearFromSnap(snap, slots).catch(() => {}) }} title="이 코디를 지금 코디에 전부 입기" className={clsx('pb-soft', styles.actBtn)}>전부 입기</button>
-          <button type="button" onClick={() => s.takeCombo({ ...snap, name: `${item.name || ''} 코디`.trim() })} title="이 코디를 내 프리셋에 저장" className={clsx('pb-solid', styles.actBtn, styles.actSolid)}><IconTakeDown size={13} />프리셋에 저장</button>
+          <button type="button" onClick={wearAll} title="이 코디를 지금 프리셋에 전부 입기(되돌리기 가능)" className={clsx('pb-soft', styles.actBtn, mobile && styles.actBtnM)}>전부 입기</button>
+          <button type="button" onClick={() => s.takeCombo({ ...snap, name: undefined })} title="이 코디를 내 프리셋에 저장" className={clsx('pb-solid', styles.actBtn, mobile && styles.actBtnM, styles.actSolid)}><IconTakeDown size={13} />프리셋에 저장</button>
         </div>
       </div>
       <div className={mobile ? list.hrM : list.hr} />

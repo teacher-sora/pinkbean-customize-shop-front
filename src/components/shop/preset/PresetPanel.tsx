@@ -43,9 +43,11 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const across = dir === 'x'
   const boxRef = useWheelRail<HTMLDivElement>(across && !mobile)
   useListMinHeight(boxRef, mobile) // 모바일: 목록과 같은 최소 높이(이 탭에서 바로 열어도 카드가 작아지지 않게)
+  // 고른 프리셋 = 비교 중이면 비교의 주인 프리셋(사용자 지시 — 비교 중에도 프리셋 탭에서 지금 프리셋이 '선택됨'으로 보인다. 고른 비교 칸 = 그 프리셋)
+  const selId = s.cmpOn ? s.cmpBack : s.selectedPreset
   const centered = useRef(false)
   useLayoutEffect(() => {
-    if (centered.current || !s.selectedPreset) return
+    if (centered.current || !selId) return
     centered.current = true
     const go = () => {
       const box = boxRef.current, el = box?.querySelector('.pb-preset-sel')?.closest('.pb-presetwrap')
@@ -56,7 +58,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     go()
     let raf = requestAnimationFrame(() => { go(); raf = requestAnimationFrame(go) })
     return () => cancelAnimationFrame(raf)
-  }, [s.selectedPreset])
+  }, [selId])
 
   // 삭제는 2단계 확인: 3초 안에, 다른 상호작용 없이 연속으로 한 번 더 누르면 삭제(lib/confirmTwice).
   const remove = (p: Preset) => {
@@ -111,7 +113,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const grid = (
     <div ref={gridRef} className={mobile ? (across ? styles.gridHM : styles.gridVM) : across ? clsx(styles.gridH, narrow && styles.gridHNarrow) : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
       {s.presets.map((p, i) => {
-        const on = s.selectedPreset === p.id
+        const on = selId === p.id
         return <PresetCard key={p.id} p={p} i={i} on={on} snap={on ? liveSnap : s.presetData[p.id]} mobile={mobile} fill={mobile || across} sorting={sorting} act={act} root={boxRef} />
       })}
     </div>

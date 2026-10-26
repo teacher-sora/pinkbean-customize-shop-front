@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useIsoLayoutEffect } from '@/lib/uiState'
-import { type PlacedLayer } from '@/lib/core/assemble'
+import { footOf, type PlacedLayer } from '@/lib/core/assemble'
 import { type AnimaRace, type Index } from '@/lib/core/data'
 import { canvasBitmap, computeModelPlacement, fitCanvas, MODEL_REF, zoomStepScale } from '@/lib/core/modelPlacement'
 import type { ParticleDraw } from '@/lib/core/particle'
@@ -50,11 +50,13 @@ export function warmSnap (snap: Snapshot, index: Index | null | undefined, view?
   if (composePeek(key, index, ar, view) !== undefined) return Promise.resolve()
   return composeSnapshotCached(key, snap, index, ar, view).catch(() => {})
 }
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom, chatText, defBalloon, fitW, keep }: {
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom, chatText, defBalloon, fitW, keep, onFloor }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
   // 코디가 바뀌어 다시 합성하는 동안 그리던 그림을 두고, 다 되면 바꾼다(뼈대를 비추지 않는다) — 목록 카드(ItemThumb)와 같은 몸짓.
   // 같은 코디에 연출만 바뀌는 카드(코디 조합 — 지금 연출을 얹는다)에 쓴다. 다른 코디로 갈아 끼우는 칸에는 쓰지 않는다
   keep?: boolean
+  // 그린 발 자리(칸 기준 CSS px) · 배율을 알린다 — 같은 칸의 배경(CardStageBg floor)이 캐릭터와 같은 자리에 깔리게(코디 비교의 칸, PreviewModel 의 setStageFloor 와 같은 계산 — 발 높이도 그 자세의 실제 발 자리)
+  onFloor?: (f: { cx: number; footY: number; scale: number }) => void
   fitW?: number // 캐릭터 높이(fraction × 칸 높이)가 칸 폭 × fitW 를 넘지 않게 — 좁고 긴 칸에서 배율이 2배로 뛰어 옆이 잘리지 않게(코디 조합 카드)
   zoom?: number // 미리보기 배율 단계(1~3)로 그린다 — 코디 비교의 칸들이 고른 칸(PreviewModel)과 같은 도트 크기가 되게(zoomStepScale)
   deco?: boolean // 칭호 · 훈장 · 말풍선도 그린다(불러오기 창 — 가져올 장식 토글이 무엇을 바꾸는지 보이게. 말풍선은 '안녕하세요')
@@ -112,6 +114,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   }, [tagUi, tagName, baseTag, decoUi, deco, chatText, defBalloon])
 
   const drawnRef = useRef(onDrawn)
+  const floorRef = useRef(onFloor)
+  floorRef.current = onFloor
   drawnRef.current = onDrawn
   const prioRef = useRef(priority)
   prioRef.current = priority
@@ -166,6 +170,11 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
       ...(climb ? { centerDx: MODEL_REF.previewBackDx, centerDy: MODEL_REF.previewBackDy } : {}) })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
+    if (floorRef.current && wrapRef.current) {
+      const rect = wrapRef.current.getBoundingClientRect()
+      const leftDev = Math.round((dims.w * dims.dpr - bw) / 2) - ((rect.left * dims.dpr) % 1), topDev = Math.round((dims.h * dims.dpr - bh) / 2) - ((rect.top * dims.dpr) % 1)
+      floorRef.current({ cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((p.anchor.y + (footOf(placed)?.y ?? 21)) * p.scale)) / dims.dpr, scale: p.scale })
+    }
     // view 면 그 코디의 시선도 따른다(오른쪽 = 좌우 반전 — 미리보기와 같은 규칙. 코디 비교의 정지 칸)
     renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip: view && snap.pv?.gaze === 'right', centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
     return () => { cancelled = true }

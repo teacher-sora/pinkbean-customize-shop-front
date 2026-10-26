@@ -286,9 +286,9 @@
 .cmpTag { position: absolute; left: 6px; top: 6px; min-width: 22px; height: 22px; padding: 0 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: rgba(255,255,255,0.92); background: light-dark(rgba(255,255,255,0.92), rgba(48, 50, 56, 0.92)); font-size: 11px; font-weight: 700; color: #a89e93; color: light-dark(#a89e93, #8e919a); transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
 .cmpPaneOff .cmpTag { opacity: .5; } /* 고르지 않은 칸 — 고른 칸과 확실히 갈리게(사용자 지시) */
 .cmpTagOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
-.cmpActs { position: absolute; right: 6px; top: 6px; display: flex; gap: 4px; }
-.cmpActBtn { width: 26px; height: 26px; }
-.cmpBoardLine .cmpActBtn { width: 22px; height: 22px; } /* 모바일 한 줄(칸 약 90px) — 글자 칸과 겹치지 않게 */
+/* 칸 빼기 = 프리셋 카드의 휴지통 띠지(preset .del · .delM) — 칸이 overflow:hidden 이라 위 끝에 붙이고 오른쪽 8px */
+.cmpDel.cmpDel { top: 0; right: 8px; }
+.cmpDelOff { opacity: .4; cursor: default; }
 /* [칸 더하기] — 미리보기 안의 빈 자리(사용자 지시). 1~2칸은 아래 얇은 줄(가로), 3칸은 넷째 칸(세로), 모바일 한 줄은 끝의 좁은 칸(아이콘만). 점선은 북마크 빈칸과 같다 */
 .cmpAdd { min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0; border: 1px dashed #e4dcd2; border: 1px dashed light-dark(#e4dcd2, #4d5059); border-radius: 8px; background: #fbf8f4; background: light-dark(#fbf8f4, #36383f); font-family: inherit; font-size: 12px; font-weight: 600; color: #b7ada2; color: light-dark(#b7ada2, #858893); cursor: pointer; transition: border-color .22s ease, color .22s ease; }
 .cmpAddCell { flex-direction: column; gap: 6px; }
@@ -304,7 +304,8 @@
 .pinTabs > div { padding: 2px; }
 .pinTabs button { height: 22px; padding: 0 11px; font-size: 11px; }
 @media (hover: hover) and (pointer: fine) {
-  .cmpPaneOff:hover .cmpRing { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); }
+  .cmpPaneOff:hover .cmpRing { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); } /* 고르지 않은 칸 — 누를 수 있다는 것이 보이게(사용자 지시) */
+  .cmpPaneOff:hover .cmpTag { opacity: .85; }
   .cmpAdd:hover { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
 }
 .cmpPane:focus-visible .cmpRing { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); }

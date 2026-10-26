@@ -9,14 +9,15 @@ import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
 import styles from './plaza.module.css'
 
-export default function PlazaTakeBody({ snap, mobile }: { snap: Snapshot; mobile: boolean }) {
+// title = 이름이 없는 코디의 머리 글(코디 조합 — 이름 없이 넘겨 저장할 프리셋의 이름이 그대로 남는다)
+export default function PlazaTakeBody({ snap, mobile, title }: { snap: Snapshot; mobile: boolean; title?: string }) {
   const s = useShop()
   return (
     <div className={clsx('pb-scroll', 'pb-fade', styles.takeBody)}>
       <div className={styles.takeTop}>
         <div className={styles.takeThumb}><SnapThumb snap={snap} /></div>
         <div className={styles.takeHint}>
-          <div className={styles.takeName}>{snap.name || '공유받은 코디'}</div>
+          <div className={styles.takeName}>{snap.name || title || '공유받은 코디'}</div>
           <div className={styles.takeSub}>{mobile ? '저장할 프리셋을 골라주세요' : '저장할 프리셋을 고르면 바로 적용돼요 (되돌리기 가능)'}</div>
         </div>
       </div>
