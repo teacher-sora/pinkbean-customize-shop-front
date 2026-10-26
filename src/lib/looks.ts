@@ -6,7 +6,7 @@ import { backApi } from '@/lib/backApi'
 import { DATA_BASE } from '@/lib/core/data'
 import { LRU } from '@/lib/core/lru'
 import type { HsbParams, PaletteParams } from '@/lib/core/dye'
-import type { Snapshot } from '@/components/shop/ShopContext'
+import type { PvSnap, Snapshot } from '@/components/shop/ShopContext'
 
 // i 번호(입은 사람이 많은 순), n 입은 사람 수, sk 피부 카드 id(톤의 몸 id), s 스냅샷
 export type LookRow = { i: number; n: number; sk: string | null; s: Snapshot }
@@ -66,6 +66,9 @@ export function fetchLooks(ids: string[], page: number, size: number): Promise<L
 // 목록은 쪽 크기와 상관없이 60벌(서버가 한 번에 주는 최대) 묶음으로 받는다 — 창 크기 · 격자가 바뀌어도 받은 묶음을 그대로 쓰고,
 // 목록 카드의 칩에 올리거나 누르는 순간 첫 묶음을 미리 받아 둘 수 있다(쪽 크기는 패널을 연 뒤에야 정해진다)
 export const LOOK_CHUNK = 60
+// 카드 · 상세 그림 = 목록 '내 캐릭터' 카드와 같은 연출(지금 연출 설정의 시선 · 표정 · 귀 · 무기 모션 · 형상 변이 · 이펙트, 액션은 서기 — ShopContext cardPv)을 얹어
+// SnapThumb view 로 그린다(사용자 지시 — 같은 방식에서 파생). 입기 · 프리셋에 저장은 원래 스냅샷(row.s) 그대로다
+export const withCardPv = (snap: Snapshot, pv: PvSnap): Snapshot => ({ ...snap, pv })
 // 코디 조합을 두지 않는 부위 — 코디는 생김새만 본다(사용자 지시: 훈장 · 칭호는 가져올 필요도, 이 기능을 둘 필요도 없다). 표본에서도 뺀다(parser looks/build.ts)
 export const COMBO_SKIP = new Set(['medal', 'title'])
 export const lookChunk = (id: string, c: number): Promise<LookPage> => fetchLooks([id], c, LOOK_CHUNK)

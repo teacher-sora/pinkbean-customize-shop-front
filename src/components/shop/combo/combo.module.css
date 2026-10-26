@@ -13,6 +13,9 @@
 .backM { width: 32px; height: 32px; }
 @media (hover: hover) and (pointer: fine) { .back:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); } }
 .headItemFill { flex: 1 1 auto; }
+/* 넘기는 방향: 아이콘 칸 높이를 글자 칸(28)과 같게 — 둘레까지 PC 34 · 모바일 32 로 아이템 칸 · 쪽 칩과 맞는다 */
+.dirSeg { flex: 0 0 auto; display: flex; }
+.dirSeg button { width: 34px; height: 28px; }
 .itemTag { flex: 0 1 auto; max-width: 260px; min-width: 0; height: 34px; padding: 0 12px 0 3px; display: flex; align-items: center; gap: 8px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); }
 .itemTagM { height: 32px; padding: 0 10px 0 2px; gap: 7px; }
 .itemThumb { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 4px; background: #fff; background: light-dark(#fff, #303238); display: flex; align-items: center; justify-content: center; overflow: hidden; }

@@ -13,6 +13,20 @@ import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 // center = 라이딩일 때의 가로 정렬 기준(미리보기·부위 카드와 같은 규칙). 'x' = 캐릭터 navel, 'mount' = 메카 bbox.
 export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[]; particles?: ParticleDraw[]; center?: 'x' | 'mount' }
 
+// 받기만(합성 전 미리): 몸 · 머리 · 착용 아이템의 meta 와 카드 정지 자세(서기 0번)의 그림 파일. 조립 · 염색 · 합성은 하지 않아 화면을 붙잡지 않는다 —
+// 코디 조합 칩에 머무는 동안 부른다(누르면 합성만 남는다). 염색 그림 · 이펙트 · 탈것은 합성 때 받는다(드물거나 무겁다)
+export async function preloadSnapshot(snap: Snapshot, index: Index, view = false): Promise<void> {
+  const te = index.base.tones.find((t) => t.tone === snap.tone) || index.base.tones[0]
+  if (!te) return
+  const spv = snap.pv ?? PV_SNAP_DEFAULT
+  const ids = [te.body, te.head, ...Object.entries(snap.equipped).filter(([slot, id]) => id && !snap.hidden?.[slot] && !CHAT_SLOTS.has(slot) && slot !== 'riding').map(([, id]) => id)]
+  const metas = await Promise.all(ids.map((id) => loadMeta(id).catch(() => null)))
+  // 그릴 때와 같은 자세(view 면 스냅샷의 시선 · 액션 — composeSnapshot 과 같은 규칙, 아니면 카드 정지 서기)
+  const TV = view ? { ...THUMB_VIEW, action: spv.gaze === 'back' ? 'rope' : resolveAction(spv.action || 'basic', spv.weapon || 'basic'), expression: spv.expr || THUMB_VIEW.expression, ear: spv.ear || THUMB_VIEW.ear, weaponMotion: spv.weapon || THUMB_VIEW.weaponMotion }
+    : thumbView('left', undefined, spv.ear, spv.weapon, true).view
+  for (const m of metas) if (m) for (const l of getFrameLayers(m, TV)) if (l.png) void loadImage(l.png, true).catch(() => {})
+}
+
 // view=true 면 카드 고정 뷰 대신 **스냅샷에 담긴 연출 설정(액션·표정)** 으로 그린다.
 // 연출 설정 고르기(PvPicker)의 작은 미리보기 전용 — 프리셋·광장 카드는 종전대로 정지 서기 자세다.
 export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: AnimaRace[], view = false): Promise<SnapComposite | null> {

@@ -12,11 +12,12 @@
 import clsx from 'clsx'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
-import { COMBO_SKIP, LOOK_CHUNK, countLabel, loadLookCounts, loadLookMeta, lookChunk, type LookDye, type LookMeta, type LookPage, type LookRow } from '@/lib/looks'
+import { COMBO_SKIP, LOOK_CHUNK, withCardPv, countLabel, loadLookCounts, loadLookMeta, lookChunk, type LookDye, type LookMeta, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
 import { SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb, { warmSnap } from '../SnapThumb'
+import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
 import { DIRS } from '../list/ListArea'
@@ -203,6 +204,16 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
     }
     return () => { alive = false }
   }, [cur, first, pageCount, per, item.id])
+  // 다음다음 쪽은 한가할 때 미리 합성해 둔다 — 프리셋 탭과 같은 방식(ShopContext PRESET_WARM: 그림 줄의 가장 낮은 순위 2, 보이는 카드가 줄을 서 있지 않을 때만).
+  // 지금 쪽 ±1 은 이미 카드로 붙어 있다(우선순위 0 · 1). 넘기면 다시 건다
+  const cardPv = s.cardPv, index = s.index
+  useEffect(() => {
+    if (!index || !per || s.snapping) return
+    const rows = pageRows(cur + 2)
+    if (!rows?.length) return
+    const jobs = rows.map((r) => enqueueThumb(2, () => warmSnap(withCardPv(r.s, cardPv), index, true).then(() => undefined)))
+    return () => { for (const j of jobs) j.cancel() }
+  }, [cur, chunks, per, cardPv, index, s.snapping])
   // 쪽 p 의 코디(그 쪽이 걸친 묶음이 다 왔을 때만)
   const pageRows = (p: number): LookRow[] | null => {
     const a = p * per, b = Math.min(total ?? 0, a + per), out: LookRow[] = []
@@ -275,7 +286,8 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
       {!mobile && <button type="button" onClick={() => s.step(1)} disabled={cur >= pageCount - 1} title={dirY ? '다음 페이지 (↓)' : '다음 페이지 (→)'} aria-label="다음 페이지" className={clsx('pb-arrow', list.arrow, cur < pageCount - 1 && list.arrowOn)}><IconChevronRight /></button>}
     </div>
   )
-  const dirSeg = <Seg variant={mobile ? 'mobileFit' : 'pc'} title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} />
+  // 넘기는 방향 — 아이콘 칸(공용 30 × 24)을 이 머리의 다른 칸과 같은 높이로 키운다(PC 34 · 모바일 32, 사용자 지시)
+  const dirSeg = <div className={styles.dirSeg}><Seg variant={mobile ? 'mobileFit' : 'pc'} title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} /></div>
 
   const dyes = first?.dyes ?? []
   const pages: number[] = []
@@ -381,10 +393,11 @@ const sortKeys = (o: object) => Object.fromEntries(Object.entries(o).sort(([a], 
 
 function LookCard({ row, mobile, prio, onOpen }: { row: LookRow; mobile: boolean; prio: number; onOpen: (r: LookRow) => void }) {
   const s = useShop()
+  const shown = useMemo(() => withCardPv(row.s, s.cardPv), [row.s, s.cardPv])
   return (
-    <div onClick={() => { if (!s.consumeSwipeClick()) onOpen(row) }} onPointerEnter={() => warmSnap(row.s, s.index)} title="코디 자세히 보기" className="pb-presetwrap" style={{ cursor: 'pointer' }}>
+    <div onClick={() => { if (!s.consumeSwipeClick()) onOpen(row) }} onPointerEnter={() => warmSnap(shown, s.index, true)} title="코디 자세히 보기" className="pb-presetwrap" style={{ cursor: 'pointer' }}>
       <div className={clsx('pb-preset', styles.card)}>
-        <div className={styles.thumb}><SnapThumb snap={row.s} fraction={mobile ? FRACTION_M : FRACTION} fitW={FIT_W} priority={prio} /></div>
+        <div className={styles.thumb}><SnapThumb snap={shown} view fraction={mobile ? FRACTION_M : FRACTION} fitW={FIT_W} priority={prio} /></div>
       </div>
     </div>
   )
@@ -396,6 +409,7 @@ function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListIt
   const snap = row.s
   const slots = useMemo(() => ['skin', ...Object.keys(snap.equipped)], [snap])
   const warmWear = s.warmWear
+  const shown = useMemo(() => withCardPv(snap, s.cardPv), [snap, s.cardPv])
   useEffect(() => { warmWear(snap) }, [snap]) // [전부 입기]가 바로 반영되게 받아 둔다
   return (
     <>
@@ -413,7 +427,7 @@ function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListIt
       </div>
       <div className={mobile ? list.hrM : list.hr} />
       <div className={clsx(styles.detail, mobile ? clsx('pb-norail', styles.detailM) : 'pb-scroll')}>
-        <div className={clsx(styles.stage, mobile && styles.stageM)}><SnapThumb snap={snap} fraction={mobile ? 0.5 : 0.46} view={false} priority={-1} /></div>
+        <div className={clsx(styles.stage, mobile && styles.stageM)}><SnapThumb snap={shown} view fraction={mobile ? 0.5 : 0.46} priority={-1} /></div>
         <div className={styles.worn}><WornItems snap={snap} postId={`look:${row.i}`} mobile={mobile} /></div>
       </div>
       <Credit mobile={mobile} />

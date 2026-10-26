@@ -20,7 +20,7 @@ import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
-import { lookToSnapshot, nrmName, type LookDeps, type NexonLook } from '@/lib/nexonLook'
+import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
 import { comboLive } from '@/lib/looks'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
@@ -308,6 +308,7 @@ export interface ShopCtx {
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   // 코디 조합(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 조합 탭)
   comboItem: ListItem | null; comboOpen: boolean; openCombo: (item: ListItem) => void; closeCombo: () => void; pickCombo: (item: ListItem) => void
+  cardPv: PvSnap
   comboTotal: number; setComboTotal: (id: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot) => void
   searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
@@ -1061,6 +1062,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // ── 착용 전 워밍: 보이는 리스트 페이지(멈춘 뒤 한가할 때) + 카드 누르는 순간 ──
   const pvRef = useRef(pv); pvRef.current = pv
+  // 목록 '내 캐릭터' 카드와 같은 연출(thumbView — 시선 · 표정 · 귀 · 무기 모션 자세 + 형상 변이 · 이펙트, 액션은 서기). 남의 코디를 지금 연출로 보여 주는
+  // 카드(코디 조합)가 스냅샷에 이 값을 얹어 SnapThumb view 로 그린다 — composeSnapshot 의 view 모드가 액션 'basic' · 프레임 없음이면 thumbView 와 같은 규칙이다
+  const cardPv = useMemo<PvSnap>(() => ({ form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, floatFx: pv.floatFx, baseTag: pv.baseTag,
+    gaze: pv.gaze, action: 'basic', frame: -1, expr: pv.expr, zoom: pv.zoom }), [pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.floatFx, pv.baseTag, pv.gaze, pv.expr, pv.zoom])
   const renderPaletteRef = useRef(renderPalette); renderPaletteRef.current = renderPalette
   const warmForPreview = useCallback((item: ListItem) => {
     if (item.slot === 'skin') return
@@ -1139,12 +1144,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const openCombo = (item: ListItem) => { setComboItem(item); setComboOpen(true) }
   const closeCombo = () => setComboOpen(false)
   useEffect(() => { if (primary !== 'codi' && primary !== 'search') setComboOpen(false) }, [primary])
-  // 이름으로 아이템 찾기 — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
+  // 이름으로 아이템 찾기(코디 조합의 아이템 찾기) — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
   const searchItems = async (q: string): Promise<ListItem[]> => {
-    const t = nrmName(q)
-    if (!t) return []
+    const match = nameMatcher(q) // 목록 · 광장 검색과 같은 규칙(영문 자판으로 친 한글 en2ko, 띄어쓰기 무시)
+    if (!match) return []
     const lists = await Promise.all(EQUIP_SLOTS.filter((sl) => slotFile(sl, indexRef.current)).map((sl) => loadSlotFolded(sl)))
-    return [...lists.flat(), ...skinList].filter((it) => nrmName(it.name || '').includes(t))
+    return [...lists.flat(), ...skinList].filter((it) => match(it.name || ''))
   }
   const clearBookmarks = () => {
     if (!bookmarks.length) return
@@ -2008,7 +2013,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems, comboTotal, setComboTotal, holdPager, warmWear,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
-    warmForPreview, listMode, setListMode, bgSel, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
+    warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,
     bp, cols, rows, itemsPerPage,
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
