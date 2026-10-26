@@ -11,7 +11,7 @@ import { useEffect } from 'react'
 import { ShopProvider, useShop } from './shop/ShopContext'
 import Background from './shop/frame/Background'
 import AppHeader from './shop/frame/AppHeader'
-import BottomNav from './shop/nav/BottomNav'
+import BottomNav, { PlazaTabsM } from './shop/nav/BottomNav'
 import ListArea from './shop/list/ListArea'
 import InfoPanel from './shop/info/InfoPanel'
 import PresetPanel from './shop/preset/PresetPanel'
@@ -45,7 +45,6 @@ function Shell() {
   // 광장의 코디 조합에서는 등록 폼 대신 미리보기를 둔다 — 자주 쓴 염색 · 부위 입기를 바로 보게(모바일은 히어로)
   const comboList = isList && s.comboShown // 연 탭(코디 · AI 코디 검색)에서만 — 다른 탭에 갔다 오면 그대로 다시 보인다
   const comboPlaza = isPlaza && s.plazaFilter === 'combo'
-
   return (
     <>
       <Background mobile={mobile} />
@@ -62,6 +61,8 @@ function Shell() {
               {(!isPlaza || comboPlaza) && <MobileHero />}
               {/* 채팅 칸 — 말풍선을 끼었을 때만, 미리보기 바로 아래 */}
               {isList && (comboList ? <ComboPanel mobile host="codi" /> : <ListArea mobile />)}
+              {/* 광장 분류는 코디 탭의 부위처럼 미리보기와 목록 머리 사이(사용자 지시) */}
+              {isPlaza && <PlazaTabsM />}
               {isPlaza && (comboPlaza ? <ComboPanel mobile host="plaza" /> : <PlazaPanel mobile />)}
               {s.primary === 'preset' && <PresetPanel mobile />}
               {s.primary === 'info' && <InfoPanel mobile />}

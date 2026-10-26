@@ -21,7 +21,7 @@ import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, typ
 import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
-import { comboLive, type LookRow } from '@/lib/looks'
+import { comboLive, lookChunk, withCardPv, type LookRow } from '@/lib/looks'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
@@ -31,7 +31,7 @@ import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
 import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, buildView, foldList, slotFile } from '@/lib/shopData'
-import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
+import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, snapKey } from '@/lib/core/snapRender'
 import { warmItem } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
 import { enqueueThumb } from '@/lib/thumbQueue'
@@ -308,7 +308,7 @@ export interface ShopCtx {
   snapshot: () => Snapshot
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   // 코디 조합(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 조합 탭)
-  comboItem: ListItem | null; comboOpen: boolean; comboShown: boolean; comboDetail: LookRow | null; setComboDetail: (r: LookRow | null) => void; openCombo: (item: ListItem) => void; closeCombo: () => void; pickCombo: (item: ListItem) => void
+  comboItem: ListItem | null; comboOpen: boolean; comboShown: boolean; comboDetail: LookRow | null; setComboDetail: (r: LookRow | null) => void; openCombo: (item: ListItem) => void; closeCombo: () => void; warmCombo: (id: string) => void; pickCombo: (item: ListItem) => void
   cardPv: PvSnap
   comboGender: GenderFilter; setComboGender: (g: GenderFilter) => void
   comboTotal: number; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot) => void
@@ -771,6 +771,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const bpRef = useRef(bp)
   bpRef.current = bp
   const primaryRef = useRef(primary)
+  const comboShownRef = useRef(false) // 코디 탭의 코디 조합이 목록 자리에 떠 있는가 — 광장의 코디 조합과 같은 격자를 쓴다(measure)
   const plazaComboRef = useRef(false) // 광장의 코디 조합 분류 — 모바일도 최소 2줄(사용자 지시 — 미리보기는 빠른 파악을 위해 늘 두 줄 이상)
   primaryRef.current = primary
   const [grid, setGrid] = useState<{ cols: number; rows: number }>({ cols: 6, rows: 3 })
@@ -780,16 +781,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
     // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄.
-    if (primaryRef.current === 'share') {
-      const mob = vp === 'mobile'
-      const pcols = mob ? 2 : (vp === 'half' || vp === 'tablet') ? 3 : 6
+    // 코디 조합은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 3열 · 늘 2줄 이상
+    const mob = vp === 'mobile'
+    const combo = primaryRef.current === 'share' ? plazaComboRef.current : comboShownRef.current
+    const plazaLike = (forCombo: boolean) => {
+      const pcols = mob ? (forCombo ? MOBILE_GRID.cols : 2) : (vp === 'half' || vp === 'tablet') ? 3 : 6
       const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10
       const avail = el.clientHeight - 20
-      const prows = Math.max(mob && plazaComboRef.current ? 2 : 1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx))))
+      return { cols: pcols, rows: Math.max(mob && forCombo ? 2 : 1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx)))) }
+    }
+    if (primaryRef.current === 'share') {
+      const { cols: pcols, rows: prows } = plazaLike(combo)
       setPlazaGrid((g) => (g.cols === pcols && g.rows === prows ? g : { cols: pcols, rows: prows }))
       return
     }
-    if (vp === 'mobile') { apply(MOBILE_GRID.cols, MOBILE_GRID.rows); return }
+    if (combo) { const g = plazaLike(true); apply(g.cols, g.rows); return }
+    if (mob) { apply(MOBILE_GRID.cols, MOBILE_GRID.rows); return }
     const gap = 10, pad = 20
     const TARGET = 1.34, MINW = 78, MINH = 96
     const w = el.clientWidth - pad, h = el.clientHeight - pad
@@ -884,6 +891,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [comboTab, setComboTab] = useState<string>('codi')
   const [comboDetail, setComboDetail] = useState<LookRow | null>(null)
   const comboShown = comboOpen && primary === comboTab
+  comboShownRef.current = comboShown // 렌더 중에 적는다 — 패널의 뷰포트가 붙는 그 자리(bindVp)에서 바로 재므로
   // 성별(전체 · 여 · 남 — 코디의 성별은 parser looks/build.ts 가 입은 아이템으로 센다). 쪽 위치 · 코디 수도 성별마다 따로다
   const [comboGender, setComboGender] = useState<GenderFilter>('all')
   const [comboCount, setComboCount] = useState<{ id: string; n: number }>({ id: '', n: 0 })
@@ -1007,6 +1015,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       el.addEventListener('wheel', onWheel, { passive: false })
       el.addEventListener('pointerdown', onDown)
       el.addEventListener('scroll', killVpScroll, { passive: true })
+      // 붙는 그 자리(커밋 중 — 그리기 전)에서 바로 잰다. 다음 프레임에서야 재면 앞 목록의 격자(코디 조합은 염색 줄만큼 낮아 줄 수가 적다)로
+      // 한 프레임 그려져 카드 그림이 크게 번쩍였다(사용자 지적). 프레임 뒤 두 번은 글꼴 · 스크롤바로 자리가 바뀐 경우를 위해 남긴다
+      measure()
       requestAnimationFrame(() => { measure(); requestAnimationFrame(measure) })
       if (typeof ResizeObserver !== 'undefined') { vpRo.current = new ResizeObserver(() => measure()); vpRo.current.observe(el) }
     }
@@ -1154,8 +1165,21 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 코디 조합 — 목록 카드의 '코디' 칩으로 연다. 열려 있으면 목록 자리가 패널이 된다(PinkbeanShop). 목록의 쪽 · 부위 · 검색은 여기 그대로라
   // 닫으면 보던 쪽으로 돌아온다. 광장의 코디 조합 탭은 같은 아이템(comboItem)을 이어 보여 준다
-  const openCombo = (item: ListItem) => { setComboItem(item); setComboDetail(null); setComboTab(primary); setComboOpen(true) }
+  // 열고 닫기 · 상세 오가기는 탭을 바꾸듯 그 자리에서 바로 바뀐다(움직임 없음 — 사용자 지시). 첫 묶음은 누르는 순간 받기 시작한다
+  const openCombo = (item: ListItem) => {
+    void lookChunk(item.id, 0, comboGender === 'all' ? 'a' : comboGender).catch(() => {})
+    setComboItem(item); setComboDetail(null); setComboTab(primary); setComboOpen(true)
+  }
   const closeCombo = () => { setComboOpen(false); setComboDetail(null) }
+  // 코디 조합 미리 받기(목록 카드의 '코디' 칩 · 광장의 아이템 찾기 결과에 머물거나 닿는 순간): 지금 성별의 첫 묶음과, 첫 쪽 카드(넓은 PC 한 쪽 18벌)의
+  // 아이템 정보 · 정지 자세 그림 파일(snapRender.preloadSnapshot — 받기만, 합성은 누른 뒤. 합성까지 미리 걸면 그 일이 화면을 붙잡아 패널이 늦게 떴다 —
+  // 실측 CPU ×4: 패널 367 → 1149 · 1671ms). 받은 것은 lib/looks · 그림 캐시에 남아 두 번 받지 않는다
+  const warmCombo = (id: string) => {
+    lookChunk(id, 0, comboGender === 'all' ? 'a' : comboGender).then((d) => {
+      const ix = indexRef.current
+      if (ix) for (const r of d.looks.slice(0, 18)) void preloadSnapshot(withCardPv(r.s, cardPv), ix, true).catch(() => {})
+    }).catch(() => {})
+  }
   const pickCombo = (item: ListItem) => { setComboItem(item); setComboDetail(null) }
   // 이름으로 아이템 찾기(코디 조합의 아이템 찾기) — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
   const searchItems = async (q: string): Promise<ListItem[]> => {
@@ -2023,7 +2047,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
-    comboItem, comboOpen, openCombo, closeCombo, comboShown, comboDetail, setComboDetail, pickCombo, searchItems, comboTotal, setComboTotal, holdPager, warmWear, comboGender, setComboGender,
+    comboItem, comboOpen, openCombo, closeCombo, comboShown, comboDetail, setComboDetail, pickCombo, warmCombo, searchItems, comboTotal, setComboTotal, holdPager, warmWear, comboGender, setComboGender,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
     warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, presetDir, setPresetDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,

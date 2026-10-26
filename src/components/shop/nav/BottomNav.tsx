@@ -1,11 +1,11 @@
 'use client'
 
 // 하단 부위 바(전체·신규·즐겨찾기 + 18부위) + 탭 바(6탭). 부위 바는 AI 코디 검색에서도 결과 필터로 작동한다.
-// 모바일의 코디 · AI 코디 검색은 부위를 하단이 아니라 목록 머리 첫 줄(CatTabsM)에 둔다 — 하단 탭 바와 붙어 있어 잘못 눌렸다(사용자 지시).
+// 모바일은 부위 · 광장 분류를 하단이 아니라 목록 머리 첫 줄(CatTabsM · PlazaTabsM)에 둔다 — 하단 탭 바와 붙어 있어 잘못 눌렸다(사용자 지시).
 
 import clsx from 'clsx'
 import { useEffect } from 'react'
-import { PLAZA_FILTERS } from '@/lib/plaza'
+import { PLAZA_FILTERS, type PlazaFilter } from '@/lib/plaza'
 import { useComboLive } from '@/lib/looks'
 import { useShop } from '../ShopContext'
 import { IconTab } from '../ui/Icons'
@@ -23,31 +23,40 @@ export const TABS = [
 ]
 const READY = new Set(['codi', 'search', 'info', 'preset', 'share'])
 
-// 모바일 목록 머리의 부위 탭(밑줄 탭). 미리보기 위 둥근 버튼들과 다른 모양이라 '이 목록에서 무엇을 볼지'로 읽힌다.
-// 부위를 바꾸면(다른 곳에서 바뀌어도) 고른 탭이 보이도록 가로로 당겨 온다.
-// jump = 코디 정보 / 염색 · 프리셋 탭에서 쓸 때 — 부위를 누르면 그 부위의 아이템을 보려는 것이라 코디 탭으로 넘어간다(하단 줄에 있던 때와 같다)
-export function CatTabsM({ jump }: { jump?: boolean } = {}) {
-  const s = useShop()
+// 모바일 목록 머리의 분류 탭(밑줄 탭). 미리보기 위 둥근 버튼들과 다른 모양이라 '이 목록에서 무엇을 볼지'로 읽힌다.
+// 고른 것이 바뀌면(다른 곳에서 바뀌어도) 고른 탭이 보이도록 가로로 당겨 온다. 코디 탭의 부위(CatTabsM)와 광장 분류(PlazaTabsM)가 같은 부품이다
+function TabsM({ label, items, on, pick }: { label: string; items: { id: string; label: string }[]; on: string; pick: (id: string) => void }) {
   const railRef = useWheelRail()
   useEffect(() => {
     const el = railRef.current
-    const on = el?.querySelector<HTMLElement>('[aria-pressed="true"]')
-    if (!el || !on) return
-    const l = on.offsetLeft - 8, r = on.offsetLeft + on.offsetWidth + 8
+    const cur = el?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!el || !cur) return
+    const l = cur.offsetLeft - 8, r = cur.offsetLeft + cur.offsetWidth + 8
     if (l < el.scrollLeft) el.scrollTo({ left: l })
     else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth })
-  }, [s.activeCat, railRef])
+  }, [on, railRef])
   return (
-    <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label="부위">
-      {[...MULTI, ...s.cats].map((p) => {
-        const on = s.activeCat === p.id
+    <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label={label}>
+      {items.map((p) => {
+        const sel = on === p.id
         return (
-          <button key={p.id} type="button" onClick={() => { s.setActiveCat(p.id); if (jump) s.setPrimary('codi') }} aria-pressed={on} title={p.label}
-            className={clsx(styles.catTabM, on && styles.catTabMOn)}>{p.label}</button>
+          <button key={p.id} type="button" onClick={() => pick(p.id)} aria-pressed={sel} title={p.label}
+            className={clsx(styles.catTabM, sel && styles.catTabMOn)}>{p.label}</button>
         )
       })}
     </nav>
   )
+}
+// 부위. jump = 코디 정보 / 염색 · 프리셋 탭에서 쓸 때 — 부위를 누르면 그 부위의 아이템을 보려는 것이라 코디 탭으로 넘어간다(하단 줄에 있던 때와 같다)
+export function CatTabsM({ jump }: { jump?: boolean } = {}) {
+  const s = useShop()
+  return <TabsM label="부위" items={[...MULTI, ...s.cats]} on={s.activeCat} pick={(id) => { s.setActiveCat(id); if (jump) s.setPrimary('codi') }} />
+}
+// 코디 광장 분류(자유 코디 ~ 코디 조합) — 모바일은 코디 탭의 부위처럼 미리보기와 목록 머리 사이에 둔다(사용자 지시, PinkbeanShop)
+export function PlazaTabsM() {
+  const s = useShop()
+  const comboLive = useComboLive()
+  return <TabsM label="분류" items={PLAZA_FILTERS.filter((f) => f.id !== 'combo' || comboLive)} on={s.plazaFilter} pick={(id) => s.setPlazaFilter(id as PlazaFilter)} />
 }
 
 export default function BottomNav({ mobile }: { mobile: boolean }) {
@@ -72,17 +81,9 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   }
 
   if (mobile) {
-    const listTab = s.primary !== 'share' // 부위는 목록 머리(CatTabsM)에 있다 — 코디 · AI 검색 · 코디 정보 / 염색 · 프리셋 모두(사용자 지시). 하단 줄은 광장 분류만
+    // 부위 · 광장 분류는 목록 머리 위(CatTabsM · PlazaTabsM)에 있다(사용자 지시) — 모바일 하단은 탭 바만
     return (
       <>
-        {!listTab && <div data-hero-below className={styles.partNavM}>
-          <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.railM)} aria-label={plaza ? '분류' : '부위'}>
-            {chips.map((c) => (
-              <button key={c.id} type="button" onClick={c.pick} title={c.label}
-                className={clsx(c.on ? 'pb-solid' : 'pb-soft', styles.partM, plaza && styles.partWideM, c.on && styles.partOn)}>{c.label}</button>
-            ))}
-          </nav>
-        </div>}
         <nav data-hero-below className={styles.tabNavM} aria-label="메뉴">
           {TABS.map((t) => {
             const on = s.primary === t.id

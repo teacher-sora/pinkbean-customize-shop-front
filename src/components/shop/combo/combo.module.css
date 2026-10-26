@@ -1,13 +1,8 @@
 /* 코디 조합 패널(combo/ComboPanel). 머리 · 구분선 · 쪽 칩 · 빈 상태 · 힌트 바는 목록(list.module.css)의 것을 그대로 쓰고, 여기는 패널만의 것.
-   열림: 목록 자리에서 아래 6px → 제자리로 떠오른다(높이는 바뀌지 않는다 — translateY 와 opacity 만, 같은 곡선) */
-.root { position: relative; animation: comboIn .26s cubic-bezier(.45,0,.55,1); }
-.rootM { display: contents; }
-.rootM > * { animation: comboIn .26s cubic-bezier(.45,0,.55,1); }
-@keyframes comboIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .root, .rootM > * { animation: none; } }
+   열고 닫기 · 상세 오가기 · 탭 오가기 모두 움직임 없이 바로 바뀐다(사용자 지시 — 탭을 바꾸듯) */
 
 /* 머리 왼쪽: [←] + 아이템 칸(아이콘 · 이름 · 코디 수). 아이템 칸은 쪽 칩과 같은 바탕 · 테두리의 한 칸이고, 넘기는 방향은 그 바로 오른쪽에 붙는다(사용자 지시 — 일관된 디자인).
-   모바일 광장은 아이템 칸이 그림만이라 찾기 칸이 남는 폭을 채운다(headItemFill) */
+   모바일 광장은 아이템 칸이 그림만이라 찾기 칸이 남는 폭을 채운다(목록 머리와 같은 searchWrapM) */
 .headItem { flex: 0 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 8px; }
 .back { flex: 0 0 auto; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); color: #8a8075; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: border-color .2s ease, color .2s ease; }
 .backM { width: 32px; height: 32px; }
@@ -23,11 +18,9 @@
 .itemText { min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.15; }
 .itemName { font-size: 13px; font-weight: 600; color: #3d372f; color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
 .itemNameM { font-size: 12.5px; }
+.itemNameNone { font-weight: 500; color: #b7ada2; color: light-dark(#b7ada2, #858893); } /* 고르기 전 빈 칸 */
 
-/* 광장: 아이템 찾기 칸 + 그 아래 고르기(누르면 바로 닫힌다) */
-.finder { flex: 0 4 220px; min-width: 140px; } /* 머리 오른쪽 끝(목록 머리의 검색 칸과 같은 자리). 아이템 칸보다 먼저 줄어든다 */
-.finderEnd { margin-left: auto; } /* 아이템을 고르기 전 — 머리에 찾기 칸뿐 */
-.finderM { flex: 1 1 0; min-width: 0; }
+/* 광장: 아이템 찾기 칸(목록 검색 칸과 같은 칸 — list.searchWrap) 아래의 고르기(누르면 바로 닫힌다) */
 .finderPop { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; padding: 4px; display: flex; flex-direction: column; border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 8px; background: #fff; background: light-dark(#fff, #303238); box-shadow: 0 8px 24px rgba(42,37,33,.12); box-shadow: 0 8px 24px light-dark(rgba(42,37,33,.12), rgba(0,0,0,.35)); }
 .finderRow { height: 40px; padding: 0 8px; display: flex; align-items: center; gap: 8px; border: none; border-radius: 6px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .16s ease; }
 @media (hover: hover) and (pointer: fine) { .finderRow:hover { background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); } }
@@ -40,18 +33,21 @@
 /* 자주 쓴 염색 — 머리 구분선 아래, 내용 쪽의 한 묶음(옅은 바탕 + 1px 테두리 — 머리에 붙어 보이지 않게, 사용자 지시).
    둘레 여백은 위아래 · 좌우끼리 같고, 아래 목록과는 구분선으로 가른다(pinkbean-design — 8px 8px 0 처럼 아래만 비우지 않는다).
    구분선 위아래 = 묶음의 아래 여백 8 · 목록 쪽의 위 여백 8 */
-.dyes { flex: 0 0 auto; margin: 8px; padding: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fcfaf7; background: light-dark(#fcfaf7, #34363c); }
+.dyes { flex: 0 0 auto; margin: 8px; padding: 8px; display: flex; align-items: center; gap: 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-behavior: smooth; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fcfaf7; background: light-dark(#fcfaf7, #34363c); }
 .dyesM { margin: 8px 12px; padding: 6px; }
 .dyesSep { flex: 0 0 auto; height: 1px; margin: 0 8px; background: #f2ebe3; background: light-dark(#f2ebe3, #40434b); }
 .dyesSepM { margin: 0 12px; }
-/* 칩 줄: 한 번에 --dye-n 칸(넓은 PC 5 · 그 밖 3)이 줄 폭을 똑같이 나눠 갖고, 나머지는 가로로 민다(10위까지) */
-.dyeRail { flex: 1 1 0; min-width: 0; display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-behavior: smooth; }
+/* 묶음이 곧 가로 스크롤 칸(흐림이 묶음 끝에 붙는다). 한 번에 --dye-n 칸(넓은 PC 5 · 그 밖 3)이 줄 폭을 똑같이 나눠 갖고, 나머지는 가로로 민다(10위까지) */
 .dyeChip { flex: 0 0 calc((100% - 8px * (var(--dye-n) - 1)) / var(--dye-n)); min-width: 0; padding: 6px 8px 7px; gap: 7px; }
 /* 모바일: 칩을 작게(사용자 지시 — 칩이 커서 카드가 작아졌다). 그림 28, '1위 N명' 한 줄, 여백 · 줄 사이를 줄인다 */
 .dyeChip.dyeChipM { padding: 5px 7px 6px; gap: 6px; row-gap: 5px; }
 .dyeThumbM { width: 28px; height: 28px; }
 .dyeTextM { flex-direction: row; align-items: baseline; gap: 4px; }
 @media (hover: hover) and (pointer: fine) { .dyeChip:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); } }
+/* 받기 전 스켈레톤 칩 — 받은 칩과 같은 구조 · 크기(글자 자리만 흐린 막대) */
+.dyeSkel { cursor: default; }
+.hold { visibility: hidden; } /* 고르기 전 빈 상태: 묶음 자리만 잡는다 */
+.skelText { color: transparent; border-radius: 4px; }
 .dyeChipOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fef5f8; background: light-dark(#fef5f8, #4c3039); }
 
 /* 코디 카드(목록 칸 안 — 쪽 넘김 · 격자는 목록의 것). 그림만 둔다 — 똑같은 코디는 거의 없어 '입은 사람 수'는 늘 1명이었다(사용자 지시로 뺐다) */

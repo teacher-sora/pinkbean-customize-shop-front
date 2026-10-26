@@ -7,8 +7,7 @@ import { CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin }
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 import { IconStar } from '../ui/Icons'
-import { preloadSnapshot } from '@/lib/core/snapRender'
-import { COMBO_SKIP, countLabel, lookChunk, useLookCount, withCardPv } from '@/lib/looks'
+import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
 
@@ -39,11 +38,9 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const dye = (e: React.MouseEvent) => { e.stopPropagation(); if (isDot) s.openDot(item); else s.openDye(item) }
   // 코디 조합 — 목록 자리에 이 아이템을 입은 코디와 자주 쓴 염색을 펼친다(combo/ComboPanel). 숨은 기능이 되지 않게 늘 보인다(사용자 지시)
   const combo = (e: React.MouseEvent) => { e.stopPropagation(); if (s.consumeSwipeClick()) return; s.openCombo(item) }
-  // 미리 받기(칩에 120ms 머물면 — 지나가기만 하면 받지 않는다): 첫 묶음과, 첫 12벌의 아이템 정보 · 정지 자세 그림 파일(snapRender.preloadSnapshot —
-  // 받기만, 합성은 누른 뒤). 합성까지 미리 걸면 그 일이 화면을 붙잡아 패널이 늦게 떴다(실측 CPU ×4: 패널 367 → 1149 · 1671ms)
-  // 터치는 머무름이 없어 손가락이 닿는 순간(떼기 전) 시작한다. 받은 것은 lib/looks · 그림 캐시에 남아 두 번 받지 않는다
+  // 미리 받기(칩에 120ms 머물면 — 지나가기만 하면 받지 않는다 · ShopContext warmCombo). 터치는 머무름이 없어 손가락이 닿는 순간(떼기 전) 시작한다
   const hover = useRef(0)
-  const comboPreload = () => { lookChunk(item.id, 0).then((d) => { const ix = s.index; if (ix) for (const r of d.looks.slice(0, 12)) void preloadSnapshot(withCardPv(r.s, s.cardPv), ix, true).catch(() => {}) }).catch(() => {}) }
+  const comboPreload = () => s.warmCombo(item.id)
   const comboEnter = (e: React.PointerEvent) => { if (e.pointerType !== 'mouse') return; window.clearTimeout(hover.current); hover.current = window.setTimeout(comboPreload, 120) }
   const comboLeave = () => window.clearTimeout(hover.current)
   const comboDown = (e: React.PointerEvent) => { if (e.pointerType !== 'mouse') comboPreload() }

@@ -15,12 +15,6 @@
 :global(html:not([data-pb-csr])) .tabOn { font-weight: 600; color: #fff; color: light-dark(#fff, #ececef); background: #ec86ac; background: light-dark(#ec86ac, #d15785); }
 
 /* ── 모바일 ── */
-.partNavM { flex: 0 0 auto; position: relative; height: 42px; border-top: 1px solid #f0e9e1; border-top: 1px solid light-dark(#f0e9e1, #42454d); background: #fff; background: light-dark(#fff, #303238); }
-.railM { height: 100%; padding: 0 10px; display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
-.partM { flex: 0 0 auto; height: 28px; padding: 0 11px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); background: transparent; }
-/* 코디 광장 분류는 4개뿐이라 폭을 나눠 채운다 */
-.partWideM { flex: 1 1 0; min-width: 0; padding: 0 4px; }
-:global(html:not([data-pb-csr])) .partM.partOn { font-weight: 600; color: #fff; color: light-dark(#fff, #ececef); background: #ec86ac; background: light-dark(#ec86ac, #d15785); }
 /* 모바일 목록 머리의 부위 탭: 미리보기 바로 밑에 붙이고, 고른 탭은 글자색 + 밑줄. 탭 높이 40(손가락 터치 높이) */
 .catTabsM { flex: 0 0 auto; height: 40px; padding: 0 6px; display: flex; align-items: stretch; overflow-x: auto; overflow-y: hidden; border-bottom: 1px solid #f2ebe3; border-bottom: 1px solid light-dark(#f2ebe3, #40434b); }
 .catTabM { flex: 0 0 auto; position: relative; padding: 0 11px; border: 0; background: transparent; font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }

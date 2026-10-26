@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import { type PlacedLayer } from '@/lib/core/assemble'
 import { type AnimaRace, type Index } from '@/lib/core/data'
@@ -49,8 +50,11 @@ export function warmSnap (snap: Snapshot, index: Index | null | undefined, view?
   if (composePeek(key, index, ar, view) !== undefined) return Promise.resolve()
   return composeSnapshotCached(key, snap, index, ar, view).catch(() => {})
 }
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom, chatText, defBalloon, fitW }: {
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom, chatText, defBalloon, fitW, keep }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
+  // 코디가 바뀌어 다시 합성하는 동안 그리던 그림을 두고, 다 되면 바꾼다(뼈대를 비추지 않는다) — 목록 카드(ItemThumb)와 같은 몸짓.
+  // 같은 코디에 연출만 바뀌는 카드(코디 조합 — 지금 연출을 얹는다)에 쓴다. 다른 코디로 갈아 끼우는 칸에는 쓰지 않는다
+  keep?: boolean
   fitW?: number // 캐릭터 높이(fraction × 칸 높이)가 칸 폭 × fitW 를 넘지 않게 — 좁고 긴 칸에서 배율이 2배로 뛰어 옆이 잘리지 않게(코디 조합 카드)
   zoom?: number // 미리보기 배율 단계(1~3)로 그린다 — 코디 비교의 칸들이 고른 칸(PreviewModel)과 같은 도트 크기가 되게(zoomStepScale)
   deco?: boolean // 칭호 · 훈장 · 말풍선도 그린다(불러오기 창 — 가져올 장식 토글이 무엇을 바꾸는지 보이게. 말풍선은 '안녕하세요')
@@ -62,6 +66,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
 }) {
   const { index } = useShop()
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
+  const placedRef = useRef(placed)
+  placedRef.current = placed
   const [ov, setOv] = useState<Map<string, HTMLCanvasElement>>(new Map())
   const [effects, setEffects] = useState<EffectDraw[]>([])
   const [particles, setParticles] = useState<ParticleDraw[] | undefined>(undefined)
@@ -124,7 +130,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     // 뼈대(스켈레톤)가 한 번 깜빡이지도 않는다.
     const hit = composePeek(key, index, animaRaces, view)
     if (hit !== undefined) { done(hit); return () => { alive = false } }
-    setPlaced(null)
+    if (!keep || !placedRef.current) setPlaced(null)
     const job = enqueueThumb(prioRef.current, () => composeSnapshotCached(key, snap, index, animaRaces, view).then(done))
     jobRef.current = job
     const t = retry < 3 ? setTimeout(() => { if (alive && !got) setRetry((n) => n + 1) }, RETRY_MS) : undefined
@@ -141,7 +147,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
       if (w > 0 && h > 0) setDims((d) => (d.w === w && d.h === h && d.dpr === dpr ? d : { w, h, dpr }))
     }
     measure()
-    const ro = new ResizeObserver(measure); ro.observe(el)
+    // 칸 크기가 바뀌면 그리기 전에 바로 반영한다(flushSync) — 다음 프레임으로 미루면 앞 격자의 칸 크기로 한 프레임 그려져 그림이 번쩍였다
+    const ro = new ResizeObserver(() => flushSync(measure)); ro.observe(el)
     window.addEventListener('resize', measure)
     return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
   }, [])

@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import { assemble, dropWeaponEffects, footOf, getFrameLayers, ringIllusion, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, loadParticle, loadParticleIndex, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
@@ -136,7 +137,8 @@ function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
       if (w > 0 && h > 0) setDims((d) => (d.w === w && d.h === h && d.dpr === dpr ? d : { w, h, dpr }))
     }
     measure()
-    const ro = new ResizeObserver(measure); ro.observe(el)
+    // 칸 크기가 바뀌면 그리기 전에 바로 반영한다(flushSync) — 다음 프레임으로 미루면 앞 격자의 칸 크기로 한 프레임 그려져 그림이 번쩍였다
+    const ro = new ResizeObserver(() => flushSync(measure)); ro.observe(el)
     window.addEventListener('resize', measure)
     return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
   }, [])
@@ -318,7 +320,8 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       if (w > 0 && h > 0) setDims((d) => (d.w === w && d.h === h && d.dpr === dpr ? d : { w, h, dpr }))
     }
     measure()
-    const ro = new ResizeObserver(measure); ro.observe(el)
+    // 칸 크기가 바뀌면 그리기 전에 바로 반영한다(flushSync) — 다음 프레임으로 미루면 앞 격자의 칸 크기로 한 프레임 그려져 그림이 번쩍였다
+    const ro = new ResizeObserver(() => flushSync(measure)); ro.observe(el)
     window.addEventListener('resize', measure)
     return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
   }, [])

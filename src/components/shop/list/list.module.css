@@ -78,7 +78,7 @@
 .empty { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; padding: 0 24px; }
 .emptyTitle { font-size: 15px; font-weight: 600; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); }
 .emptyHint { font-size: 12.5px; color: #b7ada2; color: light-dark(#b7ada2, #858893); }
-.emptyM { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 0 20px; }
+.emptyM { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 0 20px; }
 .emptyTitleM { font-size: 14px; font-weight: 600; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); }
 .emptyHintM { font-size: 12px; color: #b7ada2; color: light-dark(#b7ada2, #858893); }
 
