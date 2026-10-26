@@ -1,8 +1,8 @@
 /* 코디 미리보기 · 연출 설정 · 북마크. */
 
-.col { flex: 0 0 360px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.colHalf { flex-basis: 312px; }
-.colTablet { flex-basis: 330px; }
+.col { --pin-col: 360px; --pv-all-w: 76px; flex: 0 0 360px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.colHalf { --pin-col: 312px; --pv-all-w: 71px; flex-basis: 312px; }
+.colTablet { --pin-col: 330px; --pv-all-w: 71px; flex-basis: 330px; }
 /* 코디 비교: 칸 넷(2×2)이 들어가게 넓힌다 — 칸 하나가 지금 미리보기의 절반 높이 · 비슷한 폭. 목록은 그만큼 좁아진다(ShopContext.measure 가 열 수를 다시 고른다) */
 .colCmp { flex-basis: 640px; }
 .colHalf.colCmp { flex-basis: 470px; }
@@ -76,14 +76,11 @@
 /* 북마크 박스(PC) */
 .pinbox { flex: 0 0 auto; background: #fff; background: light-dark(#fff, #303238); border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; padding: 8px; }
 .pinHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-.pinTitle { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
 .count { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; padding: 0 6px; border-radius: 20px; background: #f2ece5; background: light-dark(#f2ece5, #40424a); color: #b7ada2; color: light-dark(#b7ada2, #858893); font-size: 10.5px; font-weight: 700; }
 .countOn { background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
 .clear { height: 26px; padding: 0 10px; border: 1px solid #f2ece5; border: 1px solid light-dark(#f2ece5, #40424a); border-radius: 6px; background: #fff; background: light-dark(#fff, #303238); font-size: 11px; font-weight: 600; color: #cdc2b7; color: light-dark(#cdc2b7, #787c88); cursor: default; }
 .clearOn { border-color: #f5e2eb; border-color: light-dark(#f5e2eb, #5a3a49); color: #c05a94; color: light-dark(#c05a94, #cb9ab6); cursor: pointer; }
 .pinActs { display: flex; align-items: center; gap: 6px; }
-.vsBtn { flex: 0 0 auto; height: 26px; padding: 0 12px; border: 1px solid #f5e2eb; border: 1px solid light-dark(#f5e2eb, #5a3a49); border-radius: 6px; background: #fff; background: light-dark(#fff, #303238); font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #d76d9a; color: light-dark(#d76d9a, #d293ae); cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
-.vsBtnOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); }
 .pinGrid { display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); gap: 6px; }
 .slot { position: relative; aspect-ratio: 1/1; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px dashed #e4dcd2; border: 1px dashed light-dark(#e4dcd2, #4d5059); background: #fbf8f4; background: light-dark(#fbf8f4, #36383f); cursor: default; transition: border-color .22s ease, background-color .22s ease; }
 .slotFilled { border-style: solid; border-color: #efe8e0; border-color: light-dark(#efe8e0, #43464e); background: #fff; background: light-dark(#fff, #303238); cursor: pointer; }
@@ -258,34 +255,57 @@
 }
 @media (prefers-reduced-motion: reduce) { .chatDock, .chatBox, .chatBoxOn { transition-duration: .01s; } }
 
-/* ── 코디 비교 판(CompareBoard) ──
-   2×2 격자. 칸(cmpPane)마다 배경 + 정지 그림, 고른 칸 위에는 움직이는 미리보기 한 겹(cmpLive)이 같은 격자 자리에 겹친다.
-   칸 테두리 · 글자 · 버튼은 그 위 한 겹(cmpRing)에 둔다 — 움직이는 미리보기가 칸을 덮어도 보인다. 선택은 테두리 + 글자 칸 색이 함께 바뀐다 */
-.cmpBoard { flex: 1 1 auto; min-height: 88px; position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; }
-/* 모바일: 히어로의 위(되돌리기) · 아래(연출 설정 · 부위 염색 · 북마크) 버튼 줄 사이 */
-.cmpBoardM { position: absolute; left: 8px; right: 8px; top: 46px; bottom: 50px; min-height: 0; padding: 0; gap: 6px; }
-.cmpPane { position: relative; min-width: 0; min-height: 0; border-radius: 8px; overflow: hidden; outline: none; } /* 쌓임 맥락을 만들지 않는다(contain · z-index 없음) — 테두리 줄이 움직이는 미리보기 위로 올라와야 한다 */
+/* ── 미리보기 무대(PreviewStage) ──
+   평소: 움직이는 미리보기 한 겹(live)이 무대를 채운다. 코디 비교: 무대가 격자(PC 2×2, 모바일 기본 보기는 한 줄 넷)가 되고
+   칸(cmpPane)마다 배경 + 정지 그림, 고른 칸 위에 같은 live 가 같은 격자 자리로 옮겨 겹친다(다시 만들지 않는다).
+   칸 테두리 · 글자 · 버튼은 그 위 한 겹(cmpRing). 선택은 테두리 + 글자 칸 색이 함께 바뀐다 */
+.live { position: absolute; inset: 0; }
+.heroStage { position: absolute; inset: 0; }
+.cmpBoard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; isolation: isolate; }
+.cmpBoard4 { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+/* 채팅 칸(PC)은 칸 아래 줄에 자리를 따로 둔다 — 칸 위에 겹치지 않게. 칸 8 + 채팅 34 + 아래 줄까지 10 */
+.cmpBoardChat { padding-bottom: 52px; }
+.colCmp .chatDock { left: 8px; right: 8px; } /* 칸 · 아래 줄과 같은 여백(8) — 선이 맞게 */
+/* 아래 줄(배율 · 액션 · 모션 · 표정)은 넓어진 열에서도 평소 폭 그대로 — 평소 폭 = (열 폭 − 테두리 · 여백 · 사이 38 − 연출 설정 버튼) ÷ 4. 연출 설정은 오른쪽 끝 */
+.colCmp .ctrlRow > :not(.pvAll) { flex: 0 0 calc((var(--pin-col) - 38px - var(--pv-all-w)) / 4); }
+.colCmp .pvAll { margin-left: auto; }
+/* 모바일: 히어로의 위(되돌리기) · 아래(연출 설정 · 부위 염색 · 비교 · 북마크) 버튼 줄 사이. 히어로 높이는 그대로 */
+.cmpBoardM { inset: 46px 8px 50px; padding: 0; gap: 6px; }
+.heroCmp { background: #fff; background: light-dark(#fff, #303238); }
+/* 칸은 쌓임 맥락을 만들지 않는다(contain · z-index 없음) — 테두리 줄이 움직이는 미리보기 위로 올라와야 한다 */
+.cmpPane { position: relative; min-width: 0; min-height: 0; border-radius: 8px; overflow: hidden; outline: none; }
 .cmpPaneOff { cursor: pointer; }
-.cmpLive { position: relative; z-index: 1; min-width: 0; min-height: 0; border-radius: 8px; overflow: hidden; contain: paint; }
+/* 그림(배경 · 캐릭터)은 테두리 안쪽에만 — 어두운 배경이 둥근 모서리에서 테두리 밖으로 번져 막대기처럼 보였다 */
+.cmpArt { position: absolute; inset: 1px; border-radius: 7px; overflow: hidden; }
+.cmpLive { position: relative; z-index: 1; margin: 1px; min-width: 0; min-height: 0; border-radius: 7px; overflow: hidden; contain: paint; }
 .cmpRing { position: absolute; inset: 0; z-index: 2; border: 1px solid #eee6dc; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; pointer-events: none; transition: border-color .22s ease; }
 .cmpRingOn { border: 1.5px solid #ec86ac; border: 1.5px solid light-dark(#ec86ac, #d15785); }
 .cmpRing button { pointer-events: auto; }
 .cmpTag { position: absolute; left: 6px; top: 6px; min-width: 22px; height: 22px; padding: 0 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: rgba(255,255,255,0.92); background: light-dark(rgba(255,255,255,0.92), rgba(48, 50, 56, 0.92)); font-size: 11px; font-weight: 700; color: #a89e93; color: light-dark(#a89e93, #8e919a); transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
 .cmpTagOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
+.cmpTagStatic { position: static; flex: 0 0 auto; }
 .cmpActs { position: absolute; right: 6px; top: 6px; display: flex; gap: 4px; }
-.cmpActs .heroIcon { width: 26px; height: 26px; }
-/* 빈 칸: 첫 자리는 [칸 더하기], 나머지는 북마크 빈칸과 같은 점선 */
+.cmpActBtn { width: 26px; height: 26px; }
+.cmpBoard4 .cmpActBtn { width: 22px; height: 22px; } /* 모바일 한 줄 넷(칸 약 90px) — 글자 칸과 겹치지 않게 */
+/* 모바일의 빈 칸: 첫 자리는 [칸 더하기], 나머지는 북마크 빈칸과 같은 점선 */
 .cmpAdd, .cmpEmpty { min-width: 0; min-height: 0; border: 1px dashed #e4dcd2; border: 1px dashed light-dark(#e4dcd2, #4d5059); border-radius: 8px; background: #fbf8f4; background: light-dark(#fbf8f4, #36383f); }
 .cmpAdd { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; font-family: inherit; font-size: 12px; font-weight: 600; color: #b7ada2; color: light-dark(#b7ada2, #858893); cursor: pointer; transition: border-color .22s ease, color .22s ease; }
-.cmpAdd svg { color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
+.cmpAdd svg, .cmpChipAdd svg { color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
 /* 점 위치는 고른 칸의 오른쪽 아래(오른쪽 위는 칸 버튼 자리) */
 .cmpDot { top: auto; bottom: 8px; right: 8px; }
-/* 모바일: 히어로를 크게 보기 높이로(캐릭터만 보기면 그대로), 바탕은 패널 색. [비교 닫기]는 왼쪽 위 */
-.heroCmp { height: max(216px, 56vh); background: #fff; background: light-dark(#fff, #303238); }
-.cmpExitM { position: absolute; left: 12px; top: 8px; height: 30px; gap: 4px; }
+
+/* PC 아래 칸의 비교 탭(CmpStrip): 칸 A B C D · [칸 더하기] · 빈 자리. 높이는 북마크 칸 한 줄(--pin-col — 비교 전 열 폭으로 잰 북마크 칸 크기) */
+.pinTabs { display: flex; }
+.cmpCount { font-size: 11px; font-weight: 600; color: #b7ada2; color: light-dark(#b7ada2, #858893); font-variant-numeric: tabular-nums; }
+.cmpStrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; height: calc((var(--pin-col) - 18px - 42px) / 8); }
+.cmpChip { min-width: 0; height: 100%; padding: 0 5px 0 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; border: 1px solid #efe8e0; border: 1px solid light-dark(#efe8e0, #43464e); border-radius: 6px; background: #fff; background: light-dark(#fff, #303238); cursor: pointer; transition: border-color .22s ease, background-color .22s ease; }
+.cmpChipOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); cursor: default; }
+.cmpChipActs { display: flex; gap: 4px; }
+.cmpChipAdd { justify-content: center; gap: 5px; border-style: dashed; border-color: #e4dcd2; border-color: light-dark(#e4dcd2, #4d5059); background: #fbf8f4; background: light-dark(#fbf8f4, #36383f); font-family: inherit; font-size: 12px; font-weight: 600; color: #b7ada2; color: light-dark(#b7ada2, #858893); }
+.cmpChipEmpty { aspect-ratio: auto; height: 100%; }
 @media (hover: hover) and (pointer: fine) {
-  .cmpPaneOff:hover .cmpRing { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); }
-  .cmpAdd:hover { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
+  .cmpPaneOff:hover .cmpRing, .cmpChip:not(.cmpChipOn):hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); }
+  .cmpAdd:hover, .cmpChipAdd:hover { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
 }
 .cmpPane:focus-visible .cmpRing { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); }
-@media (prefers-reduced-motion: reduce) { .cmpRing, .cmpTag, .cmpAdd { transition-duration: .01s; } }
+@media (prefers-reduced-motion: reduce) { .cmpRing, .cmpTag, .cmpAdd, .cmpChip { transition-duration: .01s; } }

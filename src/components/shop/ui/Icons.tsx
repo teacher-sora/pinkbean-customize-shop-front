@@ -101,6 +101,10 @@ const DirIcon = ({ size = 15, y }: P & { y?: boolean }) => (
 )
 export const IconDirX = (p: P) => <DirIcon {...p} />
 export const IconDirY = (p: P) => <DirIcon {...p} y />
+// 코디 비교(칸 넷)
+export const IconCompare = ({ size = 15 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></svg>
+)
 export const IconTakeDown = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 4.5v11m0 0l-4.2-4.2M12 15.5l4.2-4.2M5 19h14" /></svg>
 )

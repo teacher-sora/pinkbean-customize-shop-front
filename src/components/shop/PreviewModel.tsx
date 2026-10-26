@@ -28,6 +28,7 @@ import { isStacked } from '@/lib/useBreakpoint'
 import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
 import { peekSavedZoom, useShop, type DotOffsets } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
+import { useIsoLayoutEffect } from '@/lib/uiState'
 import styles from './PreviewModel.module.css'
 
 // 라이딩 중 "앉은 채" 나오는 액션(캐릭터=sit, 재규어가 대신 움직임)은 shopData.ridingSeatedSet 하나로 정한다 —
@@ -50,8 +51,8 @@ const HERO_BASE_H = 216 // 모바일 히어로 기본 높이(preview.module.css 
 const FLOAT_AMP = 5
 const FLOAT_MS = 2400
 
-// cmp: 코디 비교의 고른 칸(preview/CompareBoard) — 칸 높이에 맞춘 비율로 그리고, 그림을 다 그릴 때마다 알린다(칸을 옮긴 직후 직전 칸의 그림이 비치지 않게 가려 두었다가 연다).
-export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: { fraction: number; onDrawn: () => void } } = {}) {
+// cmp: 코디 비교의 고른 칸(preview/PreviewStage) — 칸 높이에 맞춘 비율로 그리고, 그림을 다 그릴 때마다 알린다(칸을 옮긴 직후 직전 칸의 그림이 비치지 않게 가려 두었다가 연다).
+export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: { fraction: number; onDrawn: (w: number, h: number) => void } } = {}) {
   const shop = useShop()
   const { index, bp } = shop
   // 염색 비활성화 슬롯은 제외된 렌더용 값
@@ -64,15 +65,19 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   const [effectIndex, setEffectIndex] = useState<Set<string>>(new Set())
   const [effMetas, setEffMetas] = useState<Map<string, EffectMeta | null>>(new Map()) // null = 로드 실패(대기 해제용)
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])
-  const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
+  // cf = 잴 때의 비교 칸 비율(비교 중이 아니면 null). 비율을 칸 크기와 **같이** 바꾼다 — 비교를 켜고 끌 때 새 비율 · 옛 크기로 한 번 그리면
+  // 캐릭터와 배경 장면이 크게 그려졌다가 줄어 화면이 흔들렸다(사용자 지적)
+  const [dims, setDims] = useState<{ w: number; h: number; dpr: number; cf: number | null }>({ w: 0, h: 0, dpr: 1, cf: null })
+  const cmpFracRef = useRef<number | null>(cmp?.fraction ?? null)
+  cmpFracRef.current = cmp?.fraction ?? null
   // 세로 스택(태블릿+모바일)은 미리보기 영역이 낮고 넓다 → PC 비율(0.25)이면 모델이 콩알만 해진다.
   // 모바일 미리보기 크기(lib/heroView): 칸이 커져도 캐릭터를 칸 높이에 그대로 비례시키지 않는다(캐릭터만에서 화면을 넘친다).
   // 마네킹 키를 기본 칸 기준의 1.5배(크게) · 2배(캐릭터만)로 정하고, 남는 자리는 여백(모자 · 무기 · 이펙트가 잘리지 않게)으로 둔다.
   const hv = useHeroView()
-  const heroGrow = !src && !cmp && bp === 'mobile' && hv !== 'base' ? (hv === 'wide' ? 1.5 : 2) : 1
+  const heroGrow = !src && dims.cf == null && bp === 'mobile' && hv !== 'base' ? (hv === 'wide' ? 1.5 : 2) : 1
   const cmpDrawn = useRef(cmp?.onDrawn)
   cmpDrawn.current = cmp?.onDrawn
-  const fraction = src ? src.fraction(dims.h) : cmp ? cmp.fraction : isStacked(bp)
+  const fraction = src ? src.fraction(dims.h) : dims.cf != null ? dims.cf : isStacked(bp)
     ? (heroGrow > 1 && dims.h > 0 ? (PREVIEW_FRACTION_MOBILE * HERO_BASE_H * heroGrow) / dims.h : PREVIEW_FRACTION_MOBILE)
     : PREVIEW_FRACTION
   const bare = !!src?.bare
@@ -101,18 +106,22 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   } | null>(null)
 
   // 표시 영역(div) 크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.
+  const measureRef = useRef<() => void>(() => {})
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
     const measure = () => {
-      const w = el.clientWidth, h = el.clientHeight, dpr = window.devicePixelRatio || 1
-      if (w > 0 && h > 0) setDims((d) => (d.w === w && d.h === h && d.dpr === dpr ? d : { w, h, dpr }))
+      const w = el.clientWidth, h = el.clientHeight, dpr = window.devicePixelRatio || 1, cf = cmpFracRef.current
+      if (w > 0 && h > 0) setDims((d) => (d.w === w && d.h === h && d.dpr === dpr && d.cf === cf ? d : { w, h, dpr, cf }))
     }
+    measureRef.current = measure
     measure()
     const ro = new ResizeObserver(measure); ro.observe(el)
     window.addEventListener('resize', measure)
     return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
   }, [])
+  // 비교를 켜고 끄면 칸 크기가 바뀐 그 커밋에서 바로 다시 잰다(그리기 전에 — ResizeObserver 를 기다리면 한 번 어긋나게 그린다)
+  useIsoLayoutEffect(() => { measureRef.current() }, [cmp?.fraction])
 
   const toneEntry = index
     ? index.base.tones.find((t) => t.tone === tone) || index.base.tones.find((t) => t.tone === index.base.default) || index.base.tones[0]
@@ -599,7 +608,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       // 라이딩은 centerXOnly 로 캐릭터 body navel 을 "가로"만 박스 중앙에 동적 고정 → 포즈(sit/rope/alert) 무관하게
       // 좌우 중앙. 세로(Y)는 애니메이션 드리프트를 살려 발은 고정되고 상체가 오르내린다(허공 울렁임 방지).
       const seq = ++drawSeqRef.current
-      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, centerBox: bareBox, override: dyeOverrides, effects, particles, chat: chatRef.current, chatClock: now, chatRef: chatAt ?? undefined, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).then(() => { if (!cancelled && seq === drawSeqRef.current) cmpDrawn.current?.() }).catch(() => {})
+      renderCharacter(canvas, f.placed, { scale: pl.scale, box: pl.box, anchor: fy ? { x: pl.anchor.x, y: pl.anchor.y + fy } : pl.anchor, flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, centerBox: bareBox, override: dyeOverrides, effects, particles, chat: chatRef.current, chatClock: now, chatRef: chatAt ?? undefined, ringFloor, shouldCancel: () => cancelled || seq !== drawSeqRef.current }).then(() => { if (!cancelled && seq === drawSeqRef.current) cmpDrawn.current?.(dims.w, dims.h) }).catch(() => {})
     }
     // 장착 즉시 합성: 전 프레임 로드를 기다리지 말고 "지금 보일 프레임에 필요한 스프라이트만" 먼저 로드해 바로 그린다.
     const f0 = frames[0]

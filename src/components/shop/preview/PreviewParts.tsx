@@ -8,7 +8,10 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import type { ListItem } from '@/lib/core/data'
 import { takePvIntent } from '@/lib/guide'
 import { SLOT_TO_CAT } from '@/lib/shopData'
-import { useShop } from '../ShopContext'
+import { CMP_MAX, useShop } from '../ShopContext'
+import { Seg, type SegOpt } from '../ui/controls'
+import { IconAdd, IconClose, IconTakeDown } from '../ui/Icons'
+import { cmpLetter, useCmpLeave } from './PreviewStage'
 import { DyeSprite } from '../render/DyeSprite'
 import { glideTo, place, release } from '../surface/glide'
 import { useInnerSlide, SWAP_MS } from '../surface/innerSlide'
@@ -47,28 +50,73 @@ function PinCount({ n }: { n: number }) {
   return <span className={clsx(styles.count, n > 0 && styles.countOn)}>{n}</span>
 }
 
-// [비교] = 코디 비교를 켜고 끈다(미리보기가 A B C D 칸 판으로 — preview/CompareBoard). 비우기 오른쪽, 한 그룹(PC · 모바일 같은 자리)
-function CompareBtn({ onDone }: { onDone?: () => void }) {
+// 비교 칸 다루기 — [프리셋에 담기](그 칸을 비교 전 프리셋에 덮어씀) · [빼기](한 칸은 남긴다). 둘 다 두 번 눌러야 한다(lib/confirmTwice).
+// PC 는 아래 칸의 비교 탭(CmpStrip), 모바일은 비교 칸 위(PreviewStage)에 둔다.
+export function CmpActs({ id }: { id: string }) {
   const s = useShop()
+  const back = s.presets.find((p) => p.id === s.cmpBack)?.name ?? ''
+  const one = s.cmpIds.length <= 1
   return (
-    <button type="button" data-guide="vs" onClick={() => { s.toggleCompare(); onDone?.() }} aria-pressed={s.cmpOn}
-      title={s.cmpOn ? '코디 비교 닫기' : '여러 코디를 나란히 놓고 비교하기'} className={clsx('pb-ghost', styles.vsBtn, s.cmpOn && styles.vsBtnOn)}>비교</button>
+    <>
+      <button type="button" disabled={!back} title={back ? `'${back}'에 이 칸 담기` : '담을 프리셋이 없어요'} aria-label="프리셋에 담기" {...{ [CONFIRM_ATTR]: `cmp:save:${id}` }}
+        onClick={(e) => { e.stopPropagation(); if (confirmTwice(`cmp:save:${id}`, `한 번 더 누르면 '${back}'을 이 칸으로 바꿔요`)) s.cmpSave(id) }}
+        className={clsx(styles.heroIcon, styles.cmpActBtn, back && styles.heroIconOn)}><IconTakeDown size={14} /></button>
+      <button type="button" disabled={one} title={one ? '칸은 하나 이상 있어야 해요' : '이 칸 빼기'} aria-label="이 칸 빼기" {...{ [CONFIRM_ATTR]: `cmp:x:${id}` }}
+        onClick={(e) => { e.stopPropagation(); if (confirmTwice(`cmp:x:${id}`, '한 번 더 누르면 이 칸을 빼요')) s.removeCmp(id) }}
+        className={clsx(styles.heroIcon, styles.cmpActBtn, !one && styles.heroIconOn)}><IconClose size={13} /></button>
+    </>
   )
 }
 
-// PC: 미리보기 아래 8칸 박스. 슬롯을 누르면 입혀보기(토글), ✕ 로 해제. ✕ · 비우기는 두 번 눌러야 지운다(lib/confirmTwice).
+// PC 비교 탭의 본문: 칸 A B C D(누르면 그 칸을 고른다 + 칸 다루기) · [칸 더하기] · 빈 자리. 높이는 북마크 칸 한 줄과 같다(탭을 바꿔도 아래 칸이 커지지 않게).
+function CmpStrip() {
+  const s = useShop()
+  const leave = useCmpLeave()
+  return (
+    <div className={styles.cmpStrip}>
+      {Array.from({ length: CMP_MAX }, (_, i) => {
+        const id = s.cmpIds[i]
+        if (!id) {
+          if (i === s.cmpIds.length) return (
+            <button key={i} type="button" onClick={() => leave(s.addCmp)} title="고른 칸을 복사해 칸 더하기" className={clsx(styles.cmpChip, styles.cmpChipAdd)}>
+              <IconAdd size={14} /><span>칸 더하기</span>
+            </button>
+          )
+          return <div key={i} aria-hidden className={clsx('pb-slot', styles.slot, styles.cmpChipEmpty)} />
+        }
+        const on = id === s.selectedPreset
+        return (
+          <div key={id} role="button" tabIndex={0} aria-pressed={on} title={on ? `${cmpLetter(i)} 칸(고른 칸)` : `${cmpLetter(i)} 칸 고르기`}
+            onClick={() => { if (!on) leave(() => s.pickCmp(id)) }} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !on) { e.preventDefault(); leave(() => s.pickCmp(id)) } }}
+            className={clsx(styles.cmpChip, on && styles.cmpChipOn)}>
+            <span className={clsx(styles.cmpTag, styles.cmpTagStatic, on && styles.cmpTagOn)}>{cmpLetter(i)}</span>
+            <span className={styles.cmpChipActs}><CmpActs id={id} /></span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// PC: 미리보기 아래 칸 — 탭 둘 [북마크] [비교](사용자 지시: 모드처럼). 비교 탭을 고르면 코디 비교가 켜지고(미리보기가 칸 판으로), 북마크 탭으로 돌아오면 꺼진다.
+// 북마크: 8칸. 슬롯을 누르면 입혀보기, ✕ 로 해제. ✕ · 비우기는 두 번 눌러야 지운다(lib/confirmTwice).
+// 칸 높이는 탭과 상관없이 같다(비교 중에 열이 넓어져도 — preview.module.css 의 --pin-col).
+const BOX_TABS: SegOpt<'bm' | 'cmp'>[] = [{ v: 'bm', l: '북마크', t: '북마크한 아이템' }, { v: 'cmp', l: '비교', t: '여러 코디를 나란히 놓고 비교하기' }]
 export function BookmarkBox() {
   const s = useShop()
   const n = s.bookmarks.length
+  const leave = useCmpLeave()
+  const tab = s.cmpOn ? 'cmp' : 'bm'
+  const pick = (v: 'bm' | 'cmp') => { if (v === tab) return; if (v === 'cmp') leave(s.toggleCompare); else s.toggleCompare() }
   return (
     <div data-guide="bm" className={clsx('pb-pinbox', styles.pinbox)}>
       <div className={styles.pinHead}>
-        <span className={styles.pinTitle}>북마크<PinCount n={n} /></span>
+        <span data-guide="vs" className={styles.pinTabs}><Seg opts={BOX_TABS} value={tab} onPick={pick} /></span>
         <span className={styles.pinActs}>
-          <ClearBookmarks n={n} />
-          <CompareBtn />
+          {tab === 'bm' ? <><PinCount n={n} /><ClearBookmarks n={n} /></> : <span className={styles.cmpCount}>{s.cmpIds.length} / {CMP_MAX}</span>}
         </span>
       </div>
+      {tab === 'cmp' ? <CmpStrip /> : (
       <div className={styles.pinGrid}>
         {Array.from({ length: 8 }, (_, i) => {
           const it = s.bookmarks[i]
@@ -85,11 +133,12 @@ export function BookmarkBox() {
           )
         })}
       </div>
+      )}
     </div>
   )
 }
 
-// 모바일: 북마크 시트 본문. 북마크 줄(비우기 · 비교) → 4×2 = 항상 8칸 예약(빈칸 점선). 칩을 누르면 입히고 닫는다.
+// 모바일: 북마크 시트 본문. 북마크 줄(비우기) → 4×2 = 항상 8칸 예약(빈칸 점선). 칩을 누르면 입히고 닫는다.
 // 북마크 줄의 윗선은 상시 유지하고 margin-top:-1px 로 헤더 밑선과 정확히 겹친다.
 // 본문은 스크롤 가능(브라우저 내비게이션 바가 올라와 시트가 줄어도 잘리지 않게).
 export function BookmarkSheetBody() {
@@ -102,7 +151,6 @@ export function BookmarkSheetBody() {
         <span className={styles.bmTitle}>북마크<PinCount n={n} /></span>
         <span className={styles.pinActs}>
           <ClearBookmarks n={n} />
-          <CompareBtn onDone={s.closeSurface} />
         </span>
       </div>
       <div className={styles.bmBody}>

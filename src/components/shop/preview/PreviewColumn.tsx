@@ -2,21 +2,18 @@
 
 // 코디 미리보기(PC·절반·태블릿): 헤더(좌 부위 염색 · 배경 / 우 되돌리기 · 다시실행) · 스테이지(피팅룸 장면 + PreviewModel + 점 위치) ·
 // 연출 설정 드로어 · 상시 필드 행 · 북마크 박스.  모바일은 MobileHero.
-// 코디 비교 중에는 스테이지 자리가 비교 판(CompareBoard — 2×2 칸)이 되고 열이 넓어진다(목록은 그만큼 좁아져 열 수가 준다). 헤더 오른쪽에 [비교 닫기].
+// 무대(캐릭터 · 배경)는 PreviewStage — 코디 비교 중에는 2×2 칸이 되고 열이 넓어진다(목록은 그만큼 좁아져 열 수가 준다). 켜고 끄기는 아래 칸의 [비교] 탭.
 
 import clsx from 'clsx'
 import { useCallback, useEffect, useState } from 'react'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot } from '@/lib/guide'
 import { DOT_MOVER_IDS } from '@/lib/shopData'
-import PreviewModel from '../PreviewModel'
 import ChatBar from './ChatBar'
 import { useShop } from '../ShopContext'
-import { IconBookmark, IconBubble, IconCaretDown, IconClose, IconDot, IconDrop, IconRedo, IconScene, IconUndo } from '../ui/Icons'
-import CompareBoard from './CompareBoard'
-import PinkbeanRate from './PinkbeanRate'
+import { IconBookmark, IconBubble, IconCaretDown, IconCompare, IconDot, IconDrop, IconRedo, IconScene, IconUndo } from '../ui/Icons'
+import PreviewStage, { useCmpLeave } from './PreviewStage'
 import { BookmarkBox } from './PreviewParts'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
-import StageBg from './StageBg'
 import styles from './preview.module.css'
 
 function useDotEquipped() {
@@ -42,7 +39,6 @@ export default function PreviewColumn() {
     window.addEventListener(GUIDE_DRAWER_EVENT, on)
     return () => window.removeEventListener(GUIDE_DRAWER_EVENT, on)
   }, [])
-  const dotItem = useDotEquipped()
   const histCls = (on: boolean) => clsx('pb-icon', styles.iconBtn, on && styles.histOn)
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
   const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
@@ -64,28 +60,13 @@ export default function PreviewColumn() {
             </button>
           </div>
           <div data-guide="undo" className={styles.hist}>
-            {s.cmpOn && (
-              <button type="button" onClick={s.toggleCompare} title="코디 비교 닫기(비교 전 프리셋으로)" className={clsx('pb-ddbtn', styles.partBtn, styles.partBtnOn)}>
-                <IconClose size={12} /><span>비교 닫기</span>
-              </button>
-            )}
             <button type="button" onClick={s.undo} disabled={!s.canUndo} title={s.canUndo ? '되돌리기' : '되돌릴 것이 없어요'} aria-label="되돌리기" className={histCls(s.canUndo)}><IconUndo /></button>
             <button type="button" onClick={s.redo} disabled={!s.canRedo} title={s.canRedo ? '다시실행' : '다시 실행할 것이 없어요'} aria-label="다시실행" className={histCls(s.canRedo)}><IconRedo /></button>
           </div>
         </div>
 
         {/* data-pv-stage: 연출 설정 고르기(PvPicker)가 이 영역 안 가운데에 뜬다 — 미리보기 밖으로 나가지 않게. */}
-        {s.cmpOn ? <CompareBoard mobile={false} /> : (
-          <div data-pv-stage className={styles.stage}>
-            <StageBg />
-            <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경" data-guide="dot"
-              className={clsx('pb-ghost', styles.dotBtn, dotItem && styles.dotBtnOn)}>
-              <IconDot />점 위치
-            </button>
-            <PinkbeanRate />
-            <div className={styles.model}><PreviewModel /></div>
-          </div>
-        )}
+        <PreviewStage mobile={false} />
 
         <div className={clsx('pb-drawer', styles.drawer, pvAll && styles.drawerOpen)}>
           {/* 채팅 칸 — 늘 있다(말풍선 반지가 없으면 기본 흰 말풍선). 드로어 윗변에 붙어 함께 오르내린다(접히면 아래 줄 바로 위) */}
@@ -113,7 +94,7 @@ export default function PreviewColumn() {
 }
 
 // 모바일 히어로: 피팅룸 장면 위 모델 + 되돌리기/다시실행 · 연출 설정 · 우하단 [점 위치][부위 염색][북마크].
-// 코디 비교 중에는 히어로를 키우고(크게 보기 높이) 위 · 아래 버튼 줄 사이를 비교 판이 채운다. 왼쪽 위에 [비교 닫기].
+// 코디 비교는 오른쪽 아래 [비교] 버튼으로 켜고 끈다 — 히어로 높이는 그대로, 위 · 아래 버튼 줄 사이를 비교 칸이 채운다(PreviewStage).
 export function MobileHero() {
   const s = useShop()
   const dotItem = useDotEquipped()
@@ -121,6 +102,7 @@ export function MobileHero() {
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing
   const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
   const n = s.bookmarks.length
+  const leave = useCmpLeave()
   // 채팅 칸(명찰 · 말풍선): 아래 줄의 말풍선 버튼으로 올린다. 버튼은 늘 있다(말풍선 반지가 없으면 기본 흰 말풍선 — 사용자 지시)
   const canChat = s.chatOn
   const [chat, setChat] = useState(false)
@@ -128,16 +110,7 @@ export function MobileHero() {
   const closeChat = useCallback(() => setChat(false), [])
   return (
     <div data-hero className={clsx(styles.hero, s.cmpOn && styles.heroCmp)}>
-      {s.cmpOn ? <CompareBoard mobile /> : <>
-        <StageBg />
-        <PinkbeanRate />
-        <div className={styles.heroModel}><PreviewModel /></div>
-      </>}
-      {s.cmpOn && (
-        <button type="button" onClick={s.toggleCompare} title="코디 비교 닫기(비교 전 프리셋으로)" className={clsx(styles.pvOpenBtn, styles.pvOpenBtnOn, styles.cmpExitM)}>
-          <IconClose size={12} />비교 닫기
-        </button>
-      )}
+      <PreviewStage mobile />
       <div data-guide="undo" className={styles.heroHist}>
         <button type="button" onClick={s.undo} disabled={!s.canUndo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
         <button type="button" onClick={s.redo} disabled={!s.canRedo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>
@@ -163,6 +136,10 @@ export function MobileHero() {
         </button>
         <button type="button" onClick={() => s.openSheet('part')} title="부위를 골라 염색하기" aria-label="부위 염색" className={clsx(styles.fab, styles.partFab, partOpen && styles.fabOn)}>
           <IconDrop size={16} />
+        </button>
+        <button type="button" data-guide="vs" onClick={() => (s.cmpOn ? s.toggleCompare() : leave(s.toggleCompare))} aria-pressed={s.cmpOn} title={s.cmpOn ? '코디 비교 끄기' : '여러 코디를 나란히 놓고 비교하기'} aria-label="코디 비교"
+          className={clsx(styles.fab, styles.partFab, s.cmpOn && styles.fabOn)}>
+          <IconCompare />
         </button>
         <button type="button" onClick={() => s.openSheet('bm')} title="북마크 간이 가방" aria-label="북마크" className={clsx(styles.fab, bmOpen && styles.fabOn)}>
           <IconBookmark filled={bmOpen} />
