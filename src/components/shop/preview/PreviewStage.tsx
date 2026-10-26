@@ -68,7 +68,9 @@ function Pane({ id, index, active, fraction, pos, onPick }: { id: string; index:
       {/* 그림은 테두리 안쪽(1px)에만 — 어두운 배경이 둥근 모서리의 테두리 바깥으로 번져 보이지 않게 */}
       <div className={styles.cmpArt}>
         {shown && <CardStageBg sel={shown.bg} fraction={fraction} zoom={zoom} />}
-        {shown && <SnapThumb snap={shown} fraction={fraction} zoom={zoom} margin={PREVIEW_MARGIN} view tagName={s.chatName} />}
+        {/* 칭호 · 명찰 · 훈장 · 말풍선도 그 칸의 것으로(고른 칸의 미리보기와 같은 규칙 — 말풍선은 보낸 말이 있을 때만) */}
+        {shown && <SnapThumb snap={shown} fraction={fraction} zoom={zoom} margin={PREVIEW_MARGIN} view tagName={s.chatName} baseTag={s.chatOn && !!shown.pv?.baseTag}
+          deco chatText={s.chatMsg ? s.chatMsg.text : null} defBalloon={s.chatDefault} />}
       </div>
       <div className={clsx(styles.cmpRing, active && styles.cmpRingOn)}>
         <span className={clsx(styles.cmpTag, active && styles.cmpTagOn)}>{cmpLetter(index)}</span>
