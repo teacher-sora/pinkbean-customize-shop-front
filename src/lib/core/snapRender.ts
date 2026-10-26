@@ -40,8 +40,10 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   // 시선=왼쪽 고정(gaze='left' → flip 없음) + 저장된 귀/무기모션 반영.
   // stance=true: 무기 모션은 **자세까지** 바꾼다(두손 → stand2). 미리보기와 같은 규칙으로 맞춘다
   //   (카드를 늘 stand1 로 그리면 '두손'으로 둔 코디가 광장에서 다른 자세로 보인다).
+  // view 면 시선도 따른다 — 뒷쪽 = 밧줄(rope) 첫 프레임 정지(미리보기 buildView 와 같은 규칙. 오른쪽 반전은 그리는 쪽 SnapThumb 이 한다)
+  const back = view && spv.gaze === 'back'
   const TV0 = view
-    ? { ...THUMB_VIEW, action: resolveAction(spv.action || 'basic', spv.weapon || 'basic'), expression: snapExpr || spv.expr || THUMB_VIEW.expression, ear: spv.ear || THUMB_VIEW.ear, weaponMotion: spv.weapon || THUMB_VIEW.weaponMotion }
+    ? { ...THUMB_VIEW, action: back ? 'rope' : resolveAction(spv.action || 'basic', spv.weapon || 'basic'), expression: snapExpr || spv.expr || THUMB_VIEW.expression, ear: spv.ear || THUMB_VIEW.ear, weaponMotion: spv.weapon || THUMB_VIEW.weaponMotion }
     : thumbView('left', snapExpr, spv.ear, spv.weapon, true).view
   // 서기 자세는 착용한 무기가 정한다(두손 전용 무기 → stand2) — assemble.weaponPose 주석 참고.
   const TV = weaponPose(equipMetas.find(({ slot }) => slot === 'weapon')?.meta, TV0)
@@ -50,14 +52,15 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   //   · 방패는 탑승 중 숨김(직업 불일치), 무기는 앉은 채에선 미출력.
   //   카드의 액션은 정지 서기('basic')다. 연출 고르기 미리보기(view)만 스냅샷의 액션을 쓴다(일어서는 액션도 있다).
   const uiAction = view ? (spv.action || 'basic') : 'basic'
-  const seated = !!rideId && ridingSeatedSet(rideItem).has(uiAction)
+  // 뒷쪽은 탑승해도 앉히지 않는다(줄타기 뒷모습) — 뒤에서도 앉는 탈것(ridingBackSit)만 예외. 미리보기와 같은 규칙
+  const seated = !!rideId && (!back || !!rideItem?.ridingBackSit) && ridingSeatedSet(rideItem).has(uiAction)
   const charTV = seated ? { ...TV, action: 'sit' } : TV
   const rideTV = TV.action === 'proneStab' ? { ...TV, action: 'prone' } : TV // 탈것 프레임 키 매핑(엎드리기)
   const shown = equipMetas.filter(({ slot }) => !(rideId && slot === 'shield') && !(seated && slot === 'weapon'))
   // 정지 프레임(0번)이 하필 뒷모습인 액션이 있다 — 두손 스윙(마무리) 0번. 미리보기와 같은 규칙으로 판단한다
   // (안 하면 긴 헤어가 backBody 를 덮어 카드가 '머리만' 나온다 — assemble.isBackFrame 주석 참고).
   // 멈춘 프레임(연출 고르기의 프레임 칸 · 코디 프로필 — view 일 때만): 그 액션의 fi 번째 자세. 없으면 대표 프레임(지금까지와 같다)
-  const fi = view && spv.frame != null && spv.frame >= 0 && !seated && spv.frame < frameDelays(bodyMeta, charTV).length ? spv.frame : undefined
+  const fi = view && !back && spv.frame != null && spv.frame >= 0 && !seated && spv.frame < frameDelays(bodyMeta, charTV).length ? spv.frame : undefined
   const backFrame = isBackFrame(bodyMeta, charTV, fi)
   // 무기 이펙트를 끄면 **무기 자신의 이펙트 레이어**도 뺀다 — 미리보기(PreviewModel)와 같은 규칙(assemble.dropWeaponEffects).
   //   이펙트는 ItemEff(별도 png)뿐 아니라 무기 프레임 안에 레이어로 박혀 있기도 해서(예 01703646: effect 90장),
