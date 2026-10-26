@@ -29,7 +29,7 @@ function Sprite({ s }: { s: StillSprite }) {
   )
 }
 
-// still: 움직이지 않는 그림(②)만 깐다. 장면(③)은 종류마다 캔버스가 하나라, 미리보기 밖의 칸(광장 · VS)이 가져가면 미리보기에서 빠진다.
+// still: 움직이지 않는 그림(②)만 깐다. 장면(③)은 종류마다 캔버스가 하나라, 미리보기 밖의 칸(광장 등)이 가져가면 미리보기에서 빠진다.
 export default function SceneCanvas({ kind, className, still }: { kind: 'sky' | 'room'; className?: string; still?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   const veil = useRef<HTMLDivElement>(null)

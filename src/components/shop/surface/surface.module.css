@@ -148,29 +148,6 @@
 .bgDel { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 4px; background: #fff; background: light-dark(#fff, #303238); color: #a89e93; color: light-dark(#a89e93, #8e919a); cursor: pointer; box-shadow: 0 1px 4px rgba(42,37,33,.12); box-shadow: 0 1px 4px light-dark(rgba(42,37,33,.12), rgba(25, 22, 20, 0.192)); }
 @media (hover: hover) and (pointer: fine) { .bgDel:hover { border-color: #f5e2eb; border-color: light-dark(#f5e2eb, #5a3a49); color: #d1735f; color: light-dark(#d1735f, #d19f94); } }
 
-/* ── 북마크 VS(코디 비교) ── */
-.vsBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 12px; gap: 10px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
-.vsRow { flex: 1 1 auto; min-height: 230px; display: flex; gap: 10px; }
-.vsRowM { flex: 0 0 auto; height: 236px; min-height: 0; }
-.vsPane { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.vsPaneM { gap: 5px; }
-.vsLabelRow { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.vsLabelRowM { padding-top: 10px; }
-.vsLabel { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: #a89e93; color: light-dark(#a89e93, #8e919a); letter-spacing: .02em; }
-.vsLabelM { font-size: 10.5px; }
-.vsName { min-width: 0; font-size: 11.5px; font-weight: 500; color: #3d372f; color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vsNameM { font-size: 11px; }
-.vsStage { position: relative; flex: 1 1 auto; min-height: 0; border: 1px solid #eee6dc; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; overflow: hidden; }
-.vsHr { flex: 0 0 auto; height: 1px; background: #f0e9e1; background: light-dark(#f0e9e1, #42454d); }
-.vsPick { flex: 0 0 auto; }
-.vsPickLabel { display: flex; align-items: baseline; gap: 7px; font-size: 11px; font-weight: 700; color: #a89e93; color: light-dark(#a89e93, #8e919a); margin-bottom: 7px; }
-.vsPickHint { font-size: 10.5px; font-weight: 500; color: #c2b8ad; color: light-dark(#c2b8ad, #7e828d); }
-.vsChips { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 7px; }
-.vsChipsM { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
-.vsChip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1.5px solid #f0e9e1; border: 1.5px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
-.vsChipOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); }
-.vsChipSprite { width: calc(100% - 8px); height: calc(100% - 8px); display: flex; align-items: center; justify-content: center; }
-
 /* 염색 다이얼로그 안에서 화면만 바뀌는 슬라이드(색 조절 ↔ 염색표) — 서피스 본문 슬라이드와 같은 곡선·시간. */
 .innerSlide { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
 /* '테두리 포함' 체크 — 왼쪽 네모 안에 체크가 나타났다 사라진다(켜짐·꺼짐 같은 곡선). */

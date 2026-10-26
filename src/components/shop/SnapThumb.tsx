@@ -4,14 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import { type PlacedLayer } from '@/lib/core/assemble'
 import { type AnimaRace, type Index } from '@/lib/core/data'
-import { canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
+import { canvasBitmap, computeModelPlacement, fitCanvas, zoomStepScale } from '@/lib/core/modelPlacement'
 import type { ParticleDraw } from '@/lib/core/particle'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { animaNow, animaOnce, composePeek, composeSnapshotCached, snapKey, type SnapComposite } from '@/lib/core/snapRender'
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { BASE_TAG, type ChatUi } from '@/lib/core/chatUi'
-import { CARD_FRACTION, CARD_MARGIN, CHAT_FILES } from '@/lib/shopData'
+import { CARD_FRACTION, CARD_MARGIN, CHAT_FILES, ZOOM_WORLD } from '@/lib/shopData'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop, type Snapshot } from './ShopContext'
 
@@ -41,15 +41,17 @@ const loadDeco = (slot: 'title' | 'medal' | 'chatBalloon') => {
 const loadTagUis = () => (tagUis ??= fetch(CHAT_FILES.nameTag).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === 'nameTag' && x.chatUi).map((x) => [x.id, x.chatUi!]))).catch(() => new Map()))
 // 미리 합성(줄을 서지 않고 바로) — 광장 카드에 마우스를 올리거나 누르는 순간 상세의 그림을 먼저 만든다(사용자 지시: 상세가 더 빨리 뜨게).
 // 같은 코디를 그리는 쪽(카드 · 상세)은 캐시 · 진행 중 합성을 함께 쓴다(snapRender)
-export function warmSnap (snap: Snapshot, index: Index | null | undefined, view?: boolean) {
+// 끝나면 풀리는 약속을 돌려준다(코디 비교는 떠나는 칸의 정지 그림을 먼저 만들어 두고 칸을 옮긴다 — 옮긴 순간 그 칸에 뼈대가 비치지 않게)
+export function warmSnap (snap: Snapshot, index: Index | null | undefined, view?: boolean): Promise<unknown> {
   const ar = animaNow()
-  if (!index || !ar) return
+  if (!index || !ar) return Promise.resolve()
   const key = snapKey(snap)
-  if (composePeek(key, index, ar, view) !== undefined) return
-  void composeSnapshotCached(key, snap, index, ar, view).catch(() => {})
+  if (composePeek(key, index, ar, view) !== undefined) return Promise.resolve()
+  return composeSnapshotCached(key, snap, index, ar, view).catch(() => {})
 }
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco }: {
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
+  zoom?: number // 미리보기 배율 단계(1~3)로 그린다 — 코디 비교의 칸들이 고른 칸(PreviewModel)과 같은 도트 크기가 되게(zoomStepScale)
   deco?: boolean // 칭호 · 훈장 · 말풍선도 그린다(불러오기 창 — 가져올 장식 토글이 무엇을 바꾸는지 보이게. 말풍선은 '안녕하세요')
   onDrawn?: () => void // 캔버스에 다 그렸을 때(액션 상세의 재생 칸이 다 그려진 프레임만 번갈아 보인다)
   baseTag?: boolean // 명찰 반지가 없을 때 기본 명찰을 그릴지(없으면 스냅샷의 연출 설정 pv.baseTag) — 닉네임 불러오기 카드는 늘 켠다(사용자 지시)
@@ -142,12 +144,13 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     const canvas = canvasRef.current
     if (!canvas || !placed || !dims.w || !dims.h) return
     let cancelled = false
-    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, snap: true, drop: true })
+    const scale = zoom != null ? zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: zoom, mults: ZOOM_WORLD }) : undefined
+    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, scale, snap: true, drop: true })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
     renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, ov, effects, particles, center, dims, fraction, margin, chat])
+  }, [placed, ov, effects, particles, center, dims, fraction, margin, chat, zoom])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
   // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 게임 크기 1배).

@@ -2,6 +2,7 @@
 
 // 코디 미리보기(PC·절반·태블릿): 헤더(좌 부위 염색 · 배경 / 우 되돌리기 · 다시실행) · 스테이지(피팅룸 장면 + PreviewModel + 점 위치) ·
 // 연출 설정 드로어 · 상시 필드 행 · 북마크 박스.  모바일은 MobileHero.
+// 코디 비교 중에는 스테이지 자리가 비교 판(CompareBoard — 2×2 칸)이 되고 열이 넓어진다(목록은 그만큼 좁아져 열 수가 준다). 헤더 오른쪽에 [비교 닫기].
 
 import clsx from 'clsx'
 import { useCallback, useEffect, useState } from 'react'
@@ -10,7 +11,8 @@ import { DOT_MOVER_IDS } from '@/lib/shopData'
 import PreviewModel from '../PreviewModel'
 import ChatBar from './ChatBar'
 import { useShop } from '../ShopContext'
-import { IconBookmark, IconBubble, IconCaretDown, IconDot, IconDrop, IconRedo, IconScene, IconUndo } from '../ui/Icons'
+import { IconBookmark, IconBubble, IconCaretDown, IconClose, IconDot, IconDrop, IconRedo, IconScene, IconUndo } from '../ui/Icons'
+import CompareBoard from './CompareBoard'
 import PinkbeanRate from './PinkbeanRate'
 import { BookmarkBox } from './PreviewParts'
 import { PvGroups, PvInlineFields, type PvGroup } from './pvControls'
@@ -46,7 +48,7 @@ export default function PreviewColumn() {
   const bgOpen = s.surface?.kind === 'bg' && !s.surfaceClosing
 
   return (
-    <section className={clsx(styles.col, s.bp === 'half' && styles.colHalf, s.bp === 'tablet' && styles.colTablet)}>
+    <section className={clsx(styles.col, s.bp === 'half' && styles.colHalf, s.bp === 'tablet' && styles.colTablet, s.cmpOn && styles.colCmp)}>
       <div className={styles.card}>
         <div className={styles.head}>
           {/* 꾸미는 도구 둘(부위 염색 · 배경)은 어느 폭에서나 이름을 적어 나란히 둔다 — 아이콘만 두면 있는 줄 모르고 지나친다.
@@ -62,21 +64,28 @@ export default function PreviewColumn() {
             </button>
           </div>
           <div data-guide="undo" className={styles.hist}>
+            {s.cmpOn && (
+              <button type="button" onClick={s.toggleCompare} title="코디 비교 닫기(비교 전 프리셋으로)" className={clsx('pb-ddbtn', styles.partBtn, styles.partBtnOn)}>
+                <IconClose size={12} /><span>비교 닫기</span>
+              </button>
+            )}
             <button type="button" onClick={s.undo} disabled={!s.canUndo} title={s.canUndo ? '되돌리기' : '되돌릴 것이 없어요'} aria-label="되돌리기" className={histCls(s.canUndo)}><IconUndo /></button>
             <button type="button" onClick={s.redo} disabled={!s.canRedo} title={s.canRedo ? '다시실행' : '다시 실행할 것이 없어요'} aria-label="다시실행" className={histCls(s.canRedo)}><IconRedo /></button>
           </div>
         </div>
 
         {/* data-pv-stage: 연출 설정 고르기(PvPicker)가 이 영역 안 가운데에 뜬다 — 미리보기 밖으로 나가지 않게. */}
-        <div data-pv-stage className={styles.stage}>
-          <StageBg />
-          <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경" data-guide="dot"
-            className={clsx('pb-ghost', styles.dotBtn, dotItem && styles.dotBtnOn)}>
-            <IconDot />점 위치
-          </button>
-          <PinkbeanRate />
-          <div className={styles.model}><PreviewModel /></div>
-        </div>
+        {s.cmpOn ? <CompareBoard mobile={false} /> : (
+          <div data-pv-stage className={styles.stage}>
+            <StageBg />
+            <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경" data-guide="dot"
+              className={clsx('pb-ghost', styles.dotBtn, dotItem && styles.dotBtnOn)}>
+              <IconDot />점 위치
+            </button>
+            <PinkbeanRate />
+            <div className={styles.model}><PreviewModel /></div>
+          </div>
+        )}
 
         <div className={clsx('pb-drawer', styles.drawer, pvAll && styles.drawerOpen)}>
           {/* 채팅 칸 — 늘 있다(말풍선 반지가 없으면 기본 흰 말풍선). 드로어 윗변에 붙어 함께 오르내린다(접히면 아래 줄 바로 위) */}
@@ -104,6 +113,7 @@ export default function PreviewColumn() {
 }
 
 // 모바일 히어로: 피팅룸 장면 위 모델 + 되돌리기/다시실행 · 연출 설정 · 우하단 [점 위치][부위 염색][북마크].
+// 코디 비교 중에는 히어로를 키우고(크게 보기 높이) 위 · 아래 버튼 줄 사이를 비교 판이 채운다. 왼쪽 위에 [비교 닫기].
 export function MobileHero() {
   const s = useShop()
   const dotItem = useDotEquipped()
@@ -117,10 +127,17 @@ export function MobileHero() {
   const chatUp = chat && canChat
   const closeChat = useCallback(() => setChat(false), [])
   return (
-    <div data-hero className={styles.hero}>
-      <StageBg />
-      <PinkbeanRate />
-      <div className={styles.heroModel}><PreviewModel /></div>
+    <div data-hero className={clsx(styles.hero, s.cmpOn && styles.heroCmp)}>
+      {s.cmpOn ? <CompareBoard mobile /> : <>
+        <StageBg />
+        <PinkbeanRate />
+        <div className={styles.heroModel}><PreviewModel /></div>
+      </>}
+      {s.cmpOn && (
+        <button type="button" onClick={s.toggleCompare} title="코디 비교 닫기(비교 전 프리셋으로)" className={clsx(styles.pvOpenBtn, styles.pvOpenBtnOn, styles.cmpExitM)}>
+          <IconClose size={12} />비교 닫기
+        </button>
+      )}
       <div data-guide="undo" className={styles.heroHist}>
         <button type="button" onClick={s.undo} disabled={!s.canUndo} title="되돌리기" aria-label="되돌리기" className={clsx(styles.heroIcon, s.canUndo && styles.heroIconOn)}><IconUndo /></button>
         <button type="button" onClick={s.redo} disabled={!s.canRedo} title="다시실행" aria-label="다시실행" className={clsx(styles.heroIcon, s.canRedo && styles.heroIconOn)}><IconRedo /></button>

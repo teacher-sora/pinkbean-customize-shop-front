@@ -1,14 +1,15 @@
 'use client'
 
 // 미리보기의 배경(lib/stageBg). 피팅룸이면 배경 장면을, 아니면 고른 색 · 캐시샵 배경 · 올린 그림을 깐다 — 그때는 장면을 띄우지 않는다.
-// 코디가 서는 다른 칸(광장 상세 · 광장 등록 · VS)도 같은 배경을 깐다. 그 칸들은 still: 피팅룸을 움직이지 않는 그림으로만 둔다.
+// 코디가 서는 다른 칸(광장 상세 · 광장 등록)도 같은 배경을 깐다. 그 칸들은 still: 피팅룸을 움직이지 않는 그림으로만 둔다.
 // 캐시샵 배경은 미리보기에서 캐릭터와 같은 도트 크기(lib/stageFloor 의 정수 배율)로 키우고, 그림의 바닥 줄(CASH_BG_GROUND)을
 // 캐릭터가 딛는 줄에, 그림 가운데를 캐릭터 가운데에 맞춘다 — 게임처럼 캐릭터가 땅 위에 선다. 그림 밖은 위 · 아래 끝 색으로 채운다.
 // 바닥을 알리지 않는 칸(still)은 칸에 맞춰 채우기만 한다.
 
 import { useEffect, useRef, useState } from 'react'
 import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, getStageBg, stageSelOf, useStageBg, type CashBg } from '@/lib/stageBg'
-import { MODEL_DROP, MODEL_REF } from '@/lib/core/modelPlacement'
+import { MODEL_DROP, MODEL_REF, zoomStepScale } from '@/lib/core/modelPlacement'
+import { ZOOM_WORLD } from '@/lib/shopData'
 import { isDarkTheme } from '@/lib/theme'
 import { SCENE_SRC } from '../scene/sceneSrc'
 import { ROOM } from '../scene/sceneData'
@@ -42,7 +43,8 @@ function useBox (ref: React.RefObject<HTMLDivElement | null>) {
 }
 const FOOT_FROM_NAVEL = 21 // 배꼽 → 발(게임px) — PreviewModel 의 바닥 줄과 같은 값
 type Layer = { src: string; w: number; h: number; fx: number; fy: number } // 그림 크기와 그 안의 발 자리(게임px)
-export function CardStageBg({ sel, fraction }: { sel?: string; fraction: number }) {
+// zoom: 미리보기 배율 단계로 키운다(코디 비교 — SnapThumb 의 zoom 과 같은 배율)
+export function CardStageBg({ sel, fraction, zoom }: { sel?: string; fraction: number; zoom?: number }) {
   const ref = useRef<HTMLDivElement>(null)
   const box = useBox(ref)
   const v = stageSelOf(sel)
@@ -51,7 +53,7 @@ export function CardStageBg({ sel, fraction }: { sel?: string; fraction: number 
     : cash ? [{ src: cash.src, w: CASH_BG_W, h: CASH_BG_H, fx: CASH_BG_W / 2, fy: CASH_BG_GROUND }] : []
   const img = !layers.length ? getStageBg().images.find((i) => i.id === v)?.src : undefined
   const fill = v === 'room' ? '#14110f' : cash ? `linear-gradient(to bottom, ${cash.top} 50%, ${cash.bottom} 50%)` : v === 'system' ? SYS_BG_CSS : STAGE_COLORS[v]
-  const sc = box.h ? Math.max(1, Math.round((fraction * box.h * box.dpr) / MODEL_REF.bodyRefH)) : 0
+  const sc = !box.h ? 0 : zoom != null ? zoomStepScale({ fraction, divH: box.h, dpr: box.dpr, level: zoom, mults: ZOOM_WORLD }) : Math.max(1, Math.round((fraction * box.h * box.dpr) / MODEL_REF.bodyRefH))
   const k = sc / box.dpr
   const fx = box.w / 2, fy = box.h / 2 + (-MODEL_REF.centerDy + MODEL_DROP + FOOT_FROM_NAVEL) * k
   return (
