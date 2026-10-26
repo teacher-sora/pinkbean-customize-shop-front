@@ -515,10 +515,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 엔트리마다 그때의 프리셋 이름 전체(names)도 담는다 — 되돌리기는 코디·연출(시선·배율 등)·선택 프리셋·**이름**을
   // 함께 되살린다. 이름을 over(다른 칸 덮어쓰기)에만 두면 가져오기로 바뀐 이름이 되돌아오지 않는 경우가 생기고
   // 이름을 고친 것 자체도 기록되지 않는다. 이름 변경도 기록 한 건이다.
-  const histRef = useRef<{ stack: { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot> }[]; idx: number }>({ stack: [], idx: -1 })
+  // 기록은 갈래마다 따로다(사용자 지시): 비교 중이면 고른 칸마다 제 기록, 아니면 하나('main'). 칸을 고르는 것은 기록이 아니다 —
+  // 칸을 바꾸면 그 칸의 기록으로 넘어갈 뿐이고, 처음 고른 칸은 그때의 코디가 첫 기록(되돌릴 바닥)이 된다.
+  // 갈래마다 최근 50개라 비교 칸 넷을 다 써도 기록은 최대 250개(작은 스냅샷 객체)다. 뺀 칸의 기록은 함께 버린다(removeCmp).
+  type Hist = { stack: { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot> }[]; idx: number; last: string | null }
+  const histsRef = useRef<Map<string, Hist>>(new Map())
+  const histOf = (sel: string | null): Hist => {
+    const k = isCmpId(sel) ? sel! : 'main'
+    let h = histsRef.current.get(k)
+    if (!h) { h = { stack: [], idx: -1, last: null }; histsRef.current.set(k, h) }
+    return h
+  }
   const histOver = useRef<PresetOver<Snapshot> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
-  const histLast = useRef<string | null>(null)      // 마지막으로 기록한 상태키(중복 방지) = {코디 스냅샷 + 선택 프리셋}
   const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
   const saveT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toastT = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1527,6 +1536,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const to = cmpLast.current && cmpIds.includes(cmpLast.current) ? cmpLast.current : cmpIds[0]
     const cur = snapshot()
     setPresetData((d) => ({ ...d, ...(selectedPreset ? { [selectedPreset]: cur } : {}), [to]: cur }))
+    histsRef.current.delete(to) // 담은 코디가 그 칸의 새 바닥이다 — 예전 칸 내용으로 되돌려 프리셋을 덮어쓰지 않게
     setSelectedPreset(to) // 라이브는 이미 이 코디다
   }
   const pickCmp = (id: string) => { if (id !== selectedPreset) switchPreset(id, presetData[id] ?? defaultSnapshot(), 'all') }
@@ -1538,12 +1548,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setCmpIds((ids) => [...ids, id])
     setSelectedPreset(id)
   }
-  // 칸 빼기 — 두 칸은 남긴다(CMP_MIN). 고른 칸을 빼면 그 자리(없으면 앞)의 칸으로. 내용은 메모리에 남겨 되돌리기가 그 칸을 되살릴 수 있다(applyHistory)
+  // 칸 빼기 — 두 칸은 남긴다(CMP_MIN). 고른 칸을 빼면 그 자리(없으면 앞)의 칸으로. 그 칸의 기록도 버린다(기록은 칸마다 — histsRef)
   const removeCmp = (id: string) => {
     if (cmpIds.length <= CMP_MIN || !cmpIds.includes(id)) return
     const rest = cmpIds.filter((x) => x !== id)
     if (id === selectedPreset) { const to = rest[Math.min(cmpIds.indexOf(id), rest.length - 1)]; switchPreset(to, presetData[to] ?? defaultSnapshot(), 'all') }
     setCmpIds(rest)
+    histsRef.current.delete(id)
   }
   // 비교 중에 프리셋 카드를 누르면 고른 칸이 그 프리셋이 된다 — 그 프리셋의 코디를 고른 칸에 불러오고, 이어지는 편집은 그 프리셋에 저장된다.
   // (고른 칸 = 프리셋이라, 칸에 불러오기만 하면 지금 이어진 프리셋을 다른 프리셋으로 덮어쓰게 된다)
@@ -1996,12 +2007,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const snap = snapshot()
     const names = namesNow ?? namesOf(presets)
     const j = histKey(snap, selectedPreset, names)
-    if (j === histExpect.current) { histExpect.current = null; histLast.current = j; return }
+    const h = histOf(selectedPreset)
+    if (j === histExpect.current) { histExpect.current = null; h.last = j; return }
     const ov = over ?? histOver.current
-    if (j === histLast.current && !ov) return // 덮어쓰기는 코디가 같아도(이름·다른 프리셋이 바뀜) 기록한다
+    if (j === h.last && !ov) return // 덮어쓰기는 코디가 같아도(이름·다른 프리셋이 바뀜) 기록한다. h.last = 그 갈래의 마지막 상태키(중복 방지)
     histOver.current = null
-    histLast.current = j
-    const h = histRef.current
+    h.last = j
     h.stack = h.stack.slice(0, h.idx + 1)
     h.stack.push({ snap, sel: selectedPreset, names, ...(ov ? { over: ov } : {}) })
     if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
@@ -2021,20 +2032,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const names = e.names ?? namesOf(presets)
     if (e.names) setPresets((ps) => ps.map((p) => (e.names![p.id] != null ? { ...p, name: e.names![p.id] } : p)))
     const j = histKey(e.snap, e.sel, names)
-    histExpect.current = j; histLast.current = j
+    histExpect.current = j; histOf(e.sel).last = j
     // 코디·선택 프리셋이 그대로면(이름·연출만 되돌림) 기록 effect 가 돌지 않는다 → 기대값을 남겨 두지 않는다
     // (남아 있으면 나중에 같은 상태로 돌아온 진짜 변경을 기록하지 않고 삼킨다).
     if (e.sel === selectedPreset && snapCoreKey(e.snap) === snapCoreKey(snapshot()) && (e.snap.bg ?? 'room') === bgSel) histExpect.current = null
-    // 그 기록의 비교 칸을 이미 뺐으면 되살린다(자리가 없으면 어느 칸에도 저장하지 않게 고르지 않은 채로)
-    let sel = e.sel
-    if (isCmpId(sel) && !cmpIds.includes(sel)) { if (cmpIds.length < CMP_MAX) { const id = sel; setCmpIds((ids) => [...ids, id]) } else sel = null }
-    // 코디 + 선택 프리셋을 함께 복원. skipAutosave=false → 되돌린 코디가 그 프리셋에 저장된다.
-    applySnapshot(e.snap, false, true, sel).catch(() => {})
+    // 코디 + 선택 프리셋을 함께 복원. skipAutosave=false → 되돌린 코디가 그 프리셋에 저장된다(비교 칸의 기록은 늘 그 칸이 선택 프리셋이다).
+    applySnapshot(e.snap, false, true, e.sel).catch(() => {})
     setHistVer((v) => v + 1)
   }
   void histVer // 재렌더 트리거(canUndo/canRedo 재계산)
-  const canUndo = histRef.current.idx > 0
-  const canRedo = histRef.current.idx < histRef.current.stack.length - 1
+  const curHist = histOf(selectedPreset)
+  const canUndo = curHist.idx > 0
+  const canRedo = curHist.idx < curHist.stack.length - 1
   // 덮어쓴 프리셋을 되살린다(내용 + 이름). 선택 프리셋이면 이어지는 applyHistory 의 자동저장이 같은 값을 쓴다.
   const restoreOver = (o: PresetOver<Snapshot>, back: boolean) => {
     const snap = back ? o.prev : o.next, name = back ? o.prevName : o.nextName
@@ -2042,7 +2051,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (name) setPresets((ps) => ps.map((p) => (p.id === o.id ? { ...p, name } : p)))
   }
   const undo = () => {
-    const h = histRef.current
+    const h = histOf(selectedPreset)
     if (h.idx <= 0) { notify('되돌릴 변경이 없어요'); return }
     const from = h.stack[h.idx]
     h.idx -= 1
@@ -2050,7 +2059,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     applyHistory(h.stack[h.idx])
   }
   const redo = () => {
-    const h = histRef.current
+    const h = histOf(selectedPreset)
     if (h.idx >= h.stack.length - 1) { notify('다시 실행할 변경이 없어요'); return }
     h.idx += 1
     const to = h.stack[h.idx]
