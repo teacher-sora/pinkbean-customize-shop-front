@@ -309,7 +309,8 @@ export interface ShopCtx {
   // 코디 조합(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 조합 탭)
   comboItem: ListItem | null; comboOpen: boolean; openCombo: (item: ListItem) => void; closeCombo: () => void; pickCombo: (item: ListItem) => void
   cardPv: PvSnap
-  comboTotal: number; setComboTotal: (id: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot) => void
+  comboGender: GenderFilter; setComboGender: (g: GenderFilter) => void
+  comboTotal: number; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot) => void
   searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
@@ -872,17 +873,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // (코디 탭 = 목록 격자, 광장 = 광장 격자), 쪽 수는 그 아이템의 코디 수(패널이 첫 쪽을 받고 알려 준다 — setComboTotal)
   const [comboItem, setComboItem] = useState<ListItem | null>(null)
   const [comboOpen, setComboOpen] = useState(false)
+  // 성별(전체 · 여 · 남 — 코디의 성별은 parser looks/build.ts 가 입은 아이템으로 센다). 쪽 위치 · 코디 수도 성별마다 따로다
+  const [comboGender, setComboGender] = useState<GenderFilter>('all')
   const [comboCount, setComboCount] = useState<{ id: string; n: number }>({ id: '', n: 0 })
   const setComboTotal = useCallback((id: string, n: number) => setComboCount((c) => (c.id === id && c.n === n ? c : { id, n })), [])
   const comboPaging = !!comboItem && ((comboOpen && primary !== 'share') || (primary === 'share' && plazaFilter === 'combo'))
-  const comboTotal = comboItem && comboCount.id === comboItem.id ? comboCount.n : 0
+  const comboKey = comboItem ? `${comboItem.id}|${comboGender}` : '' // setComboTotal 에 넘기는 키
+  const comboTotal = comboItem && comboCount.id === comboKey ? comboCount.n : 0
   // 상세를 보는 동안은 방향키 · 휠로 목록 쪽이 넘어가지 않는다(돌아오면 보던 쪽 그대로)
   const pagerHold = useRef(false)
   const holdPager = useCallback((b: boolean) => { pagerHold.current = b }, [])
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
   //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다
   //   (setIdx 를 거치지 않으니 스냅 전환·스크롤 애니메이션 없이 리스트가 그대로 유지되는 인상).
-  const pageKey = comboPaging ? 'combo:' + comboItem!.id : primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : activeCat
+  const pageKey = comboPaging ? `combo:${comboKey}` : primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : activeCat
 
   // ── 페이지네이션 ── (광장은 자기 그리드·목록 길이를 쓴다)
   const isPlazaTab = primary === 'share'
@@ -2010,7 +2014,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
-    comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems, comboTotal, setComboTotal, holdPager, warmWear,
+    comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems, comboTotal, setComboTotal, holdPager, warmWear, comboGender, setComboGender,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
     warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,

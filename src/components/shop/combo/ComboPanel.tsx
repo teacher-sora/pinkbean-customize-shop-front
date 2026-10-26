@@ -12,7 +12,7 @@
 import clsx from 'clsx'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
-import { COMBO_SKIP, LOOK_CHUNK, withCardPv, countLabel, loadLookCounts, loadLookMeta, lookChunk, type LookDye, type LookMeta, type LookPage, type LookRow } from '@/lib/looks'
+import { COMBO_SKIP, LOOK_CHUNK, withCardPv, countLabel, loadLookCounts, loadLookMeta, lookChunk, type LookDye, type LookGender, type LookMeta, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
 import { SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
@@ -20,9 +20,10 @@ import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
-import { DIRS } from '../list/ListArea'
+import { DIRS, FilterM, GENDERS, type FilterGroup } from '../list/ListArea'
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
+import { useWheelRail } from '../ui/useWheelRail'
 import { IconChevronLeft, IconChevronRight, IconSearch, IconTakeDown } from '../ui/Icons'
 import list from '../list/list.module.css'
 import surf from '../surface/surface.module.css'
@@ -52,38 +53,37 @@ export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'c
 
   const body = !item ? <ComboEmpty mobile={mobile} />
     : detail ? <ComboDetail key={detail.i} row={detail} item={item} mobile={mobile} onBack={() => setDetail(null)} />
-      : <ComboList key={item.id} item={item} mobile={mobile} host={host} onOpen={setDetail} />
+      : <ComboList key={`${item.id}|${s.comboGender}`} item={item} mobile={mobile} host={host} onOpen={setDetail} />
   if (mobile) return <div className={styles.rootM}>{body}</div>
   return <section className={clsx(list.panel, styles.root)}>{body}</section>
 }
 
 // 머리 왼쪽: 코디 탭은 [←] + 아이템, 광장은 아이템 + 아이템 찾기 칸. 모바일 광장은 자리가 좁아 아이템을 그림만 두고
 // 이름은 찾기 칸의 안내 글로 보인다(찾기 칸이 돋보기만 남을 만큼 좁아졌다)
-function HeadItem({ item, mobile, host, total }: { item: ListItem | null; mobile: boolean; host: 'codi' | 'plaza'; total: number | null }) {
+function HeadItem({ item, mobile, host }: { item: ListItem | null; mobile: boolean; host: 'codi' | 'plaza' }) {
   const s = useShop()
-  const showSub = mobile || isNarrow(s.bp) // 넓은 PC 는 쪽 칩 왼쪽에 코디 수가 있다
-  const thumbOnly = mobile && host === 'plaza'
+  // 좁은 폭(절반 · 태블릿) · 모바일은 아이템 칸을 그림만(사용자 지시 — 이름이 눌려 안 보였다. 목록의 '아이템' 보기와 같은 그림이고, 이름은 title ·
+  // 광장은 찾기 칸의 안내 글로도 보인다). 넓은 PC 만 이름까지
+  const thumbOnly = mobile || isNarrow(s.bp)
   return (
-    <div className={clsx(styles.headItem, thumbOnly && styles.headItemFill)}>
+    <div className={styles.headItem}>
       {host === 'codi' && (
         <button type="button" onClick={s.closeCombo} title="목록으로 (Esc)" aria-label="목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
       )}
       {item && (
-        <span className={clsx(styles.itemTag, mobile && styles.itemTagM)} title={item.name || item.id}>
+        <span className={clsx(styles.itemTag, mobile && styles.itemTagM, thumbOnly && styles.itemTagThumb)} title={item.name || item.id}>
           <span className={clsx('pb-chipthumb', styles.itemThumb, mobile && styles.itemThumbM)}><LookSprite slot={item.slot} item={item.slot === 'skin' ? null : item} tone={s.index?.base.tones.find((t) => t.body === item.id)?.tone ?? s.tone} /></span>
           {!thumbOnly && <span className={styles.itemText}>
             <span className={clsx(styles.itemName, mobile && styles.itemNameM)}>{item.name || item.id}</span>
-            {showSub && <span className={styles.itemSub}>{total == null ? ' ' : `코디 ${total.toLocaleString()}벌`}</span>}
           </span>}
         </span>
       )}
-      {host === 'plaza' && <ItemFinder mobile={mobile} now={thumbOnly ? item : null} />}
     </div>
   )
 }
 
 // 광장의 코디 조합: 이름으로 아이템을 찾는다(모든 부위 + 피부). 표본에 있는 것만, 코디가 많은 순으로 8개
-function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) {
+function ItemFinder({ mobile, now, end }: { mobile: boolean; now: ListItem | null; end?: boolean }) {
   const s = useShop()
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<{ it: ListItem; n: number }[]>([])
@@ -101,7 +101,7 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
   }, [q, counts])
   const pick = (it: ListItem) => { s.pickCombo(it); setQ(''); setOpen(false) }
   return (
-    <div className={clsx(list.searchWrap, styles.finder, mobile && styles.finderM)}>
+    <div className={clsx(list.searchWrap, styles.finder, mobile && styles.finderM, end && styles.finderEnd)}>
       <IconSearch className={list.searchIcon} />
       <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 120)}
         onKeyDown={(e) => { if (e.key === 'Enter' && hits[0]) pick(hits[0].it); if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
@@ -130,7 +130,7 @@ function useCountsMap(): Record<string, number> {
 function ComboEmpty({ mobile }: { mobile: boolean }) {
   return (
     <>
-      <div className={mobile ? list.controlsM : list.header}><HeadItem item={null} mobile={mobile} host="plaza" total={null} /></div>
+      <div className={mobile ? list.controlsM : list.header}><ItemFinder mobile={mobile} now={null} end /></div>
       <div className={mobile ? list.hrM : list.hr} />
       <div className={clsx(list.viewport, styles.emptyWrap)}>
         <div className={mobile ? list.emptyM : list.empty}>
@@ -179,16 +179,17 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const [failed, setFailed] = useState(false)
   const total = first?.total ?? null
   const cur = s.curIdx, pageCount = s.pageCount
+  const g: LookGender = s.comboGender === 'all' ? 'a' : s.comboGender // 패널은 성별마다 새로 붙는다(ComboPanel 의 key)
 
   // 첫 묶음 = 코디 수 · 자주 쓴 염색 — 받은 코디 수로 쪽 넘김의 쪽 수가 정해진다
   const setComboTotal = s.setComboTotal
   useEffect(() => {
     let alive = true
     setFailed(false)
-    lookChunk(item.id, 0).then((d) => {
+    lookChunk(item.id, 0, g).then((d) => {
       if (!alive) return
       setFirst(d); setChunks((m) => ({ ...m, 0: d.looks }))
-      setComboTotal(item.id, d.total)
+      setComboTotal(`${item.id}|${s.comboGender}`, d.total)
     }).catch(() => { if (alive) setFailed(true) })
     return () => { alive = false }
   }, [item.id, setComboTotal])
@@ -200,7 +201,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
     const c1 = Math.floor((Math.min(pageCount - 1, cur + 2) * per + per - 1) / LOOK_CHUNK)
     for (let c = c0; c <= c1; c++) {
       if (chunks[c] || c * LOOK_CHUNK >= first.total) continue
-      lookChunk(item.id, c).then((d) => { if (alive) setChunks((m) => (m[c] ? m : { ...m, [c]: d.looks })) }).catch(() => {})
+      lookChunk(item.id, c, g).then((d) => { if (alive) setChunks((m) => (m[c] ? m : { ...m, [c]: d.looks })) }).catch(() => {})
     }
     return () => { alive = false }
   }, [cur, first, pageCount, per, item.id])
@@ -287,7 +288,13 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
     </div>
   )
   // 넘기는 방향 — 아이콘 칸(공용 30 × 24)을 이 머리의 다른 칸과 같은 높이로 키운다(PC 34 · 모바일 32, 사용자 지시)
-  const dirSeg = <div className={styles.dirSeg}><Seg variant={mobile ? 'mobileFit' : 'pc'} title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} /></div>
+  const dirSeg = <div className={styles.dirSeg}><Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} /></div>
+  // 성별 — 목록 머리와 같은 선택지(GENDERS). 좁은 폭 · 모바일은 목록처럼 [보기 설정]에 방향과 함께 접는다(같은 부품 FilterM)
+  const genderSeg = <Seg title="코디의 성별(입은 아이템으로 나눈다)" opts={GENDERS} value={s.comboGender} onPick={s.setComboGender} />
+  const filterGroups: FilterGroup[] = [
+    { label: '성별', title: '코디의 성별(입은 아이템으로 나눈다)', opts: GENDERS, value: s.comboGender, onPick: s.setComboGender },
+    { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
+  ]
 
   const dyes = first?.dyes ?? []
   const pages: number[] = []
@@ -332,9 +339,10 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   return (
     <>
       <div className={mobile ? list.controlsM : list.header}>
-        <HeadItem item={item} mobile={mobile} host={host} total={total} />
-        {dirSeg}
+        <HeadItem item={item} mobile={mobile} host={host} />
+        {mobile || narrow ? <FilterM mobile={mobile} groups={filterGroups} /> : <>{genderSeg}{dirSeg}</>}
         {pageChip}
+        {host === 'plaza' && <ItemFinder mobile={mobile} now={mobile || narrow ? item : null} />}
       </div>
       <div className={mobile ? list.hrM : list.hr} />
       {/* 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다) */}
@@ -351,7 +359,10 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
   const skin = item.slot === 'skin'
   const te = skin ? s.index?.base.tones.find((t) => t.body === item.id) : undefined
   const key = skin ? 'skin' : item.slot
-  const slide = mobile || isNarrow(s.bp) // 좁은 폭(절반 · 태블릿 · 모바일)은 여섯 칸이 한 줄에 들지 않는다 — 옆으로 민다
+  // 10위까지 담고, 한 번에 보이는 칸은 넓은 PC 5 · 좁은 폭(절반 · 태블릿) · 모바일 3 — 나머지는 가로로 민다(사용자 지시: 칸이 좁으면 염색 띠의 테두리 고리 자리가 모자란다).
+  // 줄은 하단 부위 줄 · 염색 보관함과 같은 가로 줄(pb-norail · pb-fade 흐림 · 화살표, 마우스 휠은 가로 — useWheelRail)
+  const n = mobile || isNarrow(s.bp) ? 3 : 5
+  const rail = useWheelRail<HTMLDivElement>()
   const live = (d: LookDye) => {
     const worn = skin ? te?.tone === s.tone : s.isEquippedInCat(SLOT_TO_CAT[item.slot], item.id)
     if (!worn) return false
@@ -365,8 +376,8 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
     s.notify(`${item.name || '아이템'}에 자주 쓴 염색을 입혔어요`)
   }
   return (
-    <div className={clsx(styles.dyes, slide && 'pb-norail', slide && styles.dyesSlide, mobile && styles.dyesM)}>
-      <div className={clsx(styles.dyeChips, slide && styles.dyeChipsM)}>
+    <div className={clsx(styles.dyes, mobile && styles.dyesM)}>
+      <div ref={rail} className={clsx('pb-norail', 'pb-fade', styles.dyeRail)} style={{ '--dye-n': n } as React.CSSProperties}>
         {dyes.map((d, i) => {
           const on = live(d)
           return (

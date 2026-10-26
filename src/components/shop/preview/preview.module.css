@@ -300,6 +300,9 @@
 /* PC 아래 칸 머리의 탭(북마크 · 비교). 비교 탭의 본문은 북마크 줄과 같은 높이의 빈 자리 */
 .pinBlank { height: calc((var(--pin-col) - 18px - 42px) / 8); }
 .pinTabs { display: flex; }
+/* [북마크] [비교] 토글은 왼쪽 [비우기]와 같은 크기(높이 26 · 글자 11px — 사용자 지시: 공용 Seg 34 는 너무 컸다) */
+.pinTabs > div { padding: 2px; }
+.pinTabs button { height: 22px; padding: 0 11px; font-size: 11px; }
 @media (hover: hover) and (pointer: fine) {
   .cmpPaneOff:hover .cmpRing { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); }
   .cmpAdd:hover { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }

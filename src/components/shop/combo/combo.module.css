@@ -12,21 +12,21 @@
 .back { flex: 0 0 auto; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); color: #8a8075; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: border-color .2s ease, color .2s ease; }
 .backM { width: 32px; height: 32px; }
 @media (hover: hover) and (pointer: fine) { .back:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); } }
-.headItemFill { flex: 1 1 auto; }
 /* 넘기는 방향: 아이콘 칸 높이를 글자 칸(28)과 같게 — 둘레까지 PC 34 · 모바일 32 로 아이템 칸 · 쪽 칩과 맞는다 */
 .dirSeg { flex: 0 0 auto; display: flex; }
 .dirSeg button { width: 34px; height: 28px; }
 .itemTag { flex: 0 1 auto; max-width: 260px; min-width: 0; height: 34px; padding: 0 12px 0 3px; display: flex; align-items: center; gap: 8px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); }
 .itemTagM { height: 32px; padding: 0 10px 0 2px; gap: 7px; }
+.itemTag.itemTagThumb { padding: 0 2px; } /* 그림만 — 칸이 정사각형에 가깝다 */
 .itemThumb { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 4px; background: #fff; background: light-dark(#fff, #303238); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .itemThumbM { width: 26px; height: 26px; }
-.itemText { min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.15; } /* 이름 + 코디 수 두 줄이 칸 높이(34 · 모바일 32) 안에 든다 */
+.itemText { min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.15; }
 .itemName { font-size: 13px; font-weight: 600; color: #3d372f; color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
 .itemNameM { font-size: 12.5px; }
-.itemSub { font-size: 11px; color: #a89e93; color: light-dark(#a89e93, #8e919a); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* 광장: 아이템 찾기 칸 + 그 아래 고르기(누르면 바로 닫힌다) */
-.finder { flex: 0 4 220px; min-width: 140px; } /* 아이템 칸보다 먼저 줄어든다 — 아이템 이름이 먼저 잘리지 않게 */
+.finder { flex: 0 4 220px; min-width: 140px; } /* 머리 오른쪽 끝(목록 머리의 검색 칸과 같은 자리). 아이템 칸보다 먼저 줄어든다 */
+.finderEnd { margin-left: auto; } /* 아이템을 고르기 전 — 머리에 찾기 칸뿐 */
 .finderM { flex: 1 1 0; min-width: 0; }
 .finderPop { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; padding: 4px; display: flex; flex-direction: column; border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 8px; background: #fff; background: light-dark(#fff, #303238); box-shadow: 0 8px 24px rgba(42,37,33,.12); box-shadow: 0 8px 24px light-dark(rgba(42,37,33,.12), rgba(0,0,0,.35)); }
 .finderRow { height: 40px; padding: 0 8px; display: flex; align-items: center; gap: 8px; border: none; border-radius: 6px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .16s ease; }
@@ -40,12 +40,10 @@
 /* 자주 쓴 염색 — 머리 구분선 아래, 내용 쪽의 한 묶음(옅은 바탕 + 1px 테두리 — 머리에 붙어 보이지 않게, 사용자 지시).
    PC 는 한 줄에 다 들어가게 나누고, 좁은 폭 · 모바일은 옆으로 민다. 아래 목록과는 목록 쪽 여백(8)만큼 떨어진다 */
 .dyes { flex: 0 0 auto; margin: 8px 8px 0; padding: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fcfaf7; background: light-dark(#fcfaf7, #34363c); }
-.dyesSlide { overflow-x: auto; }
 .dyesM { margin: 8px 12px 0; }
-.dyeChips { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-.dyeChipsM { display: flex; flex: 0 0 auto; }
-.dyeChip { padding: 6px 8px 7px; gap: 7px; }
-.dyeChipsM .dyeChip { flex: 0 0 132px; }
+/* 칩 줄: 한 번에 --dye-n 칸(넓은 PC 5 · 그 밖 3)이 줄 폭을 똑같이 나눠 갖고, 나머지는 가로로 민다(10위까지) */
+.dyeRail { flex: 1 1 0; min-width: 0; display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-behavior: smooth; }
+.dyeChip { flex: 0 0 calc((100% - 8px * (var(--dye-n) - 1)) / var(--dye-n)); min-width: 0; padding: 6px 8px 7px; gap: 7px; }
 @media (hover: hover) and (pointer: fine) { .dyeChip:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); } }
 .dyeChipOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fef5f8; background: light-dark(#fef5f8, #4c3039); }
 
