@@ -7,7 +7,7 @@ import { CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shop
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 import { IconStar } from '../ui/Icons'
-import { countLabel, lookChunk, useLookCount } from '@/lib/looks'
+import { COMBO_SKIP, countLabel, lookChunk, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
 
@@ -64,7 +64,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
             <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
               className={clsx(styles.labelBadge, badgeKind === 'cash' && styles.labelBadgeCash)} />
           )}
-          {looks > 0 && (
+          {looks > 0 && !COMBO_SKIP.has(item.slot) && (
             <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 조합 ${looks.toLocaleString()}벌`}
               className={clsx(styles.combo, mobile && styles.comboM)}>코디 {countLabel(looks)}</button>
           )}

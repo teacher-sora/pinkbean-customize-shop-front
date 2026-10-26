@@ -12,7 +12,7 @@
 import clsx from 'clsx'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
-import { LOOK_CHUNK, countLabel, loadLookCounts, loadLookMeta, lookChunk, type LookDye, type LookMeta, type LookPage, type LookRow } from '@/lib/looks'
+import { COMBO_SKIP, LOOK_CHUNK, countLabel, loadLookCounts, loadLookMeta, lookChunk, type LookDye, type LookMeta, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
 import { SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
@@ -92,7 +92,7 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
     const t = setTimeout(() => {
       s.searchItems(q).then((r) => {
         if (!alive) return
-        setHits(r.map((it) => ({ it, n: counts[it.id] ?? 0 })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n).slice(0, 8))
+        setHits(r.filter((it) => !COMBO_SKIP.has(it.slot)).map((it) => ({ it, n: counts[it.id] ?? 0 })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n).slice(0, 8))
       }).catch(() => {})
     }, 160)
     return () => { alive = false; clearTimeout(t) }
@@ -395,6 +395,8 @@ function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListIt
   const s = useShop()
   const snap = row.s
   const slots = useMemo(() => ['skin', ...Object.keys(snap.equipped)], [snap])
+  const warmWear = s.warmWear
+  useEffect(() => { warmWear(snap) }, [snap]) // [전부 입기]가 바로 반영되게 받아 둔다
   return (
     <>
       <div className={mobile ? list.controlsM : list.header}>

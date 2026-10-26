@@ -308,7 +308,7 @@ export interface ShopCtx {
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   // 코디 조합(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 조합 탭)
   comboItem: ListItem | null; comboOpen: boolean; openCombo: (item: ListItem) => void; closeCombo: () => void; pickCombo: (item: ListItem) => void
-  comboTotal: number; setComboTotal: (id: string, n: number) => void; holdPager: (b: boolean) => void
+  comboTotal: number; setComboTotal: (id: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot) => void
   searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
@@ -1282,6 +1282,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setDyeTarget(null)
     notify(label ? `${label} 부위를 입었어요` : `${slots.length}개 부위를 입었어요`)
   }
+  // 입기 전에 미리(코디 조합 상세가 열리는 순간): 코디의 아이템 찾기(부위 목록 받기)와 미리보기에 그릴 그림 · 이펙트 첫 장을 받아 둔다 —
+  // [전부 입기]를 누르면 받을 것 없이 바로 바뀐다(사용자 지시 — 반영까지 시간이 걸렸다). 합성은 하지 않는다(받기만 — 화면을 붙잡지 않는다)
+  const warmWear = (snap: Snapshot) => {
+    resolveEquipped(snap).then((eq) => {
+      const { view } = buildView(pvRef.current)
+      for (const [sl, it] of Object.entries(eq)) {
+        if (!it || it.slot === 'skin') continue
+        const pal = snap.dyePalette?.[sl]
+        void warmItem(it, view, isMixSlot(sl) && pal && !snap.dyeOff?.[sl] ? pal : undefined)
+      }
+    }).catch(() => {})
+  }
   // 스냅샷의 점 위치는 스냅샷의 아이템 id 로 적혀 있다(복제 묶음을 원본으로 바꿔 읽었으면 바뀐 id 로도 찾는다).
   const snapDot = (snap: Snapshot, slot: string, it: ListItem) => snap.dotPos?.[snap.equipped?.[slot]] ?? snap.dotPos?.[it.id]
   // 그 부위를 **완전히 같게** 입고 있는가 — 아이템 · 염색(발색 · HSB · 꺼짐) · 점 위치 · 보임이 모두 같아야 한다(사용자 지시 —
@@ -1993,7 +2005,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
-    comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems, comboTotal, setComboTotal, holdPager,
+    comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems, comboTotal, setComboTotal, holdPager, warmWear,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
     warmForPreview, listMode, setListMode, bgSel, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,

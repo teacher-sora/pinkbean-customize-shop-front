@@ -66,4 +66,6 @@ export function fetchLooks(ids: string[], page: number, size: number): Promise<L
 // 목록은 쪽 크기와 상관없이 60벌(서버가 한 번에 주는 최대) 묶음으로 받는다 — 창 크기 · 격자가 바뀌어도 받은 묶음을 그대로 쓰고,
 // 목록 카드의 칩에 올리거나 누르는 순간 첫 묶음을 미리 받아 둘 수 있다(쪽 크기는 패널을 연 뒤에야 정해진다)
 export const LOOK_CHUNK = 60
+// 코디 조합을 두지 않는 부위 — 코디는 생김새만 본다(사용자 지시: 훈장 · 칭호는 가져올 필요도, 이 기능을 둘 필요도 없다). 표본에서도 뺀다(parser looks/build.ts)
+export const COMBO_SKIP = new Set(['medal', 'title'])
 export const lookChunk = (id: string, c: number): Promise<LookPage> => fetchLooks([id], c, LOOK_CHUNK)
