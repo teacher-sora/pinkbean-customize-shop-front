@@ -6,6 +6,7 @@
 import clsx from 'clsx'
 import { useEffect } from 'react'
 import { PLAZA_FILTERS } from '@/lib/plaza'
+import { useComboLive } from '@/lib/looks'
 import { useShop } from '../ShopContext'
 import { IconTab } from '../ui/Icons'
 import { useWheelRail } from '../ui/useWheelRail'
@@ -55,8 +56,9 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   // 코디 광장은 부위 대신 광장 분류(전체·대회·내 등록·찜한 코디)를 쓴다. 항목이 4개뿐이라 양끝 페이드는 끈다
   // (요소는 그대로 두고 opacity 만 0 — 탭을 오갈 때 전환이 끊기지 않게).
   const plaza = s.primary === 'share'
+  const comboLive = useComboLive()
   const chips = plaza
-    ? PLAZA_FILTERS.map((f) => ({ id: f.id as string, label: f.label, on: s.plazaFilter === f.id, pick: () => s.setPlazaFilter(f.id) }))
+    ? PLAZA_FILTERS.filter((f) => f.id !== 'combo' || comboLive).map((f) => ({ id: f.id as string, label: f.label, on: s.plazaFilter === f.id, pick: () => s.setPlazaFilter(f.id) }))
     : [...MULTI, ...s.cats].map((p) => ({ id: p.id, label: p.label, on: s.activeCat === p.id, pick: () => pickPart(p.id) }))
   // 코디 정보 / 염색 · 프리셋에서 부위를 바꾸면 그 부위의 아이템을 보려는 것이다 — 코디 탭으로 넘어가 바로 보인다(사용자 지시).
   const pickPart = (id: string) => {

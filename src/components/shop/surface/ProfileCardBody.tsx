@@ -283,6 +283,9 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
   }
 
   // ── 저장(미리보기와 같은 함수, 두 배 해상도) ──
+  // JPEG 품질 0.92(사용자 지시 — 화질은 그대로, 용량은 작게). 카드는 바탕을 빈틈없이 칠해 투명한 곳이 없다. 실측(2160 × 3212, 디자인 일곱 가지):
+  // PNG 1.4 ~ 2.4MB → 550 ~ 655KB, PSNR 41 ~ 46dB, 4배로 키워도 도트 · 글자가 구분되지 않고 QR 은 원본 · 1/2 · 1/4 크기에서 모두 읽힌다.
+  // 인코딩은 PNG 와 같이 약 50ms. WebP 는 더 작지만(약 230KB) 인코딩이 약 470ms 이고 사진 앱 · 메신저에서 못 여는 곳이 있다
   const [saving, setSaving] = useState(false)
   const save = async () => {
     if (saving) return
@@ -297,7 +300,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
       drawCardPhoto(g, SS, theme, bgSel, live.current.img, board, curView(), firstView.current ?? curView(), nameShown)
       // QR 이 가리키는 코드를 서버에 올린다(링크를 연 사람이 불러올 수 있게 — 저장을 기다리게 하지 않는다)
       if (cardQr && share) void uploadShare(share.prep, poseBase)
-      const res = await saveImage(() => new Promise((r) => c.toBlob((b) => r(b), 'image/png')), `${fileSafe(name.trim()) || s.saveName} 공유 카드`)
+      const res = await saveImage(() => new Promise((r) => c.toBlob((b) => r(b), 'image/jpeg', 0.92)), `${fileSafe(name.trim()) || s.saveName} 공유 카드`, 'jpg')
       if (res !== 'cancel') s.notify(res === 'saved' ? '코디 프로필을 저장했어요' : '이미지를 만들지 못했어요')
     } finally { setSaving(false) }
   }
