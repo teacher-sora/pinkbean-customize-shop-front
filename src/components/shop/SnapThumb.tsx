@@ -127,7 +127,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   }, [key, index, animaRaces, view, retry])
   useEffect(() => { jobRef.current?.setPrio(priority) }, [priority])
 
-  useEffect(() => {
+  // 칸 재기 · 그리기는 페인트 전에 — 합성해 둔 코디는 첫 페인트부터 그림이다(코디 비교 칸이 생기는 순간 빈 칸이 비치지 않게)
+  useIsoLayoutEffect(() => {
     const el = wrapRef.current
     if (!el) return
     const measure = () => {
@@ -140,7 +141,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
   }, [])
 
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !placed || !dims.w || !dims.h) return
     let cancelled = false
@@ -148,9 +149,10 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction, scale, snap: true, drop: true })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
+    // view 면 그 코디의 시선도 따른다(오른쪽 = 좌우 반전 — 미리보기와 같은 규칙. 코디 비교의 정지 칸)
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip: view && snap.pv?.gaze === 'right', centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, ov, effects, particles, center, dims, fraction, margin, chat, zoom])
+  }, [placed, ov, effects, particles, center, dims, fraction, margin, chat, zoom, view, snap.pv?.gaze])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
   // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 게임 크기 1배).

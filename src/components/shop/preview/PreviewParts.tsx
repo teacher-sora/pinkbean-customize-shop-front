@@ -8,10 +8,10 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import type { ListItem } from '@/lib/core/data'
 import { takePvIntent } from '@/lib/guide'
 import { SLOT_TO_CAT } from '@/lib/shopData'
-import { CMP_MAX, useShop } from '../ShopContext'
+import { useShop } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
-import { IconAdd, IconClose, IconTakeDown } from '../ui/Icons'
-import { cmpLetter, useCmpLeave } from './PreviewStage'
+import { IconClose, IconTakeDown } from '../ui/Icons'
+import { useCmpLeave } from './PreviewStage'
 import { DyeSprite } from '../render/DyeSprite'
 import { glideTo, place, release } from '../surface/glide'
 import { useInnerSlide, SWAP_MS } from '../surface/innerSlide'
@@ -51,7 +51,7 @@ function PinCount({ n }: { n: number }) {
 }
 
 // 비교 칸 다루기 — [프리셋에 담기](그 칸을 비교 전 프리셋에 덮어씀) · [빼기](한 칸은 남긴다). 둘 다 두 번 눌러야 한다(lib/confirmTwice).
-// PC 는 아래 칸의 비교 탭(CmpStrip), 모바일은 비교 칸 위(PreviewStage)에 둔다.
+// 고른 비교 칸의 오른쪽 위(PreviewStage)에 둔다.
 export function CmpActs({ id }: { id: string }) {
   const s = useShop()
   const back = s.presets.find((p) => p.id === s.cmpBack)?.name ?? ''
@@ -68,39 +68,10 @@ export function CmpActs({ id }: { id: string }) {
   )
 }
 
-// PC 비교 탭의 본문: 칸 A B C D(누르면 그 칸을 고른다 + 칸 다루기) · [칸 더하기] · 빈 자리. 높이는 북마크 칸 한 줄과 같다(탭을 바꿔도 아래 칸이 커지지 않게).
-function CmpStrip() {
-  const s = useShop()
-  const leave = useCmpLeave()
-  return (
-    <div className={styles.cmpStrip}>
-      {Array.from({ length: CMP_MAX }, (_, i) => {
-        const id = s.cmpIds[i]
-        if (!id) {
-          if (i === s.cmpIds.length) return (
-            <button key={i} type="button" onClick={() => leave(s.addCmp)} title="고른 칸을 복사해 칸 더하기" className={clsx(styles.cmpChip, styles.cmpChipAdd)}>
-              <IconAdd size={14} /><span>칸 더하기</span>
-            </button>
-          )
-          return <div key={i} aria-hidden className={clsx('pb-slot', styles.slot, styles.cmpChipEmpty)} />
-        }
-        const on = id === s.selectedPreset
-        return (
-          <div key={id} role="button" tabIndex={0} aria-pressed={on} title={on ? `${cmpLetter(i)} 칸(고른 칸)` : `${cmpLetter(i)} 칸 고르기`}
-            onClick={() => { if (!on) leave(() => s.pickCmp(id)) }} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !on) { e.preventDefault(); leave(() => s.pickCmp(id)) } }}
-            className={clsx(styles.cmpChip, on && styles.cmpChipOn)}>
-            <span className={clsx(styles.cmpTag, styles.cmpTagStatic, on && styles.cmpTagOn)}>{cmpLetter(i)}</span>
-            <span className={styles.cmpChipActs}><CmpActs id={id} /></span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// PC: 미리보기 아래 칸 — 탭 둘 [북마크] [비교](사용자 지시: 모드처럼). 비교 탭을 고르면 코디 비교가 켜지고(미리보기가 칸 판으로), 북마크 탭으로 돌아오면 꺼진다.
-// 북마크: 8칸. 슬롯을 누르면 입혀보기, ✕ 로 해제. ✕ · 비우기는 두 번 눌러야 지운다(lib/confirmTwice).
-// 칸 높이는 탭과 상관없이 같다(비교 중에 열이 넓어져도 — preview.module.css 의 --pin-col).
+// PC: 미리보기 아래 칸 — 북마크 8칸 + 머리 줄 오른쪽의 탭 [북마크] [비교](사용자 지시: 모드처럼 — 열 폭이 바뀌어도 늘 같은 자리라 오른쪽, [비우기]는 왼쪽).
+// 비교 탭을 고르면 코디 비교가 켜지고(미리보기가 칸 판으로), 북마크 탭으로 돌아오면 꺼진다. 비교 중에도 북마크 칸은 그대로 쓴다(고른 칸에 입혀 본다).
+// 슬롯을 누르면 입혀보기, ✕ 로 해제. ✕ · 비우기는 두 번 눌러야 지운다(lib/confirmTwice).
+// 칸 높이는 탭과 상관없이 같다 — 비교 중에 열이 넓어져도 줄 높이는 비교 전 열 폭으로 잰 값(preview.module.css 의 --pin-col).
 const BOX_TABS: SegOpt<'bm' | 'cmp'>[] = [{ v: 'bm', l: '북마크', t: '북마크한 아이템' }, { v: 'cmp', l: '비교', t: '여러 코디를 나란히 놓고 비교하기' }]
 export function BookmarkBox() {
   const s = useShop()
@@ -111,12 +82,9 @@ export function BookmarkBox() {
   return (
     <div data-guide="bm" className={clsx('pb-pinbox', styles.pinbox)}>
       <div className={styles.pinHead}>
+        <span className={styles.pinActs}><PinCount n={n} /><ClearBookmarks n={n} /></span>
         <span data-guide="vs" className={styles.pinTabs}><Seg opts={BOX_TABS} value={tab} onPick={pick} /></span>
-        <span className={styles.pinActs}>
-          {tab === 'bm' ? <><PinCount n={n} /><ClearBookmarks n={n} /></> : <span className={styles.cmpCount}>{s.cmpIds.length} / {CMP_MAX}</span>}
-        </span>
       </div>
-      {tab === 'cmp' ? <CmpStrip /> : (
       <div className={styles.pinGrid}>
         {Array.from({ length: 8 }, (_, i) => {
           const it = s.bookmarks[i]
@@ -133,7 +101,6 @@ export function BookmarkBox() {
           )
         })}
       </div>
-      )}
     </div>
   )
 }

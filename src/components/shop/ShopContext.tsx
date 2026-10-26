@@ -191,8 +191,9 @@ type CmpStore = { ids: string[]; data: Record<string, Snapshot>; on: boolean; la
 const loadCmpStore = (): CmpStore | null => {
   try { const raw = localStorage.getItem(CMP_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && Array.isArray(s.ids) && s.data ? s : null } catch { return null }
 }
-// 보기 설정(시선 · 액션 · 프레임 · 표정 · 배율)은 칸마다 따로 두지 않는다 — 비교하는 동안 모든 칸이 같은 자세 · 같은 크기여야 견줄 수 있다
-export const withView = (v: PvSnap | undefined, cur: Pv): PvSnap => ({ ...PV_SNAP_DEFAULT, ...(v || {}), gaze: cur.gaze, action: cur.action, frame: cur.frame, expr: cur.expr, zoom: cur.zoom })
+// 비교 칸의 보기 설정(시선 · 액션 · 프레임 · 표정)은 칸마다 따로 둔다 — 칸을 고르면 그 칸의 설정이 연출 설정 · 목록에 그대로 온다(사용자 지시:
+// 목록은 고른 칸에 맞춘다). 배율만 모든 칸이 지금 값을 함께 쓴다 — 같은 크기여야 견줄 수 있다
+export const withView = (v: PvSnap | undefined, cur: Pv): PvSnap => ({ ...PV_SNAP_DEFAULT, ...(v || {}), zoom: cur.zoom })
 // 넥슨 캐시아이템 part → 내부 slot. (part 로 매핑: '한벌옷'=longcoat, '상의'=coat 구분)
 // 반지(칸 넷)는 일루전 링 · 명찰 · 말풍선 반지 목록을 차례로 찾아 맞는 아이템의 부위로 끼운다(NEXON_RING_SLOTS — 사용자 지시: 사이트가 다루는 부위는 모두 가져온다).
 // 훈장 · 칭호는 서버가 외형 이름으로 넘긴다(/api/nick 의 regularVisible).
@@ -1624,7 +1625,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (cmpOn && !isCmpId(id)) { cmpTake(id); return }
     switchPreset(id, presetData[id] ?? defaultSnapshot())
   }
-  // keep: 보기 설정을 지금 값으로 둔다 — 'all' = 비교 칸끼리(withView), 'zoom' = 배율만(비교를 끝낼 때)
+  // keep: 'all' = 비교 칸끼리(withView — 그 칸의 보기 설정, 배율만 지금 값), 'zoom' = 배율만 지금 값(비교를 끝낼 때)
   const switchPreset = (id: string, snap: Snapshot, keep?: 'all' | 'zoom') => {
     if (selectedPreset && selectedPreset !== id) setPresetData((d) => ({ ...d, [selectedPreset]: snapshot() }))
     if (selectedPreset === id) return

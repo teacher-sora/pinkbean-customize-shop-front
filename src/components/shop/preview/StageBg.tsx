@@ -7,6 +7,7 @@
 // 바닥을 알리지 않는 칸(still)은 칸에 맞춰 채우기만 한다.
 
 import { useEffect, useRef, useState } from 'react'
+import { useIsoLayoutEffect } from '@/lib/uiState'
 import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, getStageBg, stageSelOf, useStageBg, type CashBg } from '@/lib/stageBg'
 import { MODEL_DROP, MODEL_REF, zoomStepScale } from '@/lib/core/modelPlacement'
 import { ZOOM_WORLD } from '@/lib/shopData'
@@ -28,9 +29,10 @@ export const stageColor = (sel: string): string | undefined => sel === 'system' 
 //  · 배율 = SnapThumb 의 computeModelPlacement(snap: true) — 기기 픽셀 정수 round(fraction × 칸 높이 × dpr ÷ bodyRefH), CSS 1게임px = 배율 ÷ dpr
 //  · 발 = 칸 가운데에서 (−centerDy + MODEL_DROP + 21) 게임px 아래, 가로는 칸 가운데
 // 그래서 칸 크기를 직접 잰다(칸마다 · 화면마다 반올림이 다르다).
+// 페인트 전에 잰다 — 비교 칸처럼 칸이 생기는 순간 보이는 배경은, 재기 전 한 번 바탕색만 칠해졌다 그림이 얹히면 점멸한다(사용자 지적)
 function useBox (ref: React.RefObject<HTMLDivElement | null>) {
   const [b, setB] = useState({ w: 0, h: 0, dpr: 1 })
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     const m = () => { const w = el.clientWidth, h = el.clientHeight, dpr = window.devicePixelRatio || 1; setB((p) => (p.w === w && p.h === h && p.dpr === dpr ? p : { w, h, dpr })) }
@@ -59,7 +61,7 @@ export function CardStageBg({ sel, fraction, zoom }: { sel?: string; fraction: n
   return (
     <div ref={ref} aria-hidden className={styles.stageBg} style={img ? { backgroundImage: `url("${img}")` } : { background: fill }}>
       {k > 0 && layers.map((l) => (
-        <img key={l.src} alt="" src={l.src} className={styles.stageCardImg} style={{ left: fx - l.fx * k, top: fy - l.fy * k, width: l.w * k, height: l.h * k }} />
+        <img key={l.src} alt="" src={l.src} decoding="sync" className={styles.stageCardImg} style={{ left: fx - l.fx * k, top: fy - l.fy * k, width: l.w * k, height: l.h * k }} />
       ))}
     </div>
   )
