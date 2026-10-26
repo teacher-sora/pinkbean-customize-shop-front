@@ -86,7 +86,7 @@
 | 무엇 | 어디 |
 |---|---|
 | 지금 코디의 미리보기 | `PreviewModel.tsx` |
-| 저장된 코디(스냅샷) 한 장 | `SnapThumb.tsx` — 프리셋·광장·VS·가져오기가 함께 쓴다 |
+| 저장된 코디(스냅샷) 한 장 | `SnapThumb.tsx` — 프리셋·광장·코디 비교·가져오기가 함께 쓴다(`zoom` 을 주면 미리보기 배율 단계로) |
 | 아이템 카드의 그림(아이템 / 기본 캐릭터 / 내 캐릭터) | `ItemThumb.tsx` |
 | 염색 화면의 그림 | `render/DyeSprite.tsx`, `render/DyeModelPreview.tsx`, `render/DyeCellCanvas.tsx` |
 | 슬롯 줄의 작은 그림 | `info/SlotSprite.tsx` |

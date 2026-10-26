@@ -8,14 +8,15 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import type { ListItem } from '@/lib/core/data'
 import { takePvIntent } from '@/lib/guide'
 import { SLOT_TO_CAT } from '@/lib/shopData'
-import { useShop } from '../ShopContext'
+import { CMP_MIN, useShop } from '../ShopContext'
+import { Seg, type SegOpt } from '../ui/controls'
+import { IconClose } from '../ui/Icons'
+import { useCmpLeave } from './PreviewStage'
 import { DyeSprite } from '../render/DyeSprite'
 import { glideTo, place, release } from '../surface/glide'
 import { useInnerSlide, SWAP_MS } from '../surface/innerSlide'
 import { SHEET_EASE, SHEET_MS } from '../surface/sheetMotion'
 import { SurfaceFooter } from '../surface/Surface'
-import { VsPanes } from '../surface/VsBody'
-import { useVsFlip, VS_WRAP_H } from '../surface/sheetMotion'
 import { PvGroups, PvInlineFields, pvFieldOf, pvGroupsOf, usePvFields, type PvGroup } from './pvControls'
 import { PvGrid, type PvField } from './PvPicker'
 import { ActionFrameGrid, actionInfo, useActionInfo, warmActionFrames } from './ActionFrames'
@@ -49,19 +50,35 @@ function PinCount({ n }: { n: number }) {
   return <span className={clsx(styles.count, n > 0 && styles.countOn)}>{n}</span>
 }
 
-// PC: 미리보기 아래 8칸 박스. 슬롯을 누르면 입혀보기(토글), ✕ 로 해제. VS = 코디 비교 다이얼로그(비우기 오른쪽, 한 그룹 — 사용자 지시로 자리를 바꿨다). ✕ · 비우기는 두 번 눌러야 지운다(lib/confirmTwice).
+// 비교 칸 다루기 — [빼기](두 칸은 남긴다, 두 번 눌러야 한다 — lib/confirmTwice). 고른 비교 칸의 오른쪽 위(PreviewStage)에 둔다.
+export function CmpActs({ id }: { id: string }) {
+  const s = useShop()
+  const one = s.cmpIds.length <= CMP_MIN
+  return (
+    <button type="button" disabled={one} title={one ? '비교는 두 칸 이상이어야 해요' : '이 칸 빼기'} aria-label="이 칸 빼기" {...{ [CONFIRM_ATTR]: `cmp:x:${id}` }}
+      onClick={(e) => { e.stopPropagation(); if (confirmTwice(`cmp:x:${id}`, '한 번 더 누르면 이 칸을 빼요')) s.removeCmp(id) }}
+      className={clsx(styles.heroIcon, styles.cmpActBtn, !one && styles.heroIconOn)}><IconClose size={13} /></button>
+  )
+}
+
+// PC: 미리보기 아래 칸 — 북마크 8칸 + 머리 줄 오른쪽의 탭 [북마크] [비교](사용자 지시: 모드처럼 — 열 폭이 바뀌어도 늘 같은 자리라 오른쪽, [비우기]는 왼쪽).
+// 비교 탭을 고르면 코디 비교가 켜지고(미리보기가 칸 판으로), 북마크 탭으로 돌아오면 꺼진다. 비교 탭의 본문은 지금은 빈 자리다(사용자 지시 — 북마크 줄과 같은 높이, [비우기]도 자리만 남긴다).
+// 슬롯을 누르면 입혀보기, ✕ 로 해제. ✕ · 비우기는 두 번 눌러야 지운다(lib/confirmTwice).
+// 칸 높이는 탭과 상관없이 같다 — 비교 중에 열이 넓어져도 줄 높이는 비교 전 열 폭으로 잰 값(preview.module.css 의 --pin-col).
+const BOX_TABS: SegOpt<'bm' | 'cmp'>[] = [{ v: 'bm', l: '북마크', t: '북마크한 아이템' }, { v: 'cmp', l: '비교', t: '여러 코디를 나란히 놓고 비교하기' }]
 export function BookmarkBox() {
   const s = useShop()
   const n = s.bookmarks.length
+  const leave = useCmpLeave()
+  const tab = s.cmpOn ? 'cmp' : 'bm'
+  const pick = (v: 'bm' | 'cmp') => { if (v === tab) return; if (v === 'cmp') leave(s.toggleCompare); else s.toggleCompare() }
   return (
     <div data-guide="bm" className={clsx('pb-pinbox', styles.pinbox)}>
       <div className={styles.pinHead}>
-        <span className={styles.pinTitle}>북마크<PinCount n={n} /></span>
-        <span className={styles.pinActs}>
-          <ClearBookmarks n={n} />
-          <button type="button" data-guide="vs" onClick={s.openVs} title="북마크한 아이템을 나란히 비교하기" className={clsx('pb-ghost', styles.vsBtn, s.surface?.kind === 'vs' && styles.vsBtnOn)}>비교</button>
-        </span>
+        <span className={styles.pinActs} style={tab === 'cmp' ? { visibility: 'hidden' } : undefined} aria-hidden={tab === 'cmp' || undefined}><PinCount n={n} /><ClearBookmarks n={n} /></span>
+        <span data-guide="vs" className={styles.pinTabs}><Seg opts={BOX_TABS} value={tab} onPick={pick} /></span>
       </div>
+      {tab === 'cmp' ? <div aria-hidden className={styles.pinBlank} /> : (
       <div className={styles.pinGrid}>
         {Array.from({ length: 8 }, (_, i) => {
           const it = s.bookmarks[i]
@@ -78,31 +95,24 @@ export function BookmarkBox() {
           )
         })}
       </div>
+      )}
     </div>
   )
 }
 
-// 모바일: 북마크 시트 본문. 위에서부터 VS 확장 영역(0↔248px, 비교 캔버스 고정 236px) → 북마크 줄(VS·비우기)
-// → 4×2 = 항상 8칸 예약(빈칸 점선). VS 가 켜진 동안 칩은 장착이 아니라 비교 대상 선택, 꺼져 있으면 장착 후 닫기.
-// 북마크 줄의 윗선은 상시 유지하고 margin-top:-1px 로 접힌 상태에선 헤더 밑선과 정확히 겹친다.
-// VS 펼침/접힘은 높이 전환이 아니라 transform FLIP(surface/sheetMotion.useVsFlip) — 목록(bmList)이 비교 영역을 덮고 있다가 드러낸다.
+// 모바일: 북마크 시트 본문. 북마크 줄(비우기) → 4×2 = 항상 8칸 예약(빈칸 점선). 칩을 누르면 입히고 닫는다.
+// 북마크 줄의 윗선은 상시 유지하고 margin-top:-1px 로 헤더 밑선과 정확히 겹친다.
 // 본문은 스크롤 가능(브라우저 내비게이션 바가 올라와 시트가 줄어도 잘리지 않게).
 export function BookmarkSheetBody() {
   const s = useShop()
   const n = s.bookmarks.length
-  const flip = useVsFlip()
   return (
-    <div ref={flip.bodyRef} className={clsx('pb-scroll', 'pb-fade', styles.sheetBody)}>
-      {/* 확장 높이는 상태 값이라 인라인(전환은 FLIP 이 transform 으로) */}
-      <div className={styles.vsWrap} style={{ height: s.vsOn ? VS_WRAP_H : 0 }}>
-        <div className={styles.vsWrapIn}><VsPanes mobile /></div>
-      </div>
-      <div ref={flip.listRef} className={styles.bmList}>
+    <div className={clsx('pb-scroll', 'pb-fade', styles.sheetBody)}>
+      <div className={styles.bmList}>
       <div className={styles.bmRow}>
         <span className={styles.bmTitle}>북마크<PinCount n={n} /></span>
         <span className={styles.pinActs}>
           <ClearBookmarks n={n} />
-          <button type="button" onClick={flip.toggle} title="북마크한 아이템을 나란히 비교하기" aria-pressed={s.vsOn} className={clsx('pb-ghost', styles.vsBtn, s.vsOn && styles.vsBtnOn)}>비교</button>
         </span>
       </div>
       <div className={styles.bmBody}>
@@ -111,16 +121,11 @@ export function BookmarkSheetBody() {
             const it = s.bookmarks[i]
             if (!it) return <div key={i} title="북마크한 아이템이 여기에 담겨요" className={styles.chipEmpty} />
             const worn = wornOf(s, it)
-            const picked = s.vsPicks.includes(it.id)
-            const on = s.vsOn ? picked : worn
             const name = it.name || it.id
-            const pick = () => {
-              if (s.vsOn) { s.toggleVsPick(it.id); return }
-              s.equipFromCat(SLOT_TO_CAT[it.slot], it); s.closeSurface()
-            }
+            const pick = () => { s.equipFromCat(SLOT_TO_CAT[it.slot], it); s.closeSurface() }
             return (
-              <button key={it.id} type="button" onClick={pick} title={`${name} — ${s.vsOn ? (picked ? '비교에서 빼기' : '오른쪽에 끼워 비교') : worn ? '장착 중' : '눌러서 입혀보기'}`}
-                className={clsx(styles.chip, on && styles.chipWorn)}>
+              <button key={it.id} type="button" onClick={pick} title={`${name} — ${worn ? '장착 중' : '눌러서 입혀보기'}`}
+                className={clsx(styles.chip, worn && styles.chipWorn)}>
                 <span className={styles.chipSprite}><BookmarkSprite item={it} /></span>
                 <span role="button" tabIndex={0} title="북마크 해제" aria-label="북마크 해제" className={styles.chipX} {...{ [CONFIRM_ATTR]: `bm:x:${it.id}` }}
                   onClick={(e) => { e.stopPropagation(); if (confirmTwice(`bm:x:${it.id}`, '한 번 더 누르면 북마크에서 빼요')) s.toggleBookmark(it) }}
@@ -186,7 +191,7 @@ export function PvSheetBody() {
   //    `scrollHeight` 가 상자 높이보다 작아지지 않아 고르기(460px)에서 돌아와도 460 으로 굳고(되돌아가지 않음),
   //    애니메이션 중 다시 재는 되먹임이 생겨 높이가 매 프레임 재시작돼 툭툭 끊긴다.
   //  · 고르기 화면 = 화면의 62%(최대 460px) — 격자는 그 안에서 스크롤한다.
-  // 움직임은 **높이 전환이 아니라 VS 와 같은 FLIP**이다: 높이는 한 번에 바꾸고(레이아웃 1회), 보이는 움직임은
+  // 움직임은 **높이 전환이 아니라 FLIP**이다: 높이는 한 번에 바꾸고(레이아웃 1회), 보이는 움직임은
   // 패널·푸터의 translateY 로만 한다(합성 단계라 매끄럽고, 도중에 다시 눌러도 glide 가 지금 위치·속도를 이어받는다).
   const wrapRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLDivElement>(null)
@@ -210,7 +215,7 @@ export function PvSheetBody() {
     return () => window.removeEventListener('resize', m)
   }, [])
   const want = view === 'pick' || view === 'frames' ? pickH : mainH
-  // 실제로 시트에 걸리는 높이. **늘 때와 줄 때 순서가 다르다**(VS 펼침/접힘과 같은 규칙).
+  // 실제로 시트에 걸리는 높이. **늘 때와 줄 때 순서가 다르다**.
   //  · 늘 때  = 레이아웃 먼저 바꾸고 → 직전 모습으로 되돌려 놓은 뒤 0 으로 미끄러진다.
   //  · 줄 때  = 큰 레이아웃 그대로 두고 먼저 미끄러진 뒤 → 다 내려간 자리에서 레이아웃을 줄인다.
   //    (먼저 줄이면 패널 아랫변이 화면 안으로 들어와 푸터가 붕 뜨고 아래에 빈 칸이 생긴다.)

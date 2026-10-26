@@ -101,6 +101,10 @@ const DirIcon = ({ size = 15, y }: P & { y?: boolean }) => (
 )
 export const IconDirX = (p: P) => <DirIcon {...p} />
 export const IconDirY = (p: P) => <DirIcon {...p} y />
+// 코디 비교 — 나란히 선 두 칸 + 가운데 가르는 선(위아래로 길게). 칸 넷짜리 격자는 프리셋 탭 아이콘과 같아 보여 바꿨다(사용자 지적)
+export const IconCompare = ({ size = 15 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="6.5" height="12" rx="1.5" /><rect x="14.5" y="6" width="6.5" height="12" rx="1.5" /><path d="M12 3v18" /></svg>
+)
 export const IconTakeDown = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 4.5v11m0 0l-4.2-4.2M12 15.5l4.2-4.2M5 19h14" /></svg>
 )

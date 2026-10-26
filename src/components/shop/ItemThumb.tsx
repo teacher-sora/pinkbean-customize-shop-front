@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { useIsoLayoutEffect } from '@/lib/uiState'
 import { assemble, dropWeaponEffects, footOf, getFrameLayers, ringIllusion, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, loadParticle, loadParticleIndex, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides, type DyeState } from '@/lib/core/dye'
@@ -90,6 +91,23 @@ function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
   )
 }
 
+// ── 다 만든 카드 그림을 기억한다(사용자 지시: 목록이 점멸하며 흔들리지 않게) ──
+// 목록 폭이 바뀌면(코디 비교를 켜고 끌 때 등) 한 쪽의 칸 수가 바뀌어 카드가 다른 쪽(key=쪽 번호)으로 옮겨 가며 새로 만들어진다.
+// 새로 만든 카드는 비동기 합성이 끝날 때까지 뼈대를 보여 목록 전체가 깜빡였다(실측: 끌 때 보이는 카드 28장 모두 뼈대).
+// 같은 입력이면 기억해 둔 결과로 **첫 페인트부터** 그린다 — 칸 크기 재기와 그리기도 페인트 전(layout effect)에 한다.
+// 입력의 객체(배경 이펙트 · 염색 등)는 내용이 아니라 같은 객체인지로 가른다(목록이 같은 값이면 같은 객체를 넘긴다).
+const THUMB_CACHE_MAX = 600
+const objIds = new WeakMap<object, number>()
+let nextObj = 0
+const oid = (o: object | null | undefined) => { if (!o) return 0; let v = objIds.get(o); if (v == null) { v = ++nextObj; objIds.set(o, v) } return v }
+function memo<T>(m: Map<string, T>, k: string, v: T) {
+  m.delete(k); m.set(k, v)
+  if (m.size > THUMB_CACHE_MAX) m.delete(m.keys().next().value as string)
+}
+type ModelDone = { placed: PlacedLayer[]; effs: EffectDraw[]; parts: ParticleDraw[]; ovr: Map<string, HTMLCanvasElement> | undefined }
+const modelDone = new Map<string, ModelDone>()
+const chatDone = new Map<string, HTMLCanvasElement>()
+
 // 명찰 · 말풍선 · 칭호 · 훈장 카드: 몸 없이 그 아이템만 카드 가운데에. 칭호 · 훈장의 글자는 그 아이템 이름. 배율은 정수(디바이스 픽셀 기준) — 게임 크기(CSS 1px = 게임 1px)를 넘지 않고,
 // 카드 안쪽 CHAT_FIT 에 다 들어오지 않으면 들어오는 단계까지 줄인다(카드마다 크기가 들쭉날쭉하지 않게 키우지는 않는다).
 // 디바이스 픽셀 1:1 로도 넘치면(배율 1 화면의 넓은 말풍선) 카드에 맞춰 부드럽게 줄인다 — 잘려서 생김새를 못 보는 것보다 낫다(사용자 지시).
@@ -97,17 +115,20 @@ const CHAT_FIT = 0.9
 function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [bmp, setBmp] = useState<HTMLCanvasElement | null>(null)
-  const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   const kind = item.chatUi?.kind
   const name = kind === 'medal' || kind === 'nick' ? item.name ?? '' : chat.name
+  const ckey = `${item.id}|${oid(item.chatUi)}|${name}|${chat.text}`
+  const [bmp, setBmp] = useState<HTMLCanvasElement | null>(() => chatDone.get(ckey) ?? null)
+  const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   useEffect(() => {
+    const hit = chatDone.get(ckey)
+    if (hit) { setBmp(hit); return }
     let alive = true
     setBmp(null)
-    if (item.chatUi) chatPreview(item.chatUi, { name, text: chat.text }).then((c) => { if (alive) setBmp(c) }).catch(() => {})
+    if (item.chatUi) chatPreview(item.chatUi, { name, text: chat.text }).then((c) => { memo(chatDone, ckey, c); if (alive) setBmp(c) }).catch(() => {})
     return () => { alive = false }
-  }, [item.chatUi, name, chat.text])
-  useEffect(() => {
+  }, [ckey]) // eslint-disable-line react-hooks/exhaustive-deps
+  useIsoLayoutEffect(() => {
     const el = wrapRef.current
     if (!el) return
     const measure = () => {
@@ -119,7 +140,7 @@ function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
     window.addEventListener('resize', measure)
     return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
   }, [])
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !bmp || !dims.w) return
     const fit = Math.min((dims.w * dims.dpr * CHAT_FIT) / bmp.width, (dims.h * dims.dpr * CHAT_FIT) / bmp.height)
@@ -161,10 +182,12 @@ interface ModelProps {
   ctxAction?: string                        // 배경이 내 무기 때문에 다른 자세로 구워졌으면 그 액션(thumbCtx.action) — 후보도 같은 자세로
 }
 function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets }: ModelProps) {
-  const [placed, setPlaced] = useState<PlacedLayer[] | null>(null)
-  const [effs, setEffs] = useState<EffectDraw[]>([])
-  const [parts, setParts] = useState<ParticleDraw[]>([])
-  const [ovr, setOvr] = useState<Map<string, HTMLCanvasElement> | undefined>(override)
+  // 합성 입력 전부(아래 합성 effect 의 의존과 같다) — 같으면 기억해 둔 그림을 쓴다
+  const mkey = [item.id, ctxKey, skinHeadId, gaze, item.fixedEmotion || ctxExpr, ear, weapon, stance, ctxAction, oid(ctxEffs), pvEff ? `${+pvEff.wEffect}${+pvEff.cEffect}` : "", oid(faceMeta), oid(override), oid(dotOffsets)].join('|')
+  const [placed, setPlaced] = useState<PlacedLayer[] | null>(() => modelDone.get(mkey)?.placed ?? null)
+  const [effs, setEffs] = useState<EffectDraw[]>(() => modelDone.get(mkey)?.effs ?? [])
+  const [parts, setParts] = useState<ParticleDraw[]>(() => modelDone.get(mkey)?.parts ?? [])
+  const [ovr, setOvr] = useState<Map<string, HTMLCanvasElement> | undefined>(() => (modelDone.has(mkey) ? modelDone.get(mkey)!.ovr : override))
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -176,7 +199,10 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
   const ctxView = ctxAction && gaze !== 'back' ? { ...tv.view, action: ctxAction } : tv.view // 배경과 같은 자세
 
   useEffect(() => {
+    const hit = modelDone.get(mkey)
+    if (hit) { setPlaced(hit.placed); setEffs(hit.effs); setParts(hit.parts); setOvr(hit.ovr); return }
     let alive = true
+    let doneOvr = override
     setPlaced(null); setEffs([]); setOvr(override)
     ;(async () => {
       let self: AssembleInput[]
@@ -224,7 +250,8 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       }
       // 배경 염색(override) 위에 표정-재구운 얼굴(faceOvr) + 후보 헤어/성형 발색(selfOvr)을 덮어쓴다.
       if ((selfOvr && selfOvr.size) || (faceOvr && faceOvr.size)) {
-        setOvr(new Map<string, HTMLCanvasElement>([...(override ?? new Map()), ...(faceOvr ?? new Map()), ...(selfOvr ?? new Map())]))
+        doneOvr = new Map<string, HTMLCanvasElement>([...(override ?? new Map()), ...(faceOvr ?? new Map()), ...(selfOvr ?? new Map())])
+        setOvr(doneOvr)
       }
       // 라이딩(탈것) 카드 = 탑승 장착샷 (미리보기 규칙과 동일하게 리스트에도 반영).
       //   · 방패는 탑승 중 숨김. 무기는 앉은 채(비-back)에선 숨김.
@@ -275,13 +302,14 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
           parts = placeParticles(spots, descs, foot, (d) => stillSim(d))
         }
       }
+      memo(modelDone, mkey, { placed: p, effs: draws, parts, ovr: doneOvr })
       if (alive) { setEffs(draws); setParts(parts) }
     })().catch(() => {})
     return () => { alive = false }
-  }, [item.id, ctxKey, skinHeadId, gaze, ctxEffs, pvEff, cardExpr, faceMeta, override, ear, weapon, stance, ctxAction, dotOffsets])
+  }, [mkey]) // eslint-disable-line react-hooks/exhaustive-deps -- 입력 전부가 mkey 에 들어 있다(연출 설정은 객체가 아니라 이펙트 켜짐 값으로)
 
-  // 셀(div) 표시크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다.
-  useEffect(() => {
+  // 셀(div) 표시크기 + dpr 실측. dpr 변경(브라우저 줌/모니터 이동)은 window resize 로도 잡는다. 페인트 전에 재고 그린다(머리의 기억 주석)
+  useIsoLayoutEffect(() => {
     const el = wrapRef.current
     if (!el) return
     const measure = () => {
@@ -294,7 +322,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
   }, [])
 
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !placed || !dims.w || !dims.h) return
     let cancelled = false
