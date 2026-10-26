@@ -3,6 +3,7 @@
 import clsx from 'clsx'
 import { useEffect, useState } from 'react'
 import { css } from '@/lib/style'
+import { NEXON_CREDIT } from '@/lib/nexonLook'
 import { isStacked } from '@/lib/useBreakpoint'
 import SnapThumb from './SnapThumb'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from './ShopContext'
@@ -131,6 +132,8 @@ export default function LookDialog() {
               )
             })}
           </div>
+          {/* 출처 표기(넥슨 Open API 이용약관 제6조 ④, lib/nexonLook) */}
+          <span style={css('flex:0 0 auto; padding:0 22px 14px; font-size:11px; color: #b7ada2; color: light-dark(#b7ada2, #858893); text-align:right;')}>{NEXON_CREDIT}</span>
         </div>
       </div>
     </div>
