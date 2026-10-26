@@ -183,7 +183,8 @@ const loadPresetStore = (): PresetStore | null => {
 }
 // 코디 비교(사용자 지시): 칸 하나하나가 프리셋 목록에 나오지 않는 프리셋이다(id 'cmp…'). 칸을 고르면 그 칸의 코디가 지금 코디가 되어
 // 코디 탭 · 염색 · 연출 설정 · 북마크 · 자동 저장 · 되돌리기를 프리셋과 똑같이 쓴다. 저장은 프리셋과 따로(CMP_KEY) — 비교 중에 바꾼 것이 프리셋에 섞이지 않는다.
-// ids = 칸 순서(A B C D), on = 비교 중에 닫았는지(새로고침해도 그대로), last = 마지막으로 고른 칸, back = 비교 전에 고르던 프리셋(끝내면 돌아간다)
+// ids = 칸 순서(A B C D), on = 비교 중에 닫았는지(새로고침해도 그대로), last = 마지막으로 고른 칸, back = 비교 전에 고르던 프리셋.
+// **고른 칸 = 그 프리셋**: 고른 칸을 고치면 back 에도 저장되고, 칸을 바꿔 고르면 그 칸의 코디가 back 이 된다(끄면 back 이 마지막 칸의 코디로 남는다)
 export const CMP_MAX = 4
 const CMP_KEY = 'pb_compare_v1'
 export const isCmpId = (id: string | null | undefined): id is string => !!id && id.startsWith('cmp')
@@ -327,7 +328,7 @@ export interface ShopCtx {
   openPartItem: (item: ListItem) => void; partBack: () => void; partSlide: number
   // 코디 비교: 칸(cmpIds — A B C D) = 프리셋 목록에 없는 프리셋. 비교 중 = 고른 프리셋이 비교 칸(cmpOn). cmpBack = 끝내면 돌아갈 프리셋
   cmpOn: boolean; cmpIds: string[]; cmpBack: string | null
-  toggleCompare: () => void; pickCmp: (id: string) => void; addCmp: () => void; removeCmp: (id: string) => void; cmpSave: (id: string) => void
+  toggleCompare: () => void; pickCmp: (id: string) => void; addCmp: () => void; removeCmp: (id: string) => void
   // 점(애교점) 위치 오프셋(아이템ID 키 → 레이어이름 → 오프셋)
   dotPos: Record<string, DotOffsets>
   setDot: (itemId: string, layer: string, v: Vec) => void; resetDot: (itemId: string) => void
@@ -1501,7 +1502,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   const openPartItem = (item: ListItem) => slideTo(1, { kind: DOT_MOVER_IDS.has(item.id) ? 'dot' : 'dye', item, fromPart: true })
   const partBack = () => slideTo(-1, { kind: 'part', item: null })
-  // 코디 비교(사용자 지시) — 칸은 프리셋 목록에 없는 프리셋이다(CMP_KEY 주석). 칸 고르기 · 더하기 · 빼기 · 프리셋에 담기.
+  // 코디 비교(사용자 지시) — 칸은 프리셋 목록에 없는 프리셋이다(CMP_KEY 주석). 칸 고르기 · 더하기 · 빼기. 고른 칸 = 비교 전 프리셋(CMP_KEY 주석).
   // 처음 열면 지금 코디로 두 칸(A = 지금 코디, B = 그 복사본 — 하나만 바꿔 대 보기 쉽게). 다시 열면 모아 둔 칸 그대로, 마지막에 고른 칸으로.
   const newCmpId = () => 'cmp' + Date.now().toString(36) + (cmpSeq.current++)
   const toggleCompare = () => {
@@ -1519,8 +1520,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setSelectedPreset(a) // 라이브는 이미 이 코디다
       return
     }
+    // 다시 켜면 마지막에 고른 칸에 지금 코디(= 지금 프리셋)를 담는다 — 고른 칸이 곧 프리셋이라(아래 주석) 그 칸의 이전 내용은 그때의 프리셋에 이미 있다
     const to = cmpLast.current && cmpIds.includes(cmpLast.current) ? cmpLast.current : cmpIds[0]
-    switchPreset(to, presetData[to] ?? defaultSnapshot(), 'all')
+    const cur = snapshot()
+    setPresetData((d) => ({ ...d, ...(selectedPreset ? { [selectedPreset]: cur } : {}), [to]: cur }))
+    setSelectedPreset(to) // 라이브는 이미 이 코디다
   }
   const pickCmp = (id: string) => { if (id !== selectedPreset) switchPreset(id, presetData[id] ?? defaultSnapshot(), 'all') }
   // 새 칸 = 지금 고른 칸의 복사본, 바로 그 칸을 고른다(라이브는 그대로)
@@ -1538,23 +1542,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (id === selectedPreset) { const to = rest[Math.min(cmpIds.indexOf(id), rest.length - 1)]; switchPreset(to, presetData[to] ?? defaultSnapshot(), 'all') }
     setCmpIds(rest)
   }
-  // 칸을 돌아갈 프리셋(cmpBack)에 담는다 — 그 프리셋을 덮어쓰므로 되돌리기 한 건(over)으로 남긴다
-  const cmpSave = (id: string) => {
-    const back = cmpBack
-    if (!back) return
-    const snap = id === selectedPreset ? snapshot() : presetData[id]
-    if (!snap) return
-    const name = presets.find((p) => p.id === back)?.name ?? ''
-    pushHistory({ id: back, prev: presetData[back] ?? defaultSnapshot(), prevName: name, next: snap, nextName: name })
-    setPresetData((d) => ({ ...d, [back]: snap }))
-    notify(`'${name}'에 담았어요`)
-  }
-  // 비교 중에 프리셋 카드를 누르면 그 코디를 고른 칸에 담는다(프리셋으로 넘어가지 않는다) — 모아 두고 견주는 기능이라
+  // 비교 중에 프리셋 카드를 누르면 고른 칸이 그 프리셋이 된다 — 그 프리셋의 코디를 고른 칸에 불러오고, 이어지는 편집은 그 프리셋에 저장된다.
+  // (고른 칸 = 프리셋이라, 칸에 불러오기만 하면 지금 이어진 프리셋을 다른 프리셋으로 덮어쓰게 된다)
   const cmpTake = (id: string) => {
     const src = presetData[id] ?? defaultSnapshot()
     const letter = String.fromCharCode(65 + Math.max(0, cmpIds.indexOf(selectedPreset!)))
     const name = presets.find((p) => p.id === id)?.name ?? ''
-    applySnapshot({ ...src, pv: withView(src.pv, pv) }, false).then(() => notify(`'${name}' 코디를 ${letter} 칸에 담았어요`)).catch(() => {})
+    setCmpBack(id)
+    applySnapshot({ ...src, pv: withView(src.pv, pv) }, false).then(() => notify(`'${name}' 코디를 ${letter} 칸에 불러왔어요`)).catch(() => {})
   }
 
   // 현재 라이브 모델 → 스냅샷.
@@ -1637,6 +1632,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setDotPos({ ...(snap.dotPos || {}) })
       applyPvSnap(keep === 'all' ? withView(snap.pv, pv) : keep === 'zoom' && snap.pv ? { ...snap.pv, zoom: pv.zoom } : snap.pv)
       setBgSel(stageSelOf(snap.bg)); setStageBg(snap.bg ?? 'room') // 그 프리셋의 미리보기 배경
+      if (isCmpId(id) && cmpBack) setPresetData((d) => ({ ...d, [cmpBack]: snap })) // 고른 비교 칸 = 프리셋(자동 저장 주석)
       setDyeTarget(null); setSelectedPreset(id)
     }).catch(() => {})
   }
@@ -1967,8 +1963,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     saveT.current = setTimeout(() => {
       const snap = snapshot()
       // presetData 갱신 + localStorage 영속을 한 번(100ms)에 "동시" 처리.
+      // 비교 중이면 고른 칸과 비교 전 프리셋(cmpBack)에 함께 저장한다 — 고른 칸 = 프리셋(사용자 지시: 고른 것과 프리셋이 따로 노는 게 더 불편하다)
       setPresetData((d) => {
-        const next = { ...d, [selectedPreset]: snap }
+        const next = { ...d, [selectedPreset]: snap, ...(cmpOn && cmpBack ? { [cmpBack]: snap } : {}) }
         writePresetStore(next)
         return next
       })
@@ -2104,7 +2101,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipSlot, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
     surface, surfaceClosing, openSheet, openDye, openCard, openDot, closeSurface,
-    openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp, cmpSave,
+    openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,
     dotPos, setDot, resetDot,
     pv, setPv,
     presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, reorderPresets, commitPresetName, snapshot,

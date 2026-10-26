@@ -10,7 +10,7 @@ import { takePvIntent } from '@/lib/guide'
 import { SLOT_TO_CAT } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
-import { IconClose, IconTakeDown } from '../ui/Icons'
+import { IconClose } from '../ui/Icons'
 import { useCmpLeave } from './PreviewStage'
 import { DyeSprite } from '../render/DyeSprite'
 import { glideTo, place, release } from '../surface/glide'
@@ -50,21 +50,14 @@ function PinCount({ n }: { n: number }) {
   return <span className={clsx(styles.count, n > 0 && styles.countOn)}>{n}</span>
 }
 
-// 비교 칸 다루기 — [프리셋에 담기](그 칸을 비교 전 프리셋에 덮어씀) · [빼기](한 칸은 남긴다). 둘 다 두 번 눌러야 한다(lib/confirmTwice).
-// 고른 비교 칸의 오른쪽 위(PreviewStage)에 둔다.
+// 비교 칸 다루기 — [빼기](한 칸은 남긴다, 두 번 눌러야 한다 — lib/confirmTwice). 고른 비교 칸의 오른쪽 위(PreviewStage)에 둔다.
 export function CmpActs({ id }: { id: string }) {
   const s = useShop()
-  const back = s.presets.find((p) => p.id === s.cmpBack)?.name ?? ''
   const one = s.cmpIds.length <= 1
   return (
-    <>
-      <button type="button" disabled={!back} title={back ? `'${back}'에 이 칸 담기` : '담을 프리셋이 없어요'} aria-label="프리셋에 담기" {...{ [CONFIRM_ATTR]: `cmp:save:${id}` }}
-        onClick={(e) => { e.stopPropagation(); if (confirmTwice(`cmp:save:${id}`, `한 번 더 누르면 '${back}'을 이 칸으로 바꿔요`)) s.cmpSave(id) }}
-        className={clsx(styles.heroIcon, styles.cmpActBtn, back && styles.heroIconOn)}><IconTakeDown size={14} /></button>
-      <button type="button" disabled={one} title={one ? '칸은 하나 이상 있어야 해요' : '이 칸 빼기'} aria-label="이 칸 빼기" {...{ [CONFIRM_ATTR]: `cmp:x:${id}` }}
-        onClick={(e) => { e.stopPropagation(); if (confirmTwice(`cmp:x:${id}`, '한 번 더 누르면 이 칸을 빼요')) s.removeCmp(id) }}
-        className={clsx(styles.heroIcon, styles.cmpActBtn, !one && styles.heroIconOn)}><IconClose size={13} /></button>
-    </>
+    <button type="button" disabled={one} title={one ? '칸은 하나 이상 있어야 해요' : '이 칸 빼기'} aria-label="이 칸 빼기" {...{ [CONFIRM_ATTR]: `cmp:x:${id}` }}
+      onClick={(e) => { e.stopPropagation(); if (confirmTwice(`cmp:x:${id}`, '한 번 더 누르면 이 칸을 빼요')) s.removeCmp(id) }}
+      className={clsx(styles.heroIcon, styles.cmpActBtn, !one && styles.heroIconOn)}><IconClose size={13} /></button>
   )
 }
 
