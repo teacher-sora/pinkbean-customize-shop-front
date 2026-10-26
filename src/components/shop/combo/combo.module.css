@@ -1,0 +1,72 @@
+/* 코디 조합 패널(combo/ComboPanel). 머리 · 구분선 · 쪽 칩 · 빈 상태 · 힌트 바는 목록(list.module.css)의 것을 그대로 쓰고, 여기는 패널만의 것.
+   열림: 목록 자리에서 아래 6px → 제자리로 떠오른다(높이는 바뀌지 않는다 — translateY 와 opacity 만, 같은 곡선) */
+.root { position: relative; animation: comboIn .26s cubic-bezier(.45,0,.55,1); }
+.rootM { display: contents; }
+.rootM > * { animation: comboIn .26s cubic-bezier(.45,0,.55,1); }
+@keyframes comboIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .root, .rootM > * { animation: none; } }
+
+/* 머리 왼쪽: [←] + 아이템(아이콘 · 이름 · 코디 수) */
+.headItem { flex: 1 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 8px; }
+.back { flex: 0 0 auto; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); color: #8a8075; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: border-color .2s ease, color .2s ease; }
+.backM { width: 32px; height: 32px; }
+@media (hover: hover) and (pointer: fine) { .back:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); } }
+.itemTag { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.itemThumb { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 6px; background: #f7f2ec; background: light-dark(#f7f2ec, #3b3d45); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.itemThumbM { width: 32px; height: 32px; }
+.itemText { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.itemName { font-size: 13px; font-weight: 600; color: #3d372f; color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
+.itemNameM { font-size: 12.5px; }
+.itemSub { font-size: 11px; color: #a89e93; color: light-dark(#a89e93, #8e919a); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* 광장: 아이템 찾기 칸 + 그 아래 고르기(누르면 바로 닫힌다) */
+.finder { flex: 0 1 260px; }
+.finderM { flex: 1 1 0; min-width: 0; }
+.finderPop { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; padding: 4px; display: flex; flex-direction: column; border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 8px; background: #fff; background: light-dark(#fff, #303238); box-shadow: 0 8px 24px rgba(42,37,33,.12); box-shadow: 0 8px 24px light-dark(rgba(42,37,33,.12), rgba(0,0,0,.35)); }
+.finderRow { height: 40px; padding: 0 8px; display: flex; align-items: center; gap: 8px; border: none; border-radius: 6px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .16s ease; }
+@media (hover: hover) and (pointer: fine) { .finderRow:hover { background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); } }
+.finderThumb { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 5px; background: #f7f2ec; background: light-dark(#f7f2ec, #3b3d45); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.finderName { flex: 1 1 0; min-width: 0; font-size: 12.5px; color: #3d372f; color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.finderN { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: #d76d9a; color: light-dark(#d76d9a, #d293ae); font-variant-numeric: tabular-nums; }
+.finderNone { padding: 10px 8px; font-size: 12px; color: #b7ada2; color: light-dark(#b7ada2, #858893); }
+.emptyWrap { display: flex; }
+
+/* 자주 쓴 염색 줄 — PC 는 한 줄에 다 들어가게 나누고, 모바일은 옆으로 민다 */
+.dyes { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; gap: 10px; }
+.dyesSlide { overflow-x: auto; }
+.dyesM { padding: 0 12px 8px; }
+.dyesLabel { flex: 0 0 auto; width: 38px; white-space: nowrap; font-size: 11px; font-weight: 600; line-height: 1.35; color: #a89e93; color: light-dark(#a89e93, #8e919a); }
+.dyesLabelM { width: 36px; }
+.dyeChips { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.dyeChipsM { display: flex; flex: 0 0 auto; }
+.dyeChip { padding: 6px 8px 7px; gap: 7px; }
+.dyeChipsM .dyeChip { flex: 0 0 132px; }
+@media (hover: hover) and (pointer: fine) { .dyeChip:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); } }
+.dyeChipOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fef5f8; background: light-dark(#fef5f8, #4c3039); }
+
+/* 코디 목록 — 세로로 이어지는 쪽(지금 ±1 만 카드, 나머지는 같은 높이의 빈 칸) */
+.viewport { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden auto; overscroll-behavior-y: contain; }
+.viewportM { margin: 0 7px; }
+.track { position: relative; width: 100%; }
+.page { position: absolute; left: 0; width: 100%; }
+.grid { display: grid; height: 100%; }
+.skel { border-radius: 8px; }
+.card { height: 100%; }
+.thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; background: #f7f2ec; background: light-dark(#f7f2ec, #3b3d45); border-radius: 7px 7px 0 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.meta { flex: 0 0 auto; padding: 5px 8px; border-top: 1px solid #f4efe8; border-top: 1px solid light-dark(#f4efe8, #3e4048); font-size: 11.5px; font-weight: 600; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); text-align: center; font-variant-numeric: tabular-nums; }
+.metaM { padding: 4px 6px; font-size: 11px; }
+
+/* 출처 · 기준 날짜(넥슨 Open API 이용약관 제6조 ④ — lib/nexonLook NEXON_CREDIT) */
+.credit { gap: 12px; }
+.creditM { flex: 0 0 auto; height: 26px; display: flex; align-items: center; justify-content: center; }
+
+/* 상세 */
+.detailActs { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.actBtn { height: 32px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: 12.5px; font-weight: 600; color: #6e645c; color: light-dark(#6e645c, #aeb1b8); white-space: nowrap; cursor: pointer; transition: border-color .2s ease, color .2s ease; }
+@media (hover: hover) and (pointer: fine) { .actBtn:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); } }
+.actSolid { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #ec86ac; background: light-dark(#ec86ac, #d15785); color: #fff; color: light-dark(#fff, #ececef); }
+.detail { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 10px 8px 12px; display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); align-items: start; gap: 14px; }
+.detailM { display: flex; flex-direction: column; padding: 8px 12px 12px; }
+.stage { position: relative; height: 340px; border: 1px solid #eee6dc; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; background: #f7f2ec; background: light-dark(#f7f2ec, #3b3d45); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.stageM { flex: 0 0 auto; width: 100%; height: 220px; }
+.worn { min-width: 0; }

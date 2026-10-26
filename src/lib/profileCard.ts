@@ -1,5 +1,6 @@
 // 코디 프로필(공유 카드) — 내 캐릭터를 세로형 카드 한 장으로 그린다(사용자 지시 — 정보만 늘어놓은 그림이 아니라 고르는 디자인의 '카드').
-// 위 = 둘레에 걸친 이름 띠 · 사진 칸(배경 + 캐릭터 · 명찰 · 말풍선, 끌어 옮기고 키워 자리를 고른다) · 겹친 알약, 가운데 = 이름 · 한 줄 정보, 아래 = 장착 칩 2열.
+// 위 = 둘레에 걸친 이름 띠 · 사진 칸(배경 + 캐릭터 · 명찰 · 말풍선, 끌어 옮기고 키워 자리를 고른다) · 겹친 알약, 가운데 = 이름 · 한 줄 정보, 아래 = 장착 칩 2열,
+// 맨 아래 = 불러오기 티켓(절취선 + 이 코디의 공유 QR — 사진 앱에서 QR 을 누르거나 카메라로 비추면 사이트가 열리며 이 코디를 불러온다. 사용자 지시).
 // 코디 프로필 창(surface/ProfileCardBody)의 미리보기와 저장이 **이 파일의 같은 함수**로 그린다 — 미리보기 그대로 저장된다(저장만 해상도가 두 배).
 //  · 판 = 사진 칸 밖 전부(디자인 · 이름 · 칩, drawCardBase). 디자인 · 칩 · 이름이 바뀔 때만 다시 그린다.
 //  · 사진 칸(drawCardPhoto) = 배경 + 캐릭터. 끌 때는 판을 그대로 깔고 사진 칸만 다시 그린다(프레임마다 칩 글자를 다시 쓰지 않게).
@@ -10,6 +11,7 @@ import { roomLit } from './stageShot'
 import { ROOM } from '@/components/shop/scene/sceneData'
 import { sceneFallback } from '@/components/shop/scene/skyTime'
 import { stageColor } from '@/components/shop/preview/StageBg'
+import type { Qr } from './qr'
 
 export type ShareChip = {
   part: string                // 부위 이름(헤어 · 모자 …)
@@ -60,10 +62,14 @@ const INFO_Y = PHOTO.y + PHOTO.h + NAME_H / 2 + 46
 const DIV_Y = INFO_Y + 54
 const CHIPS_Y = DIV_Y + 34
 export const ZOOM_MIN = 1, ZOOM_MAX = 12
-export function cardHeight (n: number): number {
+// 불러오기 티켓: 칩 아래 절취선(TICKET_GAP) → QR 칸(QR_BOX) → 아래 여백
+const TICKET_GAP = 46, QR_BOX = 212, TICKET_BOTTOM = 66
+export function cardHeight (n: number, qr = false): number {
   const rows = Math.max(1, Math.ceil(n / 2))
-  return CHIPS_Y + rows * CHIP_H + 116
+  return qr ? CHIPS_Y + rows * CHIP_H + TICKET_GAP + 30 + QR_BOX + TICKET_BOTTOM : CHIPS_Y + rows * CHIP_H + 116
 }
+// 카드에 넣을 QR(lib/qr — 공유 링크) + 사람이 읽을 짧은 코드(불러오기 칸에 적어도 된다)
+export type CardQr = { qr: Qr; code: string }
 
 export type CardText = { name: string; sub: string }
 const FAM = () => getComputedStyle(document.body).fontFamily || 'sans-serif'
@@ -139,8 +145,8 @@ function iconCalendar (g: CanvasRenderingContext2D, x: number, y: number, c: str
 }
 
 // 판: 사진 칸 밖 전부. g 는 (CARD_W × H) × S 캔버스.
-export function drawCardBase (g: CanvasRenderingContext2D, S: number, t: CardTheme, text: CardText, chips: ShareChip[]): void {
-  const H = cardHeight(chips.length)
+export function drawCardBase (g: CanvasRenderingContext2D, S: number, t: CardTheme, text: CardText, chips: ShareChip[], qr?: CardQr | null): void {
+  const H = cardHeight(chips.length, !!qr)
   g.setTransform(S, 0, 0, S, 0, 0)
   const bg = g.createLinearGradient(0, 0, CARD_W * 0.35, H)
   bg.addColorStop(0, t.bg[0]); bg.addColorStop(1, t.bg[1])
@@ -183,6 +189,7 @@ export function drawCardBase (g: CanvasRenderingContext2D, S: number, t: CardThe
   g.restore()
   chips.forEach((ch, i) => drawChip(g, t, ch, PAD + (i % 2) * (CHIP_W + COLGAP), CHIPS_Y + Math.floor(i / 2) * CHIP_H))
   if (!chips.length) { g.textAlign = 'center'; g.fillStyle = t.sub; g.font = font(600, 20); g.fillText('입고 있는 아이템이 없어요', CARD_W / 2, CHIPS_Y + 44) }
+  if (qr) { drawTicket(g, t, qr, CHIPS_Y + rows * CHIP_H + TICKET_GAP); g.textAlign = 'left'; return }
   // 바닥: 가는 선 사이의 사이트 주소
   const fy = H - FR - 46
   g.font = font(600, 17); g.textAlign = 'center'; g.fillStyle = t.sub
@@ -190,6 +197,73 @@ export function drawCardBase (g: CanvasRenderingContext2D, S: number, t: CardThe
   g.fillText(site, CARD_W / 2, fy)
   g.save(); g.strokeStyle = t.accent; g.globalAlpha = 0.45; g.lineWidth = 1; g.beginPath(); g.moveTo(CARD_W / 2 - sw - 90, fy + 0.5); g.lineTo(CARD_W / 2 - sw, fy + 0.5); g.moveTo(CARD_W / 2 + sw, fy + 0.5); g.lineTo(CARD_W / 2 + sw + 90, fy + 0.5); g.stroke(); g.restore()
   g.textAlign = 'left'
+}
+
+// ── 불러오기 티켓 ──────────────────────────────────────────
+// 절취선(둥근 점 줄 + 양끝 둘레에 반원 홈) 아래, 왼쪽 = 글(무엇을 하는 칸인지 · 어떻게 쓰는지 · 짧은 코드 · 주소), 오른쪽 = QR 칸.
+// QR 은 카드의 한 장식으로 그린다: 칸은 둥근 흰 판(어두운 디자인은 그 디자인의 밝은 글자색), 데이터는 둥근 점, 눈 셋은 둥근 고리 + 둥근 알맹이,
+// 가운데에 사이트 로고. 읽기 쉬움이 먼저다 — 점은 늘 밝은 판 위의 짙은 색(어두운 디자인에서 뒤집지 않는다 — 뒤집힌 QR 을 못 읽는 카메라가 있다),
+// 오류 복원 Q(25%)라 로고가 가린 가운데 칸(약 7%)도 읽힌다. 실측: 저장한 카드 일곱 디자인 모두 WeChat 해독기(휴대폰 스캐너 계열)로 원본 · 1/2 · 1/4 · 흐린 JPEG 에서 읽힘
+// (OpenCV 기본 해독기는 점 모양 QR 을 못 읽는다 — ARCHITECTURE 2-6 코디 프로필).
+const isDarkTheme = (t: CardTheme) => { const h = t.bg[0].replace('#', ''); const v = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16); return ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 < 128 }
+function drawTicket (g: CanvasRenderingContext2D, t: CardTheme, q: CardQr, y: number) {
+  // 절취선 — 둘레선 안쪽 끝에서 끝까지, 양끝은 둘레선을 물어뜯은 반원 홈
+  g.save()
+  g.fillStyle = t.accent; g.globalAlpha = 0.55
+  for (let x = FR + 34; x <= CARD_W - FR - 34; x += 16) { g.beginPath(); g.arc(x, y, 2.4, 0, Math.PI * 2); g.fill() }
+  g.globalAlpha = 0.9; g.strokeStyle = t.accent; g.lineWidth = 1.5
+  for (const [cx, a0, a1] of [[FR, -Math.PI / 2, Math.PI / 2], [CARD_W - FR, Math.PI / 2, Math.PI * 1.5]] as const) {
+    g.save(); g.beginPath(); g.arc(cx, y, 16, 0, Math.PI * 2); g.fillStyle = t.bg[1]; g.globalAlpha = 1; g.fill(); g.restore()
+    g.beginPath(); g.arc(cx, y, 16, a0, a1); g.stroke()
+  }
+  g.restore()
+
+  const top = y + 30, bx = CARD_W - PAD - QR_BOX
+  // 왼쪽 글
+  const tx = PAD + 8, mid = top + QR_BOX / 2
+  g.textAlign = 'left'; g.textBaseline = 'middle'
+  g.fillStyle = t.accent; g.font = font(700, 18); g.fillText('QR로 불러오기', tx, mid - 74)
+  g.fillStyle = t.text; g.font = font(700, 36); g.fillText('이 코디 입어 보기', tx, mid - 34)
+  g.fillStyle = t.sub; g.font = font(500, 19)
+  g.fillText('사진에서 QR을 누르거나', tx, mid + 8)
+  g.fillText('카메라로 비추면 바로 열려요', tx, mid + 36)
+  // 짧은 코드 알약(사이트의 불러오기 칸에 적어도 된다) + 주소
+  g.font = font(700, 18)
+  const cw = g.measureText(q.code).width + 32, cy = mid + 80
+  round(g, tx, cy - 17, cw, 34, 17); g.save(); g.strokeStyle = t.accent; g.globalAlpha = 0.8; g.lineWidth = 1.5; g.stroke(); g.restore()
+  g.fillStyle = t.val; g.fillText(q.code, tx + 16, cy + 1)
+  g.fillStyle = t.sub; g.font = font(600, 16); g.fillText('pinkbean-customize.com', tx + cw + 16, cy + 1)
+
+  // QR 칸
+  const dark = isDarkTheme(t)
+  const plate = dark ? t.text : '#ffffff', ink = dark ? t.bg[0] : t.text
+  g.save()
+  round(g, bx, top, QR_BOX, QR_BOX, 26); g.fillStyle = plate; g.fill()
+  g.strokeStyle = t.accent; g.lineWidth = 1.5; g.globalAlpha = 0.85; g.stroke()
+  if (t.frame === 'double') { g.globalAlpha = 0.35; g.lineWidth = 1; round(g, bx - 7, top - 7, QR_BOX + 14, QR_BOX + 14, 32); g.stroke() }
+  g.restore()
+  const n = q.qr.size, quiet = 14, m = (QR_BOX - quiet * 2) / n, ox = bx + quiet, oy = top + quiet
+  // 가운데 로고 자리(점을 비운다) — 모듈 7칸 + 둘레 한 칸
+  const lc = n / 2, lr = logo ? 4.6 : 0
+  const inLogo = (x: number, y: number) => Math.abs(x + 0.5 - lc) < lr && Math.abs(y + 0.5 - lc) < lr
+  const eye = (x: number, y: number) => (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7)
+  g.fillStyle = ink
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    if (!q.qr.dark[y][x] || eye(x, y) || inLogo(x, y)) continue
+    g.beginPath(); g.arc(ox + (x + 0.5) * m, oy + (y + 0.5) * m, m * 0.43, 0, Math.PI * 2); g.fill()
+  }
+  // 눈: 둥근 고리(7칸, 굵기 1칸) + 둥근 알맹이(3칸)
+  for (const [ex, ey] of [[0, 0], [n - 7, 0], [0, n - 7]]) {
+    const x0 = ox + ex * m, y0 = oy + ey * m
+    g.save(); g.strokeStyle = ink; g.lineWidth = m; round(g, x0 + m / 2, y0 + m / 2, m * 6, m * 6, m * 1.9); g.stroke(); g.restore()
+    round(g, x0 + m * 2, y0 + m * 2, m * 3, m * 3, m * 1.1); g.fillStyle = ink; g.fill()
+  }
+  if (logo) {
+    const ls = m * 7.2, lx = ox + lc * m - ls / 2, ly = oy + lc * m - ls / 2
+    g.save(); round(g, lx, ly, ls, ls, ls * 0.28); g.fillStyle = '#ffffff'; g.fill(); g.strokeStyle = t.accent === '#ffffff' ? ink : t.accent; g.lineWidth = 1.5; g.stroke(); g.restore()
+    const pad = ls * 0.1
+    g.drawImage(logo, lx + pad, ly + pad, ls - pad * 2, ls - pad * 2)
+  }
 }
 
 // 목록 한 칸: 가는 테두리의 아이콘 칸 + 부위(강조색 작은 글) · 이름 · 염색 값 한 줄

@@ -18,7 +18,8 @@ import { CASH_BGS } from '@/lib/stageBg'
 const plazaBg = (bg: string | undefined): string | undefined => !bg ? undefined : ['room', 'white', 'black', 'system'].includes(bg) || CASH_BGS.some((c) => c.id === bg) ? bg : 'system'
 
 export type PlazaSort = 'popular' | 'recent'
-export type PlazaFilter = 'all' | 'contest' | 'mine' | 'liked'
+// combo = 코디 조합(실제 유저 코디 표본 — combo/ComboPanel 이 광장 목록 자리에 든다. 광장 글이 아니다)
+export type PlazaFilter = 'all' | 'contest' | 'mine' | 'liked' | 'combo'
 export const PLAZA_CONTEST = '블아 코디 대회'
 // 대회와 **별개**인 평소 광장. 여기에 대회 출품작까지 섞어 보이면
 // '대회 + 그 밖의 전부'처럼 읽힌다. 그래서
@@ -38,6 +39,7 @@ export const PLAZA_FILTERS: { id: PlazaFilter; label: string }[] = [
   { id: 'contest', label: '블아 대회' },
   { id: 'mine', label: '내 등록' },
   { id: 'liked', label: '찜한 코디' },
+  { id: 'combo', label: '코디 조합' },
 ]
 // 대회 수상(supabase/0014 plaza_awards) — 누가 받았는지는 운영자가 DB 에 직접 넣는다. 앱에는 쓰는 화면도 권한도 없다.
 //  seq = 대회 칸 맨 앞에 놓이는 순서(1위 · 2위 · 3위 · 픽 · 픽 · 추첨). 배지 글자는 여기 한 곳에서만 정한다.

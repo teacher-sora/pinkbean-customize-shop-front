@@ -17,6 +17,7 @@ import InfoPanel from './shop/info/InfoPanel'
 import PresetPanel from './shop/preset/PresetPanel'
 import PlazaPanel from './shop/plaza/PlazaPanel'
 import PlazaUpload from './shop/plaza/PlazaUpload'
+import ComboPanel from './shop/combo/ComboPanel'
 import PreviewColumn, { MobileHero } from './shop/preview/PreviewColumn'
 import { useRidingGuards } from './shop/preview/pvControls'
 import { useScrollFades } from './shop/ui/useScrollFade'
@@ -40,6 +41,10 @@ function Shell() {
   const mobile = s.bp === 'mobile'
   const isList = s.primary === 'codi' || s.primary === 'search'
   const isPlaza = s.primary === 'share' // 코디 광장: 미리보기 자리에 등록 폼이 들어가고 모바일 히어로는 감춘다
+  // 코디 조합(combo/ComboPanel): 코디 탭은 목록 카드의 칩으로 열면 목록 자리가 패널이 되고, 광장은 '코디 조합' 분류가 광장 목록 자리에 든다.
+  // 광장의 코디 조합에서는 등록 폼 대신 미리보기를 둔다 — 자주 쓴 염색 · 부위 입기를 바로 보게(모바일은 히어로)
+  const comboList = isList && s.comboOpen
+  const comboPlaza = isPlaza && s.plazaFilter === 'combo'
 
   return (
     <>
@@ -54,10 +59,10 @@ function Shell() {
                 히어로(미리보기)도 안에 넣는다 — 광장 탭에서는 아예 없어지는 칸이라,
                 밖에 두면 뼈대 동안 보였다가 사라진다. */}
             <div data-pb-panel>
-              {!isPlaza && <MobileHero />}
+              {(!isPlaza || comboPlaza) && <MobileHero />}
               {/* 채팅 칸 — 말풍선을 끼었을 때만, 미리보기 바로 아래 */}
-              {isList && <ListArea mobile />}
-              {isPlaza && <PlazaPanel mobile />}
+              {isList && (comboList ? <ComboPanel mobile host="codi" /> : <ListArea mobile />)}
+              {isPlaza && (comboPlaza ? <ComboPanel mobile host="plaza" /> : <PlazaPanel mobile />)}
               {s.primary === 'preset' && <PresetPanel mobile />}
               {s.primary === 'info' && <InfoPanel mobile />}
             </div>
@@ -74,12 +79,12 @@ function Shell() {
               {/* 오른쪽 칸(미리보기 ↔ 등록 폼)도 같은 슬롯 안에 둔다. 탭에 따라 바뀌는 칸이라
                   밖에 두면 뼈대 동안 미리보기가 보였다가 등록 폼으로 갈아끼워진다. */}
               <div data-pb-panel>
-                {isList && <ListArea mobile={false} />}
+                {isList && (comboList ? <ComboPanel mobile={false} host="codi" /> : <ListArea mobile={false} />)}
                 {s.primary === 'info' && <InfoPanel mobile={false} />}
                 {s.primary === 'preset' && <PresetPanel mobile={false} />}
-                {isPlaza && <PlazaPanel mobile={false} />}
-                {isPlaza && <PlazaUpload mobile={false} />}
-                {!isPlaza && <PreviewColumn />}
+                {isPlaza && (comboPlaza ? <ComboPanel mobile={false} host="plaza" /> : <PlazaPanel mobile={false} />)}
+                {isPlaza && !comboPlaza && <PlazaUpload mobile={false} />}
+                {(!isPlaza || comboPlaza) && <PreviewColumn />}
               </div>
               <div data-pb-stub="main" aria-hidden />
               <div data-pb-stub="side" aria-hidden />

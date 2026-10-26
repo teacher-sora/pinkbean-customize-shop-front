@@ -172,7 +172,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
   const k = sf.kind
   const title = k === 'card' ? '코디 프로필' : k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'emo' ? '이모티콘'
-    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? '공유받은 코디' : k === 'notice' ? '도움 및 건의함' : (sf.item?.name || sf.item?.id || '')
+    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? (sf.combo ? '코디 조합' : '공유받은 코디') : k === 'notice' ? '도움 및 건의함' : (sf.item?.name || sf.item?.id || '')
   const sub = k === 'pv' ? '미리보기 연출' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' || k === 'card' ? '' : k === 'notice' ? NEXON_CREDIT // 출처 표기(lib/nexonLook) — 앱 어디서나 닿는 자리
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
