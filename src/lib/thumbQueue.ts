@@ -3,6 +3,7 @@
 // 광장 목록은 현재 쪽 ±1 쪽(최대 54장)을 DOM 에 두는데(가상화), 전부가 동시에 합성을 시작하면 화면 밖 36장이
 // 메타·스프라이트 요청과 염색 계산을 나눠 가져 **지금 보이는 18장**이 늦게 뜬다.
 //  · 우선순위 0(보이는 것) = 먼저, 동시에 MAX_TOP 개까지.
+//  · 우선순위 음수(급함 — 지금 연 상세의 그림 하나) = 상한과 상관없이 곧바로 시작한다(목록 카드가 합성 중이어도 줄 서지 않게 — 사용자 지시: 광장 상세가 더 빨리)
 //  · 우선순위 1 이상(앞뒤 쪽 미리 그리기) = 0 이 하나도 남지 않았을 때, 동시에 MAX_IDLE 개까지만.
 // 쪽을 넘기면 카드의 우선순위가 바뀌므로(setPrio) 기다리던 카드가 곧바로 앞으로 온다. 사라진 카드는 cancel.
 //
@@ -43,6 +44,7 @@ function pump() {
   while (waiting.length) {
     const j = waiting[0]
     if (j.state !== 'wait') { waiting.shift(); continue }
+    if (j.prio < 0) { waiting.shift(); start(j); continue }
     if (j.prio === 0 ? runningTop >= MAX_TOP : (runningTop > 0 || running >= MAX_IDLE)) return
     waiting.shift()
     start(j)
