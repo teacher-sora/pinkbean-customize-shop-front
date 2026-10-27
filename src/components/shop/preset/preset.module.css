@@ -21,7 +21,7 @@
 
 /* 불러오기: 입력과 버튼을 한 테두리 안에 묶은 칸. 면 · 테두리 · 아이콘 색은 다른 탭의 검색 칸과 같다 — 이 칸만 색을 달리하면 머리마다 생김새가 달라진다. 눈에 띄는 것은 안의 채운 버튼 하나다 */
 .importBox { flex: 0 1 200px; min-width: 148px; margin-left: auto; height: 34px; padding: 0 3px 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); transition: border-color .22s ease; }
-.importBoxNarrow { flex: 1 1 200px; min-width: 80px; } /* 폭 규칙은 목록 검색 칸(list .searchWrap · .searchWrapNarrow)과 같다(사용자 지시) */
+.importBoxNarrow { flex: 1 1 200px; min-width: 80px; max-width: 200px; } /* 폭 규칙은 목록 검색 칸(list .searchWrap · .searchWrapNarrow)과 같다(사용자 지시) */
 .importBox:focus-within { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); }
 @media (hover: hover) and (pointer: fine) { .importBox:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); } .importBox:focus-within:hover { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); } }
 .importField { flex: 1 1 0; min-width: 0; height: 100%; padding: 0; border: none; background: transparent; font-family: inherit; font-size: 13px; color: #3d372f; color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; outline: none; text-overflow: ellipsis; }
