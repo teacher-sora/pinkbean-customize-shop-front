@@ -233,7 +233,7 @@ function ComboHead({ item, mobile, host, total, paged }: { item: ListItem | null
           <div className={styles.dirSeg}><Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} /></div>
         </>}
       </div>
-      <div className={list.groupB}>
+      <div className={clsx(list.groupB, styles.groupBFit)}>
         {pageChip}
         {finder}
       </div>
