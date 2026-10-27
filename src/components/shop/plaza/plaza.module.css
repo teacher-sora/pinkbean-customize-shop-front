@@ -142,12 +142,6 @@
 .wornWin { margin-top: 6px; overflow: hidden; } /* 막대의 아래쪽 음수 여백(6px)만큼 내려 hover 면 아래에서 칩이 나온다 */
 .wornInner { padding: 6px 0; } /* 위: 창 6 + 6 = 막대와 칩 사이 12 / 아래 6: .worn 의 -6px 을 채워 펼침 때 칩 아래 간격 유지 */
 .wornChip { cursor: default; }
-/* 칩의 '입기' 버튼(PlazaDetailBody WornItems) — 그 부위만 지금 코디에 바로 입힌다. 글자 없이 작은 동그라미 아이콘.
-   이미 입고 있으면 같은 자리 · 같은 크기의 분홍 체크. 칩 오른쪽 위에 붙여 이름 자리를 덜 차지한다. */
-.wearBtn { flex: 0 0 auto; align-self: flex-start; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin: -2px -3px 0 0; padding: 0; border: 0; border-radius: 50%; background: #fbeef4; background: light-dark(#fbeef4, #513441); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); cursor: pointer; transition: background-color .2s ease, color .2s ease, transform .2s ease; }
-.wearBtnOn { background: #ec86ac; background: light-dark(#ec86ac, #d15785); color: #fff; color: light-dark(#fff, #ececef); cursor: default; }
-@media (hover: hover) and (pointer: fine) { .wearBtn:not(.wearBtnOn):hover { background: #ec86ac; background: light-dark(#ec86ac, #d15785); color: #fff; color: light-dark(#fff, #ececef); } }
-.wearBtn:not(.wearBtnOn):active { transform: scale(.92); }
 .wornSkel { height: 52px; border-radius: 8px; }
 .descBlock { display: flex; flex-direction: column; gap: 8px; }
 .descLabel { font-size: 11px; font-weight: 700; color: #a89e93; color: light-dark(#a89e93, #8e919a); }

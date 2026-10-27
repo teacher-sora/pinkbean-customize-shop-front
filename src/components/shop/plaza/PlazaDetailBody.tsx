@@ -30,7 +30,8 @@ import { DyeBand, LookSprite, lookDyed } from '../info/SlotSprite'
 import { glideTo, place, release } from '../surface/glide'
 import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
-import { IconCaretDown, IconCheck, IconHeart, IconLinkCopy, IconTakeDown } from '../ui/Icons'
+import { IconCaretDown, IconHeart, IconLinkCopy, IconTakeDown } from '../ui/Icons'
+import { ChipAct } from '../ui/ChipAct'
 import PlazaComments from './PlazaComments'
 import PlazaRefViewer from './PlazaRefViewer'
 import styles from './plaza.module.css'
@@ -255,14 +256,8 @@ export function WornItems({ snap, postId, mobile, flat }: { snap: Snapshot; post
                       <span className={surf.partSlot}>{w.label}</span>
                       <span className={surf.partName}>{w.name}</span>
                     </span>
-                    {isWorn(w) ? (
-                      <span title="지금 입고 있어요" className={clsx(styles.wearBtn, styles.wearBtnOn)}><IconCheck size={10} /></span>
-                    ) : (
-                      <button type="button" onClick={() => { s.wearFromSnap(snap, [w.slot], w.label).catch(() => {}) }}
-                        title={`${w.label}만 지금 코디에 입기`} aria-label={`${w.label}만 입기`} className={styles.wearBtn}>
-                        <IconTakeDown size={12} />
-                      </button>
-                    )}
+                    <ChipAct done={isWorn(w)} doneTitle="지금 입고 있어요" icon={<IconTakeDown size={12} />} title={`${w.label}만 지금 코디에 입기`} label={`${w.label}만 입기`}
+                      onClick={() => { s.wearFromSnap(snap, [w.slot], w.label).catch(() => {}) }} />
                     <DyeBand state={w.dyed ? 'dyed' : w.dyeable ? 'plain' : 'none'} slot={w.slot} palette={snap.dyePalette?.[w.slot]} hsb={snap.dyeHsb?.[w.slot]} off={w.off} skinFamily={w.skinFamily} />
                   </span>
                 ))}

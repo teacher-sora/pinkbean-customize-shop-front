@@ -23,10 +23,10 @@ import { CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, type FilterGroup }
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
-import { IconCheck, IconChevronLeft, IconChevronRight, IconSearch, IconTakeDown, IconVaultAdd } from '../ui/Icons'
+import { ChipAct } from '../ui/ChipAct'
+import { IconChevronLeft, IconChevronRight, IconSearch, IconTakeDown, IconVaultAdd } from '../ui/Icons'
 import { DYE_VAULT_MAX, dyeSaveKey, useDyeVault, type DyeSave } from '@/lib/dyeVault'
 import list from '../list/list.module.css'
-import plaza from '../plaza/plaza.module.css'
 import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
 import styles from './combo.module.css'
@@ -490,14 +490,8 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
                 <span className={surf.partSlot}>{i + 1}위</span>
                 <span className={surf.partName}>{d.n.toLocaleString()}명</span>
               </span>
-              {has ? (
-                <span title="보관함에 있어요" className={clsx(plaza.wearBtn, plaza.wearBtnOn, !mobile && styles.dyeAct)}><IconCheck size={mobile ? 10 : 12} /></span>
-              ) : (
-                <button type="button" disabled={full} onClick={(e) => { e.stopPropagation(); vault.put(asSave(d)); s.notify('염색 보관함에 담았어요') }}
-                  title={full ? `보관함은 ${DYE_VAULT_MAX}개까지예요` : '이 염색을 보관함에 담기'} aria-label="염색 보관함에 담기" className={clsx(plaza.wearBtn, !mobile && styles.dyeAct)}>
-                  <IconVaultAdd size={mobile ? 12 : 15} />
-                </button>
-              )}
+              <ChipAct done={has} doneTitle="보관함에 있어요" icon={<IconVaultAdd size={12} />} disabled={full} label="염색 보관함에 담기"
+                title={full ? `보관함은 ${DYE_VAULT_MAX}개까지예요` : '이 염색을 보관함에 담기'} onClick={() => { vault.put(asSave(d)); s.notify('염색 보관함에 담았어요') }} />
               <DyeBand state="dyed" slot={key} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} skinFamily={skin ? skinDyeFamily(te?.name) ?? undefined : undefined} />
             </div>
           )

@@ -10,6 +10,7 @@
 | 화면 조합 | `../PinkbeanShop.tsx` | 탭마다 어떤 패널을 놓을지 정한다. 새 패널은 여기에 건다 |
 | 머리 | `frame/AppHeader.tsx` | 글자가 바뀌어도 폭이 고정되는 `Swap` 이 있다 |
 | 아래 바 | `nav/BottomNav.tsx` | 부위 칩 줄 + 탭 바(`TABS`) |
+| 코디 칩 단추 | `ui/ChipAct.tsx` | 칩 글자 오른쪽의 작은 동그라미 단추(입기 · 보관함 담기 등) — 끝났으면 분홍 체크 |
 | 탭 ↔ 주소 | `lib/tabRoute.ts` | 탭을 늘리면 `TAB_PATH` 에 넣고 `app/(shop)/<이름>/page.tsx`(빈 페이지)를 만든다. 탭 id `share` 가 코디 광장이다(주소는 `/plaza`. `/share` 는 공유 링크 전용 경로) |
 | 화면 모드 | `lib/useBreakpoint.ts` | `bp`, `isStacked`, `isNarrow` |
 | 보던 자리 기억 | `lib/uiState.ts` | 세션·기기에 남길 UI 상태 |
