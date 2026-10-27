@@ -116,3 +116,10 @@
 /* 막대: 왼쪽 끝 = 베이스 색, 오른쪽 끝 = 믹스 색. 사이는 그라데이션(사용자 지시). 흰 색 · 옅은 색도 보이게 테두리를 얇게 둔다. */
 .mixTrack { background: linear-gradient(90deg, var(--mix-a, #2f2b27), var(--mix-b, #2f2b27)); background: linear-gradient(90deg, var(--mix-a, light-dark(#2f2b27, #d0d2d6)), var(--mix-b, light-dark(#2f2b27, #d0d2d6))); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); box-shadow: inset 0 0 0 1px light-dark(rgba(0,0,0,0.08), rgba(0, 0, 0, 0.128)); }
 .mixFoot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* 코디 칩의 작은 동그라미 단추(ui/ChipAct — 착용 칩의 입기 · 염색 칩의 보관함 담기가 함께 쓴다). 글자 없이 아이콘, 끝났으면 같은 자리 · 같은 크기의 분홍 체크 */
+.chipAct { flex: 0 0 auto; align-self: flex-start; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin: -2px -3px 0 0; padding: 0; border: 0; border-radius: 50%; background: #fbeef4; background: light-dark(#fbeef4, #513441); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); cursor: pointer; transition: background-color .2s ease, color .2s ease, transform .2s ease; }
+.chipActOn { background: #ec86ac; background: light-dark(#ec86ac, #d15785); color: #fff; color: light-dark(#fff, #ececef); cursor: default; }
+.chipAct:disabled { opacity: .4; cursor: default; }
+@media (hover: hover) and (pointer: fine) { .chipAct:not(.chipActOn):not(:disabled):hover { background: #ec86ac; background: light-dark(#ec86ac, #d15785); color: #fff; color: light-dark(#fff, #ececef); } }
+.chipAct:not(.chipActOn):not(:disabled):active { transform: scale(.92); }
