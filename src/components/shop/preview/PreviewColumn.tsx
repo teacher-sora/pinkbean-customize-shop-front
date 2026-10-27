@@ -5,7 +5,9 @@
 // 무대(캐릭터 · 배경)는 PreviewStage — 코디 비교 중에는 2×2 칸이 되고 열이 넓어진다(목록은 그만큼 좁아져 열 수가 준다). 켜고 끄기는 아래 칸의 [비교] 탭.
 
 import clsx from 'clsx'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { heroViewNow, readCmpView, setHeroView, type HeroView } from '@/lib/heroView'
+import { useIsoLayoutEffect } from '@/lib/uiState'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot } from '@/lib/guide'
 import { DOT_MOVER_IDS } from '@/lib/shopData'
 import ChatBar from './ChatBar'
@@ -97,6 +99,14 @@ export default function PreviewColumn() {
 // 코디 비교는 오른쪽 아래 [비교] 버튼으로 켜고 끈다 — 히어로 높이는 그대로, 위 · 아래 버튼 줄 사이를 비교 칸이 채운다(PreviewStage).
 export function MobileHero() {
   const s = useShop()
+  // 비교를 켜면 비교 때의 보기로(처음은 '크게' — lib/heroView readCmpView), 끄면 켜기 전 보기로 돌아간다
+  const viewBefore = useRef<HeroView>('base')
+  useIsoLayoutEffect(() => {
+    if (!s.cmpOn) return
+    viewBefore.current = heroViewNow()
+    setHeroView(readCmpView())
+    return () => setHeroView(viewBefore.current)
+  }, [s.cmpOn])
   const dotItem = useDotEquipped()
   const bmOpen = s.surface?.kind === 'bm' && !s.surfaceClosing
   const partOpen = s.surface?.kind === 'part' && !s.surfaceClosing

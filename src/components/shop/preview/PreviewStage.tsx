@@ -28,8 +28,6 @@ import styles from './preview.module.css'
 
 const CMP_FRACTION = 0.4    // 칸 높이 대비 마네킹 키(× 배율 단계) — PC 칸(약 250px)
 const CMP_FRACTION_M = 0.45 // 모바일 칸은 조금 더 크게
-// 모바일 기본 보기(한 줄에 넷): 칸이 좁고(폭 약 90) 높이(약 120)에 맞춘 마네킹이 작아 위아래가 많이 비었다(사용자 지적) — 칸 높이를 더 쓴다
-const CMP_FRACTION_LINE = 0.62
 const HOLD_MS = 600         // 새 칸의 그림이 끝내 오지 않아도(같은 코디라 다시 그리지 않는 등) 이만큼 뒤엔 연다
 const WARM_MS = 250         // 떠나는 칸의 정지 그림을 기다리는 한도(느린 기기에서 누름이 늦지 않게)
 
@@ -102,7 +100,7 @@ export default function PreviewStage({ mobile }: { mobile: boolean }) {
   const ids = s.cmpIds
   const line = mobile && hv === 'base'
   const lay = layoutOf(Math.max(1, ids.length), line)
-  const fraction = line ? CMP_FRACTION_LINE : mobile ? CMP_FRACTION_M : CMP_FRACTION
+  const fraction = mobile ? CMP_FRACTION_M : CMP_FRACTION
   const ai = Math.max(0, ids.indexOf(s.selectedPreset ?? ''))
   const eye = s.equipped['eyeAcc']
   const dotItem = !mobile && eye && DOT_MOVER_IDS.has(eye.id) ? eye : null

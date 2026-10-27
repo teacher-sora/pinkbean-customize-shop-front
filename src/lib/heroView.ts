@@ -4,7 +4,7 @@
 //    목록을 미끄러지게 했더니 커진 미리보기와 내려가는 목록이 잠깐 겹쳐 보였다.
 //  · 캐릭터만: 아래에 있는 것들(목록 · 프리셋 · 하단 탭)의 높이를 지금 값으로 묶어 두고 히어로를 화면 끝까지 키운다 →
 //    그것들은 줄어들지 않고 화면 아래로 밀려난다(틀이 overflow:hidden 이라 보이지 않는다). 되돌아오면 묶은 것을 푼다.
-//  · 저장하지 않는다. 새로 열면 기본이다. 모바일이 아니게 되면(폭이 넓어지면) 속성을 뗀다(AppHeader).
+//  · 평소 보기는 저장하지 않는다(새로 열면 기본). 비교 중의 보기만 따로 기억한다(처음은 '크게' — readCmpView). 모바일이 아니게 되면(폭이 넓어지면) 속성을 뗀다(AppHeader).
 import { useSyncExternalStore } from 'react'
 
 export type HeroView = 'base' | 'wide' | 'full'
@@ -39,6 +39,15 @@ export function setHeroView(next: HeroView) {
   // 칸들이 크기는 그대로 자리만 옮겨 가므로 흐림 층에 다시 재라고 알린다(ui/useScrollFade)
   requestAnimationFrame(() => window.dispatchEvent(new Event(RELAYOUT_EVENT)))
 }
+
+// 비교 중의 보기(사용자 지시): 고른 적이 없으면 '크게'(한 줄 넷은 칸이 작다), 비교 중에 고르면 기억한다(기기에만 — localStorage)
+const CMP_VIEW_KEY = 'pb-cmp-view'
+export function readCmpView(): HeroView {
+  try { const v = localStorage.getItem(CMP_VIEW_KEY); if (v === 'base' || v === 'wide' || v === 'full') return v } catch {}
+  return 'wide'
+}
+export function saveCmpView(v: HeroView) { try { localStorage.setItem(CMP_VIEW_KEY, v) } catch {} }
+export const heroViewNow = () => view
 
 // 모바일이 아니게 되면 기본으로(속성을 떼고 묶은 높이를 푼다)
 export function resetHeroView() {

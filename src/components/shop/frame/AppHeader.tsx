@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useShop } from '../ShopContext'
-import { resetHeroView, setHeroView, useHeroView, type HeroView } from '@/lib/heroView'
+import { resetHeroView, saveCmpView, setHeroView, useHeroView, type HeroView } from '@/lib/heroView'
 import { SKY_MODES, getSkyMode, setSkyMode, type SkyMode } from '../scene/skyTime'
 import { THEMES, applyThemeAttr, setTheme, useTheme } from '@/lib/theme'
 import { Seg } from '../ui/controls'
@@ -58,7 +58,7 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
         </button>
         <div className={styles.headerActsM}>
           <div data-guide="view" className={styles.viewSegM}>
-            <Seg variant="mobileFit" opts={viewOpts} value={hv} onPick={setHeroView} title="미리보기 크기" />
+            <Seg variant="mobileFit" opts={viewOpts} value={hv} onPick={(v) => { setHeroView(v); if (s.cmpOn) saveCmpView(v) }} title="미리보기 크기" />
           </div>
           {/* 테마 — 뷰어 전환과 평가 사이(사용자 지시) */}
           <button type="button" onClick={nextTheme} title={themeTitle} aria-label={themeTitle} className={clsx('pb-ghost', styles.themeBtnM)}><IconTheme mode={theme} size={14} /></button>
