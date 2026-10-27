@@ -74,10 +74,11 @@ export function BookmarkBox() {
   const n = s.bookmarks.length
   const leave = useCmpLeave()
   const tab = s.cmpOn ? 'cmp' : 'bm'
-  const pick = (v: 'bm' | 'cmp') => { if (v === tab) return; if (v === 'cmp') leave(s.toggleCompare); else s.toggleCompare() }
+  // 켜진 탭을 다시 누르면 반대쪽이 켜진다(토글 — 사용자 지시)
+  const pick = (v: 'bm' | 'cmp') => { if (tab === 'bm') leave(s.toggleCompare); else s.toggleCompare() }
   return (
     <div data-guide="bm" className={clsx('pb-pinbox', styles.pinbox)}>
-      <div className={clsx(styles.pinHead, tab === 'cmp' && styles.pinHeadCmp)}>
+      <div className={styles.pinHead}>
         <span className={styles.pinActs} style={tab === 'cmp' ? { visibility: 'hidden' } : undefined} aria-hidden={tab === 'cmp' || undefined}><PinCount n={n} /><ClearBookmarks n={n} /></span>
         <span data-guide="vs" className={styles.pinTabs}><Seg opts={BOX_TABS} value={tab} onPick={pick} /></span>
       </div>
