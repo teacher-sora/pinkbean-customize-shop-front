@@ -1956,6 +1956,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // applySnapshot 은 코디에 속하는 연출만 되돌리므로, 나머지는 여기서 함께 맞춘다.
     if (sel) {
       histOver.current = over // 라이브가 바뀌므로 아래 기록 effect 가 이 over 를 집어간다
+      // 비교 중이면 지울 때의 고른 칸 코디를 비교 밖 기록('main')의 바닥으로 먼저 남긴다 — main 의 마지막 기록은 비교를 켜기 전 코디라,
+      // 그대로 두면 되돌리기가 그 옛 코디로 돌아가 프리셋을 덮었다(사용자 지적). 이 바닥 → 삭제 기록 순서라 되돌리기 한 번에 지우기 직전으로 돌아온다
+      if (inCmp) {
+        const h = histOf(id), names = namesOf(presets)
+        h.stack = h.stack.slice(0, h.idx + 1)
+        h.stack.push({ snap: over.prev, sel: id, names })
+        if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
+        h.idx = h.stack.length - 1
+        h.last = histKey(over.prev, id, names)
+      }
       // 비교 중이면 선택(그 프리셋으로)도 같은 한 번에 바꾼다 — 따로 바꾸면 선택만 바뀐 기록이 먼저 생겨 되돌리기를 두 번 눌러야 했다(사용자 지적)
       setPvState(PV_DEFAULT); applySnapshot(snap, true, false, inCmp ? id : undefined).catch(() => {})
     } else {
