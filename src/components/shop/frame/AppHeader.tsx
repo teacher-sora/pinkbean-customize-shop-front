@@ -41,16 +41,14 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
   const nextTheme = () => setTheme(THEMES[(themeAt + 1) % THEMES.length].id)
   const themeTitle = `테마: ${THEMES[themeAt].label} (누르면 다음으로)`
   const nextSky = () => { const m = SKY_MODES[(skyAt + 1) % SKY_MODES.length].id; setSkyMode(m); setSky(m) }
-  // 미리보기 크기(모바일 만, lib/heroView): 기본 · 크게 · 캐릭터만. 코디 광장에는 미리보기가 없어 고를 수 없다(그때는 기본으로 돌린다).
+  // 미리보기 크기(모바일 만, lib/heroView): 기본 · 크게 · 캐릭터만. 모바일은 모든 탭에 미리보기가 있다(코디 광장도)
   const hv = useHeroView()
-  const noHero = s.primary === 'share'
-  useEffect(() => { if (!mobile || noHero) resetHeroView() }, [mobile, noHero])
+  useEffect(() => { if (!mobile) resetHeroView() }, [mobile])
   if (mobile) {
-    const offT = '코디 광장에는 미리보기가 없어요'
-    const viewOpts: { v: HeroView; l: string; icon: React.ReactNode; disabled?: boolean; disabledTitle?: string }[] = [
-      { v: 'base', l: '미리보기 기본 크기', icon: <IconViewBase />, disabled: noHero, disabledTitle: offT },
-      { v: 'wide', l: '미리보기 크게', icon: <IconViewWide />, disabled: noHero, disabledTitle: offT },
-      { v: 'full', l: '캐릭터만 보기', icon: <IconViewFull />, disabled: noHero, disabledTitle: offT },
+    const viewOpts: { v: HeroView; l: string; icon: React.ReactNode }[] = [
+      { v: 'base', l: '미리보기 기본 크기', icon: <IconViewBase /> },
+      { v: 'wide', l: '미리보기 크게', icon: <IconViewWide /> },
+      { v: 'full', l: '캐릭터만 보기', icon: <IconViewFull /> },
     ]
     return (
       <div className={styles.headerM}>
@@ -60,7 +58,7 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
         </button>
         <div className={styles.headerActsM}>
           <div data-guide="view" className={styles.viewSegM}>
-            <Seg variant="mobileFit" opts={viewOpts} value={noHero ? 'base' : hv} onPick={setHeroView} title="미리보기 크기" />
+            <Seg variant="mobileFit" opts={viewOpts} value={hv} onPick={setHeroView} title="미리보기 크기" />
           </div>
           {/* 테마 — 뷰어 전환과 평가 사이(사용자 지시) */}
           <button type="button" onClick={nextTheme} title={themeTitle} aria-label={themeTitle} className={clsx('pb-ghost', styles.themeBtnM)}><IconTheme mode={theme} size={14} /></button>

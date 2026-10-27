@@ -12,13 +12,13 @@
 import clsx from 'clsx'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
-import { COMBO_SKIP, LOOK_CHUNK, withCardPv, countLabel, loadLookCounts, loadLookMeta, lookChunk, useLookCount, type LookDye, type LookGender, type LookMeta, type LookPage, type LookRow } from '@/lib/looks'
+import { COMBO_SKIP, LOOK_CHUNK, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
 import { CARD_FRACTION_M, MOBILE_GRID, SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
-import { useShop } from '../ShopContext'
+import { useShop, type Snapshot } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
 import { CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, type FilterGroup } from '../list/ListArea'
 import { WornItems } from '../plaza/PlazaDetailBody'
@@ -62,26 +62,31 @@ export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'c
   return <section className={list.panel}>{body}</section>
 }
 
-// 머리 왼쪽: 코디 탭은 [←] + 아이템, 광장은 아이템 + 아이템 찾기 칸. 모바일 광장은 자리가 좁아 아이템을 그림만 두고
-// 이름은 찾기 칸의 안내 글로 보인다(찾기 칸이 돋보기만 남을 만큼 좁아졌다)
+// 머리 왼쪽: 코디 탭은 [←] + 아이템 칩. 좁은 폭(절반 · 태블릿) · 모바일은 칩이 그림만이다(사용자 지시 — 이름이 눌려 안 보였다.
+// 목록의 '아이템' 보기와 같은 그림이고, 이름은 title · 광장은 찾기 칸의 안내 글로도 보인다). 넓은 PC 만 이름까지
 function HeadItem({ item, mobile, host }: { item: ListItem | null; mobile: boolean; host: 'codi' | 'plaza' }) {
   const s = useShop()
-  // 좁은 폭(절반 · 태블릿) · 모바일은 아이템 칸을 그림만(사용자 지시 — 이름이 눌려 안 보였다. 목록의 '아이템' 보기와 같은 그림이고, 이름은 title ·
-  // 광장은 찾기 칸의 안내 글로도 보인다). 넓은 PC 만 이름까지
-  const thumbOnly = mobile || isNarrow(s.bp)
   return (
     <div className={styles.headItem}>
       {host === 'codi' && (
         <button type="button" onClick={s.closeCombo} title="목록으로 (Esc)" aria-label="목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
       )}
-      {/* 고르기 전에도 같은 칸을 비워 둔다(사용자 지시 — 머리는 늘 같은 구성, 고른 뒤에 요소가 생기지 않게) */}
-      <span className={clsx(styles.itemTag, mobile && styles.itemTagM, thumbOnly && styles.itemTagThumb)} title={item ? item.name || item.id : '아이템을 고르면 여기에 보여요'}>
-        <span className={clsx('pb-chipthumb', styles.itemThumb, mobile && styles.itemThumbM)}>{item && <LookSprite slot={item.slot} item={item.slot === 'skin' ? null : item} tone={s.index?.base.tones.find((t) => t.body === item.id)?.tone ?? s.tone} />}</span>
-        {!thumbOnly && <span className={styles.itemText}>
-          <span className={clsx(styles.itemName, mobile && styles.itemNameM, !item && styles.itemNameNone)}>{item ? item.name || item.id : '아이템'}</span>
-        </span>}
-      </span>
+      <ItemTag item={item} mobile={mobile} thumbOnly={mobile || isNarrow(s.bp)} />
     </div>
+  )
+}
+// 아이템 칩 — 목록 머리 · 상세 머리가 같은 칩이다(사용자 지시: 같은 칩, 같은 생김새). 폭은 이름 길이와 상관없이 고정(PC 190 —
+// 고르기 전 '아이템'과 고른 뒤의 폭이 같다), 이름은 말줄임. fill = 상세의 모바일처럼 남는 폭을 다 쓴다(그래도 이름과 상관없다)
+function ItemTag({ item, mobile, thumbOnly, fill }: { item: ListItem | null; mobile: boolean; thumbOnly?: boolean; fill?: boolean }) {
+  const s = useShop()
+  return (
+    // 고르기 전에도 같은 칸을 비워 둔다(사용자 지시 — 머리는 늘 같은 구성, 고른 뒤에 요소가 생기지 않게)
+    <span className={clsx(styles.itemTag, mobile && styles.itemTagM, thumbOnly ? styles.itemTagThumb : fill ? styles.itemTagFill : styles.itemTagFixed)} title={item ? item.name || item.id : '아이템을 고르면 여기에 보여요'}>
+      <span className={clsx('pb-chipthumb', styles.itemThumb, mobile && styles.itemThumbM)}>{item && <LookSprite slot={item.slot} item={item.slot === 'skin' ? null : item} tone={s.index?.base.tones.find((t) => t.body === item.id)?.tone ?? s.tone} />}</span>
+      {!thumbOnly && <span className={styles.itemText}>
+        <span className={clsx(styles.itemName, mobile && styles.itemNameM, !item && styles.itemNameNone)}>{item ? item.name || item.id : '아이템'}</span>
+      </span>}
+    </span>
   )
 }
 
@@ -163,19 +168,14 @@ function ComboEmpty({ mobile }: { mobile: boolean }) {
   )
 }
 
-// 힌트 바: (PC) 넘기는 법 + 기준 날짜(넓은 PC) + 출처(넥슨 Open API 이용약관 제6조 ④ — 늘 보인다)
+// 힌트 바: (PC) 넘기는 법 + 출처(넥슨 Open API 이용약관 제6조 ④ — 늘 보인다). 기준 날짜는 두지 않는다(사용자 지시)
 function Credit({ mobile, hint }: { mobile: boolean; hint?: string }) {
-  const s = useShop()
-  const [meta, setMeta] = useState<LookMeta | null>(null)
-  useEffect(() => { loadLookMeta().then(setMeta).catch(() => {}) }, [])
-  const when = meta?.to && !isNarrow(s.bp) ? `${meta.to.replace(/-/g, '.')} 기준` : ''
   // 모바일은 목록과 출처 사이를 구분선으로 가른다(PC 는 힌트 바의 윗선)
   return (
     <>
       {mobile && <div className={list.hrM} />}
       <div className={clsx(mobile ? styles.creditM : clsx('pb-hintbar', list.hintBar), styles.credit)}>
         {hint && !mobile && <span className={list.hintText}>{hint}</span>}
-        {when && <span className={list.hintText}>{when}</span>}
         <span className={list.hintText}>{NEXON_CREDIT}</span>
       </div>
     </>
@@ -191,7 +191,7 @@ function ComboHead({ item, mobile, host, total, paged }: { item: ListItem | null
   const dirY = s.listDir === 'y'
   const cur = paged ? s.curIdx : 0, pageCount = paged ? s.pageCount : 1
   const pageChip = (
-    <div className={mobile ? list.pageChipM : clsx(list.pageChip, narrow && list.pageChipNarrow)}>
+    <div className={mobile ? clsx(list.pageChipM, styles.pageEndM) : clsx(list.pageChip, narrow && list.pageChipNarrow)}>
       {!mobile && !narrow && (
         <>
           <span title="이 아이템을 입은 코디 수" className={list.count}>{paged && total == null ? ' ' : `${(total ?? 0).toLocaleString()}벌`}</span>
@@ -501,27 +501,28 @@ function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListIt
   const snap = row.s
   const warmWear = s.warmWear
   const shown = useMemo(() => withCardPv(snap, s.cardPv), [snap, s.cardPv])
-  useEffect(() => { warmWear(snap) }, [snap]) // [전부 입기]가 바로 반영되게 받아 둔다
-  // [전부 입기] = 광장 가져오기와 같은 길(applySharedToPreset — 지금 프리셋에, 그 코디의 연출로, 되돌리기 한 건). 이름은 지금 프리셋 이름 그대로(이름 없이 넘긴다)
-  const wearAll = () => { if (s.selectedPreset) s.applySharedToPreset({ ...snap, name: undefined }, s.selectedPreset, '이 코디를 전부 입었어요') }
+  useEffect(() => { warmWear(snap, true) }, [snap]) // [전부 입기]가 바로 반영되게 받아 두고 염색까지 칠해 둔다(누르기 직전)
+  // [전부 입기] = 광장 가져오기와 같은 길(applySharedToPreset — 지금 프리셋에, 되돌리기 한 건). 연출은 **지금 연출 그대로**다 — 카드 · 상세 그림이
+  // 지금 연출로 그려져 있어(withCardPv) 본 그대로 입는다(사용자 지시: 보이는 코디를 그대로 가져온다. 넥슨 코디에는 연출이 없어 기본값이 들어가 귀 · 표정 · 액션이 바뀌었다).
+  // 이름은 지금 프리셋 이름 그대로(이름 없이 넘긴다)
+  const look = (): Snapshot => ({ ...snap, name: undefined, pv: s.snapshot().pv })
+  const wearAll = () => { if (s.selectedPreset) s.applySharedToPreset(look(), s.selectedPreset, '이 코디를 전부 입었어요') }
   return (
     <>
       <div className={mobile ? list.controlsM : list.header}>
-        <div className={styles.headItem}>
+        <div className={clsx(styles.headItem, mobile && styles.headItemFill)}>
           <button type="button" onClick={onBack} title="코디 목록으로 (Esc)" aria-label="코디 목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
-          <span className={styles.itemText}>
-            <span className={clsx(styles.itemName, mobile && styles.itemNameM)}>{item.name || item.id} 코디</span>
-          </span>
+          <ItemTag item={item} mobile={mobile} fill={mobile} />
         </div>
         <div className={styles.detailActs}>
           <button type="button" onClick={wearAll} title="이 코디를 지금 프리셋에 전부 입기(되돌리기 가능)" className={clsx('pb-soft', styles.actBtn, mobile && styles.actBtnM)}>전부 입기</button>
-          <button type="button" onClick={() => s.takeCombo({ ...snap, name: undefined })} title="이 코디를 내 프리셋에 저장" className={clsx('pb-solid', styles.actBtn, mobile && styles.actBtnM, styles.actSolid)}><IconTakeDown size={13} />프리셋에 저장</button>
+          <button type="button" onClick={() => s.takeCombo(look())} title="이 코디를 내 프리셋에 저장" className={clsx('pb-solid', styles.actBtn, mobile && styles.actBtnM, styles.actSolid)}><IconTakeDown size={13} />프리셋에 저장</button>
         </div>
       </div>
       <div className={mobile ? list.hrM : list.hr} />
       <div className={clsx(styles.detail, mobile ? clsx('pb-norail', styles.detailM) : 'pb-scroll')}>
         <div className={clsx(styles.stage, mobile && styles.stageM)}><SnapThumb snap={shown} view keep fraction={mobile ? 0.5 : 0.46} priority={-1} /></div>
-        <div className={styles.worn}><WornItems snap={snap} postId={`look:${row.i}`} mobile={mobile} /></div>
+        <div className={styles.worn}><WornItems snap={snap} postId={`look:${row.i}`} mobile={mobile} flat /></div>
       </div>
       <Credit mobile={mobile} />
     </>

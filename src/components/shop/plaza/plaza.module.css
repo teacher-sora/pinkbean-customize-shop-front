@@ -135,6 +135,7 @@
 .wornBar { display: flex; align-items: center; gap: 6px; height: 28px; margin: -6px -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .2s ease; }
 /* 모바일: hover 가 없으니 hover 면을 넓힐 이유도 없다 — 음수 여백을 없애 막대가 본문(패딩 안) 밖으로 나가지 않게. */
 .wornBarM { margin: -6px 0; padding: 0; border-radius: 0; }
+.wornBarFlat { cursor: default; } /* 접지 않는 머리(WornItems flat) — 같은 자리 · 글자, 누르지 않는다 */
 .wornCount { font-size: 11px; font-weight: 700; color: #d76d9a; color: light-dark(#d76d9a, #d293ae); font-variant-numeric: tabular-nums; }
 .wornCaret { margin-left: auto; color: #a89e93; color: light-dark(#a89e93, #8e919a); transition: transform .3s cubic-bezier(.45,0,.55,1), color .2s ease; }
 .wornCaretOn { transform: rotate(180deg); }
@@ -256,8 +257,8 @@
   .cmtDel:hover { border-color: #e0533e; border-color: light-dark(#e0533e, #b34332); background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); color: #e0533e; color: light-dark(#e0533e, #da958b); }
   .cmtReplyBtn:hover { background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); color: #c85d8a; color: light-dark(#c85d8a, #ce97ae); }
   .cmtSend:not(.cmtSendOff):hover { background: #d5578e; background: light-dark(#d5578e, #b04071); }
-  .wornBar:hover { background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); }
-  .wornBar:hover .descLabel, .wornBar:hover .wornCaret { color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
+  .wornBar:not(.wornBarFlat):hover { background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); }
+  .wornBar:not(.wornBarFlat):hover .descLabel, .wornBar:hover .wornCaret { color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
   .wornBarM:hover { background: transparent; } /* 모바일 배치(좁은 창 마우스)에서는 면 없이 색만 — 면이 본문 폭에 붙어 보인다 */
 }
 

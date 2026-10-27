@@ -17,7 +17,8 @@
 /* ── 모바일 ── */
 /* 모바일 목록 머리의 부위 탭: 미리보기 바로 밑에 붙이고, 고른 탭은 글자색 + 밑줄. 탭 높이 40(손가락 터치 높이) */
 .catTabsM { flex: 0 0 auto; height: 40px; padding: 0 6px; display: flex; align-items: stretch; overflow-x: auto; overflow-y: hidden; border-bottom: 1px solid #f2ebe3; border-bottom: 1px solid light-dark(#f2ebe3, #40434b); }
-.catTabM { flex: 0 0 auto; position: relative; padding: 0 11px; border: 0; background: transparent; font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
+/* 칸이 남으면 줄을 꽉 채운다(광장 분류 — 사용자 지시), 넘치면 제 폭으로 가로 스크롤(부위) */
+.catTabM { flex: 1 0 auto; position: relative; padding: 0 11px; border: 0; background: transparent; font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
 .catTabMOn { font-weight: 600; color: #e0709a; color: light-dark(#e0709a, #d68faa); }
 .catTabMOn::after { content: ''; position: absolute; left: 9px; right: 9px; bottom: 0; height: 2px; border-radius: 2px; background: #ec86ac; background: light-dark(#ec86ac, #d15785); }
 .tabNavM { flex: 0 0 auto; height: 56px; padding: 0 4px; display: flex; align-items: stretch; border-top: 1px solid #f0e9e1; border-top: 1px solid light-dark(#f0e9e1, #42454d); background: #fff; background: light-dark(#fff, #303238); }

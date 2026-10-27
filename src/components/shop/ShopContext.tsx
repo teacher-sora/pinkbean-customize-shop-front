@@ -30,9 +30,9 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, buildView, foldList, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, CHAT_SLOTS, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, snapKey } from '@/lib/core/snapRender'
-import { warmItem } from '@/lib/core/warm'
+import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { confirmTwice } from '@/lib/confirmTwice'
@@ -338,7 +338,7 @@ export interface ShopCtx {
   comboItem: ListItem | null; comboOpen: boolean; comboShown: boolean; comboDetail: LookRow | null; setComboDetail: (r: LookRow | null) => void; openCombo: (item: ListItem) => void; closeCombo: () => void; warmCombo: (id: string) => void; pickCombo: (item: ListItem) => void
   cardPv: PvSnap
   comboGender: GenderFilter; setComboGender: (g: GenderFilter) => void
-  comboTotal: number; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot) => void
+  comboTotal: number; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot, dye?: boolean) => void
   searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
@@ -1350,16 +1350,21 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setDyeTarget(null)
     notify(label ? `${label} 부위를 입었어요` : `${slots.length}개 부위를 입었어요`)
   }
-  // 입기 전에 미리(코디 조합 상세가 열리는 순간): 코디의 아이템 찾기(부위 목록 받기)와 미리보기에 그릴 그림 · 이펙트 첫 장을 받아 둔다 —
-  // [전부 입기]를 누르면 받을 것 없이 바로 바뀐다(사용자 지시 — 반영까지 시간이 걸렸다). 합성은 하지 않는다(받기만 — 화면을 붙잡지 않는다)
-  const warmWear = (snap: Snapshot) => {
+  // 입기 전에 미리(코디 조합 — 카드에 머물 때 · 상세가 열리는 순간): 미리보기가 그 코디를 그릴 때 기다리는 것을 모두 받아 둔다(core/warm.warmLook —
+  // 지금 연출의 그 동작 모든 프레임 · 무기 자세 · 이펙트 · 명찰 틀, dye 면 염색 칠하기까지). [전부 입기] · 프리셋에 저장은 **지금 연출 그대로** 입히므로
+  // (카드 그림이 지금 연출이다 — ComboDetail) 같은 연출로 받는다. 누르면 받을 것도 칠할 것도 없이 바로 바뀐다(사용자 지시)
+  const warmWear = (snap: Snapshot, dye = false) => {
     resolveEquipped(snap).then((eq) => {
-      const { view } = buildView({ ...pvRef.current, ...withTakenView(snap).pv }) // [전부 입기]는 그 코디의 연출로 입힌다(applySharedToPreset)
-      for (const [sl, it] of Object.entries(eq)) {
-        if (!it || it.slot === 'skin') continue
-        const pal = snap.dyePalette?.[sl]
-        void warmItem(it, view, isMixSlot(sl) && pal && !snap.dyeOff?.[sl] ? pal : undefined)
-      }
+      const idx = indexRef.current; if (!idx) return
+      const te = idx.base.tones.find((t) => t.tone === snap.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
+      if (!te) return
+      const shown = Object.entries(eq).filter(([sl, it]) => !!it && !snap.hidden?.[sl]).map(([, it]) => it!)
+      const p = pvRef.current
+      const { view } = buildView({ ...p, expr: fixedExpr(shown, p.expr) })
+      const off = snap.dyeOff || {}
+      const on = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
+      const ids = [te.body, te.head, ...shown.filter((it) => it.slot !== 'skin' && !CHAT_SLOTS.has(it.slot)).map((it) => it.id)]
+      void warmLook(ids, shown, view, dye ? { palette: on(snap.dyePalette), hsb: on(snap.dyeHsb) } : undefined)
     }).catch(() => {})
   }
   // 스냅샷의 점 위치는 스냅샷의 아이템 id 로 적혀 있다(복제 묶음을 원본으로 바꿔 읽었으면 바뀐 id 로도 찾는다).
@@ -1553,13 +1558,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openSurface({ kind, item: null })
   }
   // 기능 안내의 '열어 보기'(글은 lib/guide 의 guideFor 로 기기에 맞춘 것이 온다). **요청한 것만 바꾼다** — 보던 탭 · 상태는 그대로 두고,
-  // 미리보기 기능(tab 'preview')은 미리보기가 없는 코디 광장에서만 코디 탭으로 간다. 창이 닫히는 것을 기다렸다가 탭을 바꾸고(필요할 때만),
+  // 미리보기 기능(tab 'preview')은 미리보기가 없는 PC 코디 광장(코디 조합 분류 밖)에서만 코디 탭으로 간다. 창이 닫히는 것을 기다렸다가 탭을 바꾸고(필요할 때만),
   // 창(sheet)이 있으면 연다 — 휴대폰 연출 설정은 고르기 화면(pick) · 칸(group)까지 정해 연다. PC 는 연출 설정이 미리보기 아래
   // 줄이라 창이 없다: 펼칠 칸이면 펼치고(drawer), 아니면 그 요소를 가리키고 필요하면 눌러 연다(spot · click).
   const guideGo = ({ go }: { go?: GuideGo }) => {
     if (!go) return
     closeSurface()
-    const tab = go.tab === 'preview' ? (primary === 'share' ? 'codi' : null) : go.tab
+    const tab = go.tab === 'preview' ? (primary === 'share' && bp !== 'mobile' && plazaFilter !== 'combo' ? 'codi' : null) : go.tab
     setTimeout(() => {
       if (tab && tab !== primary) setPrimary(tab)
       const sheet = go.sheet && (go.sheet !== 'pv' || bp === 'mobile') ? go.sheet : null

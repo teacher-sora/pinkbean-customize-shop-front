@@ -108,6 +108,12 @@ export function effectGroups(meta: EffectMeta | null | undefined): EffectGroup[]
   if (!meta) return []
   return [...Object.values(meta.groups), ...effectGroups(meta.extra)]
 }
+// 이 동작에서 그려질 수 있는 묶음(effectDraws 와 같은 고르기 — 차례로 도는 묶음은 전부, 두 번째 층까지). 미리 받기 · 미리보기의 먼저 받기가 쓴다
+export function effectGroupsFor(meta: EffectMeta | null | undefined, action: string): EffectGroup[] {
+  if (!meta) return []
+  const keys = meta.cycle?.groups.length ? meta.cycle.groups : meta.trail?.length ? meta.trail : [meta.groups[action] ? action : meta.groups['default'] ? 'default' : meta.repGroup]
+  return [...keys.map((k) => meta.groups[k]).filter((g): g is EffectGroup => !!g), ...effectGroupsFor(meta.extra, action)]
+}
 export function effectDraws(meta: EffectMeta | null | undefined, action: string, anchors: EffectAnchors, elapsed = 0): EffectDraw[] {
   if (!meta) return []
   const out: EffectDraw[] = []

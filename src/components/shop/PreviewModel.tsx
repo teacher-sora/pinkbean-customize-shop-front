@@ -16,7 +16,7 @@ import { assemble, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getF
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
-import { effectDraws, effectGroups, effectPeriods, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
+import { effectDraws, effectGroups, effectGroupsFor, effectPeriods, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob, setPreviewShot, type ModelShot } from '@/lib/canvasExport'
@@ -563,9 +563,14 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     canvas.style.left = leftDev / dims.dpr + 'px'
     canvas.style.top = topDev / dims.dpr + 'px'
     if (wrapEl && !src) setStageFloor({ wrap: wrapEl, cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((pl.anchor.y + ground) * pl.scale)) / dims.dpr, scale: pl.scale, shadow: riding ? 30 : 13 })
-    const pngs = new Set<string>()
+    // 이 동작에서 돌 그림(모든 프레임 + 이 동작의 이펙트 묶음)은 곧바로, 다른 동작의 이펙트 묶음은 한참 뒤 한가할 때 받는다 — 입을 때마다 이펙트의
+    // 모든 동작(걷기 · 엎드리기 · 사다리 …) 프레임 수백 장을 한꺼번에 받아(사용자 지적: 입은 뒤에야 받는 것이 줄줄이 보였다) 지금 그림과 다퉜다.
+    // 동작을 바꾸면 이 effect 가 다시 돌아 그 동작의 묶음이 곧바로 쪽이 된다
+    const pngs = new Set<string>(), later = new Set<string>()
     frames.forEach((f) => f.placed.forEach((p) => pngs.add(p.png)))
-    effList.forEach((em) => effectGroups(em).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
+    effList.forEach((em) => effectGroupsFor(em, V.action).forEach((g) => g.frames.forEach((fr) => pngs.add(fr.png))))
+    effList.forEach((em) => effectGroups(em).forEach((g) => g.frames.forEach((fr) => { if (!pngs.has(fr.png)) later.add(fr.png) })))
+    let laterT = 0
     let lastSig = '' // 마지막으로 실제 합성한 "보이는 프레임" 시그니처
     const clock = clockRef.current
     const clockKey = `${V.action}|${pv.action}|${pv.gaze}|${frames.length}|${pingpong ? 1 : 0}`
@@ -642,12 +647,13 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       if (dyeInteracting || dyeSettling || (!animated && !hasEff && !hasPart && !floating)) return
       // 나머지 프레임은 백그라운드로 받으면서 곧바로 애니메이션 시작(안 받은 프레임은 draw 가 건너뜀).
       track(pngs)
+      if (later.size) laterT = window.setTimeout(() => { if (!cancelled) for (const p of later) void loadImage(p, true).catch(() => {}) }, 3000)
       clock.elapsed = e0; clock.since = performance.now(); clock.running = true
       const loop = () => { draw(nowElapsed()); raf = requestAnimationFrame(loop) }
       raf = requestAnimationFrame(loop)
     })
     return () => {
-      cancelled = true; cancelAnimationFrame(raf)
+      cancelled = true; cancelAnimationFrame(raf); clearTimeout(laterT)
       if (clock.running) { clock.elapsed = nowElapsed(); clock.since = performance.now(); clock.running = false }
     }
   }, [spec, effList, partSpots, partDescs, simOf, floating, viewInfo.flip, V.action, pv.action, pv.gaze, dyeOverrides, dims, pv.zoom, fraction, zoomMults, src, dyeInteracting, dyeSettling, effPending, dyeStale, everReady])
