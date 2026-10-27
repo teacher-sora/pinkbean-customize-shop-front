@@ -14,7 +14,7 @@ import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[]; particles?: ParticleDraw[]; center?: 'x' | 'mount' }
 
 // 받기만(합성 전 미리): 몸 · 머리 · 착용 아이템의 meta 와 카드 정지 자세(서기 0번)의 그림 파일. 조립 · 염색 · 합성은 하지 않아 화면을 붙잡지 않는다 —
-// 코디 조합 칩에 머무는 동안 부른다(누르면 합성만 남는다). 염색 그림 · 이펙트 · 탈것은 합성 때 받는다(드물거나 무겁다)
+// 코디 룩북 칩에 머무는 동안 부른다(누르면 합성만 남는다). 염색 그림 · 이펙트 · 탈것은 합성 때 받는다(드물거나 무겁다)
 export async function preloadSnapshot(snap: Snapshot, index: Index, view = false): Promise<void> {
   const te = index.base.tones.find((t) => t.tone === snap.tone) || index.base.tones[0]
   if (!te) return

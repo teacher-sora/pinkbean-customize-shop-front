@@ -1,4 +1,4 @@
-// 코디 조합 — 넥슨 랭킹 캐릭터의 실제 코디 표본(parser looks/build.ts 가 만들어 CDN looks/v2 에 올린다). 서버 없이 CDN 에서 바로 받는다.
+// 코디 룩북 — 넥슨 랭킹 캐릭터의 실제 코디 표본(parser looks/build.ts 가 만들어 CDN looks/v2 에 올린다). 서버 없이 CDN 에서 바로 받는다.
 //  · index.json(고정 경로, 60초 캐시) = 지금 판 · 표본 정보 · 아이템마다 [코디 수, 큰 파일 번호, 시작 바이트, 머리 길이, 첫 쪽 길이].
 //    목록 카드의 '코디 N' 도 이 색인에서 읽는다. 한 번 받아 메모리에 둔다.
 //  · <판>/s<k>.bin(판마다 새 이름, 1년 캐시) = 아이템마다 [머리][전체 쪽들][여 쪽들][남 쪽들]. 머리 · 쪽은 각각 gzip 한 JSON —
@@ -106,11 +106,11 @@ export async function lookChunk(id: string, c: number, g: LookGender = 'a'): Pro
   return { ready: true, total: h.t[g], page: c, size: LOOK_CHUNK, looks, ...(c === 0 ? { dyes: h.d } : {}) }
 }
 
-// 코디 조합의 코디를 입을 때의 연출 = 지금 연출 그대로(배율 · 액션 · 무기 모션 · 표정 · 이펙트 · 시선 · 명찰 — 남의 설정이 아니라 코디만 가져온다)에
+// 코디 룩북의 코디를 입을 때의 연출 = 지금 연출 그대로(배율 · 액션 · 무기 모션 · 표정 · 이펙트 · 시선 · 명찰 — 남의 설정이 아니라 코디만 가져온다)에
 // 귀 · 형상 변이만 그 코디의 값(사용자 지시 — 게임에서 코디에 속하는 분류다). 코디에 그 값이 없으면(지금 표본은 담지 않는다) 지금 값 그대로
 export const lookPv = <T extends PvSnap>(snap: Snapshot, pv: T): T => ({ ...pv, ...(snap.pv?.ear ? { ear: snap.pv.ear } : {}), ...(snap.pv?.form ? { form: snap.pv.form } : {}) })
 // 카드 · 상세 그림 = 목록 '내 캐릭터' 카드와 같은 연출(ShopContext cardPv — 액션은 서기)에 입을 때와 같은 귀 · 형상 변이(lookPv)를 얹어
 // SnapThumb view 로 그린다(사용자 지시 — 같은 방식에서 파생, 본 그대로 입는다)
 export const withCardPv = (snap: Snapshot, pv: PvSnap): Snapshot => ({ ...snap, pv: lookPv(snap, pv) })
-// 코디 조합을 두지 않는 부위 — 코디는 생김새만 본다(사용자 지시: 훈장 · 칭호는 가져올 필요도, 이 기능을 둘 필요도 없다). 표본에서도 뺀다(parser looks/build.ts)
+// 코디 룩북을 두지 않는 부위 — 코디는 생김새만 본다(사용자 지시: 훈장 · 칭호는 가져올 필요도, 이 기능을 둘 필요도 없다). 표본에서도 뺀다(parser looks/build.ts)
 export const COMBO_SKIP = new Set(['medal', 'title'])

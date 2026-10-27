@@ -146,9 +146,9 @@ export const PREVIEW_FRACTION = 0.25 // 우측 미리보기 기준 마네킹 높
 export const PREVIEW_FRACTION_MOBILE = 0.5
 export const PREVIEW_MARGIN = 1.5    // 우측 미리보기 캔버스 여백 배수
 export const CARD_FRACTION = 0.45     // 리스트 카드 마네킹 높이 비율(넉넉한 전체샷; 정수 스냅으로 항상 선명)
-// 모바일 카드(목록 · 광장 · 코디 조합)의 마네킹 높이 비율 — 광장 자유 코디 카드의 값(사용자 지시: 모바일 목록 캐릭터가 광장의 절반 크기라 너무 작았다)
+// 모바일 카드(목록 · 광장 · 코디 룩북)의 마네킹 높이 비율 — 광장 자유 코디 카드의 값(사용자 지시: 모바일 목록 캐릭터가 광장의 절반 크기라 너무 작았다)
 export const CARD_FRACTION_M = 0.54
-// 모바일 목록 격자 = 3열 × 2줄(사용자 지시 — 많은 정보를 빠르게. 캐릭터는 카드 높이를 넉넉히 잡아 키운다 — ListArea useMobileRows). 코디 탭 · AI 코디 검색 · 코디 조합이 함께 쓴다
+// 모바일 목록 격자 = 3열 × 2줄(사용자 지시 — 많은 정보를 빠르게. 캐릭터는 카드 높이를 넉넉히 잡아 키운다 — ListArea useMobileRows). 코디 탭 · AI 코디 검색 · 코디 룩북이 함께 쓴다
 export const MOBILE_GRID = { cols: 3, rows: 2 }
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 

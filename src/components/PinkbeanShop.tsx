@@ -40,9 +40,9 @@ function Shell() {
   }, [])
   const mobile = s.bp === 'mobile'
   const isList = s.primary === 'codi' || s.primary === 'search'
-  const isPlaza = s.primary === 'share' // 코디 광장: PC 는 미리보기 자리에 등록 폼이 들어간다(코디 조합 분류만 미리보기). 모바일 히어로는 늘 있다
-  // 코디 조합(combo/ComboPanel): 코디 탭은 목록 카드의 칩으로 열면 목록 자리가 패널이 되고, 광장은 '코디 조합' 분류가 광장 목록 자리에 든다.
-  // 광장의 코디 조합에서는 등록 폼 대신 미리보기를 둔다 — 자주 쓴 염색 · 부위 입기를 바로 보게
+  const isPlaza = s.primary === 'share' // 코디 광장: PC 는 미리보기 자리에 등록 폼이 들어간다(코디 룩북 분류만 미리보기). 모바일 히어로는 늘 있다
+  // 코디 룩북(combo/ComboPanel): 코디 탭은 목록 카드의 칩으로 열면 목록 자리가 패널이 되고, 광장은 '코디 룩북' 분류가 광장 목록 자리에 든다.
+  // 광장의 코디 룩북에서는 등록 폼 대신 미리보기를 둔다 — 자주 쓴 염색 · 부위 입기를 바로 보게
   const comboList = isList && s.comboShown // 연 탭(코디 · AI 코디 검색)에서만 — 다른 탭에 갔다 오면 그대로 다시 보인다
   const comboPlaza = isPlaza && s.plazaFilter === 'combo'
   return (
@@ -55,7 +55,7 @@ function Shell() {
             <AppHeader mobile />
             {/* 새로고침 복원 중에는 이 슬롯을 통째로 감추고 아래 빈 뼈대를 대신 보여준다.
                 display:contents(globals.css)라 평소 배치에는 아무 영향이 없다.
-                히어로(미리보기)는 모든 탭에 있다 — 광장도 분류마다 같다(사용자 지시: 코디 조합 분류에만 있으면 분류를 바꿀 때마다
+                히어로(미리보기)는 모든 탭에 있다 — 광장도 분류마다 같다(사용자 지시: 코디 룩북 분류에만 있으면 분류를 바꿀 때마다
                 칸이 생겼다 사라져 아래가 밀렸다. 광장에서 가져온 코디도 바로 보인다). */}
             <div data-pb-panel>
               <MobileHero />

@@ -92,7 +92,7 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
 export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
-// combo = 코디 조합에서 연 저장(창 제목이 '코디 조합'이다)
+// combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
@@ -266,7 +266,7 @@ export interface ShopCtx {
   snapFrom: number // 스냅 애니메이션 직전 페이지 — 애니메이션 중엔 새 페이지 마운트를 미룬다
   consumeSwipeClick: () => boolean // 스와이프 직후의 카드 클릭은 착용으로 처리하지 않는다
   curIdx: number; pageCount: number
-  // listNarrow = 목록 쪽 패널(목록 · 코디 정보 · 프리셋 · 광장 · 코디 조합)을 좁은 배치로 — 절반 · 태블릿, 그리고 PC 에서 비교로 열이 넓어져 목록 머리가 한 줄에 안 드는 폭(< CMP_WIDE)
+  // listNarrow = 목록 쪽 패널(목록 · 코디 정보 · 프리셋 · 광장 · 코디 룩북)을 좁은 배치로 — 절반 · 태블릿, 그리고 PC 에서 비교로 열이 넓어져 목록 머리가 한 줄에 안 드는 폭(< CMP_WIDE)
   bp: Breakpoint; listNarrow: boolean; cols: number; rows: number; itemsPerPage: number
   // ── 코디 광장 ──
   plazaPosts: PlazaPost[]; plazaList: PlazaPost[]; plazaLoading: boolean; plazaReady: boolean
@@ -280,7 +280,7 @@ export interface ShopCtx {
   // 기능 안내의 '열어 보기': 창을 닫고 그 탭 · 창으로 가서 요소를 잠깐 가리킨다(lib/guide)
   guideGo: (g: { go?: GuideGo }) => void
   plazaTakeDirect: (post: PlazaPost) => void
-  takeCombo: (snap: Snapshot) => void // 코디 조합의 코디를 고른 프리셋에 저장(공유받은 코디와 같은 창)
+  takeCombo: (snap: Snapshot) => void // 코디 룩북의 코디를 고른 프리셋에 저장(공유받은 코디와 같은 창)
   wearFromSnap: (snap: Snapshot, slots: string[], label?: string) => Promise<void>
   isWornFromSnap: (snap: Snapshot, slot: string, item: ListItem | null) => boolean
   plazaTakeBack: () => void
@@ -337,7 +337,7 @@ export interface ShopCtx {
   //  ⚠️ 미리보기에 영향 주는 새 상태(점 위치·염색 등)를 추가하면 snapshot()만 갱신하면 프리셋 카드에도 자동 반영된다.
   snapshot: () => Snapshot
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
-  // 코디 조합(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 조합 탭)
+  // 코디 룩북(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 룩북 탭)
   comboItem: ListItem | null; comboOpen: boolean; comboShown: boolean; comboDetail: LookRow | null; setComboDetail: (r: LookRow | null) => void; openCombo: (item: ListItem) => void; closeCombo: () => void; warmCombo: (id: string) => void; pickCombo: (item: ListItem) => void
   cardPv: PvSnap
   comboGender: GenderFilter; setComboGender: (g: GenderFilter) => void
@@ -805,8 +805,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const bpRef = useRef(bp)
   bpRef.current = bp
   const primaryRef = useRef(primary)
-  const comboShownRef = useRef(false) // 코디 탭의 코디 조합이 목록 자리에 떠 있는가 — 광장의 코디 조합과 같은 격자를 쓴다(measure)
-  const plazaComboRef = useRef(false) // 광장의 코디 조합 분류 — 모바일도 최소 2줄(사용자 지시 — 미리보기는 빠른 파악을 위해 늘 두 줄 이상)
+  const comboShownRef = useRef(false) // 코디 탭의 코디 룩북이 목록 자리에 떠 있는가 — 광장의 코디 룩북과 같은 격자를 쓴다(measure)
+  const plazaComboRef = useRef(false) // 광장의 코디 룩북 분류 — 모바일도 최소 2줄(사용자 지시 — 미리보기는 빠른 파악을 위해 늘 두 줄 이상)
   primaryRef.current = primary
   const [grid, setGrid] = useState<{ cols: number; rows: number }>({ cols: 6, rows: 3 })
   const measure = useCallback(() => {
@@ -815,11 +815,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
     // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄.
-    // 코디 조합은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 3열 × 2줄
+    // 코디 룩북은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 3열 × 2줄
     const mob = vp === 'mobile'
     const combo = primaryRef.current === 'share' ? plazaComboRef.current : comboShownRef.current
     const plazaLike = (forCombo: boolean) => {
-      // 모바일 코디 조합은 코디 탭 목록과 같은 3열 × 2줄 고정(사용자 지시 — 큰 휴대폰에서 3줄이 되어 기종마다 갈렸다)
+      // 모바일 코디 룩북은 코디 탭 목록과 같은 3열 × 2줄 고정(사용자 지시 — 큰 휴대폰에서 3줄이 되어 기종마다 갈렸다)
       if (mob && forCombo) return { cols: MOBILE_GRID.cols, rows: MOBILE_GRID.rows }
       const pcols = mob ? (forCombo ? MOBILE_GRID.cols : 2) : (vp === 'half' || vp === 'tablet') ? 3 : 6
       const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10
@@ -918,11 +918,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => { window.clearTimeout(t); for (const j of jobs) j.cancel() }
   }, [index, dataLoading, presetData, presets, warmPosts])
   const pagedList = primary === 'search' ? searchResultsView : activeList
-  // 코디 조합(combo/ComboPanel)도 이 쪽 넘김을 쓴다(사용자 지시 — 코디 탭 · AI 코디 검색 목록과 같은 목록). 쪽 크기는 그 자리의 격자
+  // 코디 룩북(combo/ComboPanel)도 이 쪽 넘김을 쓴다(사용자 지시 — 코디 탭 · AI 코디 검색 목록과 같은 목록). 쪽 크기는 그 자리의 격자
   // (코디 탭 = 목록 격자, 광장 = 광장 격자), 쪽 수는 그 아이템의 코디 수(패널이 첫 쪽을 받고 알려 준다 — setComboTotal)
   const [comboItem, setComboItem] = useState<ListItem | null>(null)
   const [comboOpen, setComboOpen] = useState(false)
-  // 화면 기억(사용자 지시 — 프리셋처럼 다른 탭에 갔다 와도 보던 코디 조합 화면 그대로): 연 탭(comboTab) · 보던 상세(comboDetail)를 여기 둔다.
+  // 화면 기억(사용자 지시 — 프리셋처럼 다른 탭에 갔다 와도 보던 코디 룩북 화면 그대로): 연 탭(comboTab) · 보던 상세(comboDetail)를 여기 둔다.
   // 패널은 탭을 옮기면 떨어지지만(PinkbeanShop) 여기 값으로 그대로 다시 붙는다. 쪽 위치는 쪽 넘김(pageByCat)이 기억한다
   const [comboTab, setComboTab] = useState<string>('codi')
   const [comboDetail, setComboDetail] = useState<LookRow | null>(null)
@@ -1051,7 +1051,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       el.addEventListener('wheel', onWheel, { passive: false })
       el.addEventListener('pointerdown', onDown)
       el.addEventListener('scroll', killVpScroll, { passive: true })
-      // 붙는 그 자리(커밋 중 — 그리기 전)에서 바로 잰다. 다음 프레임에서야 재면 앞 목록의 격자(코디 조합은 염색 줄만큼 낮아 줄 수가 적다)로
+      // 붙는 그 자리(커밋 중 — 그리기 전)에서 바로 잰다. 다음 프레임에서야 재면 앞 목록의 격자(코디 룩북은 염색 줄만큼 낮아 줄 수가 적다)로
       // 한 프레임 그려져 카드 그림이 크게 번쩍였다(사용자 지적). 프레임 뒤 두 번은 글꼴 · 스크롤바로 자리가 바뀐 경우를 위해 남긴다
       measure()
       requestAnimationFrame(() => { measure(); requestAnimationFrame(measure) })
@@ -1108,7 +1108,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return
-      if (pagerHold.current) return // 코디 조합 상세를 보는 중
+      if (pagerHold.current) return // 코디 룩북 상세를 보는 중
       if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1)
       else if (listDirRef.current === 'y' && bpRef.current !== 'mobile' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); step(e.key === 'ArrowUp' ? -1 : 1) }
     }
@@ -1123,7 +1123,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // ── 착용 전 워밍: 보이는 리스트 페이지(멈춘 뒤 한가할 때) + 카드 누르는 순간 ──
   const pvRef = useRef(pv); pvRef.current = pv
   // 목록 '내 캐릭터' 카드와 같은 연출(thumbView — 시선 · 표정 · 귀 · 무기 모션 자세 + 형상 변이 · 이펙트, 액션은 서기). 남의 코디를 지금 연출로 보여 주는
-  // 카드(코디 조합)가 스냅샷에 이 값을 얹어 SnapThumb view 로 그린다 — composeSnapshot 의 view 모드가 액션 'basic' · 프레임 없음이면 thumbView 와 같은 규칙이다
+  // 카드(코디 룩북)가 스냅샷에 이 값을 얹어 SnapThumb view 로 그린다 — composeSnapshot 의 view 모드가 액션 'basic' · 프레임 없음이면 thumbView 와 같은 규칙이다
   const cardPv = useMemo<PvSnap>(() => ({ form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, floatFx: pv.floatFx, baseTag: pv.baseTag,
     gaze: pv.gaze, action: 'basic', frame: -1, expr: pv.expr, zoom: pv.zoom }), [pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.floatFx, pv.baseTag, pv.gaze, pv.expr, pv.zoom])
   const renderPaletteRef = useRef(renderPalette); renderPaletteRef.current = renderPalette
@@ -1199,15 +1199,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (bookmarks.length >= BOOKMARK_MAX) { notify('북마크는 8개까지 담을 수 있어요'); return }
     const next = [...bookmarks, item]; setBookmarks(next); saveBookmarks(next)
   }
-  // 코디 조합 — 목록 카드의 '코디' 칩으로 연다. 열려 있으면 목록 자리가 패널이 된다(PinkbeanShop). 목록의 쪽 · 부위 · 검색은 여기 그대로라
-  // 닫으면 보던 쪽으로 돌아온다. 광장의 코디 조합 탭은 같은 아이템(comboItem)을 이어 보여 준다
+  // 코디 룩북 — 목록 카드의 '코디' 칩으로 연다. 열려 있으면 목록 자리가 패널이 된다(PinkbeanShop). 목록의 쪽 · 부위 · 검색은 여기 그대로라
+  // 닫으면 보던 쪽으로 돌아온다. 광장의 코디 룩북 탭은 같은 아이템(comboItem)을 이어 보여 준다
   // 열고 닫기 · 상세 오가기는 탭을 바꾸듯 그 자리에서 바로 바뀐다(움직임 없음 — 사용자 지시). 첫 묶음은 누르는 순간 받기 시작한다
   const openCombo = (item: ListItem) => {
     void lookChunk(item.id, 0, comboGender === 'all' ? 'a' : comboGender).catch(() => {})
     setComboItem(item); setComboDetail(null); setComboTab(primary); setComboOpen(true)
   }
   const closeCombo = () => { setComboOpen(false); setComboDetail(null) }
-  // 코디 조합 미리 받기(목록 카드의 '코디' 칩 · 광장의 아이템 찾기 결과에 머물거나 닿는 순간): 지금 성별의 첫 묶음과, 첫 쪽 카드(넓은 PC 한 쪽 18벌)의
+  // 코디 룩북 미리 받기(목록 카드의 '코디' 칩 · 광장의 아이템 찾기 결과에 머물거나 닿는 순간): 지금 성별의 첫 묶음과, 첫 쪽 카드(넓은 PC 한 쪽 18벌)의
   // 아이템 정보 · 정지 자세 그림 파일(snapRender.preloadSnapshot — 받기만, 합성은 누른 뒤. 합성까지 미리 걸면 그 일이 화면을 붙잡아 패널이 늦게 떴다 —
   // 실측 CPU ×4: 패널 367 → 1149 · 1671ms). 받은 것은 lib/looks · 그림 캐시에 남아 두 번 받지 않는다
   const warmCombo = (id: string) => {
@@ -1217,7 +1217,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {})
   }
   const pickCombo = (item: ListItem) => { setComboItem(item); setComboDetail(null) }
-  // 이름으로 아이템 찾기(코디 조합의 아이템 찾기) — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
+  // 이름으로 아이템 찾기(코디 룩북의 아이템 찾기) — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
   const searchItems = async (q: string): Promise<ListItem[]> => {
     const match = nameMatcher(q) // 목록 · 광장 검색과 같은 규칙(영문 자판으로 친 한글 en2ko, 띄어쓰기 무시)
     if (!match) return []
@@ -1360,10 +1360,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setDyeTarget(null)
     notify(label ? `${label} 부위를 입었어요` : `${slots.length}개 부위를 입었어요`)
   }
-  // 입기 전에 미리(코디 조합 — 카드에 머물 때 · 상세가 열리는 순간): 미리보기가 그 코디를 그릴 때 기다리는 것을 모두 받아 둔다(core/warm.warmLook —
+  // 입기 전에 미리(코디 룩북 — 카드에 머물 때 · 상세가 열리는 순간): 미리보기가 그 코디를 그릴 때 기다리는 것을 모두 받아 둔다(core/warm.warmLook —
   // 지금 연출의 그 동작 모든 프레임 · 무기 자세 · 이펙트 · 명찰 틀, dye 면 염색 칠하기까지). [전부 입기] · 프리셋에 저장은 **지금 연출 그대로** 입히므로
   // (카드 그림이 지금 연출이다 — ComboDetail) 같은 연출로 받는다. 누르면 받을 것도 칠할 것도 없이 바로 바뀐다(사용자 지시)
-  // take = 광장 가져오기 · 공유받은 코디처럼 그 코디의 연출로 입을 때(applySharedToPreset 의 withTakenView). 아니면 코디 조합 — 지금 연출에 귀만 그 코디의 것(lib/looks lookPv)
+  // take = 광장 가져오기 · 공유받은 코디처럼 그 코디의 연출로 입을 때(applySharedToPreset 의 withTakenView). 아니면 코디 룩북 — 지금 연출에 귀만 그 코디의 것(lib/looks lookPv)
   const warmWear = (snap: Snapshot, dye = false, take = false) => {
     resolveEquipped(snap).then((eq) => {
       const idx = indexRef.current; if (!idx) return
@@ -1569,7 +1569,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openSurface({ kind, item: null })
   }
   // 기능 안내의 '열어 보기'(글은 lib/guide 의 guideFor 로 기기에 맞춘 것이 온다). **요청한 것만 바꾼다** — 보던 탭 · 상태는 그대로 두고,
-  // 미리보기 기능(tab 'preview')은 미리보기가 없는 PC 코디 광장(코디 조합 분류 밖)에서만 코디 탭으로 간다. 창이 닫히는 것을 기다렸다가 탭을 바꾸고(필요할 때만),
+  // 미리보기 기능(tab 'preview')은 미리보기가 없는 PC 코디 광장(코디 룩북 분류 밖)에서만 코디 탭으로 간다. 창이 닫히는 것을 기다렸다가 탭을 바꾸고(필요할 때만),
   // 창(sheet)이 있으면 연다 — 휴대폰 연출 설정은 고르기 화면(pick) · 칸(group)까지 정해 연다. PC 는 연출 설정이 미리보기 아래
   // 줄이라 창이 없다: 펼칠 칸이면 펼치고(drawer), 아니면 그 요소를 가리키고 필요하면 눌러 연다(spot · click).
   const guideGo = ({ go }: { go?: GuideGo }) => {
@@ -1780,7 +1780,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {})
   }
   // 공유받은 코디를 사용자가 고른 프리셋 슬롯에 적용 — 개인 프리셋 하나를 명시적으로 덮어씀 + 선택 + 라이브(되돌리기 가능).
-  // msg = 다 한 뒤의 알림(코디 조합의 [전부 입기]는 같은 길로 지금 프리셋에 입힌다 — 사용자 지시: 광장 가져오기와 같은 로직 · 같은 속도)
+  // msg = 다 한 뒤의 알림(코디 룩북의 [전부 입기]는 같은 길로 지금 프리셋에 입힌다 — 사용자 지시: 광장 가져오기와 같은 로직 · 같은 속도)
   const applySharedToPreset = (taken: Snapshot, targetId: string, msg?: string) => {
     const snap = withTakenView(taken) // 메타 정보는 받은 코디의 값으로(없는 칸은 기본) — 보던 화면 값을 물려받지 않는다
     // 덮어쓰기 전 그 프리셋(선택돼 있으면 지금 코디)과 이름을 기록에 함께 남긴다 → 되돌리기로 원래 코디·이름까지 돌아온다.

@@ -40,10 +40,10 @@ const scrollIdx = (vp: HTMLElement, y: boolean) => {
   return Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / n)) / n)
 }
 
-// 모바일 · 절반 · 태블릿: 한번 정해 두고 쓰는 보기 값들(목록 = 보기 · 성별 · 방향, 코디 조합 = 성별 · 방향)을 버튼 하나에 접어 둔다(넓은 PC 는 펼쳐 둔다).
+// 모바일 · 절반 · 태블릿: 한번 정해 두고 쓰는 보기 값들(목록 = 보기 · 성별 · 방향, 코디 룩북 = 성별 · 방향)을 버튼 하나에 접어 둔다(넓은 PC 는 펼쳐 둔다).
 // 누르면 버튼 아래에 묶음들이 펼쳐진다. 왜: 늘 펼쳐 두느라 목록 머리가 두 줄이었다(쪽 번호 · 검색은 매번 쓰는 것이라 그대로 내놓는다).
 // 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(이어서 고를 수 있게).
-// 같은 부품을 코디 조합 머리도 쓴다(combo/ComboPanel — 사용자 지시: 같은 역할은 부품 하나)
+// 같은 부품을 코디 룩북 머리도 쓴다(combo/ComboPanel — 사용자 지시: 같은 역할은 부품 하나)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void }
 export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
@@ -78,9 +78,9 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 
 // 모바일: 카드가 세로형(높이/폭 ≥ ratio)으로 rows 줄 들어갈 최소 뷰포트 높이를 보장한다. 부족하면 페이지 컬럼
 // 높이(--pb-min-h)를 늘려 페이지 스크롤로 흡수(리스트 안 세로 스크롤은 만들지 않음). 그 외 요소 높이(chrome)는
-// 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다. 코디 탭 목록(MOBILE_GRID)과 코디 조합(최소 2줄 — 사용자 지시)이 함께 쓴다.
+// 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다. 코디 탭 목록(MOBILE_GRID)과 코디 룩북(최소 2줄 — 사용자 지시)이 함께 쓴다.
 // ⚠️ 목록은 언마운트(염색·프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
-//    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다. restore 면(코디 조합 — 목록보다 길 수 있다) 떠날 때 붙기 전 값으로 되돌린다.
+//    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다. restore 면(코디 룩북 — 목록보다 길 수 있다) 떠날 때 붙기 전 값으로 되돌린다.
 // 모바일 목록 카드의 최소 크기 = 그림 칸 높이 ≥ 폭 × CARD_RATIO_M + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) CARD_FOOT_M.
 // 예전에는 카드 전체를 폭 × 1.34 로만 잡아, 화면이 낮으면(실제 휴대폰 · 위를 줄인 창) 아래 57px 를 빼고 남은 그림 칸이 75px 까지 줄어
 // 캐릭터가 45px 로 아주 작았다(사용자 지적 — 실측 343 × 684). 그림 칸을 따로 보장해 어느 높이에서든 캐릭터가 줄지 않는다
@@ -88,7 +88,7 @@ export const CARD_RATIO_M = 1.45
 const CARD_FOOT_M = 57 // 1.45 = 좁은 폭(343 · 360)도 캐릭터가 한 단계 크게(정수 배율 — 실측 68 → 90px)
 // 목록과 같은 최소 높이 — 코디 탭 · AI 코디 검색 목록과 프리셋 탭이 함께 쓴다(같은 값이라 탭을 오가도 페이지 높이가 그대로다)
 export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M)
-// extra = 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장의 다른 분류가 코디 조합과 같은 높이 — 광장 목록 칸은
+// extra = 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장의 다른 분류가 코디 룩북과 같은 높이 — 광장 목록 칸은
 // 좌우 여백 7 이 없어 그만큼 넓다. 분류를 바꿔도 페이지 높이가 같게)
 export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0) {
   useEffect(() => {

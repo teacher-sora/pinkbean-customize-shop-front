@@ -51,7 +51,7 @@ export function CatTabsM({ jump }: { jump?: boolean } = {}) {
   const s = useShop()
   return <TabsM label="부위" items={[...MULTI, ...s.cats]} on={s.activeCat} pick={(id) => { s.setActiveCat(id); if (jump) s.setPrimary('codi') }} />
 }
-// 코디 광장 분류(자유 코디 ~ 코디 조합) — 모바일은 코디 탭의 부위처럼 미리보기와 목록 머리 사이에 둔다(사용자 지시, PinkbeanShop)
+// 코디 광장 분류(자유 코디 ~ 코디 룩북) — 모바일은 코디 탭의 부위처럼 미리보기와 목록 머리 사이에 둔다(사용자 지시, PinkbeanShop)
 export function PlazaTabsM() {
   const s = useShop()
   return <TabsM label="분류" items={PLAZA_FILTERS} on={s.plazaFilter} pick={(id) => s.setPlazaFilter(id as PlazaFilter)} />

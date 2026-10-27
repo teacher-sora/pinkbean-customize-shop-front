@@ -40,7 +40,7 @@ const DETAIL_FRACTION = 0.5
 
 export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mobile: boolean }) {
   const s = useShop()
-  // [가져오기]가 바로 반영되게 상세가 열리면 미리 받고 염색까지 칠해 둔다 — 코디 조합 상세와 같은 함수(warmWear, 그 코디의 연출로 — take)
+  // [가져오기]가 바로 반영되게 상세가 열리면 미리 받고 염색까지 칠해 둔다 — 코디 룩북 상세와 같은 함수(warmWear, 그 코디의 연출로 — take)
   useEffect(() => { s.warmWear(post.snapshot, true, true) }, [post.id]) // eslint-disable-line react-hooks/exhaustive-deps
   // 좋아요는 상세에서도 누를 수 있어야 한다 → 서피스가 들고 있는 사본이 아니라 **지금 목록의 값**을 읽는다.
   const live = s.plazaPosts.find((p) => p.id === post.id) || post
@@ -133,7 +133,7 @@ type Worn = { slot: string; label: string; item: ListItem | null; name: string; 
 //  · 펼침: 커밋(칩 등장) → 칩·아래 구역을 칩 높이만큼 위로 되돌려 놓고 0 으로.
 //  · 접힘: 먼저 transform 으로 접힌 자리까지 옮긴 뒤 칩을 뺀다(먼저 빼면 칩이 툭 사라진다).
 //  · 창의 윗변은 막대 hover 면(아래로 6px 튀어나옴)의 **아래**에 둔다 — 칩이 막대 면 위로 올라와 잘려 보이지 않게.
-// flat = 접지 않고 늘 보인다(코디 조합 상세 — 착용 아이템을 보려고 여는 화면이라 접을 까닭이 없다, 사용자 지시: 코디 정보처럼 그냥 보이게).
+// flat = 접지 않고 늘 보인다(코디 룩북 상세 — 착용 아이템을 보려고 여는 화면이라 접을 까닭이 없다, 사용자 지시: 코디 정보처럼 그냥 보이게).
 //   머리는 같은 글자(착용 아이템 N)지만 누르는 막대가 아니다
 export function WornItems({ snap, postId, mobile, flat }: { snap: Snapshot; postId: string; mobile: boolean; flat?: boolean }) {
   const s = useShop()
