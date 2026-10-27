@@ -256,7 +256,7 @@ export function WornItems({ snap, postId, mobile, flat }: { snap: Snapshot; post
                       <span className={surf.partSlot}>{w.label}</span>
                       <span className={surf.partName}>{w.name}</span>
                     </span>
-                    <ChipAct done={isWorn(w)} doneTitle="지금 입고 있어요" icon={<IconTakeDown size={12} />} title={`${w.label}만 지금 코디에 입기`} label={`${w.label}만 입기`}
+                    <ChipAct done={isWorn(w)} doneTitle="지금 입고 있어요" icon={<IconTakeDown size={15} />} title={`${w.label}만 지금 코디에 입기`} label={`${w.label}만 입기`}
                       onClick={() => { s.wearFromSnap(snap, [w.slot], w.label).catch(() => {}) }} />
                     <DyeBand state={w.dyed ? 'dyed' : w.dyeable ? 'plain' : 'none'} slot={w.slot} palette={snap.dyePalette?.[w.slot]} hsb={snap.dyeHsb?.[w.slot]} off={w.off} skinFamily={w.skinFamily} />
                   </span>
