@@ -16,8 +16,6 @@
 .itemTagFixed { width: 190px; flex-shrink: 1; min-width: 112px; } /* 이름까지(넓은 PC) — 폭은 이름 길이와 상관없이 190(사용자 지시). 머리 줄이 모자라는 폭(1200 언저리)에서만 줄어든다(.groupBFit) */
 .countFix { min-width: 52px; text-align: center; } /* 코디 수 글자 자리 — '0벌'과 '1,234벌'이 같은 폭(머리가 밀리지 않게) */
 .groupBFit { min-width: min-content; } /* 오른쪽 묶음(쪽 칩 · 찾기 칸)은 제 내용보다 줄지 않는다 — 모자라면 왼쪽 아이템 칩이 줄어 머리가 패널 안에 든다(넘치면 패널이 옆으로 밀렸다) */
-.itemTagFill { flex: 1 1 0; } /* 상세의 모바일 — 남는 폭 전부 */
-.headItemFill { flex: 1 1 0; }
 .pageEndM { margin-left: auto; } /* 모바일 머리: 쪽 칩은 오른쪽 끝(사용자 지시). 광장은 찾기 칸이 남는 폭을 채워 그대로 붙는다 */
 .itemThumb { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 4px; background: #fff; background: light-dark(#fff, #303238); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .itemThumbM { width: 26px; height: 26px; }

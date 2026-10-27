@@ -87,13 +87,13 @@ function HeadItem({ item, mobile, host }: { item: ListItem | null; mobile: boole
     </div>
   )
 }
-// 아이템 칩 — 목록 머리 · 상세 머리가 같은 칩이다(사용자 지시: 같은 칩, 같은 생김새). 폭은 이름 길이와 상관없이 고정(PC 190 —
-// 고르기 전 '아이템'과 고른 뒤의 폭이 같다), 이름은 말줄임. fill = 상세의 모바일처럼 남는 폭을 다 쓴다(그래도 이름과 상관없다)
-function ItemTag({ item, mobile, thumbOnly, fill }: { item: ListItem | null; mobile: boolean; thumbOnly?: boolean; fill?: boolean }) {
+// 아이템 칩 — 목록 머리 · 상세 머리가 같은 칩이고 **보이는 것도 같다**(사용자 지시: 같은 칩, 어디서는 그림만 · 어디서는 이름까지면 보기 불편하다).
+// 넓은 PC = 그림 + 이름(폭 190 고정 — 이름 길이 · 고르기 전후와 상관없다, 이름은 말줄임), 좁은 폭 · 모바일 = 그림만(이름은 title)
+function ItemTag({ item, mobile, thumbOnly }: { item: ListItem | null; mobile: boolean; thumbOnly?: boolean }) {
   const s = useShop()
   return (
     // 고르기 전에도 같은 칸을 비워 둔다(사용자 지시 — 머리는 늘 같은 구성, 고른 뒤에 요소가 생기지 않게)
-    <span className={clsx(styles.itemTag, mobile && styles.itemTagM, thumbOnly ? styles.itemTagThumb : fill ? styles.itemTagFill : styles.itemTagFixed)} title={item ? item.name || item.id : '아이템을 고르면 여기에 보여요'}>
+    <span className={clsx(styles.itemTag, mobile && styles.itemTagM, thumbOnly ? styles.itemTagThumb : styles.itemTagFixed)} title={item ? item.name || item.id : '아이템을 고르면 여기에 보여요'}>
       <span className={clsx('pb-chipthumb', styles.itemThumb, mobile && styles.itemThumbM)}>{item && <LookSprite slot={item.slot} item={item.slot === 'skin' ? null : item} tone={s.index?.base.tones.find((t) => t.body === item.id)?.tone ?? s.tone} />}</span>
       {!thumbOnly && <span className={styles.itemText}>
         <span className={clsx(styles.itemName, mobile && styles.itemNameM, !item && styles.itemNameNone)}>{item ? item.name || item.id : '아이템'}</span>
@@ -524,9 +524,9 @@ function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListIt
   return (
     <>
       <div className={mobile ? list.controlsM : list.header}>
-        <div className={clsx(styles.headItem, mobile && styles.headItemFill)}>
+        <div className={styles.headItem}>
           <button type="button" onClick={onBack} title="코디 목록으로 (Esc)" aria-label="코디 목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
-          <ItemTag item={item} mobile={mobile} fill={mobile} />
+          <ItemTag item={item} mobile={mobile} thumbOnly={mobile || isNarrow(s.bp)} />{/* 목록 머리와 같은 규칙(HeadItem) */}
         </div>
         <div className={styles.detailActs}>
           <button type="button" onClick={wearAll} title="이 코디를 지금 프리셋에 전부 입기(되돌리기 가능)" className={clsx('pb-soft', styles.actBtn, mobile && styles.actBtnM)}>전부 입기</button>
