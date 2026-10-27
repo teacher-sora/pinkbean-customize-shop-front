@@ -523,7 +523,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 기록은 갈래마다 따로다(사용자 지시): 비교 중이면 고른 칸마다 제 기록, 아니면 하나('main'). 칸을 고르는 것은 기록이 아니다 —
   // 칸을 바꾸면 그 칸의 기록으로 넘어갈 뿐이고, 처음 고른 칸은 그때의 코디가 첫 기록(되돌릴 바닥)이 된다.
   // 갈래마다 최근 50개라 비교 칸 넷을 다 써도 기록은 최대 250개(작은 스냅샷 객체)다. 뺀 칸의 기록은 함께 버린다(removeCmp).
-  type Hist = { stack: { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot, CmpSaved> }[]; idx: number; last: string | null }
+  // cmpLast = 그 기록 때 그 프리셋에 이어진 비교 칸(비교 밖 기록만 — 프리셋 = 마지막 칸이라 프리셋을 되돌리면 이어진 칸도 그때로 돌아가야 한다.
+  //   안 그러면 되돌린 코디가 다음에 비교를 켤 때 지금의 마지막 칸을 덮었다 — 사용자 지적). undefined = 그때 비교 칸이 없었다(건드리지 않는다)
+  type HistEntry = { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot, CmpSaved>; cmpLast?: string | null }
+  type Hist = { stack: HistEntry[]; idx: number; last: string | null }
   const histsRef = useRef<Map<string, Hist>>(new Map())
   const histOf = (sel: string | null): Hist => {
     const k = isCmpId(sel) ? sel! : 'main'
@@ -1622,6 +1625,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     for (const id of v?.ids ?? cmpSets[owner]?.ids ?? []) histsRef.current.delete(id)
     try { if (v) localStorage.setItem(cmpSetKey(owner), JSON.stringify(v)); else localStorage.removeItem(cmpSetKey(owner)) } catch {}
   }
+  // 비교를 켜면 지금 코디(= 비교 밖 기록의 마지막)가 칸 to 에 담긴다 — 그 기록에 '이어진 칸 = to' 를 적어 둔다(되돌려 이 기록으로 오면 마지막 칸도 to 로)
+  const linkMainTop = (owner: string, to: string) => {
+    const m = histsRef.current.get('main'), top = m && m.stack[m.idx]
+    if (top && top.sel === owner) top.cmpLast = to
+  }
   const toggleCompare = () => {
     if (cmpOn) {
       const back = cmpBack && PRESET_IDS.includes(cmpBack) ? cmpBack : presets[0].id
@@ -1641,6 +1649,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const cur = snapshot(), a = newCmpId(), b = newCmpId()
       setPresetData((d) => ({ ...d, [selectedPreset]: cur, [a]: cur, [b]: cur }))
       putCmpSet(selectedPreset, () => ({ ids: [a, b], last: a }))
+      linkMainTop(selectedPreset, a)
       setSelectedPreset(a) // 라이브는 이미 이 코디다
       return
     }
@@ -1649,6 +1658,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const cur = snapshot()
     setPresetData((d) => ({ ...d, ...(selectedPreset ? { [selectedPreset]: cur } : {}), [to]: cur }))
     histsRef.current.delete(to) // 담은 코디가 그 칸의 새 바닥이다 — 예전 칸 내용으로 되돌려 프리셋을 덮어쓰지 않게
+    linkMainTop(selectedPreset, to)
     setSelectedPreset(to) // 라이브는 이미 이 코디다
   }
   const pickCmp = (id: string) => { if (id !== selectedPreset) switchPreset(id, presetData[id] ?? defaultSnapshot(), 'all') }
@@ -1961,7 +1971,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (inCmp) {
         const h = histOf(id), names = namesOf(presets)
         h.stack = h.stack.slice(0, h.idx + 1)
-        h.stack.push({ snap: over.prev, sel: id, names })
+        h.stack.push({ snap: over.prev, sel: id, names, cmpLast: selectedPreset })
         if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
         h.idx = h.stack.length - 1
         h.last = histKey(over.prev, id, names)
@@ -2061,7 +2071,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     histOver.current = null
     h.last = j
     h.stack = h.stack.slice(0, h.idx + 1)
-    h.stack.push({ snap, sel: selectedPreset, names, ...(ov ? { over: ov } : {}) })
+    const link = !isCmpId(selectedPreset) && selectedPreset && cmpSets[selectedPreset]?.ids.length ? cmpSets[selectedPreset].last : undefined
+    h.stack.push({ snap, sel: selectedPreset, names, ...(ov ? { over: ov } : {}), ...(link !== undefined ? { cmpLast: link } : {}) })
     overTail.current = ov ? { h, at: performance.now() } : null
     if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
     h.idx = h.stack.length - 1
@@ -2073,7 +2084,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, bgSel])
 
 
-  const applyHistory = (e0: { snap: Snapshot; sel: string | null; names?: Record<string, string> }) => {
+  const applyHistory = (e0: HistEntry) => {
+    // 비교 밖 기록이면 그 프리셋에 이어진 비교 칸(마지막 칸)도 그때로 — 다음에 비교를 켜면 그 칸에 이 코디가 담긴다(다른 칸을 덮지 않게)
+    const link = e0.cmpLast, owner = e0.sel
+    if (link !== undefined && owner && !isCmpId(owner)) setCmpSets((m) => (m[owner] && (link === null || m[owner].ids.includes(link)) ? { ...m, [owner]: { ...m[owner], last: link } } : m))
     // 배율은 지금 그대로(되돌리기와 무관한 값). 배경은 그 기록의 값으로 돌아간다
     const e = e0.snap.pv ? { ...e0, snap: { ...e0.snap, pv: { ...e0.snap.pv, zoom: pv.zoom } } } : e0
     // 이름 전체도 그 시점으로(오래된 기록엔 없으면 지금 이름 유지). 코디가 같아도 이름만 바뀌는 기록이 있다.
