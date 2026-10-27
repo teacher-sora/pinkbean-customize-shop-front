@@ -12,7 +12,7 @@
 import clsx from 'clsx'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
-import { COMBO_SKIP, LOOK_CHUNK, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
+import { COMBO_SKIP, LOOK_CHUNK, lookPv, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
 import { CARD_FRACTION_M, MOBILE_GRID, SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
 import { isNarrow } from '@/lib/useBreakpoint'
@@ -502,10 +502,10 @@ function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListIt
   const warmWear = s.warmWear
   const shown = useMemo(() => withCardPv(snap, s.cardPv), [snap, s.cardPv])
   useEffect(() => { warmWear(snap, true) }, [snap]) // [전부 입기]가 바로 반영되게 받아 두고 염색까지 칠해 둔다(누르기 직전)
-  // [전부 입기] = 광장 가져오기와 같은 길(applySharedToPreset — 지금 프리셋에, 되돌리기 한 건). 연출은 **지금 연출 그대로**다 — 카드 · 상세 그림이
-  // 지금 연출로 그려져 있어(withCardPv) 본 그대로 입는다(사용자 지시: 보이는 코디를 그대로 가져온다. 넥슨 코디에는 연출이 없어 기본값이 들어가 귀 · 표정 · 액션이 바뀌었다).
+  // [전부 입기] = 광장 가져오기와 같은 길(applySharedToPreset — 지금 프리셋에, 되돌리기 한 건). 연출은 **지금 연출 그대로**, 귀 · 형상 변이만 그 코디의 것이다
+  // (lib/looks lookPv, 사용자 지시 — 남이 올린 설정이 아니라 코디만 가져온다. 카드 · 상세 그림도 같은 연출이라 본 그대로 입는다).
   // 이름은 지금 프리셋 이름 그대로(이름 없이 넘긴다)
-  const look = (): Snapshot => ({ ...snap, name: undefined, pv: s.snapshot().pv })
+  const look = (): Snapshot => ({ ...snap, name: undefined, pv: lookPv(snap, s.snapshot().pv!) })
   const wearAll = () => { if (s.selectedPreset) s.applySharedToPreset(look(), s.selectedPreset, '이 코디를 전부 입었어요') }
   return (
     <>

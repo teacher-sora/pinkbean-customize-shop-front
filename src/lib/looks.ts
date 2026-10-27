@@ -111,8 +111,11 @@ export async function lookChunk(id: string, c: number, g: LookGender = 'a'): Pro
   return { ready: true, total: h.t[g], page: c, size: LOOK_CHUNK, looks, ...(c === 0 ? { dyes: h.d } : {}) }
 }
 
-// 카드 · 상세 그림 = 목록 '내 캐릭터' 카드와 같은 연출(지금 연출 설정의 시선 · 표정 · 귀 · 무기 모션 · 형상 변이 · 이펙트, 액션은 서기 — ShopContext cardPv)을 얹어
-// SnapThumb view 로 그린다(사용자 지시 — 같은 방식에서 파생). 입기 · 프리셋에 저장은 원래 스냅샷(row.s) 그대로다
-export const withCardPv = (snap: Snapshot, pv: PvSnap): Snapshot => ({ ...snap, pv })
+// 코디 조합의 코디를 입을 때의 연출 = 지금 연출 그대로(배율 · 액션 · 무기 모션 · 표정 · 이펙트 · 시선 · 명찰 — 남의 설정이 아니라 코디만 가져온다)에
+// 귀 · 형상 변이만 그 코디의 값(사용자 지시 — 게임에서 코디에 속하는 분류다). 코디에 그 값이 없으면(지금 표본은 담지 않는다) 지금 값 그대로
+export const lookPv = <T extends PvSnap>(snap: Snapshot, pv: T): T => ({ ...pv, ...(snap.pv?.ear ? { ear: snap.pv.ear } : {}), ...(snap.pv?.form ? { form: snap.pv.form } : {}) })
+// 카드 · 상세 그림 = 목록 '내 캐릭터' 카드와 같은 연출(ShopContext cardPv — 액션은 서기)에 입을 때와 같은 귀 · 형상 변이(lookPv)를 얹어
+// SnapThumb view 로 그린다(사용자 지시 — 같은 방식에서 파생, 본 그대로 입는다)
+export const withCardPv = (snap: Snapshot, pv: PvSnap): Snapshot => ({ ...snap, pv: lookPv(snap, pv) })
 // 코디 조합을 두지 않는 부위 — 코디는 생김새만 본다(사용자 지시: 훈장 · 칭호는 가져올 필요도, 이 기능을 둘 필요도 없다). 표본에서도 뺀다(parser looks/build.ts)
 export const COMBO_SKIP = new Set(['medal', 'title'])

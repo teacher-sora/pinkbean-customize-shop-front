@@ -1359,7 +1359,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const te = idx.base.tones.find((t) => t.tone === snap.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
       if (!te) return
       const shown = Object.entries(eq).filter(([sl, it]) => !!it && !snap.hidden?.[sl]).map(([, it]) => it!)
-      const p = pvRef.current
+      const p = { ...pvRef.current, ...(snap.pv?.ear ? { ear: snap.pv.ear } : {}) } // 입을 때와 같은 연출(lib/looks lookPv)
       const { view } = buildView({ ...p, expr: fixedExpr(shown, p.expr) })
       const off = snap.dyeOff || {}
       const on = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
