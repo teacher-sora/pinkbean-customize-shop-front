@@ -32,7 +32,8 @@ export function warmItem(item: ListItem, view: ViewOpts, palette?: PaletteParams
 //  · 미리보기는 돌던 시계를 이어 가므로 첫 그림이 0번 프레임이 아닐 수 있다 → 그 동작의 **모든 프레임**(서기 3장 정도라 작다)과 정지 대표 그림
 //  · 자세는 착용한 무기가 정한다(두손 무기 → stand2, assemble.weaponPose) — 무기 meta 를 받은 뒤 고른다
 //  · 이펙트는 그 동작에서 도는 묶음의 모든 프레임(effectGroupsFor — 미리보기가 먼저 받는 것과 같다)
-//  · 명찰 · 말풍선 · 칭호 · 훈장의 틀 그림(chatUi atlas)
+//  · 명찰 · 말풍선 · 칭호 · 훈장의 meta(ids 에 넣는다 — 미리보기는 착용 아이템의 meta 가 다 와야 그린다. 이것은 CDN 이 아니라 사이트의 /chatui/meta 라
+//    요청마다 23 ~ 240ms 로 흔들렸고, 넥슨 표본 코디는 거의 다 명찰 · 말풍선 반지를 낀다 — 실측에서 마지막 대기가 이것이었다)와 틀 그림(chatUi atlas)
 //  · dye = 염색까지 칠해 둔다(모든 프레임 — 미리보기의 1 · 2단계 염색과 같은 캐시). 무거우니 누르기 직전(상세가 열렸을 때)만 넘긴다
 export async function warmLook(ids: string[], items: ListItem[], view: ViewOpts, dye?: DyeState): Promise<void> {
   const [metas, eidx] = await Promise.all([Promise.all(ids.map((id) => loadMeta(id).catch(() => null))), loadEffectIndex()])
@@ -43,6 +44,7 @@ export async function warmLook(ids: string[], items: ListItem[], view: ViewOpts,
   const jobs: Promise<unknown>[] = []
   const png = (p: string) => { if (p) jobs.push(loadImage(p, true).catch(() => null)) }
   for (const m of ms) {
+    if (!m.frames) continue // 명찰 · 말풍선 · 칭호 · 훈장은 그림 레이어가 없다(meta 만 — 미리보기가 다 와야 그린다)
     for (let i = 0; i < n; i++) for (const l of getFrameLayers(m, V, i)) png(l.png)
     for (const l of getFrameLayers(m, V)) png(l.png)
   }

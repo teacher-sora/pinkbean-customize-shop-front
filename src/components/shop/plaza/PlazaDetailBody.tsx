@@ -39,6 +39,8 @@ const DETAIL_FRACTION = 0.5
 
 export default function PlazaDetailBody({ post, mobile }: { post: PlazaPost; mobile: boolean }) {
   const s = useShop()
+  // [가져오기]가 바로 반영되게 상세가 열리면 미리 받고 염색까지 칠해 둔다 — 코디 조합 상세와 같은 함수(warmWear, 그 코디의 연출로 — take)
+  useEffect(() => { s.warmWear(post.snapshot, true, true) }, [post.id]) // eslint-disable-line react-hooks/exhaustive-deps
   // 좋아요는 상세에서도 누를 수 있어야 한다 → 서피스가 들고 있는 사본이 아니라 **지금 목록의 값**을 읽는다.
   const live = s.plazaPosts.find((p) => p.id === post.id) || post
   const tagPick = (t: string) => {

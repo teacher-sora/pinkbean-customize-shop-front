@@ -30,7 +30,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, CHAT_SLOTS, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, snapKey } from '@/lib/core/snapRender'
 import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -338,7 +338,7 @@ export interface ShopCtx {
   comboItem: ListItem | null; comboOpen: boolean; comboShown: boolean; comboDetail: LookRow | null; setComboDetail: (r: LookRow | null) => void; openCombo: (item: ListItem) => void; closeCombo: () => void; warmCombo: (id: string) => void; pickCombo: (item: ListItem) => void
   cardPv: PvSnap
   comboGender: GenderFilter; setComboGender: (g: GenderFilter) => void
-  comboTotal: number; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot, dye?: boolean) => void
+  comboTotal: number; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot, dye?: boolean, take?: boolean) => void
   searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
@@ -1353,17 +1353,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 입기 전에 미리(코디 조합 — 카드에 머물 때 · 상세가 열리는 순간): 미리보기가 그 코디를 그릴 때 기다리는 것을 모두 받아 둔다(core/warm.warmLook —
   // 지금 연출의 그 동작 모든 프레임 · 무기 자세 · 이펙트 · 명찰 틀, dye 면 염색 칠하기까지). [전부 입기] · 프리셋에 저장은 **지금 연출 그대로** 입히므로
   // (카드 그림이 지금 연출이다 — ComboDetail) 같은 연출로 받는다. 누르면 받을 것도 칠할 것도 없이 바로 바뀐다(사용자 지시)
-  const warmWear = (snap: Snapshot, dye = false) => {
+  // take = 광장 가져오기 · 공유받은 코디처럼 그 코디의 연출로 입을 때(applySharedToPreset 의 withTakenView). 아니면 코디 조합 — 지금 연출에 귀만 그 코디의 것(lib/looks lookPv)
+  const warmWear = (snap: Snapshot, dye = false, take = false) => {
     resolveEquipped(snap).then((eq) => {
       const idx = indexRef.current; if (!idx) return
       const te = idx.base.tones.find((t) => t.tone === snap.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
       if (!te) return
       const shown = Object.entries(eq).filter(([sl, it]) => !!it && !snap.hidden?.[sl]).map(([, it]) => it!)
-      const p = { ...pvRef.current, ...(snap.pv?.ear ? { ear: snap.pv.ear } : {}) } // 입을 때와 같은 연출(lib/looks lookPv)
+      const p = take ? { ...pvRef.current, ...withTakenView(snap).pv } : { ...pvRef.current, ...(snap.pv?.ear ? { ear: snap.pv.ear } : {}) }
       const { view } = buildView({ ...p, expr: fixedExpr(shown, p.expr) })
       const off = snap.dyeOff || {}
       const on = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
-      const ids = [te.body, te.head, ...shown.filter((it) => it.slot !== 'skin' && !CHAT_SLOTS.has(it.slot)).map((it) => it.id)]
+      const ids = [te.body, te.head, ...shown.filter((it) => it.slot !== 'skin').map((it) => it.id)] // 명찰 · 말풍선 meta 까지(core/warm 주석)
       void warmLook(ids, shown, view, dye ? { palette: on(snap.dyePalette), hsb: on(snap.dyeHsb) } : undefined)
     }).catch(() => {})
   }
