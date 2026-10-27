@@ -54,13 +54,6 @@
 .dyeSkel { cursor: default; }
 .hold { visibility: hidden; } /* 고르기 전 빈 상태: 묶음 자리만 잡는다 */
 .skelText { color: transparent; border-radius: 4px; }
-/* 칩 + 보관함 [+] 를 묶는 칸 — 폭 규칙은 칩의 것을 그대로 옮겼다(칩은 칸을 채운다) */
-.dyeBox { flex: 0 0 calc((100% - 8px * (var(--dye-n) - 1)) / var(--dye-n)); min-width: 180px; position: relative; display: flex; }
-.dyeBox > .dyeChip { flex: 1 1 auto; min-width: 0; }
-.dyeSave { position: absolute; top: 5px; right: 5px; z-index: 1; width: 22px; height: 22px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 5px; color: #c9a3b5; color: light-dark(#c9a3b5, #a07f8f); }
-.dyeSaveOn { color: #ec86ac; color: light-dark(#ec86ac, #d881a1); }
-.dyeSave:disabled { cursor: default; }
-@media (hover: hover) and (pointer: fine) { .dyeSave:not(:disabled):hover { color: #ec86ac; color: light-dark(#ec86ac, #d881a1); } }
 .dyeChipOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fef5f8; background: light-dark(#fef5f8, #4c3039); }
 
 /* 코디 카드(목록 칸 안 — 쪽 넘김 · 격자는 목록의 것). 그림만 둔다 — 똑같은 코디는 거의 없어 '입은 사람 수'는 늘 1명이었다(사용자 지시로 뺐다) */
