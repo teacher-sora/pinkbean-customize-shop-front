@@ -67,22 +67,28 @@ export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'c
   }, [detail, host, s.surface, s.closeCombo])
 
   const body = !item ? <ComboEmpty mobile={mobile} />
-    : detail ? <ComboDetail key={detail.i} row={detail} item={item} mobile={mobile} onBack={() => setDetail(null)} />
+    : detail ? <ComboDetail key={detail.i} row={detail} mobile={mobile} />
       : <ComboList key={`${item.id}|${s.comboGender}`} item={item} mobile={mobile} host={host} onOpen={setDetail} />
+  // 머리는 패널이 **한 번만** 그린다 — 목록 · 빈 화면 · 상세는 그 아래 내용만 바꾼다. 그래서 목록 ↔ 상세를 오가도 아이템 칩(그림 캔버스)이 같은 자리에
+  // 그대로 남아 다시 그려지지 않는다(사용자 지적 — 상세로 넘어갈 때 칩 그림이 움찔했다. 화면마다 머리를 따로 그리면 칩이 새로 붙는다)
+  const head = <><ComboHead item={item} mobile={mobile} host={host} detail={item ? detail : null} onBack={() => setDetail(null)} /><div className={mobile ? list.hrM : list.hr} /></>
   // 열고 닫기 · 상세 오가기 · 탭 오가기 모두 움직임 없이 바로 바뀐다(사용자 지시 — 탭을 바꾸듯)
-  if (mobile) return <>{body}</>
-  return <section className={list.panel}>{body}</section>
+  if (mobile) return <>{head}{body}</>
+  return <section className={list.panel}>{head}{body}</section>
 }
 
 // 머리 왼쪽: 코디 탭은 [←] + 아이템 칩. 좁은 폭(절반 · 태블릿) · 모바일은 칩이 그림만이다(사용자 지시 — 이름이 눌려 안 보였다.
 // 목록의 '아이템' 보기와 같은 그림이고, 이름은 title · 광장은 찾기 칸의 안내 글로도 보인다). 넓은 PC 만 이름까지
-function HeadItem({ item, mobile, host }: { item: ListItem | null; mobile: boolean; host: 'codi' | 'plaza' }) {
+// onBack = 상세에서 코디 목록으로(상세는 광장에서도 [←] 이 있다). [←] 이 생기고 없어져도 칩은 같은 자리(두 번째 칸)라 다시 그려지지 않는다
+function HeadItem({ item, mobile, host, onBack }: { item: ListItem | null; mobile: boolean; host: 'codi' | 'plaza'; onBack?: () => void }) {
   const s = useShop()
   return (
     <div className={styles.headItem}>
-      {host === 'codi' && (
+      {onBack ? (
+        <button type="button" onClick={onBack} title="코디 목록으로 (Esc)" aria-label="코디 목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
+      ) : host === 'codi' ? (
         <button type="button" onClick={s.closeCombo} title="목록으로 (Esc)" aria-label="목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
-      )}
+      ) : null}
       <ItemTag item={item} mobile={mobile} thumbOnly={mobile || isNarrow(s.bp)} />
     </div>
   )
@@ -164,8 +170,6 @@ function ComboEmpty({ mobile }: { mobile: boolean }) {
   useExtraM(vpRef, mobile)
   return (
     <>
-      <ComboHead item={null} mobile={mobile} host="plaza" total={null} paged={false} />
-      <div className={mobile ? list.hrM : list.hr} />
       {mobile && <>
         <div aria-hidden data-combo-extra className={clsx(styles.dyes, styles.dyesM, styles.hold)} style={{ '--dye-n': 3 } as React.CSSProperties}><DyeSkels n={3} mobile /></div>
         <div aria-hidden data-combo-extra className={clsx(styles.dyesSep, styles.dyesSepM, styles.hold)} />
@@ -197,9 +201,12 @@ function Credit({ mobile, hint }: { mobile: boolean; hint?: string }) {
 
 // 머리 — 코디 탭 · AI 코디 검색 목록 머리와 같은 구성 · 자리(사용자 지시 — 탭만 바뀌고 기능이 같으니 같은 위치 · 같은 크기):
 // 왼쪽 = [←](코디 탭) · 아이템 칸 · 성별 · 넘기는 방향(좁은 폭 · 모바일은 [보기 설정]에 접는다 — 같은 부품 FilterM),
-// 오른쪽 = 쪽 칩 · 찾기 칸(광장). 아이템을 고르기 전(paged = false)에도 같은 칸이 다 있다 — 쪽 칩은 0벌 · 1 / 1
-function ComboHead({ item, mobile, host, total, paged }: { item: ListItem | null; mobile: boolean; host: 'codi' | 'plaza'; total: number | null; paged: boolean }) {
+// 오른쪽 = 쪽 칩 · 찾기 칸(광장). 아이템을 고르기 전에도 같은 칸이 다 있다 — 쪽 칩은 0벌 · 1 / 1.
+// 상세(detail)면 오른쪽이 [전부 입기] · [프리셋에 저장]이고 왼쪽은 [←] · 아이템 칩(같은 칩이 그대로 남는다 — ComboPanel)
+function ComboHead({ item, mobile, host, detail, onBack }: { item: ListItem | null; mobile: boolean; host: 'codi' | 'plaza'; detail: LookRow | null; onBack: () => void }) {
   const s = useShop()
+  const paged = !!item
+  const total = s.comboTotalKnown ? s.comboTotal : null
   const narrow = isNarrow(s.bp)
   const dirY = s.listDir === 'y'
   const cur = paged ? s.curIdx : 0, pageCount = paged ? s.pageCount : 1
@@ -226,13 +233,24 @@ function ComboHead({ item, mobile, host, total, paged }: { item: ListItem | null
     { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
   ]
   const finder = host === 'plaza' && <ItemFinder mobile={mobile} now={mobile || narrow ? item : null} />
+  const back = detail ? onBack : undefined
   if (mobile) {
     return (
       <div className={list.controlsM}>
-        <HeadItem item={item} mobile host={host} />
-        <FilterM mobile groups={filterGroups} />
-        {pageChip}
-        {finder}
+        <HeadItem item={item} mobile host={host} onBack={back} />
+        {detail ? <DetailActs row={detail} mobile /> : <>
+          <FilterM mobile groups={filterGroups} />
+          {pageChip}
+          {finder}
+        </>}
+      </div>
+    )
+  }
+  if (detail) {
+    return (
+      <div className={list.header}>
+        <div className={list.groupA}><HeadItem item={item} mobile={false} host={host} onBack={back} /></div>
+        <div className={list.groupB}><DetailActs row={detail} mobile={false} /></div>
       </div>
     )
   }
@@ -414,8 +432,6 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
 
   return (
     <>
-      <ComboHead item={item} mobile={mobile} host={host} total={total} paged />
-      <div className={mobile ? list.hrM : list.hr} />
       {/* 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다) */}
       {(dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div data-combo-extra className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>}
       {viewport}
@@ -510,30 +526,30 @@ function LookCard({ row, mobile, prio, onOpen }: { row: LookRow; mobile: boolean
 }
 
 // ── 상세: 큰 그림 + 부위별 착용(부위만 골라 입기) + 전부 입기 · 프리셋에 저장 ──────────
-function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListItem; mobile: boolean; onBack: () => void }) {
+// 머리 오른쪽의 두 버튼(머리는 ComboPanel 이 그린다 — ComboHead 의 detail)
+function DetailActs({ row, mobile }: { row: LookRow; mobile: boolean }) {
   const s = useShop()
   const snap = row.s
-  const warmWear = s.warmWear
-  const shown = useMemo(() => withCardPv(snap, s.cardPv), [snap, s.cardPv])
-  useEffect(() => { warmWear(snap, true) }, [snap]) // [전부 입기]가 바로 반영되게 받아 두고 염색까지 칠해 둔다(누르기 직전)
   // [전부 입기] = 광장 가져오기와 같은 길(applySharedToPreset — 지금 프리셋에, 되돌리기 한 건). 연출은 **지금 연출 그대로**, 귀 · 형상 변이만 그 코디의 것이다
   // (lib/looks lookPv, 사용자 지시 — 남이 올린 설정이 아니라 코디만 가져온다. 카드 · 상세 그림도 같은 연출이라 본 그대로 입는다).
   // 이름은 지금 프리셋 이름 그대로(이름 없이 넘긴다)
   const look = (): Snapshot => ({ ...snap, name: undefined, pv: lookPv(snap, s.snapshot().pv!) })
   const wearAll = () => { if (s.selectedPreset) s.applySharedToPreset(look(), s.selectedPreset, '이 코디를 전부 입었어요') }
   return (
+    <div className={styles.detailActs}>
+      <button type="button" onClick={wearAll} title="이 코디를 지금 프리셋에 전부 입기(되돌리기 가능)" className={clsx('pb-soft', styles.actBtn, mobile && styles.actBtnM)}>전부 입기</button>
+      <button type="button" onClick={() => s.takeCombo(look())} title="이 코디를 내 프리셋에 저장" className={clsx('pb-solid', styles.actBtn, mobile && styles.actBtnM, styles.actSolid)}><IconTakeDown size={13} />프리셋에 저장</button>
+    </div>
+  )
+}
+function ComboDetail({ row, mobile }: { row: LookRow; mobile: boolean }) {
+  const s = useShop()
+  const snap = row.s
+  const warmWear = s.warmWear
+  const shown = useMemo(() => withCardPv(snap, s.cardPv), [snap, s.cardPv])
+  useEffect(() => { warmWear(snap, true) }, [snap]) // [전부 입기]가 바로 반영되게 받아 두고 염색까지 칠해 둔다(누르기 직전)
+  return (
     <>
-      <div className={mobile ? list.controlsM : list.header}>
-        <div className={styles.headItem}>
-          <button type="button" onClick={onBack} title="코디 목록으로 (Esc)" aria-label="코디 목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
-          <ItemTag item={item} mobile={mobile} thumbOnly={mobile || isNarrow(s.bp)} />{/* 목록 머리와 같은 규칙(HeadItem) */}
-        </div>
-        <div className={styles.detailActs}>
-          <button type="button" onClick={wearAll} title="이 코디를 지금 프리셋에 전부 입기(되돌리기 가능)" className={clsx('pb-soft', styles.actBtn, mobile && styles.actBtnM)}>전부 입기</button>
-          <button type="button" onClick={() => s.takeCombo(look())} title="이 코디를 내 프리셋에 저장" className={clsx('pb-solid', styles.actBtn, mobile && styles.actBtnM, styles.actSolid)}><IconTakeDown size={13} />프리셋에 저장</button>
-        </div>
-      </div>
-      <div className={mobile ? list.hrM : list.hr} />
       {/* 절반 · 태블릿은 패널이 좁아 그림 옆에 두면 착용 칸이 170px 남짓이라 칩이 53px 이었다 — 모바일처럼 위아래로 쌓는다 */}
       <div className={clsx(styles.detail, mobile ? clsx('pb-norail', styles.detailM) : clsx('pb-scroll', isNarrow(s.bp) && styles.detailM))}>
         <div className={clsx(styles.stage, (mobile || isNarrow(s.bp)) && styles.stageM)}><SnapThumb snap={shown} view keep fraction={mobile ? 0.5 : 0.46} priority={-1} /></div>
