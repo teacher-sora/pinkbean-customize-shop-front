@@ -294,7 +294,7 @@
 .cmpAddSlim > span { display: none; }
 .cmpAdd svg { color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
 /* 점 위치는 고른 칸의 오른쪽 아래(오른쪽 위는 칸 버튼 자리) */
-.cmpDot { top: auto; bottom: 8px; right: 8px; }
+.cmpDot { top: auto; bottom: 8px; right: 8px; z-index: 2; } /* 칸에 붙는다 — 움직이는 미리보기(.cmpLive z 1) 위 */
 
 /* PC 아래 칸 머리의 탭(북마크 · 비교). 비교 탭의 본문은 북마크 줄과 같은 높이의 빈 자리 */
 .pinBlank { height: calc((var(--pin-col) - 18px - 42px) / 8); }

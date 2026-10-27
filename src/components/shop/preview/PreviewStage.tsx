@@ -63,6 +63,8 @@ function Pane({ id, index, active, fraction, pos, slim, onPick }: { id: string; 
   if (!active) frozen.current = still
   const shown = active ? frozen.current : still
   const pick = () => { if (!active) onPick(id) }
+  const eye = active ? s.equipped['eyeAcc'] : null
+  const dot = eye && DOT_MOVER_IDS.has(eye.id) ? eye : null
   // 배경은 이 칸의 캐릭터가 실제로 그린 발 자리에 깐다(고른 칸의 미리보기 장면과 같은 자리 — CardStageBg floor)
   const [floor, setFloor] = useState<CardFloor | null>(null)
   const onFloor = useCallback((f: CardFloor) => setFloor((o) => (o && o.cx === f.cx && o.footY === f.footY && o.scale === f.scale ? o : f)), [])
@@ -82,6 +84,13 @@ function Pane({ id, index, active, fraction, pos, slim, onPick }: { id: string; 
       </div>
       {/* 휴지통 띠지는 테두리 겹 밖(칸 기준)에 — 테두리 안쪽이 기준이면 고른 칸(1.5px)만 반 픽셀 자리에 놓여 hover 때 움찔했다(사용자 지적) */}
       <CmpDel id={id} slim={slim} />
+      {/* 점 위치(PC): 고른 칸에만, 칸마다 제 자리에 — 다른 칸을 고르면 그 아이템이 있던 칸에서 사라진다(사용자 지시. 움직이는 미리보기 안에 두면 새 칸으로 옮겨 가서 사라졌다) */}
+      {!slim && (
+        <button type="button" onClick={(e) => { e.stopPropagation(); if (dot) s.openDot(dot) }} disabled={!dot} tabIndex={dot ? 0 : -1} title="점 위치 변경" data-guide={active ? 'dot' : undefined}
+          className={clsx('pb-ghost', styles.dotBtn, styles.cmpDot, dot && styles.dotBtnOn)}>
+          <IconDot />점 위치
+        </button>
+      )}
     </div>
   )
 }
@@ -136,9 +145,9 @@ export default function PreviewStage({ mobile }: { mobile: boolean }) {
       {cells}
       <div ref={liveRef} className={cmpOn ? styles.cmpLive : styles.live} style={cmpOn ? { ...lay.pos(ai), opacity: hold ? 0 : 1 } : undefined}>
         <StageBg />
-        {!mobile && (
+        {!mobile && !cmpOn && (
           <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경" data-guide="dot"
-            className={clsx('pb-ghost', styles.dotBtn, cmpOn && styles.cmpDot, dotItem && styles.dotBtnOn)}>
+            className={clsx('pb-ghost', styles.dotBtn, dotItem && styles.dotBtnOn)}>
             <IconDot />점 위치
           </button>
         )}
