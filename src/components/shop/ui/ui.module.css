@@ -9,6 +9,8 @@
 .segOn { font-weight: 600; color: #fff; color: light-dark(#fff, #ececef); background: #ec86ac; background: light-dark(#ec86ac, #d15785); }
 /* 아이콘 칸(모바일 헤더의 보기 셋) — 글자 칸과 같은 높이, 정사각에 가깝게 */
 .segIcon { width: 30px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.segTrack > .segIcon { height: 28px; } /* 목록 머리(PC) — 칸 전체 34, 옆 성별 칸과 같은 높이 */
+.segFlex.segIcon { height: 26px; } /* 보기 설정 창 안 — 칸 전체 30, 같은 창의 다른 고르기와 같은 높이 */
 .segDisabled { opacity: .4; cursor: not-allowed; }
 
 /* ── 커스텀 드롭다운(OS select 금지) ── */
@@ -67,7 +69,7 @@
 .dyeBandMuted { font-weight: 500; color: #c3b9ad; color: light-dark(#c3b9ad, #7e828d); }
 .dyeBandKey { font-weight: 500; color: #b0a599; color: light-dark(#b0a599, #898d97); }
 .dyeBandDot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); border: 1px solid light-dark(rgba(0,0,0,0.08), rgba(14, 15, 17, 0.092)); }
-.dyeBandDotEdge { border-color: #fff; border-color: light-dark(#fff, #303238); box-shadow: 0 0 0 1.5px #2f2b27; box-shadow: 0 0 0 1.5px light-dark(#2f2b27, #1c1a17); }
+.dyeBandDotEdge { margin: 0 2.5px 0 1.5px; border-color: #fff; border-color: light-dark(#fff, #303238); box-shadow: 0 0 0 1.5px #2f2b27; box-shadow: 0 0 0 1.5px light-dark(#2f2b27, #1c1a17); } /* 고리(그림자 1.5px)가 칸 간격을 먹지 않게 그만큼 자리를 잡고, 글자 쪽은 고리 바깥에서 4px 띄운다(사용자 지시 — 글자와 확실한 거리) */
 .dyeBandOff { color: #c3b9ad; color: light-dark(#c3b9ad, #7e828d); }
 .dyeBandOff .dyeBandDot { filter: grayscale(1); opacity: .6; }
 

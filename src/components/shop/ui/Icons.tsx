@@ -108,6 +108,14 @@ export const IconCompare = ({ size = 15 }: P) => (
 export const IconTakeDown = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 4.5v11m0 0l-4.2-4.2M12 15.5l4.2-4.2M5 19h14" /></svg>
 )
+// 불러오기 — 사람 + 돋보기(닉네임으로 캐릭터를 찾아 코디를 가져온다). 내려받기(IconTakeDown)와 갈리게 '찾는다'는 꼴(사용자 지시)
+export const IconImport = ({ size = 14 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="9.5" cy="7.5" r="3.5" /><path d="M3 20c0-3.6 2.9-6 6.5-6 1.1 0 2.1.2 3 .6" /><circle cx="17" cy="16.5" r="3" /><path d="M19.2 18.7L21.5 21" /></svg>
+)
+// 보관함에 담기 — 뚜껑 있는 상자 + 더하기(염색 보관함)
+export const IconVaultAdd = ({ size = 14 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="4.5" rx="1" /><path d="M4.5 8.5V18a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.5M12 11.5v5.5M9.25 14.25h5.5" /></svg>
+)
 export const IconLinkCopy = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="10.5" height="10.5" rx="2" /><path d="M15 6.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v7.5A1.5 1.5 0 0 0 6 15h.5" /></svg>
 )

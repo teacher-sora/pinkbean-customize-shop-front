@@ -219,7 +219,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {/* 광장 상세의 푸터는 '닫기'만 — 하트·링크 복사·가져오기는 본문 액션 줄에 모았다. */}
             {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
             {/* 공유받은 코디 — 광장 상세를 거쳐 왔으면(post 있음) '이전'으로 상세로 되돌아가고, 링크·코드로 받은 경우는 '닫기'. */}
-            {k === 'ptake' && sf.take && <><PlazaTakeBody snap={sf.take} mobile={mobile} /><SurfaceFooter onBack={sf.post ? s.plazaTakeBack : undefined} /></>}
+            {k === 'ptake' && sf.take && <><PlazaTakeBody snap={sf.take} mobile={mobile} title={sf.combo ? '코디 조합' : undefined} /><SurfaceFooter onBack={sf.post ? s.plazaTakeBack : undefined} /></>}
             {k === 'notice' && <NoticeBody mobile={mobile} />}   {/* 푸터는 본문이 그린다(상세에서 '이전') */}
             {k === 'card' && <ProfileCardBody mobile={mobile} />}   {/* 푸터(닫기 · 저장)는 본문이 그린다 */}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}

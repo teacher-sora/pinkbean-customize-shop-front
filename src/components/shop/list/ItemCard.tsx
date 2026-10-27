@@ -1,12 +1,13 @@
 'use client'
 
 import clsx from 'clsx'
+import { useRef } from 'react'
 import { badgeUrl, type ListItem } from '@/lib/core/data'
-import { CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
+import { CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 import { IconStar } from '../ui/Icons'
-import { countLabel, useLookCount } from '@/lib/looks'
+import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
 
@@ -37,6 +38,12 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const dye = (e: React.MouseEvent) => { e.stopPropagation(); if (isDot) s.openDot(item); else s.openDye(item) }
   // 코디 조합 — 목록 자리에 이 아이템을 입은 코디와 자주 쓴 염색을 펼친다(combo/ComboPanel). 숨은 기능이 되지 않게 늘 보인다(사용자 지시)
   const combo = (e: React.MouseEvent) => { e.stopPropagation(); if (s.consumeSwipeClick()) return; s.openCombo(item) }
+  // 미리 받기(칩에 120ms 머물면 — 지나가기만 하면 받지 않는다 · ShopContext warmCombo). 터치는 머무름이 없어 손가락이 닿는 순간(떼기 전) 시작한다
+  const hover = useRef(0)
+  const comboPreload = () => s.warmCombo(item.id)
+  const comboEnter = (e: React.PointerEvent) => { if (e.pointerType !== 'mouse') return; window.clearTimeout(hover.current); hover.current = window.setTimeout(comboPreload, 120) }
+  const comboLeave = () => window.clearTimeout(hover.current)
+  const comboDown = (e: React.PointerEvent) => { if (e.pointerType !== 'mouse') comboPreload() }
 
   return (
     <div onClick={equip} onPointerDown={warm} className="pb-cardwrap" title={name}>
@@ -49,7 +56,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
         <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
           className={clsx('pb-ribbon', styles.pinMark, mobile && styles.pinMarkM, pinned && styles.pinMarkOn)} />
         <div className={styles.thumb}>
-          <ItemThumb item={item} mode={mode} chat={item.chatUi ? CHAT_CARD : undefined} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
+          <ItemThumb item={item} mode={mode} fraction={mobile ? CARD_FRACTION_M : undefined} chat={item.chatUi ? CHAT_CARD : undefined} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
             zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
             ctxExpr={ctx.expr} faceMeta={ctx.faceMeta} dye={mode === 'mymodel' ? { palette: s.renderPalette, hsb: s.renderHsb } : undefined}
             ear={mode === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={mode === 'mymodel'} stance={ctx.stance} ctxAction={ctx.action} dotOffsets={mode === 'mymodel' ? s.dotPos[item.id] : undefined} />
@@ -58,8 +65,8 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
             <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
               className={clsx(styles.labelBadge, badgeKind === 'cash' && styles.labelBadgeCash)} />
           )}
-          {looks > 0 && (
-            <button type="button" onClick={combo} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 조합 ${looks.toLocaleString()}벌`}
+          {looks > 0 && !COMBO_SKIP.has(item.slot) && (
+            <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 조합 ${looks.toLocaleString()}벌`}
               className={clsx(styles.combo, mobile && styles.comboM)}>코디 {countLabel(looks)}</button>
           )}
         </div>

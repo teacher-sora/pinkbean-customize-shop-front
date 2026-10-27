@@ -155,7 +155,9 @@ button:focus-visible { outline: 2px solid #f8e0ea; outline: 2px solid light-dark
 
 /* 슬라이더: 트랙을 썸 이동 범위(양끝 9px 인셋)에 맞춰 별도 div 로 깔아, 0 일 때 썸이 트랙 끝에 정확히 붙는다 */
 .pb-slider { position: relative; height: 22px; }
-.pb-presetacts, .pb-ribbon { transition: filter .24s ease, transform .24s cubic-bezier(.22,.61,.36,1), opacity .16s ease, background-color .24s ease !important; }
+/* 띠지(카드 · 비교 칸의 즐겨찾기 · 북마크 · 복사 · 휴지통)는 늘 따로 합성한다(will-change) — 카드가 격자에서 소수점 자리를 받으면 띠지도 소수점 자리라,
+   hover 로 움직이기 시작할 때(합성) · 끝날 때(다시 칠함) 그리는 방식이 바뀌어 반 픽셀 튀었다(사용자 지적 — 움찔). 늘 같은 방식이면 그림이 같다(실측: 배율 1 · 1.25 · 1.5 차이 0) */
+.pb-presetacts, .pb-ribbon { will-change: transform; transition: filter .24s ease, transform .24s cubic-bezier(.22,.61,.36,1), opacity .16s ease, background-color .24s ease !important; }
 @media (hover: hover) and (pointer: fine) {
   .pb-presetacts:hover,
   .pb-ribbon:hover { filter: brightness(0.8) saturate(1.15) !important; transform: translateY(1px) !important; }

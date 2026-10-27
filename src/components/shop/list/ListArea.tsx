@@ -4,9 +4,9 @@
 //  PC(절반·태블릿 포함) = 패널(section) + 헤더 + 뷰포트 + 힌트 바 / 모바일 = 컨트롤 2줄 + 뷰포트.
 
 import clsx from 'clsx'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
-import { isNarrow } from '@/lib/useBreakpoint'
+import { MOBILE_GRID } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
@@ -20,29 +20,33 @@ const VIEW_MODES: SegOpt<ListMode>[] = [
   { v: 'model', l: '기본 캐릭터', t: '기본 캐릭터에 입힌 모습' },
   { v: 'mymodel', l: '내 캐릭터', t: '내 캐릭터에 입힌 모습' },
 ]
-const GENDERS: SegOpt<GenderFilter>[] = [
+export const GENDERS: SegOpt<GenderFilter>[] = [
   { v: 'all', l: '전체', t: '모든 아이템' },
   { v: 'f', l: '여', t: '여자 캐릭터가 입을 수 있는 것' },
   { v: 'm', l: '남', t: '남자 캐릭터가 입을 수 있는 것' },
 ]
 // 넘기는 방향 — 기본 가로. 세로여도 PC · 절반 · 태블릿은 한 쪽씩 넘기고, 모바일은 목록 안에서 세로로 스크롤한다(넘기는 방향만 바뀐다).
-const DIRS: SegOpt<ListDir>[] = [
+export const DIRS: SegOpt<ListDir>[] = [
   { v: 'x', l: '가로로 넘기기', t: '가로로 넘겨 보기', icon: <IconDirX /> },
   { v: 'y', l: '세로로 넘기기', t: '세로로 넘겨 보기', icon: <IconDirY /> },
 ]
 // 보이는 순서대로 적는다. keep = 자리가 좁아 줄일 때 남기는 순서(작을수록 끝까지 남는다) — 모바일은 둘, 좁은 화면은 셋만 보인다
 const AI_EXAMPLES = [{ q: '동물 귀', keep: 2 }, { q: '한벌옷 스타킹', keep: 0 }, { q: '귀여운 얼굴', keep: 3 }, { q: '단발 헤어', keep: 1 }]
 
-// 모바일 뷰포트의 스크롤 위치 → 쪽 번호(쪽 = 3열 × 2줄). 가로는 열 = 폭/3, 세로는 줄 = 높이/2 단위로 반올림한 뒤 쪽으로. 크기가 없으면 -1.
+// 모바일 뷰포트의 스크롤 위치 → 쪽 번호(쪽 = MOBILE_GRID 열 × 줄). 가로는 열 = 폭/열 수, 세로는 줄 = 높이/줄 수 단위로 반올림한 뒤 쪽으로. 크기가 없으면 -1.
 const scrollIdx = (vp: HTMLElement, y: boolean) => {
   const w = y ? vp.clientHeight : vp.clientWidth; if (!w) return -1
-  return y ? Math.floor(Math.round(vp.scrollTop / (w / 2)) / 2) : Math.floor(Math.round(vp.scrollLeft / (w / 3)) / 3)
+  const n = y ? MOBILE_GRID.rows : MOBILE_GRID.cols
+  return Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / n)) / n)
 }
 
-// 모바일 · 절반 · 태블릿: 보기(아이템 / 기본 캐릭터 / 내 캐릭터)와 성별을 버튼 하나에 접어 둔다(넓은 PC 는 펼쳐 둔다). 누르면 버튼 아래에 두 묶음이 펼쳐진다.
-// 왜: 둘 다 한번 정해 두고 쓰는 값인데 늘 펼쳐 두느라 목록 머리가 두 줄이었다(쪽 번호 · 검색은 매번 쓰는 것이라 그대로 내놓는다).
-// 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(둘을 이어서 고를 수 있게).
-function FilterM({ viewOpts, mode, onMode, gender, onGender, dir, onDir, mobile }: { mobile: boolean; viewOpts: SegOpt<ListMode>[]; mode: ListMode; onMode: (v: ListMode) => void; gender: GenderFilter; onGender: (v: GenderFilter) => void; dir: ListDir; onDir: (v: ListDir) => void }) {
+// 모바일 · 절반 · 태블릿: 한번 정해 두고 쓰는 보기 값들(목록 = 보기 · 성별 · 방향, 코디 조합 = 성별 · 방향)을 버튼 하나에 접어 둔다(넓은 PC 는 펼쳐 둔다).
+// 누르면 버튼 아래에 묶음들이 펼쳐진다. 왜: 늘 펼쳐 두느라 목록 머리가 두 줄이었다(쪽 번호 · 검색은 매번 쓰는 것이라 그대로 내놓는다).
+// 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(이어서 고를 수 있게).
+// 같은 부품을 코디 조합 머리도 쓴다(combo/ComboPanel — 사용자 지시: 같은 역할은 부품 하나)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void }
+export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     if (!open) return
@@ -50,26 +54,61 @@ function FilterM({ viewOpts, mode, onMode, gender, onGender, dir, onDir, mobile 
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [open])
-  const now = (viewOpts.find((o) => o.v === mode)?.l ?? '') + (gender === 'all' ? '' : `, ${GENDERS.find((g) => g.v === gender)?.l}`) + (dir === 'y' ? ', 세로' : '')
+  const now = groups.map((g) => g.opts.find((o) => o.v === g.value)?.l ?? '').join(', ')
   return (
     <div className={styles.filterM}>
-      <button type="button" data-guide="listdir" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, open && styles.filterBtnOn)}>
+      <button type="button" data-guide={guide} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, open && styles.filterBtnOn)}>
         <span className={styles.filterText}>보기 설정</span>
         <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
       </button>
       {/* 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다 */}
       {open && <div className={styles.filterShade} onClick={() => setOpen(false)} />}
       {/* 늘 붙여 두고 보임만 바꾼다 — 닫힐 때도 전환이 보이게 */}
-      <div role="group" aria-label="보기 · 성별 · 넘기는 방향" aria-hidden={!open} className={clsx(styles.filterPop, open && styles.filterPopOn)}>
-        <span className={styles.filterLabel}>보기</span>
-        <Seg variant="mobileFlex" title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={mode} onPick={onMode} />
-        <span className={styles.filterLabel}>성별</span>
-        <Seg variant="mobileFlex" title="성별" opts={GENDERS} value={gender} onPick={onGender} />
-        <span className={styles.filterLabel}>방향</span>
-        <Seg variant="mobileFlex" title="넘기는 방향" opts={DIRS} value={dir} onPick={onDir} />
+      <div role="group" aria-label={groups.map((g) => g.label).join(' · ')} aria-hidden={!open} className={clsx(styles.filterPop, open && styles.filterPopOn)}>
+        {groups.map((g) => (
+          <Fragment key={g.label}>
+            <span className={styles.filterLabel}>{g.label}</span>
+            <Seg variant="mobileFlex" title={g.title} opts={g.opts} value={g.value} onPick={g.onPick} />
+          </Fragment>
+        ))}
       </div>
     </div>
   )
+}
+
+// 모바일: 카드가 세로형(높이/폭 ≥ ratio)으로 rows 줄 들어갈 최소 뷰포트 높이를 보장한다. 부족하면 페이지 컬럼
+// 높이(--pb-min-h)를 늘려 페이지 스크롤로 흡수(리스트 안 세로 스크롤은 만들지 않음). 그 외 요소 높이(chrome)는
+// 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다. 코디 탭 목록(MOBILE_GRID)과 코디 조합(최소 2줄 — 사용자 지시)이 함께 쓴다.
+// ⚠️ 목록은 언마운트(염색·프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
+//    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다. restore 면(코디 조합 — 목록보다 길 수 있다) 떠날 때 붙기 전 값으로 되돌린다.
+// 모바일 목록 카드의 최소 크기 = 그림 칸 높이 ≥ 폭 × CARD_RATIO_M + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) CARD_FOOT_M.
+// 예전에는 카드 전체를 폭 × 1.34 로만 잡아, 화면이 낮으면(실제 휴대폰 · 위를 줄인 창) 아래 57px 를 빼고 남은 그림 칸이 75px 까지 줄어
+// 캐릭터가 45px 로 아주 작았다(사용자 지적 — 실측 343 × 684). 그림 칸을 따로 보장해 어느 높이에서든 캐릭터가 줄지 않는다
+export const CARD_RATIO_M = 1.45
+const CARD_FOOT_M = 57 // 1.45 = 좁은 폭(343 · 360)도 캐릭터가 한 단계 크게(정수 배율 — 실측 68 → 90px)
+// 목록과 같은 최소 높이 — 코디 탭 · AI 코디 검색 목록과 프리셋 탭이 함께 쓴다(같은 값이라 탭을 오가도 페이지 높이가 그대로다)
+export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M)
+// extra = 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장의 다른 분류가 코디 조합과 같은 높이 — 광장 목록 칸은
+// 좌우 여백 7 이 없어 그만큼 넓다. 분류를 바꿔도 페이지 높이가 같게)
+export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0) {
+  useEffect(() => {
+    if (!mobile) return
+    const vp = vpRef.current
+    const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
+    if (!vp || !col) return
+    const before = col.style.getPropertyValue('--pb-min-h')
+    const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
+    const m = () => {
+      const chrome = col.clientHeight - vp.clientHeight
+      const cardW = (vp.clientWidth - inset - PAD_X - GAP * (cols - 1)) / cols
+      const need = Math.ceil(chrome + extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)) + 'px'
+      if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
+    }
+    m()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
+    ro?.observe(col); ro?.observe(vp)
+    return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
+  }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset])
 }
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
@@ -108,36 +147,15 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   mobile: boolean; thumbs: ThumbApi; isAi: boolean; list: ListItem[]; loading: boolean; emptyTitle: string | null; emptyHint: string
 }) {
   const s = useShop()
-  const narrow = isNarrow(s.bp)
-  // 모바일: 카드가 세로형(높이/폭 ≥ CARD_MIN_RATIO)으로 2줄 들어갈 최소 뷰포트 높이를 보장한다. 부족하면 페이지 컬럼
-  // 높이(--pb-min-h)를 늘려 페이지 스크롤로 흡수(리스트 안 세로 스크롤은 만들지 않음). 그 외 요소 높이(chrome)는
-  // 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다.
+  const narrow = s.listNarrow
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
-  useEffect(() => {
-    if (!mobile) return
-    const vp = vpRef.current
-    const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
-    if (!vp || !col) return
-    const CARD_MIN_RATIO = 1.34, PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
-    const m = () => {
-      const chrome = col.clientHeight - vp.clientHeight
-      const cardW = (vp.clientWidth - PAD_X - GAP * 2) / 3
-      const need = Math.ceil(chrome + PAD_Y + GAP + 2 * cardW * CARD_MIN_RATIO) + 'px'
-      if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
-    }
-    m()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
-    ro?.observe(col); ro?.observe(vp)
-    // ⚠️ 언마운트(염색·프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
-    //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다(컬럼 높이는 탭과 무관한 숫자일 뿐).
-    return () => { ro?.disconnect() }
-  }, [mobile])
-  // ── 모바일: 네이티브 자유 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화. 가로면 가로, 세로면 세로(쪽 = 3열 × 2줄) ──
+  useListMinHeight(vpRef, mobile) // 모바일: 카드 2줄이 들어갈 높이를 보장한다(위 주석)
+  // ── 모바일: 네이티브 자유 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화. 가로면 가로, 세로면 세로(쪽 = MOBILE_GRID 열 × 줄) ──
   //  세로: 쪽 높이 = 뷰포트 높이(100cqh), 줄 = 높이/2 — 스크롤 → 인덱스는 줄 = round(스크롤/(높이/2)), 쪽 = floor(줄/2).
-  //  페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라 열 위치가 정확히 폭/3 배수(페이지 = 3열).
-  //  스크롤 → 인덱스: 열 = round(스크롤/(폭/3)), 페이지 = floor(열/3).
+  //  페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라 열 위치가 정확히 폭/열 수의 배수.
+  //  스크롤 → 인덱스: 열 = round(스크롤/(폭/열 수)), 페이지 = floor(열/열 수).
   //  인덱스 → 스크롤: 화살표·페이지 입력 등으로 인덱스가 바뀌어 스크롤 위치와 어긋날 때만 이동(같으면 아무것도 안 함 →
   //  사용자 스크롤·프로그램 스크롤이 서로 싸우지 않는다). 부위·탭이 바뀌면 애니메이션 없이 즉시.
   //  가상화 유지: 트랙 폭만 페이지 수만큼 잡고, 페이지 DOM 은 현재 ±1 만 만든다(아래 pages).
@@ -196,6 +214,11 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const viewOpts = VIEW_MODES.map((m) => (m.v === 'sprite' && noSprite
     ? { ...m, disabled: true, disabledTitle: '피부는 아이템 보기를 지원하지 않아요' }
     : m))
+  const filterGroups: FilterGroup[] = [
+    { label: '보기', title: '아이템을 무엇에 입혀서 볼지', opts: viewOpts, value: thumbs.mode, onPick: s.setListMode },
+    { label: '성별', title: '성별', opts: GENDERS, value: s.genderFilter, onPick: s.setGenderFilter },
+    { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
+  ]
   const runAi = (q?: string) => { const t = (q ?? s.aiQ).trim(); if (!t) return; if (q !== undefined) s.setAiQ(q); s.runSearch(t) }
 
   const pageChip = (
@@ -226,7 +249,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const controls = mobile ? (
     // 한 줄: 보기와 성별(접어 둔 버튼) · 쪽 번호 · 검색. 높이는 프리셋 · 코디 정보의 머리와 같다(48)
     <div className={styles.controlsM}>
-      <FilterM mobile viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} dir={s.listDir} onDir={s.setListDir} />
+      <FilterM mobile guide="listdir" groups={filterGroups} />
       {pageChip}
       <div className={styles.searchWrapM}>
         <IconSearch className={styles.searchIconM} />
@@ -237,7 +260,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     <div className={styles.header}>
       {/* 좁은 폭(절반 · 태블릿)에서는 보기와 성별을 접어 한 줄로 둔다 — 펼쳐 두면 머리가 두 줄이 된다 */}
       {narrow
-        ? <FilterM mobile={false} viewOpts={viewOpts} mode={thumbs.mode} onMode={s.setListMode} gender={s.genderFilter} onGender={s.setGenderFilter} dir={s.listDir} onDir={s.setListDir} />
+        ? <FilterM mobile={false} guide="listdir" groups={filterGroups} />
         : (
           <div data-guide="listdir" className={styles.groupA}>
             <Seg title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={thumbs.mode} onPick={s.setListMode} />

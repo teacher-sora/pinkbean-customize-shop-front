@@ -14,14 +14,14 @@ import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
 import { nameMatcher } from '@/lib/nameSearch'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
-import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
+import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
-import { lookToSnapshot, nrmName, type LookDeps, type NexonLook } from '@/lib/nexonLook'
-import { comboLive } from '@/lib/looks'
+import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
+import { comboLive, lookChunk, withCardPv, type LookRow } from '@/lib/looks'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
@@ -30,9 +30,9 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, buildView, foldList, slotFile } from '@/lib/shopData'
-import { animaOnce, composePeek, composeSnapshotCached, snapKey } from '@/lib/core/snapRender'
-import { warmItem } from '@/lib/core/warm'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
+import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, snapKey } from '@/lib/core/snapRender'
+import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { confirmTwice } from '@/lib/confirmTwice'
@@ -183,18 +183,47 @@ const loadPresetStore = (): PresetStore | null => {
   try { const raw = localStorage.getItem(PRESET_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && s.data ? s : null } catch { return null }
 }
 // 코디 비교(사용자 지시): 칸 하나하나가 프리셋 목록에 나오지 않는 프리셋이다(id 'cmp…'). 칸을 고르면 그 칸의 코디가 지금 코디가 되어
-// 코디 탭 · 염색 · 연출 설정 · 북마크 · 자동 저장 · 되돌리기를 프리셋과 똑같이 쓴다. 저장은 프리셋과 따로(CMP_KEY) — 비교 중에 바꾼 것이 프리셋에 섞이지 않는다.
-// ids = 칸 순서(A B C D), on = 비교 중에 닫았는지(새로고침해도 그대로), last = 마지막으로 고른 칸, back = 비교 전에 고르던 프리셋.
-// **고른 칸 = 그 프리셋**: 고른 칸을 고치면 back 에도 저장되고, 칸을 바꿔 고르면 그 칸의 코디가 back 이 된다(끄면 back 이 마지막 칸의 코디로 남는다)
+// 코디 탭 · 염색 · 연출 설정 · 북마크 · 자동 저장 · 되돌리기를 프리셋과 똑같이 쓴다.
+// **프리셋마다 비교 칸이 따로다**(사용자 지시): 그 프리셋의 칸 순서(A B C D) · 마지막으로 고른 칸 · 칸의 코디. localStorage 에 영구로 둔다.
+// 저장은 프리셋마다 한 키(CMP_KEY:<프리셋 id>)라 **첫 로드에는 많아야 하나만 읽는다** — 비교 중에 닫았을 때 그 주인 프리셋 것만(사용자 지시: 첫 로드가
+// 조금도 느려지면 안 된다). 다른 프리셋의 칸은 그 프리셋에서 비교를 켤 때 읽는다. CMP_KEY 자체는 비교 중에 닫았는지(on)뿐이다(주인 = 프리셋 저장소의 sel).
+// **고른 칸 = 그 주인 프리셋**: 고른 칸을 고치면 주인 프리셋에도 저장되고, 칸을 바꿔 고르면 그 칸의 코디가 주인 프리셋이 된다(끄면 마지막 칸의 코디로 남는다)
 export const CMP_MAX = 4
 export const CMP_MIN = 2 // 비교는 늘 두 칸 이상(사용자 지시)
-const CMP_KEY = 'pb_compare_v1' // sessionStorage(북마크와 같다 — 새로고침에는 남고 창을 닫으면 사라진다)
-// 예전에는 두 값을 localStorage 에 두었다 — 남은 것을 한 번 지운다
-if (typeof window !== 'undefined') { try { localStorage.removeItem(CMP_KEY); localStorage.removeItem(BOOKMARK_KEY) } catch { /* noop */ } }
+// PC 비교(열 460) 때 목록 머리(코디 탭이 가장 길다 — 894px)가 한 줄에 드는 창 폭. 이보다 좁으면 목록 쪽을 태블릿 배치로(실측 1200: 218px 넘쳤다)
+const CMP_WIDE = 1420
+type CmpSet = { ids: string[]; last: string | null }
+type CmpSaved = CmpSet & { data: Record<string, Snapshot> }
+const CMP_KEY = 'pb_compare_v2'
+const cmpSetKey = (owner: string) => `${CMP_KEY}:${owner}`
+const CMP_KEY_V1 = 'pb_compare_v1' // 예전(칸 묶음 하나, sessionStorage) — 처음 한 번 그때의 주인 프리셋 키로 옮기고 지운다
+// 더 예전에는 v1 · 북마크를 localStorage 에 두었다 — 남은 것을 한 번 지운다
+if (typeof window !== 'undefined') { try { localStorage.removeItem(CMP_KEY_V1); localStorage.removeItem(BOOKMARK_KEY) } catch { /* noop */ } }
 export const isCmpId = (id: string | null | undefined): id is string => !!id && id.startsWith('cmp')
-type CmpStore = { ids: string[]; data: Record<string, Snapshot>; on: boolean; last: string | null; back: string | null }
-const loadCmpStore = (): CmpStore | null => {
-  try { const raw = sessionStorage.getItem(CMP_KEY); if (!raw) return null; const s = JSON.parse(raw); return s && Array.isArray(s.ids) && s.data ? s : null } catch { return null }
+// 비교 중에 닫았는가(작은 값 하나). 예전 저장(v1)이 있으면 먼저 그 주인 프리셋 키로 옮긴다
+const loadCmpOn = (): boolean => {
+  try {
+    const old = sessionStorage.getItem(CMP_KEY_V1)
+    if (old) {
+      sessionStorage.removeItem(CMP_KEY_V1)
+      const o = JSON.parse(old) as { ids?: string[]; data?: Record<string, Snapshot>; on?: boolean; last?: string | null; back?: string | null }
+      if (o && Array.isArray(o.ids) && o.data && o.back) {
+        localStorage.setItem(cmpSetKey(o.back), JSON.stringify({ ids: o.ids, last: o.last ?? null, data: o.data } as CmpSaved))
+        localStorage.setItem(CMP_KEY, JSON.stringify({ on: !!o.on }))
+      }
+    }
+    return !!JSON.parse(localStorage.getItem(CMP_KEY) || '{}').on
+  } catch { return false }
+}
+// 한 프리셋의 비교 칸. 두 칸이 안 되는 저장(예전에 한 칸까지 뺄 수 있었다)은 첫 칸의 복사본으로 채운다
+const loadCmpSet = (owner: string): CmpSaved | null => {
+  try {
+    const raw = localStorage.getItem(cmpSetKey(owner)); if (!raw) return null
+    const v = JSON.parse(raw) as CmpSaved; if (!v || !Array.isArray(v.ids) || !v.data) return null
+    const ids = v.ids.filter((id) => isCmpId(id) && v.data[id]).slice(0, CMP_MAX)
+    while (ids.length && ids.length < CMP_MIN) { const id = 'cmp' + Date.now().toString(36) + ids.length; v.data[id] = v.data[ids[0]]; ids.push(id) }
+    return ids.length ? { ids, last: v.last && ids.includes(v.last) ? v.last : null, data: v.data } : null
+  } catch { return null }
 }
 // 비교 칸의 보기 설정(시선 · 액션 · 프레임 · 표정)은 칸마다 따로 둔다 — 칸을 고르면 그 칸의 설정이 연출 설정 · 목록에 그대로 온다(사용자 지시:
 // 목록은 고른 칸에 맞춘다). 배율만 모든 칸이 지금 값을 함께 쓴다 — 같은 크기여야 견줄 수 있다
@@ -231,12 +260,14 @@ export interface ShopCtx {
   listMode: ListMode; setListMode: Dispatch<ListMode>
   bgSel: string // 지금 프리셋의 미리보기 배경(snapshot().bg 와 같은 값)
   listDir: ListDir; setListDir: Dispatch<ListDir> // 목록을 넘기는 방향(가로 · 세로) — 기본 가로
+  presetDir: ListDir | null; setPresetDir: (d: ListDir) => void // 프리셋 탭의 방향(null = 고르기 전 — PC 세로 · 모바일 가로)
   bindVp: (el: HTMLDivElement | null) => void
   bindTrack: (el: HTMLDivElement | null) => void // 스와이프 중 손가락 따라가기(DOM 직접 갱신)
   snapFrom: number // 스냅 애니메이션 직전 페이지 — 애니메이션 중엔 새 페이지 마운트를 미룬다
   consumeSwipeClick: () => boolean // 스와이프 직후의 카드 클릭은 착용으로 처리하지 않는다
   curIdx: number; pageCount: number
-  bp: Breakpoint; cols: number; rows: number; itemsPerPage: number
+  // listNarrow = 목록 쪽 패널(목록 · 코디 정보 · 프리셋 · 광장 · 코디 조합)을 좁은 배치로 — 절반 · 태블릿, 그리고 PC 에서 비교로 열이 넓어져 목록 머리가 한 줄에 안 드는 폭(< CMP_WIDE)
+  bp: Breakpoint; listNarrow: boolean; cols: number; rows: number; itemsPerPage: number
   // ── 코디 광장 ──
   plazaPosts: PlazaPost[]; plazaList: PlazaPost[]; plazaLoading: boolean; plazaReady: boolean
   plazaFilter: PlazaFilter; setPlazaFilter: Dispatch<PlazaFilter>
@@ -307,7 +338,10 @@ export interface ShopCtx {
   snapshot: () => Snapshot
   undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
   // 코디 조합(combo/ComboPanel) — 고른 아이템, 코디 탭 목록 자리의 패널이 열려 있는가, 이름으로 아이템 찾기(광장의 코디 조합 탭)
-  comboItem: ListItem | null; comboOpen: boolean; openCombo: (item: ListItem) => void; closeCombo: () => void; pickCombo: (item: ListItem) => void
+  comboItem: ListItem | null; comboOpen: boolean; comboShown: boolean; comboDetail: LookRow | null; setComboDetail: (r: LookRow | null) => void; openCombo: (item: ListItem) => void; closeCombo: () => void; warmCombo: (id: string) => void; pickCombo: (item: ListItem) => void
+  cardPv: PvSnap
+  comboGender: GenderFilter; setComboGender: (g: GenderFilter) => void
+  comboTotal: number; comboTotalKnown: boolean; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot, dye?: boolean, take?: boolean) => void
   searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
@@ -320,7 +354,7 @@ export interface ShopCtx {
   lookPick: { nick: string; options: LookOption[] } | null
   chooseLook: (lookKey: string, presetKey: string) => void; closeLookPick: () => void
   shareCurrentLink: () => void
-  applySharedToPreset: (snap: Snapshot, targetId: string) => void
+  applySharedToPreset: (snap: Snapshot, targetId: string, msg?: string) => void
   rateCodi: () => void
   rating: boolean                  // 평가를 받아 오는 중(핑크빈이 살펴보고 있다)
   rateBusy: boolean                // 평가가 진행 중이다(받아 오는 중 + 핑크빈이 말하고 나갈 때까지). 그동안 평가 버튼을 못 누른다
@@ -409,6 +443,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=기본 캐릭터(코디는 모델이 기본)
   // 목록 넘기는 방향. 가로 = 지금까지의 넘기기, 세로 = 같은 넘기기를 위아래로(PC · 절반 · 태블릿은 한 쪽씩, 모바일은 목록 안 세로 스크롤 — ListArea).
   const [listDir, setListDir] = useState<ListDir>('x')
+  // 프리셋 탭의 넘기는 방향(사용자 지시 — 프리셋에도). 목록과 따로다: 고르기 전에는 지금까지의 배치(PC 세로 스크롤 · 모바일 가로 스크롤)를 그대로 둔다(null)
+  const [presetDir, setPresetDir] = useState<ListDir | null>(null)
   const listDirRef = useRef<ListDir>('x')
   listDirRef.current = listDir
   const [search, setSearch] = useState('')
@@ -458,11 +494,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 처음엔 **아무것도 선택하지 않는다**. 'd0' 으로 시작하면 저장소를 읽기 전 잠깐 1번 칸에
   // '선택됨' 띠지가 붙었다가 실제 프리셋으로 옮겨 간다. 아래 초기 로드에서 채운다.
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
-  const [cmpIds, setCmpIds] = useState<string[]>([])
-  const [cmpBack, setCmpBack] = useState<string | null>(null)
-  const cmpLast = useRef<string | null>(null)
+  const [cmpSets, setCmpSets] = useState<Record<string, CmpSet>>({}) // 프리셋마다의 비교 칸(CMP_KEY 주석)
+  const [cmpBack, setCmpBack] = useState<string | null>(null) // 비교 중인 주인 프리셋(끄면 돌아갈 프리셋)
   const cmpSeq = useRef(0)
   const cmpOn = isCmpId(selectedPreset)
+  const cmpOwner = cmpOn ? cmpBack : selectedPreset
+  const cmpIds = (cmpOwner && cmpSets[cmpOwner]?.ids) || []
+  const putCmpSet = (owner: string, f: (c: CmpSet) => CmpSet) => setCmpSets((m) => ({ ...m, [owner]: f(m[owner] ?? { ids: [], last: null }) }))
   const [nickInput, setNickInput] = useState('')
   const [importing, setImporting] = useState(false) // 불러오기 진행 중(로딩 애니메이션)
   // 코디가 2벌인 캐릭터(제로=알파/베타, 엔젤릭버스터=일반/드레스업) → 어느 걸 가져올지 고르는 다이얼로그.
@@ -485,7 +523,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 기록은 갈래마다 따로다(사용자 지시): 비교 중이면 고른 칸마다 제 기록, 아니면 하나('main'). 칸을 고르는 것은 기록이 아니다 —
   // 칸을 바꾸면 그 칸의 기록으로 넘어갈 뿐이고, 처음 고른 칸은 그때의 코디가 첫 기록(되돌릴 바닥)이 된다.
   // 갈래마다 최근 50개라 비교 칸 넷을 다 써도 기록은 최대 250개(작은 스냅샷 객체)다. 뺀 칸의 기록은 함께 버린다(removeCmp).
-  type Hist = { stack: { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot> }[]; idx: number; last: string | null }
+  // cmpLast = 그 기록 때 그 프리셋에 이어진 비교 칸(비교 밖 기록만 — 프리셋 = 마지막 칸이라 프리셋을 되돌리면 이어진 칸도 그때로 돌아가야 한다.
+  //   안 그러면 되돌린 코디가 다음에 비교를 켤 때 지금의 마지막 칸을 덮었다 — 사용자 지적). undefined = 그때 비교 칸이 없었다(건드리지 않는다)
+  type HistEntry = { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot, CmpSaved>; cmpLast?: string | null }
+  type Hist = { stack: HistEntry[]; idx: number; last: string | null }
   const histsRef = useRef<Map<string, Hist>>(new Map())
   const histOf = (sel: string | null): Hist => {
     const k = isCmpId(sel) ? sel! : 'main'
@@ -493,7 +534,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!h) { h = { stack: [], idx: -1, last: null }; histsRef.current.set(k, h) }
     return h
   }
-  const histOver = useRef<PresetOver<Snapshot> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
+  const overTail = useRef<{ h: Hist; at: number } | null>(null) // 방금 남긴 덮어쓰기 기록(pushHistory — 꼬리 합치기)
+  const histOver = useRef<PresetOver<Snapshot, CmpSaved> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
   const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
   const saveT = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -526,14 +568,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // 이관 끝을 바로 기록한다 — 다음 저장을 기다리면 그 전 새로고침에서 또 돈다.
       if (store && migrate) { try { localStorage.setItem(PRESET_KEY, JSON.stringify({ ...store, data: { ...store.data, ...Object.fromEntries(PRESET_IDS.filter((id) => store.data[id]).map((id) => [id, data[id]])) }, v: PRESET_STORE_V } as PresetStore)) } catch {} }
       const back = (store?.sel && PRESET_IDS.includes(store.sel)) ? store.sel : 'd0'
-      // 비교 칸(따로 저장). 비교 중에 닫았으면 그 칸으로 다시 연다
-      const cs = loadCmpStore()
-      const cids = (cs?.ids ?? []).filter((id) => isCmpId(id) && cs!.data[id]).slice(0, CMP_MAX)
-      // 두 칸이 안 되는 저장(예전에 한 칸까지 뺄 수 있었다)은 첫 칸의 복사본으로 채운다
-      while (cids.length && cids.length < CMP_MIN) { const id = 'cmp' + Date.now().toString(36) + cids.length; data[id] = cs!.data[cids[0]]; cids.push(id) }
-      for (const id of cids) data[id] = data[id] ?? cs!.data[id]
-      cmpLast.current = cs?.last && cids.includes(cs.last) ? cs.last : null
-      const sel = cs?.on && cmpLast.current ? cmpLast.current : back
+      // 비교 칸: 비교 중에 닫았을 때만 그 주인 프리셋(back)의 칸을 읽어 마지막 칸으로 다시 연다(다른 프리셋의 칸은 읽지 않는다 — CMP_KEY 주석)
+      const sets: Record<string, CmpSet> = {}
+      const cs = loadCmpOn() ? loadCmpSet(back) : null
+      if (cs) { Object.assign(data, cs.data); sets[back] = { ids: cs.ids, last: cs.last } }
+      const sel = cs?.last ?? back
       // 선택된 프리셋을 라이브 모델로 해석(필요한 슬롯 리스트 로드). 그 뒤 index/프리셋/모델을 한 배치로 세팅
       // → 적용으로 인한 변경은 자동저장 1회만 발생하고 applyingRef 로 스킵된다.
       const snap = data[sel] || defaultSnapshot()
@@ -547,7 +586,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setDyeOff({ ...(snap.dyeOff || {}) }); setHidden({ ...(snap.hidden || {}) })
       setDotPos({ ...(snap.dotPos || {}) })
       setSelectedPreset(sel)
-      setCmpIds(cids); setCmpBack(back) // 프리셋 저장소의 sel 은 비교 중에도 돌아갈 프리셋이다(writePresetStore)
+      setCmpSets(sets); setCmpBack(back) // 프리셋 저장소의 sel 은 비교 중에도 주인 프리셋이다(writePresetStore)
       // 연출설정 복원: 저장된 전역 pv 가 있으면 그대로(전체) 복원, 없으면(첫 로드/구유저) 선택 프리셋의 pv 서브셋으로.
       const savedPv = loadPv()
       if (savedPv) setPvState((prev) => ({ ...prev, ...savedPv }))
@@ -675,6 +714,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (pref.plazaSort === 'popular' || pref.plazaSort === 'recent') setPlazaSort(pref.plazaSort)
     if (pref.listMode === 'sprite' || pref.listMode === 'model' || pref.listMode === 'mymodel') setListMode(pref.listMode)
     if (pref.listDir === 'x' || pref.listDir === 'y') { listDirRef.current = pref.listDir; setListDir(pref.listDir) } // 넘기는 방향도 영구(사용자 지시 — 늘 같은 방향)
+    if (pref.presetDir === 'x' || pref.presetDir === 'y') setPresetDir(pref.presetDir)
     setUiReady(true)
   }, [])
   // 뼈대를 거두는 건 **되살린 화면이 실제로 커밋된 뒤**다(uiReady 가 켜진 다음 렌더).
@@ -687,7 +727,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       aiQ, searchQuery, searchResults: searchResults.slice(0, SEARCH_KEEP),
     })
   }, [uiReady, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
-  useEffect(() => { if (uiReady) writeUiPref({ plazaSort, listDir, listMode }) }, [uiReady, plazaSort, listDir, listMode])
+  useEffect(() => { if (uiReady) writeUiPref({ plazaSort, listDir, listMode, ...(presetDir ? { presetDir } : {}) }) }, [uiReady, plazaSort, listDir, listMode, presetDir])
   const [rateResult, setRateResult] = useState<{ lines: RateLine[]; nonce: number } | null>(null) // 코디 평가(핑크빈이 하는 말)
   // 평가는 **눌러 받은 그 한 번만** 나온다(광장처럼 미리보기가 없는 탭에
   // 갔다 와도 지난 평가가 다시 나오지 않는다). PinkbeanRate 는 미리보기와 함께 언마운트됐다가 다시 붙으면서
@@ -761,9 +801,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // ── 반응형 그리드: 뷰포트를 측정해 카드 비율(PC 6×3 ≈ 1.34)에 가장 가까운 열·행 조합을 고른다 ──
   const bp = useBreakpoint()
+  const cmpWide = useMinWidth(CMP_WIDE)
   const bpRef = useRef(bp)
   bpRef.current = bp
   const primaryRef = useRef(primary)
+  const comboShownRef = useRef(false) // 코디 탭의 코디 조합이 목록 자리에 떠 있는가 — 광장의 코디 조합과 같은 격자를 쓴다(measure)
+  const plazaComboRef = useRef(false) // 광장의 코디 조합 분류 — 모바일도 최소 2줄(사용자 지시 — 미리보기는 빠른 파악을 위해 늘 두 줄 이상)
   primaryRef.current = primary
   const [grid, setGrid] = useState<{ cols: number; rows: number }>({ cols: 6, rows: 3 })
   const measure = useCallback(() => {
@@ -772,16 +815,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
     // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄.
-    if (primaryRef.current === 'share') {
-      const mob = vp === 'mobile'
-      const pcols = mob ? 2 : (vp === 'half' || vp === 'tablet') ? 3 : 6
+    // 코디 조합은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 3열 × 2줄
+    const mob = vp === 'mobile'
+    const combo = primaryRef.current === 'share' ? plazaComboRef.current : comboShownRef.current
+    const plazaLike = (forCombo: boolean) => {
+      // 모바일 코디 조합은 코디 탭 목록과 같은 3열 × 2줄 고정(사용자 지시 — 큰 휴대폰에서 3줄이 되어 기종마다 갈렸다)
+      if (mob && forCombo) return { cols: MOBILE_GRID.cols, rows: MOBILE_GRID.rows }
+      const pcols = mob ? (forCombo ? MOBILE_GRID.cols : 2) : (vp === 'half' || vp === 'tablet') ? 3 : 6
       const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10
       const avail = el.clientHeight - 20
-      const prows = Math.max(1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx))))
+      return { cols: pcols, rows: Math.max(mob && forCombo ? 2 : 1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx)))) }
+    }
+    if (primaryRef.current === 'share') {
+      const { cols: pcols, rows: prows } = plazaLike(combo)
       setPlazaGrid((g) => (g.cols === pcols && g.rows === prows ? g : { cols: pcols, rows: prows }))
       return
     }
-    if (vp === 'mobile') { apply(3, 2); return }
+    if (combo) { const g = plazaLike(true); apply(g.cols, g.rows); return }
+    if (mob) { apply(MOBILE_GRID.cols, MOBILE_GRID.rows); return }
     const gap = 10, pad = 20
     const TARGET = 1.34, MINW = 78, MINH = 96
     const w = el.clientWidth - pad, h = el.clientHeight - pad
@@ -812,7 +863,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (best.rows > fitRows) best = { ...best, rows: fitRows }
     apply(best.cols, best.rows)
   }, [])
-  useEffect(() => { measure() }, [bp, primary, measure])
+  plazaComboRef.current = plazaFilter === 'combo'
+  useEffect(() => { measure() }, [bp, primary, plazaFilter, measure])
   const { cols, rows } = grid
   const itemsPerPage = cols * rows
 
@@ -866,15 +918,35 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => { window.clearTimeout(t); for (const j of jobs) j.cancel() }
   }, [index, dataLoading, presetData, presets, warmPosts])
   const pagedList = primary === 'search' ? searchResultsView : activeList
+  // 코디 조합(combo/ComboPanel)도 이 쪽 넘김을 쓴다(사용자 지시 — 코디 탭 · AI 코디 검색 목록과 같은 목록). 쪽 크기는 그 자리의 격자
+  // (코디 탭 = 목록 격자, 광장 = 광장 격자), 쪽 수는 그 아이템의 코디 수(패널이 첫 쪽을 받고 알려 준다 — setComboTotal)
+  const [comboItem, setComboItem] = useState<ListItem | null>(null)
+  const [comboOpen, setComboOpen] = useState(false)
+  // 화면 기억(사용자 지시 — 프리셋처럼 다른 탭에 갔다 와도 보던 코디 조합 화면 그대로): 연 탭(comboTab) · 보던 상세(comboDetail)를 여기 둔다.
+  // 패널은 탭을 옮기면 떨어지지만(PinkbeanShop) 여기 값으로 그대로 다시 붙는다. 쪽 위치는 쪽 넘김(pageByCat)이 기억한다
+  const [comboTab, setComboTab] = useState<string>('codi')
+  const [comboDetail, setComboDetail] = useState<LookRow | null>(null)
+  const comboShown = comboOpen && primary === comboTab
+  comboShownRef.current = comboShown // 렌더 중에 적는다 — 패널의 뷰포트가 붙는 그 자리(bindVp)에서 바로 재므로
+  // 성별(전체 · 여 · 남 — 코디의 성별은 parser looks/build.ts 가 입은 아이템으로 센다). 쪽 위치 · 코디 수도 성별마다 따로다
+  const [comboGender, setComboGender] = useState<GenderFilter>('all')
+  const [comboCount, setComboCount] = useState<{ id: string; n: number }>({ id: '', n: 0 })
+  const setComboTotal = useCallback((id: string, n: number) => setComboCount((c) => (c.id === id && c.n === n ? c : { id, n })), [])
+  const comboPaging = !!comboItem && (comboShown || (primary === 'share' && plazaFilter === 'combo'))
+  const comboKey = comboItem ? `${comboItem.id}|${comboGender}` : '' // setComboTotal 에 넘기는 키
+  const comboTotal = comboItem && comboCount.id === comboKey ? comboCount.n : 0
+  // 상세를 보는 동안은 방향키 · 휠로 목록 쪽이 넘어가지 않는다(돌아오면 보던 쪽 그대로)
+  const pagerHold = useRef(false)
+  const holdPager = useCallback((b: boolean) => { pagerHold.current = b }, [])
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
   //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다
   //   (setIdx 를 거치지 않으니 스냅 전환·스크롤 애니메이션 없이 리스트가 그대로 유지되는 인상).
-  const pageKey = primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : activeCat
+  const pageKey = comboPaging ? `combo:${comboKey}` : primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : activeCat
 
   // ── 페이지네이션 ── (광장은 자기 그리드·목록 길이를 쓴다)
   const isPlazaTab = primary === 'share'
   const perPage = isPlazaTab ? plazaGrid.cols * plazaGrid.rows : itemsPerPage
-  const pageCount = Math.max(1, Math.ceil((isPlazaTab ? plazaList.length : pagedList.length) / perPage))
+  const pageCount = Math.max(1, Math.ceil((comboPaging ? comboTotal : isPlazaTab ? plazaList.length : pagedList.length) / perPage))
   const maxIndex = pageCount - 1
   const curIdx = Math.max(0, Math.min(maxIndex, Math.floor((pageByCat[pageKey] || 0) / perPage)))
 
@@ -979,6 +1051,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       el.addEventListener('wheel', onWheel, { passive: false })
       el.addEventListener('pointerdown', onDown)
       el.addEventListener('scroll', killVpScroll, { passive: true })
+      // 붙는 그 자리(커밋 중 — 그리기 전)에서 바로 잰다. 다음 프레임에서야 재면 앞 목록의 격자(코디 조합은 염색 줄만큼 낮아 줄 수가 적다)로
+      // 한 프레임 그려져 카드 그림이 크게 번쩍였다(사용자 지적). 프레임 뒤 두 번은 글꼴 · 스크롤바로 자리가 바뀐 경우를 위해 남긴다
+      measure()
       requestAnimationFrame(() => { measure(); requestAnimationFrame(measure) })
       if (typeof ResizeObserver !== 'undefined') { vpRo.current = new ResizeObserver(() => measure()); vpRo.current.observe(el) }
     }
@@ -1033,7 +1108,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return
-      if (comboOpenRef.current) return // 코디 조합 패널이 목록 자리에 있으면 방향키는 패널 몫이다(combo/ComboPanel)
+      if (pagerHold.current) return // 코디 조합 상세를 보는 중
       if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1)
       else if (listDirRef.current === 'y' && bpRef.current !== 'mobile' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); step(e.key === 'ArrowUp' ? -1 : 1) }
     }
@@ -1047,6 +1122,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // ── 착용 전 워밍: 보이는 리스트 페이지(멈춘 뒤 한가할 때) + 카드 누르는 순간 ──
   const pvRef = useRef(pv); pvRef.current = pv
+  // 목록 '내 캐릭터' 카드와 같은 연출(thumbView — 시선 · 표정 · 귀 · 무기 모션 자세 + 형상 변이 · 이펙트, 액션은 서기). 남의 코디를 지금 연출로 보여 주는
+  // 카드(코디 조합)가 스냅샷에 이 값을 얹어 SnapThumb view 로 그린다 — composeSnapshot 의 view 모드가 액션 'basic' · 프레임 없음이면 thumbView 와 같은 규칙이다
+  const cardPv = useMemo<PvSnap>(() => ({ form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, floatFx: pv.floatFx, baseTag: pv.baseTag,
+    gaze: pv.gaze, action: 'basic', frame: -1, expr: pv.expr, zoom: pv.zoom }), [pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.floatFx, pv.baseTag, pv.gaze, pv.expr, pv.zoom])
   const renderPaletteRef = useRef(renderPalette); renderPaletteRef.current = renderPalette
   const warmForPreview = useCallback((item: ListItem) => {
     if (item.slot === 'skin') return
@@ -1122,19 +1201,28 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   // 코디 조합 — 목록 카드의 '코디' 칩으로 연다. 열려 있으면 목록 자리가 패널이 된다(PinkbeanShop). 목록의 쪽 · 부위 · 검색은 여기 그대로라
   // 닫으면 보던 쪽으로 돌아온다. 광장의 코디 조합 탭은 같은 아이템(comboItem)을 이어 보여 준다
-  const [comboItem, setComboItem] = useState<ListItem | null>(null)
-  const [comboOpen, setComboOpen] = useState(false)
-  const comboOpenRef = useRef(false)
-  comboOpenRef.current = comboOpen
-  const openCombo = (item: ListItem) => { setComboItem(item); setComboOpen(true) }
-  const closeCombo = () => setComboOpen(false)
-  useEffect(() => { if (primary !== 'codi' && primary !== 'search') setComboOpen(false) }, [primary])
-  // 이름으로 아이템 찾기 — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
+  // 열고 닫기 · 상세 오가기는 탭을 바꾸듯 그 자리에서 바로 바뀐다(움직임 없음 — 사용자 지시). 첫 묶음은 누르는 순간 받기 시작한다
+  const openCombo = (item: ListItem) => {
+    void lookChunk(item.id, 0, comboGender === 'all' ? 'a' : comboGender).catch(() => {})
+    setComboItem(item); setComboDetail(null); setComboTab(primary); setComboOpen(true)
+  }
+  const closeCombo = () => { setComboOpen(false); setComboDetail(null) }
+  // 코디 조합 미리 받기(목록 카드의 '코디' 칩 · 광장의 아이템 찾기 결과에 머물거나 닿는 순간): 지금 성별의 첫 묶음과, 첫 쪽 카드(넓은 PC 한 쪽 18벌)의
+  // 아이템 정보 · 정지 자세 그림 파일(snapRender.preloadSnapshot — 받기만, 합성은 누른 뒤. 합성까지 미리 걸면 그 일이 화면을 붙잡아 패널이 늦게 떴다 —
+  // 실측 CPU ×4: 패널 367 → 1149 · 1671ms). 받은 것은 lib/looks · 그림 캐시에 남아 두 번 받지 않는다
+  const warmCombo = (id: string) => {
+    lookChunk(id, 0, comboGender === 'all' ? 'a' : comboGender).then((d) => {
+      const ix = indexRef.current
+      if (ix) for (const r of d.looks.slice(0, 18)) void preloadSnapshot(withCardPv(r.s, cardPv), ix, true).catch(() => {})
+    }).catch(() => {})
+  }
+  const pickCombo = (item: ListItem) => { setComboItem(item); setComboDetail(null) }
+  // 이름으로 아이템 찾기(코디 조합의 아이템 찾기) — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
   const searchItems = async (q: string): Promise<ListItem[]> => {
-    const t = nrmName(q)
-    if (!t) return []
+    const match = nameMatcher(q) // 목록 · 광장 검색과 같은 규칙(영문 자판으로 친 한글 en2ko, 띄어쓰기 무시)
+    if (!match) return []
     const lists = await Promise.all(EQUIP_SLOTS.filter((sl) => slotFile(sl, indexRef.current)).map((sl) => loadSlotFolded(sl)))
-    return [...lists.flat(), ...skinList].filter((it) => nrmName(it.name || '').includes(t))
+    return [...lists.flat(), ...skinList].filter((it) => match(it.name || ''))
   }
   const clearBookmarks = () => {
     if (!bookmarks.length) return
@@ -1271,6 +1359,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setHidden((h) => { const n = { ...h }; for (const sl of slots) delete n[sl]; return n })
     setDyeTarget(null)
     notify(label ? `${label} 부위를 입었어요` : `${slots.length}개 부위를 입었어요`)
+  }
+  // 입기 전에 미리(코디 조합 — 카드에 머물 때 · 상세가 열리는 순간): 미리보기가 그 코디를 그릴 때 기다리는 것을 모두 받아 둔다(core/warm.warmLook —
+  // 지금 연출의 그 동작 모든 프레임 · 무기 자세 · 이펙트 · 명찰 틀, dye 면 염색 칠하기까지). [전부 입기] · 프리셋에 저장은 **지금 연출 그대로** 입히므로
+  // (카드 그림이 지금 연출이다 — ComboDetail) 같은 연출로 받는다. 누르면 받을 것도 칠할 것도 없이 바로 바뀐다(사용자 지시)
+  // take = 광장 가져오기 · 공유받은 코디처럼 그 코디의 연출로 입을 때(applySharedToPreset 의 withTakenView). 아니면 코디 조합 — 지금 연출에 귀만 그 코디의 것(lib/looks lookPv)
+  const warmWear = (snap: Snapshot, dye = false, take = false) => {
+    resolveEquipped(snap).then((eq) => {
+      const idx = indexRef.current; if (!idx) return
+      const te = idx.base.tones.find((t) => t.tone === snap.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
+      if (!te) return
+      const shown = Object.entries(eq).filter(([sl, it]) => !!it && !snap.hidden?.[sl]).map(([, it]) => it!)
+      const p = take ? { ...pvRef.current, ...withTakenView(snap).pv } : { ...pvRef.current, ...(snap.pv?.ear ? { ear: snap.pv.ear } : {}) }
+      const { view } = buildView({ ...p, expr: fixedExpr(shown, p.expr) })
+      const off = snap.dyeOff || {}
+      const on = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
+      const ids = [te.body, te.head, ...shown.filter((it) => it.slot !== 'skin').map((it) => it.id)] // 명찰 · 말풍선 meta 까지(core/warm 주석)
+      void warmLook(ids, shown, view, dye ? { palette: on(snap.dyePalette), hsb: on(snap.dyeHsb) } : undefined)
+    }).catch(() => {})
   }
   // 스냅샷의 점 위치는 스냅샷의 아이템 id 로 적혀 있다(복제 묶음을 원본으로 바꿔 읽었으면 바뀐 id 로도 찾는다).
   const snapDot = (snap: Snapshot, slot: string, it: ListItem) => snap.dotPos?.[snap.equipped?.[slot]] ?? snap.dotPos?.[it.id]
@@ -1463,13 +1569,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openSurface({ kind, item: null })
   }
   // 기능 안내의 '열어 보기'(글은 lib/guide 의 guideFor 로 기기에 맞춘 것이 온다). **요청한 것만 바꾼다** — 보던 탭 · 상태는 그대로 두고,
-  // 미리보기 기능(tab 'preview')은 미리보기가 없는 코디 광장에서만 코디 탭으로 간다. 창이 닫히는 것을 기다렸다가 탭을 바꾸고(필요할 때만),
+  // 미리보기 기능(tab 'preview')은 미리보기가 없는 PC 코디 광장(코디 조합 분류 밖)에서만 코디 탭으로 간다. 창이 닫히는 것을 기다렸다가 탭을 바꾸고(필요할 때만),
   // 창(sheet)이 있으면 연다 — 휴대폰 연출 설정은 고르기 화면(pick) · 칸(group)까지 정해 연다. PC 는 연출 설정이 미리보기 아래
   // 줄이라 창이 없다: 펼칠 칸이면 펼치고(drawer), 아니면 그 요소를 가리키고 필요하면 눌러 연다(spot · click).
   const guideGo = ({ go }: { go?: GuideGo }) => {
     if (!go) return
     closeSurface()
-    const tab = go.tab === 'preview' ? (primary === 'share' ? 'codi' : null) : go.tab
+    const tab = go.tab === 'preview' ? (primary === 'share' && bp !== 'mobile' && plazaFilter !== 'combo' ? 'codi' : null) : go.tab
     setTimeout(() => {
       if (tab && tab !== primary) setPrimary(tab)
       const sheet = go.sheet && (go.sheet !== 'pv' || bp === 'mobile') ? go.sheet : null
@@ -1498,56 +1604,95 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   const openPartItem = (item: ListItem) => slideTo(1, { kind: DOT_MOVER_IDS.has(item.id) ? 'dot' : 'dye', item, fromPart: true })
   const partBack = () => slideTo(-1, { kind: 'part', item: null })
-  // 코디 비교(사용자 지시) — 칸은 프리셋 목록에 없는 프리셋이다(CMP_KEY 주석). 칸 고르기 · 더하기 · 빼기. 고른 칸 = 비교 전 프리셋(CMP_KEY 주석).
-  // 처음 열면 지금 코디로 두 칸(A = 지금 코디, B = 그 복사본 — 하나만 바꿔 대 보기 쉽게). 다시 열면 모아 둔 칸 그대로, 마지막에 고른 칸으로.
+  // 코디 비교(사용자 지시) — 칸은 프리셋 목록에 없는 프리셋이고, 프리셋마다 따로다(CMP_KEY 주석). 칸 고르기 · 더하기 · 빼기. 고른 칸 = 주인 프리셋.
+  // 그 프리셋에서 처음 열면 지금 코디로 두 칸(A = 지금 코디, B = 그 복사본 — 하나만 바꿔 대 보기 쉽게). 다시 열면 그 프리셋의 칸 그대로, 마지막에 고른 칸으로.
   const newCmpId = () => 'cmp' + Date.now().toString(36) + (cmpSeq.current++)
+  // 한 프리셋의 비교 칸 전부(칸 순서 · 마지막 칸 · 칸마다의 코디). 읽은 적 없으면 저장소에서. 고른 칸은 라이브 코디
+  const cmpSavedOf = (owner: string): CmpSaved | null => {
+    const set = cmpSets[owner]
+    if (!set) return loadCmpSet(owner)
+    if (!set.ids.length) return null
+    const data: Record<string, Snapshot> = {}
+    for (const id of set.ids) data[id] = id === selectedPreset ? snapshot() : presetData[id] ?? defaultSnapshot()
+    // 비교 중이면 마지막 칸 = 지금 고른 칸(set.last 는 끌 때만 적힌다 — 그대로 담으면 되살린 뒤 다른 칸이 골라져 지금 코디로 덮였다, 사용자 지적)
+    const last = cmpOn && owner === cmpBack && selectedPreset && set.ids.includes(selectedPreset) ? selectedPreset : set.last
+    return { ids: set.ids, last, data }
+  }
+  // 비교 칸을 통째로 바꾼다(null = 비우기 — 다음에 켜면 처음처럼 지금 코디로 두 칸). 저장소에도 바로 쓴다(자동 저장을 기다리지 않게)
+  const putCmpSaved = (owner: string, v: CmpSaved | null) => {
+    setCmpSets((m) => ({ ...m, [owner]: v ? { ids: v.ids, last: v.last } : { ids: [], last: null } }))
+    if (v) setPresetData((d) => ({ ...d, ...v.data }))
+    for (const id of v?.ids ?? cmpSets[owner]?.ids ?? []) histsRef.current.delete(id)
+    try { if (v) localStorage.setItem(cmpSetKey(owner), JSON.stringify(v)); else localStorage.removeItem(cmpSetKey(owner)) } catch {}
+  }
+  // 비교를 켜면 지금 코디(= 비교 밖 기록의 마지막)가 칸 to 에 담긴다 — 그 기록에 '이어진 칸 = to' 를 적어 둔다(되돌려 이 기록으로 오면 마지막 칸도 to 로)
+  const linkMainTop = (owner: string, to: string) => {
+    const m = histsRef.current.get('main'), top = m && m.stack[m.idx]
+    if (top && top.sel === owner) top.cmpLast = to
+  }
   const toggleCompare = () => {
     if (cmpOn) {
-      cmpLast.current = selectedPreset
       const back = cmpBack && PRESET_IDS.includes(cmpBack) ? cmpBack : presets[0].id
+      putCmpSet(back, (c) => ({ ...c, last: selectedPreset }))
       switchPreset(back, presetData[back] ?? defaultSnapshot(), 'zoom')
       return
     }
+    if (!selectedPreset) return
     setCmpBack(selectedPreset)
-    if (!cmpIds.length) {
+    // 이 프리셋의 칸은 처음 켤 때 저장소에서 읽는다(첫 로드에는 읽지 않았다)
+    let set: CmpSet | undefined = cmpSets[selectedPreset]
+    if (!set) {
+      const saved = loadCmpSet(selectedPreset)
+      if (saved) { set = { ids: saved.ids, last: saved.last }; setCmpSets((m) => ({ ...m, [selectedPreset]: set! })); const { data } = saved; setPresetData((d) => ({ ...d, ...data })) }
+    }
+    if (!set?.ids.length) {
       const cur = snapshot(), a = newCmpId(), b = newCmpId()
-      setPresetData((d) => ({ ...d, ...(selectedPreset ? { [selectedPreset]: cur } : {}), [a]: cur, [b]: cur }))
-      setCmpIds([a, b])
+      setPresetData((d) => ({ ...d, [selectedPreset]: cur, [a]: cur, [b]: cur }))
+      putCmpSet(selectedPreset, () => ({ ids: [a, b], last: a }))
+      linkMainTop(selectedPreset, a)
       setSelectedPreset(a) // 라이브는 이미 이 코디다
       return
     }
-    // 다시 켜면 마지막에 고른 칸에 지금 코디(= 지금 프리셋)를 담는다 — 고른 칸이 곧 프리셋이라(아래 주석) 그 칸의 이전 내용은 그때의 프리셋에 이미 있다
-    const to = cmpLast.current && cmpIds.includes(cmpLast.current) ? cmpLast.current : cmpIds[0]
+    // 다시 켜면 마지막에 고른 칸에 지금 코디(= 지금 프리셋)를 담는다 — 고른 칸이 곧 프리셋이라 그 칸의 이전 내용은 그때의 프리셋에 이미 있다
+    const to = set.last && set.ids.includes(set.last) ? set.last : set.ids[0]
     const cur = snapshot()
     setPresetData((d) => ({ ...d, ...(selectedPreset ? { [selectedPreset]: cur } : {}), [to]: cur }))
     histsRef.current.delete(to) // 담은 코디가 그 칸의 새 바닥이다 — 예전 칸 내용으로 되돌려 프리셋을 덮어쓰지 않게
+    linkMainTop(selectedPreset, to)
     setSelectedPreset(to) // 라이브는 이미 이 코디다
   }
   const pickCmp = (id: string) => { if (id !== selectedPreset) switchPreset(id, presetData[id] ?? defaultSnapshot(), 'all') }
   // 새 칸 = 지금 고른 칸의 복사본, 바로 그 칸을 고른다(라이브는 그대로)
   const addCmp = () => {
-    if (!cmpOn || cmpIds.length >= CMP_MAX) return
+    if (!cmpOn || !cmpBack || cmpIds.length >= CMP_MAX) return
     const cur = snapshot(), id = newCmpId()
     setPresetData((d) => ({ ...d, [selectedPreset!]: cur, [id]: cur }))
-    setCmpIds((ids) => [...ids, id])
+    putCmpSet(cmpBack, (c) => ({ ids: [...c.ids, id], last: id }))
     setSelectedPreset(id)
   }
-  // 칸 빼기 — 두 칸은 남긴다(CMP_MIN). 고른 칸을 빼면 그 자리(없으면 앞)의 칸으로. 그 칸의 기록도 버린다(기록은 칸마다 — histsRef)
+  // 칸 빼기 — 고른 칸을 빼면 그 자리(없으면 앞)의 칸으로. 그 칸의 기록도 버린다(기록은 칸마다 — histsRef).
+  // 두 칸(CMP_MIN)뿐이면 빼지 않고 **초기화**한다 — 프리셋 삭제(resetPreset)와 같은 기준: 코디 기본값 + 연출 기본값(사용자 지시).
+  // 칸은 그 자리 그대로라 되돌리기로 이전 코디가 돌아온다(고른 칸이면 라이브가 바뀌어 기록에 남는다)
   const removeCmp = (id: string) => {
-    if (cmpIds.length <= CMP_MIN || !cmpIds.includes(id)) return
+    if (!cmpOwner || !cmpIds.includes(id)) return
+    if (cmpIds.length <= CMP_MIN) {
+      const snap = defaultSnapshot()
+      setPresetData((d) => ({ ...d, [id]: snap }))
+      if (id === selectedPreset) { setPvState(PV_DEFAULT); applySnapshot(snap).catch(() => {}) }
+      notify('이 칸을 초기화했어요')
+      return
+    }
     const rest = cmpIds.filter((x) => x !== id)
     if (id === selectedPreset) { const to = rest[Math.min(cmpIds.indexOf(id), rest.length - 1)]; switchPreset(to, presetData[to] ?? defaultSnapshot(), 'all') }
-    setCmpIds(rest)
+    putCmpSet(cmpOwner, (c) => ({ ids: rest, last: c.last === id ? null : c.last }))
     histsRef.current.delete(id)
   }
-  // 비교 중에 프리셋 카드를 누르면 고른 칸이 그 프리셋이 된다 — 그 프리셋의 코디를 고른 칸에 불러오고, 이어지는 편집은 그 프리셋에 저장된다.
-  // (고른 칸 = 프리셋이라, 칸에 불러오기만 하면 지금 이어진 프리셋을 다른 프리셋으로 덮어쓰게 된다)
+  // 비교 중에 프리셋 카드를 누르면 **고른 칸에 그 프리셋의 코디만 입힌다**(사용자 지시 — 프리셋을 바꾸지 않는다. 프리셋에 있는 코디와 견줄 때도 같은 조작).
+  // 주인 프리셋 · 선택 표시는 그대로고, 고른 칸 = 주인 프리셋이라 자동 저장이 둘에 함께 담는다. 보기 설정은 그 칸의 것(withView — 배율만 지금 값)
   const cmpTake = (id: string) => {
     const src = presetData[id] ?? defaultSnapshot()
-    const letter = String.fromCharCode(65 + Math.max(0, cmpIds.indexOf(selectedPreset!)))
     const name = presets.find((p) => p.id === id)?.name ?? ''
-    setCmpBack(id)
-    applySnapshot({ ...src, pv: withView(src.pv, pv) }, false).then(() => notify(`'${name}' 코디를 ${letter} 칸에 불러왔어요`)).catch(() => {})
+    applySnapshot({ ...src, pv: withView(src.pv, pv), bg: bgSel }, false).then(() => notify(`'${name}' 코디를 고른 칸에 입혔어요`)).catch(() => {})
   }
 
   // 현재 라이브 모델 → 스냅샷.
@@ -1635,7 +1780,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {})
   }
   // 공유받은 코디를 사용자가 고른 프리셋 슬롯에 적용 — 개인 프리셋 하나를 명시적으로 덮어씀 + 선택 + 라이브(되돌리기 가능).
-  const applySharedToPreset = (taken: Snapshot, targetId: string) => {
+  // msg = 다 한 뒤의 알림(코디 조합의 [전부 입기]는 같은 길로 지금 프리셋에 입힌다 — 사용자 지시: 광장 가져오기와 같은 로직 · 같은 속도)
+  const applySharedToPreset = (taken: Snapshot, targetId: string, msg?: string) => {
     const snap = withTakenView(taken) // 메타 정보는 받은 코디의 값으로(없는 칸은 기본) — 보던 화면 값을 물려받지 않는다
     // 덮어쓰기 전 그 프리셋(선택돼 있으면 지금 코디)과 이름을 기록에 함께 남긴다 → 되돌리기로 원래 코디·이름까지 돌아온다.
     const prevName = presets.find((p) => p.id === targetId)?.name ?? ''
@@ -1661,7 +1807,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const sf = surfaceRef.current
     if (sf?.kind === 'ptake') { if (sf.post) slideTo(-1, { kind: 'plaza', item: null, post: sf.post }); else closeSurface() }
     const nm = snap.name || presets.find((p) => p.id === targetId)?.name
-    notify(nm ? `공유받은 코디를 '${nm}'에 저장했어요` : '공유받은 코디를 프리셋에 불러왔어요')
+    notify(msg ?? (nm ? `공유받은 코디를 '${nm}'에 저장했어요` : '공유받은 코디를 프리셋에 불러왔어요'))
   }
   // 넥슨 코디 → 스냅샷(lib/nexonLook — 수집 배치와 같은 규칙). 목록 · 피부 톤 · 헤어와 성형 그림 대조를 여기서 채운다
   const nickDeps = (lookPx: ImageData | null): LookDeps => ({
@@ -1738,10 +1884,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const opt = lp.options.find((o) => o.key === lookKey)?.presets.find((p) => p.key === presetKey)
     setLookPick(null)
     if (!opt) return
-    // 꺼 둔 장식(칭호 · 명찰 · 훈장 · 말풍선 — 프리셋 탭의 '불러올 장식')은 빼고 넣는다(사용자 지시)
+    // 장식(칭호 · 명찰 · 훈장 · 말풍선)은 불러오기 창에서 켠 것만 넣는다 — 기본은 모두 꺼짐(사용자 지시)
     const take = readUiPref().nickTake ?? {}
     const eq = { ...opt.snap.equipped }
-    for (const sl of NICK_TAKE_SLOTS) if (take[sl.slot] === false) delete eq[sl.slot]
+    for (const sl of NICK_TAKE_SLOTS) if (take[sl.slot] !== true) delete eq[sl.slot]
     await applyImported({ ...opt.snap, equipped: eq }, lp.nick)
   }
   // 공유 링크 복사: 링크는 로컬에서 즉시 만들어 바로 클립보드에 넣고, 카드 이미지·서버 저장은 뒤에서 한다(shareCode).
@@ -1802,20 +1948,36 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const i = presets.findIndex((p) => p.id === id) // 기본 이름은 지금 자리의 번호(코디 N)
     // 지우기 전 내용·이름을 기록에 함께 남긴다 → 되돌리기로 그 칸의 코디·이름이 돌아온다.
     // 보고 있지 않은 칸을 지우면 라이브 코디가 그대로라, 따로 남기지 않으면 기록 자체가 없다.
-    const over: PresetOver<Snapshot> = {
+    // 비교 칸은 프리셋에 딸린 정보다 — 함께 지우고, 되돌리기로 함께 되살린다(사용자 지시). 그 프리셋의 비교 중이면 비교를 끝내고 프리셋으로 지운다
+    const inCmp = cmpOn && cmpBack === id
+    const sel = id === selectedPreset || inCmp
+    const over: PresetOver<Snapshot, CmpSaved> = {
       id,
-      prev: id === selectedPreset ? snapshot() : (presetData[id] ?? defaultSnapshot()),
+      prev: sel ? snapshot() : (presetData[id] ?? defaultSnapshot()),
       prevName: presets.find((p) => p.id === id)?.name ?? '',
       next: snap, nextName: i >= 0 ? defaultPresetName(i) : '',
+      prevCmp: cmpSavedOf(id), nextCmp: null,
     }
+    putCmpSaved(id, null)
     setPresetData((d) => ({ ...d, [id]: snap }))
     if (i >= 0) setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name: defaultPresetName(i) } : p)))
     // 연출 설정(형상변이·귀·무기모션·이펙트·배율뿐 아니라 시선·액션·표정·fps 까지)도 이 프리셋에 각인돼 있다
     // → 보고 있는 프리셋을 초기화하면 화면의 연출도 전부 기본으로 되돌린다.
     // applySnapshot 은 코디에 속하는 연출만 되돌리므로, 나머지는 여기서 함께 맞춘다.
-    if (id === selectedPreset) {
+    if (sel) {
       histOver.current = over // 라이브가 바뀌므로 아래 기록 effect 가 이 over 를 집어간다
-      setPvState(PV_DEFAULT); applySnapshot(snap).catch(() => {})
+      // 비교 중이면 지울 때의 고른 칸 코디를 비교 밖 기록('main')의 바닥으로 먼저 남긴다 — main 의 마지막 기록은 비교를 켜기 전 코디라,
+      // 그대로 두면 되돌리기가 그 옛 코디로 돌아가 프리셋을 덮었다(사용자 지적). 이 바닥 → 삭제 기록 순서라 되돌리기 한 번에 지우기 직전으로 돌아온다
+      if (inCmp) {
+        const h = histOf(id), names = namesOf(presets)
+        h.stack = h.stack.slice(0, h.idx + 1)
+        h.stack.push({ snap: over.prev, sel: id, names, cmpLast: selectedPreset })
+        if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
+        h.idx = h.stack.length - 1
+        h.last = histKey(over.prev, id, names)
+      }
+      // 비교 중이면 선택(그 프리셋으로)도 같은 한 번에 바꾼다 — 따로 바꾸면 선택만 바뀐 기록이 먼저 생겨 되돌리기를 두 번 눌러야 했다(사용자 지적)
+      setPvState(PV_DEFAULT); applySnapshot(snap, true, false, inCmp ? id : undefined).catch(() => {})
     } else {
       // 라이브는 그대로 → 그 자리에서 직접 기록한다. 바뀐 이름은 아직 상태에 안 들어왔으니 직접 넘긴다.
       pushHistory(over, i >= 0 ? { ...namesOf(presets), [id]: defaultPresetName(i) } : undefined)
@@ -1848,8 +2010,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const names: Record<string, string> = {}; for (const p of presets) names[p.id] = p.name
       const real: Record<string, Snapshot> = {}; for (const id of PRESET_IDS) if (data[id]) real[id] = data[id]
       localStorage.setItem(PRESET_KEY, JSON.stringify({ data: real, names, sel: cmpOn ? cmpBack : selectedPreset, order: presets.map((p) => p.id), v: PRESET_STORE_V } as PresetStore))
-      const cdata: Record<string, Snapshot> = {}; for (const id of cmpIds) if (data[id]) cdata[id] = data[id]
-      sessionStorage.setItem(CMP_KEY, JSON.stringify({ ids: cmpIds, data: cdata, on: cmpOn, last: cmpOn ? selectedPreset : cmpLast.current, back: cmpBack } as CmpStore))
+      // 비교 칸은 이번에 읽거나 만든 프리셋(cmpSets — 대개 하나)의 키에만 쓴다. 손대지 않은 프리셋의 키는 그대로다
+      for (const [owner, set] of Object.entries(cmpSets)) {
+        const ids = set.ids.filter((id) => data[id])
+        if (!ids.length) { localStorage.removeItem(cmpSetKey(owner)); continue }
+        const cdata: Record<string, Snapshot> = {}; for (const id of ids) cdata[id] = data[id]
+        localStorage.setItem(cmpSetKey(owner), JSON.stringify({ ids, last: cmpOn && owner === cmpBack ? selectedPreset : set.last, data: cdata } as CmpSaved))
+      }
+      localStorage.setItem(CMP_KEY, JSON.stringify({ on: cmpOn }))
     } catch {}
   }
   // 자동 저장: 라이브 모델이 바뀔 때마다 선택된 프리셋에 저장(100ms 디바운스). 프리셋 적용으로 인한
@@ -1886,7 +2054,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // (선택하지 않은 프리셋을 초기화)은 그 자리에서 직접 부른다.
   // 그런 기록은 코디·선택 프리셋이 직전과 같고 over 만 다르다 → undo 가 over 로 그 칸을 되살린다.
   // names: 방금 바꿔 아직 상태에 반영되지 않은 이름을 넘길 때(이름 확정 — commitPresetName). 없으면 지금 이름.
-  const pushHistory = (over?: PresetOver<Snapshot> | null, namesNow?: Record<string, string>) => {
+  const pushHistory = (over?: PresetOver<Snapshot, CmpSaved> | null, namesNow?: Record<string, string>) => {
     if (!initedRef.current) return
     const snap = snapshot()
     const names = namesNow ?? namesOf(presets)
@@ -1894,11 +2062,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const h = histOf(selectedPreset)
     if (j === histExpect.current) { histExpect.current = null; h.last = j; return }
     const ov = over ?? histOver.current
+    // 덮어쓰기(프리셋 삭제 · 가져오기) 직후에 같은 일이 남긴 꼬리 변경(나눠 들어온 상태)은 새 기록이 아니라 그 기록에 합친다 — 되돌리기 한 번에 비교 칸 · 이름까지 함께 돌아오게
+    const tail = overTail.current
+    if (!ov && tail && tail.h === h && h.idx === h.stack.length - 1 && performance.now() - tail.at < 600) {
+      const top = h.stack[h.idx]; top.snap = snap; top.names = names; h.last = j; return
+    }
     if (j === h.last && !ov) return // 덮어쓰기는 코디가 같아도(이름·다른 프리셋이 바뀜) 기록한다. h.last = 그 갈래의 마지막 상태키(중복 방지)
     histOver.current = null
     h.last = j
     h.stack = h.stack.slice(0, h.idx + 1)
-    h.stack.push({ snap, sel: selectedPreset, names, ...(ov ? { over: ov } : {}) })
+    const link = !isCmpId(selectedPreset) && selectedPreset && cmpSets[selectedPreset]?.ids.length ? cmpSets[selectedPreset].last : undefined
+    h.stack.push({ snap, sel: selectedPreset, names, ...(ov ? { over: ov } : {}), ...(link !== undefined ? { cmpLast: link } : {}) })
+    overTail.current = ov ? { h, at: performance.now() } : null
     if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
     h.idx = h.stack.length - 1
     setHistVer((v) => v + 1)
@@ -1909,7 +2084,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, bgSel])
 
 
-  const applyHistory = (e0: { snap: Snapshot; sel: string | null; names?: Record<string, string> }) => {
+  const applyHistory = (e0: HistEntry) => {
+    // 비교 밖 기록이면 그 프리셋에 이어진 비교 칸(마지막 칸)도 그때로 — 다음에 비교를 켜면 그 칸에 이 코디가 담긴다(다른 칸을 덮지 않게)
+    const link = e0.cmpLast, owner = e0.sel
+    if (link !== undefined && owner && !isCmpId(owner)) setCmpSets((m) => (m[owner] && (link === null || m[owner].ids.includes(link)) ? { ...m, [owner]: { ...m[owner], last: link } } : m))
     // 배율은 지금 그대로(되돌리기와 무관한 값). 배경은 그 기록의 값으로 돌아간다
     const e = e0.snap.pv ? { ...e0, snap: { ...e0.snap, pv: { ...e0.snap.pv, zoom: pv.zoom } } } : e0
     // 이름 전체도 그 시점으로(오래된 기록엔 없으면 지금 이름 유지). 코디가 같아도 이름만 바뀌는 기록이 있다.
@@ -1929,8 +2107,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const canUndo = curHist.idx > 0
   const canRedo = curHist.idx < curHist.stack.length - 1
   // 덮어쓴 프리셋을 되살린다(내용 + 이름). 선택 프리셋이면 이어지는 applyHistory 의 자동저장이 같은 값을 쓴다.
-  const restoreOver = (o: PresetOver<Snapshot>, back: boolean) => {
+  const restoreOver = (o: PresetOver<Snapshot, CmpSaved>, back: boolean) => {
     const snap = back ? o.prev : o.next, name = back ? o.prevName : o.nextName
+    if (o.prevCmp !== undefined || o.nextCmp !== undefined) putCmpSaved(o.id, (back ? o.prevCmp : o.nextCmp) ?? null)
     setPresetData((d) => ({ ...d, [o.id]: snap }))
     if (name) setPresets((ps) => ps.map((p) => (p.id === o.id ? { ...p, name } : p)))
   }
@@ -1956,7 +2135,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!initedRef.current) return
     const t = setTimeout(() => writePresetStore(presetData), 100)
     return () => clearTimeout(t)
-  }, [presetData, presets, selectedPreset, cmpIds, cmpBack])
+  }, [presetData, presets, selectedPreset, cmpSets, cmpBack])
   // 오프셋 커밋(아이템ID → 레이어 → Vec) / 초기화(그 아이템 오프셋 전부 제거 = 기본 위치).
   const setDot = (itemId: string, layer: string, v: Vec) =>
     setDotPos((prev) => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), [layer]: v } }))
@@ -1983,12 +2162,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
-    comboItem, comboOpen, openCombo, closeCombo, pickCombo: setComboItem, searchItems,
+    comboItem, comboOpen, openCombo, closeCombo, comboShown, comboDetail, setComboDetail, pickCombo, warmCombo, searchItems, comboTotal, comboTotalKnown: !!comboItem && comboCount.id === comboKey, setComboTotal, holdPager, warmWear, comboGender, setComboGender,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
-    warmForPreview, listMode, setListMode, bgSel, listDir, setListDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
+    warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, presetDir, setPresetDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,
-    bp, cols, rows, itemsPerPage,
+    bp, listNarrow: isNarrow(bp) || (bp === 'pc' && cmpOn && !cmpWide), cols, rows, itemsPerPage,
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,

@@ -45,6 +45,10 @@
 /* 모바일은 코디 탭과 같은 네이티브 가로 넘기기(트랙을 페이지 수만큼 넓혀 두고 뷰포트가 스크롤한다).
    touch-action 은 코디 탭과 같은 값이어야 한다 — pan-x 만 주면 목록 위에서 손가락으로 페이지를 위아래로
    움직일 수 없어 같은 몸짓이 탭마다 다르게 먹는다. */
+/* 세로로 넘기기(listDir 'y' — 목록과 같은 값): PC 는 세로 끌기를 잡도록 가로만 브라우저에, 모바일은 세로 스크롤 칸(cqh = 이 칸 높이 → 쪽 높이가 한 화면) */
+.viewportY { touch-action: pan-x pinch-zoom; }
+.viewportMY { overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y pinch-zoom; container-type: size; }
+.pageMY { position: absolute; left: 0; width: 100%; height: 100cqh; padding: 10px 12px; overflow: hidden; }
 .viewportM { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; container-type: inline-size; }
 .track { position: relative; height: 100%; width: 100%; will-change: transform; }
 .page { position: absolute; top: 0; width: 100%; height: 100%; padding: 8px; overflow: hidden; }
@@ -131,6 +135,7 @@
 .wornBar { display: flex; align-items: center; gap: 6px; height: 28px; margin: -6px -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .2s ease; }
 /* 모바일: hover 가 없으니 hover 면을 넓힐 이유도 없다 — 음수 여백을 없애 막대가 본문(패딩 안) 밖으로 나가지 않게. */
 .wornBarM { margin: -6px 0; padding: 0; border-radius: 0; }
+.wornBarFlat { cursor: default; } /* 접지 않는 머리(WornItems flat) — 같은 자리 · 글자, 누르지 않는다 */
 .wornCount { font-size: 11px; font-weight: 700; color: #d76d9a; color: light-dark(#d76d9a, #d293ae); font-variant-numeric: tabular-nums; }
 .wornCaret { margin-left: auto; color: #a89e93; color: light-dark(#a89e93, #8e919a); transition: transform .3s cubic-bezier(.45,0,.55,1), color .2s ease; }
 .wornCaretOn { transform: rotate(180deg); }
@@ -252,8 +257,8 @@
   .cmtDel:hover { border-color: #e0533e; border-color: light-dark(#e0533e, #b34332); background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); color: #e0533e; color: light-dark(#e0533e, #da958b); }
   .cmtReplyBtn:hover { background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); color: #c85d8a; color: light-dark(#c85d8a, #ce97ae); }
   .cmtSend:not(.cmtSendOff):hover { background: #d5578e; background: light-dark(#d5578e, #b04071); }
-  .wornBar:hover { background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); }
-  .wornBar:hover .descLabel, .wornBar:hover .wornCaret { color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
+  .wornBar:not(.wornBarFlat):hover { background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); }
+  .wornBar:not(.wornBarFlat):hover .descLabel, .wornBar:hover .wornCaret { color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
   .wornBarM:hover { background: transparent; } /* 모바일 배치(좁은 창 마우스)에서는 면 없이 색만 — 면이 본문 폭에 붙어 보인다 */
 }
 

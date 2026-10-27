@@ -49,3 +49,15 @@ export function useBreakpoint(): Breakpoint {
 export const isStacked = (bp: Breakpoint) => bp === 'mobile'
 // 2분할 좁은 모드(절반·태블릿).
 export const isNarrow = (bp: Breakpoint) => bp === 'half' || bp === 'tablet'
+
+// 창 폭이 min 이상인지(matchMedia — 넘나들 때만 다시 그린다). SSR 은 true
+export function useMinWidth(min: number): boolean {
+  const [ok, setOk] = useState(true)
+  useIsoLayoutEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${min}px)`)
+    const on = () => setOk(mq.matches)
+    on(); mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [min])
+  return ok
+}

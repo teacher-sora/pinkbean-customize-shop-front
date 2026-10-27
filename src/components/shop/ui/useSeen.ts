@@ -22,10 +22,13 @@ function shared (root: Element | null): Shared {
 }
 
 export function useSeen (el: React.RefObject<Element | null>, root: React.RefObject<Element | null> | null): boolean {
-  const [seen, setSeen] = useState(() => typeof IntersectionObserver === 'undefined')
+  // 첫 값은 서버 · 브라우저 모두 false — 서버(IntersectionObserver 없음)에서 true 로 두면 서버 HTML 에만 카드 그림이 들어가 하이드레이션이 어긋나고
+  // 문서 전체를 브라우저에서 다시 그렸다(프리셋 탭에서 새로고침 — React #418 · #423). 관찰기가 없는 브라우저만 마운트 뒤에 켠다
+  const [seen, setSeen] = useState(false)
   useEffect(() => {
     const t = el.current
     if (seen || !t) return
+    if (typeof IntersectionObserver === 'undefined') { setSeen(true); return }
     const s = shared(root?.current ?? null)
     s.cbs.set(t, () => { s.io.unobserve(t); s.cbs.delete(t); setSeen(true) })
     s.io.observe(t)

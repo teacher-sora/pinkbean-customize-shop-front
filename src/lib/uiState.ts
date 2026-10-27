@@ -32,8 +32,8 @@ export type UiSession = {
   // 스크립트가 이 한 글자로 판단한다(거기선 앱 기본값을 알 수 없다).
   dirty?: boolean
 }
-export type UiPref = { plazaSort?: string; listDir?: string; listMode?: string; dyeModel?: string; dyeZoom?: number; nickTake?: Record<string, boolean> } // nickTake = 닉네임으로 불러올 때 칭호 · 명찰 · 훈장 · 말풍선을 가져올지(false 면 뺀다) // listMode = 목록 보기(아이템 · 기본 캐릭터 · 내 캐릭터), dyeModel · dyeZoom = 염색 창의 보기 · 배율 — 늘 유지(사용자 지시)
-//  // listDir = 목록을 넘기는 방향(x 가로 · y 세로) — 고른 방향을 늘 유지한다(사용자 지시)
+export type UiPref = { plazaSort?: string; listDir?: string; presetDir?: string; listMode?: string; dyeModel?: string; dyeZoom?: number; nickTake?: Record<string, boolean> } // nickTake = 닉네임으로 불러올 때 칭호 · 명찰 · 훈장 · 말풍선을 가져올지(true 일 때만 가져온다 — 기본은 꺼짐) // listMode = 목록 보기(아이템 · 기본 캐릭터 · 내 캐릭터), dyeModel · dyeZoom = 염색 창의 보기 · 배율 — 늘 유지(사용자 지시)
+//  // listDir = 목록을 넘기는 방향(x 가로 · y 세로) — 고른 방향을 늘 유지한다(사용자 지시). presetDir = 프리셋 탭의 방향(없으면 PC 세로 · 모바일 가로)
 
 const SESSION_KEY = 'pb_ui_session_v1'
 const PREF_KEY = 'pb_ui_pref_v1'
@@ -83,7 +83,8 @@ export function writeUiSession(v: UiSession): void {
 // 수명은 다른 "보던 자리" 값들과 같게 sessionStorage — 탭을 닫으면 깨끗해진다.
 // over = 그 기록이 **다른 프리셋을 덮어쓴** 기록일 때(공유 코디·광장 가져오기) 덮어쓰기 전후의 그 프리셋 내용·이름.
 //        되돌리면 prev 로, 다시 실행하면 next 로 그 프리셋을 되살린다(선택 프리셋 코디만 되돌리면 덮어쓴 프리셋은 그대로 남았다).
-export type PresetOver<S> = { id: string; prev: S; prevName: string; next: S; nextName: string }
+// prevCmp · nextCmp = 그 프리셋의 비교 칸(프리셋에 딸린 정보 — 프리셋 초기화가 함께 지우고 되돌리기가 함께 되살린다). 없으면 비교 칸은 건드리지 않는다
+export type PresetOver<S, C = unknown> = { id: string; prev: S; prevName: string; next: S; nextName: string; prevCmp?: C | null; nextCmp?: C | null }
 // 되돌리기 기록은 저장하지 않는다(새로고침하면 비운다). 예전 판이 남긴 것이 있으면 지운다.
 export function dropUiHistory(): void { try { window.sessionStorage.removeItem(HIST_KEY) } catch { /* 못 지워도 쓰지 않는다 */ } }
 export const readUiPref = (): UiPref => read<UiPref>('localStorage', PREF_KEY)

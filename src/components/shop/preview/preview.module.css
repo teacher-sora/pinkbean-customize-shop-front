@@ -4,9 +4,10 @@
 .colHalf { --pin-col: 312px; --pv-all-w: 71px; flex-basis: 312px; }
 .colTablet { --pin-col: 330px; --pv-all-w: 71px; flex-basis: 330px; }
 /* 코디 비교: 칸 넷(2×2)이 들어가게 넓힌다 — 칸 하나가 지금 미리보기의 절반 높이 · 비슷한 폭. 목록은 그만큼 좁아진다(ShopContext.measure 가 열 수를 다시 고른다) */
-.colCmp { flex-basis: 640px; }
-.colHalf.colCmp { flex-basis: 470px; }
-.colTablet.colCmp { flex-basis: 540px; }
+/* 비교 열(PC · 절반 · 태블릿 같은 규칙, 사용자 지시): 목록이 최소 폭(480)을 지키고 남은 폭을 미리보기가 먹는다 — 최대 460(PC 전체 화면 값), 최소는 평소 열 폭.
+   목록 머리가 한 줄에 안 드는 폭이면 목록 쪽이 보기 설정 배치로 바뀐다(ShopContext listNarrow) */
+.colCmp { flex: 1 1 0; max-width: 460px; min-width: var(--pin-col); }
+:global([data-pb-panel]) > :not(.colCmp):has(~ .colCmp) { min-width: 480px; }
 .card { flex: 1 1 auto; min-height: 0; position: relative; background: #fff; background: light-dark(#fff, #303238); border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
 .head { flex: 0 0 auto; height: 47px; /* 버튼 30 + 위아래 8 + 줄 1 */ padding: 0 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0e9e1; border-bottom: 1px solid light-dark(#f0e9e1, #42454d); }
 /* 꾸미는 도구(헤더 좌측: 부위 염색 · 배경). 면과 테두리는 머리의 다른 칸(검색 · 불러오기)과 같고, 아이콘만 핑크다 */
@@ -268,41 +269,39 @@
 .colCmp .chatDock { left: 8px; right: 8px; } /* 칸 · 아래 줄과 같은 여백(8) — 선이 맞게 */
 /* 아래 줄(배율 · 액션 · 모션 · 표정)은 넓어진 열에서도 평소 폭 그대로 — 평소 폭 = (열 폭 − 테두리 · 여백 · 사이 38 − 연출 설정 버튼) ÷ 4.
    연출 설정과 평소 사이(5)로 붙여 함께 오른쪽 끝에 둔다(사용자 지시 — 칸이 넓어져도 연출 설정과 떨어지지 않게) */
-.colCmp .ctrlRow > :not(.pvAll) { flex: 0 0 calc((var(--pin-col) - 38px - var(--pv-all-w)) / 4); }
-.colCmp .ctrlRow > :first-child { margin-left: auto; }
+.colCmp .ctrlRow > * { flex: 1 1 0; min-width: 0; } /* 비교로 넓어진 열 — 배율 · 액션 · 모션 · 표정 · 연출 설정이 같은 폭으로 줄을 채운다(사용자 지시) */
+.colCmp .pvAll { justify-content: center; }
 /* 모바일: 히어로의 위(되돌리기) · 아래(연출 설정 · 부위 염색 · 비교 · 북마크) 버튼 줄 사이. 히어로 높이는 그대로 */
 .cmpBoardM { inset: 46px 8px 50px; padding: 0; gap: 6px; }
 .cmpBoardLine { gap: 6px; }
 .heroCmp { background: #fff; background: light-dark(#fff, #303238); }
 /* 칸은 쌓임 맥락을 만들지 않는다(contain · z-index 없음) — 테두리 줄이 움직이는 미리보기 위로 올라와야 한다 */
-.cmpPane { position: relative; min-width: 0; min-height: 0; border-radius: 8px; overflow: hidden; outline: none; }
+.cmpPane { position: relative; min-width: 0; min-height: 0; border-radius: 8px; outline: none; } /* 잘라 내지 않는다 — 그림은 .cmpArt 가 자르고, 휴지통 띠지가 위 테두리에 1px 걸친다 */
 .cmpPaneOff { cursor: pointer; }
 /* 그림(배경 · 캐릭터)은 테두리 안쪽에만 — 어두운 배경이 둥근 모서리에서 테두리 밖으로 번져 막대기처럼 보였다 */
 .cmpArt { position: absolute; inset: 1px; border-radius: 7px; overflow: hidden; }
 .cmpLive { position: relative; z-index: 1; margin: 1px; min-width: 0; min-height: 0; border-radius: 7px; overflow: hidden; contain: paint; }
 .cmpRing { position: absolute; inset: 0; z-index: 2; border: 1px solid #eee6dc; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; pointer-events: none; transition: border-color .22s ease; }
 .cmpRingOn { border: 1.5px solid #ec86ac; border: 1.5px solid light-dark(#ec86ac, #d15785); }
-.cmpRing button { pointer-events: auto; }
-.cmpTag { position: absolute; left: 6px; top: 6px; min-width: 22px; height: 22px; padding: 0 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: rgba(255,255,255,0.92); background: light-dark(rgba(255,255,255,0.92), rgba(48, 50, 56, 0.92)); font-size: 11px; font-weight: 700; color: #a89e93; color: light-dark(#a89e93, #8e919a); transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
-.cmpPaneOff .cmpTag { opacity: .5; } /* 고르지 않은 칸 — 고른 칸과 확실히 갈리게(사용자 지시) */
-.cmpTagOn { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
-.cmpActs { position: absolute; right: 6px; top: 6px; display: flex; gap: 4px; }
-.cmpActBtn { width: 26px; height: 26px; }
-.cmpBoardLine .cmpActBtn { width: 22px; height: 22px; } /* 모바일 한 줄(칸 약 90px) — 글자 칸과 겹치지 않게 */
+/* 칸 빼기 = 프리셋 카드의 휴지통 띠지(preset .del · .delM) — 위 테두리에 1px 걸친다(사용자 지시: hover 면 1px 내려와 테두리에 닿는다), 오른쪽 8px */
+.cmpDel.cmpDel.cmpDel { top: -1px; right: 8px; } /* 모바일 .del.delM(right 33) 보다 앞서게 클래스 셋. 칸(테두리 없는 겹) 기준 정수 자리 — 칸 바깥 끝에서 1px 위 · 프리셋 카드처럼 오른쪽 8px. 고른 칸 · 안 고른 칸 같은 값 */
 /* [칸 더하기] — 미리보기 안의 빈 자리(사용자 지시). 1~2칸은 아래 얇은 줄(가로), 3칸은 넷째 칸(세로), 모바일 한 줄은 끝의 좁은 칸(아이콘만). 점선은 북마크 빈칸과 같다 */
 .cmpAdd { min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0; border: 1px dashed #e4dcd2; border: 1px dashed light-dark(#e4dcd2, #4d5059); border-radius: 8px; background: #fbf8f4; background: light-dark(#fbf8f4, #36383f); font-family: inherit; font-size: 12px; font-weight: 600; color: #b7ada2; color: light-dark(#b7ada2, #858893); cursor: pointer; transition: border-color .22s ease, color .22s ease; }
 .cmpAddCell { flex-direction: column; gap: 6px; }
 .cmpAddSlim > span { display: none; }
 .cmpAdd svg { color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
 /* 점 위치는 고른 칸의 오른쪽 아래(오른쪽 위는 칸 버튼 자리) */
-.cmpDot { top: auto; bottom: 8px; right: 8px; }
+.cmpDot { top: auto; bottom: 8px; right: 8px; z-index: 2; } /* 칸에 붙는다 — 움직이는 미리보기(.cmpLive z 1) 위 */
 
 /* PC 아래 칸 머리의 탭(북마크 · 비교). 비교 탭의 본문은 북마크 줄과 같은 높이의 빈 자리 */
 .pinBlank { height: calc((var(--pin-col) - 18px - 42px) / 8); }
 .pinTabs { display: flex; }
+/* [북마크] [비교] 토글은 왼쪽 [비우기]와 같은 크기(높이 26 · 글자 11px — 사용자 지시: 공용 Seg 34 는 너무 컸다) */
+.pinTabs > div { padding: 2px; }
+.pinTabs button { height: 22px; padding: 0 11px; font-size: 11px; }
 @media (hover: hover) and (pointer: fine) {
-  .cmpPaneOff:hover .cmpRing { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); }
+  .cmpPaneOff:hover .cmpRing { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); } /* 고르지 않은 칸 — 누를 수 있다는 것이 보이게(사용자 지시) */
   .cmpAdd:hover { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
 }
 .cmpPane:focus-visible .cmpRing { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); }
-@media (prefers-reduced-motion: reduce) { .cmpRing, .cmpTag, .cmpAdd { transition-duration: .01s; } }
+@media (prefers-reduced-motion: reduce) { .cmpRing, .cmpAdd { transition-duration: .01s; } }

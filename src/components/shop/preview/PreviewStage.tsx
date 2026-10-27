@@ -20,10 +20,11 @@ import { useIsoLayoutEffect } from '@/lib/uiState'
 import PreviewModel from '../PreviewModel'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { CMP_MAX, useShop, withView, type Snapshot } from '../ShopContext'
-import { IconAdd, IconDot } from '../ui/Icons'
-import { CmpActs } from './PreviewParts'
+import { IconAdd, IconCheck, IconDot } from '../ui/Icons'
+import preset from '../preset/preset.module.css'
+import { CmpDel } from './PreviewParts'
 import PinkbeanRate from './PinkbeanRate'
-import StageBg, { CardStageBg } from './StageBg'
+import StageBg, { CardStageBg, type CardFloor } from './StageBg'
 import styles from './preview.module.css'
 
 const CMP_FRACTION = 0.4    // 칸 높이 대비 마네킹 키(× 배율 단계) — PC 칸(약 250px)
@@ -50,7 +51,7 @@ function layoutOf(n: number, line: boolean): Layout {
   return { cols: 'repeat(2, minmax(0, 1fr))', rows: 'repeat(2, minmax(0, 1fr))', pos: (i) => ({ gridRow: (i >> 1) + 1, gridColumn: (i & 1) + 1 }), add: more ? { gridRow: 2, gridColumn: 2 } : null, addKind: 'cell' }
 }
 
-function Pane({ id, index, active, fraction, pos, onPick }: { id: string; index: number; active: boolean; fraction: number; pos: React.CSSProperties; onPick: (id: string) => void }) {
+function Pane({ id, index, active, fraction, pos, slim, onPick }: { id: string; index: number; active: boolean; fraction: number; pos: React.CSSProperties; slim: boolean; onPick: (id: string) => void }) {
   const s = useShop()
   const snap = s.presetData[id]
   const zoom = s.pv.zoom
@@ -61,21 +62,35 @@ function Pane({ id, index, active, fraction, pos, onPick }: { id: string; index:
   if (!active) frozen.current = still
   const shown = active ? frozen.current : still
   const pick = () => { if (!active) onPick(id) }
+  const eye = active ? s.equipped['eyeAcc'] : null
+  const dot = eye && DOT_MOVER_IDS.has(eye.id) ? eye : null
+  // 배경은 이 칸의 캐릭터가 실제로 그린 발 자리에 깐다(고른 칸의 미리보기 장면과 같은 자리 — CardStageBg floor)
+  const [floor, setFloor] = useState<CardFloor | null>(null)
+  const onFloor = useCallback((f: CardFloor) => setFloor((o) => (o && o.cx === f.cx && o.footY === f.footY && o.scale === f.scale ? o : f)), [])
   return (
     <div role="button" tabIndex={active ? -1 : 0} aria-pressed={active} aria-label={`${cmpLetter(index)} 칸`} title={active ? undefined : `${cmpLetter(index)} 칸 고르기`}
       onClick={pick} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick() } }}
       className={clsx(styles.cmpPane, !active && styles.cmpPaneOff)} style={pos}>
       {/* 그림은 테두리 안쪽(1px)에만 — 어두운 배경이 둥근 모서리의 테두리 바깥으로 번져 보이지 않게 */}
       <div className={styles.cmpArt}>
-        {shown && <CardStageBg sel={shown.bg} fraction={fraction} zoom={zoom} />}
+        {shown && <CardStageBg sel={shown.bg} fraction={fraction} zoom={zoom} floor={floor} />}
         {/* 칭호 · 명찰 · 훈장 · 말풍선도 그 칸의 것으로(고른 칸의 미리보기와 같은 규칙 — 말풍선은 보낸 말이 있을 때만) */}
-        {shown && <SnapThumb snap={shown} fraction={fraction} zoom={zoom} margin={PREVIEW_MARGIN} view tagName={s.chatName} baseTag={s.chatOn && !!shown.pv?.baseTag}
+        {shown && <SnapThumb snap={shown} fraction={fraction} zoom={zoom} margin={PREVIEW_MARGIN} view onFloor={onFloor} tagName={s.chatName} baseTag={s.chatOn && !!shown.pv?.baseTag}
           deco chatText={s.chatMsg ? s.chatMsg.text : null} defBalloon={s.chatDefault} />}
       </div>
       <div className={clsx(styles.cmpRing, active && styles.cmpRingOn)}>
-        <span className={clsx(styles.cmpTag, active && styles.cmpTagOn)}>{cmpLetter(index)}</span>
-        {active && <span className={styles.cmpActs}><CmpActs id={id} /></span>}
+        {/* 고른 칸만 왼쪽 위에 '선택됨' — 프리셋 카드와 같은 라벨(사용자 지시, A B C D 글자는 없앴다) */}
+        <span className={clsx(preset.badge, slim && preset.badgeM, active && preset.badgeOn)} aria-label="선택됨">{slim ? <IconCheck /> : '선택됨'}</span>
       </div>
+      {/* 휴지통 띠지는 테두리 겹 밖(칸 기준)에 — 테두리 안쪽이 기준이면 고른 칸(1.5px)만 반 픽셀 자리에 놓여 hover 때 움찔했다(사용자 지적) */}
+      <CmpDel id={id} slim={slim} />
+      {/* 점 위치(PC): 고른 칸에만, 칸마다 제 자리에 — 다른 칸을 고르면 그 아이템이 있던 칸에서 사라진다(사용자 지시. 움직이는 미리보기 안에 두면 새 칸으로 옮겨 가서 사라졌다) */}
+      {!slim && (
+        <button type="button" onClick={(e) => { e.stopPropagation(); if (dot) s.openDot(dot) }} disabled={!dot} tabIndex={dot ? 0 : -1} title="점 위치 변경" data-guide={active ? 'dot' : undefined}
+          className={clsx('pb-ghost', styles.dotBtn, styles.cmpDot, dot && styles.dotBtnOn)}>
+          <IconDot />점 위치
+        </button>
+      )}
     </div>
   )
 }
@@ -84,9 +99,10 @@ export default function PreviewStage({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const hv = useHeroView()
   const cmpOn = s.cmpOn
-  const fraction = mobile ? CMP_FRACTION_M : CMP_FRACTION
   const ids = s.cmpIds
-  const lay = layoutOf(Math.max(1, ids.length), mobile && hv === 'base')
+  const line = mobile && hv === 'base'
+  const lay = layoutOf(Math.max(1, ids.length), line)
+  const fraction = mobile ? CMP_FRACTION_M : CMP_FRACTION
   const ai = Math.max(0, ids.indexOf(s.selectedPreset ?? ''))
   const eye = s.equipped['eyeAcc']
   const dotItem = !mobile && eye && DOT_MOVER_IDS.has(eye.id) ? eye : null
@@ -114,7 +130,7 @@ export default function PreviewStage({ mobile }: { mobile: boolean }) {
 
   // 칸(비교 중일 때만)을 먼저, live 를 늘 두 번째 자식으로 둔다 — 같은 자리라 모드를 바꿔도 다시 만들어지지 않는다
   const cells = cmpOn ? [
-    ...ids.map((id, i) => <Pane key={id} id={id} index={i} active={i === ai} fraction={fraction} pos={lay.pos(i)} onPick={pickAt} />),
+    ...ids.map((id, i) => <Pane key={id} id={id} index={i} active={i === ai} fraction={fraction} pos={lay.pos(i)} slim={mobile} onPick={pickAt} />),
     lay.add && (
       <button key="add" type="button" onClick={add} title="고른 칸을 복사해 칸 더하기" aria-label="칸 더하기"
         className={clsx(styles.cmpAdd, lay.addKind === 'cell' && styles.cmpAddCell, lay.addKind === 'slim' && styles.cmpAddSlim)} style={lay.add}>
@@ -129,9 +145,9 @@ export default function PreviewStage({ mobile }: { mobile: boolean }) {
       {cells}
       <div ref={liveRef} className={cmpOn ? styles.cmpLive : styles.live} style={cmpOn ? { ...lay.pos(ai), opacity: hold ? 0 : 1 } : undefined}>
         <StageBg />
-        {!mobile && (
+        {!mobile && !cmpOn && (
           <button type="button" onClick={() => { if (dotItem) s.openDot(dotItem) }} disabled={!dotItem} title="점 위치 변경" data-guide="dot"
-            className={clsx('pb-ghost', styles.dotBtn, cmpOn && styles.cmpDot, dotItem && styles.dotBtnOn)}>
+            className={clsx('pb-ghost', styles.dotBtn, dotItem && styles.dotBtnOn)}>
             <IconDot />점 위치
           </button>
         )}

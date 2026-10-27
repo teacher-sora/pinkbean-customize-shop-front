@@ -5,6 +5,7 @@
 //  - SkinModel: 피부(body+head)를 마네킹 중심 기준으로 합성
 
 import { useEffect, useRef, useState } from 'react'
+import { useIsoLayoutEffect } from '@/lib/uiState'
 import { assemble, getFrameLayers, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadMeta, type ItemMeta } from '@/lib/core/data'
 import { applyHsb, loadDyeImage, renderDyedSprite, skinHsb as skinHsbFor, type HsbParams, type PaletteParams } from '@/lib/core/dye'
@@ -85,7 +86,9 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
   }, [id, mix])
   // 칸 크기를 재고, 바뀌면(다이얼로그 전환·화면 회전 등) 그 크기로 다시 그린다 — 처음 잰 크기로만 그리면
   // 나중에 커진 칸에서는 CSS 가 캔버스를 늘려 도트가 깨진다. 캔버스는 그림 크기로 줄어드므로 바깥 칸을 잰다.
-  useEffect(() => {
+  // 그리기 전(layout effect)에 재고, 재기 전에는 그리지 않는다 — 그리고 나서 재면 처음 한 번은 가정한 칸(48px)으로 크게 그려졌다가
+  // 실제 칸에 맞춰 작아져, 탭을 오갈 때마다 칩 그림이 커졌다 작아졌다(사용자 지적 — 목록 카드의 번쩍임과 같은 까닭)
+  useIsoLayoutEffect(() => {
     const el = boxRef.current
     if (!el) return
     const measure = () => setBox((p) => (p.w === el.clientWidth && p.h === el.clientHeight ? p : { w: el.clientWidth, h: el.clientHeight }))
@@ -96,9 +99,9 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
   }, [])
   // 드래그 중에도 렉 없이 바로바로 발색(single-flight + 최신값 수렴).
   useLiveRedraw(async () => {
-    const el = ref.current; if (!el) return
+    const el = ref.current; if (!el || !box.w) return
     const dpr = window.devicePixelRatio || 1
-    const boxW = box.w || 48, boxH = box.h || box.w || 48 // CSS 픽셀(칸)
+    const boxW = box.w, boxH = box.h || box.w // CSS 픽셀(칸)
     let over = 1
     if (mix) {
       if (!meta) return
@@ -121,7 +124,7 @@ export function DyeSprite({ id, thumb, mix, palette, hsb, zmap, grayscale = fals
   // 바깥 span = 칸(크기 측정 기준), 캔버스 = 그린 그림 크기로 화면 픽셀 격자에 맞춰 가운데(fitCanvas).
   return (
     <span ref={boxRef} style={{ position: 'relative', display: 'block', width: '100%', height: '100%', overflow: 'hidden' }}>
-      <canvas ref={ref} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated', ...(grayscale ? { filter: 'grayscale(1)' } : {}) }} />
+      <canvas ref={ref} width={0} height={0} style={{ position: 'absolute', display: 'block', imageRendering: 'pixelated', ...(grayscale ? { filter: 'grayscale(1)' } : {}) }} />
     </span>
   )
 }
