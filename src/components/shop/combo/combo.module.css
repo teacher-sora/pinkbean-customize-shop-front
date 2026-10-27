@@ -44,7 +44,9 @@
 .dyesSep { flex: 0 0 auto; height: 1px; margin: 0 8px; background: #f2ebe3; background: light-dark(#f2ebe3, #40434b); }
 .dyesSepM { margin: 0 12px; }
 /* 묶음이 곧 가로 스크롤 칸(흐림이 묶음 끝에 붙는다). 한 번에 --dye-n 칸(넓은 PC 5 · 그 밖 3)이 줄 폭을 똑같이 나눠 갖고, 나머지는 가로로 민다(10위까지) */
-.dyeChip { flex: 0 0 calc((100% - 8px * (var(--dye-n) - 1)) / var(--dye-n)); min-width: 0; padding: 6px 8px 7px; gap: 7px; }
+/* 칩 폭은 줄을 나눈 값이되 180 아래로 줄지 않는다(사용자 지시 — 염색 수치가 눌리거나 잘렸다). 180 = 띠 164: HSB 세 칸의 가장 넓은 칸('● 색 359' 43) + 양옆 6 × 3,
+   헤어 · 성형 두 칸('자수정 50' 58)도 든다(실측). 모바일은 늘 180 이라 모든 칩이 같은 크기, 나머지는 가로로 민다 */
+.dyeChip { flex: 0 0 calc((100% - 8px * (var(--dye-n) - 1)) / var(--dye-n)); min-width: 180px; padding: 6px 8px 7px; gap: 7px; }
 /* 모바일: 칩을 작게(사용자 지시 — 칩이 커서 카드가 작아졌다). 그림 28, '1위 N명' 한 줄, 여백 · 줄 사이를 줄인다 */
 .dyeChip.dyeChipM { padding: 5px 7px 6px; gap: 6px; row-gap: 5px; }
 .dyeThumbM { width: 28px; height: 28px; }

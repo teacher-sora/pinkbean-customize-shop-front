@@ -89,7 +89,8 @@ export const CARD_RATIO_M = 1.45
 const CARD_FOOT_M = 57 // 1.45 = 좁은 폭(343 · 360)도 캐릭터가 한 단계 크게(정수 배율 — 실측 68 → 90px)
 // 목록과 같은 최소 높이 — 코디 탭 · AI 코디 검색 목록과 프리셋 탭이 함께 쓴다(같은 값이라 탭을 오가도 페이지 높이가 그대로다)
 export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M)
-export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0) {
+// extra = 목록 칸 밖에 더 잡아 둘 높이(코디 광장의 다른 분류가 코디 조합만큼 — 분류를 바꿔도 페이지 높이가 같게)
+export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0) {
   useEffect(() => {
     if (!mobile) return
     const vp = vpRef.current
@@ -100,14 +101,14 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const m = () => {
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - PAD_X - GAP * (cols - 1)) / cols
-      const need = Math.ceil(chrome + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)) + 'px'
+      const need = Math.ceil(chrome + extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
     }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
     ro?.observe(col); ro?.observe(vp)
     return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
-  }, [vpRef, mobile, cols, ratio, rows, restore, foot])
+  }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra])
 }
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
