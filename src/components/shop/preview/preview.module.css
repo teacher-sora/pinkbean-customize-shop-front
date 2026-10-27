@@ -4,7 +4,7 @@
 .colHalf { --pin-col: 312px; --pv-all-w: 71px; flex-basis: 312px; }
 .colTablet { --pin-col: 330px; --pv-all-w: 71px; flex-basis: 330px; }
 /* 코디 비교: 칸 넷(2×2)이 들어가게 넓힌다 — 칸 하나가 지금 미리보기의 절반 높이 · 비슷한 폭. 목록은 그만큼 좁아진다(ShopContext.measure 가 열 수를 다시 고른다) */
-.colCmp { flex-basis: 640px; }
+.colCmp { flex-basis: 460px; } /* PC 비교 열 — 목록 머리(프리셋 탭이 가장 길다)가 한 줄에 들도록 460(사용자 지시: 440~460) */
 .colHalf.colCmp { flex-basis: 470px; }
 .colTablet.colCmp { flex-basis: 540px; }
 .card { flex: 1 1 auto; min-height: 0; position: relative; background: #fff; background: light-dark(#fff, #303238); border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
@@ -268,8 +268,8 @@
 .colCmp .chatDock { left: 8px; right: 8px; } /* 칸 · 아래 줄과 같은 여백(8) — 선이 맞게 */
 /* 아래 줄(배율 · 액션 · 모션 · 표정)은 넓어진 열에서도 평소 폭 그대로 — 평소 폭 = (열 폭 − 테두리 · 여백 · 사이 38 − 연출 설정 버튼) ÷ 4.
    연출 설정과 평소 사이(5)로 붙여 함께 오른쪽 끝에 둔다(사용자 지시 — 칸이 넓어져도 연출 설정과 떨어지지 않게) */
-.colCmp .ctrlRow > :not(.pvAll) { flex: 0 0 calc((var(--pin-col) - 38px - var(--pv-all-w)) / 4); }
-.colCmp .ctrlRow > :first-child { margin-left: auto; }
+.colCmp .ctrlRow > * { flex: 1 1 0; min-width: 0; } /* 비교로 넓어진 열 — 배율 · 액션 · 모션 · 표정 · 연출 설정이 같은 폭으로 줄을 채운다(사용자 지시) */
+.colCmp .pvAll { justify-content: center; }
 /* 모바일: 히어로의 위(되돌리기) · 아래(연출 설정 · 부위 염색 · 비교 · 북마크) 버튼 줄 사이. 히어로 높이는 그대로 */
 .cmpBoardM { inset: 46px 8px 50px; padding: 0; gap: 6px; }
 .cmpBoardLine { gap: 6px; }
@@ -298,6 +298,9 @@
 /* PC 아래 칸 머리의 탭(북마크 · 비교). 비교 탭의 본문은 북마크 줄과 같은 높이의 빈 자리 */
 .pinBlank { height: calc((var(--pin-col) - 18px - 42px) / 8); }
 .pinTabs { display: flex; }
+/* 비교 탭: 왼쪽 개수 · 비우기는 높이만 남기고(폭 0) [북마크] [비교]가 줄 폭을 같은 몫으로 채운다(사용자 지시) */
+.pinHeadCmp .pinActs { width: 0; overflow: hidden; }
+.pinHeadCmp .pinTabs, .pinHeadCmp .pinTabs > div, .pinHeadCmp .pinTabs button { flex: 1 1 0; }
 /* [북마크] [비교] 토글은 왼쪽 [비우기]와 같은 크기(높이 26 · 글자 11px — 사용자 지시: 공용 Seg 34 는 너무 컸다) */
 .pinTabs > div { padding: 2px; }
 .pinTabs button { height: 22px; padding: 0 11px; font-size: 11px; }

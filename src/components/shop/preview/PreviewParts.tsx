@@ -77,7 +77,7 @@ export function BookmarkBox() {
   const pick = (v: 'bm' | 'cmp') => { if (v === tab) return; if (v === 'cmp') leave(s.toggleCompare); else s.toggleCompare() }
   return (
     <div data-guide="bm" className={clsx('pb-pinbox', styles.pinbox)}>
-      <div className={styles.pinHead}>
+      <div className={clsx(styles.pinHead, tab === 'cmp' && styles.pinHeadCmp)}>
         <span className={styles.pinActs} style={tab === 'cmp' ? { visibility: 'hidden' } : undefined} aria-hidden={tab === 'cmp' || undefined}><PinCount n={n} /><ClearBookmarks n={n} /></span>
         <span data-guide="vs" className={styles.pinTabs}><Seg opts={BOX_TABS} value={tab} onPick={pick} /></span>
       </div>
