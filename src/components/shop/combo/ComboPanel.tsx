@@ -491,11 +491,11 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
                 <span className={surf.partName}>{d.n.toLocaleString()}명</span>
               </span>
               {has ? (
-                <span title="보관함에 있어요" className={clsx(plaza.wearBtn, plaza.wearBtnOn)}><IconCheck size={10} /></span>
+                <span title="보관함에 있어요" className={clsx(plaza.wearBtn, plaza.wearBtnOn, !mobile && styles.dyeAct)}><IconCheck size={mobile ? 10 : 12} /></span>
               ) : (
                 <button type="button" disabled={full} onClick={(e) => { e.stopPropagation(); vault.put(asSave(d)); s.notify('염색 보관함에 담았어요') }}
-                  title={full ? `보관함은 ${DYE_VAULT_MAX}개까지예요` : '이 염색을 보관함에 담기'} aria-label="염색 보관함에 담기" className={plaza.wearBtn}>
-                  <IconVaultAdd size={12} />
+                  title={full ? `보관함은 ${DYE_VAULT_MAX}개까지예요` : '이 염색을 보관함에 담기'} aria-label="염색 보관함에 담기" className={clsx(plaza.wearBtn, !mobile && styles.dyeAct)}>
+                  <IconVaultAdd size={mobile ? 12 : 15} />
                 </button>
               )}
               <DyeBand state="dyed" slot={key} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} skinFamily={skin ? skinDyeFamily(te?.name) ?? undefined : undefined} />
