@@ -7,12 +7,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { getFrameLayers, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadMeta, type AnimaRace, type ItemMeta, type ListItem } from '@/lib/core/data'
-import { buildOverrides } from '@/lib/core/dye'
+import { applyHsb, buildOverrides, loadDyeImage, skinHsb as skinHsbFor, type HsbParams } from '@/lib/core/dye'
 import { collectWornEffects, type WornEff } from '@/lib/core/thumbEffects'
-import { CAT_TO_SLOT, DEFAULT_TONE, THUMB_VIEW, animaLayers, fixedExpr, forceMyModel, hasFixedExpr, thumbView } from '@/lib/shopData'
+import { CAT_TO_SLOT, DEFAULT_TONE, THUMB_VIEW, animaLayers, fixedExpr, forceMyModel, hasFixedExpr, skinDyeFamily, thumbView } from '@/lib/shopData'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 
-type Tones = { base: { tones: { tone: number; body: string; head: string }[]; default: number } }
+type Tones = { base: { tones: { tone: number; body: string; head: string; name?: string }[]; default: number } }
+// 컬러라인 피부의 라인 염색(dyeHsb.skin)을 몸 · 머리 그림에 굽는다 — 미리보기(PreviewModel) · 프리셋 카드(snapRender)와 같은 규칙.
+// '내 캐릭터' 배경만(기본 캐릭터는 엘프 피부 고정). 빠져 있어 내 캐릭터 카드에서 피부 염색이 안 보였다(사용자 지적)
+async function bakeSkinDye(ov: Map<string, HTMLCanvasElement>, metas: (ItemMeta | undefined)[], view: Parameters<typeof getFrameLayers>[1], hsb: Record<string, HsbParams>, toneName: string | undefined) {
+  const h = hsb['skin'], fam = skinDyeFamily(toneName)
+  if (!h || !(h.h || h.s || h.b) || fam == null) return
+  for (const m of metas) if (m) for (const l of getFrameLayers(m, view)) {
+    try { ov.set(l.png, applyHsb(await loadDyeImage(l.png), skinHsbFor(h, fam), l.png)) } catch { /* 못 받은 그림은 원본색 */ }
+  }
+}
 // 톤 → body/head id. 없으면 기본 톤 → 첫 톤.
 const toneIds = (idx: Tones, tone: number) => {
   const e = idx.base.tones.find((t) => t.tone === tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
@@ -116,6 +125,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
           // 착용 아이템의 이펙트(망토 오라 등)도 카드에 그린다 + 그 이펙트 염색을 override 에 굽는다(토글 꺼진 슬롯 제외).
           effs = await collectWornEffects(worn.map(([sl, it]) => ({ slot: sl, id: it.id, dyeable: it.dyeMode !== 'none' })), s.pv, s.renderHsb, override).catch(() => [])
         }
+        if (isMy && !isSkinCat) await bakeSkinDye(override, [map.get(mine.bodyId), map.get(mine.headId)], view, s.renderHsb, idx.base.tones.find((t) => t.tone === s.tone)?.name)
         // 표정 얼굴장식 카드는 배경의 얼굴을 **자기 표정으로 다시 그려야** 한다(ItemThumb) → 메타를 넘긴다.
         const faceEntry = worn.find(([sl]) => sl === 'face')
         return { items, key: k, override, effs, expr, faceMeta: faceEntry ? (map.get(faceEntry[1].id) ?? null) : null, stance, action: view !== view0 ? view.action : undefined }
@@ -194,6 +204,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
             if (sl === 'face') faceMeta = m
           }
           const override = await buildOverrides(dyeMetas, { palette: s.renderPalette, hsb: s.renderHsb }, cview).catch(() => new Map())
+          await bakeSkinDye(override, [myBody, myHead], cview, s.renderHsb, idx!.base.tones.find((t) => t.tone === s.tone)?.name)
           const effs = await collectWornEffects(
             myEq.filter(([sl]) => sl !== slot).map(([sl, it]) => ({ slot: sl, id: it.id, dyeable: it.dyeMode !== 'none' })), s.pv, s.renderHsb, override,
           ).catch(() => [])
