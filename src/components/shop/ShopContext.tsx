@@ -531,6 +531,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!h) { h = { stack: [], idx: -1, last: null }; histsRef.current.set(k, h) }
     return h
   }
+  const overTail = useRef<{ h: Hist; at: number } | null>(null) // 방금 남긴 덮어쓰기 기록(pushHistory — 꼬리 합치기)
   const histOver = useRef<PresetOver<Snapshot, CmpSaved> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
   const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
@@ -1946,7 +1947,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       prevCmp: cmpSavedOf(id), nextCmp: null,
     }
     putCmpSaved(id, null)
-    if (inCmp) setSelectedPreset(id)
     setPresetData((d) => ({ ...d, [id]: snap }))
     if (i >= 0) setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name: defaultPresetName(i) } : p)))
     // 연출 설정(형상변이·귀·무기모션·이펙트·배율뿐 아니라 시선·액션·표정·fps 까지)도 이 프리셋에 각인돼 있다
@@ -1954,7 +1954,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // applySnapshot 은 코디에 속하는 연출만 되돌리므로, 나머지는 여기서 함께 맞춘다.
     if (sel) {
       histOver.current = over // 라이브가 바뀌므로 아래 기록 effect 가 이 over 를 집어간다
-      setPvState(PV_DEFAULT); applySnapshot(snap).catch(() => {})
+      // 비교 중이면 선택(그 프리셋으로)도 같은 한 번에 바꾼다 — 따로 바꾸면 선택만 바뀐 기록이 먼저 생겨 되돌리기를 두 번 눌러야 했다(사용자 지적)
+      setPvState(PV_DEFAULT); applySnapshot(snap, true, false, inCmp ? id : undefined).catch(() => {})
     } else {
       // 라이브는 그대로 → 그 자리에서 직접 기록한다. 바뀐 이름은 아직 상태에 안 들어왔으니 직접 넘긴다.
       pushHistory(over, i >= 0 ? { ...namesOf(presets), [id]: defaultPresetName(i) } : undefined)
@@ -2039,11 +2040,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const h = histOf(selectedPreset)
     if (j === histExpect.current) { histExpect.current = null; h.last = j; return }
     const ov = over ?? histOver.current
+    // 덮어쓰기(프리셋 삭제 · 가져오기) 직후에 같은 일이 남긴 꼬리 변경(나눠 들어온 상태)은 새 기록이 아니라 그 기록에 합친다 — 되돌리기 한 번에 비교 칸 · 이름까지 함께 돌아오게
+    const tail = overTail.current
+    if (!ov && tail && tail.h === h && h.idx === h.stack.length - 1 && performance.now() - tail.at < 600) {
+      const top = h.stack[h.idx]; top.snap = snap; top.names = names; h.last = j; return
+    }
     if (j === h.last && !ov) return // 덮어쓰기는 코디가 같아도(이름·다른 프리셋이 바뀜) 기록한다. h.last = 그 갈래의 마지막 상태키(중복 방지)
     histOver.current = null
     h.last = j
     h.stack = h.stack.slice(0, h.idx + 1)
     h.stack.push({ snap, sel: selectedPreset, names, ...(ov ? { over: ov } : {}) })
+    overTail.current = ov ? { h, at: performance.now() } : null
     if (h.stack.length > 50) h.stack = h.stack.slice(h.stack.length - 50)
     h.idx = h.stack.length - 1
     setHistVer((v) => v + 1)
