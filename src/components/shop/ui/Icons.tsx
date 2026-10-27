@@ -108,9 +108,9 @@ export const IconCompare = ({ size = 15 }: P) => (
 export const IconTakeDown = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 4.5v11m0 0l-4.2-4.2M12 15.5l4.2-4.2M5 19h14" /></svg>
 )
-// 불러오기 — 오른쪽 틀 안으로 들어오는 화살표(닉네임 · 공유 링크로 코디를 들여온다). 내려받기(IconTakeDown)와 갈리게 옆에서 들어온다
+// 불러오기 — 사람 + 돋보기(닉네임으로 캐릭터를 찾아 코디를 가져온다). 내려받기(IconTakeDown)와 갈리게 '찾는다'는 꼴(사용자 지시)
 export const IconImport = ({ size = 14 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14M4 12h11m0 0l-4-4m4 4l-4 4" /></svg>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="9.5" cy="7.5" r="3.5" /><path d="M3 20c0-3.6 2.9-6 6.5-6 1.1 0 2.1.2 3 .6" /><circle cx="17" cy="16.5" r="3" /><path d="M19.2 18.7L21.5 21" /></svg>
 )
 export const IconLinkCopy = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="10.5" height="10.5" rx="2" /><path d="M15 6.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v7.5A1.5 1.5 0 0 0 6 15h.5" /></svg>
