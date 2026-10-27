@@ -20,7 +20,8 @@ import { useIsoLayoutEffect } from '@/lib/uiState'
 import PreviewModel from '../PreviewModel'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { CMP_MAX, useShop, withView, type Snapshot } from '../ShopContext'
-import { IconAdd, IconDot } from '../ui/Icons'
+import { IconAdd, IconCheck, IconDot } from '../ui/Icons'
+import preset from '../preset/preset.module.css'
 import { CmpDel } from './PreviewParts'
 import PinkbeanRate from './PinkbeanRate'
 import StageBg, { CardStageBg, type CardFloor } from './StageBg'
@@ -78,7 +79,8 @@ function Pane({ id, index, active, fraction, pos, slim, onPick }: { id: string; 
           deco chatText={s.chatMsg ? s.chatMsg.text : null} defBalloon={s.chatDefault} />}
       </div>
       <div className={clsx(styles.cmpRing, active && styles.cmpRingOn)}>
-        <span className={clsx(styles.cmpTag, active && styles.cmpTagOn)}>{cmpLetter(index)}</span>
+        {/* 고른 칸만 왼쪽 위에 '선택됨' — 프리셋 카드와 같은 라벨(사용자 지시, A B C D 글자는 없앴다) */}
+        <span className={clsx(preset.badge, slim && preset.badgeM, active && preset.badgeOn)} aria-label="선택됨">{slim ? <IconCheck /> : '선택됨'}</span>
       </div>
       {/* 휴지통 띠지는 테두리 겹 밖(칸 기준)에 — 테두리 안쪽이 기준이면 고른 칸(1.5px)만 반 픽셀 자리에 놓여 hover 때 움찔했다(사용자 지적) */}
       <CmpDel id={id} slim={slim} />

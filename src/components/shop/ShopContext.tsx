@@ -1662,9 +1662,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 주인 프리셋 · 선택 표시는 그대로고, 고른 칸 = 주인 프리셋이라 자동 저장이 둘에 함께 담는다. 보기 설정은 그 칸의 것(withView — 배율만 지금 값)
   const cmpTake = (id: string) => {
     const src = presetData[id] ?? defaultSnapshot()
-    const letter = String.fromCharCode(65 + Math.max(0, cmpIds.indexOf(selectedPreset!)))
     const name = presets.find((p) => p.id === id)?.name ?? ''
-    applySnapshot({ ...src, pv: withView(src.pv, pv), bg: bgSel }, false).then(() => notify(`'${name}' 코디를 ${letter} 칸에 입혔어요`)).catch(() => {})
+    applySnapshot({ ...src, pv: withView(src.pv, pv), bg: bgSel }, false).then(() => notify(`'${name}' 코디를 고른 칸에 입혔어요`)).catch(() => {})
   }
 
   // 현재 라이브 모델 → 스냅샷.
