@@ -21,7 +21,7 @@ const PRESET_FRACTION = 0.38
 const PRESET_FRACTION_M = CARD_FRACTION_M // 모바일은 목록 · 광장 카드와 같은 비율(사용자 지시 — 모바일 카드의 캐릭터가 너무 작았다)
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
-import { IconCheck, IconLinkCopy, IconPencil, IconReorder, IconTakeDown, IconTrashSolid } from '../ui/Icons'
+import { IconCheck, IconLinkCopy, IconPencil, IconImport, IconReorder, IconTrashSolid } from '../ui/Icons'
 import styles from './preset.module.css'
 
 export default function PresetPanel({ mobile }: { mobile: boolean }) {
@@ -129,7 +129,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           {/* 불러오기: 입력과 버튼을 한 칸에 묶는다(아래 PC 와 같은 모양) */}
           <div className={clsx(styles.importBox, styles.importBoxM)}>
             <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
-            <button type="button" onClick={s.importFetch} disabled={s.importing} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconTakeDown size={15} /></button>
+            <button type="button" onClick={s.importFetch} disabled={s.importing} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconImport size={15} /></button>
           </div>
         </div>
         <div className={styles.hrM} />
@@ -143,17 +143,12 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <div className={styles.header}>
         <div className={styles.groupA}>{chip}{sortBtn}{dirSeg}</div>
         <div className={styles.groupB}>
-          {/* 불러오기: 아이콘 + 입력 + 채운 버튼을 한 테두리 안에. 칸의 생김새는 다른 탭의 검색 칸과 같고(면 · 테두리 · 아이콘), 채운 버튼 하나로만 눈에 띈다 */}
+          {/* 불러오기: 입력 + 채운 아이콘 버튼을 한 테두리 안에(모바일과 같은 모양). 칸의 생김새는 다른 탭의 검색 칸과 같다 */}
           <div className={clsx(styles.importBox, narrow && styles.importBoxNarrow)}>
-            <span className={styles.importIcon} aria-hidden><IconTakeDown size={15} /></span>
             <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
-            <button type="button" onClick={s.importFetch} disabled={s.importing} title="닉네임 또는 공유 링크로 코디 불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtn, s.importing && styles.busy)}>
-              {/* 두 문구를 한 칸에 겹쳐 두어 폭 = 긴 쪽('불러오는 중') — 상태가 바뀌어도 버튼·입력칸이 밀리지 않는다. */}
-              <span className={styles.loadLabel}>
-                <span aria-hidden={s.importing || undefined} style={s.importing ? { visibility: 'hidden' } : undefined}>불러오기</span>
-                <span aria-hidden={!s.importing || undefined} style={s.importing ? undefined : { visibility: 'hidden' }}>불러오는 중</span>
-              </span>
-            </button>
+            {/* 불러오기는 아이콘 버튼(모바일과 같은 부품 — 사용자 지시: 글자 버튼이면 비교 중 좁은 머리에서 입력 칸이 26px 까지 눌렸다) */}
+            <button type="button" onClick={s.importFetch} disabled={s.importing} title={s.importing ? '불러오는 중' : '닉네임 또는 공유 링크로 코디 불러오기'} aria-label="불러오기" aria-busy={s.importing || undefined}
+              className={clsx('pb-solid', styles.loadBtnM, styles.loadBtnPc, s.importing && styles.busy)}><IconImport size={15} /></button>
           </div>
         </div>
       </div>
