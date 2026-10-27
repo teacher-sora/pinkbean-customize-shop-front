@@ -490,7 +490,7 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
                 <span className={surf.partSlot}>{i + 1}위</span>
                 <span className={surf.partName}>{d.n.toLocaleString()}명</span>
               </span>
-              <ChipAct done={has} doneTitle="보관함에 있어요" icon={<IconVaultAdd size={12} />} disabled={full} label="염색 보관함에 담기"
+              <ChipAct done={has} doneTitle="보관함에 있어요" icon={<IconVaultAdd size={15} />} disabled={full} label="염색 보관함에 담기"
                 title={full ? `보관함은 ${DYE_VAULT_MAX}개까지예요` : '이 염색을 보관함에 담기'} onClick={() => { vault.put(asSave(d)); s.notify('염색 보관함에 담았어요') }} />
               <DyeBand state="dyed" slot={key} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} skinFamily={skin ? skinDyeFamily(te?.name) ?? undefined : undefined} />
             </div>
