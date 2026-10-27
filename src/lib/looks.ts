@@ -21,11 +21,6 @@ export type LookGender = 'a' | 'f' | 'm'
 
 const BASE = `${DATA_BASE}/looks/v2`
 
-// 아직 dev 에서만 연다(사용자 지시 — 운영에는 아직 올리지 않았다). 고르는 기준은 backApi 와 같은 호스트다. 서버 그림에서는 늘 꺼져 있고
-// 브라우저에서만 켜진다(useComboLive) — 운영은 칩 · 광장 탭이 아예 없다.
-export const comboLive = () => typeof window !== 'undefined' && !/^(www\.)?pinkbean-customize\.com$/.test(window.location.hostname)
-const noSub = () => () => {}
-export const useComboLive = () => useSyncExternalStore(noSub, comboLive, () => false)
 
 // ── 색인 ────────────────────────────────────────────────────────────
 type Entry = [number, number, number, number, number] // 코디 수, 큰 파일 번호, 시작 바이트, 머리 길이, 첫 쪽 길이
@@ -38,7 +33,7 @@ function loadIndex(): Promise<LookIndex | null> {
     .then((ix) => { index = ix; subs.forEach((f) => f()); return ix })
   return indexP
 }
-const subscribe = (f: () => void) => { subs.add(f); if (comboLive()) void loadIndex(); return () => { subs.delete(f) } }
+const subscribe = (f: () => void) => { subs.add(f); void loadIndex(); return () => { subs.delete(f) } }
 // 그 아이템이 든 코디 수(표본에 없으면 0). 처음 부르면 색인을 받기 시작하고, 받으면 다시 그린다
 export function useLookCount(id: string): number {
   return useSyncExternalStore(subscribe, () => index?.items[id]?.[0] ?? 0, () => 0)

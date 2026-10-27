@@ -21,7 +21,7 @@ import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, typ
 import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
-import { comboLive, lookChunk, withCardPv, type LookRow } from '@/lib/looks'
+import { lookChunk, withCardPv, type LookRow } from '@/lib/looks'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
@@ -234,8 +234,8 @@ export type LookOption = { key: string; label: string; presets: PresetOption[] }
 export interface ShopCtx {
   // 데이터
   index: Index | null
-  cats: Cat[] // 부위 탭(CATS + dev 에서만 명찰/말풍선 — CHAT_CATS)
-  infoCats: Cat[] // 코디 정보 칩(CATS + dev 에서만 명찰 · 말풍선 둘 — CHAT_INFO_CATS)
+  cats: Cat[] // 부위 탭(CATS + 명찰/말풍선 목록이 있으면 CHAT_CATS)
+  infoCats: Cat[] // 코디 정보 칩(CATS + 명찰/말풍선 목록이 있으면 명찰 · 말풍선 둘 — CHAT_INFO_CATS)
   chatOn: boolean // 명찰 · 말풍선을 쓸 수 있는가(목록 파일이 있을 때만)
   chatDefault: ChatUi | null // 기본 말풍선(말풍선 반지 없이 보낸 채팅)
   chatName: string // 명찰 이름 = 고른 프리셋 이름
@@ -707,7 +707,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (typeof u.aiQ === 'string') setAiQ(u.aiQ)
     if (typeof u.searchQuery === 'string') setSearchQuery(u.searchQuery)
     if (Array.isArray(u.searchResults)) setSearchResults(u.searchResults)
-    if (u.plazaFilter && (u.plazaFilter !== 'combo' || comboLive()) && PLAZA_FILTERS.some((f: { id: string }) => f.id === u.plazaFilter)) setPlazaFilter(u.plazaFilter as PlazaFilter)
+    if (u.plazaFilter && PLAZA_FILTERS.some((f: { id: string }) => f.id === u.plazaFilter)) setPlazaFilter(u.plazaFilter as PlazaFilter)
     if (typeof u.plazaQ === 'string') setPlazaQState(u.plazaQ)
     // 광장 정렬 · 목록을 넘기는 방향은 **영구**다(취향에 가까운 값). 나머지는 전부 새로고침까지만.
     const pref = readUiPref()
