@@ -523,7 +523,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 기록은 갈래마다 따로다(사용자 지시): 비교 중이면 고른 칸마다 제 기록, 아니면 하나('main'). 칸을 고르는 것은 기록이 아니다 —
   // 칸을 바꾸면 그 칸의 기록으로 넘어갈 뿐이고, 처음 고른 칸은 그때의 코디가 첫 기록(되돌릴 바닥)이 된다.
   // 갈래마다 최근 50개라 비교 칸 넷을 다 써도 기록은 최대 250개(작은 스냅샷 객체)다. 뺀 칸의 기록은 함께 버린다(removeCmp).
-  type Hist = { stack: { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot> }[]; idx: number; last: string | null }
+  type Hist = { stack: { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot, CmpSaved> }[]; idx: number; last: string | null }
   const histsRef = useRef<Map<string, Hist>>(new Map())
   const histOf = (sel: string | null): Hist => {
     const k = isCmpId(sel) ? sel! : 'main'
@@ -531,7 +531,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!h) { h = { stack: [], idx: -1, last: null }; histsRef.current.set(k, h) }
     return h
   }
-  const histOver = useRef<PresetOver<Snapshot> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
+  const histOver = useRef<PresetOver<Snapshot, CmpSaved> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
   const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
   const saveT = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1603,6 +1603,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 코디 비교(사용자 지시) — 칸은 프리셋 목록에 없는 프리셋이고, 프리셋마다 따로다(CMP_KEY 주석). 칸 고르기 · 더하기 · 빼기. 고른 칸 = 주인 프리셋.
   // 그 프리셋에서 처음 열면 지금 코디로 두 칸(A = 지금 코디, B = 그 복사본 — 하나만 바꿔 대 보기 쉽게). 다시 열면 그 프리셋의 칸 그대로, 마지막에 고른 칸으로.
   const newCmpId = () => 'cmp' + Date.now().toString(36) + (cmpSeq.current++)
+  // 한 프리셋의 비교 칸 전부(칸 순서 · 마지막 칸 · 칸마다의 코디). 읽은 적 없으면 저장소에서. 고른 칸은 라이브 코디
+  const cmpSavedOf = (owner: string): CmpSaved | null => {
+    const set = cmpSets[owner]
+    if (!set) return loadCmpSet(owner)
+    if (!set.ids.length) return null
+    const data: Record<string, Snapshot> = {}
+    for (const id of set.ids) data[id] = id === selectedPreset ? snapshot() : presetData[id] ?? defaultSnapshot()
+    return { ids: set.ids, last: set.last, data }
+  }
+  // 비교 칸을 통째로 바꾼다(null = 비우기 — 다음에 켜면 처음처럼 지금 코디로 두 칸). 저장소에도 바로 쓴다(자동 저장을 기다리지 않게)
+  const putCmpSaved = (owner: string, v: CmpSaved | null) => {
+    setCmpSets((m) => ({ ...m, [owner]: v ? { ids: v.ids, last: v.last } : { ids: [], last: null } }))
+    if (v) setPresetData((d) => ({ ...d, ...v.data }))
+    for (const id of v?.ids ?? cmpSets[owner]?.ids ?? []) histsRef.current.delete(id)
+    try { if (v) localStorage.setItem(cmpSetKey(owner), JSON.stringify(v)); else localStorage.removeItem(cmpSetKey(owner)) } catch {}
+  }
   const toggleCompare = () => {
     if (cmpOn) {
       const back = cmpBack && PRESET_IDS.includes(cmpBack) ? cmpBack : presets[0].id
@@ -1919,18 +1935,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const i = presets.findIndex((p) => p.id === id) // 기본 이름은 지금 자리의 번호(코디 N)
     // 지우기 전 내용·이름을 기록에 함께 남긴다 → 되돌리기로 그 칸의 코디·이름이 돌아온다.
     // 보고 있지 않은 칸을 지우면 라이브 코디가 그대로라, 따로 남기지 않으면 기록 자체가 없다.
-    const over: PresetOver<Snapshot> = {
+    // 비교 칸은 프리셋에 딸린 정보다 — 함께 지우고, 되돌리기로 함께 되살린다(사용자 지시). 그 프리셋의 비교 중이면 비교를 끝내고 프리셋으로 지운다
+    const inCmp = cmpOn && cmpBack === id
+    const sel = id === selectedPreset || inCmp
+    const over: PresetOver<Snapshot, CmpSaved> = {
       id,
-      prev: id === selectedPreset ? snapshot() : (presetData[id] ?? defaultSnapshot()),
+      prev: sel ? snapshot() : (presetData[id] ?? defaultSnapshot()),
       prevName: presets.find((p) => p.id === id)?.name ?? '',
       next: snap, nextName: i >= 0 ? defaultPresetName(i) : '',
+      prevCmp: cmpSavedOf(id), nextCmp: null,
     }
+    putCmpSaved(id, null)
+    if (inCmp) setSelectedPreset(id)
     setPresetData((d) => ({ ...d, [id]: snap }))
     if (i >= 0) setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, name: defaultPresetName(i) } : p)))
     // 연출 설정(형상변이·귀·무기모션·이펙트·배율뿐 아니라 시선·액션·표정·fps 까지)도 이 프리셋에 각인돼 있다
     // → 보고 있는 프리셋을 초기화하면 화면의 연출도 전부 기본으로 되돌린다.
     // applySnapshot 은 코디에 속하는 연출만 되돌리므로, 나머지는 여기서 함께 맞춘다.
-    if (id === selectedPreset) {
+    if (sel) {
       histOver.current = over // 라이브가 바뀌므로 아래 기록 effect 가 이 over 를 집어간다
       setPvState(PV_DEFAULT); applySnapshot(snap).catch(() => {})
     } else {
@@ -2009,7 +2031,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // (선택하지 않은 프리셋을 초기화)은 그 자리에서 직접 부른다.
   // 그런 기록은 코디·선택 프리셋이 직전과 같고 over 만 다르다 → undo 가 over 로 그 칸을 되살린다.
   // names: 방금 바꿔 아직 상태에 반영되지 않은 이름을 넘길 때(이름 확정 — commitPresetName). 없으면 지금 이름.
-  const pushHistory = (over?: PresetOver<Snapshot> | null, namesNow?: Record<string, string>) => {
+  const pushHistory = (over?: PresetOver<Snapshot, CmpSaved> | null, namesNow?: Record<string, string>) => {
     if (!initedRef.current) return
     const snap = snapshot()
     const names = namesNow ?? namesOf(presets)
@@ -2052,8 +2074,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const canUndo = curHist.idx > 0
   const canRedo = curHist.idx < curHist.stack.length - 1
   // 덮어쓴 프리셋을 되살린다(내용 + 이름). 선택 프리셋이면 이어지는 applyHistory 의 자동저장이 같은 값을 쓴다.
-  const restoreOver = (o: PresetOver<Snapshot>, back: boolean) => {
+  const restoreOver = (o: PresetOver<Snapshot, CmpSaved>, back: boolean) => {
     const snap = back ? o.prev : o.next, name = back ? o.prevName : o.nextName
+    if (o.prevCmp !== undefined || o.nextCmp !== undefined) putCmpSaved(o.id, (back ? o.prevCmp : o.nextCmp) ?? null)
     setPresetData((d) => ({ ...d, [o.id]: snap }))
     if (name) setPresets((ps) => ps.map((p) => (p.id === o.id ? { ...p, name } : p)))
   }

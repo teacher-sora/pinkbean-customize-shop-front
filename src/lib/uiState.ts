@@ -83,7 +83,8 @@ export function writeUiSession(v: UiSession): void {
 // 수명은 다른 "보던 자리" 값들과 같게 sessionStorage — 탭을 닫으면 깨끗해진다.
 // over = 그 기록이 **다른 프리셋을 덮어쓴** 기록일 때(공유 코디·광장 가져오기) 덮어쓰기 전후의 그 프리셋 내용·이름.
 //        되돌리면 prev 로, 다시 실행하면 next 로 그 프리셋을 되살린다(선택 프리셋 코디만 되돌리면 덮어쓴 프리셋은 그대로 남았다).
-export type PresetOver<S> = { id: string; prev: S; prevName: string; next: S; nextName: string }
+// prevCmp · nextCmp = 그 프리셋의 비교 칸(프리셋에 딸린 정보 — 프리셋 초기화가 함께 지우고 되돌리기가 함께 되살린다). 없으면 비교 칸은 건드리지 않는다
+export type PresetOver<S, C = unknown> = { id: string; prev: S; prevName: string; next: S; nextName: string; prevCmp?: C | null; nextCmp?: C | null }
 // 되돌리기 기록은 저장하지 않는다(새로고침하면 비운다). 예전 판이 남긴 것이 있으면 지운다.
 export function dropUiHistory(): void { try { window.sessionStorage.removeItem(HIST_KEY) } catch { /* 못 지워도 쓰지 않는다 */ } }
 export const readUiPref = (): UiPref => read<UiPref>('localStorage', PREF_KEY)
