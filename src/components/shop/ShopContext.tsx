@@ -1611,7 +1611,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!set.ids.length) return null
     const data: Record<string, Snapshot> = {}
     for (const id of set.ids) data[id] = id === selectedPreset ? snapshot() : presetData[id] ?? defaultSnapshot()
-    return { ids: set.ids, last: set.last, data }
+    // 비교 중이면 마지막 칸 = 지금 고른 칸(set.last 는 끌 때만 적힌다 — 그대로 담으면 되살린 뒤 다른 칸이 골라져 지금 코디로 덮였다, 사용자 지적)
+    const last = cmpOn && owner === cmpBack && selectedPreset && set.ids.includes(selectedPreset) ? selectedPreset : set.last
+    return { ids: set.ids, last, data }
   }
   // 비교 칸을 통째로 바꾼다(null = 비우기 — 다음에 켜면 처음처럼 지금 코디로 두 칸). 저장소에도 바로 쓴다(자동 저장을 기다리지 않게)
   const putCmpSaved = (owner: string, v: CmpSaved | null) => {
