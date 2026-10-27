@@ -77,8 +77,9 @@ function Pane({ id, index, active, fraction, pos, slim, onPick }: { id: string; 
       </div>
       <div className={clsx(styles.cmpRing, active && styles.cmpRingOn)}>
         <span className={clsx(styles.cmpTag, active && styles.cmpTagOn)}>{cmpLetter(index)}</span>
-        <CmpDel id={id} slim={slim} />
       </div>
+      {/* 휴지통 띠지는 테두리 겹 밖(칸 기준)에 — 테두리 안쪽이 기준이면 고른 칸(1.5px)만 반 픽셀 자리에 놓여 hover 때 움찔했다(사용자 지적) */}
+      <CmpDel id={id} slim={slim} />
     </div>
   )
 }
