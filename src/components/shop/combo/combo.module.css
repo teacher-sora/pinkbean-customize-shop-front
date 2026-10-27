@@ -13,7 +13,7 @@
 .itemTag { flex: 0 0 auto; min-width: 0; height: 34px; padding: 0 12px 0 3px; display: flex; align-items: center; gap: 8px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); }
 .itemTagM { height: 32px; padding: 0 10px 0 2px; gap: 7px; }
 .itemTag.itemTagThumb { padding: 0 2px; } /* 그림만 — 칸이 정사각형에 가깝다 */
-.itemTagFixed { width: 190px; } /* 이름까지(넓은 PC) — 이름 길이와 상관없이 같은 폭(사용자 지시) */
+.itemTagFixed { flex: 0 1 190px; min-width: 112px; } /* 이름까지(넓은 PC) — 폭은 이름 길이와 상관없이 190(사용자 지시). 머리 줄이 모자라는 폭(1200 언저리)에서만 줄이 줄어든다 — 고정 190 이면 머리가 패널보다 넓어져 패널이 옆으로 밀렸다 */
 .itemTagFill { flex: 1 1 0; } /* 상세의 모바일 — 남는 폭 전부 */
 .headItemFill { flex: 1 1 0; }
 .pageEndM { margin-left: auto; } /* 모바일 머리: 쪽 칩은 오른쪽 끝(사용자 지시). 광장은 찾기 칸이 남는 폭을 채워 그대로 붙는다 */
