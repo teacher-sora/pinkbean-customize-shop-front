@@ -1637,9 +1637,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     putCmpSet(cmpBack, (c) => ({ ids: [...c.ids, id], last: id }))
     setSelectedPreset(id)
   }
-  // 칸 빼기 — 두 칸은 남긴다(CMP_MIN). 고른 칸을 빼면 그 자리(없으면 앞)의 칸으로. 그 칸의 기록도 버린다(기록은 칸마다 — histsRef)
+  // 칸 빼기 — 고른 칸을 빼면 그 자리(없으면 앞)의 칸으로. 그 칸의 기록도 버린다(기록은 칸마다 — histsRef).
+  // 두 칸(CMP_MIN)뿐이면 빼지 않고 **초기화**한다(사용자 지시): 같은 자리에 남은 칸의 복사본을 새 칸으로 두고 고른다(처음 켤 때 B = A 의 복사본과 같다)
   const removeCmp = (id: string) => {
-    if (!cmpOwner || cmpIds.length <= CMP_MIN || !cmpIds.includes(id)) return
+    if (!cmpOwner || !cmpIds.includes(id)) return
+    if (cmpIds.length <= CMP_MIN) {
+      const other = cmpIds.find((x) => x !== id)
+      if (!other) return
+      const src = other === selectedPreset ? snapshot() : presetData[other] ?? defaultSnapshot(), nid = newCmpId()
+      setPresetData((d) => ({ ...d, [nid]: src }))
+      putCmpSet(cmpOwner, (c) => ({ ids: c.ids.map((x) => (x === id ? nid : x)), last: c.last === id ? nid : c.last }))
+      histsRef.current.delete(id)
+      if (id === selectedPreset) switchPreset(nid, src, 'all')
+      return
+    }
     const rest = cmpIds.filter((x) => x !== id)
     if (id === selectedPreset) { const to = rest[Math.min(cmpIds.indexOf(id), rest.length - 1)]; switchPreset(to, presetData[to] ?? defaultSnapshot(), 'all') }
     putCmpSet(cmpOwner, (c) => ({ ids: rest, last: c.last === id ? null : c.last }))

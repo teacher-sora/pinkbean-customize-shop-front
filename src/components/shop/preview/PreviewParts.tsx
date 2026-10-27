@@ -52,14 +52,15 @@ function PinCount({ n }: { n: number }) {
 }
 
 // 비교 칸 빼기 — 프리셋 카드와 같은 휴지통 띠지(사용자 지시 — 같은 부품: preset.module.css 의 .del · hover 는 pb-presetacts). 칸마다 오른쪽 위.
-// 두 칸은 남긴다(못 누를 때는 흐리게 + 까닭을 title 로), 두 번 눌러야 뺀다(lib/confirmTwice)
+// 두 칸뿐이면 빼지 않고 초기화한다(남은 칸의 코디로 — ShopContext removeCmp), 두 번 눌러야 한다(lib/confirmTwice)
 export function CmpDel({ id, slim }: { id: string; slim?: boolean }) {
   const s = useShop()
-  const one = s.cmpIds.length <= CMP_MIN
+  const reset = s.cmpIds.length <= CMP_MIN
+  const label = reset ? '이 칸 초기화' : '이 칸 빼기'
   return (
-    <button type="button" disabled={one} title={one ? '비교는 두 칸 이상이어야 해요' : '이 칸 빼기'} aria-label="이 칸 빼기" {...{ [CONFIRM_ATTR]: `cmp:x:${id}` }}
-      onClick={(e) => { e.stopPropagation(); if (confirmTwice(`cmp:x:${id}`, '한 번 더 누르면 이 칸을 빼요')) s.removeCmp(id) }}
-      className={clsx(!one && 'pb-presetacts', preset.del, slim && preset.delM, styles.cmpDel, one && styles.cmpDelOff)}><IconTrashSolid size={11} /></button>
+    <button type="button" title={reset ? '이 칸을 옆 칸과 같은 코디로 초기화' : label} aria-label={label} {...{ [CONFIRM_ATTR]: `cmp:x:${id}` }}
+      onClick={(e) => { e.stopPropagation(); if (confirmTwice(`cmp:x:${id}`, reset ? '한 번 더 누르면 이 칸을 초기화해요' : '한 번 더 누르면 이 칸을 빼요')) s.removeCmp(id) }}
+      className={clsx('pb-presetacts', preset.del, slim && preset.delM, styles.cmpDel)}><IconTrashSolid size={11} /></button>
   )
 }
 
