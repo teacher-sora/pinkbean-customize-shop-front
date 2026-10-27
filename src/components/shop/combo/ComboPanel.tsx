@@ -23,7 +23,8 @@ import { CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, type FilterGroup }
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
-import { IconChevronLeft, IconChevronRight, IconSearch, IconTakeDown } from '../ui/Icons'
+import { IconAdd, IconCheck, IconChevronLeft, IconChevronRight, IconSearch, IconTakeDown } from '../ui/Icons'
+import { DYE_VAULT_MAX, dyeSaveKey, useDyeVault, type DyeSave } from '@/lib/dyeVault'
 import list from '../list/list.module.css'
 import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
@@ -461,26 +462,38 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
     else s.setDyeHsb({ ...s.dyeHsb, [key]: d.v })
     s.notify(`${item.name || '아이템'}에 자주 쓴 염색을 입혔어요`)
   }
+  // 칩 면 = 입기, 오른쪽 위 작은 [+] = 그 아이템의 염색 보관함에 담기(사용자 지시). 입기 단추를 따로 두지 않는다 — 면을 누르는 것은 지금까지와 같고,
+  // [+] 는 '담기'라 입기와 헷갈리지 않는다(title · 알림이 무엇을 했는지 말한다). 담긴 값이면 체크로 바뀌고 누를 수 없다
+  const vault = useDyeVault(item.id)
+  const saved = new Set(vault.list.map(dyeSaveKey))
+  const full = vault.list.length >= DYE_VAULT_MAX
+  const asSave = (d: LookDye): DyeSave => (d.kind === 'palette' ? { pal: d.v } : { hsb: d.v })
   return (
     // 묶음(바탕 · 테두리 · 안쪽 여백)이 곧 가로 스크롤 칸이다 — 흐림이 칩이 아니라 묶음의 끝(안쪽 여백까지)에 붙는다(pinkbean-design: 칸의 안쪽 여백까지 덮는다, 염색 보관함과 같다)
     <div ref={rail} data-combo-extra className={clsx('pb-norail', 'pb-fade', styles.dyes, mobile && styles.dyesM)} style={{ '--dye-n': n } as React.CSSProperties}>
         {!dyes.length && <DyeSkels n={n} mobile={mobile} />}
         {dyes.map((d, i) => {
           const on = live(d)
+          const has = saved.has(dyeSaveKey(asSave(d)))
           return (
-            <button key={i} type="button" onClick={() => apply(d)} aria-pressed={on} title={`${d.n.toLocaleString()}명이 쓴 염색 입기`}
-              className={clsx(surf.partChip, ui.dyeChip, styles.dyeChip, mobile && styles.dyeChipM, on && styles.dyeChipOn)}>
-              <span className={clsx('pb-chipthumb', surf.partThumb, mobile && styles.dyeThumbM)}>
-                <span className={surf.partSprite}>
-                  <LookSprite slot={item.slot} item={skin ? null : item} tone={te?.tone ?? s.tone} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} />
+            <div key={i} className={styles.dyeBox}>
+              <button type="button" onClick={() => apply(d)} aria-pressed={on} title={`${d.n.toLocaleString()}명이 쓴 염색 입기`}
+                className={clsx(surf.partChip, ui.dyeChip, styles.dyeChip, mobile && styles.dyeChipM, on && styles.dyeChipOn)}>
+                <span className={clsx('pb-chipthumb', surf.partThumb, mobile && styles.dyeThumbM)}>
+                  <span className={surf.partSprite}>
+                    <LookSprite slot={item.slot} item={skin ? null : item} tone={te?.tone ?? s.tone} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} />
+                  </span>
                 </span>
-              </span>
-              <span className={clsx(surf.partText, mobile && styles.dyeTextM)}>
-                <span className={surf.partSlot}>{i + 1}위</span>
-                <span className={surf.partName}>{d.n.toLocaleString()}명</span>
-              </span>
-              <DyeBand state="dyed" slot={key} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} skinFamily={skin ? skinDyeFamily(te?.name) ?? undefined : undefined} />
-            </button>
+                <span className={clsx(surf.partText, mobile && styles.dyeTextM)}>
+                  <span className={surf.partSlot}>{i + 1}위</span>
+                  <span className={surf.partName}>{d.n.toLocaleString()}명</span>
+                </span>
+                <DyeBand state="dyed" slot={key} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} skinFamily={skin ? skinDyeFamily(te?.name) ?? undefined : undefined} />
+              </button>
+              <button type="button" disabled={has || full} onClick={() => { vault.put(asSave(d)); s.notify('염색 보관함에 담았어요') }}
+                title={has ? '이미 보관함에 있어요' : full ? `보관함은 ${DYE_VAULT_MAX}개까지예요` : '이 염색을 보관함에 담기'} aria-label="염색 보관함에 담기"
+                className={clsx('pb-ghost', styles.dyeSave, has && styles.dyeSaveOn)}>{has ? <IconCheck size={11} /> : <IconAdd size={12} />}</button>
+            </div>
           )
         })}
     </div>
