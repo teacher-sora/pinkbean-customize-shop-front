@@ -14,7 +14,7 @@ import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
 import { nameMatcher } from '@/lib/nameSearch'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
-import { useBreakpoint, type Breakpoint } from '@/lib/useBreakpoint'
+import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
@@ -190,6 +190,8 @@ const loadPresetStore = (): PresetStore | null => {
 // **고른 칸 = 그 주인 프리셋**: 고른 칸을 고치면 주인 프리셋에도 저장되고, 칸을 바꿔 고르면 그 칸의 코디가 주인 프리셋이 된다(끄면 마지막 칸의 코디로 남는다)
 export const CMP_MAX = 4
 export const CMP_MIN = 2 // 비교는 늘 두 칸 이상(사용자 지시)
+// PC 비교(열 460) 때 목록 머리(코디 탭이 가장 길다 — 894px)가 한 줄에 드는 창 폭. 이보다 좁으면 목록 쪽을 태블릿 배치로(실측 1200: 218px 넘쳤다)
+const CMP_WIDE = 1420
 type CmpSet = { ids: string[]; last: string | null }
 type CmpSaved = CmpSet & { data: Record<string, Snapshot> }
 const CMP_KEY = 'pb_compare_v2'
@@ -264,7 +266,8 @@ export interface ShopCtx {
   snapFrom: number // 스냅 애니메이션 직전 페이지 — 애니메이션 중엔 새 페이지 마운트를 미룬다
   consumeSwipeClick: () => boolean // 스와이프 직후의 카드 클릭은 착용으로 처리하지 않는다
   curIdx: number; pageCount: number
-  bp: Breakpoint; cols: number; rows: number; itemsPerPage: number
+  // listNarrow = 목록 쪽 패널(목록 · 코디 정보 · 프리셋 · 광장 · 코디 조합)을 좁은 배치로 — 절반 · 태블릿, 그리고 PC 에서 비교로 열이 넓어져 목록 머리가 한 줄에 안 드는 폭(< CMP_WIDE)
+  bp: Breakpoint; listNarrow: boolean; cols: number; rows: number; itemsPerPage: number
   // ── 코디 광장 ──
   plazaPosts: PlazaPost[]; plazaList: PlazaPost[]; plazaLoading: boolean; plazaReady: boolean
   plazaFilter: PlazaFilter; setPlazaFilter: Dispatch<PlazaFilter>
@@ -794,6 +797,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // ── 반응형 그리드: 뷰포트를 측정해 카드 비율(PC 6×3 ≈ 1.34)에 가장 가까운 열·행 조합을 고른다 ──
   const bp = useBreakpoint()
+  const cmpWide = useMinWidth(CMP_WIDE)
   const bpRef = useRef(bp)
   bpRef.current = bp
   const primaryRef = useRef(primary)
@@ -2110,7 +2114,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
     warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, presetDir, setPresetDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,
-    bp, cols, rows, itemsPerPage,
+    bp, listNarrow: isNarrow(bp) || (bp === 'pc' && cmpOn && !cmpWide), cols, rows, itemsPerPage,
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),
     plazaFilter, setPlazaFilter, plazaSort, setPlazaSort, plazaQ, setPlazaQ, plazaUpload, setPlazaUpload,
     plazaCols: plazaGrid.cols, plazaRows: plazaGrid.rows,

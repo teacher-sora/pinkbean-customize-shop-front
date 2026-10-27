@@ -7,7 +7,6 @@
 
 import clsx from 'clsx'
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
-import { isNarrow } from '@/lib/useBreakpoint'
 import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, plazaContestClosed, type PlazaSort } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
@@ -24,7 +23,7 @@ const SORTS: SegOpt<PlazaSort>[] = [{ v: 'popular', l: '인기순' }, { v: 'rece
 
 export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   const s = useShop()
-  const narrow = isNarrow(s.bp)
+  const narrow = s.listNarrow
   const list = s.plazaList
   const per = s.plazaCols * s.plazaRows
   const gap = mobile ? 9 : 10

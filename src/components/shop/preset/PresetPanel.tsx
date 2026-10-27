@@ -11,7 +11,6 @@ import { DIRS, useListMinHeight } from '../list/ListArea'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
 import { presetFileName } from '@/lib/canvasExport'
-import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
 import { usePresetDrag } from './usePresetDrag'
 import { useSeen } from '../ui/useSeen'
@@ -27,7 +26,7 @@ import styles from './preset.module.css'
 
 export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const s = useShop()
-  const narrow = isNarrow(s.bp)
+  const narrow = s.listNarrow
   // 라이브 모델 → Snapshot(선택된 카드가 이걸로 그려진다). 자동저장(100ms)을 기다리지 않고 즉시 반영.
   //  ⚠️ 반드시 context 의 snapshot() 을 그대로 쓴다 — 필드를 직접 나열하면 새 상태(점 위치·염색 등)를 빠뜨려
   //     "선택됨" 카드에만 반영이 안 되는 버그가 난다(과거 dotPos 누락 사례).

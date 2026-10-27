@@ -8,7 +8,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import type { HsbParams } from '@/lib/core/dye'
 import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
-import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop } from '../ShopContext'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { IconEye, IconShareImage, IconTrashSolid } from '../ui/Icons'
@@ -64,7 +63,7 @@ export async function shareChips (s: Shop, rows: Row[], toneName: string): Promi
 
 export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const s = useShop()
-  const narrow = isNarrow(s.bp)
+  const narrow = s.listNarrow
   const toneName = useToneName()
   const skinItem = useSkinItem()
 

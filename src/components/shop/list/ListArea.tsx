@@ -7,7 +7,6 @@ import clsx from 'clsx'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { MOBILE_GRID } from '@/lib/shopData'
-import { isNarrow } from '@/lib/useBreakpoint'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
@@ -148,7 +147,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   mobile: boolean; thumbs: ThumbApi; isAi: boolean; list: ListItem[]; loading: boolean; emptyTitle: string | null; emptyHint: string
 }) {
   const s = useShop()
-  const narrow = isNarrow(s.bp)
+  const narrow = s.listNarrow
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])

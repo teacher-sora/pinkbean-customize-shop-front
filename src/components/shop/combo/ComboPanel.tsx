@@ -15,7 +15,6 @@ import type { ListItem } from '@/lib/core/data'
 import { COMBO_SKIP, LOOK_CHUNK, lookPv, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
 import { CARD_FRACTION_M, MOBILE_GRID, SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
-import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop, type Snapshot } from '../ShopContext'
@@ -89,7 +88,7 @@ function HeadItem({ item, mobile, host, onBack }: { item: ListItem | null; mobil
       ) : host === 'codi' ? (
         <button type="button" onClick={s.closeCombo} title="목록으로 (Esc)" aria-label="목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
       ) : null}
-      <ItemTag item={item} mobile={mobile} thumbOnly={mobile || isNarrow(s.bp)} />
+      <ItemTag item={item} mobile={mobile} thumbOnly={mobile || s.listNarrow} />
     </div>
   )
 }
@@ -112,7 +111,7 @@ function ItemTag({ item, mobile, thumbOnly }: { item: ListItem | null; mobile: b
 // 칸은 목록 머리의 검색 칸과 같은 부품 · 같은 폭이다(list.searchWrap · searchWrapNarrow · searchWrapM — 사용자 지시: 같은 자리 · 같은 크기)
 function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) {
   const s = useShop()
-  const narrow = isNarrow(s.bp)
+  const narrow = s.listNarrow
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<{ it: ListItem; n: number }[]>([])
   const [open, setOpen] = useState(false)
@@ -207,7 +206,7 @@ function ComboHead({ item, mobile, host, detail, onBack }: { item: ListItem | nu
   const s = useShop()
   const paged = !!item
   const total = s.comboTotalKnown ? s.comboTotal : null
-  const narrow = isNarrow(s.bp)
+  const narrow = s.listNarrow
   const dirY = s.listDir === 'y'
   const cur = paged ? s.curIdx : 0, pageCount = paged ? s.pageCount : 1
   const pageChip = (
@@ -448,7 +447,7 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
   const key = skin ? 'skin' : item.slot
   // 10위까지 담고, 한 번에 보이는 칸은 넓은 PC 5 · 좁은 폭(절반 · 태블릿) · 모바일 3 — 나머지는 가로로 민다(사용자 지시: 칸이 좁으면 염색 띠의 테두리 고리 자리가 모자란다).
   // 줄은 하단 부위 줄 · 염색 보관함과 같은 가로 줄(pb-norail · pb-fade 흐림 · 화살표, 마우스 휠은 가로 — useWheelRail)
-  const n = mobile || isNarrow(s.bp) ? 3 : 5
+  const n = mobile || s.listNarrow ? 3 : 5
   const rail = useWheelRail<HTMLDivElement>()
   const live = (d: LookDye) => {
     const worn = skin ? te?.tone === s.tone : s.isEquippedInCat(SLOT_TO_CAT[item.slot], item.id)
@@ -551,9 +550,9 @@ function ComboDetail({ row, mobile }: { row: LookRow; mobile: boolean }) {
   return (
     <>
       {/* 절반 · 태블릿은 패널이 좁아 그림 옆에 두면 착용 칸이 170px 남짓이라 칩이 53px 이었다 — 모바일처럼 위아래로 쌓는다 */}
-      <div className={clsx(styles.detail, mobile ? clsx('pb-norail', styles.detailM) : clsx('pb-scroll', isNarrow(s.bp) && styles.detailM))}>
-        <div className={clsx(styles.stage, (mobile || isNarrow(s.bp)) && styles.stageM)}><SnapThumb snap={shown} view keep fraction={mobile ? 0.5 : 0.46} priority={-1} /></div>
-        <div className={styles.worn}><WornItems snap={snap} postId={`look:${row.i}`} mobile={mobile || isNarrow(s.bp)} flat />{/* 쌓은 배치(절반 · 태블릿)는 모바일처럼 2열 — 3열이면 이름이 잘렸다 */}</div>
+      <div className={clsx(styles.detail, mobile ? clsx('pb-norail', styles.detailM) : clsx('pb-scroll', s.listNarrow && styles.detailM))}>
+        <div className={clsx(styles.stage, (mobile || s.listNarrow) && styles.stageM)}><SnapThumb snap={shown} view keep fraction={mobile ? 0.5 : 0.46} priority={-1} /></div>
+        <div className={styles.worn}><WornItems snap={snap} postId={`look:${row.i}`} mobile={mobile || s.listNarrow} flat />{/* 쌓은 배치(절반 · 태블릿)는 모바일처럼 2열 — 3열이면 이름이 잘렸다 */}</div>
       </div>
       <Credit mobile={mobile} />
     </>
