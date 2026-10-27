@@ -32,7 +32,7 @@ export type UiSession = {
   // 스크립트가 이 한 글자로 판단한다(거기선 앱 기본값을 알 수 없다).
   dirty?: boolean
 }
-export type UiPref = { plazaSort?: string; listDir?: string; presetDir?: string; listMode?: string; dyeModel?: string; dyeZoom?: number; nickTake?: Record<string, boolean> } // nickTake = 닉네임으로 불러올 때 칭호 · 명찰 · 훈장 · 말풍선을 가져올지(false 면 뺀다) // listMode = 목록 보기(아이템 · 기본 캐릭터 · 내 캐릭터), dyeModel · dyeZoom = 염색 창의 보기 · 배율 — 늘 유지(사용자 지시)
+export type UiPref = { plazaSort?: string; listDir?: string; presetDir?: string; listMode?: string; dyeModel?: string; dyeZoom?: number; nickTake?: Record<string, boolean> } // nickTake = 닉네임으로 불러올 때 칭호 · 명찰 · 훈장 · 말풍선을 가져올지(true 일 때만 가져온다 — 기본은 꺼짐) // listMode = 목록 보기(아이템 · 기본 캐릭터 · 내 캐릭터), dyeModel · dyeZoom = 염색 창의 보기 · 배율 — 늘 유지(사용자 지시)
 //  // listDir = 목록을 넘기는 방향(x 가로 · y 세로) — 고른 방향을 늘 유지한다(사용자 지시). presetDir = 프리셋 탭의 방향(없으면 PC 세로 · 모바일 가로)
 
 const SESSION_KEY = 'pb_ui_session_v1'

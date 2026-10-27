@@ -57,8 +57,8 @@ export default function LookDialog() {
   // 가져올 장식 — 고른 값은 늘 유지(lib/uiState 의 UiPref.nickTake)
   const [take, setTake] = useState<Record<string, boolean>>({})
   useEffect(() => { if (lp) setTake(readUiPref().nickTake ?? {}) }, [lp])
-  const takeSnap = (sn: Snapshot): Snapshot => { const eq = { ...sn.equipped }; for (const t of NICK_TAKE_SLOTS) if (take[t.slot] === false) delete eq[t.slot]; return { ...sn, equipped: eq } }
-  const flip = (slot: string) => setTake((t) => { const n = { ...t, [slot]: t[slot] === false }; writeUiPref({ nickTake: n }); return n })
+  const takeSnap = (sn: Snapshot): Snapshot => { const eq = { ...sn.equipped }; for (const t of NICK_TAKE_SLOTS) if (take[t.slot] !== true) delete eq[t.slot]; return { ...sn, equipped: eq } }
+  const flip = (slot: string) => setTake((t) => { const n = { ...t, [slot]: t[slot] !== true }; writeUiPref({ nickTake: n }); return n })
 
   if (!lp) return null
   const look = lp.options.find((o) => o.key === lookKey) ?? lp.options[0]
@@ -91,7 +91,7 @@ export default function LookDialog() {
           <div style={css('flex:0 0 auto; padding:12px 22px 0;')}>
             <div className={pst.takeRow}>
               {NICK_TAKE_SLOTS.map((t) => {
-                const on = take[t.slot] !== false
+                const on = take[t.slot] === true // 기본은 꺼짐(사용자 지시) — 켠 것만 가져온다
                 return <button key={t.slot} type="button" aria-pressed={on} onClick={() => flip(t.slot)} title={on ? `${t.label} 가져오기 (누르면 빼기)` : `${t.label} 빼기 (누르면 가져오기)`} className={clsx(pst.takePill, on && pst.takePillOn)}>{t.label}</button>
               })}
             </div>

@@ -1884,10 +1884,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const opt = lp.options.find((o) => o.key === lookKey)?.presets.find((p) => p.key === presetKey)
     setLookPick(null)
     if (!opt) return
-    // 꺼 둔 장식(칭호 · 명찰 · 훈장 · 말풍선 — 프리셋 탭의 '불러올 장식')은 빼고 넣는다(사용자 지시)
+    // 장식(칭호 · 명찰 · 훈장 · 말풍선)은 불러오기 창에서 켠 것만 넣는다 — 기본은 모두 꺼짐(사용자 지시)
     const take = readUiPref().nickTake ?? {}
     const eq = { ...opt.snap.equipped }
-    for (const sl of NICK_TAKE_SLOTS) if (take[sl.slot] === false) delete eq[sl.slot]
+    for (const sl of NICK_TAKE_SLOTS) if (take[sl.slot] !== true) delete eq[sl.slot]
     await applyImported({ ...opt.snap, equipped: eq }, lp.nick)
   }
   // 공유 링크 복사: 링크는 로컬에서 즉시 만들어 바로 클립보드에 넣고, 카드 이미지·서버 저장은 뒤에서 한다(shareCode).
