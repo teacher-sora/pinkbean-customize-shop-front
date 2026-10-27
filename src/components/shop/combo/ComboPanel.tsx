@@ -194,7 +194,7 @@ function ComboHead({ item, mobile, host, total, paged }: { item: ListItem | null
     <div className={mobile ? clsx(list.pageChipM, styles.pageEndM) : clsx(list.pageChip, narrow && list.pageChipNarrow)}>
       {!mobile && !narrow && (
         <>
-          <span title="이 아이템을 입은 코디 수" className={list.count}>{paged && total == null ? ' ' : `${(total ?? 0).toLocaleString()}벌`}</span>
+          <span title="이 아이템을 입은 코디 수" className={clsx(list.count, styles.countFix)}>{paged && total == null ? ' ' : `${(total ?? 0).toLocaleString()}벌`}</span>
           <span className={list.chipDiv} />
         </>
       )}
