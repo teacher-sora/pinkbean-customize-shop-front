@@ -1642,17 +1642,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setSelectedPreset(id)
   }
   // 칸 빼기 — 고른 칸을 빼면 그 자리(없으면 앞)의 칸으로. 그 칸의 기록도 버린다(기록은 칸마다 — histsRef).
-  // 두 칸(CMP_MIN)뿐이면 빼지 않고 **초기화**한다(사용자 지시): 같은 자리에 남은 칸의 복사본을 새 칸으로 두고 고른다(처음 켤 때 B = A 의 복사본과 같다)
+  // 두 칸(CMP_MIN)뿐이면 빼지 않고 **초기화**한다 — 프리셋 삭제(resetPreset)와 같은 기준: 코디 기본값 + 연출 기본값(사용자 지시).
+  // 칸은 그 자리 그대로라 되돌리기로 이전 코디가 돌아온다(고른 칸이면 라이브가 바뀌어 기록에 남는다)
   const removeCmp = (id: string) => {
     if (!cmpOwner || !cmpIds.includes(id)) return
     if (cmpIds.length <= CMP_MIN) {
-      const other = cmpIds.find((x) => x !== id)
-      if (!other) return
-      const src = other === selectedPreset ? snapshot() : presetData[other] ?? defaultSnapshot(), nid = newCmpId()
-      setPresetData((d) => ({ ...d, [nid]: src }))
-      putCmpSet(cmpOwner, (c) => ({ ids: c.ids.map((x) => (x === id ? nid : x)), last: c.last === id ? nid : c.last }))
-      histsRef.current.delete(id)
-      if (id === selectedPreset) switchPreset(nid, src, 'all')
+      const snap = defaultSnapshot()
+      setPresetData((d) => ({ ...d, [id]: snap }))
+      if (id === selectedPreset) { setPvState(PV_DEFAULT); applySnapshot(snap).catch(() => {}) }
+      notify('이 칸을 초기화했어요')
       return
     }
     const rest = cmpIds.filter((x) => x !== id)
