@@ -520,8 +520,9 @@ function ComboDetail({ row, item, mobile, onBack }: { row: LookRow; item: ListIt
         </div>
       </div>
       <div className={mobile ? list.hrM : list.hr} />
-      <div className={clsx(styles.detail, mobile ? clsx('pb-norail', styles.detailM) : 'pb-scroll')}>
-        <div className={clsx(styles.stage, mobile && styles.stageM)}><SnapThumb snap={shown} view keep fraction={mobile ? 0.5 : 0.46} priority={-1} /></div>
+      {/* 절반 · 태블릿은 패널이 좁아 그림 옆에 두면 착용 칸이 170px 남짓이라 칩이 53px 이었다 — 모바일처럼 위아래로 쌓는다 */}
+      <div className={clsx(styles.detail, mobile ? clsx('pb-norail', styles.detailM) : clsx('pb-scroll', isNarrow(s.bp) && styles.detailM))}>
+        <div className={clsx(styles.stage, (mobile || isNarrow(s.bp)) && styles.stageM)}><SnapThumb snap={shown} view keep fraction={mobile ? 0.5 : 0.46} priority={-1} /></div>
         <div className={styles.worn}><WornItems snap={snap} postId={`look:${row.i}`} mobile={mobile} flat /></div>
       </div>
       <Credit mobile={mobile} />
