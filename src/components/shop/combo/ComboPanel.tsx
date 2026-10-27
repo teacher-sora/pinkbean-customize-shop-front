@@ -1,9 +1,9 @@
 'use client'
 
-// 코디 조합 — 넥슨 랭킹 캐릭터의 실제 코디 표본에서 아이템 하나를 입은 코디와 자주 쓴 염색을 본다(lib/looks).
+// 코디 룩북 — 넥슨 랭킹 캐릭터의 실제 코디 표본에서 아이템 하나를 입은 코디와 자주 쓴 염색을 본다(lib/looks).
 //  · 코디 탭: 목록 카드의 '코디 N' 칩으로 열면 목록 자리가 이 패널이 된다(PinkbeanShop). 미리보기는 그대로라 칩 · 입기를 바로 본다.
 //    닫으면(← · Esc) 보던 목록 쪽으로 돌아간다 — 목록 상태는 ShopContext 에 그대로 있다.
-//  · 코디 광장의 '코디 조합' 분류: 같은 패널이 광장 목록 자리에 들어가고, 머리의 검색 칸으로 아이템을 고른다.
+//  · 코디 광장의 '코디 룩북' 분류: 같은 패널이 광장 목록 자리에 들어가고, 머리의 검색 칸으로 아이템을 고른다.
 // 목록은 코디 탭 · AI 코디 검색 목록과 같다(사용자 지시): 쪽 넘김 · 휠 · 끌기 · 방향키 · 쪽 번호는 ShopContext 의 쪽 넘김을 그대로 쓰고
 // (쪽 크기 = 그 자리의 격자, 쪽 수 = 그 아이템의 코디 수), 머리에서 넘기는 방향(가로 · 세로)을 고른다. 쪽은 back POST /looks 로 받고
 // 지금 쪽 ±1 만 카드로 그린다. 순서는 꾸민 코디(캐시 아이템) · 랭킹 상위가 먼저다(parser looks/build.ts).
@@ -17,7 +17,7 @@ import { NEXON_CREDIT } from '@/lib/nexonLook'
 import { CARD_FRACTION_M, MOBILE_GRID, SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
-import { useShop, type Snapshot } from '../ShopContext'
+import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
 import { CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, type FilterGroup } from '../list/ListArea'
 import { WornItems } from '../plaza/PlazaDetailBody'
@@ -36,7 +36,7 @@ const FIT_W = 0.55 // 카드 그림(PC): 캐릭터 높이 ≤ 칸 폭 × 0.55 �
 // 모바일은 걸지 않는다 — 코디 탭 목록 카드와 같은 크기로 보이게(사용자 지시, 기기 픽셀 기준 정수 배율이라 옆이 잘릴 만큼 뛰지 않는다)
 // 모바일 카드 최소 높이 = 폭 × 목록 카드 그림 칸 비율(CARD_RATIO_M) — 캐릭터가 코디 탭 목록과 같은 크기가 된다
 const mobileRatio = (cols: number) => (cols >= 3 ? CARD_RATIO_M : 1.05)
-// 모바일에서 목록 칸 밖에 코디 조합만 더 있는 줄(자주 쓴 염색 묶음 · 구분선 · 출처 줄 — data-combo-extra)의 높이. 코디 광장의 다른 분류가 이만큼
+// 모바일에서 목록 칸 밖에 코디 룩북만 더 있는 줄(자주 쓴 염색 묶음 · 구분선 · 출처 줄 — data-combo-extra)의 높이. 코디 광장의 다른 분류가 이만큼
 // 페이지를 더 잡아 분류를 바꿔도 아래가 밀리지 않는다(사용자 지시, PlazaPanel). 패널이 그려지면 잰 값으로 바꾼다(처음 값 = 실측 — 염색 묶음 82 + 위아래 여백 16 + 구분선 1 + 출처 위 구분선 1 + 출처 줄 26)
 let extraM = 126
 export const comboExtraM = () => extraM
@@ -109,7 +109,7 @@ function ItemTag({ item, mobile, thumbOnly }: { item: ListItem | null; mobile: b
   )
 }
 
-// 광장의 코디 조합: 이름으로 아이템을 찾는다(모든 부위 + 피부). 표본에 있는 것만, 코디가 많은 순으로 8개
+// 광장의 코디 룩북: 이름으로 아이템을 찾는다(모든 부위 + 피부). 표본에 있는 것만, 코디가 많은 순으로 8개
 // 칸은 목록 머리의 검색 칸과 같은 부품 · 같은 폭이다(list.searchWrap · searchWrapNarrow · searchWrapM — 사용자 지시: 같은 자리 · 같은 크기)
 function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) {
   const s = useShop()
@@ -167,7 +167,7 @@ function useCountsMap(): Record<string, number> {
 // 자주 쓴 염색 묶음 자리(보이지 않는 같은 칸) + 목록과 같은 최소 높이(useMobileRows)
 function ComboEmpty({ mobile }: { mobile: boolean }) {
   const vpRef = useRef<HTMLDivElement | null>(null)
-  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), 2, true) // 고른 뒤와 같은 격자(코디 조합 모바일 = 3열)
+  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), 2, true) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 3열)
   useExtraM(vpRef, mobile)
   return (
     <>
@@ -544,8 +544,12 @@ function DetailActs({ row, mobile }: { row: LookRow; mobile: boolean }) {
   const snap = row.s
   // [전부 입기] = 광장 가져오기와 같은 길(applySharedToPreset — 지금 프리셋에, 되돌리기 한 건). 연출은 **지금 연출 그대로**, 귀 · 형상 변이만 그 코디의 것이다
   // (lib/looks lookPv, 사용자 지시 — 남이 올린 설정이 아니라 코디만 가져온다. 카드 · 상세 그림도 같은 연출이라 본 그대로 입는다).
-  // 이름은 지금 프리셋 이름 그대로(이름 없이 넘긴다)
-  const look = (): Snapshot => ({ ...snap, name: undefined, pv: lookPv(snap, s.snapshot().pv!) })
+  // 이름은 지금 프리셋 이름 그대로(이름 없이 넘긴다). 장식(칭호 · 명찰 · 훈장 · 말풍선)은 착용 칩에도 없으니 넘기지 않는다(사용자 지시 — 남의 장식까지 입지 않게)
+  const look = (): Snapshot => {
+    const eq = { ...snap.equipped }
+    for (const t of NICK_TAKE_SLOTS) delete eq[t.slot]
+    return { ...snap, equipped: eq, name: undefined, pv: lookPv(snap, s.snapshot().pv!) }
+  }
   const wearAll = () => { if (s.selectedPreset) s.applySharedToPreset(look(), s.selectedPreset, '이 코디를 전부 입었어요') }
   return (
     <div className={styles.detailActs}>

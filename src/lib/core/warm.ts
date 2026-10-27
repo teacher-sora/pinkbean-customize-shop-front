@@ -27,7 +27,7 @@ export function warmItem(item: ListItem, view: ViewOpts, palette?: PaletteParams
   })().catch(() => { warmed.delete(key) })
 }
 
-// 코디를 통째로 입기 전에(코디 조합 [전부 입기] · 프리셋에 저장): 미리보기(PreviewModel)가 그 코디의 첫 그림에서 기다리는 것을 모두 받아 둔다.
+// 코디를 통째로 입기 전에(코디 룩북 [전부 입기] · 프리셋에 저장): 미리보기(PreviewModel)가 그 코디의 첫 그림에서 기다리는 것을 모두 받아 둔다.
 // warmItem(첫 프레임만)으로는 모자랐다(사용자 지적 — 누른 뒤에야 그림을 받았다, 실측 PC 150ms · CPU 4배 450ms):
 //  · 미리보기는 돌던 시계를 이어 가므로 첫 그림이 0번 프레임이 아닐 수 있다 → 그 동작의 **모든 프레임**(서기 3장 정도라 작다)과 정지 대표 그림
 //  · 자세는 착용한 무기가 정한다(두손 무기 → stand2, assemble.weaponPose) — 무기 meta 를 받은 뒤 고른다

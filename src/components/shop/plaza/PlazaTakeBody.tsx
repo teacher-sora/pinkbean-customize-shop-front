@@ -9,7 +9,7 @@ import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
 import styles from './plaza.module.css'
 
-// title = 이름이 없는 코디의 머리 글(코디 조합 — 이름 없이 넘겨 저장할 프리셋의 이름이 그대로 남는다)
+// title = 이름이 없는 코디의 머리 글(코디 룩북 — 이름 없이 넘겨 저장할 프리셋의 이름이 그대로 남는다)
 export default function PlazaTakeBody({ snap, mobile, title }: { snap: Snapshot; mobile: boolean; title?: string }) {
   const s = useShop()
   return (

@@ -6,7 +6,7 @@ import { buildLooks, type NexonBeautyRaw, type NexonRaw } from '@/lib/nexonLook'
 //  2) /maplestory/v1/character/cashitem-equipment?ocid → 착용 캐시 아이템
 //  3) /maplestory/v1/character/beauty-equipment?ocid    → 헤어/성형/피부
 //  4) /maplestory/v1/character/item-equipment?ocid      → 일반 장비(캐시의 베이스 레이어) · 훈장 외형(medal_shape) · 칭호(title)
-// 응답을 코디 벌로 가공하는 규칙은 lib/nexonLook 의 buildLooks(코디 조합 표본 수집과 같은 규칙 — 제로 · 엔버의 두 벌도 거기서).
+// 응답을 코디 벌로 가공하는 규칙은 lib/nexonLook 의 buildLooks(코디 룩북 표본 수집과 같은 규칙 — 제로 · 엔버의 두 벌도 거기서).
 const BASE = 'https://open.api.nexon.com/maplestory/v1'
 
 // ocid(닉네임→고유 id)는 안 변한다 → 메모리에 캐시해 날짜별 조회에서 매번 /id 재요청(넥슨 콜 1회)을 없앤다.

@@ -1,4 +1,4 @@
-// 넥슨 Open API 로 받은 코디 → 우리 스냅샷. 닉네임 불러오기(/api/nick + ShopContext)와 코디 조합 표본 수집(parser looks/)이
+// 넥슨 Open API 로 받은 코디 → 우리 스냅샷. 닉네임 불러오기(/api/nick + ShopContext)와 코디 룩북 표본 수집(parser looks/)이
 // **같은 규칙**을 쓰도록 한곳에 둔다(규칙을 복사하면 둘이 어긋난다). React 상태에 기대지 않는다 — 목록 · 피부 톤은 인자로 받는다.
 //  ① 넥슨 원본(cashitem · beauty · item-equipment) → 코디 벌(NexonLook): buildLooks
 //  ② 코디 벌 × 프리셋 → 스냅샷: lookToSnapshot

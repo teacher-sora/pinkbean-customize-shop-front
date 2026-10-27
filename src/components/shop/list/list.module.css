@@ -113,7 +113,7 @@
 .newBadgeM { width: 17px; padding: 0; justify-content: center; }
 .labelBadge { position: absolute; bottom: 4px; left: 4px; height: 17px; image-rendering: pixelated; z-index: 2; }
 .labelBadgeCash { height: 14px; }
-/* 코디 조합 칩 — 썸네일 오른쪽 아래(왼쪽 아래는 등급 배지). 광장 카드의 날짜 칩과 같은 꼴. 늘 보인다(숨은 기능이 되지 않게 — 사용자 지시) */
+/* 코디 룩북 칩 — 썸네일 오른쪽 아래(왼쪽 아래는 등급 배지). 광장 카드의 날짜 칩과 같은 꼴. 늘 보인다(숨은 기능이 되지 않게 — 사용자 지시) */
 .combo { position: absolute; right: 4px; bottom: 4px; z-index: 3; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid #f8e0ea; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 20px; background: #fff; background: light-dark(#fff, #303238); font-family: inherit; font-size: 10.5px; font-weight: 700; color: #d76d9a; color: light-dark(#d76d9a, #d293ae); white-space: nowrap; font-variant-numeric: tabular-nums; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
 .comboM { right: 3px; bottom: 3px; height: 18px; padding: 0 6px; font-size: 10px; }
 @media (hover: hover) and (pointer: fine) { .combo:hover { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); } }

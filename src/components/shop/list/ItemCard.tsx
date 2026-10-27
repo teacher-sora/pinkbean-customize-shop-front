@@ -26,7 +26,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   // 피부는 원칙적으로 염색 불가지만, "컬러라인" 커스텀 피부는 라인만 HSB 로 염색 가능.
   const dyeable = isSkinItem ? isDyeableSkin(item.name) : item.dyeMode !== 'none'
   const isDot = DOT_MOVER_IDS.has(item.id)
-  const looks = useLookCount(item.id) // 이 아이템이 든 실제 유저 코디 수(코디 조합 표본 — lib/looks). 0 이면 칩이 없다
+  const looks = useLookCount(item.id) // 이 아이템이 든 실제 유저 코디 수(코디 룩북 표본 — lib/looks). 0 이면 칩이 없다
   const badgeKind: 'master' | 'special' | 'cash' | null =
     item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
 
@@ -36,7 +36,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const pin = (e: React.MouseEvent) => { e.stopPropagation(); s.toggleBookmark(item) }
   // 염색 버튼은 착용을 바꾸지 않는다. 사소한 변경점/쩜은 점 위치 전용 다이얼로그.
   const dye = (e: React.MouseEvent) => { e.stopPropagation(); if (isDot) s.openDot(item); else s.openDye(item) }
-  // 코디 조합 — 목록 자리에 이 아이템을 입은 코디와 자주 쓴 염색을 펼친다(combo/ComboPanel). 숨은 기능이 되지 않게 늘 보인다(사용자 지시)
+  // 코디 룩북 — 목록 자리에 이 아이템을 입은 코디와 자주 쓴 염색을 펼친다(combo/ComboPanel). 숨은 기능이 되지 않게 늘 보인다(사용자 지시)
   const combo = (e: React.MouseEvent) => { e.stopPropagation(); if (s.consumeSwipeClick()) return; s.openCombo(item) }
   // 미리 받기(칩에 120ms 머물면 — 지나가기만 하면 받지 않는다 · ShopContext warmCombo). 터치는 머무름이 없어 손가락이 닿는 순간(떼기 전) 시작한다
   const hover = useRef(0)
@@ -66,7 +66,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
               className={clsx(styles.labelBadge, badgeKind === 'cash' && styles.labelBadgeCash)} />
           )}
           {looks > 0 && !COMBO_SKIP.has(item.slot) && (
-            <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 조합 ${looks.toLocaleString()}벌`}
+            <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 룩북 ${looks.toLocaleString()}벌`}
               className={clsx(styles.combo, mobile && styles.comboM)}>코디 {countLabel(looks)}</button>
           )}
         </div>

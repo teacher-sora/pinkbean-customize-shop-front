@@ -53,11 +53,11 @@ export function warmSnap (snap: Snapshot, index: Index | null | undefined, view?
 export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom, chatText, defBalloon, fitW, keep, onFloor }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
   // 코디가 바뀌어 다시 합성하는 동안 그리던 그림을 두고, 다 되면 바꾼다(뼈대를 비추지 않는다) — 목록 카드(ItemThumb)와 같은 몸짓.
-  // 같은 코디에 연출만 바뀌는 카드(코디 조합 — 지금 연출을 얹는다)에 쓴다. 다른 코디로 갈아 끼우는 칸에는 쓰지 않는다
+  // 같은 코디에 연출만 바뀌는 카드(코디 룩북 — 지금 연출을 얹는다)에 쓴다. 다른 코디로 갈아 끼우는 칸에는 쓰지 않는다
   keep?: boolean
   // 그린 발 자리(칸 기준 CSS px) · 배율을 알린다 — 같은 칸의 배경(CardStageBg floor)이 캐릭터와 같은 자리에 깔리게(코디 비교의 칸, PreviewModel 의 setStageFloor 와 같은 계산 — 발 높이도 그 자세의 실제 발 자리)
   onFloor?: (f: { cx: number; footY: number; scale: number }) => void
-  fitW?: number // 캐릭터 높이(fraction × 칸 높이)가 칸 폭 × fitW 를 넘지 않게 — 좁고 긴 칸에서 배율이 2배로 뛰어 옆이 잘리지 않게(코디 조합 카드)
+  fitW?: number // 캐릭터 높이(fraction × 칸 높이)가 칸 폭 × fitW 를 넘지 않게 — 좁고 긴 칸에서 배율이 2배로 뛰어 옆이 잘리지 않게(코디 룩북 카드)
   zoom?: number // 미리보기 배율 단계(1~3)로 그린다 — 코디 비교의 칸들이 고른 칸(PreviewModel)과 같은 도트 크기가 되게(zoomStepScale)
   deco?: boolean // 칭호 · 훈장 · 말풍선도 그린다(불러오기 창 — 가져올 장식 토글이 무엇을 바꾸는지 보이게. 말풍선은 '안녕하세요')
   // 말풍선을 미리보기와 같은 규칙으로(코디 비교의 정지 칸): null = 보낸 말이 없어 말풍선 없음, 글 = 그 칸의 말풍선 반지(없으면 defBalloon)에 그 글
