@@ -19,8 +19,8 @@
 .itemThumb { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 4px; background: light-dark(#fff, #303238); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .itemThumbM { width: 26px; height: 26px; }
 .itemText { min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.15; }
-.itemName { font-size: 13px; font-weight: 600; color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
-.itemNameM { font-size: 12.5px; }
+.itemName { font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
+.itemNameM { font-size: calc(12.5rem / 16); }
 .itemNameNone { font-weight: 500; color: light-dark(#b7ada2, #858893); } /* 고르기 전 빈 칸 */
 
 /* 광장: 아이템 찾기 칸(목록 검색 칸과 같은 칸 — list.searchWrap) 아래의 고르기(누르면 바로 닫힌다) */
@@ -28,9 +28,9 @@
 .finderRow { height: 40px; padding: 0 8px; display: flex; align-items: center; gap: 8px; border: none; border-radius: 6px; background: transparent; font-family: inherit; text-align: left; cursor: pointer; transition: background-color .16s ease; }
 @media (hover: hover) and (pointer: fine) { .finderRow:hover { background: light-dark(#fdf1f6, #4e323e); } }
 .finderThumb { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 5px; background: light-dark(#f7f2ec, #3b3d45); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.finderName { flex: 1 1 0; min-width: 0; font-size: 12.5px; color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.finderN { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: light-dark(#d76d9a, #d293ae); font-variant-numeric: tabular-nums; }
-.finderNone { padding: 10px 8px; font-size: 12px; color: light-dark(#b7ada2, #858893); }
+.finderName { flex: 1 1 0; min-width: 0; font-size: calc(12.5rem / 16); color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.finderN { flex: 0 0 auto; font-size: calc(11rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); font-variant-numeric: tabular-nums; }
+.finderNone { padding: 10px 8px; font-size: calc(12rem / 16); color: light-dark(#b7ada2, #858893); }
 .emptyWrap { display: flex; }
 
 /* 자주 쓴 염색 — 머리 구분선 아래, 내용 쪽의 한 묶음(옅은 바탕 + 1px 테두리 — 머리에 붙어 보이지 않게, 사용자 지시).
@@ -65,7 +65,7 @@
 
 /* 상세 */
 .detailActs { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; gap: 6px; }
-.actBtn { height: 34px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: 12.5px; font-weight: 600; color: light-dark(#6e645c, #aeb1b8); white-space: nowrap; cursor: pointer; transition: border-color .2s ease, color .2s ease; }
+.actBtn { height: 34px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12.5rem / 16); font-weight: 600; color: light-dark(#6e645c, #aeb1b8); white-space: nowrap; cursor: pointer; transition: border-color .2s ease, color .2s ease; }
 @media (hover: hover) and (pointer: fine) { .actBtn:hover { border-color: light-dark(#eeb2ce, #d37aa3); } }
 .actBtnM { height: 32px; } /* 머리 칸 높이(PC 34 · 모바일 32)와 같다 */
 .actSolid { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }

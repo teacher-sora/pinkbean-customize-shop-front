@@ -11,7 +11,7 @@
 /* 머리가 아주 좁으면(절반 화면의 아래 끝) 쪽 화살표를 접는다 — 쪽은 휠 · 밀기 · 방향키 · 번호로도 넘긴다 */
 .header { container-type: inline-size; }
 @container (max-width: 400px) { .pageChipNarrow .arrow { display: none; } .pageChipNarrow { padding: 0 5px; } }
-.count { font-size: 12px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); white-space: nowrap; }
+.count { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); white-space: nowrap; }
 .chipDiv { width: 1px; height: 16px; margin: 0 12px; background: light-dark(#e7ded4, #4b4e57); }
 .arrow { flex: 0 0 auto; width: 22px; height: 24px; margin: 0 2px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 4px; background: transparent; color: light-dark(#ded5cb, #52555f); cursor: default; transition: background-color .2s ease, color .2s ease; }
 .arrowOn { color: light-dark(#c08fa4, #888b95); cursor: pointer; }
@@ -19,13 +19,13 @@
    화살표가 밀리는 것을 막는다.
    폭을 px 로 박으면 글꼴이 두툼할 때 모자라므로 숫자 한 칸(ch) 기준으로 잡고 여유를 더한다.
    입력칸과 총 페이지 수를 같은 폭으로 둬 '/' 양옆이 대칭이 되게 한다. */
-.pageInput { width: calc(4ch + 16px); height: 22px; padding: 0 4px; border: 1px solid transparent; border-radius: 4px; background: light-dark(#f1e7ec, #5a394a); text-align: center; font-size: 12px; font-weight: 700; color: light-dark(#b0748f, #c2a3b1); outline: none; }
-.slash { font-size: 12px; color: light-dark(#ccc2b8, #787c88); margin: 0 4px; }
-.total { min-width: calc(4ch + 16px); text-align: center; font-size: 12px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
+.pageInput { width: calc(4ch + 16px); height: 22px; padding: 0 4px; border: 1px solid transparent; border-radius: 4px; background: light-dark(#f1e7ec, #5a394a); text-align: center; font-size: calc(12rem / 16); font-weight: 700; color: light-dark(#b0748f, #c2a3b1); outline: none; }
+.slash { font-size: calc(12rem / 16); color: light-dark(#ccc2b8, #787c88); margin: 0 4px; }
+.total { min-width: calc(4ch + 16px); text-align: center; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
 .searchWrap { flex: 0 1 200px; min-width: 148px; position: relative; display: flex; align-items: center; }
 .searchWrapNarrow { flex: 1 1 200px; min-width: 80px; max-width: 200px; } /* 넓어도 PC 전체 화면의 크기(200)까지만 — 남는 폭은 쪽 칩 왼쪽(margin-left auto)으로 간다 */
 .searchIcon { position: absolute; left: 10px; color: light-dark(#b7ada2, #858893); pointer-events: none; }
-.searchInput { height: 34px; width: 100%; min-width: 0; padding: 0 12px 0 30px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 13px; letter-spacing: -0.01em; outline: none; }
+.searchInput { height: 34px; width: 100%; min-width: 0; padding: 0 12px 0 30px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: calc(13rem / 16); letter-spacing: -0.01em; outline: none; }
 .hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: light-dark(#f2ebe3, #40434b); }
 
 /* ── 리스트 컨트롤(모바일) ── */
@@ -33,21 +33,21 @@
 /* 보기와 성별을 접어 둔 버튼과, 그 아래에 펼쳐지는 칸(드롭다운 메뉴와 같은 테두리 · 그림자) */
 .filterM { flex: 0 0 auto; position: relative; display: flex; }
 .filterShade { position: fixed; inset: 0; z-index: 29; }
-.filterBtnM { position: relative; z-index: 30; flex: 0 0 auto; height: 32px; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 6px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: 12px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; cursor: pointer; }
-.filterBtnPc { height: 34px; font-size: 12.5px; }
+.filterBtnM { position: relative; z-index: 30; flex: 0 0 auto; height: 32px; padding: 0 8px 0 11px; display: flex; align-items: center; gap: 6px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; cursor: pointer; }
+.filterBtnPc { height: 34px; font-size: calc(12.5rem / 16); }
 .filterBtnOn { border-color: light-dark(#eeb2ce, #d37aa3); background: light-dark(#fef8fa, #33363c); }
 .filterText { white-space: nowrap; }
 .filterCaret { flex: 0 0 auto; color: light-dark(#b7ada2, #858893); transition: transform .22s ease; }
 .filterCaretOn { transform: rotate(180deg); }
 .filterPop { position: absolute; left: 0; top: calc(100% + 5px); z-index: 30; width: min(300px, calc(100vw - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; background: light-dark(#fff, #303238); border: 1px solid light-dark(#f5e8ee, #573846); border-radius: 8px; box-shadow: 0 10px 26px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.224)); opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
 .filterPopOn { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
-.filterLabel { font-size: 11px; font-weight: 600; color: light-dark(#a89e93, #8e919a); }
+.filterLabel { font-size: calc(11rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); }
 .filterLabel:not(:first-child) { margin-top: 4px; }
 .pageChipM { flex: 0 0 auto; display: flex; align-items: center; height: 32px; padding: 0 5px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
-.slashM { font-size: 12px; color: light-dark(#ccc2b8, #787c88); margin: 0 3px; }
+.slashM { font-size: calc(12rem / 16); color: light-dark(#ccc2b8, #787c88); margin: 0 3px; }
 .searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; color: light-dark(#b7ada2, #858893); pointer-events: none; }
-.searchInputM { width: 100%; min-width: 0; height: 32px; padding: 0 12px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 12px; letter-spacing: -0.02em; outline: none; text-overflow: ellipsis; }
+.searchInputM { width: 100%; min-width: 0; height: 32px; padding: 0 12px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: calc(12rem / 16); letter-spacing: -0.02em; outline: none; text-overflow: ellipsis; }
 .hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: light-dark(#f2ebe3, #40434b); }
 
 /* ── 뷰포트 · 페이지 ── */
@@ -78,31 +78,31 @@
 
 /* 빈 상태 */
 .empty { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; padding: 0 24px; }
-.emptyTitle { font-size: 15px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
-.emptyHint { font-size: 12.5px; color: light-dark(#b7ada2, #858893); }
+.emptyTitle { font-size: calc(15rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
+.emptyHint { font-size: calc(12.5rem / 16); color: light-dark(#b7ada2, #858893); }
 .emptyM { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 0 20px; }
-.emptyTitleM { font-size: 14px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
-.emptyHintM { font-size: 12px; color: light-dark(#b7ada2, #858893); }
+.emptyTitleM { font-size: calc(14rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
+.emptyHintM { font-size: calc(12rem / 16); color: light-dark(#b7ada2, #858893); }
 
 /* AI 히어로 */
 .hero { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 0 48px; }
 .heroM { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 0 26px; }
-.heroTitle { font-size: 15px; font-weight: 700; color: light-dark(#2a2521, #d4d5d8); letter-spacing: -0.01em; }
-.heroTitleM { font-size: 14px; }
+.heroTitle { font-size: calc(15rem / 16); font-weight: 700; color: light-dark(#2a2521, #d4d5d8); letter-spacing: -0.01em; }
+.heroTitleM { font-size: calc(14rem / 16); }
 .heroRow { width: 100%; max-width: 420px; display: flex; align-items: center; gap: 6px; }
 .heroRowM { width: 100%; display: flex; align-items: center; gap: 6px; }
-.heroInput { flex: 1 1 0; min-width: 0; height: 32px; padding: 0 12px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 13px; letter-spacing: -0.01em; outline: none; }
-.heroInputM { border-radius: 6px; font-size: 12px; letter-spacing: -0.02em; }
-.heroBtn { flex: 0 0 auto; height: 32px; padding: 0 14px; display: flex; align-items: center; gap: 5px; border: none; border-radius: 6px; background: light-dark(#ec86ac, #d15785); font-family: inherit; font-size: 12.5px; font-weight: 600; color: light-dark(#fff, #ececef); letter-spacing: -0.01em; cursor: pointer; }
+.heroInput { flex: 1 1 0; min-width: 0; height: 32px; padding: 0 12px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: calc(13rem / 16); letter-spacing: -0.01em; outline: none; }
+.heroInputM { border-radius: 6px; font-size: calc(12rem / 16); letter-spacing: -0.02em; }
+.heroBtn { flex: 0 0 auto; height: 32px; padding: 0 14px; display: flex; align-items: center; gap: 5px; border: none; border-radius: 6px; background: light-dark(#ec86ac, #d15785); font-family: inherit; font-size: calc(12.5rem / 16); font-weight: 600; color: light-dark(#fff, #ececef); letter-spacing: -0.01em; cursor: pointer; }
 .heroBtnM { padding: 0 13px; border-radius: 6px; }
 .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .chipsM { width: 100%; display: flex; justify-content: center; gap: 6px; overflow-x: auto; overflow-y: hidden; }
-.chip { flex: 0 0 auto; height: 28px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 20px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: 12px; font-weight: 500; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; }
-.beta { font-size: 11.5px; color: light-dark(#c3b9ad, #7e828d); max-width: 420px; line-height: 1.6; }
-.betaM { font-size: 11.5px; color: light-dark(#c3b9ad, #7e828d); text-align: center; line-height: 1.6; }
+.chip { flex: 0 0 auto; height: 28px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 20px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12rem / 16); font-weight: 500; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; }
+.beta { font-size: calc(11.5rem / 16); color: light-dark(#c3b9ad, #7e828d); max-width: 420px; line-height: 1.6; }
+.betaM { font-size: calc(11.5rem / 16); color: light-dark(#c3b9ad, #7e828d); text-align: center; line-height: 1.6; }
 
 .hintBar { flex: 0 0 auto; height: 30px; display: flex; align-items: center; justify-content: center; border-top: 1px solid light-dark(#f0e9e1, #42454d); }
-.hintText { font-size: 11.5px; color: light-dark(#b7ada2, #858893); }
+.hintText { font-size: calc(11.5rem / 16); color: light-dark(#b7ada2, #858893); }
 
 /* ── 아이템 카드 ── */
 .card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 8px 6px; border-radius: 8px; min-width: 0; min-height: 0; background: light-dark(#fff, #303238); }
@@ -114,19 +114,19 @@
 .cardM > .barM { width: auto; align-self: stretch; margin: -1px 5px 0; }
 .thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; border-radius: 6px; background: light-dark(#f7f2ec, #3b3d45); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 /* NEW 라벨(최근 패치 신규) */
-.newBadge { position: absolute; top: 5px; left: 5px; z-index: 4; display: inline-flex; align-items: center; height: 17px; padding: 0 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: .02em; background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); pointer-events: none; }
+.newBadge { position: absolute; top: 5px; left: 5px; z-index: 4; display: inline-flex; align-items: center; height: 17px; padding: 0 6px; border-radius: 4px; font-size: calc(9.5rem / 16); font-weight: 700; letter-spacing: .02em; background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); pointer-events: none; }
 /* 모바일: 'N' 한 글자 — 정사각형 */
 .newBadgeM { width: 17px; padding: 0; justify-content: center; }
 .labelBadge { position: absolute; bottom: 4px; left: 4px; height: 17px; image-rendering: pixelated; z-index: 2; }
 .labelBadgeCash { height: 14px; }
 /* 코디 룩북 칩 — 썸네일 오른쪽 아래(왼쪽 아래는 등급 배지). 광장 카드의 날짜 칩과 같은 꼴. 늘 보인다(숨은 기능이 되지 않게 — 사용자 지시) */
-.combo { position: absolute; right: 4px; bottom: 4px; z-index: 3; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 20px; background: light-dark(#fff, #303238); font-family: inherit; font-size: 10.5px; font-weight: 700; color: light-dark(#d76d9a, #d293ae); white-space: nowrap; font-variant-numeric: tabular-nums; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
+.combo { position: absolute; right: 4px; bottom: 4px; z-index: 3; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 20px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(10.5rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); white-space: nowrap; font-variant-numeric: tabular-nums; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
 /* 모바일 = 옷걸이(하단 '코디' 탭과 같은 아이콘) + 수 — 글자 '코디'를 빼 칩이 좁다(4열 카드에서 왼쪽 아래 등급 배지와 겹쳤다, 320 폭까지) */
-.comboM { right: 3px; bottom: 3px; height: 18px; padding: 0 5px 0 4px; gap: 2px; font-size: 10px; }
+.comboM { right: 3px; bottom: 3px; height: 18px; padding: 0 5px 0 4px; gap: 2px; font-size: calc(10rem / 16); }
 @media (hover: hover) and (pointer: fine) { .combo:hover { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); } }
 /* 이름 줄은 block + line-height 로 가운데 — flex 중앙정렬은 ellipsis 가 박스에 안 걸려 양끝이 잘린다. */
-.name { flex: 0 0 auto; width: 100%; min-width: 0; height: 18px; line-height: 18px; display: block; font-size: 12px; font-weight: 500; color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nameM { flex: 0 0 auto; width: 100%; min-width: 0; display: block; font-size: 11.5px; font-weight: 500; color: light-dark(#3d372f, #cacbd0); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name { flex: 0 0 auto; width: 100%; min-width: 0; height: 18px; line-height: 18px; display: block; font-size: calc(12rem / 16); font-weight: 500; color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nameM { flex: 0 0 auto; width: 100%; min-width: 0; display: block; font-size: calc(11.5rem / 16); font-weight: 500; color: light-dark(#3d372f, #cacbd0); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 즐겨찾기 · 북마크 띠지(우상단, 카드 경계에 살짝 걸침) */
 /* 띠지 규격(코디·프리셋 공통): PC 큰 25×32 · 작은 23×29 / 모바일 큰 22×29 · 작은 20×26 · 사이 간격 5px */
@@ -146,8 +146,8 @@
   .barHover { position: absolute; left: 8px; right: 8px; bottom: 6px; z-index: 3; width: auto; margin-top: 0; height: 18px; border: none; border-radius: 4px; transition: opacity .24s ease; opacity: 0; pointer-events: none; }
   :global(.pb-cardwrap):hover .barHover { opacity: 1; pointer-events: auto; }
 }
-.act { flex: 1 1 0; min-width: 0; width: 50%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: transparent; color: light-dark(#8a8075, #9fa2aa); font-size: 12px; font-weight: 500; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
-.actM { font-size: 11px; }
+.act { flex: 1 1 0; min-width: 0; width: 50%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: transparent; color: light-dark(#8a8075, #9fa2aa); font-size: calc(12rem / 16); font-weight: 500; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
+.actM { font-size: calc(11rem / 16); }
 .actPinned { background: light-dark(#fdf1f6, #4e323e); color: light-dark(#d76d9a, #d293ae); }
 .actDye { border-left: 1px solid light-dark(#f4efe8, #3e4048); }
 /* 좁은 휴대폰: 340 미만(아이폰 SE 1세대 320 · 폴드 바깥 화면 280)은 코디 칩의 옷걸이를 빼고 수만 — 그림 칸이 68px 아래라 왼쪽 아래 등급 배지와 겹쳤다.
@@ -156,6 +156,6 @@
 /* 막대 단추의 아이콘은 300 이하에서만 보인다(그 폭에선 '북마크' 글자가 칸에 들어가지 않는다 — 폴드 1 · 2 바깥 화면 280) */
 .actIcon { display: none; }
 .actIcon > svg { width: 12px; height: 12px; }
-@media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge { height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: 11px; } }
+@media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge { height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
 /* 보기 설정 창의 '구분' 토글 줄(여러 개를 함께 켠다) · 켜 둔 토글이 있으면 접힌 버튼 글자도 분홍 */
 .filterBtnSet .filterText { color: light-dark(#c05a94, #cb9ab6); }

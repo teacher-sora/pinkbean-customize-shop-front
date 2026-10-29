@@ -10,12 +10,12 @@
 
 .chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
 .chipM { gap: 5px; height: 32px; padding: 0 10px; border-radius: 6px; }
-.chipLabel { font-size: 12px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); line-height: 1; }
-.chipNum { min-width: 3ch; text-align: center; font-size: 12px; font-weight: 700; color: light-dark(#d76d9a, #d293ae); line-height: 1; } /* 세 자리(100)까지 폭을 미리 — 숫자가 바뀌어도 칩이 늘지 않게, 숫자는 그 칸 가운데(사용자 지시) */
-.chipSlash { font-size: 12px; color: light-dark(#ccc2b8, #787c88); line-height: 1; }
+.chipLabel { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); line-height: 1; }
+.chipNum { min-width: 3ch; text-align: center; font-size: calc(12rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); line-height: 1; } /* 세 자리(100)까지 폭을 미리 — 숫자가 바뀌어도 칩이 늘지 않게, 숫자는 그 칸 가운데(사용자 지시) */
+.chipSlash { font-size: calc(12rem / 16); color: light-dark(#ccc2b8, #787c88); line-height: 1; }
 /* 순서 변경 버튼(칩 옆): 꺼짐 = 칩과 같은 면 · 테두리, 켜짐 = 채운 핑크 + '완료'(사용자 지시 — 켜짐 · 꺼짐이 확실히 보이게) */
-.sortBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 34px; padding: 0 11px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: 12.5px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
-.sortBtnM { height: 32px; padding: 0 9px; gap: 4px; font-size: 12px; }
+.sortBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 34px; padding: 0 11px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12.5rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
+.sortBtnM { height: 32px; padding: 0 9px; gap: 4px; font-size: calc(12rem / 16); }
 @media (hover: hover) and (pointer: fine) { .sortBtn:hover { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#c05a94, #cb9ab6); } .sortBtn.sortOn:hover { border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); } }
 .sortBtn.sortOn { background: light-dark(#ec86ac, #d15785); border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
 
@@ -24,9 +24,9 @@
 .importBoxNarrow { flex: 1 1 200px; min-width: 80px; max-width: 200px; } /* 폭 규칙은 목록 검색 칸(list .searchWrap · .searchWrapNarrow)과 같다(사용자 지시) */
 .importBox:focus-within { border-color: light-dark(#ec86ac, #d15785); }
 @media (hover: hover) and (pointer: fine) { .importBox:hover { border-color: light-dark(#eeb2ce, #d37aa3); } .importBox:focus-within:hover { border-color: light-dark(#ec86ac, #d15785); } }
-.importField { flex: 1 1 0; min-width: 0; height: 100%; padding: 0; border: none; background: transparent; font-family: inherit; font-size: 13px; color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; outline: none; text-overflow: ellipsis; }
+.importField { flex: 1 1 0; min-width: 0; height: 100%; padding: 0; border: none; background: transparent; font-family: inherit; font-size: calc(13rem / 16); color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; outline: none; text-overflow: ellipsis; }
 .importBoxM { flex: 1 1 0; min-width: 0; max-width: none; margin-left: 0; height: 32px; padding: 0 3px 0 11px; gap: 6px; }
-.importBoxM .importField { font-size: 12px; letter-spacing: -0.02em; } /* 모바일 입력 글자 12px — 16px 보다 작아도 포커스 확대는 NoFocusZoom 이 막는다 */
+.importBoxM .importField { font-size: calc(12rem / 16); letter-spacing: -0.02em; } /* 모바일 입력 글자 12px — 16px 보다 작아도 포커스 확대는 NoFocusZoom 이 막는다 */
 /* 문구 두 개를 같은 칸에 겹친다(폭 고정) */
 .loadLabel { display: inline-grid; }
 .loadLabel > span { grid-area: 1 / 1; text-align: center; }
@@ -72,7 +72,7 @@
 .wrap.dragging { position: relative; z-index: 10; pointer-events: none; will-change: transform; }
 .wrap.dragging > :global(.pb-preset) { border-style: solid; border-color: light-dark(#ec86ac, #d15785); transform: translateY(-5px); }
 .wrap.dragging > :global(.pb-preset) { box-shadow: 0 12px 32px light-dark(rgba(42,37,33,.12), rgba(25, 22, 20, 0.192)); }
-.badge { position: absolute; top: 7px; left: 7px; z-index: 3; display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 20px; background: light-dark(#fdf1f6, #4e323e); border: 1px solid light-dark(#f8e0ea, #5a3947); color: light-dark(#d76d9a, #d293ae); font-size: 10px; font-weight: 700; pointer-events: none; transition: opacity .22s ease, transform .22s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); }
+.badge { position: absolute; top: 7px; left: 7px; z-index: 3; display: inline-flex; align-items: center; height: 19px; padding: 0 8px; border-radius: 20px; background: light-dark(#fdf1f6, #4e323e); border: 1px solid light-dark(#f8e0ea, #5a3947); color: light-dark(#d76d9a, #d293ae); font-size: calc(10rem / 16); font-weight: 700; pointer-events: none; transition: opacity .22s ease, transform .22s cubic-bezier(.22,.61,.36,1); opacity: 0; transform: translateY(-6px); }
 .badgeOn { opacity: 1; transform: translateY(0); }
 /* 모바일: '선택됨' 대신 체크 아이콘 — 원형 */
 /* 모바일: 코디 탭 신규(N) 라벨과 같은 모서리 둥근 정사각형 */
@@ -81,16 +81,16 @@
 /* 프리셋의 미리보기 배경(preview/StageBg 의 CardStageBg) — 캐릭터 그림 뒤에 */
 /* 불러오기 창(LookDialog)의 장식 토글(간이) — 켜면 분홍 */
 .takeRow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.takePill { height: 24px; padding: 0 10px; border: 1px solid light-dark(#efe6dc, #4b4e57); border-radius: 999px; background: light-dark(#fff, #303238); color: light-dark(#a89e93, #8a8d95); font: inherit; font-size: 11.5px; font-weight: 500; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
+.takePill { height: 24px; padding: 0 10px; border: 1px solid light-dark(#efe6dc, #4b4e57); border-radius: 999px; background: light-dark(#fff, #303238); color: light-dark(#a89e93, #8a8d95); font: inherit; font-size: calc(11.5rem / 16); font-weight: 500; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
 .takePillOn { border-color: light-dark(#f5c8da, #7a4a5e); background: light-dark(#fdf0f5, #4f323d); color: light-dark(#c05a94, #cb9ab6); }
 .thumbBg { position: absolute; inset: 0; z-index: -1; }
 .nameRow { position: relative; flex: 0 0 auto; padding: 8px; display: flex; align-items: center; gap: 4px; border-top: 1px solid light-dark(#f4efe8, #3e4048); }
 .nameWrap { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
-.nameInput { flex: 1 1 0; min-width: 0; width: 100%; height: 24px; padding: 0 20px 0 7px; border: 1px solid transparent; border-radius: 4px; background: light-dark(#f1e7ec, #5a394a); font-family: inherit; font-size: 12px; font-weight: 600; color: light-dark(#b0748f, #c2a3b1); letter-spacing: -0.01em; outline: none; cursor: text; }
+.nameInput { flex: 1 1 0; min-width: 0; width: 100%; height: 24px; padding: 0 20px 0 7px; border: 1px solid transparent; border-radius: 4px; background: light-dark(#f1e7ec, #5a394a); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#b0748f, #c2a3b1); letter-spacing: -0.01em; outline: none; cursor: text; }
 /* 모바일 4열 카드: 이름 줄 안쪽 여백을 줄이고 입력 칸을 높여 손가락으로 누르기 쉽게(28 — 목록 카드 아래 막대와 비슷한 높이) */
 .nameRowM { padding: 4px; }
 /* 글자 10.5 · 자간 −0.04em · 연필 자리 14 — 붙여 쓴 이름이 390 폭에서 6글자, 360 폭에서 5글자쯤 보이게(사용자 지시: 12px 은 4글자도 못 보였다) */
-.nameInputM { height: 28px; padding: 0 14px 0 4px; font-size: 10.5px; letter-spacing: -0.04em; }
+.nameInputM { height: 28px; padding: 0 14px 0 4px; font-size: calc(10.5rem / 16); letter-spacing: -0.04em; }
 .nameRowM .pencil { right: 4px; width: 10px; height: 10px; }
 .pencil { position: absolute; right: 7px; pointer-events: none; }
 /* 띠지 규격(코디 카드와 동일): 공유 = 즐겨찾기 크기, 휴지통 = 북마크 크기, 사이 간격 5px (PC 25×32/23×29, 모바일 22×29/20×26) */

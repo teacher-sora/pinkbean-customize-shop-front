@@ -25,6 +25,7 @@
 - Wanted Sans Variable(`src/assets/fonts` 의 파일 — `font-family: var(--font-wanted), "Wanted Sans Rest"`. `app/layout.tsx`), `letter-spacing:-0.01em`, `word-break: keep-all`. 미리 받고 `font-display: block` — 처음부터 이 글꼴로 그린다(대체 글꼴로 그렸다 바꾸지 않는다).
 - 굵기: 본문·라벨 500 · 강조 600 · 제목과 고른 값 700.
 - 크기는 반 픽셀 단계를 쓴다. 자주 쓰는 것: 15(빈 상태 제목·큰 제목) · 13(입력·본문) · 12~12.5(라벨·안내) · 11~11.5(보조·모바일 버튼) · 10.5(배지) · 10(모바일 하단 탭 이름). 로고는 PC 16 · 모바일 15.
+- **크기는 rem 으로 쓴다**: `font-size: calc(12.5rem / 16)` — 숫자는 위의 px 값(큰 화면 기준) 그대로. 뿌리 글자 크기가 화면 폭을 따라 줄어 모든 글자가 함께 작아진다(`globals.css` html — 모바일 390 이상 · 넓은 화면 1440 이상이 최대 16px, 모바일 320 에서 0.9배 · 최소 0.88배, 넓은 화면 860 이하 0.92배). px 로 쓰면 혼자 줄지 않는다.
 - 바뀌는 숫자(쪽 번호·개수·염색 수치)는 `font-variant-numeric: tabular-nums`.
 - **모바일 입력의 글자도 13px 이다.** 확대는 글자 크기가 아니라 viewport(`maximumScale: 1, userScalable: false`)와 `app/NoNativeZoom.tsx` 로 막는다. 입력을 16px 로 키우지 않는다.
 
