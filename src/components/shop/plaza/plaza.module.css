@@ -457,4 +457,5 @@
 .fbKids { margin: 10px 0 0 4px; padding-left: 12px; border-left: 2px solid var(--fb-line, light-dark(#f0e9e1, #42454d)); display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .fbKidsM { padding-left: 10px; }
 /* 300 이하: 좋아요 수가 잘려 글자 · 간격을 줄인다 */
-@media (max-width: 300px) { .likeAct { gap: 1px; font-size: 10px; letter-spacing: -0.03em; } }
+@media (max-width: 300px) { .likeAct { gap: 1px; font-size: 10px; letter-spacing: -0.03em; } .likeAct > svg { width: 10px; height: 10px; }
+  .controlsM { padding: 8px; gap: 6px; } .searchWrapM { min-width: 0; } } /* 머리 줄: [내 코디 등록]이 화면 밖(23px)으로 밀렸다 — 검색 칸이 줄어든다 */

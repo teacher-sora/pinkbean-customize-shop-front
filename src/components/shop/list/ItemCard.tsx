@@ -6,7 +6,7 @@ import { badgeUrl, type ListItem } from '@/lib/core/data'
 import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
-import { IconStar, IconTab } from '../ui/Icons'
+import { IconBookmark, IconDot, IconDrop, IconStar, IconTab } from '../ui/Icons'
 import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
@@ -72,9 +72,9 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
         </div>
         <div className={mobile ? styles.nameM : styles.name}>{name}</div>
         <div className={clsx(styles.bar, mobile ? styles.barM : styles.barHover)}>
-          <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} className={clsx('pb-cardact', styles.act, mobile && styles.actM, pinned && styles.actPinned)}>북마크</button>
+          <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" className={clsx('pb-cardact', styles.act, mobile && styles.actM, pinned && styles.actPinned)}>{mobile && <span className={styles.actIcon}><IconBookmark filled={pinned} /></span>}<span className={styles.actText}>북마크</span></button>
           {dyeable && (
-            <button type="button" onClick={dye} title={`${name} 색 바꾸기`} className={clsx('pb-cardact', styles.act, styles.actDye, mobile && styles.actM)}>{isDot ? '점 위치' : '염색'}</button>
+            <button type="button" onClick={dye} title={`${name} 색 바꾸기`} aria-label={isDot ? '점 위치' : '염색'} className={clsx('pb-cardact', styles.act, styles.actDye, mobile && styles.actM)}>{mobile && <span className={styles.actIcon}>{isDot ? <IconDot size={12} /> : <IconDrop size={12} />}</span>}<span className={styles.actText}>{isDot ? '점 위치' : '염색'}</span></button>
           )}
         </div>
       </div>
