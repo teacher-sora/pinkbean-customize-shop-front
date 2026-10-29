@@ -305,3 +305,6 @@
 }
 .cmpPane:focus-visible .cmpRing { border-color: light-dark(#ec86ac, #d15785); }
 @media (prefers-reduced-motion: reduce) { .cmpRing, .cmpAdd { transition-duration: .01s; } }
+/* 300 이하(폴드 1 · 2 바깥 화면 280): 미리보기 아래 단추 줄의 왼쪽 · 오른쪽 묶음이 겹쳐 '연출 설정'을 '연출'로 */
+.pvOpenMore { margin-left: -3px; } /* 단추 간격(6) 안에서 낱말 사이는 띄어쓰기 폭(3) 그대로 */
+@media (max-width: 300px) { .pvOpenMore { display: none; } }

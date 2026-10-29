@@ -94,3 +94,5 @@
 .del { position: absolute; top: -3px; right: 36px; z-index: 4; width: 23px; height: 29px; padding: 5px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#e08a9b, #c35f73); color: light-dark(#fff, #ececef); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
 .share.shareM { width: 22px; height: 29px; padding-top: 5px; }
 .del.delM { width: 20px; height: 26px; padding-top: 4px; right: 33px; } /* 6 + 22 + 5 */
+/* 300 이하: 머리 줄이 화면 밖으로 밀려 [순서]를 아이콘만 */
+@media (max-width: 300px) { .sortBtnM .loadLabel { display: none; } }

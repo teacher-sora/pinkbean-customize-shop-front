@@ -59,3 +59,7 @@
 }
 /* 못 누르는 동안(코디 평가가 진행 중) */
 .tool:disabled, .rateBtnM:disabled { opacity: .4; cursor: not-allowed; }
+/* 좁은 휴대폰(360 미만 — 갤럭시 폴드 바깥 화면 344 · 아이폰 SE 1세대 320): 머리 [평가] · [복사]가 화면 밖으로 밀려, 글자를 빼고 아이콘만(title · aria-label 은 남는다).
+   300 이하(폴드 1 · 2 바깥 화면 280)는 로고 글자도 뺀다 */
+@media (max-width: 359px) { .btnLabelM { display: none; } .rateBtnM, .copyBtnM { padding: 0 8px; } }
+@media (max-width: 300px) { .logoTextM { display: none; } }

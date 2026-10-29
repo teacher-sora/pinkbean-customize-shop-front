@@ -62,11 +62,11 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
           </div>
           {/* 테마 — 뷰어 전환과 평가 사이(사용자 지시) */}
           <button type="button" onClick={nextTheme} title={themeTitle} aria-label={themeTitle} className={clsx('pb-ghost', styles.themeBtnM)}><IconTheme mode={theme} size={14} /></button>
-          <button type="button" data-guide="rate" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} className={clsx('pb-ghost', styles.rateBtnM)}>
-            <IconRate size={13} />평가
+          <button type="button" data-guide="rate" onClick={s.rateCodi} disabled={s.rateBusy} title={s.rateBusy ? '핑크빈이 코디를 보고 있어요' : '핑크빈에게 코디 평가받기'} aria-label="평가" className={clsx('pb-ghost', styles.rateBtnM)}>
+            <IconRate size={13} /><span className={styles.btnLabelM}>평가</span>
           </button>
-          <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" data-guide="copy" className={clsx('pb-solid', styles.copyBtnM)}>
-            <IconLinkCopy size={13} />복사
+          <button type="button" onClick={s.shareCurrentLink} title="현재 프리셋 복사" aria-label="복사" data-guide="copy" className={clsx('pb-solid', styles.copyBtnM)}>
+            <IconLinkCopy size={13} /><span className={styles.btnLabelM}>복사</span>
           </button>
         </div>
       </div>

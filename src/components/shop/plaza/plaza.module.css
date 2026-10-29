@@ -456,3 +456,5 @@
 /* 답글 묶음: 단마다 같은 들여쓰기, 왼쪽 줄 색은 깊이마다 진해진다(--fb-line, FeedbackThread 가 인라인으로 준다) */
 .fbKids { margin: 10px 0 0 4px; padding-left: 12px; border-left: 2px solid var(--fb-line, light-dark(#f0e9e1, #42454d)); display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .fbKidsM { padding-left: 10px; }
+/* 300 이하: 좋아요 수가 잘려 글자 · 간격을 줄인다 */
+@media (max-width: 300px) { .likeAct { gap: 1px; font-size: 10px; letter-spacing: -0.03em; } }

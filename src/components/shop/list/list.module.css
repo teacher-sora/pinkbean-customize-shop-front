@@ -149,3 +149,7 @@
 .actM { font-size: 11px; }
 .actPinned { background: light-dark(#fdf1f6, #4e323e); color: light-dark(#d76d9a, #d293ae); }
 .actDye { border-left: 1px solid light-dark(#f4efe8, #3e4048); }
+/* 좁은 휴대폰: 340 미만(아이폰 SE 1세대 320 · 폴드 바깥 화면 280)은 코디 칩의 옷걸이를 빼고 수만 — 그림 칸이 68px 아래라 왼쪽 아래 등급 배지와 겹쳤다.
+   300 이하는 카드 막대 글자 · '보기 설정' 글자를 줄인다(북마크가 잘리고 머리 줄이 화면 밖으로 밀렸다) */
+@media (max-width: 339px) { .comboM > svg { display: none; } .comboM { padding: 0 5px; } }
+@media (max-width: 300px) { .actM { font-size: 10px; letter-spacing: -0.04em; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: 11px; } }
