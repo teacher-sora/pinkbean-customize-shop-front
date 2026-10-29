@@ -84,7 +84,8 @@ export function StickyBarM({ children }: { children: React.ReactNode }) {
   return (
     <>
       <div ref={mark} aria-hidden className={styles.barMark} />
-      <div data-sticky-top className={clsx(styles.barM, hidden && stuck && styles.barHide)}>{children}</div>
+      {/* 붙는 틀(.barM)은 가만히 두고 안의 내용(.barIn)만 움직인다 — 붙은 요소 자체를 움직이면 아이폰 사파리가 스크롤 중에 전환을 건너뛰어 갑자기 나타났다(사용자 지적) */}
+      <div className={clsx(styles.barM, hidden && stuck && styles.barHide)}><div data-sticky-top className={styles.barIn}>{children}</div></div>
     </>
   )
 }
