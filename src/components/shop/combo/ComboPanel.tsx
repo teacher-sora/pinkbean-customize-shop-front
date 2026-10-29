@@ -166,7 +166,7 @@ function useCountsMap(): Record<string, number> {
 // 자주 쓴 염색 묶음 자리(보이지 않는 같은 칸) + 목록과 같은 최소 높이(useMobileRows)
 function ComboEmpty({ mobile }: { mobile: boolean }) {
   const vpRef = useRef<HTMLDivElement | null>(null)
-  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), 2, true) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 목록과 같은 4열)
+  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), MOBILE_GRID.rows, true) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 목록과 같은 4열)
   useExtraM(vpRef, mobile)
   return (
     <>
@@ -345,7 +345,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
   // 모바일은 늘 두 줄 이상(사용자 지시 — 빠른 파악). 칸이 모자라면 목록처럼 페이지를 늘려 화면 스크롤로 흡수한다(같은 훅). 2열(광장)은 카드가 넓어 낮게 잡는다
-  useMobileRows(vpRef, mobile, cols, mobileRatio(cols), 2, true)
+  useMobileRows(vpRef, mobile, cols, mobileRatio(cols), MOBILE_GRID.rows, true)
   useExtraM(vpRef, mobile)
   const live = useRef({ idx: cur, setIdx: s.setIdx, cols, rows })
   live.current = { idx: cur, setIdx: s.setIdx, cols, rows }

@@ -84,8 +84,8 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 // 모바일 목록 카드의 최소 크기 = 그림 칸 높이 ≥ 폭 × CARD_RATIO_M + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) CARD_FOOT_M.
 // 예전에는 카드 전체를 폭 × 1.34 로만 잡아, 화면이 낮으면(실제 휴대폰 · 위를 줄인 창) 아래 57px 를 빼고 남은 그림 칸이 75px 까지 줄어
 // 캐릭터가 45px 로 아주 작았다(사용자 지적 — 실측 343 × 684). 그림 칸을 따로 보장해 어느 높이에서든 캐릭터가 줄지 않는다
-export const CARD_RATIO_M = 1.45
-const CARD_FOOT_M = 57 // 1.45 = 좁은 폭(343 · 360)도 캐릭터가 한 단계 크게(정수 배율 — 실측 68 → 90px)
+export const CARD_RATIO_M = 1.1
+const CARD_FOOT_M = 57 // 1.1 = 4열 × 3줄에서 그림 칸 약 92px(390 폭) — LIST_FRACTION_M 0.6 과 함께 캐릭터 64px
 // 목록의 최소 높이 — 코디 탭 · AI 코디 검색 목록
 export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M)
 // extra = 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장의 다른 분류가 코디 룩북과 같은 높이 — 광장 목록 칸은

@@ -817,11 +817,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
     // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄.
-    // 코디 룩북은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 4열 × 2줄(MOBILE_GRID)
+    // 코디 룩북은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 격자(MOBILE_GRID)
     const mob = vp === 'mobile'
     const combo = primaryRef.current === 'share' ? plazaComboRef.current : comboShownRef.current
     const plazaLike = (forCombo: boolean) => {
-      // 모바일 코디 룩북은 코디 탭 목록과 같은 4열 × 2줄 고정(사용자 지시 — 큰 휴대폰에서 3줄이 되어 기종마다 갈렸다)
+      // 모바일 코디 룩북은 코디 탭 목록과 같은 격자 고정(MOBILE_GRID, 사용자 지시 — 높이에 맞추면 기종마다 줄 수가 갈렸다)
       if (mob && forCombo) return { cols: MOBILE_GRID.cols, rows: MOBILE_GRID.rows }
       const pcols = mob ? (forCombo ? MOBILE_GRID.cols : 2) : (vp === 'half' || vp === 'tablet') ? 3 : 6
       const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10

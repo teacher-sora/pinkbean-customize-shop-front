@@ -34,7 +34,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
   // 모바일은 코디 룩북 분류와 같은 페이지 높이를 잡는다(사용자 지시 — 분류를 바꿀 때 아래가 밀렸다): 코디 룩북의 격자(3열 × 2줄, 목록 카드 비율)에
   // 그 분류에만 있는 줄(자주 쓴 염색 · 출처 — comboExtraM)만큼. 남는 높이는 목록 칸이 채운다
-  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, 2, true, 0, comboExtraM(), 14) // 14 = 코디 룩북 목록 칸의 좌우 여백(list.viewportM 7 × 2)
+  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, true, 0, comboExtraM(), 14) // 14 = 코디 룩북 목록 칸의 좌우 여백(list.viewportM 7 × 2)
 
   // 모바일: 가로 스크롤 ↔ 페이지 인덱스 양방향 동기화(광장 뷰포트에도 따로 연결해야 인덱스가 멈추지 않는다).
   // 넘기는 방향은 목록과 같은 설정(ShopContext listDir — 사용자 지시: 광장에도). 세로면 PC 는 트랙이 위아래로, 모바일은 세로 스크롤 칸(한 쪽 = 한 화면 높이)
