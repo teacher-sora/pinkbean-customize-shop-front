@@ -14,7 +14,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ListItem } from '@/lib/core/data'
 import { COMBO_SKIP, LOOK_CHUNK, lookPv, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
-import { LIST_FRACTION_M, MOBILE_GRID, skinDyeFamily } from '@/lib/shopData'
+import { LIST_FIT_W_M, LIST_FRACTION_M, MOBILE_GRID, skinDyeFamily } from '@/lib/shopData'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
@@ -517,7 +517,7 @@ function LookCard({ row, mobile, prio, onOpen }: { row: LookRow; mobile: boolean
     <div onClick={() => { if (!s.consumeSwipeClick()) onOpen(row) }} onPointerEnter={enter} onPointerLeave={() => window.clearTimeout(hover.current)} onPointerDown={down} title="코디 자세히 보기" className="pb-presetwrap" style={{ cursor: 'pointer' }}>
       <div className={clsx('pb-preset', styles.card)}>
         {/* 연출이 바뀌면 그리던 그림을 두고 새 그림이 되면 바꾼다(keep — 코디 탭 목록 카드와 같다, 뼈대를 비추지 않는다) */}
-        <div className={styles.thumb}><SnapThumb snap={shown} view keep fraction={mobile ? FRACTION_M : FRACTION} fitW={mobile ? undefined : FIT_W} priority={prio} /></div>
+        <div className={styles.thumb}><SnapThumb snap={shown} view keep fraction={mobile ? FRACTION_M : FRACTION} fitW={mobile ? LIST_FIT_W_M : FIT_W} priority={prio} /></div>
       </div>
     </div>
   )
