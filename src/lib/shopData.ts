@@ -152,6 +152,9 @@ export const CARD_FRACTION = 0.45     // 리스트 카드 마네킹 높이 비�
 export const CARD_FRACTION_M = 0.55
 // 모바일 카드의 캐릭터 높이 ≤ 그림 칸 폭 × 0.8 — 키 큰 화면(412 × 915)에서 그림 칸이 길어 캐릭터가 칸 폭보다 컸다(SnapThumb · ItemThumb fitW)
 export const CARD_FIT_W_M = 0.8
+// 모바일 카드의 한 단계 올리기(modelPlacement lift): 마네킹이 그림 칸 높이의 50% 보다 작으면, 한 단계 위가 칸 높이의 84% · 폭 상한 안일 때 올린다.
+// 13 Pro(그림 칸 109px, 64px = 59%)처럼 이미 절반을 넘는 화면은 그대로다
+export const CARD_LIFT_M = { min: 0.5, max: 0.84 }
 // 모바일 격자 = 3열 × 3줄 — 모든 모바일 카드 목록이 같다(사용자 지시: 코디 탭 · AI 코디 검색 목록, 코디 룩북, 프리셋, 광장).
 // 4열은 카드 폭이 좁아 무기 · 망토가 잘렸고, 3열 2줄(6개)은 한 번에 보이는 것이 적었다. 3줄이라 페이지가 길어지는 만큼 미리보기(히어로)를
 // 화면 위에 붙여 둔다(preview.module.css .hero sticky) — 목록을 내려 보면서도 캐릭터가 바뀌는 것이 보인다(사용자 지시)
