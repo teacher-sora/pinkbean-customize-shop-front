@@ -154,9 +154,10 @@ export const CARD_FIT_W_M = 0.8
 // 모바일 격자 = 4열 × 2줄 — 모든 모바일 카드 목록이 같다(사용자 지시: 코디 탭 · AI 코디 검색 목록, 코디 룩북, 프리셋, 광장. 3줄은 스크롤만 늘어 안 된다).
 // 두 줄이 화면 높이를 채워 카드가 세로로 길어 보여, 목록 카드는 열 간격 · 카드 좌우 안쪽 여백을 줄여 폭을 넓혔다(list.module.css .gridM · .cardM)
 export const MOBILE_GRID = { cols: 4, rows: 2 }
-// 목록의 '구분' 거르기(사용자 지시 — 토글, 여러 개를 함께 켤 수 있다). 하나도 안 켜면 전부, 켜면 켠 것 가운데 하나라도 맞는 아이템(합집합).
-// 부티크 · 콜라보는 아이템 목록에 그 표시가 없어 아직 넣지 않는다(parser 가 원본에서 뽑아 목록에 실어야 한다)
-export const ITEM_KINDS: { v: string; l: string; t: string; test: (it: ListItem) => boolean }[] = [
+// 목록의 '필터'(사용자 지시 — 라디오, 하나만 고른다. 'all' = 전부). 보기 설정 안 보기 · 성별 · 방향과 같은 버튼(Seg)이다.
+// 부티크는 원본(WZ info · 캐시샵 상품 정보)에 가를 표시가 없어 없다. 콜라보는 WZ info.collabo 에 있으나 아이템 목록에 아직 싣지 않았다
+export const ITEM_KINDS: { v: string; l: string; t: string; test?: (it: ListItem) => boolean }[] = [
+  { v: 'all', l: '전체', t: '전부 보기' },
   { v: 'master', l: '마라벨', t: '마스터라벨', test: (it) => it.label === 'master' },
   { v: 'special', l: '스라벨', t: '스페셜라벨', test: (it) => it.label === 'special' },
   { v: 'cash', l: '캐시', t: '캐시 아이템', test: (it) => it.isCash },

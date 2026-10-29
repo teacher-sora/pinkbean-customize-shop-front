@@ -19,7 +19,7 @@
 .sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; min-width: 0; height: 32px; padding: 0 8px 0 10px; font-size: 12px; }
 .searchWrapM { flex: 1 1 0; min-width: 64px; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; color: light-dark(#b7ada2, #858893); pointer-events: none; }
-.searchInputM { width: 100%; min-width: 0; height: 32px; text-overflow: ellipsis; padding: 0 10px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 13px; color: light-dark(#3d372f, #cacbd0); outline: none; }
+.searchInputM { width: 100%; min-width: 0; height: 32px; text-overflow: ellipsis; padding: 0 10px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 12px; letter-spacing: -0.02em; color: light-dark(#3d372f, #cacbd0); outline: none; }
 .upBtn { flex: 0 0 auto; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: 12px; font-weight: 600; color: light-dark(#d76d9a, #d293ae); white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 
 /* ── 페이지 칩 ── */

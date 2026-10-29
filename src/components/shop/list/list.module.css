@@ -47,7 +47,7 @@
 .slashM { font-size: 12px; color: light-dark(#ccc2b8, #787c88); margin: 0 3px; }
 .searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; color: light-dark(#b7ada2, #858893); pointer-events: none; }
-.searchInputM { width: 100%; min-width: 0; height: 32px; padding: 0 12px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 13px; outline: none; text-overflow: ellipsis; }
+.searchInputM { width: 100%; min-width: 0; height: 32px; padding: 0 12px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 12px; letter-spacing: -0.02em; outline: none; text-overflow: ellipsis; }
 .hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: light-dark(#f2ebe3, #40434b); }
 
 /* ── 뷰포트 · 페이지 ── */
@@ -91,7 +91,7 @@
 .heroRow { width: 100%; max-width: 420px; display: flex; align-items: center; gap: 6px; }
 .heroRowM { width: 100%; display: flex; align-items: center; gap: 6px; }
 .heroInput { flex: 1 1 0; min-width: 0; height: 32px; padding: 0 12px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 13px; letter-spacing: -0.01em; outline: none; }
-.heroInputM { border-radius: 6px; }
+.heroInputM { border-radius: 6px; font-size: 12px; letter-spacing: -0.02em; }
 .heroBtn { flex: 0 0 auto; height: 32px; padding: 0 14px; display: flex; align-items: center; gap: 5px; border: none; border-radius: 6px; background: light-dark(#ec86ac, #d15785); font-family: inherit; font-size: 12.5px; font-weight: 600; color: light-dark(#fff, #ececef); letter-spacing: -0.01em; cursor: pointer; }
 .heroBtnM { padding: 0 13px; border-radius: 6px; }
 .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
@@ -157,5 +157,4 @@
 .actIcon > svg { width: 12px; height: 12px; }
 @media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge { height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: 11px; } }
 /* 보기 설정 창의 '구분' 토글 줄(여러 개를 함께 켠다) · 켜 둔 토글이 있으면 접힌 버튼 글자도 분홍 */
-.filterToggles { display: flex; flex-wrap: wrap; gap: 6px; }
 .filterBtnSet .filterText { color: light-dark(#c05a94, #cb9ab6); }

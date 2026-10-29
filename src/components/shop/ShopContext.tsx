@@ -246,7 +246,7 @@ export interface ShopCtx {
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
   search: string; setSearch: Dispatch<string>
   genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용
-  kindFilter: string[]; toggleKind: (v: string) => void // '구분' 토글(shopData.ITEM_KINDS) — 코디 · AI 코디 검색 공용
+  kindFilter: string; setKindFilter: (v: string) => void // '필터' 라디오(shopData.ITEM_KINDS, 'all' = 전부) — 코디 · AI 코디 검색 공용
   // primary/screen
   primary: string; setPrimary: (tab: string) => void
   goHome: () => void // 로고 — 첫 진입 화면(코디 탭 · 전체 · 1페이지)으로
@@ -679,13 +679,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const want = gf === 'f' ? 1 : 0
     return list.filter((it) => it.gender === want || it.gender === 2 || it.gender == null)
   }, [])
-  // '구분' 토글: 켠 것 가운데 하나라도 맞으면 남긴다(하나도 안 켜면 전부)
-  const [kindFilter, setKindFilter] = useState<string[]>([])
-  const toggleKind = useCallback((v: string) => setKindFilter((k) => (k.includes(v) ? k.filter((x) => x !== v) : [...k, v])), [])
-  const byKind = useCallback((list: ListItem[], kf: string[]) => {
-    if (!kf.length) return list
-    const tests = ITEM_KINDS.filter((k) => kf.includes(k.v)).map((k) => k.test)
-    return list.filter((it) => tests.some((f) => f(it)))
+  // '필터' 라디오: 고른 것에 맞는 아이템만 남긴다('all' = 전부)
+  const [kindFilter, setKindFilter] = useState('all')
+  const byKind = useCallback((list: ListItem[], kf: string) => {
+    const test = ITEM_KINDS.find((k) => k.v === kf)?.test
+    return test ? list.filter(test) : list
   }, [])
   const activeListFull = listForCat(activeCat)
   // 이름 검색: 공백 무시 + 한/영 자판 무관(lib/nameSearch). 입력은 즉시, 필터·리스트 갱신은 지연값으로(타이핑 끊김 방지).
@@ -1576,7 +1574,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPrimary('codi')
     setActiveCat('all')
     setSearch('')
-    setGenderFilter('all'); setKindFilter([])
+    setGenderFilter('all'); setKindFilter('all')
     setAiQ(''); setSearchQuery(null); setSearchResults([])
     setPlazaFilter('all'); setPlazaQState('')
     setPageByCat({}) // 부위별로 따로 기억하던 페이지까지 전부 1페이지로
@@ -2175,7 +2173,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const saveName = selIdx >= 0 ? presetFileName(presets[selIdx].name, selIdx) : CHAT_NAME_FALLBACK
   const value: ShopCtx = {
     index, cats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
-    genderFilter, setGenderFilter, kindFilter, toggleKind,
+    genderFilter, setGenderFilter, kindFilter, setKindFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
