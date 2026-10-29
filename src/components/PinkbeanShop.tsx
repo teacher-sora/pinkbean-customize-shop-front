@@ -51,7 +51,7 @@ function Shell() {
       {mobile ? (
         // 모바일: 화면 전체를 쓰는 흰 컬럼. 터치 기기에서는 문서(루트)가 스크롤한다(globals.css).
         <div className={clsx('pb-shell', styles.root)}>
-          <div data-mobile-col className={styles.mobileCol}>
+          <div data-mobile-col className={clsx(styles.mobileCol, s.primary === 'info' && styles.mobileColFlow)}>
             <AppHeader mobile />
             {/* 새로고침 복원 중에는 이 슬롯을 통째로 감추고 아래 빈 뼈대를 대신 보여준다.
                 display:contents(globals.css)라 평소 배치에는 아무 영향이 없다.

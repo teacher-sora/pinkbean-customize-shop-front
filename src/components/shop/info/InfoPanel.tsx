@@ -166,9 +166,9 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
         <CatTabsM jump />
         <div className={styles.headerM}>{chip}<div className={styles.right}>{share}</div></div>
         <div className={styles.hrM} />
-        <div className={clsx('pb-scroll', 'pb-norail', 'pb-fade', styles.scrollM)}>
-          <div ref={slotsRef}>{grid}</div>
-        </div>
+        {/* 칸 안 스크롤을 두지 않는다 — 부위 칸이 페이지에 그대로 이어지고 페이지 하나만 스크롤한다(사용자 지시: 칸 스크롤과 페이지 스크롤이 겹쳐
+            붙은 미리보기 · 하단 탭에 칸 끝이 가려지고, 끝에서 튕기거나 끊겨 매끄럽지 않았다). 틀은 이 탭에서 내용만큼 길어진다(frame .mobileColFlow) */}
+        <div ref={slotsRef} className={styles.flowM}>{grid}</div>
       </>
     )
   }
