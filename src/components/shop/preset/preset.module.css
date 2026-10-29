@@ -38,12 +38,10 @@
 /* 모바일: 코디 리스트와 같은 **자유** 가로 스크롤(스냅 없음, 스크롤바 숨김) — 뷰포트 좌우 7px 들임 + 안쪽 5px(가장자리 12px), 열 간격 10px.
    2줄 고정, 열 수는 폭에 따라 2(좁음) / 3(콘텐츠 폭 330px 이상). cqw = 스크롤 영역 콘텐츠 폭 → n열이 한 화면에 정확히 들어간다. */
 .hscrollM { flex: 1 1 auto; min-height: 0; margin: 0 7px; padding: 8px 5px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; container-type: inline-size; }
-.gridHM { display: grid; height: 100%; grid-auto-flow: column; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-columns: calc((100cqw - 10px) / 2); gap: 10px; }
-@container (min-width: 330px) { .gridHM { grid-auto-columns: calc((100cqw - 20px) / 3); } }
+.gridHM { display: grid; height: 100%; grid-auto-flow: column; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-columns: calc((100cqw - 30px) / 4); gap: 10px; } /* 4열 × 2줄 = shopData.MOBILE_GRID */
 /* 모바일 세로(presetDir 'y'): 한 화면에 2줄, 열은 폭에 따라 2 / 3 — cqh = 이 칸 높이(줄 높이가 한 화면의 절반) */
 .vscrollM { flex: 1 1 auto; min-height: 0; margin: 0 7px; padding: 8px 5px; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-x pan-y pinch-zoom; container-type: size; }
-.gridVM { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: calc((100cqh - 10px) / 2); gap: 10px; }
-@container (min-width: 330px) { .gridVM { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.gridVM { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: calc((100cqh - 10px) / 2); gap: 10px; } /* 4열 × 2줄 = shopData.MOBILE_GRID */
 .gridVM > :global(.pb-presetwrap), .gridVM :global(.pb-preset) { min-height: 0; }
 /* PC 가로(presetDir 'x'): 2줄 가로 스크롤, 한 화면 5열(좁은 폭 3열) — 카드는 줄 높이를 채운다(.thumbM) */
 .hscroll { flex: 1 1 auto; min-height: 0; padding: 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; container-type: inline-size; }

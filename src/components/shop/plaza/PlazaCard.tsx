@@ -11,9 +11,9 @@ import { useShop } from '../ShopContext'
 import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
 import { IconHeart, IconLinkCopy, IconTakeDown, IconTrashSolid } from '../ui/Icons'
 import styles from './plaza.module.css'
-import { CARD_FRACTION_M } from '@/lib/shopData'
+import { CARD_FIT_W_M, CARD_FRACTION_M } from '@/lib/shopData'
 
-// 모바일 마네킹 비율(shopData.CARD_FRACTION_M — 2열 자유 코디 카드)
+// 모바일 마네킹 비율 · 폭 상한은 모든 모바일 카드와 같은 값(shopData.CARD_FRACTION_M · CARD_FIT_W_M)
 const CARD_FRACTION = 0.38 // 프리셋 카드와 같은 마네킹 비율
 // 모바일은 2열이라 칸이 프리셋 탭(3열)보다 넓은데 같은 비율이면 인물이 작아 보인다.
 // ⚠️ 도트가 뭉개지지 않게 배율이 **정수로 스냅**되므로(modelPlacement) 조금 올려서는 안 바뀐다 — 0.46 은 그대로였다.
@@ -43,7 +43,7 @@ export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaP
           </div>
         )}
         <div className={styles.thumb}>
-          <SnapThumb snap={post.snapshot} fraction={mobile ? CARD_FRACTION_M : CARD_FRACTION} priority={priority} />
+          <SnapThumb snap={post.snapshot} fraction={mobile ? CARD_FRACTION_M : CARD_FRACTION} fitW={mobile ? CARD_FIT_W_M : undefined} priority={priority} />
           {/* 대회 출품 날짜(간략히 M.D) — 순번(#n)은 중간 글이 내려가면 비어 보여 쓰지 않는다. */}
           {post.contest && (
             <span className={clsx(styles.contestNo, mobile && styles.contestNoM)} title={`${fullDate(post.createdAt)} 등록`}>{shortDate(post.createdAt)}</span>

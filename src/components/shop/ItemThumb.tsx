@@ -181,8 +181,8 @@ interface ModelProps {
   isMy?: boolean                            // "내 모델" 카드 여부. 아이템 자체 이펙트(연출)는 내 모델에만 그린다.
   dotOffsets?: Record<string, { x: number; y: number }> // 내 모델: 후보가 변경점/변경쩜이면 내가 옮긴 점 위치
   stance?: boolean                          // 배경이 무기모션 자세(두손=stand2)로 구워졌으면 후보 아이템도 같은 자세로
-  fraction?: number                         // 마네킹 높이 비율(없으면 CARD_FRACTION — 모바일 목록은 LIST_FRACTION_M)
-  fitW?: number                             // 마네킹 높이 ≤ 칸 폭 × fitW(모바일 목록 LIST_FIT_W_M — SnapThumb 의 fitW 와 같다)
+  fraction?: number                         // 마네킹 높이 비율(없으면 CARD_FRACTION — 모바일 목록은 CARD_FRACTION_M)
+  fitW?: number                             // 마네킹 높이 ≤ 칸 폭 × fitW(모바일 목록 CARD_FIT_W_M — SnapThumb 의 fitW 와 같다)
   ctxAction?: string                        // 배경이 내 무기 때문에 다른 자세로 구워졌으면 그 액션(thumbCtx.action) — 후보도 같은 자세로
 }
 function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets, fraction = CARD_FRACTION, fitW }: ModelProps) {

@@ -816,24 +816,25 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!el || !el.clientWidth || !el.clientHeight) return
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
-    // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄.
+    // 코디 광장은 열 수가 고정(절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄. 모바일은 모든 모바일 카드와 같은 4열 × 2줄(MOBILE_GRID).
     // 코디 룩북은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 격자(MOBILE_GRID)
     const mob = vp === 'mobile'
     const combo = primaryRef.current === 'share' ? plazaComboRef.current : comboShownRef.current
-    const plazaLike = (forCombo: boolean) => {
+    const plazaLike = () => {
       // 모바일 코디 룩북은 코디 탭 목록과 같은 격자 고정(MOBILE_GRID, 사용자 지시 — 높이에 맞추면 기종마다 줄 수가 갈렸다)
-      if (mob && forCombo) return { cols: MOBILE_GRID.cols, rows: MOBILE_GRID.rows }
-      const pcols = mob ? (forCombo ? MOBILE_GRID.cols : 2) : (vp === 'half' || vp === 'tablet') ? 3 : 6
-      const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10
+      // 모바일 광장의 다른 분류도 같은 격자(사용자 지시 — 모든 모바일 카드의 열 · 줄을 맞춘다)
+      if (mob) return { cols: MOBILE_GRID.cols, rows: MOBILE_GRID.rows }
+      const pcols = (vp === 'half' || vp === 'tablet') ? 3 : 6
+      const minH = 150, gapPx = 10
       const avail = el.clientHeight - 20
-      return { cols: pcols, rows: Math.max(mob && forCombo ? 2 : 1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx)))) }
+      return { cols: pcols, rows: Math.max(1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx)))) }
     }
     if (primaryRef.current === 'share') {
-      const { cols: pcols, rows: prows } = plazaLike(combo)
+      const { cols: pcols, rows: prows } = plazaLike()
       setPlazaGrid((g) => (g.cols === pcols && g.rows === prows ? g : { cols: pcols, rows: prows }))
       return
     }
-    if (combo) { const g = plazaLike(true); apply(g.cols, g.rows); return }
+    if (combo) { const g = plazaLike(); apply(g.cols, g.rows); return }
     if (mob) { apply(MOBILE_GRID.cols, MOBILE_GRID.rows); return }
     const gap = 10, pad = 20
     const TARGET = 1.34, MINW = 78, MINH = 96

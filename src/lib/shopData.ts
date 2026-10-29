@@ -146,15 +146,13 @@ export const PREVIEW_FRACTION = 0.25 // 우측 미리보기 기준 마네킹 높
 export const PREVIEW_FRACTION_MOBILE = 0.5
 export const PREVIEW_MARGIN = 1.5    // 우측 미리보기 캔버스 여백 배수
 export const CARD_FRACTION = 0.45     // 리스트 카드 마네킹 높이 비율(넉넉한 전체샷; 정수 스냅으로 항상 선명)
-// 모바일 광장 자유 코디 카드(2열)의 마네킹 높이 비율
-export const CARD_FRACTION_M = 0.54
-// 모바일 4열 카드(코디 탭 · AI 코디 검색 목록, 코디 룩북)의 마네킹 비율. 0.54 는 너무 크다는 보고가 있어 줄였다(사용자 지시 — 예전 0.45 보다 크고 0.54 보다 작게).
-// 4열 카드(그림 칸 ≥ 폭 × 1.45)에서 DPR 2 · 3 모두 정수 배율 한 단계(캐릭터 64px — 게임 1배 크기)가 된다
-export const LIST_FRACTION_M = 0.5
-// 4열 카드의 캐릭터 높이 ≤ 그림 칸 폭 × 0.8 — 키 큰 화면(412 × 915)에서 그림 칸이 길어 캐릭터가 104px 로 칸 폭(81)보다 컸다(SnapThumb fitW 와 같은 규칙)
-export const LIST_FIT_W_M = 0.8
-// 모바일 격자 = 4열 × 2줄 — 코디 탭 · AI 코디 검색 목록과 코디 룩북(광장의 코디 룩북 분류 포함)이 함께 쓴다(사용자 지시 — 3열 × 2줄보다 한 번에 더 많이.
-// 3줄은 스크롤만 늘어 안 된다). 두 줄이 화면 높이를 채워 카드가 세로로 길어 보여, 목록 카드는 열 간격 · 카드 좌우 안쪽 여백을 줄여 폭을 넓혔다(list.module.css .gridM · .cardM)
+// 모바일 카드의 마네킹 높이 비율 — **모든 모바일 카드가 같은 값**(사용자 지시: 목록 · AI 코디 검색 · 코디 룩북 · 프리셋 · 광장).
+// 목표 높이일 뿐 실제 배율은 정수로 반올림된다(modelPlacement snap — 기기 px 정수 배율이라 도트가 뭉개지지 않는다)
+export const CARD_FRACTION_M = 0.475
+// 모바일 카드의 캐릭터 높이 ≤ 그림 칸 폭 × 0.8 — 키 큰 화면(412 × 915)에서 그림 칸이 길어 캐릭터가 칸 폭보다 컸다(SnapThumb · ItemThumb fitW)
+export const CARD_FIT_W_M = 0.8
+// 모바일 격자 = 4열 × 2줄 — 모든 모바일 카드 목록이 같다(사용자 지시: 코디 탭 · AI 코디 검색 목록, 코디 룩북, 프리셋, 광장. 3줄은 스크롤만 늘어 안 된다).
+// 두 줄이 화면 높이를 채워 카드가 세로로 길어 보여, 목록 카드는 열 간격 · 카드 좌우 안쪽 여백을 줄여 폭을 넓혔다(list.module.css .gridM · .cardM)
 export const MOBILE_GRID = { cols: 4, rows: 2 }
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 

@@ -14,7 +14,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ListItem } from '@/lib/core/data'
 import { COMBO_SKIP, LOOK_CHUNK, lookPv, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
-import { LIST_FIT_W_M, LIST_FRACTION_M, MOBILE_GRID, skinDyeFamily } from '@/lib/shopData'
+import { CARD_FIT_W_M, CARD_FRACTION_M, MOBILE_GRID, skinDyeFamily } from '@/lib/shopData'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
@@ -30,7 +30,7 @@ import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
 import styles from './combo.module.css'
 
-const FRACTION = 0.4, FRACTION_M = LIST_FRACTION_M // 모바일은 목록 카드와 같은 4열이라 같은 비율
+const FRACTION = 0.4, FRACTION_M = CARD_FRACTION_M // 모바일은 모든 모바일 카드와 같은 비율
 const FIT_W = 0.55 // 카드 그림(PC): 캐릭터 높이 ≤ 칸 폭 × 0.55 — 칸이 좁고 길면 1배, 폭이 넉넉할 때만 2배(SnapThumb fitW).
 // 모바일은 걸지 않는다 — 코디 탭 목록 카드와 같은 크기로 보이게(사용자 지시, 기기 픽셀 기준 정수 배율이라 옆이 잘릴 만큼 뛰지 않는다)
 // 모바일 카드 최소 높이 = 폭 × 목록 카드 그림 칸 비율(CARD_RATIO_M) — 캐릭터가 코디 탭 목록과 같은 크기가 된다
@@ -517,7 +517,7 @@ function LookCard({ row, mobile, prio, onOpen }: { row: LookRow; mobile: boolean
     <div onClick={() => { if (!s.consumeSwipeClick()) onOpen(row) }} onPointerEnter={enter} onPointerLeave={() => window.clearTimeout(hover.current)} onPointerDown={down} title="코디 자세히 보기" className="pb-presetwrap" style={{ cursor: 'pointer' }}>
       <div className={clsx('pb-preset', styles.card)}>
         {/* 연출이 바뀌면 그리던 그림을 두고 새 그림이 되면 바꾼다(keep — 코디 탭 목록 카드와 같다, 뼈대를 비추지 않는다) */}
-        <div className={styles.thumb}><SnapThumb snap={shown} view keep fraction={mobile ? FRACTION_M : FRACTION} fitW={mobile ? LIST_FIT_W_M : FIT_W} priority={prio} /></div>
+        <div className={styles.thumb}><SnapThumb snap={shown} view keep fraction={mobile ? FRACTION_M : FRACTION} fitW={mobile ? CARD_FIT_W_M : FIT_W} priority={prio} /></div>
       </div>
     </div>
   )
