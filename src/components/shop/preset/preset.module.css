@@ -87,8 +87,8 @@
 .nameInput { flex: 1 1 0; min-width: 0; width: 100%; height: 24px; padding: 0 20px 0 7px; border: 1px solid transparent; border-radius: 4px; background: light-dark(#f1e7ec, #5a394a); font-family: inherit; font-size: 12px; font-weight: 600; color: light-dark(#b0748f, #c2a3b1); letter-spacing: -0.01em; outline: none; cursor: text; }
 /* 모바일 4열 카드: 이름 줄 안쪽 여백을 줄이고 입력 칸을 높여 손가락으로 누르기 쉽게(28 — 목록 카드 아래 막대와 비슷한 높이) */
 .nameRowM { padding: 4px; }
-/* 글자 10.5 · 자간 −0.03em · 연필 자리 15 — 붙여 쓴 이름이 390 폭에서 6글자, 360 폭에서 5글자쯤 보이게(사용자 지시: 12px 은 4글자도 못 보였다) */
-.nameInputM { height: 28px; padding: 0 15px 0 5px; font-size: 10.5px; letter-spacing: -0.03em; }
+/* 글자 10.5 · 자간 −0.04em · 연필 자리 14 — 붙여 쓴 이름이 390 폭에서 6글자, 360 폭에서 5글자쯤 보이게(사용자 지시: 12px 은 4글자도 못 보였다) */
+.nameInputM { height: 28px; padding: 0 14px 0 4px; font-size: 10.5px; letter-spacing: -0.04em; }
 .nameRowM .pencil { right: 4px; width: 10px; height: 10px; }
 .pencil { position: absolute; right: 7px; pointer-events: none; }
 /* 띠지 규격(코디 카드와 동일): 공유 = 즐겨찾기 크기, 휴지통 = 북마크 크기, 사이 간격 5px (PC 25×32/23×29, 모바일 22×29/20×26) */
