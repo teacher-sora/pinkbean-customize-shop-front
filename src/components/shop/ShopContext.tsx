@@ -31,7 +31,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, LIST_GRID_M, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, presetCard, snapKey } from '@/lib/core/snapRender'
 import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -817,11 +817,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
     // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄.
-    // 코디 룩북은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 3열 × 2줄(MOBILE_GRID)
+    // 코디 룩북은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 4열 × 2줄(MOBILE_GRID)
     const mob = vp === 'mobile'
     const combo = primaryRef.current === 'share' ? plazaComboRef.current : comboShownRef.current
     const plazaLike = (forCombo: boolean) => {
-      // 모바일 코디 룩북은 3열 × 2줄 고정(사용자 지시 — 큰 휴대폰에서 3줄이 되어 기종마다 갈렸다)
+      // 모바일 코디 룩북은 코디 탭 목록과 같은 4열 × 2줄 고정(사용자 지시 — 큰 휴대폰에서 3줄이 되어 기종마다 갈렸다)
       if (mob && forCombo) return { cols: MOBILE_GRID.cols, rows: MOBILE_GRID.rows }
       const pcols = mob ? (forCombo ? MOBILE_GRID.cols : 2) : (vp === 'half' || vp === 'tablet') ? 3 : 6
       const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10
@@ -834,7 +834,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       return
     }
     if (combo) { const g = plazaLike(true); apply(g.cols, g.rows); return }
-    if (mob) { apply(LIST_GRID_M.cols, LIST_GRID_M.rows); return }
+    if (mob) { apply(MOBILE_GRID.cols, MOBILE_GRID.rows); return }
     const gap = 10, pad = 20
     const TARGET = 1.34, MINW = 78, MINH = 96
     const w = el.clientWidth - pad, h = el.clientHeight - pad

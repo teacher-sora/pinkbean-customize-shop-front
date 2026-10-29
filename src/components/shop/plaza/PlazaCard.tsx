@@ -13,7 +13,7 @@ import { IconHeart, IconLinkCopy, IconTakeDown, IconTrashSolid } from '../ui/Ico
 import styles from './plaza.module.css'
 import { CARD_FRACTION_M } from '@/lib/shopData'
 
-// 모바일 마네킹 비율은 목록 · 코디 룩북과 같은 값(shopData.CARD_FRACTION_M)
+// 모바일 마네킹 비율(shopData.CARD_FRACTION_M — 2열 자유 코디 카드)
 const CARD_FRACTION = 0.38 // 프리셋 카드와 같은 마네킹 비율
 // 모바일은 2열이라 칸이 프리셋 탭(3열)보다 넓은데 같은 비율이면 인물이 작아 보인다.
 // ⚠️ 도트가 뭉개지지 않게 배율이 **정수로 스냅**되므로(modelPlacement) 조금 올려서는 안 바뀐다 — 0.46 은 그대로였다.

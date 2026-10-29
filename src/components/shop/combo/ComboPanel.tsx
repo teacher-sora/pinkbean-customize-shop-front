@@ -14,7 +14,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ListItem } from '@/lib/core/data'
 import { COMBO_SKIP, LOOK_CHUNK, lookPv, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
-import { CARD_FRACTION_M, MOBILE_GRID, skinDyeFamily } from '@/lib/shopData'
+import { LIST_FRACTION_M, MOBILE_GRID, skinDyeFamily } from '@/lib/shopData'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
@@ -30,7 +30,7 @@ import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
 import styles from './combo.module.css'
 
-const FRACTION = 0.4, FRACTION_M = CARD_FRACTION_M // 모바일은 목록 · 광장 카드와 같은 비율
+const FRACTION = 0.4, FRACTION_M = LIST_FRACTION_M // 모바일은 목록 카드와 같은 4열이라 같은 비율
 const FIT_W = 0.55 // 카드 그림(PC): 캐릭터 높이 ≤ 칸 폭 × 0.55 — 칸이 좁고 길면 1배, 폭이 넉넉할 때만 2배(SnapThumb fitW).
 // 모바일은 걸지 않는다 — 코디 탭 목록 카드와 같은 크기로 보이게(사용자 지시, 기기 픽셀 기준 정수 배율이라 옆이 잘릴 만큼 뛰지 않는다)
 // 모바일 카드 최소 높이 = 폭 × 목록 카드 그림 칸 비율(CARD_RATIO_M) — 캐릭터가 코디 탭 목록과 같은 크기가 된다
@@ -166,7 +166,7 @@ function useCountsMap(): Record<string, number> {
 // 자주 쓴 염색 묶음 자리(보이지 않는 같은 칸) + 목록과 같은 최소 높이(useMobileRows)
 function ComboEmpty({ mobile }: { mobile: boolean }) {
   const vpRef = useRef<HTMLDivElement | null>(null)
-  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), 2, true) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 3열)
+  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), 2, true) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 목록과 같은 4열)
   useExtraM(vpRef, mobile)
   return (
     <>
