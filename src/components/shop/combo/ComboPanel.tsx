@@ -33,7 +33,7 @@ import styles from './combo.module.css'
 const FRACTION = 0.4, FRACTION_M = CARD_FRACTION_M // 모바일은 모든 모바일 카드와 같은 비율
 const FIT_W = 0.55 // 카드 그림(PC): 캐릭터 높이 ≤ 칸 폭 × 0.55 — 칸이 좁고 길면 1배, 폭이 넉넉할 때만 2배(SnapThumb fitW).
 // 모바일은 걸지 않는다 — 코디 탭 목록 카드와 같은 크기로 보이게(사용자 지시, 기기 픽셀 기준 정수 배율이라 옆이 잘릴 만큼 뛰지 않는다)
-// 모바일 카드 최소 높이 = 폭 × 목록 카드 그림 칸 비율(CARD_RATIO_M) — 캐릭터가 코디 탭 목록과 같은 크기가 된다
+// 모바일 목록 칸 = 코디 탭 목록과 같은 맞춤(붙은 미리보기 아래에 3줄) · 같은 바닥 비율(CARD_RATIO_M — ListArea useMobileRows)
 const mobileRatio = (cols: number) => (cols >= 3 ? CARD_RATIO_M : 1.05)
 // 모바일에서 목록 칸 밖에 코디 룩북만 더 있는 줄(자주 쓴 염색 묶음 · 구분선 · 출처 줄 — data-combo-extra)의 높이. 코디 광장의 다른 분류가 이만큼
 // 페이지를 더 잡아 분류를 바꿔도 아래가 밀리지 않는다(사용자 지시, PlazaPanel). 패널이 그려지면 잰 값으로 바꾼다(처음 값 = 실측 — 염색 묶음 82 + 위아래 여백 16 + 구분선 1 + 출처 위 구분선 1 + 출처 줄 26)
@@ -166,7 +166,7 @@ function useCountsMap(): Record<string, number> {
 // 자주 쓴 염색 묶음 자리(보이지 않는 같은 칸) + 목록과 같은 최소 높이(useMobileRows)
 function ComboEmpty({ mobile }: { mobile: boolean }) {
   const vpRef = useRef<HTMLDivElement | null>(null)
-  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), MOBILE_GRID.rows, true) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 목록과 같은 4열)
+  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), MOBILE_GRID.rows, true) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 목록과 같은 3열 3줄)
   useExtraM(vpRef, mobile)
   return (
     <>
@@ -344,7 +344,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
-  // 모바일은 늘 두 줄 이상(사용자 지시 — 빠른 파악). 칸이 모자라면 목록처럼 페이지를 늘려 화면 스크롤로 흡수한다(같은 훅). 2열(광장)은 카드가 넓어 낮게 잡는다
+  // 모바일은 목록과 같은 높이 규칙(같은 훅). 2열(광장)은 카드가 넓어 바닥을 낮게 잡는다
   useMobileRows(vpRef, mobile, cols, mobileRatio(cols), MOBILE_GRID.rows, true)
   useExtraM(vpRef, mobile)
   const live = useRef({ idx: cur, setIdx: s.setIdx, cols, rows })

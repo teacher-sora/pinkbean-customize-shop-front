@@ -148,7 +148,8 @@ export const PREVIEW_MARGIN = 1.5    // 우측 미리보기 캔버스 여백 배
 export const CARD_FRACTION = 0.45     // 리스트 카드 마네킹 높이 비율(넉넉한 전체샷; 정수 스냅으로 항상 선명)
 // 모바일 카드의 마네킹 높이 비율 — **모든 모바일 카드가 같은 값**(사용자 지시: 목록 · AI 코디 검색 · 코디 룩북 · 프리셋 · 광장).
 // 목표 높이일 뿐 실제 배율은 정수로 반올림된다(modelPlacement snap — 기기 px 정수 배율이라 도트가 뭉개지지 않는다)
-export const CARD_FRACTION_M = 0.475
+// 0.55 = 붙은 미리보기 아래에 3줄을 맞춘 그림 칸(390 폭에서 약 103px)에서도 기기 배율 3배(dpr 3) · 2배(dpr 2)로 반올림돼 마네킹이 64px 그대로다
+export const CARD_FRACTION_M = 0.55
 // 모바일 카드의 캐릭터 높이 ≤ 그림 칸 폭 × 0.8 — 키 큰 화면(412 × 915)에서 그림 칸이 길어 캐릭터가 칸 폭보다 컸다(SnapThumb · ItemThumb fitW)
 export const CARD_FIT_W_M = 0.8
 // 모바일 격자 = 3열 × 3줄 — 모든 모바일 카드 목록이 같다(사용자 지시: 코디 탭 · AI 코디 검색 목록, 코디 룩북, 프리셋, 광장).

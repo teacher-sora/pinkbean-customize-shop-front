@@ -10,6 +10,7 @@ import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_NAME_FALLBACK, defaultPresetName } 
 import { DIRS } from '../list/ListArea'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
+import { useListMinHeight } from '../list/ListArea'
 import { presetFileName } from '@/lib/canvasExport'
 import SnapThumb from '../SnapThumb'
 import { presetCard } from '@/lib/core/snapRender'
@@ -42,6 +43,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const dir = s.presetDir ?? (mobile ? 'x' : 'y')
   const across = dir === 'x'
   const boxRef = useWheelRail<HTMLDivElement>(across && !mobile)
+  useListMinHeight(boxRef, mobile) // 모바일: 코디 탭 목록처럼 붙은 미리보기 아래에 3줄이 다 들어가는 높이(ListArea useMobileRows)
   // 고른 프리셋 = 비교 중이면 비교의 주인 프리셋(사용자 지시 — 비교 중에도 프리셋 탭에서 지금 프리셋이 '선택됨'으로 보인다. 고른 비교 칸 = 그 프리셋)
   const selId = s.cmpOn ? s.cmpBack : s.selectedPreset
   const centered = useRef(false)

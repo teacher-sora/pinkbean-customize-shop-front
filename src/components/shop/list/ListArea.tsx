@@ -78,22 +78,34 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
   )
 }
 
-// 모바일: 카드가 세로형(높이/폭 ≥ ratio)으로 rows 줄 들어갈 최소 뷰포트 높이를 보장한다. 부족하면 페이지 컬럼
-// 높이(--pb-min-h)를 늘려 페이지 스크롤로 흡수(리스트 안 세로 스크롤은 만들지 않음). 그 외 요소 높이(chrome)는
-// 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다. 코디 탭 목록(MOBILE_GRID)과 코디 룩북(최소 2줄 — 사용자 지시)이 함께 쓴다.
-// ⚠️ 목록은 언마운트(염색·프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
+// 모바일 목록 칸의 높이(--pb-min-h — 페이지 컬럼 높이). 목록은 칸 안에서 세로로 스크롤하지 않고 페이지 스크롤로 내려 본다.
+//  · 맞춤: 페이지를 끝까지 내리면 붙은 미리보기(히어로 sticky) 바로 아래부터 화면 끝까지가 목록 칸이다 = 큰 화면 높이(100lvh — 툴바가 접힌,
+//    내려 볼 때의 높이. 접히지 않는 브라우저는 작은 높이와 같다) − 미리보기 − 목록 칸 아래. 하단 탭은 내려 보는 동안 숨고 자리를 차지하지 않는다
+//    (nav .tabNavOver). 그래서 미리보기를 보면서 3줄이 모두 보인다(사용자 지시). 부위 · 보기 설정 줄은 붙이지 않는다 — 부위를 바꿀 때는
+//    목록에서 눈을 떼므로 살짝 올려 고르면 된다(사용자와 정한 흐름).
+//  · 바닥: 화면이 낮아(작은 폰 · 미리보기 크게) 맞춤 칸이 너무 작으면 카드 그림 칸 ≥ 폭 × ratio + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) foot 로
+//    받친다. 그때는 3줄이 한 화면에 다 들지 않고 페이지가 더 길어진다.
+//  그 외 요소 높이(chrome)는 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다.
+// ⚠️ 목록은 언마운트(염색 · 프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
 //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다. restore 면(코디 룩북 — 목록보다 길 수 있다) 떠날 때 붙기 전 값으로 되돌린다.
-// 모바일 목록 카드의 최소 크기 = 그림 칸 높이 ≥ 폭 × CARD_RATIO_M + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) CARD_FOOT_M.
-// 예전에는 카드 전체를 폭 × 1.34 로만 잡아, 화면이 낮으면(실제 휴대폰 · 위를 줄인 창) 아래 57px 를 빼고 남은 그림 칸이 75px 까지 줄어
-// 캐릭터가 45px 로 아주 작았다(사용자 지적 — 실측 343 × 684). 그림 칸을 따로 보장해 어느 높이에서든 캐릭터가 줄지 않는다
-// 1.1 = 3열 카드(390 폭에서 118px)의 그림 칸이 4열 때(87 × 1.45 ≈ 126px)와 비슷한 130px — 캐릭터 크기는 그대로 두고 폭만 넓혔다(무기 · 망토가 덜 잘린다)
-export const CARD_RATIO_M = 1.1
+// 0.6 = 맞춤 칸의 바닥. 툴바가 접히지 않는 앱 안 브라우저(390 × 664)에서도 3줄이 든다(그림 칸 76px)
+export const CARD_RATIO_M = 0.6
 const CARD_FOOT_M = 61 // 카드 아래 = 이름 줄 + [북마크 · 염색] 막대 28 + 여백
 export const LIST_COL_GAP_M = 6 // 목록 격자의 열 간격(list.module.css .gridM 과 같은 값 — 카드 폭을 조금 넓힌다)
-// 목록의 최소 높이 — 코디 탭 · AI 코디 검색 목록
+// 목록의 높이 — 코디 탭 · AI 코디 검색 목록 · 프리셋
 export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M, 0, 0, LIST_COL_GAP_M)
-// extra = 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장의 다른 분류가 코디 룩북과 같은 높이 — 광장 목록 칸은
-// 좌우 여백 7 이 없어 그만큼 넓다. 분류를 바꿔도 페이지 높이가 같게)
+// 큰 화면 높이(100lvh, 모르는 브라우저는 100vh)를 재는 보이지 않는 막대 — 하나를 함께 쓴다
+let lvhProbe: HTMLDivElement | null = null
+const probeLvh = () => {
+  if (!lvhProbe || !lvhProbe.isConnected) {
+    lvhProbe = document.createElement('div')
+    lvhProbe.setAttribute('aria-hidden', 'true')
+    lvhProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100vh;height:100lvh;visibility:hidden;pointer-events:none'
+    document.body.appendChild(lvhProbe)
+  }
+  return lvhProbe
+}
+// extra = 바닥 계산에서 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장 — 광장 목록 칸은 좌우 여백 7 이 없어 그만큼 넓다)
 export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0, colGap = 10) {
   useEffect(() => {
     if (!mobile) return
@@ -101,16 +113,21 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
     if (!vp || !col) return
     const before = col.style.getPropertyValue('--pb-min-h')
+    const hero = col.querySelector<HTMLElement>('[data-hero]')
+    const probe = probeLvh()
     const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
-      const need = Math.ceil(chrome + extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)) + 'px'
+      const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
+      const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom
+      const fit = hero && getComputedStyle(hero).position === 'sticky' ? probe.offsetHeight - hero.offsetHeight - below : 0
+      const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
     }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
-    ro?.observe(col); ro?.observe(vp)
+    ro?.observe(col); ro?.observe(vp); ro?.observe(probe); if (hero) ro?.observe(hero)
     return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
   }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset, colGap])
 }
@@ -155,7 +172,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
-  useListMinHeight(vpRef, mobile) // 모바일: 카드 2줄이 들어갈 높이를 보장한다(위 주석)
+  useListMinHeight(vpRef, mobile) // 모바일: 붙은 미리보기 아래에 3줄이 다 들어가는 높이(위 주석)
   // ── 모바일: 네이티브 자유 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화. 가로면 가로, 세로면 세로(쪽 = MOBILE_GRID 열 × 줄) ──
   //  세로: 쪽 높이 = 뷰포트 높이(100cqh), 줄 = 높이/2 — 스크롤 → 인덱스는 줄 = round(스크롤/(높이/2)), 쪽 = floor(줄/2).
   //  페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라 열 위치가 정확히 폭/열 수의 배수.
