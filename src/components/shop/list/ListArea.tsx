@@ -121,7 +121,9 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const navEl = col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')
       const nav = navEl && getComputedStyle(navEl).position !== 'fixed' ? navEl.offsetHeight : 0
       const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom - nav
-      const fit = hero && document.documentElement.getAttribute('data-pb-view') !== 'full' ? lvh.offsetHeight - base.offsetHeight - below : 0
+      // 늘 보이는 목록 머리 줄(머리 묶음 − 접히는 분류 줄)도 뺀다 — 접힌 때 미리보기 + 목록 머리 줄 아래에 3줄이 딱 든다(사용자 지시: 목록 머리는 늘 보인다)
+      const bar = col.querySelector<HTMLElement>('[data-sticky-top]'), ctrl = bar ? bar.offsetHeight - (bar.querySelector<HTMLElement>('[data-pb-cat]')?.offsetHeight ?? 0) : 0
+      const fit = hero && document.documentElement.getAttribute('data-pb-view') !== 'full' ? lvh.offsetHeight - base.offsetHeight - ctrl - below : 0
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
       if (!inner && col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
       const page = Math.ceil(Math.max(floor, fit)) + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
@@ -136,8 +138,8 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
 }
 
 // 모바일 세로 넘기기: 목록 칸 안 스크롤(사용자 지시 — 페이지 하나로 합쳤더니 목록을 스크롤할 수 없었고 페이지가 쪽 수만큼 길어졌다). 쪽은 한 쪽 높이(--pb-page-h,
-// useMobileRows)로 쌓이고, 칸 위에는 맨 위 헤더 · 미리보기 · 머리 묶음이 떠 있어 칸 안 스크롤에 따라 숨고 나온다(lib/scrollHide — 칸 위 · 아래 여백이 그만큼).
-// 스크롤 위치 ↔ 쪽 번호: 쪽 i 의 자리 = 그 쪽 위 끝이 칸 위 끝(위쪽 묶음이 다 숨은 때 미리보기 바로 아래)에 오는 스크롤, 첫 쪽은 맨 위. 줄 단위로 반올림해 센다(가로와 같다)
+// useMobileRows)로 쌓이고, 칸 위에는 맨 위 헤더 · 미리보기 · 머리 묶음이 떠 있어 칸 안 스크롤 방향에 따라 접히고 펼쳐진다(lib/scrollHide — 칸 위 여백이 그만큼).
+// 스크롤 위치 ↔ 쪽 번호: 쪽 i 의 자리 = 그 쪽 위 끝이 접힌 때 목록 머리 줄 바로 아래에 오는 스크롤, 첫 쪽은 맨 위. 줄 단위로 반올림해 센다(가로와 같다)
 export function usePagerY(vpRef: React.RefObject<HTMLDivElement | null>, on: boolean, idx: number, setIdx: (i: number, anim?: boolean) => void, pageCount: number, key: string, rows: number = MOBILE_GRID.rows) {
   const live = useRef({ idx, setIdx, pageCount, rows })
   live.current = { idx, setIdx, pageCount, rows }
@@ -146,7 +148,8 @@ export function usePagerY(vpRef: React.RefObject<HTMLDivElement | null>, on: boo
     if (!vp || !tr) return null
     const ph = parseFloat(getComputedStyle(vp).getPropertyValue('--pb-page-h'))
     if (!ph) return null
-    return { vp, off: tr.offsetTop, ph } // off = 칸 위 여백 + 쪽들 위의 것(룩북의 자주 쓴 염색 줄)
+    const ctrl = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pb-ctrl-h')) || 0 // 접혀도 칸 위를 덮는 목록 머리 줄(lib/scrollHide)
+    return { vp, off: tr.offsetTop - ctrl, ph } // off = 칸 위 여백 + 쪽들 위의 것(룩북의 자주 쓴 염색 줄) − 목록 머리 줄
   }, [vpRef])
   const at = (g: { vp: HTMLElement; off: number; ph: number }) => {
     const { pageCount: n, rows: r } = live.current

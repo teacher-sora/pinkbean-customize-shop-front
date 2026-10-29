@@ -60,8 +60,8 @@ function Shell() {
                 히어로(미리보기)는 모든 탭에 있다 — 광장도 분류마다 같다(사용자 지시: 코디 룩북 분류에만 있으면 분류를 바꿀 때마다
                 칸이 생겼다 사라져 아래가 밀렸다. 광장에서 가져온 코디도 바로 보인다). */}
             <div data-pb-panel>
-              {/* 자리 틀(미리보기 높이)을 두고 안의 미리보기만 스크롤에 붙어 움직인다(칸 data-pb-track · 틀 data-pb-wrap — lib/scrollHide) */}
-              <div data-pb-slot="hero" className={styles.heroSlotM}><div data-pb-track="hero"><div data-pb-wrap><MobileHero /></div></div></div>
+              {/* 자리 틀(미리보기 높이)을 두고 안의 미리보기만 스크롤에 붙어 움직인다(칸 data-pb-track — lib/scrollHide) */}
+              <div data-pb-slot="hero" className={styles.heroSlotM}><div data-pb-track="hero"><MobileHero /></div></div>
               {/* 채팅 칸 — 말풍선을 끼었을 때만, 미리보기 바로 아래 */}
               {isList && (comboList ? <ComboPanel mobile host="codi" /> : <ListArea mobile />)}
               {isPlaza && (comboPlaza ? <ComboPanel mobile host="plaza" /> : <PlazaPanel mobile />)}

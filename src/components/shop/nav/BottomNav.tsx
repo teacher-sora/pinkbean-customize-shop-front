@@ -36,7 +36,8 @@ function TabsM({ label, items, on, pick }: { label: string; items: { id: string;
     else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth })
   }, [on, railRef])
   return (
-    <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label={label}>
+    // data-pb-cat = 스크롤을 내리면 접히는 줄(lib/scrollHide)
+    <nav ref={railRef} data-pb-cat className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label={label}>
       {items.map((p) => {
         const sel = on === p.id
         return (
@@ -58,12 +59,12 @@ export function PlazaTabsM() {
   return <TabsM label="분류" items={PLAZA_FILTERS} on={s.plazaFilter} pick={(id) => s.setPlazaFilter(id as PlazaFilter)} />
 }
 
-// 모바일 부위 · 분류 줄과 목록 머리를 묶어 미리보기 바로 아래에 붙인다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
-// 맨 위까지 올리지 않게). 내린 만큼 미리보기 뒤로 들어가고 올린 만큼 나온다(lib/scrollHide — 맨 위 헤더 · 하단 탭과 같은 스크롤 연결).
-// 자리 틀(.barM)은 가만히 두고 안의 내용(data-sticky-top)만 칸 · 틀(data-pb-track · data-pb-wrap) 안의 sticky 로 움직인다. data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
+// 모바일 부위 · 분류 줄과 목록 머리를 묶어 미리보기 바로 아래에 띄워 둔다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
+// 맨 위까지 올리지 않게). 스크롤을 내리면 분류 줄(data-pb-cat)만 미리보기 뒤로 접히고 목록 머리 줄은 늘 보인다(lib/scrollHide).
+// 자리 틀(.barM)이 원래 높이를 잡고 안의 칸(data-pb-track)이 화면에 붙는다. data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
 export function StickyBarM({ children }: { children: React.ReactNode }) {
-  useLayoutEffect(() => { refreshScrollLink() }) // 새로 붙거나 내용이 바뀌면 지금 숨김량대로 바로 적는다(그리기 전에)
-  return <div data-pb-slot="bar" className={styles.barM}><div data-pb-track="bar"><div data-pb-wrap><div data-sticky-top className={styles.barIn}>{children}</div></div></div></div>
+  useLayoutEffect(() => { refreshScrollLink() }) // 새로 붙거나 내용이 바뀌면 자리를 바로 다시 잰다(그리기 전에)
+  return <div data-pb-slot="bar" className={styles.barM}><div data-pb-track="bar"><div data-sticky-top className={styles.barIn}>{children}</div></div></div>
 }
 
 export default function BottomNav({ mobile }: { mobile: boolean }) {
