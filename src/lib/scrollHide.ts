@@ -179,6 +179,13 @@ function snap() {
   let target = Z
   if (Z > 0 && Z < hH) target = dir > 0 ? hH : 0
   else if (Z > hH && Z < Zmax) target = dir > 0 ? Zmax : hH
+  // 하단 탭도 걸쳐 있으면 마지막 방향으로 끝까지(제자리에 있을 때는 그대로)
+  const nav = E.nav
+  if (nav && !navRestOn && N > 0 && N < D.nH) {
+    N = dir > 0 ? D.nH : 0
+    nav.style.transition = 'transform .18s cubic-bezier(.45,0,.55,1), opacity .18s ease'; window.clearTimeout(navT); navT = window.setTimeout(() => nav.style.removeProperty('transition'), 200)
+    set(nav, 'transform', tr(N)); set(nav, 'opacity', op(1 - N / D.nH))
+  }
   if (target === Z) return
   const max = is ? is.scrollHeight - is.clientHeight : root().scrollHeight - window.innerHeight
   const by = Math.max(-y, Math.min(max - y, target - Z))

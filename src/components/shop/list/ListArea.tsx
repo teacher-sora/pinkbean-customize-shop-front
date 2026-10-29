@@ -115,7 +115,9 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
-      const nav = col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')?.offsetHeight ?? 0
+      // 하단 탭 자리는 뺀다 — 목록 칸 안 스크롤에서는 탭이 칸 위에 떠 있어(lib/scrollHide) 칸 아래에 없으니 빼지 않는다(빼면 쪽이 탭만큼 커졌다)
+      const navEl = col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')
+      const nav = navEl && getComputedStyle(navEl).position !== 'fixed' ? navEl.offsetHeight : 0
       const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom - nav
       const fit = hero && document.documentElement.getAttribute('data-pb-view') !== 'full' ? lvh.offsetHeight - base.offsetHeight - below : 0
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
