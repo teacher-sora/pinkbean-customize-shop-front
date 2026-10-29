@@ -82,7 +82,6 @@ export interface ListItem {
   name?: string
   gender?: number
   label?: 'master' | 'special'
-  collabo?: boolean           // 콜라보 아이템(catalog/labels.json — loadSlot 이 합친다)
   invisibleFace?: number
   fixedEmotion?: string       // 표정 얼굴장식: 'smile' 같은 표정 키 또는 'blink/1' 처럼 키+프레임 인덱스
   headId?: string             // skin-only: paired head id for live compositing
@@ -250,25 +249,10 @@ export function loadItemDups(): Promise<ItemDups> {
   }
   return itemDupsPromise
 }
-// 목록 '필터'의 분류 표(parser scripts/labels-build.cjs → CDN catalog/labels.json) = { collabo: id[], master: id[] }.
-// collabo = 콜라보(원본 info.collabo · BTSLabel · BLACKPINKLabel). master = 마스터라벨 세트의 헤어 · 성형 · 얼굴장식 —
-// 원본에 표시가 없어 기수별 이름표로 찾은 것이다(장비의 마스터라벨은 목록의 label 에 이미 있다). 합치면 배지도 마스터라벨이 된다.
-// 목록(slots/)에 싣지 않고 따로 두는 것은 목록을 meta 로 다시 만들 때(relist) 지워지지 않게 하려는 것이다. 없거나 실패하면 빈 표.
-type Labels = { collabo: Set<string>; master: Set<string> }
-let labelsPromise: Promise<Labels> | null = null
-export function loadLabels(): Promise<Labels> {
-  if (!labelsPromise) {
-    labelsPromise = pre<{ collabo?: string[]; master?: string[] }>('catalog/labels.json', () => fetch(url('catalog/labels.json'), FRESH).then((r) => (r.ok ? r.json() : {})))
-      .catch(() => ({} as { collabo?: string[]; master?: string[] }))
-      .then((d) => ({ collabo: new Set(d.collabo ?? []), master: new Set(d.master ?? []) }))
-  }
-  return labelsPromise
-}
 const slotCache = new Map<string, Promise<ListItem[]>>()
 export function loadSlot(file: string): Promise<ListItem[]> {
   let p = slotCache.get(file)
   if (!p) {
-    const labels = loadLabels() // 목록과 함께 받는다(기다리는 시간이 겹치게)
     p = pre<ListItem[]>(file, () => fetch(url(file), FRESH).then((r) => r.json())).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
       // 같은 동작 목록은 한 배열을 함께 쓴다 — JSON 은 아이템마다 같은 글자를 새로 만든다(무기 3,961개의 동작 목록은 365가지뿐인데
@@ -281,13 +265,6 @@ export function loadSlot(file: string): Promise<ListItem[]> {
         if (hit) (it as { actions?: string[] }).actions = hit; else acts.set(k, a)
       }
       return items.map((it) => fixIcon(fixSlotCodes(it)))
-    }).then(async (items) => {
-      const { collabo, master } = await labels
-      if (!collabo.size && !master.size) return items
-      return items.map((it) => {
-        const c = collabo.has(it.id), m = !it.label && master.has(it.id)
-        return c || m ? { ...it, ...(c && { collabo: true }), ...(m && { label: 'master' as const }) } : it
-      })
     }).then(async (items) => {
       const first = items[0]
       if (!first) return items

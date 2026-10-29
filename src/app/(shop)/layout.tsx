@@ -18,7 +18,7 @@ const DEF_TONE = DEFAULT_TONE
 const BOOT = `(function(){try{
 var B=${JSON.stringify(DATA_BASE.replace(/\/+$/, ''))},b=window.__pbBoot={},F={cache:'no-cache'},L={cache:'no-cache',priority:'low'};
 function g(u,o){var p=b[u]=fetch(B+'/'+u,o).then(function(r){if(!r.ok)throw 0;return r.json()});p.catch(function(){});return p}
-g('anima.json',F);g('effects/index.json',F);g('catalog/new.json',F);g('catalog/beauty-dups.json',F);g('catalog/labels.json',F);
+g('anima.json',F);g('effects/index.json',F);g('catalog/new.json',F);g('catalog/beauty-dups.json',F);
 var c='all';try{var s=JSON.parse(sessionStorage.getItem('pb_ui_session_v1')||'{}');if(typeof s.activeCat==='string')c=s.activeCat}catch(e){}
 var eq=${JSON.stringify(DEF_EQUIP)},tone=${DEF_TONE};
 try{var P=JSON.parse(localStorage.getItem('pb_presets_v1')),S=P&&P.data&&P.data[P.sel||'d0'];if(S&&S.equipped){eq=S.equipped;if(typeof S.tone==='number')tone=S.tone}}catch(e){}
