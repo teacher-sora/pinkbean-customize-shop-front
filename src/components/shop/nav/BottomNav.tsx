@@ -60,12 +60,12 @@ export function PlazaTabsM() {
 // 모바일 하단 탭 숨기기(사용자 지시 — 유튜브의 아래 탭처럼): 페이지를 아래로 내리면 화면 아래로 숨고, 위로 올리면 다시 나온다.
 // 맨 위에서, 그리고 맨 아래까지 탭 높이만큼 남은 곳부터는 늘 보인다 — 맨 아래에 닿아야 나오면 탭 자리 위의 것(코디 정보 / 염색의 아래 칸)을
 // 누르려는데 내리던 끝에 탭이 사라져 있어 곤란했다(사용자 지적). 문서 스크롤만 본다(목록 안 가로 · 세로 넘기기는 해당 없음). 움직임은 transform 뿐(nav.module.css .tabNavHide)
-// over = 카드 목록 탭(코디 · AI 코디 검색 · 프리셋 · 광장): 탭이 자리를 차지하지 않고 목록 위에 뜬다(.tabNavOver). 맨 아래 = 붙은 미리보기 아래에
-// 3줄이 다 보이는 자리라(ListArea useMobileRows) 맨 아래 규칙을 두지 않는다 — 두면 셋째 줄의 [북마크 · 염색]을 덮는다. 위로 올리면 나온다
+// '맨 아래'는 탭 자리가 화면에 들어오기 시작한 때(4px)다 — 그 바로 위가 붙은 미리보기 아래에 목록 3줄이 다 보이는 자리라(ListArea useMobileRows)
+// 그보다 먼저 나오면 셋째 줄의 [북마크 · 염색]을 덮는다
 const HIDE_DELTA = 8 // 이만큼 이어서 움직여야 바꾼다(손가락 떨림 · 주소창 접힘으로 깜빡이지 않게)
 // frozen = 창(시트 · 다이얼로그)이 떠 있다 — 그동안은 스크롤을 보지 않고 그대로 둔다. 시트는 뒤 페이지를 position:fixed 로 고정해 스크롤이 0 이 됐다가
 // 닫을 때 제자리로 돌아가는데, 그것을 '맨 위로 올림' · '내림'으로 읽어 탭이 나타났다 사라졌다(연출 설정 — 사용자 지적). 풀리면 지금 위치에서 다시 센다.
-function useHideOnScroll(on: boolean, navRef: React.RefObject<HTMLElement | null>, frozen: boolean, over: boolean): boolean {
+function useHideOnScroll(on: boolean, navRef: React.RefObject<HTMLElement | null>, frozen: boolean): boolean {
   const [hidden, setHidden] = useState(false)
   useEffect(() => {
     if (!on) { setHidden(false); return }
@@ -75,7 +75,7 @@ function useHideOnScroll(on: boolean, navRef: React.RefObject<HTMLElement | null
       raf = 0
       const y = window.scrollY, d = y - last
       last = y
-      const end = !over && y + window.innerHeight >= document.documentElement.scrollHeight - (navRef.current?.offsetHeight ?? 0) - 2
+      const end = y + window.innerHeight >= document.documentElement.scrollHeight - (navRef.current?.offsetHeight ?? 0) + 4
       if (y <= 0 || end) { acc = 0; setHidden(false); return }
       acc = Math.sign(d) === Math.sign(acc) ? acc + d : d
       if (acc > HIDE_DELTA) setHidden(true)
@@ -84,7 +84,7 @@ function useHideOnScroll(on: boolean, navRef: React.RefObject<HTMLElement | null
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(check) }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf) }
-  }, [on, navRef, frozen, over])
+  }, [on, navRef, frozen])
   return hidden
 }
 
@@ -92,8 +92,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const railRef = useWheelRail()
   const navRef = useRef<HTMLElement | null>(null)
-  const over = s.primary !== 'info' // 카드 목록 탭은 목록 위에 뜬다(useHideOnScroll 위 주석)
-  const navHidden = useHideOnScroll(mobile, navRef, !!s.surface, over)
+  const navHidden = useHideOnScroll(mobile, navRef, !!s.surface)
   // 코디 광장은 부위 대신 광장 분류(전체·대회·내 등록·찜한 코디)를 쓴다. 항목이 4개뿐이라 양끝 페이드는 끈다
   // (요소는 그대로 두고 opacity 만 0 — 탭을 오갈 때 전환이 끊기지 않게).
   const plaza = s.primary === 'share'
@@ -115,7 +114,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
     // 부위 · 광장 분류는 목록 머리 위(CatTabsM · PlazaTabsM)에 있다(사용자 지시) — 모바일 하단은 탭 바만
     return (
       <>
-        <nav ref={navRef} data-hero-below className={clsx(styles.tabNavM, over && styles.tabNavOver, navHidden && styles.tabNavHide)} aria-label="메뉴">
+        <nav ref={navRef} data-hero-below className={clsx(styles.tabNavM, navHidden && styles.tabNavHide)} aria-label="메뉴">
           {TABS.map((t) => {
             const on = s.primary === t.id
             return (

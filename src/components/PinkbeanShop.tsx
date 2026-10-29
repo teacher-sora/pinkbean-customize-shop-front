@@ -8,6 +8,7 @@
 
 import clsx from 'clsx'
 import { useEffect } from 'react'
+import { installScrollHandoff } from '@/lib/scrollHandoff'
 import { ShopProvider, useShop } from './shop/ShopContext'
 import Background from './shop/frame/Background'
 import AppHeader from './shop/frame/AppHeader'
@@ -39,6 +40,7 @@ function Shell() {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
   const mobile = s.bp === 'mobile'
+  useEffect(() => (mobile ? installScrollHandoff() : undefined), [mobile]) // 세로 스크롤 칸이 끝에 닿으면 페이지가 이어 움직인다(lib/scrollHandoff)
   const isList = s.primary === 'codi' || s.primary === 'search'
   const isPlaza = s.primary === 'share' // 코디 광장: PC 는 미리보기 자리에 등록 폼이 들어간다(코디 룩북 분류만 미리보기). 모바일 히어로는 늘 있다
   // 코디 룩북(combo/ComboPanel): 코디 탭은 목록 카드의 칩으로 열면 목록 자리가 패널이 되고, 광장은 '코디 룩북' 분류가 광장 목록 자리에 든다.

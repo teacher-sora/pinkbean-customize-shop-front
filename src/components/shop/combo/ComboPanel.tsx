@@ -61,8 +61,11 @@ export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'c
   // 머리는 패널이 **한 번만** 그린다 — 목록 · 빈 화면 · 상세는 그 아래 내용만 바꾼다. 그래서 목록 ↔ 상세를 오가도 아이템 칩(그림 캔버스)이 같은 자리에
   // 그대로 남아 다시 그려지지 않는다(사용자 지적 — 상세로 넘어갈 때 칩 그림이 움찔했다. 화면마다 머리를 따로 그리면 칩이 새로 붙는다)
   const head = <><ComboHead item={item} mobile={mobile} host={host} detail={item ? detail : null} onBack={() => setDetail(null)} /><div className={mobile ? list.hrM : list.hr} /></>
+  // 모바일 머리([←] · 아이템 · 보기 설정 · 쪽)는 붙은 미리보기 바로 아래에 함께 붙는다(사용자 지시 — 어디까지 내려도 쪽 · 돌아가기가 손 닿는 곳에).
+  // data-sticky-top = 목록 칸 맞춤(ListArea useMobileRows) · 가이드(guide.reveal)가 이만큼을 가려진 자리로 친다
+  const headM = <div data-sticky-top className={styles.stickHeadM}>{head}</div>
   // 열고 닫기 · 상세 오가기 · 탭 오가기 모두 움직임 없이 바로 바뀐다(사용자 지시 — 탭을 바꾸듯)
-  if (mobile) return <>{head}{body}</>
+  if (mobile) return <>{headM}{body}</>
   return <section className={list.panel}>{head}{body}</section>
 }
 
@@ -392,7 +395,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   }
 
   const viewport = (
-    <div ref={setVp} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
+    <div ref={setVp} data-handoff className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
       {failed || (first && !first.ready) ? (
         <div className={mobile ? list.emptyM : list.empty}>
           <span className={mobile ? list.emptyTitleM : list.emptyTitle}>코디를 불러오지 못했어요</span>

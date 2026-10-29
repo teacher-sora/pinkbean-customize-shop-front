@@ -1216,12 +1216,21 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 코디 룩북 — 목록 카드의 '코디' 칩으로 연다. 열려 있으면 목록 자리가 패널이 된다(PinkbeanShop). 목록의 쪽 · 부위 · 검색은 여기 그대로라
   // 닫으면 보던 쪽으로 돌아온다. 광장의 코디 룩북 탭은 같은 아이템(comboItem)을 이어 보여 준다
   // 열고 닫기 · 상세 오가기는 탭을 바꾸듯 그 자리에서 바로 바뀐다(움직임 없음 — 사용자 지시). 첫 묶음은 누르는 순간 받기 시작한다
+  // 모바일은 열면 페이지 맨 위에서 바로 보이고(움직임 없이 — 사용자 지시: 어느 스크롤에서 열든), 닫으면 보던 스크롤 자리로 돌아간다.
+  // 목록이 다시 붙어 페이지 높이(--pb-min-h)를 잰 뒤에 돌려야 해서 두 프레임 뒤에 옮긴다
+  const comboScroll = useRef<number | null>(null)
   const openCombo = (item: ListItem) => {
     void lookChunk(item.id, 0, comboGender === 'all' ? 'a' : comboGender).catch(() => {})
     if (comboItem?.id !== item.id) setComboDye(null)
+    if (bp === 'mobile' && !comboOpen) { comboScroll.current = window.scrollY; window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }) }
     setComboItem(item); setComboDetail(null); setComboTab(primary); setComboOpen(true)
   }
-  const closeCombo = () => { setComboOpen(false); setComboDetail(null) }
+  const closeCombo = () => {
+    setComboOpen(false); setComboDetail(null)
+    const y = comboScroll.current
+    comboScroll.current = null
+    if (bp === 'mobile' && y) requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' as ScrollBehavior })))
+  }
   // 코디 룩북 미리 받기(목록 카드의 '코디' 칩 · 광장의 아이템 찾기 결과에 머물거나 닿는 순간): 지금 성별의 첫 묶음과, 첫 쪽 카드(넓은 PC 한 쪽 18벌)의
   // 아이템 정보 · 정지 자세 그림 파일(snapRender.preloadSnapshot — 받기만, 합성은 누른 뒤. 합성까지 미리 걸면 그 일이 화면을 붙잡아 패널이 늦게 떴다 —
   // 실측 CPU ×4: 패널 367 → 1149 · 1671ms). 받은 것은 lib/looks · 그림 캐시에 남아 두 번 받지 않는다

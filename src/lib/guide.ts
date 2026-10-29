@@ -260,9 +260,9 @@ function reveal(el: HTMLElement) {
     if (pr.bottom > 0 && pr.top < window.innerHeight) return
     r = pr
   }
-  // 모바일 미리보기(히어로)는 화면 위에 붙어 있다(sticky) — 그 아래가 보이는 자리다(히어로 안의 것은 그대로)
-  const hero = document.querySelector<HTMLElement>('[data-hero]')
-  const top = hero && !hero.contains(el) && getComputedStyle(hero).position === 'sticky' ? Math.max(0, hero.getBoundingClientRect().bottom) : 0
+  // 모바일 미리보기(히어로)와 그 아래에 함께 붙는 머리(data-sticky-top — 코디 룩북)는 화면 위에 붙어 있다 — 그 아래가 보이는 자리다(그 안의 것은 그대로)
+  const stuck = [...document.querySelectorAll<HTMLElement>('[data-hero], [data-sticky-top]')].filter((h) => !h.contains(el) && getComputedStyle(h).position === 'sticky')
+  const top = stuck.reduce((n, h) => Math.max(n, h.getBoundingClientRect().bottom), 0)
   const room = window.innerHeight - top
   if (r.top < top || r.bottom > window.innerHeight) window.scrollBy({ top: r.top - top - (room - Math.min(r.height, room)) / 2, behavior: 'smooth' })
 }

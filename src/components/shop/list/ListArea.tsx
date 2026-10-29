@@ -80,9 +80,9 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 
 // 모바일 목록 칸의 높이(--pb-min-h — 페이지 컬럼 높이). 목록은 칸 안에서 세로로 스크롤하지 않고 페이지 스크롤로 내려 본다.
 //  · 맞춤: 페이지를 끝까지 내리면 붙은 미리보기(히어로 sticky) 바로 아래부터 화면 끝까지가 목록 칸이다 = 큰 화면 높이(100lvh — 툴바가 접힌,
-//    내려 볼 때의 높이. 접히지 않는 브라우저는 작은 높이와 같다) − 미리보기 − 목록 칸 아래. 하단 탭은 내려 보는 동안 숨고 자리를 차지하지 않는다
-//    (nav .tabNavOver). 그래서 미리보기를 보면서 3줄이 모두 보인다(사용자 지시). 부위 · 보기 설정 줄은 붙이지 않는다 — 부위를 바꿀 때는
-//    목록에서 눈을 떼므로 살짝 올려 고르면 된다(사용자와 정한 흐름).
+//    내려 볼 때의 높이. 접히지 않는 브라우저는 작은 높이와 같다) − 미리보기 − 함께 붙는 머리(data-sticky-top — 코디 룩북 머리) − 목록 칸 아래(하단 탭 자리는 빼고 잰다).
+//    그래서 탭 자리 바로 위까지 내리면 미리보기를 보면서 3줄이 모두 보이고(사용자 지시), 더 내려 탭 자리에 닿으면 탭이 나온다(BottomNav useHideOnScroll).
+//    부위 · 보기 설정 줄은 붙이지 않는다 — 부위를 바꿀 때는 목록에서 눈을 떼므로 살짝 올려 고르면 된다(사용자와 정한 흐름).
 //  · 바닥: 화면이 낮아(작은 폰 · 미리보기 크게) 맞춤 칸이 너무 작으면 카드 그림 칸 ≥ 폭 × ratio + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) foot 로
 //    받친다. 그때는 3줄이 한 화면에 다 들지 않고 페이지가 더 길어진다.
 //  그 외 요소 높이(chrome)는 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다.
@@ -123,8 +123,10 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
-      const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom
-      const fit = hero && getComputedStyle(hero).position === 'sticky' ? probe.offsetHeight - HERO_BASE_M - below : 0
+      const nav = col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')?.offsetHeight ?? 0
+      const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom - nav
+      const stuck = [...col.querySelectorAll<HTMLElement>('[data-sticky-top]')].reduce((n, el) => n + el.offsetHeight, 0)
+      const fit = hero && getComputedStyle(hero).position === 'sticky' ? probe.offsetHeight - HERO_BASE_M - stuck - below : 0
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
     }
@@ -310,7 +312,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const viewport = (
-    <div ref={setVp} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
+    <div ref={setVp} data-handoff className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
       {hero ? (
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>
