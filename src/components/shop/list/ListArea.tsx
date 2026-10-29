@@ -6,7 +6,7 @@
 import clsx from 'clsx'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
-import { MOBILE_GRID } from '@/lib/shopData'
+import { ITEM_KINDS, MOBILE_GRID } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
@@ -14,6 +14,7 @@ import { CatTabsM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
 import styles from './list.module.css'
+import pst from '../preset/preset.module.css'
 
 const VIEW_MODES: SegOpt<ListMode>[] = [
   { v: 'sprite', l: '아이템', t: '아이템 그림만 보기' },
@@ -45,8 +46,11 @@ const scrollIdx = (vp: HTMLElement, y: boolean) => {
 // 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(이어서 고를 수 있게).
 // 같은 부품을 코디 룩북 머리도 쓴다(combo/ComboPanel — 사용자 지시: 같은 역할은 부품 하나)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// 묶음 = 하나 고르기(Seg) 또는 토글 여럿(toggles — '구분'처럼 여러 개를 함께 켠다. 알약은 닉네임 불러오기의 가져올 부위 토글과 같은 부품 pst.takePill)
+// label = 버튼 글자(기본 '보기 설정'). 넓은 PC 는 보기 · 성별 · 방향을 펼쳐 두고 '구분'만 이 버튼으로 접는다(머리에 자리가 없다 — 사용자 지시)
 export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void }
-export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
+  | { label: string; title: string; toggles: { v: string; l: string; t: string }[]; on: string[]; onToggle: (v: string) => void }
+export function FilterM({ groups, mobile, guide, label = '보기 설정' }: { mobile: boolean; groups: FilterGroup[]; guide?: string; label?: string }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     if (!open) return
@@ -54,11 +58,12 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [open])
-  const now = groups.map((g) => g.opts.find((o) => o.v === g.value)?.l ?? '').join(', ')
+  const now = groups.map((g) => ('toggles' in g ? (g.toggles.filter((t) => g.on.includes(t.v)).map((t) => t.l).join(' ') || '전체') : g.opts.find((o) => o.v === g.value)?.l ?? '')).join(', ')
+  const set = groups.some((g) => 'toggles' in g && g.on.length > 0) // 토글을 켜 두었으면 버튼도 켜진 모양(닫혀 있어도 거르는 중인 걸 알게)
   return (
     <div className={styles.filterM}>
-      <button type="button" data-guide={guide} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, open && styles.filterBtnOn)}>
-        <span className={styles.filterText}>보기 설정</span>
+      <button type="button" data-guide={guide} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`${label}: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, (open || set) && styles.filterBtnOn, set && styles.filterBtnSet)}>
+        <span className={styles.filterText}>{label}</span>
         <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
       </button>
       {/* 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다 */}
@@ -68,7 +73,11 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
         {groups.map((g) => (
           <Fragment key={g.label}>
             <span className={styles.filterLabel}>{g.label}</span>
-            <Seg variant="mobileFlex" title={g.title} opts={g.opts} value={g.value} onPick={g.onPick} />
+            {'toggles' in g ? (
+              <div role="group" aria-label={g.title} className={styles.filterToggles}>
+                {g.toggles.map((t) => { const on = g.on.includes(t.v); return <button key={t.v} type="button" aria-pressed={on} title={t.t} onClick={() => g.onToggle(t.v)} className={clsx(pst.takePill, on && pst.takePillOn)}>{t.l}</button> })}
+              </div>
+            ) : <Seg variant="mobileFlex" title={g.title} opts={g.opts} value={g.value} onPick={g.onPick} />}
           </Fragment>
         ))}
       </div>
@@ -220,6 +229,9 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     { label: '성별', title: '성별', opts: GENDERS, value: s.genderFilter, onPick: s.setGenderFilter },
     { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
   ]
+  // '구분' 토글(마라벨 · 스라벨 · 캐시 · 메소 — 하나도 안 켜면 전부) — 접어 둔 보기 설정에는 맨 아래 묶음으로, 넓은 PC 는 따로 '구분' 버튼으로
+  const kindGroup: FilterGroup = { label: '구분', title: '아이템 구분(여러 개를 켤 수 있어요, 안 켜면 전부)', toggles: ITEM_KINDS, on: s.kindFilter, onToggle: s.toggleKind }
+  const foldGroups = [...filterGroups, kindGroup]
   const runAi = (q?: string) => { const t = (q ?? s.aiQ).trim(); if (!t) return; if (q !== undefined) s.setAiQ(q); s.runSearch(t) }
 
   const pageChip = (
@@ -250,7 +262,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const controls = mobile ? (
     // 한 줄: 보기와 성별(접어 둔 버튼) · 쪽 번호 · 검색. 높이는 프리셋 · 코디 정보의 머리와 같다(48)
     <div className={styles.controlsM}>
-      <FilterM mobile guide="listdir" groups={filterGroups} />
+      <FilterM mobile guide="listdir" groups={foldGroups} />
       {pageChip}
       <div className={styles.searchWrapM}>
         <IconSearch className={styles.searchIconM} />
@@ -261,12 +273,13 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     <div className={styles.header}>
       {/* 좁은 폭(절반 · 태블릿)에서는 보기와 성별을 접어 한 줄로 둔다 — 펼쳐 두면 머리가 두 줄이 된다 */}
       {narrow
-        ? <FilterM mobile={false} guide="listdir" groups={filterGroups} />
+        ? <FilterM mobile={false} guide="listdir" groups={foldGroups} />
         : (
           <div data-guide="listdir" className={styles.groupA}>
             <Seg title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={thumbs.mode} onPick={s.setListMode} />
             <Seg title="성별" opts={GENDERS} value={s.genderFilter} onPick={s.setGenderFilter} />
             <Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} />
+            <FilterM mobile={false} label="구분" groups={[kindGroup]} />
           </div>
         )}
       <div className={styles.groupB}>

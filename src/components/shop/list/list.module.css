@@ -156,3 +156,6 @@
 .actIcon { display: none; }
 .actIcon > svg { width: 12px; height: 12px; }
 @media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge { height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: 11px; } }
+/* 보기 설정 창의 '구분' 토글 줄(여러 개를 함께 켠다) · 켜 둔 토글이 있으면 접힌 버튼 글자도 분홍 */
+.filterToggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.filterBtnSet .filterText { color: light-dark(#c05a94, #cb9ab6); }

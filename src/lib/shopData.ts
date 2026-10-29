@@ -154,6 +154,14 @@ export const CARD_FIT_W_M = 0.8
 // 모바일 격자 = 4열 × 2줄 — 모든 모바일 카드 목록이 같다(사용자 지시: 코디 탭 · AI 코디 검색 목록, 코디 룩북, 프리셋, 광장. 3줄은 스크롤만 늘어 안 된다).
 // 두 줄이 화면 높이를 채워 카드가 세로로 길어 보여, 목록 카드는 열 간격 · 카드 좌우 안쪽 여백을 줄여 폭을 넓혔다(list.module.css .gridM · .cardM)
 export const MOBILE_GRID = { cols: 4, rows: 2 }
+// 목록의 '구분' 거르기(사용자 지시 — 토글, 여러 개를 함께 켤 수 있다). 하나도 안 켜면 전부, 켜면 켠 것 가운데 하나라도 맞는 아이템(합집합).
+// 부티크 · 콜라보는 아이템 목록에 그 표시가 없어 아직 넣지 않는다(parser 가 원본에서 뽑아 목록에 실어야 한다)
+export const ITEM_KINDS: { v: string; l: string; t: string; test: (it: ListItem) => boolean }[] = [
+  { v: 'master', l: '마라벨', t: '마스터라벨', test: (it) => it.label === 'master' },
+  { v: 'special', l: '스라벨', t: '스페셜라벨', test: (it) => it.label === 'special' },
+  { v: 'cash', l: '캐시', t: '캐시 아이템', test: (it) => it.isCash },
+  { v: 'meso', l: '메소', t: '메소로 얻는 아이템(캐시가 아닌 것)', test: (it) => !it.isCash },
+]
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.

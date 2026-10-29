@@ -31,7 +31,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, ITEM_KINDS, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, presetCard, snapKey } from '@/lib/core/snapRender'
 import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -246,6 +246,7 @@ export interface ShopCtx {
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
   search: string; setSearch: Dispatch<string>
   genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용
+  kindFilter: string[]; toggleKind: (v: string) => void // '구분' 토글(shopData.ITEM_KINDS) — 코디 · AI 코디 검색 공용
   // primary/screen
   primary: string; setPrimary: (tab: string) => void
   goHome: () => void // 로고 — 첫 진입 화면(코디 탭 · 전체 · 1페이지)으로
@@ -678,16 +679,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const want = gf === 'f' ? 1 : 0
     return list.filter((it) => it.gender === want || it.gender === 2 || it.gender == null)
   }, [])
+  // '구분' 토글: 켠 것 가운데 하나라도 맞으면 남긴다(하나도 안 켜면 전부)
+  const [kindFilter, setKindFilter] = useState<string[]>([])
+  const toggleKind = useCallback((v: string) => setKindFilter((k) => (k.includes(v) ? k.filter((x) => x !== v) : [...k, v])), [])
+  const byKind = useCallback((list: ListItem[], kf: string[]) => {
+    if (!kf.length) return list
+    const tests = ITEM_KINDS.filter((k) => kf.includes(k.v)).map((k) => k.test)
+    return list.filter((it) => tests.some((f) => f(it)))
+  }, [])
   const activeListFull = listForCat(activeCat)
   // 이름 검색: 공백 무시 + 한/영 자판 무관(lib/nameSearch). 입력은 즉시, 필터·리스트 갱신은 지연값으로(타이핑 끊김 방지).
   const deferredSearch = useDeferredValue(search)
   const activeList = useMemo(() => {
-    const list = byGender(activeListFull, genderFilter)
+    const list = byKind(byGender(activeListFull, genderFilter), kindFilter)
     if (isEgg(deferredSearch)) return list.filter((it) => isEggItem(it.id))   // 이스터에그(lib/easterEgg)
     const match = nameMatcher(deferredSearch)
     if (!match) return list
     return list.filter((it) => match(it.name || it.id))
-  }, [activeListFull, deferredSearch, byGender, genderFilter])
+  }, [activeListFull, deferredSearch, byGender, genderFilter, byKind, kindFilter])
 
   // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
   // 원본 해석이라 스프라이트/라벨/염색이 정확하고, 코디탭과 동일하게 ItemThumb 로 렌더된다.
@@ -878,8 +887,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     else if (activeCat === 'new') out = out.filter((it) => newIds.has(it.id))
     else if (activeCat === CHAT_TAB) out = out.filter((it) => it.slot === 'nameTag' || it.slot === 'chatBalloon') // 명찰/말풍선 탭은 두 부위를 함께 보인다
     else if (activeCat !== 'all') out = out.filter((it) => it.slot === CAT_TO_SLOT[activeCat])
-    return byGender(out, genderFilter)
-  }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter])
+    return byKind(byGender(out, genderFilter), kindFilter)
+  }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter, byKind, kindFilter])
   // 정렬은 **화면에 들어올 때 한 번만** 확정한다 — 좋아요를 누를 때마다 카드가 자리를 바꾸면 보던 곳을 잃는다.
   // 같은 (분류·검색어·정렬·목록 세대) 안에서는 처음 잡은 순서를 그대로 쓰고, 그 사이 새로 생긴 글(내 등록)만 맨 앞에 붙는다.
   const plazaOrder = useRef<{ key: string; ids: string[] }>({ key: '', ids: [] })
@@ -1567,7 +1576,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPrimary('codi')
     setActiveCat('all')
     setSearch('')
-    setGenderFilter('all')
+    setGenderFilter('all'); setKindFilter([])
     setAiQ(''); setSearchQuery(null); setSearchResults([])
     setPlazaFilter('all'); setPlazaQState('')
     setPageByCat({}) // 부위별로 따로 기억하던 페이지까지 전부 1페이지로
@@ -2166,7 +2175,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const saveName = selIdx >= 0 ? presetFileName(presets[selIdx].name, selIdx) : CHAT_NAME_FALLBACK
   const value: ShopCtx = {
     index, cats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
-    genderFilter, setGenderFilter,
+    genderFilter, setGenderFilter, kindFilter, toggleKind,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
