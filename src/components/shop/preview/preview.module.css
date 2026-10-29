@@ -311,3 +311,4 @@
 /* 미리보기 아래 단추 묶음은 빈 자리로 누름을 받지 않는다 — 좁은 화면(280)에서 오른쪽 묶음 칸이 왼쪽 [채팅] 위를 덮어 눌리지 않았다. 숨긴 묶음(heroBarOff)은 단추도 막힌 채 */
 .heroLeft, .heroRight { pointer-events: none; }
 .heroLeft:not(.heroBarOff) > *, .heroRight:not(.heroBarOff) > * { pointer-events: auto; }
+.heroRight > .dotBtnM:not(.dotBtnMOn) { pointer-events: none; } /* 숨은 [점 위치](고칠 아이템이 없을 때)는 계속 누름을 받지 않는다 — 280 폭에서 [채팅] 위에 겹쳐 있었다 */
