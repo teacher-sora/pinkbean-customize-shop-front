@@ -34,7 +34,8 @@ function measure() {
   if (!E) { unfloat(); return }
   const { col, hT, hdr, eT, hero, bS, bT, bar, is } = E
   const inner = !!is
-  if (inner !== root().hasAttribute('data-pb-inner')) { root().toggleAttribute('data-pb-inner', inner); relayout() }
+  const changed = inner !== root().hasAttribute('data-pb-inner')
+  if (changed) root().toggleAttribute('data-pb-inner', inner)
   const hH = hdr?.offsetHeight ?? 0, heroH = hero.offsetHeight, bH = bar?.offsetHeight ?? 0
   const cH = bar?.querySelector<HTMLElement>('[data-pb-cat]')?.offsetHeight ?? 0
   foldAt = hH + cH
@@ -45,6 +46,7 @@ function measure() {
   setTop(bT, px(inner || !bS ? hH + heroH : bS.getBoundingClientRect().top + y - colTop))
   setVar('--pb-cat-h', px(cH)); setVar('--pb-ctrl-h', px(bH - cH)); setVar('--pb-ipad', px(hH + bH))
   root().setAttribute('data-pb-float', '')
+  if (changed) relayout() // 자리 틀까지 다 적은 뒤에(먼저 알리면 머리 묶음 자리가 빠진 채로 쟀다)
   last = scrollPos()
   if (last < foldAt) fold(false)
 }
