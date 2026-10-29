@@ -68,7 +68,7 @@
 .metaM { padding: 5px 6px 3px; border-top: none; }
 /* 모바일 카드 아래 막대(목록 카드의 [북마크 · 염색] 막대와 같은 부품 — list .bar · .barM · .act) — [가져오기][♡ 수] */
 .barM { width: auto; align-self: stretch; margin: 0 5px 5px; }
-.likeAct { gap: 3px; font-variant-numeric: tabular-nums; }
+.likeAct { flex: 1.6 1 0; gap: 2px; font-variant-numeric: tabular-nums; } /* 수(최대 999+)가 들어가게 가져오기 칸보다 넓게 — 360 폭에서 세 자리가 잘렸다 */
 .likeAct > svg { flex: 0 0 auto; } /* 수가 길어도 하트가 줄지 않게 */
 .likeActOn { color: light-dark(#ec86ac, #d881a1); }
 .name { display: block; width: 100%; min-width: 0; font-size: 12px; font-weight: 500; color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
