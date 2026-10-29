@@ -105,7 +105,12 @@
 
 /* ── 아이템 카드 ── */
 .card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 8px 6px; border-radius: 8px; min-width: 0; min-height: 0; background: light-dark(#fff, #303238); }
-.cardM { gap: 3px; padding: 7px 5px 5px; } /* 좌우 5 — 4열 카드의 그림 폭을 넓힌다(사용자 지시: 세로로 길어 보였다) */
+/* 모바일 카드 = 그림 칸이 카드 폭을 꽉 채운다(위쪽 모서리는 카드 안쪽 둥글기 7) — 4열 카드가 좁고 길어 보였고(사용자 지시), 그림 칸 왼쪽 아래 등급 배지와
+   오른쪽 아래 '코디 N' 칩이 겹쳤다(그림 칸 75 → 85px, 390 폭). 이름 줄 · [북마크 · 염색] 막대만 좌우 5 안쪽 */
+.cardM { gap: 3px; padding: 0 0 5px; }
+.cardM > .thumb { border-radius: 7px 7px 0 0; }
+.cardM > .nameM { padding: 0 5px; }
+.cardM > .barM { width: auto; align-self: stretch; margin: -1px 5px 0; }
 .thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; border-radius: 6px; background: light-dark(#f7f2ec, #3b3d45); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 /* NEW 라벨(최근 패치 신규) */
 .newBadge { position: absolute; top: 5px; left: 5px; z-index: 4; display: inline-flex; align-items: center; height: 17px; padding: 0 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: .02em; background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); pointer-events: none; }
