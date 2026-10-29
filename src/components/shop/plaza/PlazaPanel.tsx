@@ -11,6 +11,7 @@ import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, plazaContestClosed, ty
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
 import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, useMobileRows, type FilterGroup } from '../list/ListArea'
+import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { MOBILE_GRID } from '@/lib/shopData'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconChevronLeft, IconChevronRight, IconClose, IconPlus, IconSearch } from '../ui/Icons'
@@ -184,6 +185,9 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   if (mobile) {
     return (
       <>
+        <StickyBarM>
+        {/* 광장 분류는 코디 탭의 부위처럼 미리보기와 목록 머리 사이(사용자 지시) — 머리와 한 묶음으로 붙는다 */}
+        <PlazaTabsM />
         {/* 한 줄(다른 탭의 머리와 같은 높이 48): 정렬 · 쪽 번호 · 검색 · 등록 */}
         <div className={styles.controlsM}>
           {viewCtl}
@@ -194,6 +198,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
           </button>
         </div>
         <div className={styles.hrM} />
+        </StickyBarM>
         {s.plazaUpload ? <PlazaUpload mobile /> : viewport}
       </>
     )

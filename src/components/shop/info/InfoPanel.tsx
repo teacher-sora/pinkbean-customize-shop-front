@@ -3,7 +3,7 @@
 // 코디 정보 · 염색. 18부위 행 그리드. 부위를 누르면 염색/점 위치 서피스를 연다(PC 는 가운데 다이얼로그, 모바일은 바텀 시트).
 
 import clsx from 'clsx'
-import { CatTabsM } from '../nav/BottomNav'
+import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { useEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import type { HsbParams } from '@/lib/core/dye'
@@ -163,9 +163,11 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   if (mobile) {
     return (
       <>
-        <CatTabsM jump />
-        <div className={styles.headerM}>{chip}<div className={styles.right}>{share}</div></div>
-        <div className={styles.hrM} />
+        <StickyBarM>
+          <CatTabsM jump />
+          <div className={styles.headerM}>{chip}<div className={styles.right}>{share}</div></div>
+          <div className={styles.hrM} />
+        </StickyBarM>
         {/* 칸 안 스크롤을 두지 않는다 — 부위 칸이 페이지에 그대로 이어지고 페이지 하나만 스크롤한다(사용자 지시: 칸 스크롤과 페이지 스크롤이 겹쳐
             붙은 미리보기 · 하단 탭에 칸 끝이 가려지고, 끝에서 튕기거나 끊겨 매끄럽지 않았다). 틀은 이 탭에서 내용만큼 길어진다(frame .mobileColFlow) */}
         <div ref={slotsRef} className={styles.flowM}>{grid}</div>

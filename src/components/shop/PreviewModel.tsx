@@ -21,7 +21,7 @@ import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
 import { MODEL_REF, computeModelPlacement, zoomStepScale } from '@/lib/core/modelPlacement'
 import { modelShotBlob, setPreviewShot, type ModelShot } from '@/lib/canvasExport'
 import { chatAnimPeriods, chatAnimSig, chatAnimated, chatRefOf, emoFrameAt, type ChatDraw, type ChatRef } from '@/lib/core/chatUi'
-import { useHeroView } from '@/lib/heroView'
+import { heroBaseProbe, useHeroView } from '@/lib/heroView'
 import { bindImageMenu, type GifMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
@@ -45,7 +45,8 @@ export type PreviewSource = {
   zoomMults: Record<number, number>; fraction: (h: number) => number
 }
 
-const HERO_BASE_H = 216 // 모바일 히어로 기본 높이(preview.module.css .hero)
+// 모바일 히어로 기본 높이(globals.css --pb-hero-base — 13 Pro 216 기준으로 화면에 맞춘다). '크게' · '캐릭터만'의 캐릭터 = 기본 보기 크기 × 배수
+const heroBaseH = () => (typeof document === 'undefined' ? 216 : heroBaseProbe().offsetHeight || 216)
 
 // 부유 아이템의 둥둥 뜨기 — 위로 최대 FLOAT_AMP 게임 픽셀, FLOAT_MS 한 바퀴(원본에 값이 없어 게임 화면으로 맞췄다).
 const FLOAT_AMP = 5
@@ -78,7 +79,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   const cmpDrawn = useRef(cmp?.onDrawn)
   cmpDrawn.current = cmp?.onDrawn
   const fraction = src ? src.fraction(dims.h) : dims.cf != null ? dims.cf : isStacked(bp)
-    ? (heroGrow > 1 && dims.h > 0 ? (PREVIEW_FRACTION_MOBILE * HERO_BASE_H * heroGrow) / dims.h : PREVIEW_FRACTION_MOBILE)
+    ? (heroGrow > 1 && dims.h > 0 ? (PREVIEW_FRACTION_MOBILE * heroBaseH() * heroGrow) / dims.h : PREVIEW_FRACTION_MOBILE)
     : PREVIEW_FRACTION
   const bare = !!src?.bare
   const [dyeSettling, setDyeSettling] = useState(false) // 이펙트/피부 전 프레임 염색 중(애니메이션 잠깐 정지 → 점멸 방지)

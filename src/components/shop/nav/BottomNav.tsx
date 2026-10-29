@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { PLAZA_FILTERS, type PlazaFilter } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
+import { setScrollFrozen, useScrollHidden } from '@/lib/scrollHide'
 import { IconTab } from '../ui/Icons'
 import { useWheelRail } from '../ui/useWheelRail'
 import styles from './nav.module.css'
@@ -57,42 +58,43 @@ export function PlazaTabsM() {
   return <TabsM label="분류" items={PLAZA_FILTERS} on={s.plazaFilter} pick={(id) => s.setPlazaFilter(id as PlazaFilter)} />
 }
 
-// 모바일 하단 탭 숨기기(사용자 지시 — 유튜브의 아래 탭처럼): 페이지를 아래로 내리면 화면 아래로 숨고, 위로 올리면 다시 나온다.
-// 맨 위에서, 그리고 맨 아래까지 탭 높이만큼 남은 곳부터는 늘 보인다 — 맨 아래에 닿아야 나오면 탭 자리 위의 것(코디 정보 / 염색의 아래 칸)을
-// 누르려는데 내리던 끝에 탭이 사라져 있어 곤란했다(사용자 지적). 문서 스크롤만 본다(목록 안 가로 · 세로 넘기기는 해당 없음). 움직임은 transform 뿐(nav.module.css .tabNavHide)
-// '맨 아래'는 탭 자리가 화면에 들어오기 시작한 때(4px)다 — 그 바로 위가 붙은 미리보기 아래에 목록 3줄이 다 보이는 자리라(ListArea useMobileRows)
-// 그보다 먼저 나오면 셋째 줄의 [북마크 · 염색]을 덮는다
-const HIDE_DELTA = 8 // 이만큼 이어서 움직여야 바꾼다(손가락 떨림 · 주소창 접힘으로 깜빡이지 않게)
-// frozen = 창(시트 · 다이얼로그)이 떠 있다 — 그동안은 스크롤을 보지 않고 그대로 둔다. 시트는 뒤 페이지를 position:fixed 로 고정해 스크롤이 0 이 됐다가
-// 닫을 때 제자리로 돌아가는데, 그것을 '맨 위로 올림' · '내림'으로 읽어 탭이 나타났다 사라졌다(연출 설정 — 사용자 지적). 풀리면 지금 위치에서 다시 센다.
-function useHideOnScroll(on: boolean, navRef: React.RefObject<HTMLElement | null>, frozen: boolean): boolean {
-  const [hidden, setHidden] = useState(false)
+// 모바일 부위 · 분류 줄과 목록 머리를 묶어 붙은 미리보기 바로 아래에 붙인다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
+// 맨 위까지 올리지 않게). 하단 탭과 같은 숨김 상태(lib/scrollHide)를 따라 내리는 동안은 미리보기 뒤로 숨고, 올리면 나온다.
+// 숨는 것은 붙어 있을 때만이다(제자리 — 맨 위 근처 — 에서 숨기면 그 자리가 비어 보인다): 바로 앞의 빈 표시가 미리보기 밑으로 들어갔는가로 잰다.
+// 안에 입력이 잡혀 있으면(광장 찾기) 숨지 않는다(.barM:focus-within) — 자판이 뜨며 페이지가 움직여도 입력칸이 남는다.
+// data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다(숨어 있으면 미리보기 뒤라 그만큼 빠진다)
+export function StickyBarM({ children }: { children: React.ReactNode }) {
+  const hidden = useScrollHidden()
+  const mark = useRef<HTMLDivElement | null>(null)
+  const [stuck, setStuck] = useState(false)
   useEffect(() => {
-    if (!on) { setHidden(false); return }
-    if (frozen) return
-    let last = window.scrollY, acc = 0, raf = 0
-    const check = () => {
+    let raf = 0
+    const m = () => {
       raf = 0
-      const y = window.scrollY, d = y - last
-      last = y
-      const end = y + window.innerHeight >= document.documentElement.scrollHeight - (navRef.current?.offsetHeight ?? 0) + 4
-      if (y <= 0 || end) { acc = 0; setHidden(false); return }
-      acc = Math.sign(d) === Math.sign(acc) ? acc + d : d
-      if (acc > HIDE_DELTA) setHidden(true)
-      else if (acc < -HIDE_DELTA) setHidden(false)
+      const hero = document.querySelector<HTMLElement>('[data-hero]'), el = mark.current
+      if (!hero || !el) return
+      const on = getComputedStyle(hero).position === 'sticky' && el.getBoundingClientRect().top < hero.getBoundingClientRect().bottom - 0.5
+      setStuck((p) => (p === on ? p : on))
     }
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(check) }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf) }
-  }, [on, navRef, frozen])
-  return hidden
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(m) }
+    m()
+    window.addEventListener('scroll', onScroll, { passive: true }); window.addEventListener('resize', onScroll)
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); if (raf) cancelAnimationFrame(raf) }
+  }, [])
+  return (
+    <>
+      <div ref={mark} aria-hidden className={styles.barMark} />
+      <div data-sticky-top className={clsx(styles.barM, hidden && stuck && styles.barHide)}>{children}</div>
+    </>
+  )
 }
 
 export default function BottomNav({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const railRef = useWheelRail()
   const navRef = useRef<HTMLElement | null>(null)
-  const navHidden = useHideOnScroll(mobile, navRef, !!s.surface)
+  const navHidden = useScrollHidden() && mobile
+  useEffect(() => { setScrollFrozen(!!s.surface) }, [s.surface]) // 창이 떠 있는 동안 숨김 상태를 그대로(lib/scrollHide)
   // 코디 광장은 부위 대신 광장 분류(전체·대회·내 등록·찜한 코디)를 쓴다. 항목이 4개뿐이라 양끝 페이드는 끈다
   // (요소는 그대로 두고 opacity 만 0 — 탭을 오갈 때 전환이 끊기지 않게).
   const plaza = s.primary === 'share'

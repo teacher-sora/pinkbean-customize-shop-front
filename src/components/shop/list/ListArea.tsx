@@ -10,10 +10,11 @@ import { ITEM_KINDS, MOBILE_GRID } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
-import { CatTabsM } from '../nav/BottomNav'
+import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
 import styles from './list.module.css'
+import { heroBaseProbe, lvhProbe } from '@/lib/heroView'
 
 const VIEW_MODES: SegOpt<ListMode>[] = [
   { v: 'sprite', l: '아이템', t: '아이템 그림만 보기' },
@@ -80,7 +81,7 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 
 // 모바일 목록 칸의 높이(--pb-min-h — 페이지 컬럼 높이). 목록은 칸 안에서 세로로 스크롤하지 않고 페이지 스크롤로 내려 본다.
 //  · 맞춤: 페이지를 끝까지 내리면 붙은 미리보기(히어로 sticky) 바로 아래부터 화면 끝까지가 목록 칸이다 = 큰 화면 높이(100lvh — 툴바가 접힌,
-//    내려 볼 때의 높이. 접히지 않는 브라우저는 작은 높이와 같다) − 미리보기 − 함께 붙는 머리(data-sticky-top — 코디 룩북 머리) − 목록 칸 아래(하단 탭 자리는 빼고 잰다).
+//    내려 볼 때의 높이. 접히지 않는 브라우저는 작은 높이와 같다) − 미리보기(기본 보기 높이) − 목록 칸 아래(하단 탭 자리는 빼고 잰다). 붙은 머리 묶음은 내리는 동안 숨어 빼지 않는다(StickyBarM).
 //    그래서 탭 자리 바로 위까지 내리면 미리보기를 보면서 3줄이 모두 보이고(사용자 지시), 더 내려 탭 자리에 닿으면 탭이 나온다(BottomNav useHideOnScroll).
 //    부위 · 보기 설정 줄은 붙이지 않는다 — 부위를 바꿀 때는 목록에서 눈을 떼므로 살짝 올려 고르면 된다(사용자와 정한 흐름).
 //  · 바닥: 화면이 낮아(작은 폰 · 미리보기 크게) 맞춤 칸이 너무 작으면 카드 그림 칸 ≥ 폭 × ratio + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) foot 로
@@ -91,23 +92,11 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 // 0.6 = 맞춤 칸의 바닥. 툴바가 접히지 않는 앱 안 브라우저(390 × 664)에서도 3줄이 든다(그림 칸 76px)
 export const CARD_RATIO_M = 0.6
 export const CARD_FOOT_M = 61 // 카드 아래 = 이름 줄 + [북마크 · 염색] 막대 28 + 여백(코디 룩북 · 광장 카드의 바닥도 이 값)
-// 맞춤에 쓰는 미리보기 높이 = 기본 보기의 높이(preview.module.css .hero 216). '크게'로 바꿔도 카드는 그대로이고 보이는 줄만 준다 —
+// 맞춤에 쓰는 미리보기 높이 = 기본 보기의 높이(heroBaseProbe — 13 Pro 216 기준으로 화면에 맞춘다). '크게'로 바꿔도 카드는 그대로이고 보이는 줄만 준다 —
 // 실제 높이로 맞추면 카드가 86px 까지 눌려 캐릭터가 아주 작았다
-const HERO_BASE_M = 216
 export const LIST_COL_GAP_M = 6 // 목록 격자의 열 간격(list.module.css .gridM 과 같은 값 — 카드 폭을 조금 넓힌다)
 // 목록의 높이 — 코디 탭 · AI 코디 검색 목록 · 프리셋
 export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M, 0, 0, LIST_COL_GAP_M)
-// 큰 화면 높이(100lvh, 모르는 브라우저는 100vh)를 재는 보이지 않는 막대 — 하나를 함께 쓴다
-let lvhProbe: HTMLDivElement | null = null
-const probeLvh = () => {
-  if (!lvhProbe || !lvhProbe.isConnected) {
-    lvhProbe = document.createElement('div')
-    lvhProbe.setAttribute('aria-hidden', 'true')
-    lvhProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100vh;height:100lvh;visibility:hidden;pointer-events:none'
-    document.body.appendChild(lvhProbe)
-  }
-  return lvhProbe
-}
 // extra = 바닥 계산에서 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장 — 광장 목록 칸은 좌우 여백 7 이 없어 그만큼 넓다)
 export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0, colGap = 10) {
   useEffect(() => {
@@ -117,7 +106,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     if (!vp || !col) return
     const before = col.style.getPropertyValue('--pb-min-h')
     const hero = col.querySelector<HTMLElement>('[data-hero]')
-    const probe = probeLvh()
+    const lvh = lvhProbe(), base = heroBaseProbe()
     const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
       const chrome = col.clientHeight - vp.clientHeight
@@ -125,14 +114,13 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
       const nav = col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')?.offsetHeight ?? 0
       const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom - nav
-      const stuck = [...col.querySelectorAll<HTMLElement>('[data-sticky-top]')].reduce((n, el) => n + el.offsetHeight, 0)
-      const fit = hero && getComputedStyle(hero).position === 'sticky' ? probe.offsetHeight - HERO_BASE_M - stuck - below : 0
+      const fit = hero && getComputedStyle(hero).position === 'sticky' ? lvh.offsetHeight - base.offsetHeight - below : 0
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
     }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
-    ro?.observe(col); ro?.observe(vp); ro?.observe(probe)
+    ro?.observe(col); ro?.observe(vp); ro?.observe(lvh); ro?.observe(base)
     return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
   }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset, colGap])
 }
@@ -362,9 +350,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   if (mobile) {
     return (
       <>
-        <CatTabsM />
-        {controls}
-        <div className={styles.hrM} />
+        <StickyBarM><CatTabsM />{controls}<div className={styles.hrM} /></StickyBarM>
         {viewport}
       </>
     )

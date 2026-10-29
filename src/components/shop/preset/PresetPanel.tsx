@@ -3,7 +3,7 @@
 // 프리셋 100칸(사용자 지시 — 기기에만 저장되고 공유할 때만 서버에 오른다). 카드 그림은 스크롤 칸에서 보일 즈음에만 합성 · 그린다(ui/useSeen). 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
-import { CatTabsM } from '../nav/BottomNav'
+import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Preset } from '@/lib/catalog'
 import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
@@ -123,6 +123,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   if (mobile) {
     return (
       <>
+        <StickyBarM>
         <CatTabsM jump />
         <div className={styles.headerM}>
           {chip}
@@ -135,6 +136,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           </div>
         </div>
         <div className={styles.hrM} />
+        </StickyBarM>
         {/* 모바일: 코디 리스트처럼 가로 스크롤(열 단위 스냅, 스크롤바 숨김) — 2줄 × 폭에 따라 2열/3열 */}
         <div ref={boxRef} className={clsx('pb-norail', across ? styles.hscrollM : styles.vscrollM)}>{grid}</div>
       </>

@@ -11,7 +11,7 @@ import { useEffect } from 'react'
 import { ShopProvider, useShop } from './shop/ShopContext'
 import Background from './shop/frame/Background'
 import AppHeader from './shop/frame/AppHeader'
-import BottomNav, { PlazaTabsM } from './shop/nav/BottomNav'
+import BottomNav from './shop/nav/BottomNav'
 import ListArea from './shop/list/ListArea'
 import InfoPanel from './shop/info/InfoPanel'
 import PresetPanel from './shop/preset/PresetPanel'
@@ -61,8 +61,6 @@ function Shell() {
               <MobileHero />
               {/* 채팅 칸 — 말풍선을 끼었을 때만, 미리보기 바로 아래 */}
               {isList && (comboList ? <ComboPanel mobile host="codi" /> : <ListArea mobile />)}
-              {/* 광장 분류는 코디 탭의 부위처럼 미리보기와 목록 머리 사이(사용자 지시) */}
-              {isPlaza && <PlazaTabsM />}
               {isPlaza && (comboPlaza ? <ComboPanel mobile host="plaza" /> : <PlazaPanel mobile />)}
               {s.primary === 'preset' && <PresetPanel mobile />}
               {s.primary === 'info' && <InfoPanel mobile />}
