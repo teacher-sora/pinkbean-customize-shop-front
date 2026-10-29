@@ -84,13 +84,14 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 // 모바일 목록 카드의 최소 크기 = 그림 칸 높이 ≥ 폭 × CARD_RATIO_M + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) CARD_FOOT_M.
 // 예전에는 카드 전체를 폭 × 1.34 로만 잡아, 화면이 낮으면(실제 휴대폰 · 위를 줄인 창) 아래 57px 를 빼고 남은 그림 칸이 75px 까지 줄어
 // 캐릭터가 45px 로 아주 작았다(사용자 지적 — 실측 343 × 684). 그림 칸을 따로 보장해 어느 높이에서든 캐릭터가 줄지 않는다
-export const CARD_RATIO_M = 1.2
-const CARD_FOOT_M = 57 // 1.2 = 4열 × 3줄에서 좁은 폭(360)도 그림 칸이 정수 배율 한 단계에 닿는다 — LIST_FRACTION_M 0.6 과 함께 캐릭터 64px 안팎(1.1 은 360 · 412 에서 45 · 52px)
+export const CARD_RATIO_M = 1.45
+const CARD_FOOT_M = 57 // 1.45 = 좁은 폭(343 · 360)도 그림 칸이 정수 배율 한 단계에 닿는다 — LIST_FRACTION_M 0.5 와 함께 캐릭터 64px 안팎
+export const LIST_COL_GAP_M = 6 // 목록 격자의 열 간격(list.module.css .gridM 과 같은 값 — 카드 폭을 조금 넓힌다)
 // 목록의 최소 높이 — 코디 탭 · AI 코디 검색 목록
-export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M)
+export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M, 0, 0, LIST_COL_GAP_M)
 // extra = 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장의 다른 분류가 코디 룩북과 같은 높이 — 광장 목록 칸은
 // 좌우 여백 7 이 없어 그만큼 넓다. 분류를 바꿔도 페이지 높이가 같게)
-export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0) {
+export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0, colGap = 10) {
   useEffect(() => {
     if (!mobile) return
     const vp = vpRef.current
@@ -100,7 +101,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
       const chrome = col.clientHeight - vp.clientHeight
-      const cardW = (vp.clientWidth - inset - PAD_X - GAP * (cols - 1)) / cols
+      const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const need = Math.ceil(chrome + extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
     }
@@ -108,7 +109,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
     ro?.observe(col); ro?.observe(vp)
     return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
-  }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset])
+  }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset, colGap])
 }
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
