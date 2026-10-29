@@ -12,6 +12,7 @@ import { contestCandidates, plazaContestClosed, plazaMe, PLAZA_CONTEST, PLAZA_CO
 import { shrinkPlazaImage } from '@/lib/plazaImage'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
+import { presetCard } from '@/lib/core/snapRender'
 import { lookItems, normLook } from '@/lib/plazaLook'
 import { sameLookDeep, type SkinInfo } from '@/lib/plazaLookPixels'
 import { skinDyeFamily } from '@/lib/shopData'
@@ -199,7 +200,7 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
                   <button key={p.id} type="button" onClick={() => { chose.current = true; setPresetId(p.id); setPickOpen(false) }} title={p.name}
                     className={clsx(styles.pickCell, current?.id === p.id && styles.pickCellOn)}>
                     {/* 칸 88px · 0.62 → DPR 1·2·3 모두 인물 64px(정수 배율). 머리·발이 잘리지 않는다. */}
-                    <span className={styles.pickThumb}>{pickSeen && sn && <SnapThumb snap={sn} fraction={0.62} />}</span>
+                    <span className={styles.pickThumb}>{pickSeen && sn && <SnapThumb snap={presetCard(sn)} view fraction={0.62} />}</span>
                     <span className={styles.pickName}>{p.name}</span>
                   </button>
                 )
