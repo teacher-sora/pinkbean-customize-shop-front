@@ -87,6 +87,12 @@ function navTo(hide: boolean) {
   const nav = E?.nav
   if (nav && hide !== navHid) { navHid = hide; nav.toggleAttribute('data-pb-navhide', hide) }
 }
+// 손가락 자리 y 를 따라 접힌 양을 적는다(손가락이 위로 = 접힌다). 끝에 닿으면 그 자리부터 다시 센다 — 끝을 넘어 민 만큼 쌓이면 되돌릴 때 한참 움직이지 않았다
+function follow(y: number) {
+  const want = F0 - (y - fy)
+  apply(want, false)
+  if (want !== F) { F0 = F; fy = y }
+}
 const scrollNow = () => (E?.is ? E.is.scrollTop : window.scrollY)
 const inCol = (t: EventTarget | null) => !!E && t instanceof Node && E.col.contains(t) // 틀 밖(시트 · 다이얼로그)의 제스처는 세지 않는다
 const onStart = (e: TouchEvent) => {
@@ -101,7 +107,7 @@ const onMove = (e: TouchEvent) => {
   if (axis !== 'y') return
   if (!drag) { drag = true; F0 = liveF(); fy = y }
   ly = y; sy = scrollNow()
-  apply(F0 - (y - fy), false) // 손가락이 위로 = 접힌다
+  follow(y)
   // 하단 탭: 지금 상태 쪽으로 가장 멀리 민 자리에서 반대로 GESTURE 넘게 밀면 바뀐다
   if (navHid) { ny = Math.min(ny, y); if (y - ny >= GESTURE) { navTo(false); ny = y } }
   else { ny = Math.max(ny, y); if (ny - y >= GESTURE) { navTo(true); ny = y } }
@@ -109,7 +115,7 @@ const onMove = (e: TouchEvent) => {
 // 끄는 동안 손가락 이동 이벤트가 드물게 와도(스크롤 중에 이벤트를 띄엄띄엄 보내는 브라우저) 끊기지 않게: 내용이 스크롤한 만큼 손가락도 움직인 것으로 보고 따라간다
 const onScroll = (e: Event) => {
   if (!drag || !E || (E.is ? e.target !== E.is : e.target !== document)) return
-  apply(F0 - (ly - (scrollNow() - sy) - fy), false)
+  follow(ly - (scrollNow() - sy))
 }
 const onEnd = () => {
   touch = false
