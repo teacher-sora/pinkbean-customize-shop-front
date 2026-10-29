@@ -27,8 +27,12 @@ export async function preloadSnapshot(snap: Snapshot, index: Index, view = false
   for (const m of metas) if (m) for (const l of getFrameLayers(m, TV)) if (l.png) void loadImage(l.png, true).catch(() => {})
 }
 
+// 프리셋 카드 = 그 프리셋의 연출 그대로(사용자 지시): 액션(첫 프레임) · 표정 · 이펙트 · 형상 변이 · 귀. 시선은 왼쪽 고정, 고른 프레임은 쓰지 않는다.
+// view 로 그리되(SnapThumb view · composeSnapshotCached view) 시선 · 프레임만 카드 값으로 덮는다 — 프리셋 탭 · 저장할 프리셋 고르기 · 광장에 올릴 프리셋 고르기 · 미리 합성이 같은 값을 쓴다
+export const presetCard = (snap: Snapshot): Snapshot => ({ ...snap, pv: { ...(snap.pv ?? PV_SNAP_DEFAULT), gaze: 'left', frame: -1 } })
+
 // view=true 면 카드 고정 뷰 대신 **스냅샷에 담긴 연출 설정(액션·표정)** 으로 그린다.
-// 연출 설정 고르기(PvPicker)의 작은 미리보기 전용 — 프리셋·광장 카드는 종전대로 정지 서기 자세다.
+// 연출 설정 고르기(PvPicker)의 작은 미리보기 · 코디 비교 · 코디 룩북 · 프리셋 카드(presetCard) — 광장 카드는 정지 서기 자세다.
 export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: AnimaRace[], view = false): Promise<SnapComposite | null> {
   // 프리셋은 "저장된 연출설정(snap.pv)"을 쓴다(형상변이·귀·무기모션·이펙트토글). 시선은 적용 안 함(왼쪽 고정).
   const spv = snap.pv ?? PV_SNAP_DEFAULT

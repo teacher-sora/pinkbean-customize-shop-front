@@ -6,6 +6,7 @@
 
 import clsx from 'clsx'
 import SnapThumb from '../SnapThumb'
+import { presetCard } from '@/lib/core/snapRender'
 import { useShop, type Snapshot } from '../ShopContext'
 import styles from './plaza.module.css'
 
@@ -27,7 +28,7 @@ export default function PlazaTakeBody({ snap, mobile, title }: { snap: Snapshot;
           return (
             <div key={p.id} className="pb-presetwrap">
               <div onClick={() => s.applySharedToPreset(snap, p.id)} className="pb-preset" title={`'${p.name}'에 저장`}>
-                <div className={styles.takeCardThumb}>{cur && <SnapThumb snap={cur} />}</div>
+                <div className={styles.takeCardThumb}>{cur && <SnapThumb snap={presetCard(cur)} view />}</div>
                 <div className={styles.takeCardFoot}><div className={styles.takeCardName}>{p.name}</div></div>
               </div>
             </div>

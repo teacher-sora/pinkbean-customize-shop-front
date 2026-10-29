@@ -31,7 +31,7 @@ import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
 import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
-import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, snapKey } from '@/lib/core/snapRender'
+import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, presetCard, snapKey } from '@/lib/core/snapRender'
 import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
 import { enqueueThumb } from '@/lib/thumbQueue'
@@ -907,11 +907,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       warmDye()   // 염색 연산의 WebAssembly 조각도 한가할 때 받아 둔다(첫 염색부터 빠르게)
       animaOnce().then((races) => {
         const seen = new Set<string>()
-        for (const snap of [...presets.slice(0, PRESET_WARM).map((p) => presetData[p.id]).filter(Boolean), ...warmPosts]) {
+        // 프리셋 카드는 그 프리셋의 연출로(presetCard + view — PresetPanel 과 같은 값), 광장 카드는 정지 서기
+        const cards = [...presets.slice(0, PRESET_WARM).map((p) => presetData[p.id]).filter(Boolean).map((sn) => [presetCard(sn), true] as const), ...warmPosts.map((sn) => [sn, false] as const)]
+        for (const [snap, view] of cards) {
           const key = snapKey(snap)
-          if (seen.has(key) || composePeek(key, index, races) !== undefined) continue
+          if (seen.has(key) || composePeek(key, index, races, view) !== undefined) continue
           seen.add(key)
-          jobs.push(enqueueThumb(2, () => composeSnapshotCached(key, snap, index, races).then(() => undefined)))
+          jobs.push(enqueueThumb(2, () => composeSnapshotCached(key, snap, index, races, view).then(() => undefined)))
         }
       }).catch(() => {})
     }, 1500)

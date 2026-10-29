@@ -12,6 +12,7 @@ import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
 import { presetFileName } from '@/lib/canvasExport'
 import SnapThumb from '../SnapThumb'
+import { presetCard } from '@/lib/core/snapRender'
 import { usePresetDrag } from './usePresetDrag'
 import { useSeen } from '../ui/useSeen'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
@@ -167,6 +168,7 @@ type CardAct = {
 const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, fill, sorting, act, root }: { p: Preset; i: number; on: boolean; snap: Snapshot | undefined; mobile: boolean; fill: boolean; sorting: boolean; act: React.MutableRefObject<CardAct>; root: React.RefObject<HTMLDivElement | null> }) {
   const thumbRef = useRef<HTMLDivElement>(null)
   const seen = useSeen(thumbRef, root)
+  const card = useMemo(() => (snap ? presetCard(snap) : undefined), [snap]) // 그 프리셋의 연출 그대로(액션 첫 프레임 · 표정 · 이펙트 · 형상 변이 · 귀)
   return (
     <div data-preset-id={p.id} onClick={() => { if (!sorting) act.current.select(p.id) }} onPointerDown={(e) => act.current.down(e, p.id)}
       className={clsx('pb-presetwrap', styles.wrap, sorting && styles.sorting)}>
@@ -175,7 +177,7 @@ const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, fill, sor
         {/* 바탕(사용자 지시): 손대지 않은 프리셋(광장 등록의 올릴 프리셋 판정과 같다)은 시스템 테마 색, 꾸민 프리셋은 그 프리셋의 미리보기 배경 */}
         <div ref={thumbRef} className={clsx(styles.thumb, fill && styles.thumbM)} style={snap && !isCustomSnapshot(snap) ? { background: SYS_BG_CSS } : undefined}>
           {snap && isCustomSnapshot(snap) && <div className={styles.thumbBg}><CardStageBg sel={snap.bg} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} /></div>}
-          {snap && seen && <SnapThumb snap={snap} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
+          {card && seen && <SnapThumb snap={card} view fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
         <div className={styles.nameRow}>
           <span className={styles.nameWrap}>
             <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
