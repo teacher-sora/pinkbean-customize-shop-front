@@ -318,6 +318,8 @@ html[data-pb-float] [data-mobile-col] > nav[data-pb-navhide] { translate: 0 100%
 @media (prefers-reduced-motion: reduce) { html[data-pb-anim] [data-pb-track], html[data-pb-anim] [data-app-header], html[data-pb-anim] [data-pb-cat], [data-mobile-col] > nav[data-hero-below] { transition: none !important; } }
 /* 목록 칸 안 스크롤(세로로 넘기는 목록 · 광장 · 룩북 · 프리셋 — html[data-pb-inner]): 페이지는 화면 높이로 서 있고 목록 칸(data-pb-iscroll)만 스크롤한다.
    헤더 · 머리 묶음 자리는 비우고(칸이 미리보기 자리 바로 아래부터 화면 끝까지), 칸의 위 여백이 펼친 머리들의 높이(--pb-ipad)라 맨 위는 가려지지 않는다 */
-html[data-pb-inner] [data-mobile-col] { height: 100svh !important; }
+/* 틀은 화면에 딱 붙인다(fixed inset 0 — 보이는 화면 크기를 그대로 따른다). 100svh 로 묶었더니 가로에서 끝까지 내려 주소창이 접힌 채 세로로 바꾸면
+   페이지가 내려간 채 남아 아래에 흰 공간이 생기고 떠 있는 머리와 배치가 어긋나 보기 설정이 눌리지 않았다(사용자 지적) */
+html[data-pb-inner] [data-mobile-col] { position: fixed; inset: 0; height: auto !important; }
 html[data-pb-inner] [data-pb-slot='hdr'], html[data-pb-inner] [data-pb-slot='bar'] { height: 0 !important; }
 html[data-pb-inner] [data-pb-iscroll] { padding-top: calc(var(--pb-ipad, 0px) + var(--pb-ip0, 0px)); padding-bottom: var(--pb-ip0, 0px); }

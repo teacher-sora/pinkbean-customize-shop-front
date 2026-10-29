@@ -19,7 +19,7 @@ const SNAP = 0.3 // 손을 뗄 때 접힌 양의 이 비율 넘게 움직였으�
 const ANIM = 260 // 끝까지 가는 전환 시간(ms, globals.css 와 같은 값 + 여유)
 type Els = { col: HTMLElement; is: HTMLElement | null; hT: HTMLElement | null; hdr: HTMLElement | null; eT: HTMLElement; hero: HTMLElement; bS: HTMLElement | null; bT: HTMLElement | null; bar: HTMLElement | null; cat: HTMLElement | null; nav: HTMLElement | null }
 const D = { hH: 0, cH: 0, max: 0 }
-let installed = 0, frozen = false, F = 0, up = false, navHid = false, tx = 0, ty = 0, ny = 0, fy = 0, F0 = 0, touch = false, drag = false, axis: '' | 'x' | 'y' = '', animT = 0
+let installed = 0, frozen = false, F = 0, up = false, navHid = false, tx = 0, ty = 0, ny = 0, fy = 0, ly = 0, sy = 0, F0 = 0, touch = false, drag = false, axis: '' | 'x' | 'y' = '', animT = 0
 let E: Els | null = null, ro: ResizeObserver | null = null, mo: MutationObserver | null = null, roTargets: Element[] = []
 const root = () => document.documentElement
 const q = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)
@@ -42,6 +42,7 @@ function measure() {
   const inner = !!is
   const changed = inner !== root().hasAttribute('data-pb-inner')
   if (changed) root().toggleAttribute('data-pb-inner', inner)
+  if (changed && inner && window.scrollY) window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }) // 페이지가 내려간 채 남지 않게
   const hH = hdr?.offsetHeight ?? 0, heroH = hero.offsetHeight, bH = bar?.offsetHeight ?? 0, cH = cat?.offsetHeight ?? 0
   D.hH = hH; D.cH = cH; D.max = hH + cH
   if (bS && bar) { const h = px(inner ? 0 : bH); if (bS.style.height !== h) bS.style.height = h } // 페이지 스크롤에서는 자리 틀이 원래 높이를 잡는다
@@ -86,6 +87,7 @@ function navTo(hide: boolean) {
   const nav = E?.nav
   if (nav && hide !== navHid) { navHid = hide; nav.toggleAttribute('data-pb-navhide', hide) }
 }
+const scrollNow = () => (E?.is ? E.is.scrollTop : window.scrollY)
 const inCol = (t: EventTarget | null) => !!E && t instanceof Node && E.col.contains(t) // 틀 밖(시트 · 다이얼로그)의 제스처는 세지 않는다
 const onStart = (e: TouchEvent) => {
   touch = !frozen && inCol(e.target) && e.touches.length === 1
@@ -98,10 +100,16 @@ const onMove = (e: TouchEvent) => {
   if (!axis) { if (Math.max(Math.abs(dx), Math.abs(dy)) < GESTURE) return; axis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x' } // 처음 움직인 쪽으로 정한다
   if (axis !== 'y') return
   if (!drag) { drag = true; F0 = liveF(); fy = y }
+  ly = y; sy = scrollNow()
   apply(F0 - (y - fy), false) // 손가락이 위로 = 접힌다
   // 하단 탭: 지금 상태 쪽으로 가장 멀리 민 자리에서 반대로 GESTURE 넘게 밀면 바뀐다
   if (navHid) { ny = Math.min(ny, y); if (y - ny >= GESTURE) { navTo(false); ny = y } }
   else { ny = Math.max(ny, y); if (ny - y >= GESTURE) { navTo(true); ny = y } }
+}
+// 끄는 동안 손가락 이동 이벤트가 드물게 와도(스크롤 중에 이벤트를 띄엄띄엄 보내는 브라우저) 끊기지 않게: 내용이 스크롤한 만큼 손가락도 움직인 것으로 보고 따라간다
+const onScroll = (e: Event) => {
+  if (!drag || !E || (E.is ? e.target !== E.is : e.target !== document)) return
+  apply(F0 - (ly - (scrollNow() - sy) - fy), false)
 }
 const onEnd = () => {
   touch = false
@@ -135,12 +143,13 @@ export function installScrollLink(): () => void {
     document.addEventListener('touchend', onEnd, { capture: true, passive: true })
     document.addEventListener('touchcancel', onEnd, { capture: true, passive: true })
     document.addEventListener('wheel', onWheel, { capture: true, passive: true })
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true })
     window.addEventListener('resize', refreshScrollLink)
     measure()
   }
   return () => {
     if (--installed) return
-    for (const [k, f] of [['touchstart', onStart], ['touchmove', onMove], ['touchend', onEnd], ['touchcancel', onEnd], ['wheel', onWheel]] as const) document.removeEventListener(k, f as EventListener, true)
+    for (const [k, f] of [['touchstart', onStart], ['touchmove', onMove], ['touchend', onEnd], ['touchcancel', onEnd], ['wheel', onWheel], ['scroll', onScroll]] as const) document.removeEventListener(k, f as EventListener, true)
     window.removeEventListener('resize', refreshScrollLink)
     ro?.disconnect(); mo?.disconnect(); ro = mo = null; roTargets = []
     unfloat()
