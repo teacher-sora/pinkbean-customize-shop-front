@@ -74,7 +74,7 @@
 .badgeOn { opacity: 1; transform: translateY(0); }
 /* 모바일: '선택됨' 대신 체크 아이콘 — 원형 */
 /* 모바일: 코디 탭 신규(N) 라벨과 같은 모서리 둥근 정사각형 */
-.badgeM { width: 19px; padding: 0; justify-content: center; border-radius: 4px; }
+.badgeM { width: 19px; padding: 0; justify-content: center; border-radius: 4px; top: auto; bottom: 45px; left: 5px; } /* 모바일 4열: 그림 칸 왼쪽 아래(이름 줄 39 + 6 위) — 위에 두면 좁은 카드에서 삭제 띠지와 붙었다 */
 .thumb { position: relative; flex: 1 1 auto; width: 100%; aspect-ratio: 3/4; background: light-dark(#f7f2ec, #3b3d45); border-radius: 7px 7px 0 0; display: flex; align-items: center; justify-content: center; overflow: hidden; isolation: isolate; }
 /* 프리셋의 미리보기 배경(preview/StageBg 의 CardStageBg) — 캐릭터 그림 뒤에 */
 /* 불러오기 창(LookDialog)의 장식 토글(간이) — 켜면 분홍 */

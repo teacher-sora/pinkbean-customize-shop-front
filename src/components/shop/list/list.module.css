@@ -139,7 +139,7 @@
 
 /* 카드 액션 바: 기본 = 터치 기기(상시 노출, 이름 아래) */
 .bar { flex: 0 0 auto; width: 100%; margin-top: 0; display: flex; align-items: stretch; height: 26px; border: 1px solid light-dark(#f4efe8, #3e4048); border-radius: 4px; overflow: hidden; background: light-dark(#fff, #303238); }
-.barM { margin-top: -1px; height: 24px; }
+.barM { margin-top: -1px; height: 28px; } /* 모바일 4열 카드: 단추 높이 26 — 손가락으로 누르기 쉽게(광장 카드 막대도 같은 부품) */
 /* 마우스 기기(데스크톱 레이아웃) = hover 시 이름 자리에 겹쳐 나타남(같은 높이·위치) */
 @media (hover: hover) and (pointer: fine) {
   .barHover { position: absolute; left: 8px; right: 8px; bottom: 6px; z-index: 3; width: auto; margin-top: 0; height: 18px; border: none; border-radius: 4px; transition: opacity .24s ease; opacity: 0; pointer-events: none; }
