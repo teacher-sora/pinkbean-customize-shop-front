@@ -22,6 +22,7 @@ import { conflictSlots } from '@/lib/core/slots'
 import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
 import { lookChunk, withCardPv, type LookRow } from '@/lib/looks'
+import type { DyeSave } from '@/lib/dyeVault'
 import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
@@ -30,7 +31,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, ITEM_KINDS, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, presetCard, snapKey } from '@/lib/core/snapRender'
 import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -93,7 +94,7 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 // combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
-export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean }
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
@@ -245,6 +246,7 @@ export interface ShopCtx {
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
   search: string; setSearch: Dispatch<string>
   genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용
+  kindFilter: string; setKindFilter: (v: string) => void // '필터' 라디오(shopData.ITEM_KINDS, 'all' = 전부) — 코디 · AI 코디 검색 공용
   // primary/screen
   primary: string; setPrimary: (tab: string) => void
   goHome: () => void // 로고 — 첫 진입 화면(코디 탭 · 전체 · 1페이지)으로
@@ -316,7 +318,7 @@ export interface ShopCtx {
   // 단일 서피스(연출 설정 · 북마크 · 염색 · 점 위치)
   surface: Surface | null; surfaceClosing: boolean
   openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg' | 'emo') => void // emo = 채팅 이모티콘(모바일)
-  openDye: (item: ListItem) => void
+  openDye: (item: ListItem, init?: DyeSave) => void // init = 이 값으로 연다(코디 룩북의 자주 쓴 염색 — 적용은 창에서)
   openCard: () => void // 코디 프로필(공유 카드) 만들기 창
   openDot: (item: ListItem) => void
   closeSurface: () => void
@@ -341,6 +343,7 @@ export interface ShopCtx {
   comboItem: ListItem | null; comboOpen: boolean; comboShown: boolean; comboDetail: LookRow | null; setComboDetail: (r: LookRow | null) => void; openCombo: (item: ListItem) => void; closeCombo: () => void; warmCombo: (id: string) => void; pickCombo: (item: ListItem) => void
   cardPv: PvSnap
   comboGender: GenderFilter; setComboGender: (g: GenderFilter) => void
+  comboDye: number | null; setComboDye: (d: number | null) => void // 염색 칩으로 거른 목록(자주 쓴 염색의 순번 — 같은 칩을 다시 누르면 풀린다)
   comboTotal: number; comboTotalKnown: boolean; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot, dye?: boolean, take?: boolean) => void
   searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
@@ -676,16 +679,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const want = gf === 'f' ? 1 : 0
     return list.filter((it) => it.gender === want || it.gender === 2 || it.gender == null)
   }, [])
+  // '필터' 라디오: 고른 것에 맞는 아이템만 남긴다('all' = 전부)
+  const [kindFilter, setKindFilter] = useState('all')
+  const byKind = useCallback((list: ListItem[], kf: string) => {
+    const test = ITEM_KINDS.find((k) => k.v === kf)?.test
+    return test ? list.filter(test) : list
+  }, [])
   const activeListFull = listForCat(activeCat)
   // 이름 검색: 공백 무시 + 한/영 자판 무관(lib/nameSearch). 입력은 즉시, 필터·리스트 갱신은 지연값으로(타이핑 끊김 방지).
   const deferredSearch = useDeferredValue(search)
   const activeList = useMemo(() => {
-    const list = byGender(activeListFull, genderFilter)
+    const list = byKind(byGender(activeListFull, genderFilter), kindFilter)
     if (isEgg(deferredSearch)) return list.filter((it) => isEggItem(it.id))   // 이스터에그(lib/easterEgg)
     const match = nameMatcher(deferredSearch)
     if (!match) return list
     return list.filter((it) => match(it.name || it.id))
-  }, [activeListFull, deferredSearch, byGender, genderFilter])
+  }, [activeListFull, deferredSearch, byGender, genderFilter, byKind, kindFilter])
 
   // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
   // 원본 해석이라 스프라이트/라벨/염색이 정확하고, 코디탭과 동일하게 ItemThumb 로 렌더된다.
@@ -814,24 +823,25 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (!el || !el.clientWidth || !el.clientHeight) return
     const vp = bpRef.current
     const apply = (cols: number, rows: number) => setGrid((g) => (g.cols === cols && g.rows === rows ? g : { cols, rows }))
-    // 코디 광장은 열 수가 고정(모바일 2 · 절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄.
-    // 코디 룩북은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 3열 × 2줄
+    // 코디 광장은 열 수가 고정(절반/태블릿 3 · PC 6)이고 행만 높이에 맞춰 최대 3줄. 모바일은 모든 모바일 카드와 같은 4열 × 2줄(MOBILE_GRID).
+    // 코디 룩북은 코디 탭에서 열든 광장에서 열든 **같은 격자**다(사용자 지시 — 같은 화면이라 같은 줄 수): 광장 규칙에 모바일만 코디 탭 목록과 같은 격자(MOBILE_GRID)
     const mob = vp === 'mobile'
     const combo = primaryRef.current === 'share' ? plazaComboRef.current : comboShownRef.current
-    const plazaLike = (forCombo: boolean) => {
-      // 모바일 코디 룩북은 코디 탭 목록과 같은 3열 × 2줄 고정(사용자 지시 — 큰 휴대폰에서 3줄이 되어 기종마다 갈렸다)
-      if (mob && forCombo) return { cols: MOBILE_GRID.cols, rows: MOBILE_GRID.rows }
-      const pcols = mob ? (forCombo ? MOBILE_GRID.cols : 2) : (vp === 'half' || vp === 'tablet') ? 3 : 6
-      const minH = mob ? 132 : 150, gapPx = mob ? 9 : 10
+    const plazaLike = () => {
+      // 모바일 코디 룩북은 코디 탭 목록과 같은 격자 고정(MOBILE_GRID, 사용자 지시 — 높이에 맞추면 기종마다 줄 수가 갈렸다)
+      // 모바일 광장의 다른 분류도 같은 격자(사용자 지시 — 모든 모바일 카드의 열 · 줄을 맞춘다)
+      if (mob) return { cols: MOBILE_GRID.cols, rows: MOBILE_GRID.rows }
+      const pcols = (vp === 'half' || vp === 'tablet') ? 3 : 6
+      const minH = 150, gapPx = 10
       const avail = el.clientHeight - 20
-      return { cols: pcols, rows: Math.max(mob && forCombo ? 2 : 1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx)))) }
+      return { cols: pcols, rows: Math.max(1, Math.min(3, Math.floor((avail + gapPx) / (minH + gapPx)))) }
     }
     if (primaryRef.current === 'share') {
-      const { cols: pcols, rows: prows } = plazaLike(combo)
+      const { cols: pcols, rows: prows } = plazaLike()
       setPlazaGrid((g) => (g.cols === pcols && g.rows === prows ? g : { cols: pcols, rows: prows }))
       return
     }
-    if (combo) { const g = plazaLike(true); apply(g.cols, g.rows); return }
+    if (combo) { const g = plazaLike(); apply(g.cols, g.rows); return }
     if (mob) { apply(MOBILE_GRID.cols, MOBILE_GRID.rows); return }
     const gap = 10, pad = 20
     const TARGET = 1.34, MINW = 78, MINH = 96
@@ -875,8 +885,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     else if (activeCat === 'new') out = out.filter((it) => newIds.has(it.id))
     else if (activeCat === CHAT_TAB) out = out.filter((it) => it.slot === 'nameTag' || it.slot === 'chatBalloon') // 명찰/말풍선 탭은 두 부위를 함께 보인다
     else if (activeCat !== 'all') out = out.filter((it) => it.slot === CAT_TO_SLOT[activeCat])
-    return byGender(out, genderFilter)
-  }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter])
+    return byKind(byGender(out, genderFilter), kindFilter)
+  }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter, byKind, kindFilter])
   // 정렬은 **화면에 들어올 때 한 번만** 확정한다 — 좋아요를 누를 때마다 카드가 자리를 바꾸면 보던 곳을 잃는다.
   // 같은 (분류·검색어·정렬·목록 세대) 안에서는 처음 잡은 순서를 그대로 쓰고, 그 사이 새로 생긴 글(내 등록)만 맨 앞에 붙는다.
   const plazaOrder = useRef<{ key: string; ids: string[] }>({ key: '', ids: [] })
@@ -932,10 +942,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   comboShownRef.current = comboShown // 렌더 중에 적는다 — 패널의 뷰포트가 붙는 그 자리(bindVp)에서 바로 재므로
   // 성별(전체 · 여 · 남 — 코디의 성별은 parser looks/build.ts 가 입은 아이템으로 센다). 쪽 위치 · 코디 수도 성별마다 따로다
   const [comboGender, setComboGender] = useState<GenderFilter>('all')
+  // 염색 칩을 누르면 그 염색을 쓴 코디만(사용자 지시). 아이템을 바꾸면 풀린다. 쪽 위치 · 코디 수도 염색마다 따로다(comboKey)
+  const [comboDye, setComboDye] = useState<number | null>(null)
   const [comboCount, setComboCount] = useState<{ id: string; n: number }>({ id: '', n: 0 })
   const setComboTotal = useCallback((id: string, n: number) => setComboCount((c) => (c.id === id && c.n === n ? c : { id, n })), [])
   const comboPaging = !!comboItem && (comboShown || (primary === 'share' && plazaFilter === 'combo'))
-  const comboKey = comboItem ? `${comboItem.id}|${comboGender}` : '' // setComboTotal 에 넘기는 키
+  const comboKey = comboItem ? `${comboItem.id}|${comboGender}|${comboDye ?? ''}` : '' // setComboTotal 에 넘기는 키
   const comboTotal = comboItem && comboCount.id === comboKey ? comboCount.n : 0
   // 상세를 보는 동안은 방향키 · 휠로 목록 쪽이 넘어가지 않는다(돌아오면 보던 쪽 그대로)
   const pagerHold = useRef(false)
@@ -1206,6 +1218,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 열고 닫기 · 상세 오가기는 탭을 바꾸듯 그 자리에서 바로 바뀐다(움직임 없음 — 사용자 지시). 첫 묶음은 누르는 순간 받기 시작한다
   const openCombo = (item: ListItem) => {
     void lookChunk(item.id, 0, comboGender === 'all' ? 'a' : comboGender).catch(() => {})
+    if (comboItem?.id !== item.id) setComboDye(null)
     setComboItem(item); setComboDetail(null); setComboTab(primary); setComboOpen(true)
   }
   const closeCombo = () => { setComboOpen(false); setComboDetail(null) }
@@ -1218,7 +1231,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (ix) for (const r of d.looks.slice(0, 18)) void preloadSnapshot(withCardPv(r.s, cardPv), ix, true).catch(() => {})
     }).catch(() => {})
   }
-  const pickCombo = (item: ListItem) => { setComboItem(item); setComboDetail(null) }
+  const pickCombo = (item: ListItem) => { if (comboItem?.id !== item.id) setComboDye(null); setComboItem(item); setComboDetail(null) }
   // 이름으로 아이템 찾기(코디 룩북의 아이템 찾기) — 모든 부위의 접은 목록 + 피부(처음 부르면 목록을 받는다). 많이 쓴 순서는 부르는 쪽이 정한다
   const searchItems = async (q: string): Promise<ListItem[]> => {
     const match = nameMatcher(q) // 목록 · 광장 검색과 같은 규칙(영문 자판으로 친 한글 en2ko, 띄어쓰기 무시)
@@ -1561,7 +1574,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPrimary('codi')
     setActiveCat('all')
     setSearch('')
-    setGenderFilter('all')
+    setGenderFilter('all'); setKindFilter('all')
     setAiQ(''); setSearchQuery(null); setSearchResults([])
     setPlazaFilter('all'); setPlazaQState('')
     setPageByCat({}) // 부위별로 따로 기억하던 페이지까지 전부 1페이지로
@@ -1592,7 +1605,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (go.spot) setTimeout(() => guideSpot(go.spot!, !!go.click), 260)
     }, SURFACE_UNMOUNT_MS + 20)
   }
-  const openDye = (item: ListItem) => openSurface({ kind: 'dye', item })
+  const openDye = (item: ListItem, init?: DyeSave) => openSurface({ kind: 'dye', item, ...(init ? { dyeInit: init } : {}) })
   const openCard = () => openSurface({ kind: 'card', item: null })
   const openDot = (item: ListItem) => openSurface({ kind: 'dot', item })
   // 부위 염색 ↔ 염색/점 위치: 다이얼로그는 그대로 두고 본문만 가로 슬라이드(진입 = 왼쪽으로 빠지고 오른쪽에서 들어옴, 이전 = 반대).
@@ -2160,11 +2173,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const saveName = selIdx >= 0 ? presetFileName(presets[selIdx].name, selIdx) : CHAT_NAME_FALLBACK
   const value: ShopCtx = {
     index, cats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
-    genderFilter, setGenderFilter,
+    genderFilter, setGenderFilter, kindFilter, setKindFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
-    comboItem, comboOpen, openCombo, closeCombo, comboShown, comboDetail, setComboDetail, pickCombo, warmCombo, searchItems, comboTotal, comboTotalKnown: !!comboItem && comboCount.id === comboKey, setComboTotal, holdPager, warmWear, comboGender, setComboGender,
+    comboItem, comboOpen, openCombo, closeCombo, comboShown, comboDetail, setComboDetail, pickCombo, warmCombo, searchItems, comboTotal, comboTotalKnown: !!comboItem && comboCount.id === comboKey, setComboTotal, holdPager, warmWear, comboGender, setComboGender, comboDye, setComboDye,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
     warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, presetDir, setPresetDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,

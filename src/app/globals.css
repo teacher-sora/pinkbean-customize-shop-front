@@ -18,7 +18,8 @@ body { font-family: var(--font-wanted), "Wanted Sans Rest", -apple-system, Blink
 @media (pointer: coarse) {
   html, body { height: auto; min-height: 100%; overflow-y: visible; }
   body { overflow-x: hidden; }
-  .pb-shell { position: relative !important; inset: auto !important; height: auto !important; }
+  /* 넘침은 clip — hidden 이면 셸이 스크롤 칸이 되어 모바일 하단 탭(nav .tabNavM)의 sticky 가 문서를 따르지 않는다(frame .mobileCol 과 같은 까닭) */
+  .pb-shell { position: relative !important; inset: auto !important; height: auto !important; overflow: clip !important; }
 }
 a { color: light-dark(#ec86ac, #d881a1); text-decoration: none; }
 @media (hover: hover) and (pointer: fine) { a:hover { color: light-dark(#d76d9a, #d293ae); } }

@@ -127,7 +127,7 @@ export function MobileHero() {
       </div>
       <div className={clsx(styles.heroLeft, chatUp && styles.heroBarOff)}>
         <button type="button" onClick={() => s.openSheet('pv')} title="연출 설정" data-guide="pv" className={styles.pvOpenBtn}>
-          연출 설정<IconCaretDown />
+          연출<span className={styles.pvOpenMore}> 설정</span><IconCaretDown />
         </button>
         <button type="button" onClick={() => s.openSheet('bg')} title="미리보기 배경 바꾸기" aria-label="미리보기 배경" className={clsx(styles.pvOpenBtn, styles.pvOpenIcon, bgOpen && styles.pvOpenBtnOn)}>
           <IconScene size={15} />

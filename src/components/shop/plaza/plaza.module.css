@@ -19,7 +19,7 @@
 .sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; min-width: 0; height: 32px; padding: 0 8px 0 10px; font-size: 12px; }
 .searchWrapM { flex: 1 1 0; min-width: 64px; position: relative; display: flex; align-items: center; }
 .searchIconM { position: absolute; left: 11px; color: light-dark(#b7ada2, #858893); pointer-events: none; }
-.searchInputM { width: 100%; min-width: 0; height: 32px; text-overflow: ellipsis; padding: 0 10px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 13px; color: light-dark(#3d372f, #cacbd0); outline: none; }
+.searchInputM { width: 100%; min-width: 0; height: 32px; text-overflow: ellipsis; padding: 0 10px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: 12px; letter-spacing: -0.02em; color: light-dark(#3d372f, #cacbd0); outline: none; }
 .upBtn { flex: 0 0 auto; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: 12px; font-weight: 600; color: light-dark(#d76d9a, #d293ae); white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 
 /* ── 페이지 칩 ── */
@@ -65,7 +65,12 @@
 /* ── 카드 ── (바깥 래퍼는 프리셋 카드와 같은 pb-presetwrap/pb-preset 을 쓴다) */
 .thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; background: light-dark(#f7f2ec, #3b3d45); border-radius: 7px 7px 0 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .meta { position: relative; flex: 0 0 auto; padding: 6px 8px; display: flex; align-items: center; border-top: 1px solid light-dark(#f4efe8, #3e4048); }
-.metaM { padding: 5px 6px; }
+.metaM { padding: 5px 6px 3px; border-top: none; }
+/* 모바일 카드 아래 막대(목록 카드의 [북마크 · 염색] 막대와 같은 부품 — list .bar · .barM · .act) — [가져오기][♡ 수] */
+.barM { width: auto; align-self: stretch; margin: 0 5px 5px; }
+.likeAct { flex: 1.6 1 0; gap: 2px; font-variant-numeric: tabular-nums; } /* 수(최대 999+)가 들어가게 가져오기 칸보다 넓게 — 360 폭에서 세 자리가 잘렸다 */
+.likeAct > svg { flex: 0 0 auto; } /* 수가 길어도 하트가 줄지 않게 */
+.likeActOn { color: light-dark(#ec86ac, #d881a1); }
 .name { display: block; width: 100%; min-width: 0; font-size: 12px; font-weight: 500; color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nameM { font-size: 11px; }
 .rail { position: absolute; right: 6px; top: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -82,13 +87,11 @@
 .railBtnM { width: 26px; height: 26px; }
 .delBtn { border-color: light-dark(#f2d7d2, #644640); color: light-dark(#d1735f, #d19f94); }
 .likeWrap { position: absolute; right: 6px; bottom: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.likeWrapM { right: 5px; bottom: 5px; }
 /* 대회 출품 날짜(M.D) — 썸네일 왼쪽 아래. 하트는 오른쪽 아래라 겹치지 않는다. */
 .contestNo { position: absolute; left: 6px; bottom: 6px; z-index: 4; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 20px; background: light-dark(#fff, #303238); font-size: 10.5px; font-weight: 700; color: light-dark(#d76d9a, #d293ae); font-variant-numeric: tabular-nums; }
 .contestNoM { left: 5px; bottom: 5px; }
 .likeCount { font-size: 10px; font-weight: 700; color: light-dark(#8a8075, #9fa2aa); line-height: 1; font-variant-numeric: tabular-nums; }
 .likeBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#efe8e0, #43464e); border-radius: 50%; background: light-dark(rgba(255,255,255,0.94), rgba(48, 50, 56, 0.94)); color: light-dark(#a89e93, #8e919a); cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
-.likeBtnM { width: 26px; height: 26px; }
 .likeOn { border-color: light-dark(#f8e0ea, #5a3947); background: light-dark(#fdf1f6, #4e323e); color: light-dark(#ec86ac, #d881a1); }
 
 /* ── 상세(서피스 본문) ── */
@@ -453,3 +456,6 @@
 /* 답글 묶음: 단마다 같은 들여쓰기, 왼쪽 줄 색은 깊이마다 진해진다(--fb-line, FeedbackThread 가 인라인으로 준다) */
 .fbKids { margin: 10px 0 0 4px; padding-left: 12px; border-left: 2px solid var(--fb-line, light-dark(#f0e9e1, #42454d)); display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .fbKidsM { padding-left: 10px; }
+/* 300 이하: 좋아요 수가 잘려 글자 · 간격을 줄인다 */
+@media (max-width: 300px) { .likeAct { gap: 1px; font-size: 10px; letter-spacing: -0.03em; } .likeAct > svg { width: 10px; height: 10px; }
+  .controlsM { padding: 8px; gap: 6px; } .searchWrapM { min-width: 0; } } /* 머리 줄: [내 코디 등록]이 화면 밖(23px)으로 밀렸다 — 검색 칸이 줄어든다 */

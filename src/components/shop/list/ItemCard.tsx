@@ -3,10 +3,10 @@
 import clsx from 'clsx'
 import { useRef } from 'react'
 import { badgeUrl, type ListItem } from '@/lib/core/data'
-import { CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
+import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
-import { IconStar } from '../ui/Icons'
+import { IconBookmark, IconDot, IconDrop, IconStar, IconTab } from '../ui/Icons'
 import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
@@ -56,7 +56,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
         <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
           className={clsx('pb-ribbon', styles.pinMark, mobile && styles.pinMarkM, pinned && styles.pinMarkOn)} />
         <div className={styles.thumb}>
-          <ItemThumb item={item} mode={mode} fraction={mobile ? CARD_FRACTION_M : undefined} chat={item.chatUi ? CHAT_CARD : undefined} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
+          <ItemThumb item={item} mode={mode} fraction={mobile ? CARD_FRACTION_M : undefined} fitW={mobile ? CARD_FIT_W_M : undefined} chat={item.chatUi ? CHAT_CARD : undefined} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
             zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
             ctxExpr={ctx.expr} faceMeta={ctx.faceMeta} dye={mode === 'mymodel' ? { palette: s.renderPalette, hsb: s.renderHsb } : undefined}
             ear={mode === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={mode === 'mymodel'} stance={ctx.stance} ctxAction={ctx.action} dotOffsets={mode === 'mymodel' ? s.dotPos[item.id] : undefined} />
@@ -67,14 +67,14 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
           )}
           {looks > 0 && !COMBO_SKIP.has(item.slot) && (
             <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 룩북 ${looks.toLocaleString()}벌`}
-              className={clsx(styles.combo, mobile && styles.comboM)}>코디 {countLabel(looks)}</button>
+              className={clsx(styles.combo, mobile && styles.comboM)}>{mobile ? <><IconTab id="codi" size={11} />{countLabel(looks)}</> : `코디 ${countLabel(looks)}`}</button>
           )}
         </div>
         <div className={mobile ? styles.nameM : styles.name}>{name}</div>
         <div className={clsx(styles.bar, mobile ? styles.barM : styles.barHover)}>
-          <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} className={clsx('pb-cardact', styles.act, mobile && styles.actM, pinned && styles.actPinned)}>북마크</button>
+          <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" className={clsx('pb-cardact', styles.act, mobile && styles.actM, pinned && styles.actPinned)}>{mobile && <span className={styles.actIcon}><IconBookmark filled={pinned} /></span>}<span className={styles.actText}>북마크</span></button>
           {dyeable && (
-            <button type="button" onClick={dye} title={`${name} 색 바꾸기`} className={clsx('pb-cardact', styles.act, styles.actDye, mobile && styles.actM)}>{isDot ? '점 위치' : '염색'}</button>
+            <button type="button" onClick={dye} title={`${name} 색 바꾸기`} aria-label={isDot ? '점 위치' : '염색'} className={clsx('pb-cardact', styles.act, styles.actDye, mobile && styles.actM)}>{mobile && <span className={styles.actIcon}>{isDot ? <IconDot size={12} /> : <IconDrop size={12} />}</span>}<span className={styles.actText}>{isDot ? '점 위치' : '염색'}</span></button>
           )}
         </div>
       </div>

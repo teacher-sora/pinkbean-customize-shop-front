@@ -6,8 +6,8 @@ import clsx from 'clsx'
 import { CatTabsM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Preset } from '@/lib/catalog'
-import { CARD_FRACTION_M, CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
-import { DIRS, useListMinHeight } from '../list/ListArea'
+import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
+import { DIRS } from '../list/ListArea'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
 import { presetFileName } from '@/lib/canvasExport'
@@ -19,7 +19,7 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
 const PRESET_FRACTION = 0.38
-const PRESET_FRACTION_M = CARD_FRACTION_M // 모바일은 목록 · 광장 카드와 같은 비율(사용자 지시 — 모바일 카드의 캐릭터가 너무 작았다)
+const PRESET_FRACTION_M = CARD_FRACTION_M // 모바일은 모든 모바일 카드와 같은 비율 · 격자(사용자 지시)
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
 import { IconCheck, IconLinkCopy, IconPencil, IconImport, IconReorder, IconTrashSolid } from '../ui/Icons'
@@ -42,7 +42,6 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const dir = s.presetDir ?? (mobile ? 'x' : 'y')
   const across = dir === 'x'
   const boxRef = useWheelRail<HTMLDivElement>(across && !mobile)
-  useListMinHeight(boxRef, mobile) // 모바일: 목록과 같은 최소 높이(이 탭에서 바로 열어도 카드가 작아지지 않게)
   // 고른 프리셋 = 비교 중이면 비교의 주인 프리셋(사용자 지시 — 비교 중에도 프리셋 탭에서 지금 프리셋이 '선택됨'으로 보인다. 고른 비교 칸 = 그 프리셋)
   const selId = s.cmpOn ? s.cmpBack : s.selectedPreset
   const centered = useRef(false)
@@ -177,15 +176,15 @@ const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, fill, sor
         {/* 바탕(사용자 지시): 손대지 않은 프리셋(광장 등록의 올릴 프리셋 판정과 같다)은 시스템 테마 색, 꾸민 프리셋은 그 프리셋의 미리보기 배경 */}
         <div ref={thumbRef} className={clsx(styles.thumb, fill && styles.thumbM)} style={snap && !isCustomSnapshot(snap) ? { background: SYS_BG_CSS } : undefined}>
           {snap && isCustomSnapshot(snap) && <div className={styles.thumbBg}><CardStageBg sel={snap.bg} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} /></div>}
-          {card && seen && <SnapThumb snap={card} view fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
-        <div className={styles.nameRow}>
+          {card && seen && <SnapThumb snap={card} view fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} fitW={mobile ? CARD_FIT_W_M : undefined} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
+        <div className={clsx(styles.nameRow, mobile && styles.nameRowM)}>
           <span className={styles.nameWrap}>
             <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
               onChange={(e) => act.current.rename(p.id, e.target.value)}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
               onBlur={() => act.current.commit(p.id, defaultPresetName(i))}
-              className={clsx('pb-input', 'pb-presetname', styles.nameInput)} />
+              className={clsx('pb-input', 'pb-presetname', styles.nameInput, mobile && styles.nameInputM)} />
             <IconPencil className={styles.pencil} />
           </span>
         </div>

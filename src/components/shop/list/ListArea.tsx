@@ -40,12 +40,13 @@ const scrollIdx = (vp: HTMLElement, y: boolean) => {
   return Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / n)) / n)
 }
 
-// 모바일 · 절반 · 태블릿: 한번 정해 두고 쓰는 보기 값들(목록 = 보기 · 성별 · 방향, 코디 룩북 = 성별 · 방향)을 버튼 하나에 접어 둔다(넓은 PC 는 펼쳐 둔다).
+// 한번 정해 두고 쓰는 보기 값들(목록 = 보기 · 성별 · 방향 — 어느 폭이든, 코디 룩북 · 광장 = 모바일 · 절반 · 태블릿)을 버튼 하나에 접어 둔다.
 // 누르면 버튼 아래에 묶음들이 펼쳐진다. 왜: 늘 펼쳐 두느라 목록 머리가 두 줄이었다(쪽 번호 · 검색은 매번 쓰는 것이라 그대로 내놓는다).
 // 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(이어서 고를 수 있게).
 // 같은 부품을 코디 룩북 머리도 쓴다(combo/ComboPanel — 사용자 지시: 같은 역할은 부품 하나)
+// 묶음 = 하나 고르기(Seg). set = 거르는 중(목록 '필터'를 전체가 아닌 것으로 골랐다) — 버튼도 켜진 모양이라 닫혀 있어도 거르는 중인 걸 안다
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void }
+export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; set?: boolean }
 export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -55,9 +56,10 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
     return () => window.removeEventListener('keydown', onKey, true)
   }, [open])
   const now = groups.map((g) => g.opts.find((o) => o.v === g.value)?.l ?? '').join(', ')
+  const set = groups.some((g) => g.set)
   return (
     <div className={styles.filterM}>
-      <button type="button" data-guide={guide} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, open && styles.filterBtnOn)}>
+      <button type="button" data-guide={guide} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, (open || set) && styles.filterBtnOn, set && styles.filterBtnSet)}>
         <span className={styles.filterText}>보기 설정</span>
         <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
       </button>
@@ -85,12 +87,13 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 // 예전에는 카드 전체를 폭 × 1.34 로만 잡아, 화면이 낮으면(실제 휴대폰 · 위를 줄인 창) 아래 57px 를 빼고 남은 그림 칸이 75px 까지 줄어
 // 캐릭터가 45px 로 아주 작았다(사용자 지적 — 실측 343 × 684). 그림 칸을 따로 보장해 어느 높이에서든 캐릭터가 줄지 않는다
 export const CARD_RATIO_M = 1.45
-const CARD_FOOT_M = 57 // 1.45 = 좁은 폭(343 · 360)도 캐릭터가 한 단계 크게(정수 배율 — 실측 68 → 90px)
-// 목록과 같은 최소 높이 — 코디 탭 · AI 코디 검색 목록과 프리셋 탭이 함께 쓴다(같은 값이라 탭을 오가도 페이지 높이가 그대로다)
-export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M)
+const CARD_FOOT_M = 61 // 카드 아래 = 이름 줄 + [북마크 · 염색] 막대 28 + 여백. 1.45 = 좁은 폭(343 · 360)도 그림 칸이 정수 배율 한 단계에 닿는다 — LIST_FRACTION_M 0.5 와 함께 캐릭터 64px 안팎
+export const LIST_COL_GAP_M = 6 // 목록 격자의 열 간격(list.module.css .gridM 과 같은 값 — 카드 폭을 조금 넓힌다)
+// 목록의 최소 높이 — 코디 탭 · AI 코디 검색 목록
+export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M, 0, 0, LIST_COL_GAP_M)
 // extra = 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장의 다른 분류가 코디 룩북과 같은 높이 — 광장 목록 칸은
 // 좌우 여백 7 이 없어 그만큼 넓다. 분류를 바꿔도 페이지 높이가 같게)
-export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0) {
+export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0, colGap = 10) {
   useEffect(() => {
     if (!mobile) return
     const vp = vpRef.current
@@ -100,7 +103,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
       const chrome = col.clientHeight - vp.clientHeight
-      const cardW = (vp.clientWidth - inset - PAD_X - GAP * (cols - 1)) / cols
+      const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const need = Math.ceil(chrome + extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
     }
@@ -108,7 +111,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
     ro?.observe(col); ro?.observe(vp)
     return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
-  }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset])
+  }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset, colGap])
 }
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
@@ -258,16 +261,8 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     </div>
   ) : (
     <div className={styles.header}>
-      {/* 좁은 폭(절반 · 태블릿)에서는 보기와 성별을 접어 한 줄로 둔다 — 펼쳐 두면 머리가 두 줄이 된다 */}
-      {narrow
-        ? <FilterM mobile={false} guide="listdir" groups={filterGroups} />
-        : (
-          <div data-guide="listdir" className={styles.groupA}>
-            <Seg title="아이템을 무엇에 입혀서 볼지" opts={viewOpts} value={thumbs.mode} onPick={s.setListMode} />
-            <Seg title="성별" opts={GENDERS} value={s.genderFilter} onPick={s.setGenderFilter} />
-            <Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} />
-          </div>
-        )}
+      {/* 보기 · 성별 · 방향은 어느 폭이든 '보기 설정' 하나에 접어 둔다(사용자 지시) */}
+      <FilterM mobile={false} guide="listdir" groups={filterGroups} />
       <div className={styles.groupB}>
         {pageChip}
         <div className={clsx(styles.searchWrap, narrow && styles.searchWrapNarrow)}>

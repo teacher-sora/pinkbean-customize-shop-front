@@ -146,10 +146,23 @@ export const PREVIEW_FRACTION = 0.25 // 우측 미리보기 기준 마네킹 높
 export const PREVIEW_FRACTION_MOBILE = 0.5
 export const PREVIEW_MARGIN = 1.5    // 우측 미리보기 캔버스 여백 배수
 export const CARD_FRACTION = 0.45     // 리스트 카드 마네킹 높이 비율(넉넉한 전체샷; 정수 스냅으로 항상 선명)
-// 모바일 카드(목록 · 광장 · 코디 룩북)의 마네킹 높이 비율 — 광장 자유 코디 카드의 값(사용자 지시: 모바일 목록 캐릭터가 광장의 절반 크기라 너무 작았다)
-export const CARD_FRACTION_M = 0.54
-// 모바일 목록 격자 = 3열 × 2줄(사용자 지시 — 많은 정보를 빠르게. 캐릭터는 카드 높이를 넉넉히 잡아 키운다 — ListArea useMobileRows). 코디 탭 · AI 코디 검색 · 코디 룩북이 함께 쓴다
-export const MOBILE_GRID = { cols: 3, rows: 2 }
+// 모바일 카드의 마네킹 높이 비율 — **모든 모바일 카드가 같은 값**(사용자 지시: 목록 · AI 코디 검색 · 코디 룩북 · 프리셋 · 광장).
+// 목표 높이일 뿐 실제 배율은 정수로 반올림된다(modelPlacement snap — 기기 px 정수 배율이라 도트가 뭉개지지 않는다)
+export const CARD_FRACTION_M = 0.475
+// 모바일 카드의 캐릭터 높이 ≤ 그림 칸 폭 × 0.8 — 키 큰 화면(412 × 915)에서 그림 칸이 길어 캐릭터가 칸 폭보다 컸다(SnapThumb · ItemThumb fitW)
+export const CARD_FIT_W_M = 0.8
+// 모바일 격자 = 4열 × 2줄 — 모든 모바일 카드 목록이 같다(사용자 지시: 코디 탭 · AI 코디 검색 목록, 코디 룩북, 프리셋, 광장. 3줄은 스크롤만 늘어 안 된다).
+// 두 줄이 화면 높이를 채워 카드가 세로로 길어 보여, 목록 카드는 열 간격 · 카드 좌우 안쪽 여백을 줄여 폭을 넓혔다(list.module.css .gridM · .cardM)
+export const MOBILE_GRID = { cols: 4, rows: 2 }
+// 목록의 '필터'(사용자 지시 — 라디오, 하나만 고른다. 'all' = 전부). 보기 설정 안 보기 · 성별 · 방향과 같은 버튼(Seg)이다.
+// 부티크는 원본(WZ info · 캐시샵 상품 정보)에 가를 표시가 없어 없다. 콜라보는 WZ info.collabo 에 있으나 아이템 목록에 아직 싣지 않았다
+export const ITEM_KINDS: { v: string; l: string; t: string; test?: (it: ListItem) => boolean }[] = [
+  { v: 'all', l: '전체', t: '전부 보기' },
+  { v: 'master', l: '마라벨', t: '마스터라벨', test: (it) => it.label === 'master' },
+  { v: 'special', l: '스라벨', t: '스페셜라벨', test: (it) => it.label === 'special' },
+  { v: 'cash', l: '캐시', t: '캐시 아이템', test: (it) => it.isCash },
+  { v: 'meso', l: '메소', t: '메소로 얻는 아이템(캐시가 아닌 것)', test: (it) => !it.isCash },
+]
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.

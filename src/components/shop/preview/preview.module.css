@@ -305,3 +305,10 @@
 }
 .cmpPane:focus-visible .cmpRing { border-color: light-dark(#ec86ac, #d15785); }
 @media (prefers-reduced-motion: reduce) { .cmpRing, .cmpAdd { transition-duration: .01s; } }
+/* 300 이하(폴드 1 · 2 바깥 화면 280): 미리보기 아래 단추 줄의 왼쪽 · 오른쪽 묶음이 겹쳐 '연출 설정'을 '연출'로 */
+.pvOpenMore { margin-left: -3px; } /* 단추 간격(6) 안에서 낱말 사이는 띄어쓰기 폭(3) 그대로 */
+@media (max-width: 300px) { .pvOpenMore { display: none; } }
+/* 미리보기 아래 단추 묶음은 빈 자리로 누름을 받지 않는다 — 좁은 화면(280)에서 오른쪽 묶음 칸이 왼쪽 [채팅] 위를 덮어 눌리지 않았다. 숨긴 묶음(heroBarOff)은 단추도 막힌 채 */
+.heroLeft, .heroRight { pointer-events: none; }
+.heroLeft:not(.heroBarOff) > *, .heroRight:not(.heroBarOff) > * { pointer-events: auto; }
+.heroRight > .dotBtnM:not(.dotBtnMOn) { pointer-events: none; } /* 숨은 [점 위치](고칠 아이템이 없을 때)는 계속 누름을 받지 않는다 — 280 폭에서 [채팅] 위에 겹쳐 있었다 */

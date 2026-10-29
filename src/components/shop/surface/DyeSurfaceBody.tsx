@@ -21,6 +21,7 @@ import { IconCheck, IconReset, IconViewModel } from '../ui/Icons'
 import DyeVault from './DyeVault'
 import { useInnerSlide } from './innerSlide'
 import { readUiPref, writeUiPref } from '@/lib/uiState'
+import type { DyeSave } from '@/lib/dyeVault'
 import { SurfaceFooter } from './Surface'
 import styles from './surface.module.css'
 
@@ -95,28 +96,29 @@ function TopM ({ pills, children }: { pills: React.ReactNode; children: React.Re
   )
 }
 
-export default function DyeSurfaceBody({ item, mobile }: { item: ListItem; mobile: boolean }) {
+// init = 이 값으로 연다(코디 룩북의 자주 쓴 염색 칩 — 지금 염색이 아니라 그 칩의 값. 적용은 [적용]으로)
+export default function DyeSurfaceBody({ item, mobile, init }: { item: ListItem; mobile: boolean; init?: DyeSave }) {
   const s = useShop()
   const name = item.name || item.id
   return s.isMixSlot(item.slot)
-    ? <MixBody item={item} mobile={mobile} name={name} />
-    : <HsbBody item={item} mobile={mobile} name={name} />
+    ? <MixBody item={item} mobile={mobile} name={name} init={init && 'pal' in init ? init.pal : undefined} />
+    : <HsbBody item={item} mobile={mobile} name={name} init={init && 'hsb' in init ? init.hsb : undefined} />
 }
 
 // ── 헤어·성형: 베이스 · 믹스 · 비율 ↔ 염색표 ─────────────────────────────
-function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name: string }) {
+function MixBody({ item, mobile, name, init }: { item: ListItem; mobile: boolean; name: string; init?: PaletteParams }) {
   const s = useShop()
   const slot = item.slot
   const PAL = paletteFor(slot) // 성형=FACE_PALETTE 표기, 헤어=MIX_PALETTE. 발색 로직은 동일.
   const zmap = s.index?.zmap || []
   const [meta, setMeta] = useState<ItemMeta | null>(null)
-  const [pal, setPal] = useState<PaletteParams>(() => ({ ...(s.dyePalette[slot] ?? DEF_PAL()) }))
+  const [pal, setPal] = useState<PaletteParams>(() => ({ ...(init ?? s.dyePalette[slot] ?? DEF_PAL()) }))
   const [off, setOff] = useState(() => !!s.dyeOff[slot]) // 염색 비활성화(적용 시 커밋) — 일반 아이템과 같다
   // '염색 초기화' = 염색을 지운다(코디 정보 탭의 '수치 초기화'와 같은 뜻 — 원래 색으로 돌아간다).
   // 헤어·성형은 '염색 없음'을 색 조합으로 표현할 수 없어(검정 A·B 도 엄연한 염색이다) 따로 표시해 두고,
   // 색이나 비율을 다시 건드리면 풀린다.
   // 아직 염색하지 않은 아이템은 '지워진' 상태로 연다 — 일반 아이템(HSB)이 0·0·0 으로 열리는 것과 같다.
-  const [cleared, setCleared] = useState(() => !s.dyePalette[slot])
+  const [cleared, setCleared] = useState<boolean>(() => !init && !s.dyePalette[slot])
   const { zoom, model, pills } = useViewPills(false)
   const { view, go, style } = useInnerSlide<'custom' | 'table'>('custom')
 
@@ -225,10 +227,10 @@ function MixBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name
 }
 
 // ── 그 외 아이템: HSB ──────────────────────────────────────────────────────
-function HsbBody({ item, mobile, name }: { item: ListItem; mobile: boolean; name: string }) {
+function HsbBody({ item, mobile, name, init }: { item: ListItem; mobile: boolean; name: string; init?: HsbParams }) {
   const s = useShop()
   const slot = item.slot
-  const [hsb, setHsb] = useState<HsbParams>(() => ({ ...(s.dyeHsb[slot] ?? { h: 0, s: 0, b: 0, t: 0 }) }))
+  const [hsb, setHsb] = useState<HsbParams>(() => ({ ...(init ?? s.dyeHsb[slot] ?? { h: 0, s: 0, b: 0, t: 0 }) }))
   const [raw, setRaw] = useState<Partial<Record<F, string>>>({})
   const { zoom, model, pills } = useViewPills(slot === 'skin')
   const [off, setOff] = useState(() => !!s.dyeOff[slot]) // 염색 비활성화(적용 시 커밋)
