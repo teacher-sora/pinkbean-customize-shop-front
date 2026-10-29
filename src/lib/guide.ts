@@ -260,7 +260,11 @@ function reveal(el: HTMLElement) {
     if (pr.bottom > 0 && pr.top < window.innerHeight) return
     r = pr
   }
-  if (r.top < 0 || r.bottom > window.innerHeight) window.scrollBy({ top: r.top - (window.innerHeight - Math.min(r.height, window.innerHeight)) / 2, behavior: 'smooth' })
+  // 모바일 미리보기(히어로)는 화면 위에 붙어 있다(sticky) — 그 아래가 보이는 자리다(히어로 안의 것은 그대로)
+  const hero = document.querySelector<HTMLElement>('[data-hero]')
+  const top = hero && !hero.contains(el) && getComputedStyle(hero).position === 'sticky' ? Math.max(0, hero.getBoundingClientRect().bottom) : 0
+  const room = window.innerHeight - top
+  if (r.top < top || r.bottom > window.innerHeight) window.scrollBy({ top: r.top - top - (room - Math.min(r.height, room)) / 2, behavior: 'smooth' })
 }
 
 // 도착한 화면에서 그 요소(data-guide)를 잠깐 테두리로 가리킨다. 입력칸이면 커서를 둔다. 보이는 것 하나만.
