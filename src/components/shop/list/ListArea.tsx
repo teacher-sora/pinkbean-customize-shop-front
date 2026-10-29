@@ -50,22 +50,25 @@ const scrollIdx = (vp: HTMLElement, y: boolean) => {
 export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; set?: boolean }
 export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
   const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement | null>(null)
+  // 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다. 화면 전체 덮개를 두었더니 그보다 위에 붙은 헤더 · 미리보기를 누를 때는
+  // 닫히지 않아(모바일 — 헤더 · 미리보기가 머리 묶음보다 위에 붙는다) 문서 전체의 누름을 먼저 받아 가로챈다
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); setOpen(false) } }
+    const onClick = (e: MouseEvent) => { if (root.current?.contains(e.target as Node)) return; e.preventDefault(); e.stopPropagation(); setOpen(false) }
     window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
+    window.addEventListener('click', onClick, true)
+    return () => { window.removeEventListener('keydown', onKey, true); window.removeEventListener('click', onClick, true) }
   }, [open])
   const now = groups.map((g) => g.opts.find((o) => o.v === g.value)?.l ?? '').join(', ')
   const set = groups.some((g) => g.set)
   return (
-    <div className={styles.filterM}>
+    <div ref={root} className={styles.filterM}>
       <button type="button" data-guide={guide} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, (open || set) && styles.filterBtnOn, set && styles.filterBtnSet)}>
         <span className={styles.filterText}>보기 설정</span>
         <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
       </button>
-      {/* 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다 */}
-      {open && <div className={styles.filterShade} onClick={() => setOpen(false)} />}
       {/* 늘 붙여 두고 보임만 바꾼다 — 닫힐 때도 전환이 보이게 */}
       <div role="group" aria-label={groups.map((g) => g.label).join(' · ')} aria-hidden={!open} className={clsx(styles.filterPop, open && styles.filterPopOn)}>
         {groups.map((g) => (
