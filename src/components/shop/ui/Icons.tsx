@@ -1,5 +1,7 @@
 // 인라인 SVG 아이콘.
 
+import { css } from '@/lib/style'
+
 type P = { size?: number; className?: string; style?: React.CSSProperties }
 
 export const IconRate = ({ size = 15 }: P) => (
@@ -135,8 +137,9 @@ export const IconAdd = ({ size = 14 }: P) => (
 export const IconClose = ({ size = 14 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
 )
+const PENCIL = css('stroke: light-dark(#c9a3b5, #7f838e)')
 export const IconPencil = ({ className }: P) => (
-  <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ stroke: 'light-dark(#c9a3b5, #7f838e)' }} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 4.5l3 3L8 19H5v-3z" /></svg>
+  <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" style={PENCIL} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 4.5l3 3L8 19H5v-3z" /></svg>
 )
 export const IconReset = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 5v6h-6" /></svg>

@@ -1,23 +1,23 @@
 /* 코디 정보 · 염색. */
 
-.panel { flex: 1 1 0; min-width: 0; min-height: 0; background: #fff; background: light-dark(#fff, #303238); border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+.panel { flex: 1 1 0; min-width: 0; min-height: 0; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
 .header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
-.hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: #f2ebe3; background: light-dark(#f2ebe3, #40434b); }
+.hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: light-dark(#f2ebe3, #40434b); }
 .headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 8px; }
-.hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: #f2ebe3; background: light-dark(#f2ebe3, #40434b); }
+.hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: light-dark(#f2ebe3, #40434b); }
 
 /* 착용 n / 16 칩 */
-.chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: #faf7f3; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
+.chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
 .chipM { gap: 5px; height: 32px; padding: 0 10px; border-radius: 6px; }
-.chipLabel { font-size: 12px; font-weight: 600; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); line-height: 1; }
-.chipNum { min-width: 2ch; text-align: right; /* 두 자리까지 폭을 미리 — 숫자가 바뀌어도 칩이 늘지 않게 */ font-size: 12px; font-weight: 700; color: #d76d9a; color: light-dark(#d76d9a, #d293ae); line-height: 1; }
-.chipSlash { font-size: 12px; color: #ccc2b8; color: light-dark(#ccc2b8, #787c88); line-height: 1; }
+.chipLabel { font-size: 12px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); line-height: 1; }
+.chipNum { min-width: 2ch; text-align: right; /* 두 자리까지 폭을 미리 — 숫자가 바뀌어도 칩이 늘지 않게 */ font-size: 12px; font-weight: 700; color: light-dark(#d76d9a, #d293ae); line-height: 1; }
+.chipSlash { font-size: 12px; color: light-dark(#ccc2b8, #787c88); line-height: 1; }
 .right { flex: 1 1 0; min-width: 0; display: flex; justify-content: flex-end; }
-.btn { flex: 0 0 auto; height: 34px; padding: 0 12px; border: 1px solid #f0e9e1; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: #fff; background: light-dark(#fff, #303238); font-family: inherit; font-size: 12px; font-weight: 600; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); white-space: nowrap; cursor: pointer; }
+.btn { flex: 0 0 auto; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: 12px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); white-space: nowrap; cursor: pointer; }
 .btnM { height: 32px; border-radius: 6px; }
 .btnIcon { display: inline-flex; align-items: center; gap: 6px; }
 .btn:disabled { opacity: .6; cursor: progress; }
-.btnSolid { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); background: #ec86ac; background: light-dark(#ec86ac, #d15785); color: #fff; color: light-dark(#fff, #ececef); }
+.btnSolid { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
 
 .scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; justify-content: space-between; }
 .scrollM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 8px 12px; }
@@ -25,35 +25,35 @@
 .grid { display: grid; gap: 8px; }
 
 /* 부위 행 */
-.slot { position: relative; display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 7px 9px; overflow: visible; border: 1px dashed #e7ded4; border: 1px dashed light-dark(#e7ded4, #4b4e57); border-radius: 8px; background: #fbf8f4; background: light-dark(#fbf8f4, #36383f); cursor: default; text-align: left; font-family: inherit; transition: background-color .22s ease, border-color .22s ease; }
-.slotOn { border-style: solid; border-color: #f8e0ea; border-color: light-dark(#f8e0ea, #5a3947); background: #fdf7fa; background: light-dark(#fdf7fa, #34363d); cursor: pointer; }
-.slotHidden { background: #f7f3ee; background: light-dark(#f7f3ee, #3a3d44); }
-.slotSel { border-color: #ec86ac; border-color: light-dark(#ec86ac, #d15785); }
-.slotThumb { position: relative; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 6px; background: #f4efe8; background: light-dark(#f4efe8, #3e4048); display: flex; align-items: center; justify-content: center; }
-.slotThumbOn { background: #fff; background: light-dark(#fff, #303238); }
-.slotEmpty { width: 16px; height: 16px; border-radius: 4px; background: #e7ded2; background: light-dark(#e7ded2, #4b4f58); }
+.slot { position: relative; display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 7px 9px; overflow: visible; border: 1px dashed light-dark(#e7ded4, #4b4e57); border-radius: 8px; background: light-dark(#fbf8f4, #36383f); cursor: default; text-align: left; font-family: inherit; transition: background-color .22s ease, border-color .22s ease; }
+.slotOn { border-style: solid; border-color: light-dark(#f8e0ea, #5a3947); background: light-dark(#fdf7fa, #34363d); cursor: pointer; }
+.slotHidden { background: light-dark(#f7f3ee, #3a3d44); }
+.slotSel { border-color: light-dark(#ec86ac, #d15785); }
+.slotThumb { position: relative; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 6px; background: light-dark(#f4efe8, #3e4048); display: flex; align-items: center; justify-content: center; }
+.slotThumbOn { background: light-dark(#fff, #303238); }
+.slotEmpty { width: 16px; height: 16px; border-radius: 4px; background: light-dark(#e7ded2, #4b4f58); }
 .slotSprite { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .slotSpriteHidden { opacity: .6; }
-.dyedDot { position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; border: 2px solid light-dark(#fff, #303238); background: conic-gradient(from 90deg,#ff8fb0,#ffd36b,#7fd88a,#6bb8ff,#c79bff,#ff8fb0); background: conic-gradient(from 90deg,light-dark(#ff8fb0, #ea5481),light-dark(#ffd36b, #e7b43b),light-dark(#7fd88a, #58ba64),light-dark(#6bb8ff, #3b94e7),light-dark(#c79bff, #9b5deb),light-dark(#ff8fb0, #ea5481)); }
+.dyedDot { position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid light-dark(#fff, #303238); background: conic-gradient(from 90deg,light-dark(#ff8fb0, #ea5481),light-dark(#ffd36b, #e7b43b),light-dark(#7fd88a, #58ba64),light-dark(#6bb8ff, #3b94e7),light-dark(#c79bff, #9b5deb),light-dark(#ff8fb0, #ea5481)); }
 /* 염색 비활성화: 같은 무지개 점에서 색조만 뺀 무채색 */
 .dyedDotOff { filter: grayscale(1); }
 .slotText { flex: 1 1 0; min-width: 56px; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
 .slotTextM { min-width: 48px; }
-.slotPart { font-size: 10.5px; font-weight: 600; color: #a89e93; color: light-dark(#a89e93, #8e919a); letter-spacing: -0.01em; }
-.slotName { font-size: 12px; font-weight: 500; color: #c3b9ad; color: light-dark(#c3b9ad, #7e828d); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.slotNameOn { font-weight: 600; color: #2a2521; color: light-dark(#2a2521, #d4d5d8); }
-.toggle { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #f8e0ea; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 6px; background: #fdf1f6; background: light-dark(#fdf1f6, #4e323e); color: #d76d9a; color: light-dark(#d76d9a, #d293ae); cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
-.toggleHidden { border-color: #e7ded4; border-color: light-dark(#e7ded4, #4b4e57); background: #f4efe8; background: light-dark(#f4efe8, #3e4048); color: #a89e93; color: light-dark(#a89e93, #8e919a); }
+.slotPart { font-size: 10.5px; font-weight: 600; color: light-dark(#a89e93, #8e919a); letter-spacing: -0.01em; }
+.slotName { font-size: 12px; font-weight: 500; color: light-dark(#c3b9ad, #7e828d); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.slotNameOn { font-weight: 600; color: light-dark(#2a2521, #d4d5d8); }
+.toggle { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 6px; background: light-dark(#fdf1f6, #4e323e); color: light-dark(#d76d9a, #d293ae); cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+.toggleHidden { border-color: light-dark(#e7ded4, #4b4e57); background: light-dark(#f4efe8, #3e4048); color: light-dark(#a89e93, #8e919a); }
 @media (hover: hover) and (pointer: fine) {
-  .toggle:hover { border-color: #eeb2ce; border-color: light-dark(#eeb2ce, #d37aa3); background: #fbe3ee; background: light-dark(#fbe3ee, #573746); color: #c2577f; color: light-dark(#c2577f, #cc99ac); }
-  .toggleHidden:hover { border-color: #d9cec2; border-color: light-dark(#d9cec2, #575b65); background: #ece5dc; background: light-dark(#ece5dc, #464851); color: #7d7369; color: light-dark(#7d7369, #a6a9b0); }
+  .toggle:hover { border-color: light-dark(#eeb2ce, #d37aa3); background: light-dark(#fbe3ee, #573746); color: light-dark(#c2577f, #cc99ac); }
+  .toggleHidden:hover { border-color: light-dark(#d9cec2, #575b65); background: light-dark(#ece5dc, #464851); color: light-dark(#7d7369, #a6a9b0); }
 }
 /* 이 부위 벗기(휴지통) — 칩 오른쪽 아래 모서리에 걸친다. 칩 안에 단추를 더 넣으면 좁은 모바일 칩의 이름이 더 잘리고 띠가 밀린다.
    이름 줄 끝의 미리보기 표시/숨김(.toggle)과 칩 높이만큼 떨어져 잘못 누르지 않는다(사용자 요청 — 오른쪽 위에 있을 때 붙어 있었다).
    PC 는 칩에 마우스를 올렸을 때만 나타나고(누르지 않을 때는 눌리지도 않는다), 모바일은 늘 보인다. 두 번 눌러야 한다(lib/confirmTwice). */
-.trash { position: absolute; bottom: -8px; right: -8px; z-index: 2; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid #f3d6d6; border: 1px solid light-dark(#f3d6d6, #613e3e); border-radius: 50%; background: #fff; background: light-dark(#fff, #303238); color: #e05555; color: light-dark(#e05555, #d98c8c); box-shadow: 0 1px 3px rgba(61,55,47,.12); box-shadow: 0 1px 3px light-dark(rgba(61,55,47,.12), rgba(37, 33, 28, 0.192)); cursor: pointer; transition: opacity .18s ease, background-color .2s ease, border-color .2s ease, color .2s ease; }
+.trash { position: absolute; bottom: -8px; right: -8px; z-index: 2; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid light-dark(#f3d6d6, #613e3e); border-radius: 50%; background: light-dark(#fff, #303238); color: light-dark(#e05555, #d98c8c); box-shadow: 0 1px 3px light-dark(rgba(61,55,47,.12), rgba(37, 33, 28, 0.192)); cursor: pointer; transition: opacity .18s ease, background-color .2s ease, border-color .2s ease, color .2s ease; }
 @media (hover: hover) and (pointer: fine) {
   .trash { opacity: 0; pointer-events: none; }
   .slot:hover .trash, .trash:focus-visible { opacity: 1; pointer-events: auto; }
-  .trash:hover { border-color: #ec9c9c; border-color: light-dark(#ec9c9c, #d16969); background: #fdeeee; background: light-dark(#fdeeee, #503333); color: #d63a3a; color: light-dark(#d63a3a, #d78e8e); }
+  .trash:hover { border-color: light-dark(#ec9c9c, #d16969); background: light-dark(#fdeeee, #503333); color: light-dark(#d63a3a, #d78e8e); }
 }
