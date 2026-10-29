@@ -4,26 +4,26 @@
 
 /* ── PC(절반·태블릿 포함) ── */
 .bottom { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
-.partNav { position: relative; height: 42px; width: fit-content; max-width: 95%; margin-bottom: -1px; background: #fff; background: light-dark(#fff, #303238); border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-bottom: none; border-radius: 7px 7px 0 0; overflow: hidden; z-index: 2; }
+.partNav { position: relative; height: 42px; width: fit-content; max-width: 95%; margin-bottom: -1px; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-bottom: none; border-radius: 7px 7px 0 0; overflow: hidden; z-index: 2; }
 .rail { height: 100%; padding: 0 5px 1px; /* 아래 1px = 구분선(partLine) 몫. 버튼 둘레의 빈 곳은 위아래 · 좌우 모두 5px */ display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
-.part { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 12.5px; font-weight: 500; white-space: nowrap; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); background: transparent; }
-:global(html:not([data-pb-csr])) .partOn { font-weight: 600; color: #fff; color: light-dark(#fff, #ececef); background: #ec86ac; background: light-dark(#ec86ac, #d15785); }
-.partLine { position: absolute; left: 5px; right: 5px; bottom: 0; height: 1px; background: #f0e9e1; background: light-dark(#f0e9e1, #42454d); }
-.tabBox { position: relative; width: 100%; background: #fff; background: light-dark(#fff, #303238); border: 1px solid #e7ded4; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 8px; }
+.part { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 12.5px; font-weight: 500; white-space: nowrap; color: light-dark(#8a8075, #9fa2aa); background: transparent; }
+:global(html:not([data-pb-csr])) .partOn { font-weight: 600; color: light-dark(#fff, #ececef); background: light-dark(#ec86ac, #d15785); }
+.partLine { position: absolute; left: 5px; right: 5px; bottom: 0; height: 1px; background: light-dark(#f0e9e1, #42454d); }
+.tabBox { position: relative; width: 100%; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 8px; }
 .tabNav { width: 100%; height: 42px; /* 테두리까지 44 — 헤더의 칸과 같다 */ padding: 0 5px; /* 버튼 둘레의 빈 곳은 위아래 · 좌우 모두 5px */ display: flex; align-items: center; gap: 4px; }
-.tab { flex: 1 1 0; min-width: 0; height: 32px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); background: transparent; }
-:global(html:not([data-pb-csr])) .tabOn { font-weight: 600; color: #fff; color: light-dark(#fff, #ececef); background: #ec86ac; background: light-dark(#ec86ac, #d15785); }
+.tab { flex: 1 1 0; min-width: 0; height: 32px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; color: light-dark(#8a8075, #9fa2aa); background: transparent; }
+:global(html:not([data-pb-csr])) .tabOn { font-weight: 600; color: light-dark(#fff, #ececef); background: light-dark(#ec86ac, #d15785); }
 
 /* ── 모바일 ── */
 /* 모바일 목록 머리의 부위 탭: 미리보기 바로 밑에 붙이고, 고른 탭은 글자색 + 밑줄. 탭 높이 40(손가락 터치 높이) */
-.catTabsM { flex: 0 0 auto; height: 40px; padding: 0 6px; display: flex; align-items: stretch; overflow-x: auto; overflow-y: hidden; border-bottom: 1px solid #f2ebe3; border-bottom: 1px solid light-dark(#f2ebe3, #40434b); }
+.catTabsM { flex: 0 0 auto; height: 40px; padding: 0 6px; display: flex; align-items: stretch; overflow-x: auto; overflow-y: hidden; border-bottom: 1px solid light-dark(#f2ebe3, #40434b); }
 /* 칸이 남으면 줄을 꽉 채운다(광장 분류 — 사용자 지시), 넘치면 제 폭으로 가로 스크롤(부위) */
-.catTabM { flex: 1 0 auto; position: relative; padding: 0 11px; border: 0; background: transparent; font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
-.catTabMOn { font-weight: 600; color: #e0709a; color: light-dark(#e0709a, #d68faa); }
-.catTabMOn::after { content: ''; position: absolute; left: 9px; right: 9px; bottom: 0; height: 2px; border-radius: 2px; background: #ec86ac; background: light-dark(#ec86ac, #d15785); }
-.tabNavM { flex: 0 0 auto; height: 56px; padding: 0 4px; display: flex; align-items: stretch; border-top: 1px solid #f0e9e1; border-top: 1px solid light-dark(#f0e9e1, #42454d); background: #fff; background: light-dark(#fff, #303238); }
+.catTabM { flex: 1 0 auto; position: relative; padding: 0 11px; border: 0; background: transparent; font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
+.catTabMOn { font-weight: 600; color: light-dark(#e0709a, #d68faa); }
+.catTabMOn::after { content: ''; position: absolute; left: 9px; right: 9px; bottom: 0; height: 2px; border-radius: 2px; background: light-dark(#ec86ac, #d15785); }
+.tabNavM { flex: 0 0 auto; height: 56px; padding: 0 4px; display: flex; align-items: stretch; border-top: 1px solid light-dark(#f0e9e1, #42454d); background: light-dark(#fff, #303238); }
 /* 아이콘 아래에 짧은 이름을 단다 — 아이콘만으로는 눌러 봐야 무엇인지 안다. 높이는 그대로(56px) */
-.tabM { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: none; border-top: 2px solid transparent; background: transparent; cursor: pointer; color: #c3b9ad; color: light-dark(#c3b9ad, #7e828d); }
-.tabMLabel { max-width: 100%; font-size: 10px; font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a8075; color: light-dark(#8a8075, #9fa2aa); }
-:global(html:not([data-pb-csr])) .tabMOn { color: #ec86ac; color: light-dark(#ec86ac, #d881a1); border-top-color: #ec86ac; border-top-color: light-dark(#ec86ac, #d15785); }
-:global(html:not([data-pb-csr])) .tabMOn .tabMLabel { font-weight: 600; color: #d76d9a; color: light-dark(#d76d9a, #d293ae); }
+.tabM { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: none; border-top: 2px solid transparent; background: transparent; cursor: pointer; color: light-dark(#c3b9ad, #7e828d); }
+.tabMLabel { max-width: 100%; font-size: 10px; font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: light-dark(#8a8075, #9fa2aa); }
+:global(html:not([data-pb-csr])) .tabMOn { color: light-dark(#ec86ac, #d881a1); border-top-color: light-dark(#ec86ac, #d15785); }
+:global(html:not([data-pb-csr])) .tabMOn .tabMLabel { font-weight: 600; color: light-dark(#d76d9a, #d293ae); }

@@ -15,6 +15,7 @@
 import clsx from 'clsx'
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { FEEDBACK_DEPTH, PLAZA_COMMENT_MAX, plazaAlias, plazaWhen, type FeedbackNode, type FeedbackPost } from '@/lib/plaza'
+import { css } from '@/lib/style'
 import { IconBubble } from '../ui/Icons'
 import styles from './plaza.module.css'
 
@@ -163,7 +164,7 @@ export function FeedbackThread({ nodes, mobile, canDelete, del, onReply }: {
         </div>
       )}
       {n.children.length > 0 && (
-        <div className={clsx(styles.fbKids, mobile && styles.fbKidsM)} style={{ '--fb-line': LINE[n.depth] || LINE[2] } as React.CSSProperties}>
+        <div className={clsx(styles.fbKids, mobile && styles.fbKidsM)} style={css(`--fb-line: ${LINE[n.depth] || LINE[2]}`)}>
           {n.children.map(node)}
         </div>
       )}
