@@ -90,7 +90,10 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다. restore 면(코디 룩북 — 목록보다 길 수 있다) 떠날 때 붙기 전 값으로 되돌린다.
 // 0.6 = 맞춤 칸의 바닥. 툴바가 접히지 않는 앱 안 브라우저(390 × 664)에서도 3줄이 든다(그림 칸 76px)
 export const CARD_RATIO_M = 0.6
-const CARD_FOOT_M = 61 // 카드 아래 = 이름 줄 + [북마크 · 염색] 막대 28 + 여백
+export const CARD_FOOT_M = 61 // 카드 아래 = 이름 줄 + [북마크 · 염색] 막대 28 + 여백(코디 룩북 · 광장 카드의 바닥도 이 값)
+// 맞춤에 쓰는 미리보기 높이 = 기본 보기의 높이(preview.module.css .hero 216). '크게'로 바꿔도 카드는 그대로이고 보이는 줄만 준다 —
+// 실제 높이로 맞추면 카드가 86px 까지 눌려 캐릭터가 아주 작았다
+const HERO_BASE_M = 216
 export const LIST_COL_GAP_M = 6 // 목록 격자의 열 간격(list.module.css .gridM 과 같은 값 — 카드 폭을 조금 넓힌다)
 // 목록의 높이 — 코디 탭 · AI 코디 검색 목록 · 프리셋
 export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M, 0, 0, LIST_COL_GAP_M)
@@ -121,13 +124,13 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
       const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom
-      const fit = hero && getComputedStyle(hero).position === 'sticky' ? probe.offsetHeight - hero.offsetHeight - below : 0
+      const fit = hero && getComputedStyle(hero).position === 'sticky' ? probe.offsetHeight - HERO_BASE_M - below : 0
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
     }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
-    ro?.observe(col); ro?.observe(vp); ro?.observe(probe); if (hero) ro?.observe(hero)
+    ro?.observe(col); ro?.observe(vp); ro?.observe(probe)
     return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
   }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset, colGap])
 }
