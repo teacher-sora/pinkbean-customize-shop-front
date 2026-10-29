@@ -155,13 +155,14 @@ export const CARD_FIT_W_M = 0.8
 // 두 줄이 화면 높이를 채워 카드가 세로로 길어 보여, 목록 카드는 열 간격 · 카드 좌우 안쪽 여백을 줄여 폭을 넓혔다(list.module.css .gridM · .cardM)
 export const MOBILE_GRID = { cols: 4, rows: 2 }
 // 목록의 '필터'(사용자 지시 — 라디오, 하나만 고른다. 'all' = 전부). 보기 설정 안 보기 · 성별 · 방향과 같은 버튼(Seg)이다.
-// 부티크는 원본(WZ info · 캐시샵 상품 정보)에 가를 표시가 없어 없다. 콜라보는 WZ info.collabo 에 있으나 아이템 목록에 아직 싣지 않았다
+// 마라벨 = 장비의 마스터라벨 + 세트에 딸린 헤어 · 성형 · 얼굴장식(catalog/labels.json, 라이딩은 넣지 않는다). 콜라보 = 원본 info.collabo 등.
+// 일반 = 나머지 전부(캐시 · 메소 · 피부 — 컬러라인 피부처럼 가르기 어려운 것이 있어 하나로 합쳤다). 부티크는 원본에 가를 표시가 없어 없다
 export const ITEM_KINDS: { v: string; l: string; t: string; test?: (it: ListItem) => boolean }[] = [
   { v: 'all', l: '전체', t: '전부 보기' },
-  { v: 'master', l: '마라벨', t: '마스터라벨', test: (it) => it.label === 'master' },
+  { v: 'master', l: '마라벨', t: '마스터라벨(세트의 헤어 · 성형 · 얼굴장식 포함)', test: (it) => it.label === 'master' },
   { v: 'special', l: '스라벨', t: '스페셜라벨', test: (it) => it.label === 'special' },
-  { v: 'cash', l: '캐시', t: '캐시 아이템', test: (it) => it.isCash },
-  { v: 'meso', l: '메소', t: '메소로 얻는 아이템(캐시가 아닌 것)', test: (it) => !it.isCash },
+  { v: 'collabo', l: '콜라보', t: '콜라보 아이템', test: (it) => !!it.collabo },
+  { v: 'normal', l: '일반', t: '라벨 · 콜라보가 아닌 아이템', test: (it) => !it.label && !it.collabo },
 ]
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 
