@@ -177,14 +177,14 @@ const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, fill, sor
         <div ref={thumbRef} className={clsx(styles.thumb, fill && styles.thumbM)} style={snap && !isCustomSnapshot(snap) ? { background: SYS_BG_CSS } : undefined}>
           {snap && isCustomSnapshot(snap) && <div className={styles.thumbBg}><CardStageBg sel={snap.bg} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} /></div>}
           {card && seen && <SnapThumb snap={card} view fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} fitW={mobile ? CARD_FIT_W_M : undefined} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
-        <div className={styles.nameRow}>
+        <div className={clsx(styles.nameRow, mobile && styles.nameRowM)}>
           <span className={styles.nameWrap}>
             <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}
               onChange={(e) => act.current.rename(p.id, e.target.value)}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
               onBlur={() => act.current.commit(p.id, defaultPresetName(i))}
-              className={clsx('pb-input', 'pb-presetname', styles.nameInput)} />
+              className={clsx('pb-input', 'pb-presetname', styles.nameInput, mobile && styles.nameInputM)} />
             <IconPencil className={styles.pencil} />
           </span>
         </div>

@@ -65,7 +65,11 @@
 /* ── 카드 ── (바깥 래퍼는 프리셋 카드와 같은 pb-presetwrap/pb-preset 을 쓴다) */
 .thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; background: light-dark(#f7f2ec, #3b3d45); border-radius: 7px 7px 0 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .meta { position: relative; flex: 0 0 auto; padding: 6px 8px; display: flex; align-items: center; border-top: 1px solid light-dark(#f4efe8, #3e4048); }
-.metaM { padding: 5px 6px; }
+.metaM { padding: 5px 6px 3px; border-top: none; }
+/* 모바일 카드 아래 막대(목록 카드의 [북마크 · 염색] 막대와 같은 부품 — list .bar · .barM · .act) — [가져오기][♡ 수] */
+.barM { width: auto; align-self: stretch; margin: 0 5px 5px; }
+.likeAct { gap: 3px; font-variant-numeric: tabular-nums; }
+.likeActOn { color: light-dark(#ec86ac, #d881a1); }
 .name { display: block; width: 100%; min-width: 0; font-size: 12px; font-weight: 500; color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nameM { font-size: 11px; }
 .rail { position: absolute; right: 6px; top: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -82,13 +86,11 @@
 .railBtnM { width: 26px; height: 26px; }
 .delBtn { border-color: light-dark(#f2d7d2, #644640); color: light-dark(#d1735f, #d19f94); }
 .likeWrap { position: absolute; right: 6px; bottom: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.likeWrapM { right: 5px; bottom: 5px; }
 /* 대회 출품 날짜(M.D) — 썸네일 왼쪽 아래. 하트는 오른쪽 아래라 겹치지 않는다. */
 .contestNo { position: absolute; left: 6px; bottom: 6px; z-index: 4; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 20px; background: light-dark(#fff, #303238); font-size: 10.5px; font-weight: 700; color: light-dark(#d76d9a, #d293ae); font-variant-numeric: tabular-nums; }
 .contestNoM { left: 5px; bottom: 5px; }
 .likeCount { font-size: 10px; font-weight: 700; color: light-dark(#8a8075, #9fa2aa); line-height: 1; font-variant-numeric: tabular-nums; }
 .likeBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#efe8e0, #43464e); border-radius: 50%; background: light-dark(rgba(255,255,255,0.94), rgba(48, 50, 56, 0.94)); color: light-dark(#a89e93, #8e919a); cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
-.likeBtnM { width: 26px; height: 26px; }
 .likeOn { border-color: light-dark(#f8e0ea, #5a3947); background: light-dark(#fdf1f6, #4e323e); color: light-dark(#ec86ac, #d881a1); }
 
 /* ── 상세(서피스 본문) ── */
