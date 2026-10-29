@@ -300,3 +300,22 @@ html[data-pb-bgonly] [data-pb-body] { opacity: 0; transform: translateY(10px); v
 /* 들어올 때와 나갈 때 모두 테두리 색만 전환한다(움직이지 않는다). :where 로 무게를 0 으로 둬, 요소가 제 transition · outline 을 가지면 그것이 이긴다 */
 :where([data-guide]) { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .3s cubic-bezier(.45,0,.55,1); }
 [data-guide].pb-guidehit { outline: 2px solid light-dark(#ec86ac, #d15785) !important; outline-offset: 2px; }
+
+/* 모바일 스크롤 연결(lib/scrollHide) — 맨 위 헤더 · 미리보기 · 머리 묶음은 각자의 자리 틀 안 칸(data-pb-track) · 틀(data-pb-wrap)의 sticky 로 놓인다.
+   칸 높이 · 틀 자리는 코드가 기준점이 바뀔 때만 적고, 움직임은 브라우저가 스크롤과 같은 프레임에 그린다. 연결 전(html[data-pb-link] 없음)에는 제자리 그대로 */
+html:not([data-pb-link]) [data-pb-track], html:not([data-pb-link]) [data-pb-wrap] { height: auto !important; }
+html[data-pb-link] [data-pb-track] { position: absolute; left: 0; right: 0; pointer-events: none; }
+html[data-pb-link] [data-pb-track='hdr'] { z-index: 32; }
+html[data-pb-link] [data-pb-track='hero'] { z-index: 31; }
+html[data-pb-link] [data-pb-track='bar'] { z-index: 30; }
+html[data-pb-link] [data-pb-wrap] { position: sticky; pointer-events: none; }
+html[data-pb-link] [data-pb-track] > [data-app-header], html[data-pb-link] [data-pb-wrap] > [data-hero], html[data-pb-link] [data-pb-wrap] > [data-sticky-top] { position: sticky; pointer-events: auto; }
+html[data-pb-link] [data-pb-track] > [data-app-header], html[data-pb-link] [data-pb-wrap] > [data-hero] { top: 0; }
+/* 숨을수록 흐려지고, 하단 탭은 머리 묶음과 함께 아래로 숨는다 — 스크롤 타임라인(구간은 코드가 기준점으로 적는다). 없으면 코드가 적는다 */
+@keyframes pb-link-fade { to { opacity: 0; } }
+@keyframes pb-link-nav { to { translate: 0 100%; opacity: 0; } }
+@supports (animation-timeline: scroll()) and (animation-range: 0px 1px) {
+  html[data-pb-link] [data-pb-track] > [data-app-header], html[data-pb-link] [data-pb-wrap] > [data-sticky-top] { animation: pb-link-fade linear both; animation-timeline: scroll(root block); }
+  html[data-pb-link] [data-mobile-col] > nav[data-hero-below] { animation: pb-link-nav linear both; animation-timeline: scroll(root block); }
+  html[data-pb-freeze] [data-app-header], html[data-pb-freeze] [data-sticky-top], html[data-pb-freeze] [data-mobile-col] > nav[data-hero-below] { animation-play-state: paused; }
+}

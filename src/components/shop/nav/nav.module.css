@@ -25,7 +25,7 @@
    틀(frame .mobileCol)이 overflow: clip 이라 sticky 가 문서 스크롤을 따른다. '캐릭터만' 보기에서는 화면 밖으로 밀려나는 것이 맞아 붙이지 않는다 */
 .tabNavM { flex: 0 0 auto; height: 56px; padding: 0 4px; display: flex; align-items: stretch; border-top: 1px solid light-dark(#f0e9e1, #42454d); background: light-dark(#fff, #303238); position: sticky; bottom: 0; z-index: 20; }
 :global(html[data-pb-view='full']) .tabNavM { position: relative; }
-/* 내린 만큼 화면 아래로 숨고 올린 만큼 나온다 — 위치는 lib/scrollHide 가 transform 으로 매 프레임 적는다(전환 없음) */
+/* 머리 묶음이 숨는 동안 함께 아래로 숨는다 — 스크롤 타임라인 애니메이션(globals.css · lib/scrollHide) */
 /* 붙은 머리 묶음(BottomNav StickyBarM — 부위 · 분류 줄 + 목록 머리). 맨 위 헤더 + 미리보기(z 31) 바로 아래에 붙고, 내린 만큼 미리보기 뒤로 들어간다
    (위치는 lib/scrollHide 가 안의 내용에 적는다). 틀은 누르기를 통과시키고 안의 내용만 받는다. z 30 = 아래 칸 위(보기 설정 팝박스는 이 안에서 뜬다) */
 .barM { flex: 0 0 auto; } /* 자리 틀 — 높이는 안의 내용 높이(lib/scrollHide 가 적는다). 기준 칸이 되지 않게 position 을 두지 않는다(안의 내용은 틀 · 페이지 기준으로 놓인다) */

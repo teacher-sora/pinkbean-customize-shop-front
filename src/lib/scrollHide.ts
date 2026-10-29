@@ -1,126 +1,162 @@
 // 모바일: 스크롤에 붙어 숨고 나오는 것들 — 유튜브 앱의 위 머리처럼(사용자 지시): 스크롤과 같은 속도로 따라 움직이고, 숨을수록 흐려지며,
 // 중간에서 손을 떼면 마지막으로 움직인 방향으로 끝까지 붙는다(그만큼 페이지 스크롤도 함께 밀린다).
 //  · 위쪽 묶음 = 맨 위 헤더(data-app-header) · 미리보기(data-hero) · 머리 묶음(data-sticky-top — 부위 · 분류 줄 + 목록 머리).
-//    내린 만큼 '숨김량' Z 가 쌓여(0 ~ 헤더 + 머리 묶음 높이) 먼저 헤더가 미리보기와 함께 올라가고, 이어서 머리 묶음이 미리보기 뒤로 들어간다.
-//    올리면 머리 묶음이 먼저, 더 올리면 헤더까지 나온다. Z 는 지금 스크롤 양을 넘지 않는다(맨 위 근처는 제자리와 같다). 미리보기는 늘 화면에 남는다.
-//  · 하단 탭: 내린 만큼 아래로 숨고 올린 만큼 나온다(0 ~ 탭 높이). 페이지 끝에서는 탭 자리가 내용과 함께 올라와 보인다(그만큼은 숨기지 않는다).
-// ⚠️ 움직이는 동안 위쪽 묶음은 페이지에 그 자리 그대로 박아 둔다(position:absolute — 브라우저가 내용과 함께 스크롤해 100% 같은 속도).
-//    다 나왔거나 다 숨었거나 멈춰 있는 것은 화면에 고정한다(position:fixed). 바꾸는 것은 상태가 바뀌는 순간뿐이다.
-//    예전처럼 매 프레임 transform 을 적으면 아이폰은 화면이 먼저 스크롤되고 코드가 한 프레임 늦게 따라와 툭툭 끊겼다(사용자 지적).
-//    하단 탭은 내용과 반대로 움직여야 해서 transform 으로 적는다. 자리(빈 칸)는 각자의 틀이 원래 높이로 잡아 둔다(아래가 밀리지 않게).
-//    페이지 좌표는 틀(frame .mobileCol — position:relative) 기준이다. 자리 틀들은 position 을 두지 않는다(두면 그 틀이 기준이 되어 어긋난다).
-// 스크롤 위치는 페이지 범위 안으로 잘라 읽는다(아이폰이 끝에서 튕기며 되돌아오는 것을 움직임으로 읽지 않게).
+//    숨김량 Z(0 ~ 헤더 + 머리 묶음 높이): 내리면 먼저 헤더가 미리보기와 함께 올라가고, 이어서 머리 묶음이 미리보기 뒤로 들어간다.
+//    올리면 머리 묶음이 먼저, 더 올리면 헤더까지 나온다. 미리보기는 늘 화면에 남는다.
+//  · 하단 탭: 머리 묶음이 숨는 동안 함께 아래로 숨는다(머리 묶음이 없거나 숨지 않으면 헤더와 함께).
+// ⚠️ 위치는 코드가 매 프레임 적지 않는다 — 브라우저의 sticky 가 스크롤과 같은 프레임에 직접 놓는다(사용자 지적: 코드로 적으면 아이폰에서 한 프레임씩 늦어 떨렸다).
+//    Z = clamp(s − A, 0, Zmax) (s = 틀 기준 스크롤). 기준점 A 하나만 코드가 들고 있고, 각 요소는 'A 에서 끝나는 칸' 안의 sticky 라 그 식대로 놓인다.
+//      헤더: 칸(틀 위 ~ A + 헤더 높이) 안의 sticky top 0 → 위치 = min(0, A − s)
+//      미리보기: 칸 안의 sticky 틀(top 헤더 높이) 안의 sticky top 0 → 위치 = clamp(A + 헤더 − s, 0, 헤더)
+//      머리 묶음: 같은 꼴(top 제자리, 안쪽 top = 미리보기 뒤로 다 들어간 자리)
+//    A 는 '다 나옴(A ≥ s)' 이나 '다 숨음(A ≤ s − Zmax)' 에 머물 때만 s 쪽으로 당긴다 — 그때 화면은 그대로라 언제 적어도 티가 나지 않는다.
+//    중간(움직이는 중)에는 아무것도 쓰지 않는다. 흐려짐 · 하단 탭은 스크롤 타임라인 애니메이션(A 로 구간만 적는다)이라 이것도 브라우저가 그린다.
+//    스크롤 타임라인이 없는 브라우저만 흐려짐 · 하단 탭을 코드로 적는다.
+// 칸 · 틀은 각 자리 틀 안의 data-pb-track · data-pb-wrap(globals.css). 연결 중에만 html[data-pb-link] 로 켠다(그 전엔 제자리 그대로).
 const SNAP_IDLE = 90 // 손을 떼고 스크롤이 이만큼 멈추면 끝까지 붙인다(ms)
 const DIR_MIN = 2 // 이보다 작은 움직임은 방향으로 치지 않는다(손가락 떨림)
-type Mode = { m: 'fixed' | 'abs' | ''; top: number }
-let installed = 0, frozen = false, last = 0, Z = 0, N = 0, raf = 0, dir = 0, touching = false, idle = 0, snapping = false
-const modes = new WeakMap<HTMLElement, Mode>()
-const pos = () => Math.min(Math.max(0, window.scrollY), Math.max(0, document.documentElement.scrollHeight - window.innerHeight))
-const q = (sel: string) => document.querySelector<HTMLElement>(sel)
-const els = () => ({ col: q('[data-mobile-col]'), hdr: q('[data-app-header]'), hero: q('[data-hero]'), bar: q('[data-sticky-top]'), nav: q('[data-mobile-col] > nav[data-hero-below]') })
-const linkedNow = () => document.documentElement.getAttribute('data-pb-view') !== 'full' // '캐릭터만'은 페이지가 스크롤되지 않는다
-// 위치 적기: 움직이는 중이면 페이지 좌표(abs, 문서 기준 top)로, 아니면 화면 좌표(fixed)로. 같으면 아무것도 쓰지 않는다
-function place(el: HTMLElement | null, v: number, moving: boolean, colTop: number, y: number, z: number) {
-  if (!el) return
-  const want: Mode = moving ? { m: 'abs', top: Math.round(y + v - colTop) } : { m: 'fixed', top: Math.round(v) }
-  const cur = modes.get(el)
-  if (cur && cur.m === want.m && cur.top === want.top) return
-  modes.set(el, want)
-  Object.assign(el.style, { position: want.m === 'abs' ? 'absolute' : 'fixed', top: `${want.top}px`, left: '0', right: '0', zIndex: String(z) })
+const BAND = 160 // A 가 머무는 구간 밖으로 이만큼 벌어지면 당긴다(방향이 바뀌면 바로)
+type Els = { col: HTMLElement; hT: HTMLElement | null; hdr: HTMLElement | null; eT: HTMLElement; eW: HTMLElement; hero: HTMLElement; bS: HTMLElement | null; bT: HTMLElement | null; bW: HTMLElement | null; bar: HTMLElement | null; nav: HTMLElement | null }
+const D = { colTop: 0, hH: 0, heroH: 0, bH: 0, slot: 0, nH: 0, room: 0, keep: false, Zmax: 0 }
+let installed = 0, frozen = false, last = 0, A = 0, dir = 0, pullDir = 0, touching = false, idle = 0, snapping = false, raf = 0
+let E: Els | null = null, ro: ResizeObserver | null = null, mo: MutationObserver | null = null, roTargets: Element[] = []
+const timeline = typeof CSS !== 'undefined' && CSS.supports('animation-timeline: scroll()') && CSS.supports('animation-range: 0px 1px')
+const root = () => document.documentElement
+const pos = () => Math.min(Math.max(0, window.scrollY), Math.max(0, root().scrollHeight - window.innerHeight))
+const q = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)
+const px = (n: number) => `${Math.round(n)}px`
+const set = (el: HTMLElement | null, k: 'height' | 'top' | 'animation-range' | 'opacity' | 'transform', v: string) => { if (el && el.style.getPropertyValue(k) !== v) el.style.setProperty(k, v) }
+const keepBar = (bar: HTMLElement | null) => !!bar && (bar.matches(':focus-within') || !!bar.querySelector('[aria-expanded="true"]'))
+function find(): Els | null {
+  const col = q('[data-mobile-col]'), eT = q('[data-pb-track="hero"]'), eW = eT?.querySelector<HTMLElement>('[data-pb-wrap]'), hero = q('[data-hero]')
+  if (!col || !eT || !eW || !hero || root().getAttribute('data-pb-view') === 'full') return null // '캐릭터만'은 붙일 것이 없다
+  const hT = q('[data-pb-track="hdr"]'), bT = q('[data-pb-track="bar"]')
+  return { col, hT, hdr: q('[data-app-header]'), eT, eW, hero, bS: bT?.parentElement ?? null, bT, bW: bT?.querySelector<HTMLElement>('[data-pb-wrap]') ?? null, bar: q('[data-sticky-top]'), nav: q('[data-mobile-col] > nav[data-hero-below]') }
 }
-function clear(el: HTMLElement | null) {
-  if (!el || !modes.get(el)?.m) return
-  modes.set(el, { m: '', top: 0 })
-  Object.assign(el.style, { position: '', top: '', left: '', right: '', zIndex: '', opacity: '' })
+// 칸은 틀 위에서 시작한다 — 위치 기준(가장 가까운 position 조상)이 틀이 아니어도 맞게 그만큼 올린다
+function trackTop(t: HTMLElement | null, colTop: number, y: number) {
+  const p = t?.offsetParent as HTMLElement | null
+  if (t && p) set(t, 'top', px(colTop - (p.getBoundingClientRect().top + y)))
 }
-const fade = (el: HTMLElement | null, a: number) => { if (!el) return; const v = a >= 1 ? '' : String(Math.max(0, a).toFixed(3)); if (el.style.opacity !== v) el.style.opacity = v }
-function frame(useDelta: boolean) {
+// 잰 값(높이 · 자리)으로 칸 · 틀을 적는다 — 크기가 바뀔 때만 부른다(매 프레임이 아니다)
+function measure() {
+  E = find()
+  watch()
+  if (!E) { root().removeAttribute('data-pb-link'); return }
+  const { col, hT, hdr, eT, hero, bS, bT, bar, nav } = E, y = window.scrollY
+  const colTop = col.getBoundingClientRect().top + y
+  D.colTop = colTop
+  D.hH = hdr?.offsetHeight ?? 0
+  D.heroH = hero.offsetHeight
+  D.bH = bar?.offsetHeight ?? 0
+  if (bS && bar) set(bS, 'height', px(D.bH)) // 자리 틀이 원래 높이를 잡아 둔다(안의 내용은 칸에 떠 있다)
+  D.slot = bS ? bS.getBoundingClientRect().top + y - colTop : 0
+  D.nH = nav?.offsetHeight ?? 0
+  D.room = Math.max(400, window.innerHeight) // 안쪽 sticky 가 바닥에 머무를 여유(A 를 당기는 BAND 보다 넉넉히)
+  D.keep = keepBar(bar)
+  for (const t of [hT, eT, bT]) trackTop(t, colTop, y)
+  write()
+  root().setAttribute('data-pb-link', '')
+}
+function write() {
+  if (!E) return
+  const { hT, hdr, eT, eW, bT, bW, bar, nav } = E, { hH, heroH, bH, slot, room, keep } = D
+  D.Zmax = hH + (bar && !keep ? Math.max(0, slot + bH - heroH - hH) : 0)
+  A = Math.min(Math.max(0, A), Math.max(0, pos() - D.colTop))
+  set(hT, 'height', px(A + hH))
+  set(eT, 'height', px(A + hH + heroH + room)); set(eW, 'top', px(hH)); set(eW, 'height', px(heroH + room))
+  if (bT && bW && bar) {
+    set(bT, 'height', px(A + slot + bH + room)); set(bW, 'top', px(slot)); set(bW, 'height', px(bH + room))
+    set(bar, 'top', px(keep ? heroH : heroH - bH)) // 숨지 않을 때는 미리보기 바로 아래에서 멈춘다
+  }
+  if (!timeline) { paint(); return }
+  const y0 = D.colTop + A, barOn = D.Zmax > hH
+  set(hdr, 'animation-range', `${px(y0)} ${px(y0 + Math.max(1, hH))}`)
+  if (bar) set(bar, 'animation-range', barOn ? `${px(y0 + hH)} ${px(y0 + D.Zmax)}` : '10000000px 10000001px') // 숨지 않으면 구간을 멀리 빼 늘 보인다
+  set(nav, 'animation-range', barOn ? `${px(y0 + hH)} ${px(y0 + D.Zmax)}` : `${px(y0)} ${px(y0 + Math.max(1, hH))}`)
+}
+// 스크롤 타임라인이 없을 때만: 흐려짐 · 하단 탭을 코드로 적는다
+function paint() {
+  if (!E) return
+  const { hdr, bar, nav } = E, { hH, Zmax } = D
+  const Z = Math.min(Math.max(0, pos() - D.colTop - A), Zmax), hO = Math.min(Z, hH), bO = Z - hO
+  const op = (f: number) => (f >= 1 ? '' : Math.max(0, f).toFixed(3))
+  set(hdr, 'opacity', op(hH ? 1 - hO / hH : 1))
+  if (bar) set(bar, 'opacity', op(Zmax > hH ? 1 - bO / (Zmax - hH) : 1))
+  if (nav) {
+    const f = Zmax > hH ? bO / (Zmax - hH) : hH ? hO / hH : 0
+    set(nav, 'transform', f > 0 ? `translate3d(0, ${(f * D.nH).toFixed(1)}px, 0)` : ''); set(nav, 'opacity', op(1 - f))
+  }
+}
+function tick() {
   raf = 0
-  const { col, hdr, hero, bar, nav } = els()
-  const y = pos(), d = useDelta ? y - last : 0
+  if (!E || frozen) return
+  const y = pos(), d = y - last
   last = y
   if (Math.abs(d) >= DIR_MIN) dir = Math.sign(d)
-  if (!col || !hero || !linkedNow()) { for (const el of [hdr, hero, bar]) clear(el); if (nav) { nav.style.transform = ''; fade(nav, 1) } return }
-  const hH = hdr?.offsetHeight ?? 0, heroH = hero.offsetHeight
-  // 머리 묶음 안에 입력이 잡혀 있거나 펼친 칸(보기 설정)이 열려 있으면 묶음은 숨기지 않는다(자판이 뜨거나 고르려고 화면이 움직여도 남는다)
-  const keep = !!bar && (bar.matches(':focus-within') || !!bar.querySelector('[aria-expanded="true"]'))
-  const bH = bar && !keep ? bar.offsetHeight : 0
-  const prev = Z
-  Z = Math.min(Math.max(0, Z + d), Math.min(hH + bH, y))
-  const hO = Math.min(Z, hH), bO = Z - hO, pH = Math.min(prev, hH)
-  const colTop = col.getBoundingClientRect().top + y
-  // 헤더 · 미리보기는 헤더 숨김량(hO)이 바뀌는 동안, 머리 묶음은 전체 숨김량(Z)이 바뀌는 동안 움직인다
-  const movingTop = hO !== pH, movingBar = Z !== prev
-  place(hdr, -hO, movingTop, colTop, y, 32); fade(hdr, hH ? 1 - hO / hH : 1)
-  place(hero, hH - hO, movingTop, colTop, y, 31)
-  if (bar) {
-    const slot = bar.parentElement
-    if (slot && slot.style.height !== `${bar.offsetHeight}px`) slot.style.height = `${bar.offsetHeight}px` // 틀이 원래 높이를 잡아 둔다
-    place(bar, hH - hO + heroH - bO, movingBar, colTop, y, 30); fade(bar, bH ? 1 - bO / bH : 1)
-  }
-  if (nav) {
-    const nH = nav.offsetHeight, shown = Math.min(Math.max(0, y + window.innerHeight - (document.documentElement.scrollHeight - nH)), nH)
-    N = Math.min(Math.max(0, N + d), nH - shown)
-    const v = N ? `translate3d(0, ${N}px, 0)` : ''
-    if (nav.style.transform !== v) nav.style.transform = v
-    fade(nav, nH ? 1 - N / nH : 1)
-  }
+  const keep = keepBar(E.bar)
+  if (keep !== D.keep) { D.keep = keep; write() }
+  // A 를 머무는 구간 [s − Zmax, s] 쪽으로 당긴다 — 다 나왔거나 다 숨은 동안만 벌어지므로 화면은 그대로다
+  const s = y - D.colTop, nA = Math.min(Math.max(A, Math.max(0, s - D.Zmax)), Math.max(0, s))
+  if (nA !== A && (Math.abs(nA - A) > BAND || (dir && dir !== pullDir))) { A = nA; pullDir = dir; write() }
+  else if (!timeline) paint()
 }
-// 손을 떼고 멈추면 중간에 걸친 것을 끝까지 붙인다 — 마지막으로 움직인 방향으로(감도 — 사용자 지시: 조금만 움직여도 끝까지). 위쪽 묶음은 페이지 스크롤로 민다
+// 손을 떼고 멈추면 중간에 걸친 것을 끝까지 붙인다 — 마지막으로 움직인 방향으로(조금만 움직여도 끝까지). 페이지 스크롤로 민다
 function snap() {
-  if (touching || frozen || snapping || !linkedNow()) return
-  const { hdr, bar, nav } = els()
-  const hH = hdr?.offsetHeight ?? 0, bH = bar?.offsetHeight ?? 0, y = pos()
-  const hO = Math.min(Z, hH)
+  if (touching || frozen || snapping || !E) return
+  const y = pos(), { hH, Zmax } = D
+  const Z = Math.min(Math.max(0, y - D.colTop - A), Zmax)
   let target = Z
-  if (hO > 0 && hO < hH) target = dir > 0 ? hH : 0
-  else if (Z > hH && Z < hH + bH) target = dir > 0 ? hH + bH : hH
-  if (target !== Z) {
-    const max = document.documentElement.scrollHeight - window.innerHeight
-    const by = Math.max(-y, Math.min(max - y, target - Z))
-    if (by) { snapping = true; window.scrollBy({ top: by, behavior: 'smooth' }); setTimeout(() => { snapping = false }, 400) }
-  }
-  if (nav) {
-    const nH = nav.offsetHeight
-    if (N > 0 && N < nH) {
-      N = dir > 0 ? nH : 0
-      nav.style.transition = 'transform .18s cubic-bezier(.45,0,.55,1), opacity .18s ease'
-      nav.style.transform = N ? `translate3d(0, ${N}px, 0)` : ''; fade(nav, N ? 0 : 1)
-      setTimeout(() => { nav.style.transition = '' }, 200)
-    }
-  }
+  if (Z > 0 && Z < hH) target = dir > 0 ? hH : 0
+  else if (Z > hH && Z < Zmax) target = dir > 0 ? Zmax : hH
+  if (target === Z) return
+  const max = root().scrollHeight - window.innerHeight
+  const by = Math.max(-y, Math.min(max - y, target - Z))
+  if (by) { snapping = true; window.scrollBy({ top: by, behavior: 'smooth' }); setTimeout(() => { snapping = false }, 400) }
 }
 const armSnap = () => { window.clearTimeout(idle); idle = window.setTimeout(snap, SNAP_IDLE) }
-const onScroll = () => { if (frozen) return; if (!raf) raf = requestAnimationFrame(() => frame(true)); armSnap() }
+const onScroll = () => { if (frozen) return; if (!raf) raf = requestAnimationFrame(tick); armSnap() }
 const onDown = () => { touching = true; window.clearTimeout(idle) }
 const onUp = () => { touching = false; armSnap() }
-// 탭을 바꾸거나 새 머리 묶음이 붙으면 지금 숨김량대로 바로 적는다(움직임 없이)
-export const refreshScrollLink = () => { if (installed) frame(false) }
+// 크기가 바뀌면(보기 설정 · 줄 바꿈 · 탭 전환) 다시 잰다
+function watch() {
+  const next = E ? [E.hdr, E.hero, E.bar, E.nav].filter((el): el is HTMLElement => !!el) : []
+  if (next.length === roTargets.length && next.every((el, i) => el === roTargets[i])) return
+  ro?.disconnect(); roTargets = next
+  for (const el of next) ro?.observe(el)
+}
+// 탭을 바꾸거나 새 머리 묶음이 붙으면 바로 다시 잰다(그리기 전에 — StickyBarM 의 layout effect)
+export const refreshScrollLink = () => { if (installed) measure() }
 export function installScrollLink(): () => void {
   if (!installed++) {
-    last = pos(); Z = 0; N = 0
+    last = pos(); A = 0; dir = 0; pullDir = 0
+    ro = new ResizeObserver(() => measure())
+    mo = new MutationObserver(() => measure())
+    mo.observe(root(), { attributes: true, attributeFilter: ['data-pb-view'] })
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', refreshScrollLink)
     window.addEventListener('touchstart', onDown, { passive: true })
     window.addEventListener('touchend', onUp, { passive: true })
     window.addEventListener('touchcancel', onUp, { passive: true })
-    frame(false)
+    measure()
   }
   return () => {
     if (--installed) return
     window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', refreshScrollLink)
     window.removeEventListener('touchstart', onDown); window.removeEventListener('touchend', onUp); window.removeEventListener('touchcancel', onUp)
     window.clearTimeout(idle); if (raf) cancelAnimationFrame(raf); raf = 0
-    const { hdr, hero, bar, nav } = els()
-    for (const el of [hdr, hero, bar]) clear(el)
-    if (bar?.parentElement) bar.parentElement.style.height = ''
-    if (nav) { nav.style.transform = ''; fade(nav, 1) }
+    ro?.disconnect(); mo?.disconnect(); ro = mo = null; roTargets = []
+    root().removeAttribute('data-pb-link'); root().removeAttribute('data-pb-freeze')
+    if (E) { for (const el of [E.hdr, E.bar, E.nav]) if (el) for (const k of ['opacity', 'transform', 'animation-range']) el.style.removeProperty(k) }
+    E = null
   }
 }
 // 창(시트 · 다이얼로그)이 떠 있는 동안은 스크롤을 보지 않고 그대로 둔다. 시트는 뒤 페이지를 position:fixed 로 고정해 스크롤이 0 이 됐다가
 // 닫을 때 제자리로 돌아가는데, 그것을 '맨 위로 올림' · '내림'으로 읽어 탭이 나타났다 사라졌다(연출 설정 — 사용자 지적). 풀리면 지금 위치에서 다시 센다.
+// 흐려짐 · 하단 탭 애니메이션도 그동안 멈춘다(html[data-pb-freeze]). sticky 는 고정된 페이지에서도 같은 자리에 놓인다.
 export function setScrollFrozen(f: boolean) {
   if (f === frozen) return
   frozen = f
-  if (!f) last = pos()
+  if (f) root().setAttribute('data-pb-freeze', '')
+  else { root().removeAttribute('data-pb-freeze'); last = pos() }
 }

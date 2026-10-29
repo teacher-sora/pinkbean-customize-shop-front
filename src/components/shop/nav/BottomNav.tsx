@@ -60,10 +60,10 @@ export function PlazaTabsM() {
 
 // 모바일 부위 · 분류 줄과 목록 머리를 묶어 미리보기 바로 아래에 붙인다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
 // 맨 위까지 올리지 않게). 내린 만큼 미리보기 뒤로 들어가고 올린 만큼 나온다(lib/scrollHide — 맨 위 헤더 · 하단 탭과 같은 스크롤 연결).
-// 자리 틀(.barM)은 가만히 두고 안의 내용(data-sticky-top)만 움직인다. data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
+// 자리 틀(.barM)은 가만히 두고 안의 내용(data-sticky-top)만 칸 · 틀(data-pb-track · data-pb-wrap) 안의 sticky 로 움직인다. data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
 export function StickyBarM({ children }: { children: React.ReactNode }) {
   useLayoutEffect(() => { refreshScrollLink() }) // 새로 붙거나 내용이 바뀌면 지금 숨김량대로 바로 적는다(그리기 전에)
-  return <div className={styles.barM}><div data-sticky-top className={styles.barIn}>{children}</div></div>
+  return <div className={styles.barM}><div data-pb-track="bar"><div data-pb-wrap><div data-sticky-top className={styles.barIn}>{children}</div></div></div></div>
 }
 
 export default function BottomNav({ mobile }: { mobile: boolean }) {
