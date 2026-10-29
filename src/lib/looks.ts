@@ -62,12 +62,15 @@ async function gunzipJson<T>(b: Uint8Array): Promise<T> {
   return JSON.parse(await new Response(s).text()) as T
 }
 
-// 아이템 머리: 성별마다 코디 수 · 자주 쓴 염색 · 쪽마다 바이트 길이. 쪽의 시작 바이트는 길이를 누적해 낸다
-type Head = { t: Record<LookGender, number>; d: LookDye[]; p: Record<LookGender, number[]> }
-type HeadAt = Head & { url: string; at: Record<LookGender, number[]> }
+// 아이템 머리: 성별마다 코디 수 · 자주 쓴 염색 · 쪽마다 바이트 길이. 쪽의 시작 바이트는 길이를 누적해 낸다.
+// q = 자주 쓴 염색(d 와 같은 순서)마다 그 염색을 쓴 코디만의 수 · 쪽 길이 — 쪽들은 m 쪽들 뒤에 염색마다 [전체][여][남] 차례(parser looks/build.ts). 옛 판에는 없다
+type Part = { t: Record<LookGender, number>; p: Record<LookGender, number[]> }
+type Head = Part & { d: LookDye[]; q?: Part[] }
+type PartAt = Part & { at: Record<LookGender, number[]> }
+type HeadAt = PartAt & { d: LookDye[]; url: string; q: PartAt[] }
 const heads = new LRU<Promise<HeadAt | null>>(60)
 const pages = new LRU<Promise<LookRow[]>>(160)
-const pageKey = (id: string, g: LookGender, c: number) => `${id}|${g}|${c}`
+const pageKey = (id: string, g: LookGender, c: number, dye: number | null = null) => `${id}|${g}|${c}${dye == null ? '' : `|d${dye}`}`
 function loadHead(id: string): Promise<HeadAt | null> {
   const hit = heads.get(id)
   if (hit) return hit
@@ -80,30 +83,33 @@ function loadHead(id: string): Promise<HeadAt | null> {
     const buf = await range(url, off, hl + p0)
     const head = await gunzipJson<Head>(buf.subarray(0, hl))
     if (p0) pages.set(pageKey(id, 'a', 0), gunzipJson<LookRow[]>(buf.subarray(hl)))
-    const at = {} as Record<LookGender, number[]>
     let pos = off + hl
-    for (const g of ['a', 'f', 'm'] as const) { at[g] = head.p[g].map((len) => { const s = pos; pos += len; return s }) }
-    return { ...head, url, at }
+    const place = (pt: Part): PartAt => { const at = {} as Record<LookGender, number[]>; for (const g of ['a', 'f', 'm'] as const) at[g] = pt.p[g].map((len) => { const s = pos; pos += len; return s }); return { ...pt, at } }
+    const main = place(head)
+    return { ...main, d: head.d, url, q: (head.q ?? []).map(place) }
   })
   heads.set(id, p)
   p.catch(() => heads.delete(id))
   return p
 }
-// 아이템 하나의 c 번째 60벌 묶음(그 성별). 첫 묶음에는 자주 쓴 염색도 붙인다. 같은 묶음을 다시 부르면 기억해 둔 것을 준다
+// 아이템 하나의 c 번째 60벌 묶음(그 성별). dye = 자주 쓴 염색의 순번이면 그 염색을 쓴 코디만(염색 칩을 누른 목록).
+// 첫 묶음에는 자주 쓴 염색도 붙인다(염색으로 거른 목록이어도 같은 염색 줄). 같은 묶음을 다시 부르면 기억해 둔 것을 준다
 export const LOOK_CHUNK = 60
-export async function lookChunk(id: string, c: number, g: LookGender = 'a'): Promise<LookPage> {
-  const h = await loadHead(id)
-  if (!h) return { ready: true, total: 0, page: c, size: LOOK_CHUNK, looks: [], dyes: [] }
-  const k = pageKey(id, g, c)
+export async function lookChunk(id: string, c: number, g: LookGender = 'a', dye: number | null = null): Promise<LookPage> {
+  const h0 = await loadHead(id)
+  if (!h0) return { ready: true, total: 0, page: c, size: LOOK_CHUNK, looks: [], dyes: [] }
+  const h = dye == null ? h0 : h0.q[dye]
+  if (!h) return { ready: true, total: 0, page: c, size: LOOK_CHUNK, looks: [], ...(c === 0 ? { dyes: h0.d } : {}) }
+  const k = pageKey(id, g, c, dye)
   let p = pages.get(k)
   if (!p) {
     const from = h.at[g][c], len = h.p[g][c]
-    p = from == null || !len ? Promise.resolve([]) : range(h.url, from, len).then((b) => gunzipJson<LookRow[]>(b))
+    p = from == null || !len ? Promise.resolve([]) : range(h0.url, from, len).then((b) => gunzipJson<LookRow[]>(b))
     pages.set(k, p)
     p.catch(() => pages.delete(k))
   }
   const looks = await p
-  return { ready: true, total: h.t[g], page: c, size: LOOK_CHUNK, looks, ...(c === 0 ? { dyes: h.d } : {}) }
+  return { ready: true, total: h.t[g], page: c, size: LOOK_CHUNK, looks, ...(c === 0 ? { dyes: h0.d } : {}) }
 }
 
 // 코디 룩북의 코디를 입을 때의 연출 = 지금 연출 그대로(배율 · 액션 · 무기 모션 · 표정 · 이펙트 · 시선 · 명찰 — 남의 설정이 아니라 코디만 가져온다)에

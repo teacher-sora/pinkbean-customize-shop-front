@@ -222,7 +222,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'ptake' && sf.take && <><PlazaTakeBody snap={sf.take} mobile={mobile} title={sf.combo ? '코디 룩북' : undefined} /><SurfaceFooter onBack={sf.post ? s.plazaTakeBack : undefined} /></>}
             {k === 'notice' && <NoticeBody mobile={mobile} />}   {/* 푸터는 본문이 그린다(상세에서 '이전') */}
             {k === 'card' && <ProfileCardBody mobile={mobile} />}   {/* 푸터(닫기 · 저장)는 본문이 그린다 */}
-            {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} />}
+            {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} init={sf.dyeInit} />}
             {k === 'dot' && sf.item && <DotSurfaceBody item={sf.item} mobile={mobile} />}
           </div>
         </div>

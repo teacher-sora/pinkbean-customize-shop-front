@@ -146,9 +146,14 @@ export const PREVIEW_FRACTION = 0.25 // 우측 미리보기 기준 마네킹 높
 export const PREVIEW_FRACTION_MOBILE = 0.5
 export const PREVIEW_MARGIN = 1.5    // 우측 미리보기 캔버스 여백 배수
 export const CARD_FRACTION = 0.45     // 리스트 카드 마네킹 높이 비율(넉넉한 전체샷; 정수 스냅으로 항상 선명)
-// 모바일 카드(목록 · 광장 · 코디 룩북)의 마네킹 높이 비율 — 광장 자유 코디 카드의 값(사용자 지시: 모바일 목록 캐릭터가 광장의 절반 크기라 너무 작았다)
+// 모바일 카드(광장 · 코디 룩북)의 마네킹 높이 비율 — 광장 자유 코디 카드의 값
 export const CARD_FRACTION_M = 0.54
-// 모바일 목록 격자 = 3열 × 2줄(사용자 지시 — 많은 정보를 빠르게. 캐릭터는 카드 높이를 넉넉히 잡아 키운다 — ListArea useMobileRows). 코디 탭 · AI 코디 검색 · 코디 룩북이 함께 쓴다
+// 모바일 코디 탭 · AI 코디 검색 목록 카드의 마네킹 비율. 0.54 는 너무 크다는 보고가 있어 줄였다(사용자 지시 — 예전 0.45 보다 크고 0.54 보다 작게).
+// 4열 카드(그림 칸 ≥ 폭 × 1.45)에서 DPR 2 · 3 모두 정수 배율 한 단계(캐릭터 64px — 게임 1배 크기)가 된다
+export const LIST_FRACTION_M = 0.5
+// 모바일 코디 탭 · AI 코디 검색 목록 격자 = 4열 × 2줄(사용자 지시 — 3열 × 2줄보다 한 번에 더 많이, '내 캐릭터' 보기도 깔끔하게)
+export const LIST_GRID_M = { cols: 4, rows: 2 }
+// 모바일 코디 룩북 격자 = 3열 × 2줄(그림이 코디 전체라 카드가 넓어야 한다). 광장의 코디 룩북 분류도 같다
 export const MOBILE_GRID = { cols: 3, rows: 2 }
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 

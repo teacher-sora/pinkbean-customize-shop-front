@@ -14,7 +14,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ListItem } from '@/lib/core/data'
 import { COMBO_SKIP, LOOK_CHUNK, lookPv, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
-import { CARD_FRACTION_M, MOBILE_GRID, SLOT_TO_CAT, skinDyeFamily } from '@/lib/shopData'
+import { CARD_FRACTION_M, MOBILE_GRID, skinDyeFamily } from '@/lib/shopData'
 import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
@@ -24,8 +24,7 @@ import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
 import { ChipAct } from '../ui/ChipAct'
-import { IconChevronLeft, IconChevronRight, IconSearch, IconTakeDown, IconVaultAdd } from '../ui/Icons'
-import { DYE_VAULT_MAX, dyeSaveKey, useDyeVault, type DyeSave } from '@/lib/dyeVault'
+import { IconChevronLeft, IconChevronRight, IconDrop, IconSearch, IconTakeDown } from '../ui/Icons'
 import list from '../list/list.module.css'
 import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
@@ -290,6 +289,9 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   // 받기는 60벌 묶음(lib/looks lookChunk — 쪽 크기와 상관없다. 칩에서 미리 받은 첫 묶음을 그대로 쓴다), 쪽은 그 묶음에서 잘라 낸다
   const [chunks, setChunks] = useState<Record<number, LookRow[]>>({})
   const [first, setFirst] = useState<LookPage | null>(null)
+  // 염색 칩으로 거르면(s.comboDye) 목록만 그 염색을 쓴 코디로 바뀐다. 자주 쓴 염색 줄은 거르기 전 첫 묶음의 것을 그대로 둔다(칩 줄이 다시 그려지지 않게)
+  const dye = s.comboDye
+  const [dyes0, setDyes0] = useState<LookDye[] | null>(null)
   const [failed, setFailed] = useState(false)
   const total = first?.total ?? null
   const cur = s.curIdx, pageCount = s.pageCount
@@ -299,14 +301,15 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const setComboTotal = s.setComboTotal
   useEffect(() => {
     let alive = true
-    setFailed(false)
-    lookChunk(item.id, 0, g).then((d) => {
+    setFailed(false); setFirst(null); setChunks({})
+    lookChunk(item.id, 0, g, dye).then((d) => {
       if (!alive) return
-      setFirst(d); setChunks((m) => ({ ...m, 0: d.looks }))
-      setComboTotal(`${item.id}|${s.comboGender}`, d.total)
+      setFirst(d); setChunks({ 0: d.looks })
+      if (d.dyes) setDyes0((x) => x ?? d.dyes!)
+      setComboTotal(`${item.id}|${s.comboGender}|${dye ?? ''}`, d.total)
     }).catch(() => { if (alive) setFailed(true) })
     return () => { alive = false }
-  }, [item.id, setComboTotal])
+  }, [item.id, dye, setComboTotal])
   // 지금 쪽 −1 ~ +2 쪽이 걸친 묶음을 받아 둔다(넘기면 바로 그려지게)
   useEffect(() => {
     if (!first?.ready || !per) return
@@ -315,7 +318,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
     const c1 = Math.floor((Math.min(pageCount - 1, cur + 2) * per + per - 1) / LOOK_CHUNK)
     for (let c = c0; c <= c1; c++) {
       if (chunks[c] || c * LOOK_CHUNK >= first.total) continue
-      lookChunk(item.id, c, g).then((d) => { if (alive) setChunks((m) => (m[c] ? m : { ...m, [c]: d.looks })) }).catch(() => {})
+      lookChunk(item.id, c, g, dye).then((d) => { if (alive) setChunks((m) => (m[c] ? m : { ...m, [c]: d.looks })) }).catch(() => {})
     }
     return () => { alive = false }
   }, [cur, first, pageCount, per, item.id])
@@ -389,9 +392,9 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   }, [mobile, cur, scrollKey, pageCount, dirY, cols, rows])
 
   // 자주 쓴 염색: 받기 전에는 같은 칸 수의 스켈레톤으로 자리를 잡아 둔다(받은 뒤 목록이 밀리지 않게 — 표본에 있는 아이템은 거의 다 염색 기록이 있다)
-  const dyes = first?.dyes ?? []
+  const dyes = dyes0 ?? []
   const looks = useLookCount(item.id)
-  const dyeSkel = !first && !failed && looks > 0
+  const dyeSkel = !dyes0 && !failed && looks > 0
   const pages: number[] = []
   for (let p = Math.max(0, cur - 1); p <= Math.min(pageCount - 1, cur + 1); p++) pages.push(p)
   const gridStyle = { gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, gridTemplateRows: `repeat(${rows},minmax(0,1fr))` }
@@ -410,8 +413,8 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
         </div>
       ) : first && first.total === 0 ? (
         <div className={mobile ? list.emptyM : list.empty}>
-          <span className={mobile ? list.emptyTitleM : list.emptyTitle}>이 아이템을 입은 코디가 없어요</span>
-          <span className={mobile ? list.emptyHintM : list.emptyHint}>표본에 아직 없는 아이템이에요.</span>
+          <span className={mobile ? list.emptyTitleM : list.emptyTitle}>{dye == null ? '이 아이템을 입은 코디가 없어요' : '이 염색을 쓴 코디가 없어요'}</span>
+          <span className={mobile ? list.emptyHintM : list.emptyHint}>{dye == null ? '표본에 아직 없는 아이템이에요.' : '고른 염색 칩을 다시 누르면 전체 코디로 돌아가요.'}</span>
         </div>
       ) : (
         <div ref={mobile ? undefined : s.bindTrack} className={list.track}
@@ -441,7 +444,8 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   )
 }
 
-// 자주 쓴 염색 — 누르면 그 아이템을 입고 그 염색이 들어간다(되돌리기 한 건). 지금 그 염색이면 칩이 켜져 있다
+// 자주 쓴 염색 — 칩을 누르면 그 염색을 쓴 코디만 목록에 남는다(다시 누르면 전체, 사용자 지시). 칩 오른쪽 위 단추 = 그 아이템의 염색 창을 그 염색 값으로 연다
+// (입기는 창의 [적용] — 보며 고쳐 입을 수 있게). 고른 칩이 켜져 있다
 function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobile: boolean }) {
   const s = useShop()
   const skin = item.slot === 'skin'
@@ -451,35 +455,19 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
   // 줄은 하단 부위 줄 · 염색 보관함과 같은 가로 줄(pb-norail · pb-fade 흐림 · 화살표, 마우스 휠은 가로 — useWheelRail)
   const n = mobile || s.listNarrow ? 3 : 5
   const rail = useWheelRail<HTMLDivElement>()
-  const live = (d: LookDye) => {
-    const worn = skin ? te?.tone === s.tone : s.isEquippedInCat(SLOT_TO_CAT[item.slot], item.id)
-    if (!worn) return false
-    const cur = d.kind === 'palette' ? s.dyePalette[key] : s.dyeHsb[key]
-    return !!cur && JSON.stringify(sortKeys(cur)) === JSON.stringify(sortKeys(d.v))
-  }
-  const apply = (d: LookDye) => {
-    s.equipItem(item)
-    if (d.kind === 'palette') s.setDyePalette({ ...s.dyePalette, [key]: d.v })
-    else s.setDyeHsb({ ...s.dyeHsb, [key]: d.v })
-    s.notify(`${item.name || '아이템'}에 자주 쓴 염색을 입혔어요`)
-  }
-  // 보관함 담기(그 아이템의 염색 보관함 — lib/dyeVault). 담긴 값이면 체크(착용 칩의 '입고 있어요'와 같은 꼴)
-  const vault = useDyeVault(item.id)
-  const saved = new Set(vault.list.map(dyeSaveKey))
-  const full = vault.list.length >= DYE_VAULT_MAX
-  const asSave = (d: LookDye): DyeSave => (d.kind === 'palette' ? { pal: d.v } : { hsb: d.v })
+  const pick = (i: number) => s.setComboDye(s.comboDye === i ? null : i)
+  const openDye = (d: LookDye) => s.openDye(item, d.kind === 'palette' ? { pal: d.v } : { hsb: d.v })
   return (
     // 묶음(바탕 · 테두리 · 안쪽 여백)이 곧 가로 스크롤 칸이다 — 흐림이 칩이 아니라 묶음의 끝(안쪽 여백까지)에 붙는다(pinkbean-design: 칸의 안쪽 여백까지 덮는다, 염색 보관함과 같다)
     <div ref={rail} data-combo-extra className={clsx('pb-norail', 'pb-fade', styles.dyes, mobile && styles.dyesM)} style={{ '--dye-n': n } as React.CSSProperties}>
         {!dyes.length && <DyeSkels n={n} mobile={mobile} />}
         {dyes.map((d, i) => {
-          const on = live(d)
-          const has = saved.has(dyeSaveKey(asSave(d)))
+          const on = s.comboDye === i
           return (
-            // 칩 = 입기(면 어디를 눌러도), 띠 위 오른쪽 작은 단추 = 보관함에 담기 — 착용 칩(WornItems)의 입기 단추와 같은 부품 · 자리(사용자 지시).
+            // 칩 = 그 염색으로 거르기(면 어디를 눌러도), 띠 위 오른쪽 작은 단추 = 염색 창 열기 — 착용 칩(WornItems)의 입기 단추와 같은 부품 · 자리(ChipAct).
             // 안에 단추가 있어 칩은 button 이 아니라 role=button(단추 안에 단추를 둘 수 없다)
-            <div key={i} role="button" tabIndex={0} onClick={() => apply(d)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apply(d) } }}
-              aria-pressed={on} title={`${d.n.toLocaleString()}명이 쓴 염색 입기`}
+            <div key={i} role="button" tabIndex={0} onClick={() => pick(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(i) } }}
+              aria-pressed={on} title={on ? '전체 코디 보기' : `이 염색을 쓴 코디만 보기(${d.n.toLocaleString()}명)`}
               className={clsx(surf.partChip, ui.dyeChip, styles.dyeChip, mobile && styles.dyeChipM, on && styles.dyeChipOn)}>
               <span className={clsx('pb-chipthumb', surf.partThumb, mobile && styles.dyeThumbM)}>
                 <span className={surf.partSprite}>
@@ -490,8 +478,7 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
                 <span className={surf.partSlot}>{i + 1}위</span>
                 <span className={surf.partName}>{d.n.toLocaleString()}명</span>
               </span>
-              <ChipAct done={has} doneTitle="보관함에 있어요" icon={<IconVaultAdd size={15} />} disabled={full} label="염색 보관함에 담기"
-                title={full ? `보관함은 ${DYE_VAULT_MAX}개까지예요` : '이 염색을 보관함에 담기'} onClick={() => { vault.put(asSave(d)); s.notify('염색 보관함에 담았어요') }} />
+              <ChipAct icon={<IconDrop size={15} />} label="이 염색으로 염색 창 열기" title="이 염색으로 염색 창 열기(적용하면 입어요)" onClick={() => openDye(d)} />
               <DyeBand state="dyed" slot={key} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} skinFamily={skin ? skinDyeFamily(te?.name) ?? undefined : undefined} />
             </div>
           )
@@ -512,7 +499,6 @@ function DyeSkels({ n, mobile }: { n: number; mobile: boolean }) {
     </span>
   ))
 }
-const sortKeys = (o: object) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)))
 
 function LookCard({ row, mobile, prio, onOpen }: { row: LookRow; mobile: boolean; prio: number; onOpen: (r: LookRow) => void }) {
   const s = useShop()
