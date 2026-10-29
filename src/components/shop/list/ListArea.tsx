@@ -14,7 +14,7 @@ import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
 import styles from './list.module.css'
-import { heroBaseProbe, lvhProbe } from '@/lib/heroView'
+import { heroBaseProbe, lvhProbe, RELAYOUT_EVENT } from '@/lib/heroView'
 
 const VIEW_MODES: SegOpt<ListMode>[] = [
   { v: 'sprite', l: '아이템', t: '아이템 그림만 보기' },
@@ -104,14 +104,16 @@ export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, 
 export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0, colGap = 10) {
   useEffect(() => {
     if (!mobile) return
-    const vp = vpRef.current
-    const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
-    if (!vp || !col) return
+    const vp0 = vpRef.current
+    const col = vp0?.closest('[data-mobile-col]') as HTMLElement | null
+    if (!vp0 || !col) return
     const before = col.style.getPropertyValue('--pb-min-h')
     const hero = col.querySelector<HTMLElement>('[data-hero]')
     const lvh = lvhProbe(), base = heroBaseProbe()
     const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
+      const vp = vpRef.current?.isConnected ? vpRef.current : vp0 // 넘기는 방향을 바꾸면 칸이 새로 붙을 수 있다 — 지금 칸을 잰다
+      const inner = document.documentElement.hasAttribute('data-pb-inner') // 목록 칸 안 스크롤(lib/scrollHide): 틀이 화면 높이로 묶여 있어 틀 최소 높이는 재지 않는다
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
@@ -121,14 +123,15 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom - nav
       const fit = hero && document.documentElement.getAttribute('data-pb-view') !== 'full' ? lvh.offsetHeight - base.offsetHeight - below : 0
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
-      if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
+      if (!inner && col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
       const page = Math.ceil(Math.max(floor, fit)) + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
       if (col.style.getPropertyValue('--pb-page-h') !== page) col.style.setProperty('--pb-page-h', page)
     }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
-    ro?.observe(col); ro?.observe(vp); ro?.observe(lvh); ro?.observe(base)
-    return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
+    ro?.observe(col); ro?.observe(vp0); ro?.observe(lvh); ro?.observe(base)
+    window.addEventListener(RELAYOUT_EVENT, m) // 목록 칸 안 스크롤로 들어가고 나올 때(lib/scrollHide) — 틀 높이가 그대로라 ResizeObserver 가 모른다
+    return () => { ro?.disconnect(); window.removeEventListener(RELAYOUT_EVENT, m); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
   }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset, colGap])
 }
 

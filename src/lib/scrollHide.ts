@@ -1,3 +1,4 @@
+import { RELAYOUT_EVENT } from './heroView'
 // 모바일: 스크롤에 붙어 숨고 나오는 것들 — 유튜브 앱의 위 머리처럼(사용자 지시): 스크롤과 같은 속도로 따라 움직이고, 숨을수록 흐려지며,
 // 중간에서 손을 떼면 마지막으로 움직인 방향으로 끝까지 붙는다(그만큼 페이지 스크롤도 함께 밀린다).
 //  · 위쪽 묶음 = 맨 위 헤더(data-app-header) · 미리보기(data-hero) · 머리 묶음(data-sticky-top — 부위 · 분류 줄 + 목록 머리).
@@ -76,13 +77,16 @@ function measureInner(e: Els, is: HTMLElement) {
   const r = root().style
   if (r.getPropertyValue('--pb-ipad') !== px(D.hH + D.bH)) r.setProperty('--pb-ipad', px(D.hH + D.bH))
   if (r.getPropertyValue('--pb-ipadb') !== px(D.nH)) r.setProperty('--pb-ipadb', px(D.nH))
-  if (!inner) { inner = true; Zi = 0; st0 = is.scrollTop; root().setAttribute('data-pb-inner', '') }
+  if (!inner) { inner = true; Zi = 0; st0 = is.scrollTop; root().setAttribute('data-pb-inner', ''); relayout() }
   paintInner()
 }
+// 들어가고 나올 때 목록 높이를 다시 재게 알린다(ListArea useMobileRows — 페이지 최소 높이는 페이지 스크롤 때만 잰다)
+const relayout = () => window.dispatchEvent(new Event(RELAYOUT_EVENT))
 function leaveInner() {
   if (!inner) return
   inner = false; Zi = 0
   root().removeAttribute('data-pb-inner'); root().style.removeProperty('--pb-ipad'); root().style.removeProperty('--pb-ipadb')
+  relayout()
   if (E) for (const el of [E.hT, E.eT, E.bT, E.hdr, E.bar, E.nav]) if (el) for (const k of ['transform', 'opacity', 'transition']) el.style.removeProperty(k)
 }
 const tr = (v: number) => (v ? `translate3d(0, ${v.toFixed(1)}px, 0)` : '')
