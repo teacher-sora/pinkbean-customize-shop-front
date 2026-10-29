@@ -120,7 +120,8 @@
 .labelBadgeCash { height: 14px; }
 /* 코디 룩북 칩 — 썸네일 오른쪽 아래(왼쪽 아래는 등급 배지). 광장 카드의 날짜 칩과 같은 꼴. 늘 보인다(숨은 기능이 되지 않게 — 사용자 지시) */
 .combo { position: absolute; right: 4px; bottom: 4px; z-index: 3; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 20px; background: light-dark(#fff, #303238); font-family: inherit; font-size: 10.5px; font-weight: 700; color: light-dark(#d76d9a, #d293ae); white-space: nowrap; font-variant-numeric: tabular-nums; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
-.comboM { right: 3px; bottom: 3px; height: 18px; padding: 0 6px; font-size: 10px; }
+/* 모바일 = 옷걸이(하단 '코디' 탭과 같은 아이콘) + 수 — 글자 '코디'를 빼 칩이 좁다(4열 카드에서 왼쪽 아래 등급 배지와 겹쳤다, 320 폭까지) */
+.comboM { right: 3px; bottom: 3px; height: 18px; padding: 0 5px 0 4px; gap: 2px; font-size: 10px; }
 @media (hover: hover) and (pointer: fine) { .combo:hover { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); } }
 /* 이름 줄은 block + line-height 로 가운데 — flex 중앙정렬은 ellipsis 가 박스에 안 걸려 양끝이 잘린다. */
 .name { flex: 0 0 auto; width: 100%; min-width: 0; height: 18px; line-height: 18px; display: block; font-size: 12px; font-weight: 500; color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

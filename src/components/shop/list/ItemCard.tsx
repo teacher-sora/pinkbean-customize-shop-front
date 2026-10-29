@@ -6,7 +6,7 @@ import { badgeUrl, type ListItem } from '@/lib/core/data'
 import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
-import { IconStar } from '../ui/Icons'
+import { IconStar, IconTab } from '../ui/Icons'
 import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
@@ -67,7 +67,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
           )}
           {looks > 0 && !COMBO_SKIP.has(item.slot) && (
             <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 룩북 ${looks.toLocaleString()}벌`}
-              className={clsx(styles.combo, mobile && styles.comboM)}>코디 {countLabel(looks)}</button>
+              className={clsx(styles.combo, mobile && styles.comboM)}>{mobile ? <><IconTab id="codi" size={11} />{countLabel(looks)}</> : `코디 ${countLabel(looks)}`}</button>
           )}
         </div>
         <div className={mobile ? styles.nameM : styles.name}>{name}</div>
