@@ -19,7 +19,7 @@ import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
-import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, useWindowPagerY, type FilterGroup } from '../list/ListArea'
+import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, usePagerY, type FilterGroup } from '../list/ListArea'
 import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
@@ -341,7 +341,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   live.current = { idx: cur, setIdx: s.setIdx, cols, rows }
   useEffect(() => {
     const vp = vpRef.current
-    if (!mobile || !vp || dirY) return // 세로는 페이지 스크롤(ListArea useWindowPagerY)
+    if (!mobile || !vp || dirY) return // 세로는 ListArea usePagerY
     let raf = 0
     const onScroll = () => {
       if (raf) return
@@ -380,7 +380,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
     go()
     return () => { if (raf) cancelAnimationFrame(raf) }
   }, [mobile, cur, scrollKey, pageCount, dirY, cols, rows])
-  useWindowPagerY(vpRef, mobile && dirY, cur, s.setIdx, pageCount, scrollKey, rows)
+  usePagerY(vpRef, mobile && dirY, cur, s.setIdx, pageCount, scrollKey, rows)
 
   // 자주 쓴 염색: 받기 전에는 같은 칸 수의 스켈레톤으로 자리를 잡아 둔다(받은 뒤 목록이 밀리지 않게 — 표본에 있는 아이템은 거의 다 염색 기록이 있다)
   const dyes = dyes0 ?? []
@@ -395,9 +395,14 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
       : Array.from({ length: Math.min(per, Math.max(0, (total ?? per) - p * per)) }, (_, i) => <div key={i} className={clsx('pb-skel', list.skel, mobile && list.skelM)} />)
   }
 
+  // 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다).
+  // 모바일 세로는 목록 칸 안 스크롤이라(위에 머리 묶음이 떠 있다 — lib/scrollHide) 염색 줄 · 출처 줄도 칸 안에서 쪽들과 함께 스크롤한다
+  const inner = mobile && dirY
+  const dyeRow = (dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>
+  const credit = <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
   const viewport = (
-    <div ref={setVp} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}
-      style={mobile && dirY ? { height: `calc(${Math.max(1, pageCount)} * var(--pb-page-h))` } : undefined}>
+    <div ref={setVp} data-pb-iscroll={inner ? '' : undefined} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
+      {inner && dyeRow}
       {failed || (first && !first.ready) ? (
         <div className={mobile ? list.emptyM : list.empty}>
           <span className={mobile ? list.emptyTitleM : list.emptyTitle}>코디를 불러오지 못했어요</span>
@@ -409,7 +414,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
           <span className={mobile ? list.emptyHintM : list.emptyHint}>{dye == null ? '표본에 아직 없는 아이템이에요.' : '고른 염색 칩을 다시 누르면 전체 코디로 돌아가요.'}</span>
         </div>
       ) : (
-        <div ref={mobile ? undefined : s.bindTrack} className={list.track}
+        <div ref={mobile ? undefined : s.bindTrack} data-pb-pages className={list.track}
           style={mobile
             ? (dirY ? { height: `calc(${pageCount} * var(--pb-page-h))` } : { width: `calc(${pageCount} * 100cqw)` })
             : { transform: `${dirY ? 'translateY' : 'translateX'}(${-cur * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
@@ -423,15 +428,15 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
           ))}
         </div>
       )}
+      {inner && credit}
     </div>
   )
 
   return (
     <>
-      {/* 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다) */}
-      {(dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>}
+      {!inner && dyeRow}
       {viewport}
-      <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
+      {!inner && credit}
     </>
   )
 }

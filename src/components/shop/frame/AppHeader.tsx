@@ -52,7 +52,7 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
     ]
     return (
       // 자리 틀(높이 46)을 두고 안의 헤더만 스크롤에 붙어 움직인다(칸 data-pb-track — lib/scrollHide)
-      <div className={styles.headerSlotM}><div data-pb-track="hdr"><div data-app-header className={styles.headerM}>
+      <div data-pb-slot="hdr" className={styles.headerSlotM}><div data-pb-track="hdr"><div data-app-header className={styles.headerM}>
         <button type="button" onClick={s.goHome} title="처음 화면으로" className={clsx(styles.logoBoxM, styles.logoBtn)}>
           <Image src="/logo.png" alt="핑크빈 커마샵" width={24} height={24} priority className={styles.logoImgM} />
           <span className={styles.logoTextM}>커마샵</span>

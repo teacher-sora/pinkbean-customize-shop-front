@@ -63,7 +63,7 @@ export function PlazaTabsM() {
 // 자리 틀(.barM)은 가만히 두고 안의 내용(data-sticky-top)만 칸 · 틀(data-pb-track · data-pb-wrap) 안의 sticky 로 움직인다. data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
 export function StickyBarM({ children }: { children: React.ReactNode }) {
   useLayoutEffect(() => { refreshScrollLink() }) // 새로 붙거나 내용이 바뀌면 지금 숨김량대로 바로 적는다(그리기 전에)
-  return <div className={styles.barM}><div data-pb-track="bar"><div data-pb-wrap><div data-sticky-top className={styles.barIn}>{children}</div></div></div></div>
+  return <div data-pb-slot="bar" className={styles.barM}><div data-pb-track="bar"><div data-pb-wrap><div data-sticky-top className={styles.barIn}>{children}</div></div></div></div>
 }
 
 export default function BottomNav({ mobile }: { mobile: boolean }) {

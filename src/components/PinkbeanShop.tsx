@@ -45,8 +45,8 @@ function Shell() {
   // 광장의 코디 룩북에서는 등록 폼 대신 미리보기를 둔다 — 자주 쓴 염색 · 부위 입기를 바로 보게
   const comboList = isList && s.comboShown // 연 탭(코디 · AI 코디 검색)에서만 — 다른 탭에 갔다 오면 그대로 다시 보인다
   const comboPlaza = isPlaza && s.plazaFilter === 'combo'
-  // 틀이 내용만큼 길어지는 탭(페이지 하나로 스크롤): 코디 정보 / 염색, 세로로 넘기는 목록 · 광장 · 코디 룩북 · 프리셋(frame .mobileColFlow)
-  const flowCol = s.primary === 'info' || ((isList || isPlaza) && s.listDir === 'y') || (s.primary === 'preset' && s.presetDir === 'y')
+  // 틀이 내용만큼 길어지는 탭(페이지 하나로 스크롤): 코디 정보 / 염색(frame .mobileColFlow). 세로로 넘기는 목록은 목록 칸 안 스크롤이다(ListArea usePagerY)
+  const flowCol = s.primary === 'info'
   return (
     <>
       <Background mobile={mobile} />
@@ -61,7 +61,7 @@ function Shell() {
                 칸이 생겼다 사라져 아래가 밀렸다. 광장에서 가져온 코디도 바로 보인다). */}
             <div data-pb-panel>
               {/* 자리 틀(미리보기 높이)을 두고 안의 미리보기만 스크롤에 붙어 움직인다(칸 data-pb-track · 틀 data-pb-wrap — lib/scrollHide) */}
-              <div className={styles.heroSlotM}><div data-pb-track="hero"><div data-pb-wrap><MobileHero /></div></div></div>
+              <div data-pb-slot="hero" className={styles.heroSlotM}><div data-pb-track="hero"><div data-pb-wrap><MobileHero /></div></div></div>
               {/* 채팅 칸 — 말풍선을 끼었을 때만, 미리보기 바로 아래 */}
               {isList && (comboList ? <ComboPanel mobile host="codi" /> : <ListArea mobile />)}
               {isPlaza && (comboPlaza ? <ComboPanel mobile host="plaza" /> : <PlazaPanel mobile />)}

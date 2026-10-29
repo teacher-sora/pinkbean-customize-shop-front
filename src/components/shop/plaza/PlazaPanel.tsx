@@ -10,7 +10,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, plazaContestClosed, type PlazaSort } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
-import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, useMobileRows, useWindowPagerY, type FilterGroup } from '../list/ListArea'
+import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, useMobileRows, usePagerY, type FilterGroup } from '../list/ListArea'
 import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { MOBILE_GRID } from '@/lib/shopData'
 import { Seg, type SegOpt } from '../ui/controls'
@@ -43,7 +43,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   live.current = { idx: s.curIdx, setIdx: s.setIdx, cols: s.plazaCols, rows: s.plazaRows, y: dirY }
   useEffect(() => {
     const vp = vpRef.current
-    if (!mobile || !vp || dirY) return // 세로는 페이지 스크롤(ListArea useWindowPagerY)
+    if (!mobile || !vp || dirY) return // 세로는 ListArea usePagerY
     let raf = 0
     const onScroll = () => {
       if (raf) return
@@ -90,7 +90,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
     go()
     return () => { if (raf) cancelAnimationFrame(raf) }
   }, [mobile, s.curIdx, scrollKey, s.pageCount, dirY])
-  useWindowPagerY(vpRef, mobile && dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey, s.plazaRows)
+  usePagerY(vpRef, mobile && dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey, s.plazaRows)
 
   const pageChip = (
     <div className={mobile ? styles.pageChipM : styles.pageChip}>
@@ -145,8 +145,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   for (let pi = Math.max(0, s.curIdx - 1); pi <= Math.min(s.pageCount - 1, s.curIdx + 1); pi++) pages.push({ pi, items: list.slice(pi * per, pi * per + per) })
 
   const viewport = (
-    <div ref={setVp} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}
-      style={mobile && dirY ? { height: `calc(${Math.max(1, s.pageCount)} * var(--pb-page-h))` } : undefined}>
+    <div ref={setVp} data-pb-iscroll={mobile && dirY ? '' : undefined} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
       {s.plazaLoading ? (
         <div className={mobile ? styles.pageM : styles.page} style={{ left: 0 }}>
           <div className={styles.grid} style={gridStyle}>
@@ -164,7 +163,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
           <span className={styles.emptyHint}>{emptyHint}</span>
         </div>
       ) : (
-        <div ref={mobile ? undefined : s.bindTrack} className={styles.track}
+        <div ref={mobile ? undefined : s.bindTrack} data-pb-pages className={styles.track}
           style={mobile
             ? (dirY ? { height: `calc(${s.pageCount} * var(--pb-page-h))` } : { width: `calc(${s.pageCount} * 100cqw)` })
             : { transform: `${dirY ? 'translateY' : 'translateX'}(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>

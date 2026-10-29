@@ -47,8 +47,8 @@
    움직일 수 없어 같은 몸짓이 탭마다 다르게 먹는다. */
 /* 세로로 넘기기(listDir 'y' — 목록과 같은 값): PC 는 세로 끌기를 잡도록 가로만 브라우저에, 모바일은 세로 스크롤 칸(cqh = 이 칸 높이 → 쪽 높이가 한 화면) */
 .viewportY { touch-action: pan-x pinch-zoom; }
-/* 세로 넘기기(모바일): 칸 안 스크롤 없이 페이지 스크롤로 쪽을 쌓는다 — 칸 높이 = 쪽 수 × 쪽 높이(--pb-page-h, 인라인), 쪽은 그 높이로 쌓인다(ListArea useWindowPagerY) */
-.viewportMY { flex: 0 0 auto; overflow: visible; container-type: inline-size; }
+/* 세로 넘기기(모바일): 칸 안 스크롤 — 쪽은 한 쪽 높이(--pb-page-h)로 쌓인다(ListArea usePagerY). touch-action = 세로 끌기를 브라우저에(.viewportY 의 PC 규칙을 덮는다) */
+.viewportMY { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y pinch-zoom; container-type: inline-size; }
 .pageMY { position: absolute; left: 0; width: 100%; height: var(--pb-page-h); padding: 10px 12px; overflow: hidden; }
 .viewportM { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; container-type: inline-size; }
 .track { position: relative; height: 100%; width: 100%; will-change: transform; }

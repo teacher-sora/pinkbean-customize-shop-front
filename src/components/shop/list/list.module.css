@@ -63,8 +63,9 @@
    방향을 바꿔도 카드가 같은 자리 · 같은 크기다(사용자 지적: 여백 5 였을 때 세로에서 카드가 3px 위로, 3px 크게 그려졌다. 높이 계산 useMobileRows 의 PAD_Y 16 도 이 값).
    쪽 경계 간격은 16 으로 줄 간격(10)보다 6 넓지만, 쪽 번호는 스크롤 위치를 높이/2 단위로 반올림해 세므로(ListArea scrollIdx) 그대로 맞는다. */
 .viewportY { touch-action: pan-x pinch-zoom; }
-/* 세로 넘기기(모바일): 칸 안 스크롤 없이 페이지 스크롤로 쪽을 쌓는다 — 칸 높이 = 쪽 수 × 쪽 높이(--pb-page-h, 인라인), 쪽은 그 높이로 쌓인다(ListArea useWindowPagerY) */
-.viewportMY { flex: 0 0 auto; margin: 0 7px; overflow: visible; container-type: inline-size; }
+/* 세로 넘기기(모바일): 칸 안 스크롤 — 쪽은 한 쪽 높이(--pb-page-h)로 쌓인다(ListArea usePagerY). 끝에서 페이지로 이어지지 않는다(페이지는 화면 높이 — lib/scrollHide).
+   touch-action 은 세로 끌기를 브라우저에 맡긴다(.viewportY 의 PC 규칙 pan-x 가 남으면 손가락으로 목록이 내려가지 않는다) */
+.viewportMY { margin: 0 7px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y pinch-zoom; container-type: inline-size; }
 .pageMY { position: absolute; left: 0; width: 100%; height: var(--pb-page-h); padding: 8px 5px; overflow: hidden; }
 .grid { display: grid; gap: 10px; height: 100%; }
 /* 모바일 3×3(shopData.MOBILE_GRID — 바꾸면 여기도): 칸 높이(붙은 미리보기 아래 화면 끝까지 — ListArea useMobileRows)를 세 줄이 나눠 가진다.

@@ -40,8 +40,8 @@
    2줄 고정, 열 수는 폭에 따라 2(좁음) / 3(콘텐츠 폭 330px 이상). cqw = 스크롤 영역 콘텐츠 폭 → n열이 한 화면에 정확히 들어간다. */
 .hscrollM { flex: 1 1 auto; min-height: 0; margin: 0 7px; padding: 8px 5px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; container-type: inline-size; }
 .gridHM { display: grid; height: 100%; grid-auto-flow: column; grid-template-rows: repeat(3, minmax(0, 1fr)); grid-auto-columns: calc((100cqw - 20px) / 3); gap: 10px; } /* 3열 × 3줄 = shopData.MOBILE_GRID */
-/* 세로(모바일): 칸 안 스크롤 없이 페이지에 이어진다 — 줄 높이 = 한 쪽 높이(--pb-page-h)의 3분의 1(위아래 여백 16 · 줄 간격 20 을 뺀다) */
-.vscrollM { flex: 0 0 auto; margin: 0 7px; padding: 8px 5px; overflow: visible; }
+/* 세로(모바일): 칸 안 스크롤 — 줄 높이 = 한 쪽 높이(--pb-page-h)의 3분의 1(위아래 여백 16 · 줄 간격 20 을 뺀다). 위 · 아래 여백은 떠 있는 머리 · 탭만큼 더한다(lib/scrollHide) */
+.vscrollM { --pb-ip0: 8px; flex: 1 1 auto; min-height: 0; margin: 0 7px; padding: 8px 5px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y pinch-zoom; }
 .gridVM { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: calc((var(--pb-page-h) - 36px) / 3); gap: 10px; } /* 3열 × 3줄 = shopData.MOBILE_GRID */
 .gridVM > :global(.pb-presetwrap), .gridVM :global(.pb-preset) { min-height: 0; }
 /* PC 가로(presetDir 'x'): 2줄 가로 스크롤, 한 화면 5열(좁은 폭 3열) — 카드는 줄 높이를 채운다(.thumbM) */
