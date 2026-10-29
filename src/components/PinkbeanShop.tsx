@@ -45,13 +45,15 @@ function Shell() {
   // 광장의 코디 룩북에서는 등록 폼 대신 미리보기를 둔다 — 자주 쓴 염색 · 부위 입기를 바로 보게
   const comboList = isList && s.comboShown // 연 탭(코디 · AI 코디 검색)에서만 — 다른 탭에 갔다 오면 그대로 다시 보인다
   const comboPlaza = isPlaza && s.plazaFilter === 'combo'
+  // 틀이 내용만큼 길어지는 탭(페이지 하나로 스크롤): 코디 정보 / 염색, 세로로 넘기는 목록 · 광장 · 코디 룩북 · 프리셋(frame .mobileColFlow)
+  const flowCol = s.primary === 'info' || ((isList || isPlaza) && s.listDir === 'y') || (s.primary === 'preset' && s.presetDir === 'y')
   return (
     <>
       <Background mobile={mobile} />
       {mobile ? (
         // 모바일: 화면 전체를 쓰는 흰 컬럼. 터치 기기에서는 문서(루트)가 스크롤한다(globals.css).
         <div className={clsx('pb-shell', styles.root)}>
-          <div data-mobile-col className={clsx(styles.mobileCol, s.primary === 'info' && styles.mobileColFlow)}>
+          <div data-mobile-col className={clsx(styles.mobileCol, flowCol && styles.mobileColFlow)}>
             <AppHeader mobile />
             {/* 새로고침 복원 중에는 이 슬롯을 통째로 감추고 아래 빈 뼈대를 대신 보여준다.
                 display:contents(globals.css)라 평소 배치에는 아무 영향이 없다.

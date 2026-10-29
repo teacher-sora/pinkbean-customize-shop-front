@@ -37,7 +37,7 @@
 .toolSolid { display: flex; align-items: center; gap: 6px; height: 34px; margin-left: 4px; padding: 0 12px; border: none; background: light-dark(#ec86ac, #d15785); border-radius: 6px; font: inherit; font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#fff, #ececef); letter-spacing: -0.01em; cursor: pointer; white-space: nowrap; transition: background-color .22s ease; }
 
 /* ── 모바일 헤더 ── */
-.headerM { flex: 0 0 auto; height: 46px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
+.headerM { flex: 0 0 auto; position: sticky; top: 0; z-index: 32; background: light-dark(#fff, #303238); height: 46px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
 .logoBoxM { display: flex; align-items: center; gap: 7px; }
 .logoImgM { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
 .logoTextM { font-size: calc(15rem / 16); font-weight: 700; background: linear-gradient(100deg,light-dark(#ec86ac, #d15785),light-dark(#c98fe0, #a763c3)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }

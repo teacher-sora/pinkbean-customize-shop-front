@@ -117,12 +117,52 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const fit = hero && getComputedStyle(hero).position === 'sticky' ? lvh.offsetHeight - base.offsetHeight - below : 0
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
+      const page = Math.ceil(Math.max(floor, fit)) + 'px' // 한 쪽(목록 칸) 높이 — 세로 넘기기에서 페이지 스크롤로 쪽을 쌓을 때(useWindowPagerY)
+      if (col.style.getPropertyValue('--pb-page-h') !== page) col.style.setProperty('--pb-page-h', page)
     }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
     ro?.observe(col); ro?.observe(vp); ro?.observe(lvh); ro?.observe(base)
     return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
   }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset, colGap])
+}
+
+// 모바일 세로 넘기기: 칸 안 스크롤을 두지 않는다 — 목록 칸이 쪽 수만큼 길어지고 페이지 스크롤로 내려 본다(사용자 지시: 칸 스크롤과 페이지 스크롤이 겹쳐
+// 매끄럽지 않았다. 헤더 · 머리 묶음은 스크롤한 만큼 숨고 나오므로(lib/scrollHide) 맨 위까지 올리지 않아도 손에 닿는다). 페이지 스크롤 위치 ↔ 쪽 번호.
+// 쪽 i 의 자리 = 그 쪽 위 끝이 미리보기 바로 아래(위쪽 묶음이 다 숨은 때)에 오는 스크롤. 쪽 높이 = --pb-page-h(useMobileRows). 줄 단위로 반올림해 센다(가로와 같다)
+export function useWindowPagerY(vpRef: React.RefObject<HTMLDivElement | null>, on: boolean, idx: number, setIdx: (i: number, anim?: boolean) => void, pageCount: number, key: string, rows: number = MOBILE_GRID.rows) {
+  const live = useRef({ idx, setIdx, pageCount, rows })
+  live.current = { idx, setIdx, pageCount, rows }
+  const geo = useCallback(() => {
+    const vp = vpRef.current, hero = document.querySelector<HTMLElement>('[data-hero]')
+    if (!vp || !hero) return null
+    const ph = parseFloat(getComputedStyle(vp).getPropertyValue('--pb-page-h'))
+    if (!ph) return null
+    return { top: vp.getBoundingClientRect().top + window.scrollY - hero.offsetHeight, ph }
+  }, [vpRef])
+  const at = (g: { top: number; ph: number }) => {
+    const { pageCount: n, rows: r } = live.current
+    return Math.max(0, Math.min(n - 1, Math.floor(Math.round((window.scrollY - g.top) / (g.ph / r)) / r)))
+  }
+  useEffect(() => {
+    if (!on) return
+    let raf = 0
+    const f = () => { raf = 0; const g = geo(); if (!g) return; const i = at(g); if (i !== live.current.idx) live.current.setIdx(i, false) }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(f) }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf) }
+  }, [on, geo])
+  // 쪽 번호가 스크롤 밖에서 바뀌면(번호 입력 · 부위 · 검색을 바꿔 첫 쪽으로) 그 쪽 자리로 옮긴다. 멀거나 목록이 바뀌었으면 바로, 가까우면 부드럽게
+  const lastKey = useRef(key)
+  useLayoutEffect(() => {
+    if (!on) return
+    const jump = lastKey.current !== key
+    lastKey.current = key
+    const g = geo(); if (!g) return
+    if (at(g) === idx) return
+    const to = Math.max(0, g.top + idx * g.ph)
+    window.scrollTo({ top: to, behavior: jump || Math.abs(window.scrollY - to) > g.ph * 3 ? ('instant' as ScrollBehavior) : 'smooth' })
+  }, [on, idx, key, pageCount, geo])
 }
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
@@ -178,7 +218,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   live.current = { idx: s.curIdx, setIdx: s.setIdx }
   useEffect(() => {
     const vp = vpRef.current
-    if (!mobile || !vp) return
+    if (!mobile || !vp || dirY) return // 세로는 페이지 스크롤(useWindowPagerY)
     let raf = 0
     const onScroll = () => {
       if (raf) return
@@ -196,7 +236,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const scrolledOnce = useRef(false)
   useLayoutEffect(() => {
     const vp = vpRef.current
-    if (!mobile || !vp) return
+    if (!mobile || !vp || dirY) return
     const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
     // 첫 마운트(예: 태블릿 → 모바일 폭 전환)도 즉시 이동 — 보던 위치가 스크롤 애니메이션 없이 유지돼 보이게. 방향을 바꿔도 즉시.
     const jump = lastScrollKey.current !== scrollKey || !scrolledOnce.current
@@ -223,6 +263,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     go()
     return () => { if (raf) cancelAnimationFrame(raf) }
   }, [mobile, s.curIdx, scrollKey, s.pageCount, dirY])
+  useWindowPagerY(vpRef, mobile && dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey)
   const hero = isAi && s.searchQuery === null && !loading
   const noSprite = thumbs.noSprite
   const viewOpts = VIEW_MODES.map((m) => (m.v === 'sprite' && noSprite
@@ -300,7 +341,8 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const viewport = (
-    <div ref={setVp} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
+    <div ref={setVp} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}
+      style={mobile && dirY ? { height: `calc(${hero || loading || emptyTitle ? 1 : Math.max(1, s.pageCount)} * var(--pb-page-h))` } : undefined}>
       {hero ? (
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>
@@ -328,11 +370,11 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
         // 마운트하되, 스냅 애니메이션 중에는 새로 창에 들어온 페이지 마운트를 미뤄(캔버스 합성 부하) 전환이 끊기지 않게 한다.
         <div ref={mobile ? undefined : s.bindTrack} className={styles.track}
           style={mobile
-            ? (dirY ? { height: `calc(${s.pageCount} * 100cqh)` } : { width: `calc(${s.pageCount} * 100cqw)` }) // 모바일: 스크롤 길이만 페이지 수만큼(페이지 DOM 은 ±1)
+            ? (dirY ? { height: `calc(${s.pageCount} * var(--pb-page-h))` } : { width: `calc(${s.pageCount} * 100cqw)` }) // 모바일: 길이만 페이지 수만큼(페이지 DOM 은 ±1). 세로는 페이지 스크롤
             : { transform: `${dirY ? 'translateY' : 'translateX'}(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
           {pages.map(({ pi, items }) => (
             <div key={pi} className={clsx('pb-page', mobile && 'pb-scroll pb-norail', mobile ? (dirY ? styles.pageMY : styles.pageM) : styles.page)}
-              style={dirY ? { top: mobile ? `calc(${pi} * 100cqh)` : `${pi * 100}%` } : { left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
+              style={dirY ? { top: mobile ? `calc(${pi} * var(--pb-page-h))` : `${pi * 100}%` } : { left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
               {(!s.snapping || pi === s.curIdx || Math.abs(pi - s.snapFrom) <= 1) && (
                 <div className={mobile ? styles.gridM : styles.grid} style={gridStyle}>
                   {items.map((it) => (

@@ -49,6 +49,7 @@ input::placeholder, textarea::placeholder { color: light-dark(#b7ada2, #858893);
 :root { --pb-hero-base: clamp(168px, min(calc(100vw * 216 / 390), calc(100vh * 216 / 700)), 240px); }
 @supports (height: 1lvh) { :root { --pb-hero-base: clamp(168px, min(calc(100vw * 216 / 390), calc(100lvh * 216 / 700)), 240px); } }
 :root { --pb-hero-h: var(--pb-hero-base); }
+:root { --pb-hdr-h: 46px; } /* 모바일 맨 위 헤더(frame .headerM) — 미리보기 · 머리 묶음이 그 아래에 붙는다 */
 html[data-pb-view='wide'] { --pb-hero-h: max(var(--pb-hero-base), 56vh); }
 /* 코디 칩의 아이콘 칸(코디 정보 · 부위 염색 · 광장 상세가 함께 — pb-chipthumb): 다크에서는 코디 · 프리셋 카드 바탕과 같은 색(#3b3d45 — 주변보다 살짝 밝게, 아이템 그림이 잘 보이게 — 사용자 지시). 라이트는 그대로 */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) span.pb-chipthumb { background: #3b3d45; } }

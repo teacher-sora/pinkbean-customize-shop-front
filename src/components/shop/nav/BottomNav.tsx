@@ -4,10 +4,10 @@
 // 모바일은 부위 · 광장 분류를 하단이 아니라 목록 머리 첫 줄(CatTabsM · PlazaTabsM)에 둔다 — 하단 탭 바와 붙어 있어 잘못 눌렸다(사용자 지시).
 
 import clsx from 'clsx'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { PLAZA_FILTERS, type PlazaFilter } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
-import { setScrollFrozen, useBarHidden, useNavHidden } from '@/lib/scrollHide'
+import { installScrollLink, setScrollFrozen } from '@/lib/scrollHide'
 import { IconTab } from '../ui/Icons'
 import { useWheelRail } from '../ui/useWheelRail'
 import styles from './nav.module.css'
@@ -58,43 +58,18 @@ export function PlazaTabsM() {
   return <TabsM label="분류" items={PLAZA_FILTERS} on={s.plazaFilter} pick={(id) => s.setPlazaFilter(id as PlazaFilter)} />
 }
 
-// 모바일 부위 · 분류 줄과 목록 머리를 묶어 붙은 미리보기 바로 아래에 붙인다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
-// 맨 위까지 올리지 않게). 내리는 동안은 미리보기 뒤로 숨고, 위로 올릴 때만 나온다(lib/scrollHide — 하단 탭과 같은 움직임, 바닥 규칙은 없다).
-// 숨는 것은 붙어 있을 때만이다(제자리 — 맨 위 근처 — 에서 숨기면 그 자리가 비어 보인다): 바로 앞의 빈 표시가 미리보기 밑으로 들어갔는가로 잰다.
-// 안에 입력이 잡혀 있거나 펼친 칸(보기 설정 팝박스)이 열려 있으면 숨지 않는다(.barM:focus-within · :has([aria-expanded])) — 자판이 뜨거나 고르려고 화면이 움직여도 남는다.
-// data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다(숨어 있으면 미리보기 뒤라 그만큼 빠진다)
+// 모바일 부위 · 분류 줄과 목록 머리를 묶어 미리보기 바로 아래에 붙인다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
+// 맨 위까지 올리지 않게). 내린 만큼 미리보기 뒤로 들어가고 올린 만큼 나온다(lib/scrollHide — 맨 위 헤더 · 하단 탭과 같은 스크롤 연결).
+// 붙는 틀(.barM)은 가만히 두고 안의 내용(data-sticky-top)만 움직인다. data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
 export function StickyBarM({ children }: { children: React.ReactNode }) {
-  const hidden = useBarHidden()
-  const mark = useRef<HTMLDivElement | null>(null)
-  const [stuck, setStuck] = useState(false)
-  useEffect(() => {
-    let raf = 0
-    const m = () => {
-      raf = 0
-      const hero = document.querySelector<HTMLElement>('[data-hero]'), el = mark.current
-      if (!hero || !el) return
-      const on = getComputedStyle(hero).position === 'sticky' && el.getBoundingClientRect().top < hero.getBoundingClientRect().bottom - 0.5
-      setStuck((p) => (p === on ? p : on))
-    }
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(m) }
-    m()
-    window.addEventListener('scroll', onScroll, { passive: true }); window.addEventListener('resize', onScroll)
-    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); if (raf) cancelAnimationFrame(raf) }
-  }, [])
-  return (
-    <>
-      <div ref={mark} aria-hidden className={styles.barMark} />
-      {/* 붙는 틀(.barM)은 가만히 두고 안의 내용(.barIn)만 움직인다 — 붙은 요소 자체를 움직이면 아이폰 사파리가 스크롤 중에 전환을 건너뛰어 갑자기 나타났다(사용자 지적) */}
-      <div className={clsx(styles.barM, hidden && stuck && styles.barHide)}><div data-sticky-top className={styles.barIn}>{children}</div></div>
-    </>
-  )
+  return <div className={styles.barM}><div data-sticky-top className={styles.barIn}>{children}</div></div>
 }
 
 export default function BottomNav({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const railRef = useWheelRail()
   const navRef = useRef<HTMLElement | null>(null)
-  const navHidden = useNavHidden() && mobile
+  useEffect(() => (mobile ? installScrollLink() : undefined), [mobile]) // 헤더 · 미리보기 · 머리 묶음 · 하단 탭이 스크롤한 만큼 숨고 나온다(lib/scrollHide)
   useEffect(() => { setScrollFrozen(!!s.surface) }, [s.surface]) // 창이 떠 있는 동안 숨김 상태를 그대로(lib/scrollHide)
   // 코디 광장은 부위 대신 광장 분류(전체·대회·내 등록·찜한 코디)를 쓴다. 항목이 4개뿐이라 양끝 페이드는 끈다
   // (요소는 그대로 두고 opacity 만 0 — 탭을 오갈 때 전환이 끊기지 않게).
@@ -117,7 +92,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
     // 부위 · 광장 분류는 목록 머리 위(CatTabsM · PlazaTabsM)에 있다(사용자 지시) — 모바일 하단은 탭 바만
     return (
       <>
-        <nav ref={navRef} data-hero-below className={clsx(styles.tabNavM, navHidden && styles.tabNavHide)} aria-label="메뉴">
+        <nav ref={navRef} data-hero-below className={styles.tabNavM} aria-label="메뉴">
           {TABS.map((t) => {
             const on = s.primary === t.id
             return (
