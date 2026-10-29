@@ -6,7 +6,7 @@
 import clsx from 'clsx'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
-import { ITEM_KINDS, MOBILE_GRID } from '@/lib/shopData'
+import { MOBILE_GRID } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
@@ -40,7 +40,7 @@ const scrollIdx = (vp: HTMLElement, y: boolean) => {
   return Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / n)) / n)
 }
 
-// 한번 정해 두고 쓰는 보기 값들(목록 = 보기 · 성별 · 방향 · 필터 — 어느 폭이든, 코디 룩북 · 광장 = 모바일 · 절반 · 태블릿)을 버튼 하나에 접어 둔다.
+// 한번 정해 두고 쓰는 보기 값들(목록 = 보기 · 성별 · 방향 — 어느 폭이든, 코디 룩북 · 광장 = 모바일 · 절반 · 태블릿)을 버튼 하나에 접어 둔다.
 // 누르면 버튼 아래에 묶음들이 펼쳐진다. 왜: 늘 펼쳐 두느라 목록 머리가 두 줄이었다(쪽 번호 · 검색은 매번 쓰는 것이라 그대로 내놓는다).
 // 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(이어서 고를 수 있게).
 // 같은 부품을 코디 룩북 머리도 쓴다(combo/ComboPanel — 사용자 지시: 같은 역할은 부품 하나)
@@ -221,7 +221,6 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     { label: '보기', title: '아이템을 무엇에 입혀서 볼지', opts: viewOpts, value: thumbs.mode, onPick: s.setListMode },
     { label: '성별', title: '성별', opts: GENDERS, value: s.genderFilter, onPick: s.setGenderFilter },
     { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
-    { label: '필터', title: '아이템 거르기', opts: ITEM_KINDS, value: s.kindFilter, onPick: s.setKindFilter, set: s.kindFilter !== 'all' },
   ]
   const runAi = (q?: string) => { const t = (q ?? s.aiQ).trim(); if (!t) return; if (q !== undefined) s.setAiQ(q); s.runSearch(t) }
 
@@ -262,7 +261,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     </div>
   ) : (
     <div className={styles.header}>
-      {/* 보기 · 성별 · 방향 · 필터는 어느 폭이든 '보기 설정' 하나에 접어 둔다(사용자 지시) */}
+      {/* 보기 · 성별 · 방향은 어느 폭이든 '보기 설정' 하나에 접어 둔다(사용자 지시) */}
       <FilterM mobile={false} guide="listdir" groups={filterGroups} />
       <div className={styles.groupB}>
         {pageChip}
