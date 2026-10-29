@@ -11,7 +11,6 @@ import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, plazaContestClosed, ty
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
 import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, useMobileRows, type FilterGroup } from '../list/ListArea'
-import { comboExtraM } from '../combo/ComboPanel'
 import { MOBILE_GRID } from '@/lib/shopData'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconChevronLeft, IconChevronRight, IconClose, IconPlus, IconSearch } from '../ui/Icons'
@@ -32,9 +31,9 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
-  // 모바일은 목록과 같은 높이 규칙(붙은 미리보기 아래에 3줄 — ListArea useMobileRows). 화면이 낮아 바닥으로 받칠 때만 코디 룩북 분류에만 있는 줄
-  // (자주 쓴 염색 · 출처 — comboExtraM)을 더 잡는다. 분류 줄이 보일 만큼 올린 자리는 어느 분류든 페이지 안이라 분류를 바꿔도 화면이 끌려가지 않는다
-  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, true, CARD_FOOT_M, comboExtraM(), 14) // 14 = 코디 룩북 목록 칸의 좌우 여백(list.viewportM 7 × 2)
+  // 모바일은 목록과 같은 높이 규칙(붙은 미리보기 아래에 3줄 — ListArea useMobileRows). 코디 룩북 분류는 그 분류에만 있는 줄(자주 쓴 염색 · 출처)만큼
+  // 페이지가 더 길지만, 분류 줄이 보일 만큼 올린 자리는 어느 분류든 페이지 안이라 분류를 바꿔도 화면이 끌려가지 않는다
+  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, true, CARD_FOOT_M, 0, 14) // 14 = 코디 룩북 목록 칸의 좌우 여백(list.viewportM 7 × 2)
 
   // 모바일: 가로 스크롤 ↔ 페이지 인덱스 양방향 동기화(광장 뷰포트에도 따로 연결해야 인덱스가 멈추지 않는다).
   // 넘기는 방향은 목록과 같은 설정(ShopContext listDir — 사용자 지시: 광장에도). 세로면 PC 는 트랙이 위아래로, 모바일은 세로 스크롤 칸(한 쪽 = 한 화면 높이)

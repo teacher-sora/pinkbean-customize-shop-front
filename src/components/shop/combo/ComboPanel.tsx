@@ -36,18 +36,6 @@ const FIT_W = 0.55 // 카드 그림(PC): 캐릭터 높이 ≤ 칸 폭 × 0.55 �
 // 모바일 목록 칸 = 코디 탭 목록과 같은 맞춤(붙은 미리보기 아래에 3줄) · 같은 바닥 비율(CARD_RATIO_M — ListArea useMobileRows)
 const mobileRatio = (cols: number) => (cols >= 3 ? CARD_RATIO_M : 1.05)
 const mobileFoot = (cols: number) => (cols >= 3 ? CARD_FOOT_M : 0)
-// 모바일에서 목록 칸 밖에 코디 룩북만 더 있는 줄(자주 쓴 염색 묶음 · 구분선 · 출처 줄 — data-combo-extra)의 높이. 코디 광장의 다른 분류가 이만큼
-// 페이지를 더 잡아 분류를 바꿔도 아래가 밀리지 않는다(사용자 지시, PlazaPanel). 패널이 그려지면 잰 값으로 바꾼다(처음 값 = 실측 — 염색 묶음 82 + 위아래 여백 16 + 구분선 1 + 출처 위 구분선 1 + 출처 줄 26)
-let extraM = 126
-export const comboExtraM = () => extraM
-function useExtraM(ref: React.RefObject<HTMLDivElement | null>, mobile: boolean) {
-  useLayoutEffect(() => {
-    const col = ref.current?.closest('[data-mobile-col]')
-    if (!mobile || !col) return
-    const h = [...col.querySelectorAll<HTMLElement>('[data-combo-extra]')].reduce((n, el) => { const cs = getComputedStyle(el); return n + el.getBoundingClientRect().height + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom) }, 0)
-    if (h > 0) extraM = Math.round(h)
-  })
-}
 
 export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'codi' | 'plaza' }) {
   const s = useShop()
@@ -168,12 +156,11 @@ function useCountsMap(): Record<string, number> {
 function ComboEmpty({ mobile }: { mobile: boolean }) {
   const vpRef = useRef<HTMLDivElement | null>(null)
   useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), MOBILE_GRID.rows, true, mobileFoot(MOBILE_GRID.cols)) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 목록과 같은 3열 3줄)
-  useExtraM(vpRef, mobile)
   return (
     <>
       {mobile && <>
-        <div aria-hidden data-combo-extra className={clsx(styles.dyes, styles.dyesM, styles.hold)} style={{ '--dye-n': 3 } as React.CSSProperties}><DyeSkels n={3} mobile /></div>
-        <div aria-hidden data-combo-extra className={clsx(styles.dyesSep, styles.dyesSepM, styles.hold)} />
+        <div aria-hidden className={clsx(styles.dyes, styles.dyesM, styles.hold)} style={{ '--dye-n': 3 } as React.CSSProperties}><DyeSkels n={3} mobile /></div>
+        <div aria-hidden className={clsx(styles.dyesSep, styles.dyesSepM, styles.hold)} />
       </>}
       <div ref={vpRef} className={clsx(list.viewport, mobile && list.viewportM, styles.emptyWrap)}>{/* 모바일 목록 칸과 같은 좌우 여백 — 최소 높이를 같은 칸 폭으로 잰다 */}
         <div className={mobile ? list.emptyM : list.empty}>
@@ -191,8 +178,8 @@ function Credit({ mobile, hint }: { mobile: boolean; hint?: string }) {
   // 모바일은 목록과 출처 사이를 구분선으로 가른다(PC 는 힌트 바의 윗선)
   return (
     <>
-      {mobile && <div data-combo-extra className={list.hrM} />}
-      <div data-combo-extra={mobile || undefined} className={clsx(mobile ? styles.creditM : clsx('pb-hintbar', list.hintBar), styles.credit)}>
+      {mobile && <div className={list.hrM} />}
+      <div className={clsx(mobile ? styles.creditM : clsx('pb-hintbar', list.hintBar), styles.credit)}>
         {hint && !mobile && <span className={list.hintText}>{hint}</span>}
         <span className={list.hintText}>{NEXON_CREDIT}</span>
       </div>
@@ -347,7 +334,6 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
   // 모바일은 목록과 같은 높이 규칙(같은 훅). 2열(광장)은 카드가 넓어 바닥을 낮게 잡는다
   useMobileRows(vpRef, mobile, cols, mobileRatio(cols), MOBILE_GRID.rows, true, mobileFoot(cols))
-  useExtraM(vpRef, mobile)
   const live = useRef({ idx: cur, setIdx: s.setIdx, cols, rows })
   live.current = { idx: cur, setIdx: s.setIdx, cols, rows }
   useEffect(() => {
@@ -438,7 +424,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   return (
     <>
       {/* 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다) */}
-      {(dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div data-combo-extra className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>}
+      {(dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>}
       {viewport}
       <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
     </>
@@ -460,7 +446,7 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
   const openDye = (d: LookDye) => s.openDye(item, d.kind === 'palette' ? { pal: d.v } : { hsb: d.v })
   return (
     // 묶음(바탕 · 테두리 · 안쪽 여백)이 곧 가로 스크롤 칸이다 — 흐림이 칩이 아니라 묶음의 끝(안쪽 여백까지)에 붙는다(pinkbean-design: 칸의 안쪽 여백까지 덮는다, 염색 보관함과 같다)
-    <div ref={rail} data-combo-extra className={clsx('pb-norail', 'pb-fade', styles.dyes, mobile && styles.dyesM)} style={{ '--dye-n': n } as React.CSSProperties}>
+    <div ref={rail} className={clsx('pb-norail', 'pb-fade', styles.dyes, mobile && styles.dyesM)} style={{ '--dye-n': n } as React.CSSProperties}>
         {!dyes.length && <DyeSkels n={n} mobile={mobile} />}
         {dyes.map((d, i) => {
           const on = s.comboDye === i
