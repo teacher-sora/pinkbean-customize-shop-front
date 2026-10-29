@@ -20,7 +20,7 @@ function below(): HTMLElement[] {
   if (!col) return []
   const hero = col.querySelector('[data-hero]')
   // 가장자리 흐림 층(.pb-fadeov — 칸 바로 뒤에 붙는다)은 빼고 묶는다. 묶으면 층이 옛 자리에 굳어 보기를 바꿔도 남아 있었다.
-  const inPanel = [...col.querySelectorAll<HTMLElement>('[data-pb-panel] > *')].filter((el) => el !== hero && !el.classList.contains('pb-fadeov'))
+  const inPanel = [...col.querySelectorAll<HTMLElement>('[data-pb-panel] > *')].filter((el) => el !== hero && !(hero && el.contains(hero)) && !el.classList.contains('pb-fadeov'))
   const rest = [...col.querySelectorAll<HTMLElement>(':scope > [data-hero-below]')]
   return [...inPanel, ...rest].filter((el) => el.getClientRects().length)
 }

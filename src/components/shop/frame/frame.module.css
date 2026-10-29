@@ -37,7 +37,9 @@
 .toolSolid { display: flex; align-items: center; gap: 6px; height: 34px; margin-left: 4px; padding: 0 12px; border: none; background: light-dark(#ec86ac, #d15785); border-radius: 6px; font: inherit; font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#fff, #ececef); letter-spacing: -0.01em; cursor: pointer; white-space: nowrap; transition: background-color .22s ease; }
 
 /* ── 모바일 헤더 ── */
-.headerM { flex: 0 0 auto; position: sticky; top: 0; z-index: 32; background: light-dark(#fff, #303238); height: 46px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
+/* 맨 위 헤더 자리 틀 — 안의 헤더는 스크롤에 붙어 움직인다(lib/scrollHide: 움직이는 동안 페이지에 박아 두고, 멈추면 화면에 고정) */
+.headerSlotM { flex: 0 0 auto; height: var(--pb-hdr-h); }
+.headerM { flex: 0 0 auto; background: light-dark(#fff, #303238); height: 46px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
 .logoBoxM { display: flex; align-items: center; gap: 7px; }
 .logoImgM { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
 .logoTextM { font-size: calc(15rem / 16); font-weight: 700; background: linear-gradient(100deg,light-dark(#ec86ac, #d15785),light-dark(#c98fe0, #a763c3)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
@@ -67,3 +69,6 @@
    300 이하(폴드 1 · 2 바깥 화면 280)는 로고 글자도 뺀다 */
 @media (max-width: 359px) { .btnLabelM { display: none; } .rateBtnM, .copyBtnM { padding: 0 8px; } }
 @media (max-width: 300px) { .logoTextM { display: none; } }
+/* 미리보기 자리 틀(PinkbeanShop) — 안의 미리보기는 스크롤에 붙어 움직인다. 캐릭터만 보기는 붙이지 않아 제 높이를 따른다 */
+.heroSlotM { flex: 0 0 auto; height: var(--pb-hero-h); }
+:global(html[data-pb-view='full']) .heroSlotM { height: auto; }

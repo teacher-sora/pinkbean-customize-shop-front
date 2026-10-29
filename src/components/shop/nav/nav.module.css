@@ -28,9 +28,8 @@
 /* 내린 만큼 화면 아래로 숨고 올린 만큼 나온다 — 위치는 lib/scrollHide 가 transform 으로 매 프레임 적는다(전환 없음) */
 /* 붙은 머리 묶음(BottomNav StickyBarM — 부위 · 분류 줄 + 목록 머리). 맨 위 헤더 + 미리보기(z 31) 바로 아래에 붙고, 내린 만큼 미리보기 뒤로 들어간다
    (위치는 lib/scrollHide 가 안의 내용에 적는다). 틀은 누르기를 통과시키고 안의 내용만 받는다. z 30 = 아래 칸 위(보기 설정 팝박스는 이 안에서 뜬다) */
-.barM { flex: 0 0 auto; position: sticky; top: calc(var(--pb-hdr-h) + var(--pb-hero-h)); z-index: 30; pointer-events: none; }
-.barIn { pointer-events: auto; background: light-dark(#fff, #303238); }
-:global(html[data-pb-view='full']) .barM { position: relative; }
+.barM { flex: 0 0 auto; position: relative; } /* 자리 틀 — 높이는 안의 내용 높이(lib/scrollHide 가 적는다) */
+.barIn { background: light-dark(#fff, #303238); }
 /* 아이콘 아래에 짧은 이름을 단다 — 아이콘만으로는 눌러 봐야 무엇인지 안다. 높이는 그대로(56px) */
 .tabM { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: none; border-top: 2px solid transparent; background: transparent; cursor: pointer; color: light-dark(#c3b9ad, #7e828d); }
 .tabMLabel { max-width: 100%; font-size: calc(10rem / 16); font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: light-dark(#8a8075, #9fa2aa); }

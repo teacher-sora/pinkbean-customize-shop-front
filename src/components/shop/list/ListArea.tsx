@@ -117,7 +117,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
       const nav = col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')?.offsetHeight ?? 0
       const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom - nav
-      const fit = hero && getComputedStyle(hero).position === 'sticky' ? lvh.offsetHeight - base.offsetHeight - below : 0
+      const fit = hero && document.documentElement.getAttribute('data-pb-view') !== 'full' ? lvh.offsetHeight - base.offsetHeight - below : 0
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
       const page = Math.ceil(Math.max(floor, fit)) + 'px' // 한 쪽(목록 칸) 높이 — 세로 넘기기에서 페이지 스크롤로 쪽을 쌓을 때(useWindowPagerY)
