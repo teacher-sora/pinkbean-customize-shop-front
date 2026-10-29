@@ -4,7 +4,7 @@
 // 모바일은 부위 · 광장 분류를 하단이 아니라 목록 머리 첫 줄(CatTabsM · PlazaTabsM)에 둔다 — 하단 탭 바와 붙어 있어 잘못 눌렸다(사용자 지시).
 
 import clsx from 'clsx'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PLAZA_FILTERS, type PlazaFilter } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import { IconTab } from '../ui/Icons'
@@ -58,9 +58,10 @@ export function PlazaTabsM() {
 }
 
 // 모바일 하단 탭 숨기기(사용자 지시 — 유튜브의 아래 탭처럼): 페이지를 아래로 내리면 화면 아래로 숨고, 위로 올리면 다시 나온다.
-// 맨 위 · 맨 아래(탭이 제자리에 닿는 곳)에서는 늘 보인다. 문서 스크롤만 본다(목록 안 가로 · 세로 넘기기는 해당 없음). 움직임은 transform 뿐(nav.module.css .tabNavHide)
+// 맨 위에서, 그리고 맨 아래까지 탭 높이만큼 남은 곳부터는 늘 보인다 — 맨 아래에 닿아야 나오면 탭 자리 위의 것(코디 정보 / 염색의 아래 칸)을
+// 누르려는데 내리던 끝에 탭이 사라져 있어 곤란했다(사용자 지적). 문서 스크롤만 본다(목록 안 가로 · 세로 넘기기는 해당 없음). 움직임은 transform 뿐(nav.module.css .tabNavHide)
 const HIDE_DELTA = 8 // 이만큼 이어서 움직여야 바꾼다(손가락 떨림 · 주소창 접힘으로 깜빡이지 않게)
-function useHideOnScroll(on: boolean): boolean {
+function useHideOnScroll(on: boolean, navRef: React.RefObject<HTMLElement | null>): boolean {
   const [hidden, setHidden] = useState(false)
   useEffect(() => {
     if (!on) { setHidden(false); return }
@@ -69,7 +70,7 @@ function useHideOnScroll(on: boolean): boolean {
       raf = 0
       const y = window.scrollY, d = y - last
       last = y
-      const end = y + window.innerHeight >= document.documentElement.scrollHeight - 2
+      const end = y + window.innerHeight >= document.documentElement.scrollHeight - (navRef.current?.offsetHeight ?? 0) - 2
       if (y <= 0 || end) { acc = 0; setHidden(false); return }
       acc = Math.sign(d) === Math.sign(acc) ? acc + d : d
       if (acc > HIDE_DELTA) setHidden(true)
@@ -78,14 +79,15 @@ function useHideOnScroll(on: boolean): boolean {
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(check) }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf) }
-  }, [on])
+  }, [on, navRef])
   return hidden
 }
 
 export default function BottomNav({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const railRef = useWheelRail()
-  const navHidden = useHideOnScroll(mobile)
+  const navRef = useRef<HTMLElement | null>(null)
+  const navHidden = useHideOnScroll(mobile, navRef)
   // 코디 광장은 부위 대신 광장 분류(전체·대회·내 등록·찜한 코디)를 쓴다. 항목이 4개뿐이라 양끝 페이드는 끈다
   // (요소는 그대로 두고 opacity 만 0 — 탭을 오갈 때 전환이 끊기지 않게).
   const plaza = s.primary === 'share'
@@ -107,7 +109,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
     // 부위 · 광장 분류는 목록 머리 위(CatTabsM · PlazaTabsM)에 있다(사용자 지시) — 모바일 하단은 탭 바만
     return (
       <>
-        <nav data-hero-below className={clsx(styles.tabNavM, navHidden && styles.tabNavHide)} aria-label="메뉴">
+        <nav ref={navRef} data-hero-below className={clsx(styles.tabNavM, navHidden && styles.tabNavHide)} aria-label="메뉴">
           {TABS.map((t) => {
             const on = s.primary === t.id
             return (

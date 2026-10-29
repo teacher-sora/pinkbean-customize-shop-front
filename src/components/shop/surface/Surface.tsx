@@ -7,6 +7,7 @@
  *    제외 = 글자 입력·슬라이더·점 위치 캔버스. 안쪽 스크롤이 맨 위가 아니면 먼저 스크롤한다. 손 뗀 최종 위치로만 판정.
  *    ⚠️ 포인터 이벤트는 브라우저가 세로 팬을 가져가며 pointercancel 로 끊겨(핸들만 동작하던 버그), 비수동(passive:false)
  *    touchmove 에서 "아래로·스크롤 맨 위"일 때만 preventDefault 로 제스처를 가져온다. 드래그 중 이동은 DOM 직접 갱신.
+ *    단추에서 시작해 24px 안에서 뗀 끌기는 그 단추의 누름이다(가져간 제스처라 브라우저가 click 을 만들지 않는다 — 닫기가 가끔 무시됐다).
  *  - 마스크는 누름(pointerdown)·뗌(pointerup)이 둘 다 마스크일 때만 닫힘. click 으로 판정하면 마스크에서 눌러 패널에서
  *    떼도 click 대상이 공통 조상(마스크)이 되어 닫히므로 쓰지 않는다. 8px 넘게 움직였거나 드래그 직후 400ms 는 무시.
  *  - 등장은 마운트 후 한 프레임 뒤, 닫힘은 대칭 곡선 후 320ms 뒤 언마운트(ShopContext).
@@ -102,7 +103,12 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   useEffect(() => {
     const layer = overlayRef.current
     if (!mobile || !layer) return
-    let st: { x: number; y: number; baseY: number; mode: 'y' | 'skip' | null; threshold: number; scroller: HTMLElement | null; dist: number } | null = null
+    let st: { x: number; y: number; baseY: number; lastY: number; mode: 'y' | 'skip' | null; threshold: number; scroller: HTMLElement | null; dist: number; btn: HTMLElement | null } | null = null
+    // 단추를 누르다 손가락이 아래로 밀려 끌기로 바뀌면 브라우저가 click 을 만들지 않아 누름이 사라졌다(닫기가 가끔 무시된다 — 사용자 지적,
+    // 실측: 12px 넘게 밀리면 click 이 없다). 단추에서 시작해 TAP_MAX 안에서 뗀 끌기는 누름으로 보고 그 단추를 한 번 누른다.
+    // 브라우저 click 이 뒤늦게 오면(조금만 밀린 경우) 버려 두 번 눌리지 않게 한다(tapUntil 동안 isTrusted click 을 버린다).
+    const TAP_MAX = 24
+    let tapUntil = 0
     // 시작점에서 패널까지 올라가며 실제로 세로 스크롤 가능한 조상을 찾는다.
     const scrollerOf = (el: HTMLElement | null) => {
       for (let n = el; n && n !== layer; n = n.parentElement) {
@@ -116,7 +122,8 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
       if (t.closest?.('input, textarea, select, .pb-slider, .pb-range, .pb-ddmenu, [data-no-sheet-drag]')) { st = null; return }
       const onHandle = !!t.closest?.('[data-sheet-handle]')
       const p = e.touches[0]
-      st = { x: p.clientX, y: p.clientY, baseY: p.clientY, mode: null, threshold: onHandle ? 56 : 70, scroller: onHandle ? null : scrollerOf(t), dist: 0 }
+      const btn = t.closest?.('button, [role=button], a') as HTMLElement | null
+      st = { x: p.clientX, y: p.clientY, baseY: p.clientY, lastY: p.clientY, mode: null, threshold: onHandle ? 56 : 70, scroller: onHandle ? null : scrollerOf(t), dist: 0, btn: btn && layer.contains(btn) ? btn : null }
     }
     const onMove = (e: TouchEvent) => {
       if (!st || st.mode === 'skip') return
@@ -130,23 +137,31 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
         st.baseY = p.clientY // 판정 거리만큼 튀지 않게
       }
       if (e.cancelable) e.preventDefault()
+      st.lastY = p.clientY
       st.dist = Math.max(0, p.clientY - st.baseY)
       const el = panelRef.current
       if (el) { el.style.transition = 'transform 0s'; el.style.transform = `translateY(${st.dist}px)` }
     }
     const onEnd = () => {
       if (!st) return
-      const { mode, dist, threshold } = st
+      const { mode, dist, threshold, btn, y, lastY } = st
       st = null
       if (mode !== 'y') return
-      dragRef.current.draggedAt = Date.now()
       const el = panelRef.current
       if (el) el.style.transition = EASE
+      if (btn && lastY - y < TAP_MAX) {
+        if (el) el.style.transform = 'translateY(0px)'
+        tapUntil = Date.now() + 400
+        btn.click()
+        return
+      }
+      dragRef.current.draggedAt = Date.now()
       if (dist > threshold) s.closeSurface() // 닫힘은 React 가 translateY(100%)로
       else if (el) el.style.transform = 'translateY(0px)'
     }
     // 드래그 직후의 클릭(버튼 위에서 시작한 경우 등)은 무시.
     const onClickCapture = (e: MouseEvent) => {
+      if (e.isTrusted && Date.now() < tapUntil) { tapUntil = 0; e.stopPropagation(); e.preventDefault(); return }
       if (dragRef.current.draggedAt && Date.now() - dragRef.current.draggedAt < 400) { e.stopPropagation(); e.preventDefault() }
     }
     layer.addEventListener('touchstart', onStart, { passive: true })
