@@ -395,7 +395,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   }
 
   const viewport = (
-    <div ref={setVp} data-handoff className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
+    <div ref={setVp} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
       {failed || (first && !first.ready) ? (
         <div className={mobile ? list.emptyM : list.empty}>
           <span className={mobile ? list.emptyTitleM : list.emptyTitle}>코디를 불러오지 못했어요</span>

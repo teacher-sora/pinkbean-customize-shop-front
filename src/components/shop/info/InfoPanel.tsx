@@ -166,7 +166,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
         <CatTabsM jump />
         <div className={styles.headerM}>{chip}<div className={styles.right}>{share}</div></div>
         <div className={styles.hrM} />
-        <div data-handoff className={clsx('pb-scroll', 'pb-norail', 'pb-fade', styles.scrollM)}>
+        <div className={clsx('pb-scroll', 'pb-norail', 'pb-fade', styles.scrollM)}>
           <div ref={slotsRef}>{grid}</div>
         </div>
       </>

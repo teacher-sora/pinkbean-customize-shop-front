@@ -47,7 +47,8 @@
    움직일 수 없어 같은 몸짓이 탭마다 다르게 먹는다. */
 /* 세로로 넘기기(listDir 'y' — 목록과 같은 값): PC 는 세로 끌기를 잡도록 가로만 브라우저에, 모바일은 세로 스크롤 칸(cqh = 이 칸 높이 → 쪽 높이가 한 화면) */
 .viewportY { touch-action: pan-x pinch-zoom; }
-.viewportMY { overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y pinch-zoom; container-type: size; }
+/* 위 · 아래 끝에서 더 밀면 페이지가 이어 움직인다(브라우저 기본 이어받기 — 사용자 지시: 칸이 끝나도 튕기기만 해서 페이지를 내리기 어려웠다). 가로는 막아 둔다 */ 
+.viewportMY { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain auto; touch-action: pan-y pinch-zoom; container-type: size; }
 .pageMY { position: absolute; left: 0; width: 100%; height: 100cqh; padding: 10px 12px; overflow: hidden; }
 .viewportM { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; container-type: inline-size; }
 .track { position: relative; height: 100%; width: 100%; will-change: transform; }
