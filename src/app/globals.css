@@ -312,10 +312,13 @@ html[data-pb-link] [data-pb-wrap] { position: sticky; pointer-events: none; }
 html[data-pb-link] [data-pb-track] > [data-app-header], html[data-pb-link] [data-pb-wrap] > [data-hero], html[data-pb-link] [data-pb-wrap] > [data-sticky-top] { position: sticky; pointer-events: auto; }
 html[data-pb-link] [data-pb-track] > [data-app-header], html[data-pb-link] [data-pb-wrap] > [data-hero] { top: 0; }
 /* 숨을수록 흐려지고, 하단 탭은 머리 묶음과 함께 아래로 숨는다 — 스크롤 타임라인(구간은 코드가 기준점으로 적는다). 없으면 코드가 적는다 */
+/* 페이지 끝에서 탭 자리가 보이면 탭은 제자리(일반 배치)로 — 내용과 함께 올라온다(lib/scrollHide navRest) */
+html[data-pb-link] [data-mobile-col] > nav[data-pb-navrest] { position: relative; }
 @keyframes pb-link-fade { to { opacity: 0; } }
 @keyframes pb-link-nav { to { translate: 0 100%; opacity: 0; } }
 @supports (animation-timeline: scroll()) and (animation-range: 0px 1px) {
   html[data-pb-link] [data-pb-track] > [data-app-header], html[data-pb-link] [data-pb-wrap] > [data-sticky-top] { animation: pb-link-fade linear both; animation-timeline: scroll(root block); }
   html[data-pb-link] [data-mobile-col] > nav[data-hero-below] { animation: pb-link-nav linear both; animation-timeline: scroll(root block); }
+  html[data-pb-link] [data-mobile-col] > nav[data-pb-navrest] { animation: none; }
   html[data-pb-freeze] [data-app-header], html[data-pb-freeze] [data-sticky-top], html[data-pb-freeze] [data-mobile-col] > nav[data-hero-below] { animation-play-state: paused; }
 }

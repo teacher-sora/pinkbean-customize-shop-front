@@ -17,7 +17,7 @@ const SNAP_IDLE = 90 // 손을 떼고 스크롤이 이만큼 멈추면 끝까지
 const DIR_MIN = 2 // 이보다 작은 움직임은 방향으로 치지 않는다(손가락 떨림)
 const BAND = 160 // A 가 머무는 구간 밖으로 이만큼 벌어지면 당긴다(방향이 바뀌면 바로)
 type Els = { col: HTMLElement; hT: HTMLElement | null; hdr: HTMLElement | null; eT: HTMLElement; eW: HTMLElement; hero: HTMLElement; bS: HTMLElement | null; bT: HTMLElement | null; bW: HTMLElement | null; bar: HTMLElement | null; nav: HTMLElement | null }
-const D = { colTop: 0, hH: 0, heroH: 0, bH: 0, slot: 0, nH: 0, room: 0, keep: false, Zmax: 0 }
+const D = { colTop: 0, hH: 0, heroH: 0, bH: 0, slot: 0, nH: 0, room: 0, keep: false, Zmax: 0, max: 0 }
 let installed = 0, frozen = false, last = 0, A = 0, dir = 0, pullDir = 0, touching = false, idle = 0, snapping = false, raf = 0
 let E: Els | null = null, ro: ResizeObserver | null = null, mo: MutationObserver | null = null, roTargets: Element[] = []
 const timeline = typeof CSS !== 'undefined' && CSS.supports('animation-timeline: scroll()') && CSS.supports('animation-range: 0px 1px')
@@ -52,6 +52,7 @@ function measure() {
   if (bS && bar) set(bS, 'height', px(D.bH)) // 자리 틀이 원래 높이를 잡아 둔다(안의 내용은 칸에 떠 있다)
   D.slot = bS ? bS.getBoundingClientRect().top + y - colTop : 0
   D.nH = nav?.offsetHeight ?? 0
+  D.max = Math.max(0, root().scrollHeight - window.innerHeight)
   D.room = Math.max(400, window.innerHeight) // 안쪽 sticky 가 바닥에 머무를 여유(A 를 당기는 BAND 보다 넉넉히)
   D.keep = keepBar(bar)
   for (const t of [hT, eT, bT]) trackTop(t, colTop, y)
@@ -69,11 +70,22 @@ function write() {
     set(bT, 'height', px(A + slot + bH + room)); set(bW, 'top', px(slot)); set(bW, 'height', px(bH + room))
     set(bar, 'top', px(keep ? heroH : heroH - bH)) // 숨지 않을 때는 미리보기 바로 아래에서 멈춘다
   }
+  navRest(Math.min(Math.max(0, pos() - D.colTop - A), D.Zmax))
   if (!timeline) { paint(); return }
   const y0 = D.colTop + A, barOn = D.Zmax > hH
   set(hdr, 'animation-range', `${px(y0)} ${px(y0 + Math.max(1, hH))}`)
   if (bar) set(bar, 'animation-range', barOn ? `${px(y0 + hH)} ${px(y0 + D.Zmax)}` : '10000000px 10000001px') // 숨지 않으면 구간을 멀리 빼 늘 보인다
   set(nav, 'animation-range', barOn ? `${px(y0 + hH)} ${px(y0 + D.Zmax)}` : `${px(y0)} ${px(y0 + Math.max(1, hH))}`)
+}
+// 하단 탭이 숨은 비율(0 ~ 1) — 머리 묶음이 숨는 구간(없으면 헤더 구간)을 따른다
+function navF(Z: number) { const { hH, Zmax } = D; return Zmax > hH ? Math.max(0, Z - hH) / (Zmax - hH) : hH ? Math.min(Z, hH) / hH : 0 }
+// 페이지 끝: 탭 자리가 화면에 들어온 만큼은 숨기지 않는다(숨기면 빈 자리가 비어 보인다). 숨은 탭보다 제자리가 위면 탭을 제자리(일반 배치)로 돌린다
+//  — 그 구간도 내용과 함께 브라우저가 움직인다. 바뀌는 순간 두 자리가 같아 티가 나지 않는다
+function navRest(Z: number) {
+  const nav = E?.nav
+  if (!nav) return
+  const rest = D.max - pos() < navF(Z) * D.nH
+  if (rest !== nav.hasAttribute('data-pb-navrest')) nav.toggleAttribute('data-pb-navrest', rest)
 }
 // 스크롤 타임라인이 없을 때만: 흐려짐 · 하단 탭을 코드로 적는다
 function paint() {
@@ -84,7 +96,7 @@ function paint() {
   set(hdr, 'opacity', op(hH ? 1 - hO / hH : 1))
   if (bar) set(bar, 'opacity', op(Zmax > hH ? 1 - bO / (Zmax - hH) : 1))
   if (nav) {
-    const f = Zmax > hH ? bO / (Zmax - hH) : hH ? hO / hH : 0
+    const f = nav.hasAttribute('data-pb-navrest') ? 0 : navF(Z)
     set(nav, 'transform', f > 0 ? `translate3d(0, ${(f * D.nH).toFixed(1)}px, 0)` : ''); set(nav, 'opacity', op(1 - f))
   }
 }
@@ -99,7 +111,8 @@ function tick() {
   // A 를 머무는 구간 [s − Zmax, s] 쪽으로 당긴다 — 다 나왔거나 다 숨은 동안만 벌어지므로 화면은 그대로다
   const s = y - D.colTop, nA = Math.min(Math.max(A, Math.max(0, s - D.Zmax)), Math.max(0, s))
   if (nA !== A && (Math.abs(nA - A) > BAND || (dir && dir !== pullDir))) { A = nA; pullDir = dir; write() }
-  else if (!timeline) paint()
+  navRest(Math.min(Math.max(0, s - A), D.Zmax))
+  if (!timeline) paint()
 }
 // 손을 떼고 멈추면 중간에 걸친 것을 끝까지 붙인다 — 마지막으로 움직인 방향으로(조금만 움직여도 끝까지). 페이지 스크롤로 민다
 function snap() {
@@ -117,10 +130,12 @@ function snap() {
 const armSnap = () => { window.clearTimeout(idle); idle = window.setTimeout(snap, SNAP_IDLE) }
 const onScroll = () => { if (frozen) return; if (!raf) raf = requestAnimationFrame(tick); armSnap() }
 const onDown = () => { touching = true; window.clearTimeout(idle) }
+// 머리 묶음에 포커스가 들어오고 나가거나 펼친 칸이 열리고 닫히면 숨김 여부(keep)를 다시 본다 — 스크롤이 없어도
+const onFocus = () => { if (!raf) raf = requestAnimationFrame(tick) }
 const onUp = () => { touching = false; armSnap() }
 // 크기가 바뀌면(보기 설정 · 줄 바꿈 · 탭 전환) 다시 잰다
 function watch() {
-  const next = E ? [E.hdr, E.hero, E.bar, E.nav].filter((el): el is HTMLElement => !!el) : []
+  const next = E ? [E.col, E.hdr, E.hero, E.bar, E.nav].filter((el): el is HTMLElement => !!el) : []
   if (next.length === roTargets.length && next.every((el, i) => el === roTargets[i])) return
   ro?.disconnect(); roTargets = next
   for (const el of next) ro?.observe(el)
@@ -138,16 +153,18 @@ export function installScrollLink(): () => void {
     window.addEventListener('touchstart', onDown, { passive: true })
     window.addEventListener('touchend', onUp, { passive: true })
     window.addEventListener('touchcancel', onUp, { passive: true })
+    for (const t of ['focusin', 'focusout', 'click'] as const) document.addEventListener(t, onFocus, true)
     measure()
   }
   return () => {
     if (--installed) return
     window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', refreshScrollLink)
     window.removeEventListener('touchstart', onDown); window.removeEventListener('touchend', onUp); window.removeEventListener('touchcancel', onUp)
+    for (const t of ['focusin', 'focusout', 'click'] as const) document.removeEventListener(t, onFocus, true)
     window.clearTimeout(idle); if (raf) cancelAnimationFrame(raf); raf = 0
     ro?.disconnect(); mo?.disconnect(); ro = mo = null; roTargets = []
     root().removeAttribute('data-pb-link'); root().removeAttribute('data-pb-freeze')
-    if (E) { for (const el of [E.hdr, E.bar, E.nav]) if (el) for (const k of ['opacity', 'transform', 'animation-range']) el.style.removeProperty(k) }
+    if (E) { for (const el of [E.hdr, E.bar, E.nav]) if (el) for (const k of ['opacity', 'transform', 'animation-range']) el.style.removeProperty(k); E.nav?.removeAttribute('data-pb-navrest') }
     E = null
   }
 }
