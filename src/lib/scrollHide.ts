@@ -7,13 +7,14 @@ import { RELAYOUT_EVENT } from './heroView'
 //  · 움직임은 스크롤 방향만 본다: 같은 방향으로 DIR_MIN 넘게 움직이면 내리면 접히고(탭은 숨고) 올리면 펼쳐진다. 위치는 브라우저의 전환(globals.css)이 그린다 —
 //    코드는 방향이 바뀌는 순간 html[data-pb-up] · nav[data-pb-navhide] 만 바꾼다. 왜: 스크롤한 만큼 따라 움직이게 했더니(코드가 매 프레임 위치를 적었다)
 //    아이폰에서 30프레임처럼 끊겨 보였고, 손을 떼면 끝까지 붙이려 페이지를 밀던 것도 어색했다(사용자 지적).
-//  · 맨 위 근처(접힐 높이 = 헤더 + 분류 줄만큼 내려가기 전)는 늘 펼친다 — 접으면 그 자리(아래의 빈 자리 틀)가 비어 보인다.
+//  · 스크롤이 어디 있든 방향만 본다(사용자 지시 — 맨 위 근처는 늘 펼치게 했더니 짧은 페이지에서는 끝에 닿아야만 접혔다).
+//  · 스크롤 위치는 범위 안으로 잘라 읽는다 — 아이폰이 끝에서 튕겼다 돌아오는 것을 '올림'으로 읽어 바로 다시 펼쳤다(사용자 지적).
 // 스크롤은 두 가지다. 페이지 스크롤(코디 정보 / 염색 · 가로 목록): 자리 틀(.headerSlotM · .heroSlotM · .barM)이 원래 높이를 잡고, 떠 있는 것은 그 위에 겹친다.
 // 목록 칸 안 스크롤(세로 목록 · 광장 · 룩북 · 프리셋 — data-pb-iscroll, html[data-pb-inner]): 페이지는 화면 높이로 서 있고, 칸이 미리보기 자리 바로 아래부터
 // 화면 끝까지다. 칸 위 여백(--pb-ipad)이 펼친 머리들의 높이라 맨 위는 가려지지 않는다.
 const DIR_MIN = 2 // 같은 방향으로 이보다 적게 움직이면 방향으로 치지 않는다(손가락 떨림)
 type Els = { col: HTMLElement; is: HTMLElement | null; hT: HTMLElement | null; hdr: HTMLElement | null; eT: HTMLElement; hero: HTMLElement; bS: HTMLElement | null; bT: HTMLElement | null; bar: HTMLElement | null; nav: HTMLElement | null }
-let installed = 0, frozen = false, raf = 0, last = 0, acc = 0, foldAt = 0, up = false, navHid = false
+let installed = 0, frozen = false, raf = 0, last = 0, acc = 0, up = false, navHid = false
 let E: Els | null = null, ro: ResizeObserver | null = null, mo: MutationObserver | null = null, roTargets: Element[] = []
 const root = () => document.documentElement
 const q = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)
@@ -26,7 +27,11 @@ function find(): Els | null {
   const bT = q('[data-pb-track="bar"]')
   return { col, is: col.querySelector<HTMLElement>('[data-pb-iscroll]'), hT: q('[data-pb-track="hdr"]'), hdr: q('[data-app-header]'), eT, hero, bS: bT?.parentElement ?? null, bT, bar: q('[data-sticky-top]'), nav: q('[data-mobile-col] > nav[data-hero-below]') }
 }
-const scrollPos = () => Math.max(0, E?.is ? E.is.scrollTop : window.scrollY)
+const scrollPos = () => {
+  const is = E?.is, d = root()
+  const v = is ? is.scrollTop : window.scrollY, max = is ? is.scrollHeight - is.clientHeight : d.scrollHeight - window.innerHeight
+  return Math.min(Math.max(0, v), Math.max(0, max))
+}
 // 잰 값(높이 · 자리)으로 떠 있는 것들의 자리를 적는다 — 크기가 바뀔 때만 부른다(매 프레임이 아니다)
 function measure() {
   E = find()
@@ -38,7 +43,6 @@ function measure() {
   if (changed) root().toggleAttribute('data-pb-inner', inner)
   const hH = hdr?.offsetHeight ?? 0, heroH = hero.offsetHeight, bH = bar?.offsetHeight ?? 0
   const cH = bar?.querySelector<HTMLElement>('[data-pb-cat]')?.offsetHeight ?? 0
-  foldAt = hH + cH
   if (bS && bar) { const h = px(inner ? 0 : bH); if (bS.style.height !== h) bS.style.height = h } // 페이지 스크롤에서는 자리 틀이 원래 높이를 잡는다
   // 떠 있는 자리 = 펼친 때 자리 틀의 자리(틀 위 기준). 목록 칸 안 스크롤에서는 헤더 · 머리 묶음 자리가 비어 미리보기 바로 아래다
   const y = window.scrollY, colTop = col.getBoundingClientRect().top + y
@@ -48,7 +52,6 @@ function measure() {
   root().setAttribute('data-pb-float', '')
   if (changed) relayout() // 자리 틀까지 다 적은 뒤에(먼저 알리면 머리 묶음 자리가 빠진 채로 쟀다)
   last = scrollPos()
-  if (last < foldAt) fold(false)
 }
 function unfloat() {
   for (const k of ['data-pb-float', 'data-pb-inner', 'data-pb-up']) root().removeAttribute(k)
@@ -67,7 +70,7 @@ function tick() {
   acc = Math.sign(d) === Math.sign(acc) ? acc + d : d
   if (Math.abs(acc) < DIR_MIN) return
   const down = acc > 0
-  fold(down && p >= foldAt) // 맨 위 근처는 늘 펼친다
+  fold(down)
   const nav = E.nav
   if (nav && down !== navHid) { navHid = down; nav.toggleAttribute('data-pb-navhide', down) }
 }
