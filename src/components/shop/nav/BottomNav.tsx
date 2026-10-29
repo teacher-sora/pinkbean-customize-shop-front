@@ -7,7 +7,7 @@ import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { PLAZA_FILTERS, type PlazaFilter } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
-import { setScrollFrozen, useScrollHidden } from '@/lib/scrollHide'
+import { setScrollFrozen, useBarHidden, useNavHidden } from '@/lib/scrollHide'
 import { IconTab } from '../ui/Icons'
 import { useWheelRail } from '../ui/useWheelRail'
 import styles from './nav.module.css'
@@ -59,12 +59,12 @@ export function PlazaTabsM() {
 }
 
 // 모바일 부위 · 분류 줄과 목록 머리를 묶어 붙은 미리보기 바로 아래에 붙인다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
-// 맨 위까지 올리지 않게). 하단 탭과 같은 숨김 상태(lib/scrollHide)를 따라 내리는 동안은 미리보기 뒤로 숨고, 올리면 나온다.
+// 맨 위까지 올리지 않게). 내리는 동안은 미리보기 뒤로 숨고, 위로 올릴 때만 나온다(lib/scrollHide — 하단 탭과 같은 움직임, 바닥 규칙은 없다).
 // 숨는 것은 붙어 있을 때만이다(제자리 — 맨 위 근처 — 에서 숨기면 그 자리가 비어 보인다): 바로 앞의 빈 표시가 미리보기 밑으로 들어갔는가로 잰다.
 // 안에 입력이 잡혀 있거나 펼친 칸(보기 설정 팝박스)이 열려 있으면 숨지 않는다(.barM:focus-within · :has([aria-expanded])) — 자판이 뜨거나 고르려고 화면이 움직여도 남는다.
 // data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다(숨어 있으면 미리보기 뒤라 그만큼 빠진다)
 export function StickyBarM({ children }: { children: React.ReactNode }) {
-  const hidden = useScrollHidden()
+  const hidden = useBarHidden()
   const mark = useRef<HTMLDivElement | null>(null)
   const [stuck, setStuck] = useState(false)
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const railRef = useWheelRail()
   const navRef = useRef<HTMLElement | null>(null)
-  const navHidden = useScrollHidden() && mobile
+  const navHidden = useNavHidden() && mobile
   useEffect(() => { setScrollFrozen(!!s.surface) }, [s.surface]) // 창이 떠 있는 동안 숨김 상태를 그대로(lib/scrollHide)
   // 코디 광장은 부위 대신 광장 분류(전체·대회·내 등록·찜한 코디)를 쓴다. 항목이 4개뿐이라 양끝 페이드는 끈다
   // (요소는 그대로 두고 opacity 만 0 — 탭을 오갈 때 전환이 끊기지 않게).
