@@ -34,7 +34,8 @@
 .barMark { flex: 0 0 auto; height: 0; }
 .barM { flex: 0 0 auto; position: sticky; top: var(--pb-hero-h); z-index: 30; background: light-dark(#fff, #303238); transition: transform .24s cubic-bezier(.45,0,.55,1); }
 .barHide { transform: translateY(-100%); }
-.barM:focus-within { transform: none; }
+/* 안에 입력이 잡혀 있거나(광장 찾기) 펼친 칸이 열려 있으면(보기 설정 팝박스 — 고르려고 화면이 조금 움직여도 함께 숨어 누를 수 없었다) 숨지 않는다 */
+.barM:focus-within, .barM:has([aria-expanded='true']) { transform: none; }
 :global(html[data-pb-view='full']) .barM { position: relative; }
 @media (prefers-reduced-motion: reduce) { .barM { transition: none; } }
 /* 아이콘 아래에 짧은 이름을 단다 — 아이콘만으로는 눌러 봐야 무엇인지 안다. 높이는 그대로(56px) */
