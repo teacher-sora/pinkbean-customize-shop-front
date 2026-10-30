@@ -11,13 +11,10 @@ import { useEffect } from 'react'
 import { ShopProvider, useShop } from './shop/ShopContext'
 import Background from './shop/frame/Background'
 import AppHeader from './shop/frame/AppHeader'
+import BootMobile from './shop/frame/BootMobile'
 import BottomNav from './shop/nav/BottomNav'
 import ListArea from './shop/list/ListArea'
-import InfoPanel from './shop/info/InfoPanel'
-import PresetPanel from './shop/preset/PresetPanel'
-import PlazaPanel from './shop/plaza/PlazaPanel'
-import PlazaUpload from './shop/plaza/PlazaUpload'
-import ComboPanel from './shop/combo/ComboPanel'
+import { lazyPanel } from './shop/frame/lazyPanel'
 import PreviewColumn, { MobileHero } from './shop/preview/PreviewColumn'
 import { useRidingGuards } from './shop/preview/pvControls'
 import { useScrollFades } from './shop/ui/useScrollFade'
@@ -26,6 +23,13 @@ import LookDialog from './shop/LookDialog'
 import Toast from './shop/ui/Toast'
 import ConfirmBubble from './shop/ui/ConfirmBubble'
 import styles from './shop/frame/frame.module.css'
+
+// 첫 화면에 없는 탭은 묶음 밖에 두고 한가할 때 받는다(frame/lazyPanel)
+const InfoPanel = lazyPanel(() => import('./shop/info/InfoPanel'), 'rows')
+const PresetPanel = lazyPanel(() => import('./shop/preset/PresetPanel'))
+const PlazaPanel = lazyPanel(() => import('./shop/plaza/PlazaPanel'))
+const PlazaUpload = lazyPanel(() => import('./shop/plaza/PlazaUpload'), 'side')
+const ComboPanel = lazyPanel(() => import('./shop/combo/ComboPanel'))
 
 function Shell() {
   const s = useShop()
@@ -38,6 +42,8 @@ function Shell() {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
+  // 붙자마자 함께 받는다 — 한가할 때까지 미루면 느린 망에서 받기 전에 탭을 눌러 빈 칸이 오래 보였다(첫 그림은 이미 끝난 뒤라 늦추지 않는다)
+  useEffect(() => { for (const c of [InfoPanel, PresetPanel, PlazaPanel, PlazaUpload, ComboPanel]) void c.preload() }, [])
   const mobile = s.bp === 'mobile'
   const isList = s.primary === 'codi' || s.primary === 'search'
   const isPlaza = s.primary === 'share' // 코디 광장: PC 는 미리보기 자리에 등록 폼이 들어간다(코디 룩북 분류만 미리보기). 모바일 히어로는 늘 있다
@@ -71,7 +77,7 @@ function Shell() {
         </div>
       ) : (
         // PC·절반·태블릿: 2분할은 높이가 고정돼야(리스트 그리드 height:100%) 하므로 문서 스크롤로 풀지 않는다.
-        <div className={styles.root}>
+        <div className={clsx(styles.root, styles.rootPc)}>
           <div className={clsx(styles.frame, s.bp === 'pc' ? styles.framePc : s.bp === 'half' ? styles.frameHalf : styles.frameTablet)}>
             <AppHeader mobile={false} />
             <main className={styles.main} data-pb-body>
@@ -92,6 +98,7 @@ function Shell() {
           </div>
         </div>
       )}
+      {!mobile && <BootMobile />}
       <Surface />
       <LookDialog />
       <Toast />

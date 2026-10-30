@@ -1,6 +1,40 @@
 /* 셸·헤더. */
 
 .root { position: fixed; inset: 0; height: 100svh; z-index: 2; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+/* 서버 HTML 은 폭을 몰라 PC 틀로 나간다 — 휴대폰에서 JS 가 붙기 전에 잘린 PC 화면이 보이지 않게 숨기고 뼈대(BootMobile)를 보인다. 모바일 틀이 붙으면 둘 다 사라진다 */
+.bootM { display: none; }
+/* 패널을 받는 동안의 자리(lazyPanel) — 틀은 패널과 같고, 안의 뼈대는 늦을 때만 나타난다.
+   등장을 CSS 지연으로 미루므로 빨리 받으면 한 번도 보이지 않아 점멸이 없다. 빛줄기는 transform 이라 JS 가 바쁜 동안에도 끊기지 않는다 */
+.panelWait { flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; }
+.panelWaitM { flex: 1 1 auto; border: 0; border-radius: 0; }
+.panelWaitSide { flex: 0 0 360px; }
+@media (min-width: 521px) and (max-width: 1199px) { .panelWaitSide { flex-basis: 312px; } }
+.waitBody { height: 100%; opacity: 0; animation: pbWaitIn .24s ease .2s forwards; }
+.waitHead { height: 89px; padding: 10px 12px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
+.waitLine { height: 28px; border-radius: 6px; }
+.waitLine:first-child { width: 70%; height: 16px; }
+.waitGrid { display: grid; gap: 10px; padding: 12px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); grid-auto-rows: 200px; }
+.waitGridM { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: var(--pb-boot-row, 132px); gap: 10px 6px; padding: 10px 12px; }
+.waitRows { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.waitRows > * { height: 46px; flex: 0 0 auto; }
+.waitCard { position: relative; overflow: hidden; border-radius: 8px; background: light-dark(#f4ede4, #3f424a); }
+.waitCard::after, .bootShim::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 25%, light-dark(#fbf6ef, #4b4e57) 50%, transparent 75%); transform: translateX(-100%); will-change: transform; animation: pbWaitSweep 1.6s ease-in-out infinite; }
+.bootShim { position: relative; overflow: hidden; }
+.bootShim::after { opacity: 0; animation: pbWaitSweep 1.6s ease-in-out infinite, pbWaitIn .3s ease .5s forwards; } /* 첫 화면 뼈대 — 늦어질 때만 */
+@keyframes pbWaitIn { to { opacity: 1; } }
+@keyframes pbWaitSweep { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .waitCard::after, .bootShim::after { animation: none; opacity: 0; } }
+@media (max-width: 520px) {
+  .rootPc { display: none; }
+  .bootM { display: flex; flex-direction: column; position: fixed; inset: 0; z-index: 2; overflow: hidden; background: light-dark(#fff, #303238); }
+}
+.bootCats { overflow: hidden; }
+.bootCats > span { display: flex; align-items: center; white-space: nowrap; }
+.bootHero { flex: 0 0 auto; height: var(--pb-hero-base); background: light-dark(#f7f2ec, #3a3c43); border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
+.bootBars { flex: 0 0 auto; height: 89px; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); overflow: hidden; }
+.bootGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: var(--pb-boot-row, 132px); gap: 10px 6px; padding: 10px 12px; }
+.bootCard { border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; background: light-dark(#fff, #303238); }
+.bootM .bootNav { position: absolute; left: 0; right: 0; bottom: 0; }
 
 /* PC / 절반 / 태블릿 프레임 */
 .frame { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }

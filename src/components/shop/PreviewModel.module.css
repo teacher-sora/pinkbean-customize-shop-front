@@ -16,8 +16,10 @@
    1:1 표시라 nearest 로 선명. wrap 중앙에 절대배치. */
 .canvas {
   position: absolute;
-  left: 0; /* 실제 위치·크기는 JS 가 디바이스 픽셀 격자에 맞춰 지정(소수 px 재샘플링 → 세로줄 방지) */
-  top: 0;
+  left: -25%; /* 실제 위치·크기는 JS 가 디바이스 픽셀 격자에 맞춰 지정(소수 px 재샘플링 → 세로줄 방지) */
+  top: -25%;
+  width: 150%; /* JS 가 넣기 전에도 넣을 값과 같은 자리(PREVIEW_MARGIN 1.5, 가운데) — 브라우저 기본 300 × 150 이면 첫 로드에 밀림으로 잡힌다 */
+  height: 150%;
   display: block;
   image-rendering: pixelated;
 }

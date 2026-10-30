@@ -7,7 +7,7 @@
 //  · 목록은 한 번에 받아 화면에서 거르고 정렬한다(광장 규모가 작고, 검색·필터가 즉시 반응해야 한다).
 
 import { censor } from './safeText'
-import { createClient } from '@supabase/supabase-js'
+type CreateClient = typeof import('@supabase/supabase-js').createClient
 import type { Snapshot } from '@/components/shop/ShopContext'
 import { nameMatcher } from '@/lib/nameSearch'
 import { plazaSnapshot } from '@/lib/plazaLook'
@@ -114,24 +114,28 @@ function plazaTarget() {
 const targetName = () => (plazaTarget() === PROD ? 'prod' : 'dev')
 
 // 스키마가 실행 환경에 따라 정해지므로 제네릭을 'public' 으로 못 박지 않는다.
-const makeClient = () => createClient(URL_ENV!, KEY_ENV!, {
+const makeClient = (createClient: CreateClient) => createClient(URL_ENV!, KEY_ENV!, {
   auth: { persistSession: true, autoRefreshToken: true },
   db: { schema: plazaTarget().schema },
 })
-let client: ReturnType<typeof makeClient> | null = null
-function sb() {
+// 라이브러리(약 250KB)는 첫 로드 묶음에 넣지 않는다 — 처음 쓸 때 받는다(첫 화면 뒤 한가할 때의 광장 미리 받기가 그 처음이다). 못 받으면 붙잡아 두지 않아 다음 호출이 다시 받는다
+let clientP: Promise<ReturnType<typeof makeClient>> | null = null
+async function sb() {
   if (!plazaConfigured()) return null
-  if (!client) client = makeClient()
-  return client
+  if (!clientP) {
+    const p = clientP = import('@supabase/supabase-js').then((m) => makeClient(m.createClient))
+    p.catch(() => { if (clientP === p) clientP = null })
+  }
+  return clientP
 }
 
 // 익명 로그인 세션(없으면 만든다). 실패하면 null — 읽기는 되고 쓰기만 막힌다.
 let authP: Promise<string | null> | null = null
 export function plazaAuth(): Promise<string | null> {
   if (authP) return authP
-  const c = sb()
-  if (!c) return Promise.resolve(null)
   authP = (async () => {
+    const c = await sb()
+    if (!c) return null
     const { data } = await c.auth.getSession()
     if (data.session?.user?.id) return data.session.user.id
     const { data: made, error } = await c.auth.signInAnonymously()
@@ -141,7 +145,11 @@ export function plazaAuth(): Promise<string | null> {
   // 실패(가입 한도 초과 등)는 붙잡아 두지 않는다 — 다음에 부를 때 다시 시도한다(새로고침 없이 한도가 풀리면 쓰기가 된다).
   // 성공한 세션만 재사용하므로 정상일 때 추가 요청은 없다.
   const p = authP
-  void p.then((id) => { if (!id && authP === p) authP = null; else if (id) void linkAlias(c, id) })
+  void p.then(async (id) => {
+    if (!id) { if (authP === p) authP = null; return }
+    const c = await sb()
+    if (c) void linkAlias(c, id)
+  }).catch(() => undefined)
   return p
 }
 // 이 uid 를 이 브라우저에 묶는다(supabase/0021) — 세션 갱신이 실패해 같은 브라우저에서 uid 가 새로 생겨도 이름은 이 브라우저의 첫 이름이다.
@@ -155,7 +163,7 @@ function browserId(): string | null {
     return v
   } catch { return null }
 }
-async function linkAlias(c: NonNullable<ReturnType<typeof sb>>, uid: string) {
+async function linkAlias(c: NonNullable<Awaited<ReturnType<typeof sb>>>, uid: string) {
   try {
     const bid = browserId()
     if (!bid) return
@@ -175,11 +183,8 @@ const toAward = (v: Row['plaza_awards']): PlazaAward | null => {
   return a && a.kind in PLAZA_AWARD_LABEL ? { kind: a.kind, seq: a.seq } : null
 }
 
-const publicUrl = (path: string | null) => {
-  const c = sb()
-  if (!c || !path) return null
-  return c.storage.from(plazaTarget().bucket).getPublicUrl(path).data.publicUrl
-}
+// 라이브러리의 getPublicUrl 과 같은 주소다 — 목록을 그리는 데 라이브러리를 받지 않게 직접 만든다
+const publicUrl = (path: string | null) => (plazaConfigured() && path ? encodeURI(`${URL_ENV}/storage/v1/object/public/${plazaTarget().bucket}/${path}`) : null)
 
 const toPost = (r: Row, uid: string | null, liked: Set<string>): PlazaPost => ({
   id: r.id,
@@ -251,7 +256,7 @@ async function loadRows(onFirst?: (rows: Row[]) => void): Promise<Row[] | null> 
 // 왜: 5초마다 목록(글 200여 개 · 스냅샷 포함 ≈ 200KB)을 Vercel 에서 받던 것이 Vercel 무료 한도(ISR 읽기 · Fast Origin Transfer)를
 // 거의 다 썼다(2026-10, 30일에 8.7GB). 글이 올라오거나 내려가면 수나 맨 앞 id 가 바뀐다.
 export async function loadPlazaPulse(): Promise<string | null> {
-  const c = sb()
+  const c = await sb()
   if (!c) return null
   const { data, count, error } = await c.from('plaza_posts').select('id', { count: 'exact' }).order('created_at', { ascending: false }).order('id').limit(1)
   if (error) return null
@@ -263,7 +268,7 @@ export async function loadPlazaPulse(): Promise<string | null> {
 // fresh = 캐시를 비켜 읽는다 — 맥박이 본 최신 글이 캐시 응답에 없을 때(비우기 호출이 실패했을 때) 한 번만 쓴다.
 // covers = 첫 쪽이 전체를 담고 있는가 — 담고 있으면 이 응답만으로 '내려간 글'도 가려낼 수 있다.
 export async function loadPlazaHead(fresh = false): Promise<{ posts: PlazaPost[]; covers: boolean; total: number } | null> {
-  if (!sb()) return null
+  if (!plazaConfigured()) return null
   try {
     const base = `/api/plaza/${targetName()}`
     const r = await fetch(fresh || freshNow() ? `${base}/fresh?p=0` : base, { cache: 'no-store' })
@@ -278,7 +283,7 @@ export async function loadPlazaHead(fresh = false): Promise<{ posts: PlazaPost[]
 
 // onFirst: 글이 500개를 넘을 때, 첫 쪽(최신 500개)이 오자마자 먼저 부른다 — 나머지를 기다리지 않고 화면을 채운다.
 export async function loadPlaza(onFirst?: (posts: PlazaPost[]) => void): Promise<PlazaPost[]> {
-  const c = sb()
+  const c = await sb()
   if (!c) return []
   // 목록은 로그인과 **무관**하다(공개 읽기). 익명 세션을 기다렸다가 받기 시작하면 왕복이 한 번 더 늘어
   // 광장 탭만 유독 늦게 뜬다 — 둘을 동시에 시작한다.
@@ -307,7 +312,7 @@ export async function loadPlaza(onFirst?: (posts: PlazaPost[]) => void): Promise
 // 기기 기준이라 시크릿 창에서 들어와도 이미 누른 하트가 켜져 보이고, 대회 남은 개수도 같다.
 let meCache: { liked: string[]; contest: number } | null = null
 export async function plazaMe(): Promise<{ liked: string[]; contest: number } | null> {
-  const c = sb()
+  const c = await sb()
   if (!c || !(await plazaAuth())) return null
   const { data, error } = await c.rpc('plaza_me', { fp: plazaDeviceFp() })
   if (error) return meCache
@@ -317,7 +322,7 @@ export async function plazaMe(): Promise<{ liked: string[]; contest: number } | 
 // 보이는 글들의 좋아요 수만 새로 받는다(목록 캐시와 별개 — 남이 누른 좋아요를 몇 초 안에 보이게).
 // 화면에 있는 카드·열린 상세만 묻기 때문에 응답이 작다(18개 ≈ 1KB).
 export async function loadLikeCounts(ids: string[]): Promise<Map<string, number>> {
-  const c = sb()
+  const c = await sb()
   const out = new Map<string, number>()
   if (!c || !ids.length) return out
   const { data, error } = await c.from('plaza_posts').select('id,like_count').in('id', ids)
@@ -329,7 +334,7 @@ export async function loadLikeCounts(ids: string[]): Promise<Map<string, number>
 // DB 가 지문 색인(look_key)으로 골라 준다 — 출품작이 수만 개여도 몇 개만 받는다(5만 행 실측 0.05ms).
 // 목록 캐시(ISR·최근 300개)를 거치지 않아 방금 올라온 출품작도 빠지지 않는다.
 export async function contestCandidates(snap: Snapshot): Promise<{ id: string; name: string; snapshot: Snapshot }[]> {
-  const c = sb()
+  const c = await sb()
   if (!c) return []
   const { data, error } = await c.rpc('plaza_contest_candidates', { s: snap })
   if (error) throw error
@@ -337,7 +342,7 @@ export async function contestCandidates(snap: Snapshot): Promise<{ id: string; n
 }
 
 export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
-  const c = sb()
+  const c = await sb()
   if (!c) throw new Error('supabase not configured')
   const uid = await plazaAuth()
   if (!uid) throw new Error('auth failed')
@@ -374,7 +379,7 @@ export async function createPlazaPost(d: PlazaDraft): Promise<PlazaPost> {
 // 좋아요 누르기/취소 — 서버가 기기 기준으로 판정한다(이 기기가 이미 눌렀으면 어느 창에서든 취소가 된다).
 // 돌려받은 실제 상태·수로 화면을 맞춘다.
 export async function togglePlazaLike(post: PlazaPost): Promise<{ liked: boolean; likes: number }> {
-  const c = sb()
+  const c = await sb()
   if (!c) throw new Error('supabase not configured')
   const uid = await plazaAuth()
   if (!uid) throw new Error('auth failed')
@@ -386,7 +391,7 @@ export async function togglePlazaLike(post: PlazaPost): Promise<{ liked: boolean
 }
 
 export async function deletePlazaPost(post: PlazaPost): Promise<void> {
-  const c = sb()
+  const c = await sb()
   if (!c) throw new Error('supabase not configured')
   const { error } = await c.from('plaza_posts').delete().eq('id', post.id)
   if (error) throw error
@@ -465,7 +470,7 @@ const aliasCache = new Map<string, string>()
 export const plazaAlias = (uid: string): string => aliasCache.get(uid) || plazaLegacyAlias(uid)
 // 아직 모르는 사람들의 이름을 한 번에 받아 둔다. 실패해도 화면은 예전 이름으로 보인다.
 async function fillAliases(owners: string[]): Promise<void> {
-  const c = sb()
+  const c = await sb()
   const need = Array.from(new Set(owners)).filter((o) => o && !aliasCache.has(o))
   if (!c || !need.length) return
   for (let i = 0; i < need.length; i += 200) {
@@ -477,7 +482,7 @@ async function fillAliases(owners: string[]): Promise<void> {
 export const plazaAliasTag = (uid: string) => hash32(`#${uid}`).toString(36).slice(-2).toUpperCase()
 
 export async function loadComments(post: PlazaPost): Promise<PlazaComment[]> {
-  const c = sb()
+  const c = await sb()
   if (!c) return []
   const uid = await plazaAuth()
   const { data, error } = await c.from('plaza_comments').select('*')
@@ -488,7 +493,7 @@ export async function loadComments(post: PlazaPost): Promise<PlazaComment[]> {
 }
 
 export async function addComment(post: PlazaPost, body: string, parentId: string | null = null): Promise<PlazaComment> {
-  const c = sb()
+  const c = await sb()
   if (!c) throw new Error('supabase not configured')
   const uid = await plazaAuth()
   if (!uid) throw new Error('auth failed')
@@ -502,7 +507,7 @@ export async function addComment(post: PlazaPost, body: string, parentId: string
 }
 
 export async function deleteComment(comment: PlazaComment): Promise<void> {
-  const c = sb()
+  const c = await sb()
   if (!c) throw new Error('supabase not configured')
   const { error } = await c.from('plaza_comments').delete().eq('id', comment.id)
   if (error) throw error
@@ -563,7 +568,7 @@ export const NOTICE_PAGE = 20
 export type FeedbackPost = { id: string; owner: string; body: string; createdAt: string; mine: boolean; op: boolean; deleted: boolean; count: number; answered: boolean }
 export type FeedbackNode = { id: string; owner: string; body: string; createdAt: string; mine: boolean; op: boolean; deleted: boolean; depth: number; children: FeedbackNode[] }
 export async function loadNotices(): Promise<PlazaNotice[]> {
-  const c = sb()
+  const c = await sb()
   if (!c) return []
   const { data, error } = await c.from('plaza_notices').select('id,created_at,title,body,pinned')
     .order('pinned', { ascending: false }).order('created_at', { ascending: false })
@@ -577,7 +582,7 @@ const FB_COLS = 'id,owner,body,created_at,op,deleted,depth,parent_id,root_id'
 // 운영자 화면(raw)은 원문 그대로다.
 const fbBody = (r: FbRow, raw: boolean) => (r.deleted ? '' : raw || r.op ? r.body : censor(r.body))
 async function fbPosts(kind: FeedbackKind, from: number, to: number, uid: string | null, raw: boolean): Promise<{ list: FeedbackPost[]; total: number }> {
-  const c = sb()
+  const c = await sb()
   if (!c) return { list: [], total: 0 }
   const { data, error, count } = await c.from('plaza_notice_comments').select(FB_COLS, { count: 'exact' })
     .eq('kind', kind).is('parent_id', null).order('created_at', { ascending: false }).order('id').range(from, to)
@@ -605,7 +610,7 @@ async function fbPosts(kind: FeedbackKind, from: number, to: number, uid: string
 }
 // 글 하나의 댓글 · 답글 나무(오래된 순 — 대화 순서대로 읽힌다)
 async function fbThread(rootId: string, uid: string | null, raw: boolean): Promise<FeedbackNode[]> {
-  const c = sb()
+  const c = await sb()
   if (!c) return []
   const { data, error } = await c.from('plaza_notice_comments').select(FB_COLS).eq('root_id', rootId).order('created_at', { ascending: true }).limit(1000)
   if (error) throw error
@@ -633,7 +638,7 @@ export async function loadFeedbackThread(rootId: string) {
 }
 // 글 올리기(parentId 가 없으면 원글, 있으면 그 글 · 댓글에 다는 댓글 · 답글)
 export async function addFeedback(kind: FeedbackKind, body: string, parentId: string | null = null): Promise<void> {
-  const c = sb()
+  const c = await sb()
   if (!c) throw new Error('supabase not configured')
   const uid = await plazaAuth()
   if (!uid) throw new Error('auth failed')
@@ -645,7 +650,7 @@ export async function addFeedback(kind: FeedbackKind, body: string, parentId: st
 }
 // 자기 글 지우기 — 답글이 달려 있으면 자리만 남는다(DB 함수)
 export async function deleteFeedback(id: string): Promise<void> {
-  const c = sb()
+  const c = await sb()
   if (!c) throw new Error('supabase not configured')
   const { data, error } = await c.rpc('plaza_fb_remove', { p_id: id })
   if (error) throw error
@@ -656,7 +661,7 @@ export async function deleteFeedback(id: string): Promise<void> {
 // 아이디 · 비밀번호는 DB 함수가 확인한다(앱에는 서비스 키가 없다). 화면은 로그인한 값을 메모리에만 쥐고 부를 때마다 함께 보낸다.
 export type OpCred = { id: string; pw: string }
 const opRpc = async <T>(fn: string, args: Record<string, unknown>): Promise<T | null> => {
-  const c = sb()
+  const c = await sb()
   if (!c) throw new Error('supabase not configured')
   const { data, error } = await c.rpc(fn, args)
   if (error) throw error
