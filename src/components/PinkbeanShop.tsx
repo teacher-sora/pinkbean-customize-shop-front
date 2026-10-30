@@ -42,12 +42,8 @@ function Shell() {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
-  useEffect(() => {
-    const run = () => { void (async () => { for (const load of [InfoPanel.preload, PresetPanel.preload, PlazaPanel.preload, PlazaUpload.preload, ComboPanel.preload]) await load() })() }
-    if (!('requestIdleCallback' in window)) { const t = setTimeout(run, 1200); return () => clearTimeout(t) }
-    const h = requestIdleCallback(run, { timeout: 2500 })
-    return () => cancelIdleCallback(h)
-  }, [])
+  // 붙자마자 함께 받는다 — 한가할 때까지 미루면 느린 망에서 받기 전에 탭을 눌러 빈 칸이 오래 보였다(첫 그림은 이미 끝난 뒤라 늦추지 않는다)
+  useEffect(() => { for (const c of [InfoPanel, PresetPanel, PlazaPanel, PlazaUpload, ComboPanel]) void c.preload() }, [])
   const mobile = s.bp === 'mobile'
   const isList = s.primary === 'codi' || s.primary === 'search'
   const isPlaza = s.primary === 'share' // 코디 광장: PC 는 미리보기 자리에 등록 폼이 들어간다(코디 룩북 분류만 미리보기). 모바일 히어로는 늘 있다
