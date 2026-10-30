@@ -16,7 +16,7 @@ import { loadMeta, type ItemMeta, type ListItem, type Vec } from '@/lib/core/dat
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor, type HsbParams } from '@/lib/core/dye'
 import { loadImage, renderCharacter } from '@/lib/core/render'
 import { clampDye } from '@/lib/color'
-import { skinDyeFamily, THUMB_VIEW } from '@/lib/shopData'
+import { DEFAULT_TONE, skinDyeFamily, THUMB_VIEW } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 
 const PAD = 8                 // 얼굴 bbox 여백(월드 px)
@@ -103,7 +103,7 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
     if (!item || !idx) { setParts(null); return }
     let alive = true
     ;(async () => {
-      const te = idx.base.tones.find((t) => t.tone === s.shownTone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
+      const te = idx.base.tones.find((t) => t.tone === s.shownTone) || idx.base.tones.find((t) => t.tone === DEFAULT_TONE) || idx.base.tones[0]
       const eqEntries = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl] && sl !== 'riding') as [string, ListItem][]
       const [body, head, ...eqMetas] = await Promise.all([
         loadMeta(te.body), loadMeta(te.head),

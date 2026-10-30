@@ -103,7 +103,12 @@ export function fitCanvas(canvas: HTMLCanvasElement, wrap: HTMLElement | null, b
 export function zoomStepScale(a: { fraction: number; divH: number; dpr: number; level: number; mults: Record<number, number> }): number {
   const raw = (lv: number) => (a.fraction * (a.mults[lv] ?? 1) * a.divH * a.dpr) / MODEL_REF.bodyRefH
   const s2 = Math.max(2, Math.round(raw(2)))
-  if (a.level <= 1) return Math.max(1, Math.min(s2 - 1, Math.round(raw(1))))
-  if (a.level >= 3) return Math.max(s2 + 1, Math.round(raw(3)))
-  return s2
+  const s1 = Math.max(1, Math.min(s2 - 1, Math.round(raw(1)))), s3 = Math.max(s2 + 1, Math.round(raw(3)))
+  if (a.level <= 1) return s1
+  if (a.level >= 3) return s3
+  if (a.level === 2) return s2
+  // 사이 단계(1.5 · 2.5배): 양옆 단계 사이의 정수로 — 사이에 정수가 없으면(양옆이 1 차이) 가까운 쪽과 같은 크기다(캔버스는 정수 배율만 쓴다)
+  const [lo, hi] = a.level < 2 ? [s1, s2] : [s2, s3]
+  const v = Math.round(raw(a.level))
+  return hi - lo >= 2 ? Math.min(hi - 1, Math.max(lo + 1, v)) : Math.min(hi, Math.max(lo, v))
 }

@@ -102,7 +102,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   }
 
   const bandState = (r: Row) => bandStateOf(r, toneName)
-  // 눈 · 휴지통: 피부는 엘프 피부가 아닐 때만(엘프 피부가 기본이라 가리거나 되돌릴 것이 없다 — 사용자 지시)
+  // 눈 · 휴지통: 피부는 기본 피부(뽀송 꽃잎)가 아닐 때만(가리거나 되돌릴 것이 없다 — 사용자 지시)
   const canClear = (r: Row) => !r.isSkin || s.tone !== DEFAULT_TONE
 
   const grid = (
@@ -135,9 +135,9 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
             )}
             {/* 이 부위만 벗기 — 칩 오른쪽 아래 모서리의 휴지통(이름 줄 끝의 눈 단추와 떨어지게). 두 번 눌러야 한다(lib/confirmTwice, 누른 단추 위에 되묻는 말풍선). 사용자 요청. */}
             {r.on && canClear(r) && (
-              <span role="button" tabIndex={0} title={r.isSkin ? '엘프 피부로 되돌리기' : '이 부위 벗기'} aria-label={r.isSkin ? '엘프 피부로 되돌리기' : `${r.c.label} 벗기`} {...{ [CONFIRM_ATTR]: `unequip:${r.slot}` }}
-                onClick={(e) => { e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, r.isSkin ? '한 번 더 누르면 엘프 피부로 돌아가요' : '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) }}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, r.isSkin ? '한 번 더 누르면 엘프 피부로 돌아가요' : '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) } }}
+              <span role="button" tabIndex={0} title={r.isSkin ? '기본 피부로 되돌리기' : '이 부위 벗기'} aria-label={r.isSkin ? '기본 피부로 되돌리기' : `${r.c.label} 벗기`} {...{ [CONFIRM_ATTR]: `unequip:${r.slot}` }}
+                onClick={(e) => { e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, r.isSkin ? '한 번 더 누르면 뽀송 꽃잎 피부로 돌아가요' : '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, r.isSkin ? '한 번 더 누르면 뽀송 꽃잎 피부로 돌아가요' : '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) } }}
                 className={styles.trash}>
                 <IconTrashSolid size={13} />
               </span>

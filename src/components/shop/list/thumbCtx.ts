@@ -1,7 +1,7 @@
 'use client'
 
 // 카드 썸네일(ItemThumb) 배경 컨텍스트.
-//  · 마네킹(model) = 맨 마네킹(엘프 피부 고정) / 내 캐릭터(mymodel) = 내 착용(해당 슬롯 제외) + 염색 + 이펙트 + 형상변이·귀
+//  · 마네킹(model) = 맨 마네킹(기본 피부 고정) / 내 캐릭터(mymodel) = 내 착용(해당 슬롯 제외) + 염색 + 이펙트 + 형상변이·귀
 //  · 표정 얼굴장식은 맨 마네킹에 올려도 안 보여 '내 캐릭터'로 승격한다.
 
 import { useEffect, useRef, useState } from 'react'
@@ -14,7 +14,7 @@ import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 
 type Tones = { base: { tones: { tone: number; body: string; head: string; name?: string }[]; default: number } }
 // 컬러라인 피부의 라인 염색(dyeHsb.skin)을 몸 · 머리 그림에 굽는다 — 미리보기(PreviewModel) · 프리셋 카드(snapRender)와 같은 규칙.
-// '내 캐릭터' 배경만(마네킹은 엘프 피부 고정). 빠져 있어 내 캐릭터 카드에서 피부 염색이 안 보였다(사용자 지적)
+// '내 캐릭터' 배경만(마네킹은 기본 피부 고정). 빠져 있어 내 캐릭터 카드에서 피부 염색이 안 보였다(사용자 지적)
 async function bakeSkinDye(ov: Map<string, HTMLCanvasElement>, metas: (ItemMeta | undefined)[], view: Parameters<typeof getFrameLayers>[1], hsb: Record<string, HsbParams>, toneName: string | undefined) {
   const h = hsb['skin'], fam = skinDyeFamily(toneName)
   if (!h || !(h.h || h.s || h.b) || fam == null) return
@@ -24,7 +24,7 @@ async function bakeSkinDye(ov: Map<string, HTMLCanvasElement>, metas: (ItemMeta 
 }
 // 톤 → body/head id. 없으면 기본 톤 → 첫 톤.
 const toneIds = (idx: Tones, tone: number) => {
-  const e = idx.base.tones.find((t) => t.tone === tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
+  const e = idx.base.tones.find((t) => t.tone === tone) || idx.base.tones.find((t) => t.tone === DEFAULT_TONE) || idx.base.tones[0]
   return { bodyId: e.body, headId: e.head }
 }
 
@@ -82,7 +82,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
     const idx = s.index
     if ((mode === 'sprite' && !spritePromote) || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx(EMPTY); setMyCtx(EMPTY) } return }
     let alive = true
-    // 마네킹 = 엘프 피부 고정, 내 캐릭터 = 현재 피부.
+    // 마네킹 = 기본 피부 고정, 내 캐릭터 = 현재 피부.
     const elf = toneIds(idx, DEFAULT_TONE), mine = toneIds(idx, s.shownTone)
     const activeSlot = mixedCat ? null : CAT_TO_SLOT[s.activeCat] // 전체·즐겨찾기는 제외할 활성 슬롯이 없다
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && !s.hidden[sl]) as [string, ListItem][]
@@ -162,7 +162,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
     const needCtx = !!idx && list.length > 0 && mode !== 'sprite'
     if (!needCtx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ base: EMPTY, bySlot: {} }) } return }
     let alive = true
-    const elf = toneIds(idx!, DEFAULT_TONE), mine = toneIds(idx!, s.shownTone) // 마네킹 = 엘프 피부, 내 캐릭터 = 현재 피부
+    const elf = toneIds(idx!, DEFAULT_TONE), mine = toneIds(idx!, s.shownTone) // 마네킹 = 기본 피부, 내 캐릭터 = 현재 피부
     const slotsInList = Array.from(new Set(list.map((it) => it.slot)))
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl]) as [string, ListItem][]
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
