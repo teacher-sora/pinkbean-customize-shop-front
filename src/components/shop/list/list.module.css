@@ -58,7 +58,7 @@
    ⚠️ 열 스냅을 넣었었지만 카드의 스크롤 컨테이너가 overflow:hidden 페이지라 실제로 동작하지 않았고, 사용자는 이 자유 스크롤을 원해 제거. */
 .track { position: relative; height: 100%; width: 100%; will-change: transform; backface-visibility: hidden; }
 .page { position: absolute; top: 0; width: 100%; height: 100%; padding: 8px; overflow: hidden; }
-.pageM { position: absolute; top: 0; width: 100cqw; height: 100%; padding: 10px 7px; overflow: hidden; } /* 세로 스크롤 없음 — 좌우 넘기기 전용 */
+.pageM { position: absolute; top: 0; width: 100cqw; height: 100%; padding: 10px 7px; overflow: hidden; contain: layout paint; } /* 세로 스크롤 없음 — 좌우 넘기기 전용 */
 /* 세로로 넘기기(ShopContext.listDir 'y'). PC · 절반 · 태블릿: 트랙이 translateY 로 한 쪽씩 — 세로 끌기를 잡도록 가로만 브라우저에 맡긴다.
    모바일: 목록 안 세로 스크롤 컨테이너(cqh = 이 뷰포트 높이 → 쪽 높이가 정확히 한 화면). 쪽 여백은 가로(.pageM)와 같은 위아래 10 · 좌우 7 —
    방향을 바꿔도 카드가 같은 자리 · 같은 크기다(사용자 지적: 여백이 달랐을 때 세로에서 카드가 3px 위로, 3px 크게 그려졌다. 높이 계산 useMobileRows 의 PAD_X 14 · PAD_Y 20 도 이 값).
@@ -67,7 +67,7 @@
 /* 세로 넘기기(모바일): 칸 안 스크롤 — 쪽은 한 쪽 높이(--pb-page-h)로 쌓인다(ListArea usePagerY). 칸 끝에 닿으면 페이지가 이어서 스크롤한다(브라우저 기본 이어받기 — overscroll-behavior 세로 auto).
    touch-action 은 세로 끌기를 브라우저에 맡긴다(.viewportY 의 PC 규칙 pan-x 가 남으면 손가락으로 목록이 내려가지 않는다) */
 .viewportMY { margin: 0 5px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain auto; touch-action: pan-y pinch-zoom; container-type: inline-size; }
-.pageMY { position: absolute; left: 0; width: 100%; height: var(--pb-page-h); padding: 10px 7px; overflow: hidden; }
+.pageMY { position: absolute; left: 0; width: 100%; height: var(--pb-page-h); padding: 10px 7px; overflow: hidden; contain: layout paint; }
 /* 쪽 구분선(모바일, 첫 쪽 빼고): 앞 쪽과의 경계(이 쪽의 앞 변) 가운데에 1px 옅은 선 — 양 끝은 띄워 닫지 않는다(사용자 지시). 색은 목록 구분선(.hrM)과 같다 */
 .pageSep::before { content: ''; position: absolute; background: light-dark(#f2ebe3, #40434b); pointer-events: none; }
 .pageM.pageSep::before { left: 0; top: 24px; bottom: 24px; width: 1px; }

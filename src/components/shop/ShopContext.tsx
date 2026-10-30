@@ -27,7 +27,7 @@ import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
 import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, loadPlazaPulse, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
-  PLAZA_CONTEST, PLAZA_FILTERS, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
+  PLAZA_CONTEST, PLAZA_FILTERS, warmPlazaLib, type PlazaDraft, type PlazaFilter, type PlazaPost, type PlazaSort } from '@/lib/plaza'
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
@@ -414,6 +414,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [newIds, setNewIds] = useState<Set<string>>(new Set())
   useEffect(() => { loadNewItems().then(setNewIds).catch(() => {}) }, [])
   useEffect(() => { recordVisit() }, [])
+  // 광장 라이브러리는 첫 로드 묶음 밖이다 — 첫 화면이 다 뜬 뒤 한가할 때 받아 두어 쓸 때 기다리지 않게 한다
+  useEffect(() => { const t = setTimeout(() => { if ('requestIdleCallback' in window) requestIdleCallback(warmPlazaLib); else warmPlazaLib() }, 3000); return () => clearTimeout(t) }, [])
   useEffect(() => { try { const raw = localStorage.getItem(FAV_KEY); if (raw) setFavoritesState(new Set(JSON.parse(raw))) } catch { /* noop */ } }, [])
   const toggleFavorite = useCallback((id: string) => {
     setFavoritesState((prev) => {

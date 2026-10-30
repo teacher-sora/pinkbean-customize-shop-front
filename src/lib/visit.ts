@@ -1,7 +1,7 @@
 // 하루 방문자 — 브라우저마다 무작위 id 를 하나 두고, 한국 날짜로 하루에 한 번만 DB 에 적는다(supabase/0023, 운영자 화면 /dashboard 에서 본다).
 //  · 망이 바뀌어도 같은 사람이다(IP 를 쓰지 않는다). 기기 · 브라우저가 다르면 다른 사람으로 센다 — 계정이 없어 그 이상은 알 수 없다.
 //  · 첫 화면을 조금도 늦추지 않는다: 오늘 이미 적었으면 저장소만 읽고 끝나고, 처음이면 화면이 뜬 뒤 작은 요청 하나를 보낸다.
-//    Supabase 라이브러리를 부르지 않는다(lib/plaza 는 광장을 쓸 때 받는다).
+//    Supabase 라이브러리를 부르지 않는다.
 //  · 자동화(navigator.webdriver)는 세지 않는다 — 시험이 수를 부풀리지 않게.
 const URL_ENV = process.env.NEXT_PUBLIC_SUPABASE_URL
 const KEY_ENV = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
