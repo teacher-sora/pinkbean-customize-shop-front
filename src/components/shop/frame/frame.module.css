@@ -15,7 +15,7 @@
    고정값이라 내부 height:100% 가 그대로 풀린다.
    넘침은 hidden 이 아니라 clip — hidden 은 이 칸을 스크롤 칸으로 만들어 하단 탭(nav .tabNavM)의 sticky 가 문서가 아니라 이 칸에 붙어 움직이지 않는다.
    clip 은 자르기만 해서 하단 탭이 화면 아래에 붙어 함께 오르내린다(사용자 지시). clip 을 모르는 옛 브라우저는 hidden(하단 탭이 맨 아래에 그대로) */
-.mobileCol { width: 100%; height: 100vh; height: max(100vh, var(--pb-min-h, 0px)); padding-bottom: var(--pb-nav-h, 0px); flex: 0 0 auto; background: light-dark(#fff, #303238); display: flex; flex-direction: column; position: relative; overflow: hidden; overflow: clip; }
+.mobileCol { width: 100%; height: 100vh; height: max(100vh, var(--pb-min-h, 0px)); flex: 0 0 auto; background: light-dark(#fff, #303238); display: flex; flex-direction: column; position: relative; overflow: hidden; overflow: clip; }
 
 /* ── PC 헤더 ── */
 .header { flex: 0 0 auto; height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }

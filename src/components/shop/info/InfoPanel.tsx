@@ -175,7 +175,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
         </StickyBarM>
         {/* 칸 안 스크롤 — 목록 화면과 같다(사용자 지시): 페이지는 맨 위 헤더 높이만큼만 내려가고, 부위 칸은 이 칸 안에서 스크롤한다.
             칸 높이 = 헤더만큼 내렸을 때 미리보기 + 머리 묶음 아래 화면 끝까지(ListArea useMobileRows), 끝에 닿으면 페이지가 이어서 스크롤한다 */}
-        <div ref={scrollRef} data-pb-list className={clsx('pb-scroll', 'pb-norail', styles.scrollM)}>
+        <div ref={scrollRef} className={clsx('pb-scroll', 'pb-norail', styles.scrollM)}>
           <div ref={slotsRef}>{grid}</div>
         </div>
       </>
