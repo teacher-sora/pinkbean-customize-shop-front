@@ -45,7 +45,7 @@ export type PreviewSource = {
   zoomMults: Record<number, number>; fraction: (h: number) => number
 }
 
-// 모바일 히어로 기본 높이(globals.css --pb-hero-base — 처음 화면에서 카드가 13 Pro 꼴이 되게 맞춘다). '크게' · '캐릭터만'의 캐릭터 = 기본 보기 크기 × 배수
+// 모바일 히어로 기본 높이(--pb-hero-base — lib/mobileFit). '크게' · '캐릭터만'의 캐릭터 = 기본 보기 크기 × 배수
 const heroBaseH = () => (typeof document === 'undefined' ? 216 : heroBaseProbe().offsetHeight || 216)
 
 // 부유 아이템의 둥둥 뜨기 — 위로 최대 FLOAT_AMP 게임 픽셀, FLOAT_MS 한 바퀴(원본에 값이 없어 게임 화면으로 맞췄다).

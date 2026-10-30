@@ -46,18 +46,9 @@ input::placeholder, textarea::placeholder { color: light-dark(#b7ada2, #858893);
 :root[data-theme="dark"] { color-scheme: dark; }
 /* 미리보기 배경 '시스템'(lib/stageBg) · 손대지 않은 프리셋 카드 바탕 — OS 테마를 따른다(라이트 = 프리셋 카드 바탕, 다크 = 다크 카드 색 — StageBg.SYS_BG 와 같은 값) */
 :root { --pb-sys-bg: #f7f2ec; }
-/* 모바일 미리보기(히어로) 높이 — 아이폰 13 Pro(390 폭) 216px 기준으로 화면에 맞춘다(사용자 지시: 13 Pro 는 그대로, 작은 화면도 같은 꼴로).
-   폭 비율(216 / 390)과 높이 비율(216 / 700 — 13 Pro 의 큰 화면 높이 745 보다 낮게 잡아 13 Pro 는 폭이 정한다) 중 작은 쪽, 168 ~ 240.
-   SE 2 · 3 약 194 · SE 1 168 · 프로 맥스 238. 크게 = 화면의 56%(lib/heroView). 히어로 · 그 아래에 붙는 머리 묶음 · 목록 칸 맞춤이 함께 쓴다 */
-:root { --pb-hero-base: clamp(168px, min(calc(100vw * 216 / 390), calc(100vh * 216 / 700)), 240px); }
-/* 처음 화면(100svh)에서 카드는 13 Pro 꼴(폭의 1.127배)로, 3번째 줄은 PEEK_ROW(45%)만 보이게 남는 높이를 미리보기가 가져간다 — 큰 화면은 미리보기가 커지고 작은 화면은 줄어 카드 꼴이 같다.
-   165 = 헤더 46 + 머리 묶음 89 + 칸 위 여백 10 + 줄 간격 20, 0.92 = 1.127 × 2.45 ÷ 3, 36 = 칸 좌우 합(ListArea PAD_X 14 + 칸 들임 10 + 열 간격 12). 미리보기가 끝값에 닿으면 카드가 나머지를 맡는다(useMobileRows) */
-/* --pb-row-add = 줄 높이에 더할 값. 마네킹은 정수 배율이라 기기 배율이 3보다 작으면 같은 2배도 CSS 로 더 크다(2.8125 = 45.5px, 13 Pro 42.7px) — 그림 칸을 그만큼 키워 13 Pro 와 같은 여백을 둔다(사용자 지시). 1배로 낮추면 23px 라 너무 작다. 2.45 = 3번째 줄 45% 까지의 줄 수 */
-:root { --pb-row-add: 0px; }
-@media (max-resolution: 2.95dppx) { :root { --pb-row-add: 8px; } }
-@media (max-resolution: 2.7dppx) { :root { --pb-row-add: 12px; } }
-@media (max-resolution: 2.4dppx) { :root { --pb-row-add: 16px; } }
-@supports (height: 1svh) { :root { --pb-hero-base: clamp(168px, calc(100svh - 165px - (100vw - 36px) * 0.92 - var(--pb-row-add) * 2.45), 280px); } }
+/* 모바일 미리보기(히어로) 높이 — 기기마다 lib/mobileFit 이 정해 <html> 에 넣는다(첫 그림 전 머리 스크립트 · 화면이 바뀌면 applyMobileFit). 이 값은 스크립트가 못 돌 때의 받침이다.
+   크게 = 화면의 56%(lib/heroView). 히어로 · 그 아래에 붙는 머리 묶음 · 목록 칸 맞춤이 함께 쓴다 */
+:root { --pb-hero-base: clamp(168px, calc(100vw * 216 / 390), 240px); }
 :root { --pb-hero-h: var(--pb-hero-base); }
 html[data-pb-view='wide'] { --pb-hero-h: max(var(--pb-hero-base), 56vh); }
 /* 코디 칩의 아이콘 칸(코디 정보 · 부위 염색 · 광장 상세가 함께 — pb-chipthumb): 다크에서는 코디 · 프리셋 카드 바탕과 같은 색(#3b3d45 — 주변보다 살짝 밝게, 아이템 그림이 잘 보이게 — 사용자 지시). 라이트는 그대로 */
