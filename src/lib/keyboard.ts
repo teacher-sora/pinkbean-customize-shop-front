@@ -1,26 +1,36 @@
-// 휴대폰 가상 키패드 — 화면 위에 붙은 머리 묶음(data-sticky-top — 목록 검색 · 쪽 번호 · 룩북 아이템 찾기) 안 입력칸을 쓰는 동안 키패드가 화면을 줄이지 않고 덮게 한다(사용자 지시: 키패드를 열면 페이지 스크롤이 늘어났다).
-//  · 기본(viewport interactive-widget=resizes-visual)은 키패드만큼 보이는 화면(visual viewport)이 줄어, 그만큼 페이지를 더 내릴 수 있게 된다.
-//    VirtualKeyboard API(크롬 · 삼성 인터넷 등 크로미움)의 overlaysContent 를 켜면 화면 크기가 그대로라 스크롤이 늘지 않는다 — 대신 키패드 높이는 이 API 로 읽는다.
-//  · 그 밖의 입력칸(코디 정보의 칸 · 시트 · 다이얼로그)은 켜지 않는다 — 화면 아래쪽 입력칸은 키패드가 줄인 화면 위로 올라와야 보인다.
-//  · 아이폰(사파리 · iOS 의 모든 브라우저)에는 이 API 가 없어 키패드가 보이는 화면을 줄인다(막을 수 없다). 그때는 visualViewport 로 잰다.
+// 휴대폰 가상 키패드 — 하단 탭처럼 화면을 덮기만 한다(사용자 지시: 키패드 때문에 보이는 화면이 줄고 페이지 스크롤 · 높이가 바뀌는 것이 싫다).
+//  · 기본(interactive-widget=resizes-visual)은 키패드만큼 보이는 화면(visual viewport)이 줄어, 그만큼 페이지를 더 내릴 수 있게 됐다.
+//    viewport 의 interactive-widget=overlays-content(app/NoFocusZoom)와 VirtualKeyboard API 의 overlaysContent 로 화면 크기를 그대로 둔다 —
+//    크로미움(크롬 · 삼성 인터넷 · 엣지)과 안드로이드 파이어폭스. 키패드 높이는 API 의 boundingRect 로 읽어 html 의 --pb-kb-h 에 적는다.
+//  · 덮이니 가려지면 안 되는 것만 따로: 창(시트 · 다이얼로그) 층은 키패드 위까지로 줄인다(surface .layer — 페이지는 그대로),
+//    페이지 안 입력칸이 키패드 아래에 들면 그만큼만 페이지를 내린다(스크롤 위치만 — 높이는 그대로).
+//  · 아이폰(사파리 · iOS 의 모든 브라우저)에는 이 설정이 없어 키패드가 보이는 화면을 줄인다(웹에서 막을 수 없다).
 type VK = EventTarget & { overlaysContent: boolean; boundingRect: DOMRect }
 const vk = (): VK | null => (typeof navigator !== 'undefined' && 'virtualKeyboard' in navigator ? (navigator as unknown as { virtualKeyboard: VK }).virtualKeyboard : null)
-const editable = (el: EventTarget | null) => el instanceof HTMLElement && (el.isContentEditable || el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(button|submit|reset|checkbox|radio|range|color|file|image|hidden)$/i.test((el as HTMLInputElement).type)))
-const top = (el: HTMLElement) => !!el.closest('[data-mobile-col] [data-sticky-top]')
+const kbRect = () => { const r = vk()?.boundingRect; return r && r.height > 0 ? r : null }
 export function installKeyboardOverlay(): () => void {
   const k = vk()
   if (!k) return () => {}
-  const on = (e: Event) => { if (editable(e.target) && top(e.target as HTMLElement)) k.overlaysContent = true }
-  const off = () => setTimeout(() => { if (!editable(document.activeElement) || !top(document.activeElement as HTMLElement)) k.overlaysContent = false }, 0)
-  document.addEventListener('pointerdown', on, true) // 누르는 순간 — 키패드가 뜨기 전에 켠다(코드로 준 포커스는 focusin)
-  document.addEventListener('focusin', on, true)
-  document.addEventListener('focusout', off, true)
-  return () => { document.removeEventListener('pointerdown', on, true); document.removeEventListener('focusin', on, true); document.removeEventListener('focusout', off, true); k.overlaysContent = false }
+  k.overlaysContent = true
+  const root = document.documentElement
+  const reveal = () => {
+    const r = kbRect(), el = document.activeElement
+    if (!r || !(el instanceof HTMLElement) || el.closest('[data-pb-layer]')) return // 창 안은 층이 키패드 위로 줄어 그대로 보인다
+    const over = el.getBoundingClientRect().bottom + 8 - r.top
+    if (over > 0) window.scrollBy({ top: over, behavior: 'instant' as ScrollBehavior })
+  }
+  const geo = () => {
+    const r = kbRect(), h = `${r ? Math.round(r.height) : 0}px`
+    if (root.style.getPropertyValue('--pb-kb-h') !== h) root.style.setProperty('--pb-kb-h', h)
+    if (r) reveal()
+  }
+  k.addEventListener('geometrychange', geo)
+  return () => { k.removeEventListener('geometrychange', geo); k.overlaysContent = false; root.style.removeProperty('--pb-kb-h') }
 }
-// 지금 보이는 화면의 아래 끝(창 좌표) — 키패드가 덮고 있으면 키패드 위 끝, 줄였으면 줄어든 화면 끝
+// 지금 보이는 화면의 아래 끝(창 좌표) — 키패드가 덮고 있으면 키패드 위 끝, 줄였으면(아이폰) 줄어든 화면 끝
 export function visibleBottom(): number {
-  const r = vk()?.overlaysContent ? vk()!.boundingRect : null
-  if (r && r.height > 0) return r.top
+  const r = kbRect()
+  if (r) return r.top
   const v = window.visualViewport
   return v ? v.offsetTop + v.height : window.innerHeight
 }

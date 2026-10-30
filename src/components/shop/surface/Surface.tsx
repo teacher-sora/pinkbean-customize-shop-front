@@ -201,7 +201,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const slideStyle: React.CSSProperties = { transform: `translateX(${s.partSlide}px)`, opacity: s.partSlide ? 0 : 1 }
 
   return (
-    <div className={styles.layer}>
+    <div data-pb-layer className={styles.layer}>
       <div
         ref={overlayRef}
         className={clsx(styles.overlay, mobile && styles.overlayM, hidden && styles.overlayHidden)}

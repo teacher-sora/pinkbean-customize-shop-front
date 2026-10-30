@@ -83,10 +83,10 @@ export const viewport: Viewport = {
   // ⚠️ 이 값을 바꾸면 NoFocusZoom 의 BASE 도 같이 바꾼다(그 컴포넌트가 meta 를 다시 쓴다).
   colorScheme: 'light',
   themeColor: '#ec86ac',
-  // 가상 키보드가 떠도 레이아웃 높이를 줄이지 않는다(키보드는 화면 위에 겹쳐 보이는 영역만 줄이고, 브라우저가 입력칸이 보이게 이동시킨다).
-  // resizes-content 로 두면 높이가 줄어 문서가 화면보다 길어지고, 입력 포커스가 마스크 뒤 문서를 스크롤한다.
-  // 키보드가 닫힐 때마다 레이아웃이 다시 계산돼 하단 빈 공간·터치 어긋남도 생긴다. iOS 는 원래 이 방식이다.
-  interactiveWidget: 'resizes-visual',
+  // 가상 키패드는 화면을 덮기만 한다(하단 탭처럼 — 사용자 지시). 레이아웃 높이도 보이는 화면도 줄이지 않아 페이지 스크롤 · 높이가 그대로다.
+  // resizes-visual 은 보이는 화면이 줄어 그만큼 페이지를 더 내릴 수 있었고, resizes-content 는 높이가 줄어 레이아웃이 다시 계산됐다.
+  // 가려지면 안 되는 창 · 입력칸은 lib/keyboard 가 키패드 높이로 맞춘다. iOS 는 이 설정이 없다(보이는 화면이 준다).
+  interactiveWidget: 'overlays-content',
 }
 
 // 검색엔진 리치 결과용 구조화 데이터(schema.org) — WebSite/Organization/WebApplication 그래프.

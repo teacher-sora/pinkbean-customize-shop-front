@@ -12,8 +12,9 @@
  */
 
 import { useEffect } from 'react'
+import { installKeyboardOverlay } from '@/lib/keyboard'
 
-const BASE = 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual'
+const BASE = 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content'
 const isEditable = (el: EventTarget | null): boolean => {
   if (!(el instanceof HTMLElement)) return false
   if (el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true
@@ -22,6 +23,7 @@ const isEditable = (el: EventTarget | null): boolean => {
 }
 
 export default function NoFocusZoom() {
+  useEffect(() => installKeyboardOverlay(), []) // 가상 키패드는 화면을 덮기만 한다(lib/keyboard)
   useEffect(() => {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
     if (!meta) return

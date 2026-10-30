@@ -2,7 +2,7 @@
 //  · 손가락이 닿아 있는 동안 화면 기준 위치(clientY)를 움직임마다 적고, 마지막으로 방향을 바꾼 자리(꺾인 점)에서 STEP 넘게 가면 그 방향으로 친다 —
 //    위로 = 숨김, 아래로 = 나옴. 같은 방향으로 가는 동안 꺾인 점은 손가락을 따라가므로, 휘저으면 방향이 바뀔 때마다 그대로 반응한다.
 //  · 가로로 움직이기 시작하면(목록 좌우 넘기기 · 분류 줄 끌기) 어느 쪽이든 숨는다. 그 뒤의 세로 흔들림은 더 크게(STEP_X) 움직여야 친다.
-//  · 손을 뗄 때 마지막 점을 한 번 더 본다(빠르게 튕겨 움직임이 한두 번만 온 때). 마우스 휠은 휠 방향.
+//  · 손을 뗄 때 아직 방향이 정해지지 않았으면 뗀 점을 한 번 더 본다(빠르게 튕겨 움직임이 한두 번만 온 때). 마우스 휠은 휠 방향.
 //  · 왜: 처음 움직인 쪽이 조금이라도 가로면 그 손동작 전체를 버리고, 틀 · 탭을 처음 한 번만 찾아 두어 휘저어도 반응이 없을 때가 많았다(사용자 지적).
 //  · 움직임은 브라우저의 전환(globals.css nav[data-pb-navhide])이고, 코드는 표시 하나만 바꾼다. 페이지는 늘 브라우저 기본대로 스크롤한다.
 const STEP = 10 // 꺾인 점에서 이만큼(px) 가면 그 방향으로 친다(누르기 · 떨림은 치지 않는다)
@@ -45,7 +45,7 @@ const onMove = (e: TouchEvent) => {
 }
 const onEnd = (e: TouchEvent) => {
   const t = e.changedTouches[0]
-  if (touch && t) track(t.clientY, across ? STEP_X : STEP)
+  if (touch && t && dir === 0) track(t.clientY, across ? STEP_X : STEP) // 이 손동작에서 아직 방향이 정해지지 않았을 때만(정해진 것을 끝에서 뒤집지 않는다)
   touch = false
 }
 const onWheel = (e: WheelEvent) => { if (!frozen && inCol(e.target) && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.deltaY) set(e.deltaY > 0) }

@@ -1,6 +1,6 @@
 /* 단일 서피스(시트·다이얼로그). */
 
-.layer { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
+.layer { position: fixed; inset: 0; bottom: var(--pb-kb-h, 0px); z-index: 100; pointer-events: none; } /* 키패드가 화면을 덮으니(lib/keyboard) 창 층만 키패드 위까지로 — 시트 입력칸이 가려지지 않는다 */
 .overlay { position: absolute; inset: 0; pointer-events: auto; background: light-dark(rgba(42,37,33,0.40), rgba(14, 15, 17, 0.46)); display: flex; align-items: center; justify-content: center; padding: 28px; transition: opacity .24s ease; opacity: 1; }
 .overlayM { align-items: flex-end; padding: 0; overflow: hidden; }
 .overlayHidden { opacity: 0; pointer-events: none; } /* 닫히는 동안 투명한 마스크가 터치를 가로채지 않게 — 뒤 버튼으로 바로 다시 열 수 있다 */
