@@ -113,7 +113,11 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
       const vp = vpRef.current?.isConnected ? vpRef.current : vp0 // 넘기는 방향을 바꾸면 칸이 새로 붙을 수 있다 — 지금 칸을 잰다
-      const chrome = col.clientHeight - vp.clientHeight
+      // 칸 밖 높이 = 틀 위 끝에서 칸 위 끝까지 + 칸 뒤에 붙은 요소들(룩북 출처 줄). 하단 탭은 떠 있어 세지 않는다.
+      // 틀 높이에서 칸 높이를 빼 재면 앞 탭이 남긴 틀 높이의 빈자리까지 들어가 그대로 남았다(코디 정보에서 페이지가 172px 내려갔다)
+      let below = 0
+      for (let el = vp.nextElementSibling; el; el = el.nextElementSibling) if (el instanceof HTMLElement && el.getClientRects().length && !el.matches('nav[data-hero-below]')) below += el.offsetHeight
+      const chrome = vp.getBoundingClientRect().top - col.getBoundingClientRect().top + below
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
       // 맞춤: 페이지를 헤더 높이만큼 내리면 미리보기가 화면 맨 위에 오고, 미리보기 + 머리 묶음 바로 아래부터 화면 끝까지가 목록 칸이다(큰 화면 높이 100lvh — 툴바가 접힌).
@@ -121,9 +125,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       // 맞춤이 있으면 바닥(floor — 그림 칸 비율)보다 맞춤이 먼저다: 어느 기기든 페이지는 맨 위 헤더 높이만큼만 내려간다(사용자 지시). 낮은 화면은 카드가 그만큼 낮아진다
       let fit = 0
       if (hero && document.documentElement.getAttribute('data-pb-view') !== 'full') {
-        // 칸 아래 것은 칸 뒤에 붙은 요소들의 높이로 잰다 — 틀 끝까지의 거리로 재면 앞 탭이 남긴 틀 높이의 빈자리까지 빠져 칸이 짧아졌다(코디 정보 126px)
-        let below = 0
-        for (let el = vp.nextElementSibling; el; el = el.nextElementSibling) if (el instanceof HTMLElement && el.getClientRects().length && !el.matches('nav[data-hero-below]')) below += el.offsetHeight
+        // 칸 아래 것(below)은 칸 뒤에 붙은 요소들의 높이다 — 틀 끝까지의 거리로 재면 앞 탭이 남긴 빈자리까지 빠져 칸이 짧아졌다(코디 정보 126px)
         fit = lvh.offsetHeight - base.offsetHeight - (vp.getBoundingClientRect().top - hero.getBoundingClientRect().bottom) - below
       }
       const h = fit > 0 ? fit : floor
