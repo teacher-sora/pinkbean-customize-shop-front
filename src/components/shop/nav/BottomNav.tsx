@@ -60,11 +60,11 @@ export function PlazaTabsM() {
 }
 
 // 모바일 부위 · 분류 줄과 목록 머리를 묶어 미리보기 바로 아래에 띄워 둔다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
-// 맨 위까지 올리지 않게). 스크롤을 내리면 분류 줄(data-pb-cat)만 미리보기 뒤로 접히고 목록 머리 줄은 늘 보인다(lib/scrollHide).
-// 자리 틀(.barM)이 원래 높이를 잡고 안의 칸(data-pb-track)이 화면에 붙는다. data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
+// 맨 위까지 올리지 않게). 목록 넓게 보기에서는 분류 줄(data-pb-cat)이 미리보기 뒤로 들어가고 목록 머리 줄은 늘 보인다(lib/scrollHide).
+// data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
 export function StickyBarM({ children }: { children: React.ReactNode }) {
-  useLayoutEffect(() => { refreshScrollLink() }) // 새로 붙거나 내용이 바뀌면 자리를 바로 다시 잰다(그리기 전에)
-  return <div data-pb-slot="bar" className={styles.barM}><div data-pb-track="bar"><div data-sticky-top className={styles.barIn}>{children}</div></div></div>
+  useLayoutEffect(() => { refreshScrollLink() }) // 새로 붙거나 내용이 바뀌면 바로 다시 잰다(그리기 전에)
+  return <div data-pb-slot="bar" className={styles.barM}><div data-sticky-top className={styles.barIn}>{children}</div></div>
 }
 
 export default function BottomNav({ mobile }: { mobile: boolean }) {

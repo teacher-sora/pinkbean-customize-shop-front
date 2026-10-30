@@ -396,12 +396,12 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   }
 
   // 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다).
-  // 모바일 세로는 목록 칸 안 스크롤이라(위에 머리 묶음이 떠 있다 — lib/scrollHide) 염색 줄 · 출처 줄도 칸 안에서 쪽들과 함께 스크롤한다
+  // 모바일 세로는 목록 칸 안 스크롤이라 염색 줄 · 출처 줄도 칸 안에서 쪽들과 함께 스크롤한다
   const inner = mobile && dirY
   const dyeRow = (dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>
   const credit = <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
   const viewport = (
-    <div ref={setVp} data-pb-iscroll={inner ? '' : undefined} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
+    <div ref={setVp} data-pb-list={mobile ? '' : undefined} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
       {inner && dyeRow}
       {failed || (first && !first.ready) ? (
         <div className={mobile ? list.emptyM : list.empty}>

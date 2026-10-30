@@ -301,25 +301,22 @@ html[data-pb-bgonly] [data-pb-body] { opacity: 0; transform: translateY(10px); v
 :where([data-guide]) { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .3s cubic-bezier(.45,0,.55,1); }
 [data-guide].pb-guidehit { outline: 2px solid light-dark(#ec86ac, #d15785) !important; outline-offset: 2px; }
 
-/* 모바일 떠 있는 머리 · 하단 탭(lib/scrollHide, html[data-pb-float]) — 유튜브 앱처럼 내용 위에 떠서 가리기만 하고 페이지를 밀지 않는다.
-   맨 위 헤더 · 미리보기 · 머리 묶음은 각자의 자리 틀 안 칸(data-pb-track)이 화면에 붙는다(자리는 코드가 크기가 바뀔 때만 적는다).
-   헤더와 분류 줄(data-pb-cat)만 접힌다 — 코드가 손가락을 따라 translate · opacity 를 바로 적고(바텀 시트처럼), 손을 떼면 끝까지 가는 동안만
-   전환을 탄다(html[data-pb-anim]). 분류 줄은 미리보기 뒤로 들어가고 목록 머리 줄은 미리보기 바로 아래에 남는다 */
-html[data-pb-float] [data-pb-track] { position: fixed; left: 0; right: 0; pointer-events: none; }
-html[data-pb-float] [data-pb-track] > * { pointer-events: auto; }
-html[data-pb-float] [data-pb-track='hdr'] { z-index: 32; }
-html[data-pb-float] [data-pb-track='hero'] { z-index: 31; }
-html[data-pb-float] [data-pb-track='bar'] { z-index: 30; }
-html[data-pb-anim] [data-pb-track] { transition: translate .24s cubic-bezier(.22,.61,.36,1); }
-html[data-pb-anim] [data-app-header], html[data-pb-anim] [data-pb-cat] { transition: opacity .24s ease; }
-/* 하단 탭: 자리 없이 화면 아래에 떠 있고(내용을 덮는다), 스크롤 방향으로 제 전환을 타고 숨고 나온다(nav[data-pb-navhide]) */
-html[data-pb-float] [data-mobile-col] > nav[data-hero-below] { position: fixed; left: 0; right: 0; bottom: 0; transition: translate .24s cubic-bezier(.45,0,.55,1), opacity .24s ease; }
-html[data-pb-float] [data-mobile-col] > nav[data-pb-navhide] { translate: 0 100%; opacity: 0; pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { html[data-pb-anim] [data-pb-track], html[data-pb-anim] [data-app-header], html[data-pb-anim] [data-pb-cat], [data-mobile-col] > nav[data-hero-below] { transition: none !important; } }
-/* 목록 칸 안 스크롤(세로로 넘기는 목록 · 광장 · 룩북 · 프리셋 — html[data-pb-inner]): 페이지는 화면 높이로 서 있고 목록 칸(data-pb-iscroll)만 스크롤한다.
-   헤더 · 머리 묶음 자리는 비우고(칸이 미리보기 자리 바로 아래부터 화면 끝까지), 칸의 위 여백이 펼친 머리들의 높이(--pb-ipad)라 맨 위는 가려지지 않는다 */
-/* 틀은 화면에 딱 붙인다(fixed inset 0 — 보이는 화면 크기를 그대로 따른다). 100svh 로 묶었더니 가로에서 끝까지 내려 주소창이 접힌 채 세로로 바꾸면
-   페이지가 내려간 채 남아 아래에 흰 공간이 생기고 떠 있는 머리와 배치가 어긋나 보기 설정이 눌리지 않았다(사용자 지적) */
-html[data-pb-inner] [data-mobile-col] { position: fixed; inset: 0; height: auto !important; }
-html[data-pb-inner] [data-pb-slot='hdr'], html[data-pb-inner] [data-pb-slot='bar'] { height: 0 !important; }
-html[data-pb-inner] [data-pb-iscroll] { padding-top: calc(var(--pb-ipad, 0px) + var(--pb-ip0, 0px)); padding-bottom: var(--pb-ip0, 0px); }
+/* 모바일 목록 넓게 보기 · 하단 탭(lib/scrollHide). 목록 화면(html[data-pb-fix])은 틀이 화면에 딱 붙어 페이지가 스크롤하지 않는다 */
+html[data-pb-fix] [data-mobile-col] { position: fixed; inset: 0; height: auto !important; }
+/* 목록 칸 = 넓게 보기 높이(--pb-page-h, ListArea useMobileRows) — 처음에는 아래가 틀 밖으로 넘쳐(틀 overflow clip) 셋째 줄이 걸쳐 보인다 */
+html[data-pb-fix] [data-pb-list] { flex: 0 0 auto !important; height: var(--pb-page-h) !important; }
+/* 겹침 순서: 헤더 > 미리보기 > 머리 묶음(보기 설정 팝박스가 목록 위에 뜨고, 분류 줄은 미리보기 뒤로 들어간다) > 목록 */
+html[data-pb-fix] [data-pb-slot='hdr'] { position: relative; z-index: 4; }
+html[data-pb-fix] [data-pb-slot='hero'] { position: relative; z-index: 3; }
+html[data-pb-fix] [data-pb-slot='bar'] { position: relative; z-index: 2; }
+html[data-pb-fix] [data-pb-panel] > :not([data-pb-slot]):not(.pb-fadeov) { position: relative; z-index: 1; }
+/* 넓게 보기(html[data-pb-compact]): 헤더 · 미리보기는 헤더 높이만큼, 그 아래 전부는 헤더 + 분류 줄만큼 함께 올라간다 — 목록이 통째로 올라와 가리는 것이 없다 */
+html[data-pb-fix] [data-pb-slot='hdr'], html[data-pb-fix] [data-pb-slot='hero'], html[data-pb-fix] [data-pb-panel] > :not([data-pb-slot='hero']) { transition: translate .26s cubic-bezier(.45,0,.55,1); }
+html[data-pb-fix] [data-app-header], html[data-pb-fix] [data-pb-cat] { transition: opacity .26s ease; }
+html[data-pb-compact] [data-pb-slot='hdr'], html[data-pb-compact] [data-pb-slot='hero'] { translate: 0 calc(-1 * var(--pb-hdr-h)); }
+html[data-pb-compact] [data-pb-panel] > :not([data-pb-slot='hero']) { translate: 0 calc(-1 * (var(--pb-hdr-h) + var(--pb-cat-h, 0px))); }
+html[data-pb-compact] [data-app-header], html[data-pb-compact] [data-pb-cat] { opacity: 0; pointer-events: none; }
+/* 하단 탭: 자리 없이 화면 아래에 떠 있고(내용을 덮는다), 손가락 제스처 방향으로 제 전환을 타고 숨고 나온다(nav[data-pb-navhide]) */
+html[data-pb-nav] [data-mobile-col] > nav[data-hero-below] { position: fixed; left: 0; right: 0; bottom: 0; transition: translate .24s cubic-bezier(.45,0,.55,1), opacity .24s ease; }
+html[data-pb-nav] [data-mobile-col] > nav[data-pb-navhide] { translate: 0 100%; opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { html[data-pb-fix] [data-pb-slot], html[data-pb-fix] [data-pb-panel] > *, html[data-pb-fix] [data-app-header], html[data-pb-fix] [data-pb-cat], [data-mobile-col] > nav[data-hero-below] { transition: none !important; } }

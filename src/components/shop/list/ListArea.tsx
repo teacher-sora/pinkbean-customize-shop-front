@@ -113,19 +113,24 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
       const vp = vpRef.current?.isConnected ? vpRef.current : vp0 // 넘기는 방향을 바꾸면 칸이 새로 붙을 수 있다 — 지금 칸을 잰다
-      const inner = document.documentElement.hasAttribute('data-pb-inner') // 목록 칸 안 스크롤(lib/scrollHide): 틀이 화면 높이로 묶여 있어 틀 최소 높이는 재지 않는다
+      const fix = document.documentElement.hasAttribute('data-pb-fix') // 목록 화면(lib/scrollHide): 틀이 화면에 붙어 페이지가 스크롤하지 않는다
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
-      // 하단 탭 자리는 뺀다 — 목록 칸 안 스크롤에서는 탭이 칸 위에 떠 있어(lib/scrollHide) 칸 아래에 없으니 빼지 않는다(빼면 쪽이 탭만큼 커졌다)
-      const navEl = col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')
-      const nav = navEl && getComputedStyle(navEl).position !== 'fixed' ? navEl.offsetHeight : 0
-      const below = col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom - nav
-      // 늘 보이는 목록 머리 줄(머리 묶음 − 접히는 분류 줄)도 뺀다 — 접힌 때 미리보기 + 목록 머리 줄 아래에 3줄이 딱 든다(사용자 지시: 목록 머리는 늘 보인다)
-      const bar = col.querySelector<HTMLElement>('[data-sticky-top]'), ctrl = bar ? bar.offsetHeight - (bar.querySelector<HTMLElement>('[data-pb-cat]')?.offsetHeight ?? 0) : 0
-      const fit = hero && document.documentElement.getAttribute('data-pb-view') !== 'full' ? lvh.offsetHeight - base.offsetHeight - ctrl - below : 0
+      // 목록 화면: 칸 높이 = 넓게 보기에서 미리보기(기본 보기 높이) + 목록 머리 줄(머리 묶음 − 분류 줄) 아래 화면 끝까지 — 그때 3줄이 딱 든다(사용자 지시).
+      // 칸 밖에 함께 놓이는 것(룩북 가로의 자주 쓴 염색 줄 · 출처 줄)도 뺀다. 하단 탭은 떠 있어 빼지 않는다(넓게 보기에서는 숨는다)
+      let fit = 0
+      if (hero && document.documentElement.getAttribute('data-pb-view') !== 'full') {
+        if (fix) {
+          const bar = col.querySelector<HTMLElement>('[data-sticky-top]'), ctrl = bar ? bar.offsetHeight - (bar.querySelector<HTMLElement>('[data-pb-cat]')?.offsetHeight ?? 0) : 0
+          const others = [...col.querySelectorAll<HTMLElement>('[data-pb-panel] > *')]
+            .filter((el) => !el.hasAttribute('data-pb-slot') && !el.contains(vp) && !el.classList.contains('pb-fadeov') && el.getClientRects().length)
+            .reduce((n, el) => n + el.offsetHeight, 0)
+          fit = col.clientHeight - base.offsetHeight - ctrl - others
+        } else fit = lvh.offsetHeight - base.offsetHeight - (col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom)
+      }
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
-      if (!inner && col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
+      if (!fix && col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
       const page = Math.ceil(Math.max(floor, fit)) + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
       if (col.style.getPropertyValue('--pb-page-h') !== page) col.style.setProperty('--pb-page-h', page)
     }
@@ -138,8 +143,8 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
 }
 
 // 모바일 세로 넘기기: 목록 칸 안 스크롤(사용자 지시 — 페이지 하나로 합쳤더니 목록을 스크롤할 수 없었고 페이지가 쪽 수만큼 길어졌다). 쪽은 한 쪽 높이(--pb-page-h,
-// useMobileRows)로 쌓이고, 칸 위에는 맨 위 헤더 · 미리보기 · 머리 묶음이 떠 있어 칸 안 스크롤 방향에 따라 접히고 펼쳐진다(lib/scrollHide — 칸 위 여백이 그만큼).
-// 스크롤 위치 ↔ 쪽 번호: 쪽 i 의 자리 = 그 쪽 위 끝이 접힌 때 목록 머리 줄 바로 아래에 오는 스크롤, 첫 쪽은 맨 위. 줄 단위로 반올림해 센다(가로와 같다)
+// useMobileRows — 칸 높이와 같다)로 쌓인다. 페이지는 스크롤하지 않는다(lib/scrollHide).
+// 스크롤 위치 ↔ 쪽 번호: 쪽 i 의 자리 = 그 쪽 위 끝이 칸 위 끝에 오는 스크롤. 줄 단위로 반올림해 센다(가로와 같다)
 export function usePagerY(vpRef: React.RefObject<HTMLDivElement | null>, on: boolean, idx: number, setIdx: (i: number, anim?: boolean) => void, pageCount: number, key: string, rows: number = MOBILE_GRID.rows) {
   const live = useRef({ idx, setIdx, pageCount, rows })
   live.current = { idx, setIdx, pageCount, rows }
@@ -148,8 +153,7 @@ export function usePagerY(vpRef: React.RefObject<HTMLDivElement | null>, on: boo
     if (!vp || !tr) return null
     const ph = parseFloat(getComputedStyle(vp).getPropertyValue('--pb-page-h'))
     if (!ph) return null
-    const ctrl = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pb-ctrl-h')) || 0 // 접혀도 칸 위를 덮는 목록 머리 줄(lib/scrollHide)
-    return { vp, off: tr.offsetTop - ctrl, ph } // off = 칸 위 여백 + 쪽들 위의 것(룩북의 자주 쓴 염색 줄) − 목록 머리 줄
+    return { vp, off: tr.offsetTop, ph } // off = 쪽들 위의 것(룩북의 자주 쓴 염색 줄)
   }, [vpRef])
   const at = (g: { vp: HTMLElement; off: number; ph: number }) => {
     const { pageCount: n, rows: r } = live.current
@@ -353,7 +357,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const viewport = (
-    <div ref={setVp} data-pb-iscroll={mobile && dirY ? '' : undefined} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
+    <div ref={setVp} data-pb-list={mobile ? '' : undefined} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
       {hero ? (
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>
