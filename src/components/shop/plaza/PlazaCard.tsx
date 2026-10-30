@@ -62,7 +62,7 @@ export default function PlazaCard({ post, mobile, priority = 0 }: { post: PlazaP
           <div className={clsx(list.bar, list.barM, styles.barM)}>
             <button type="button" onClick={stop(() => s.plazaTakeDirect(post))} title="내 프리셋으로 가져오기" aria-label="가져오기" className={clsx('pb-cardact', list.act, list.actM)}><IconTakeDown size={13} /></button>
             <button type="button" onClick={stop(() => s.plazaLike(post))} title={post.liked ? '좋아요 취소' : '좋아요'} aria-label="좋아요" aria-pressed={post.liked}
-              className={clsx('pb-cardact', list.act, list.actM, styles.likeAct, post.liked && styles.likeActOn)}><IconHeart filled={post.liked} size={12} /><span>{post.likes > 999 ? '999+' : post.likes}</span></button>
+              className={clsx('pb-cardact', list.act, list.actM, list.actDye, styles.likeAct, post.liked && styles.likeActOn)}><IconHeart filled={post.liked} size={12} /><span>{post.likes > 999 ? '999+' : post.likes}</span></button>
           </div>
         )}
       </div>
