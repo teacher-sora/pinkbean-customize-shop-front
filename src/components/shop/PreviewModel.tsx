@@ -51,6 +51,8 @@ const heroBaseH = () => (typeof document === 'undefined' ? 216 : heroBaseProbe()
 // 부유 아이템의 둥둥 뜨기 — 위로 최대 FLOAT_AMP 게임 픽셀, FLOAT_MS 한 바퀴(원본에 값이 없어 게임 화면으로 맞췄다).
 const FLOAT_AMP = 5
 const FLOAT_MS = 2400
+// 보이는 프레임을 칠한 뒤 전 프레임 염색을 시작하기까지 — 연달아 입는 동안은 전 프레임을 건너뛰어 새 아이템이 바로 입혀진다
+const FULL_DYE_WAIT_MS = 150
 
 // cmp: 코디 비교의 고른 칸(preview/PreviewStage) — 칸 높이에 맞춘 비율로 그리고, 그림을 다 그릴 때마다 알린다(칸을 옮긴 직후 직전 칸의 그림이 비치지 않게 가려 두었다가 연다).
 export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: { fraction: number; onDrawn: (w: number, h: number) => void } } = {}) {
@@ -382,7 +384,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   ])
   const hasDye = Object.keys(dyePalette).length > 0 || Object.values(dyeHsb).some((h) => !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0))
   const [ovKey, setOvKey] = useState('')
-  useLiveRedraw(async () => {
+  useLiveRedraw(async (stale) => {
     const myKey = dyeKey
     const dyeable: ItemMeta[] = []
     for (const it of Object.values(equipped)) { if (!it) continue; const m = metas.get(it.id); if (m) dyeable.push(m) }
@@ -409,15 +411,19 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     // 이펙트/피부 프레임 염색을 override(ov)에 추가. allFrames=false 면 프레임0만, true 면 전 프레임.
     // ⚠️ 프레임 png 는 반드시 "병렬 로드"(Promise.all)로 받는다 — 순차 fetch(프레임마다 await)면 큰 이펙트(망토)
     //    처럼 프레임이 많을 때 fetch 가 줄줄이 늘어져 매우 느리고 점멸한다. 병렬로 한 번에 받아 즉시 리컬러.
+    // 이펙트는 이 동작에서 그려지는 묶음만 칠한다(effectGroupsFor — 그림을 받는 쪽과 같은 고르기). 모든 동작의 묶음을 칠하면 날개 망토처럼
+    // 묶음이 많은 이펙트는 수백 장을 받아 칠하느라 다음 장착이 그 뒤로 밀렸고, 염색 캐시(400칸)도 밀려났다. 동작을 바꾸면 이 계산이 다시 돈다.
+    // 전 프레임(allFrames)은 새 입력이 오면(stale) 그 자리에서 그만둔다.
     const dyeExtras = async (allFrames: boolean) => {
       for (const [slot, it] of Object.entries(equipped)) {
+        if (allFrames && stale()) return
         if (!it) continue
         if (it.dyeMode === 'none') continue // 일반(메소) 아이템 등 염색 불가 → 이펙트도 원본 색
         const h = dyeHsb[slot]
         if (!h || (h.h === 0 && h.s === 0 && h.b === 0)) continue
         const em = effMetas.get(it.id); if (!em) continue
         const pngs: string[] = []
-        for (const g of effectGroups(em)) {
+        for (const g of effectGroupsFor(em, V.action)) {
           const frames = allFrames ? g.frames : g.frames.slice(0, 1)
           for (const fr of frames) pngs.push(fr.png)
         }
@@ -426,12 +432,13 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
         let n = 0
         for (const e of loaded) {
           if (e) { try { ov.set(e[0], applyHsb(e[1], h, e[0])) } catch (_) {} }
-          if (++n % 6 === 0) await new Promise((r) => setTimeout(r, 0)) // applyHsb 동기 루프를 끊어 UI 멈춤 방지
+          if (++n % 6 === 0) { await new Promise((r) => setTimeout(r, 0)); if (allFrames && stale()) return } // applyHsb 동기 루프를 끊어 UI 멈춤 방지
         }
       }
       // 피부(컬러라인 커스텀) 라인 염색: body+head 프레임 png 를 HSB 로 리컬러(피부는 무채색이라 라인만 변한다).
       const skinHsb = dyeHsb['skin']
       const skinFam = skinDyeFamily(toneEntry?.name)
+      if (allFrames && stale()) return
       if (skinHsb && (skinHsb.h || skinHsb.s || skinHsb.b) && skinFam != null && bodyMeta && headMeta) {
         const pngs: string[] = []
         const seen = new Set<string>()
@@ -447,7 +454,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
         let n = 0
         for (const e of loaded) {
           if (e) { try { ov.set(e[0], applyHsb(e[1], skinHsb2(skinHsb, skinFam), e[0])) } catch (_) {} }
-          if (++n % 6 === 0) await new Promise((r) => setTimeout(r, 0))
+          if (++n % 6 === 0) { await new Promise((r) => setTimeout(r, 0)); if (allFrames && stale()) return }
         }
       }
     }
@@ -456,20 +463,26 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     setDyeOverrides(new Map(ov)); setOvKey(myKey)
     // 2) 드래그 중이 아니면 나머지 전 프레임까지 이어서 → 애니메이션에서도 색 유지. 이 동안(전 프레임 염색 중)
     //    이펙트/피부가 있으면 애니메이션을 잠깐 정지해 덜 칠해진 프레임 점멸을 막는다(끝나면 재개).
+    //    전 프레임은 급하지 않다 — 잠깐 기다려 연달아 입는 중이면(새 입력) 건너뛰고 새 아이템의 보이는 프레임을 먼저 칠한다.
     if (!dyeInteracting) {
       // 전 프레임을 칠하는 동안 애니메이션이 돌면 덜 칠해진 프레임이 점멸한다 → 그런 대상이 하나라도 있으면 잠깐 정지.
-      // 이펙트뿐 아니라 "염색된 착용 아이템" 자체도 이제 2단계로 칠해지므로(위 buildOverrides allFrames) 함께 본다.
+      // 이펙트뿐 아니라 "염색된 착용 아이템" 자체도 2단계로 칠해지므로 함께 본다.
       const willDyeFrames =
         Object.entries(equipped).some(([slot, it]) => { const h = dyeHsb[slot]; return !!it && !!h && (h.h !== 0 || h.s !== 0 || h.b !== 0) }) ||
         (() => { const sh = dyeHsb['skin']; return !!sh && (sh.h !== 0 || sh.s !== 0 || sh.b !== 0) && skinDyeFamily(toneEntry?.name) != null })()
       if (willDyeFrames) setDyeSettling(true)
-      // 아이템(착용 장비)의 나머지 프레임을 여기서 이어 칠한다 — 이게 없으면 액션 애니메이션 2번째 프레임부터
-      // override 가 없어 염색이 풀린 원본색으로 보였다(이펙트/피부는 dyeExtras 가 이미 전 프레임을 칠하고 있었다).
-      const full = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, true, dyeBack)
-      for (const [k, v] of full) ov.set(k, v)
-      await dyeExtras(true)
-      setDyeOverrides(new Map(ov))
-      if (willDyeFrames) setDyeSettling(false)
+      try {
+        await new Promise((r) => setTimeout(r, FULL_DYE_WAIT_MS))
+        if (stale()) return
+        // 아이템(착용 장비)의 나머지 프레임을 여기서 이어 칠한다 — 이게 없으면 액션 애니메이션 2번째 프레임부터
+        // override 가 없어 염색이 풀린 원본색으로 보였다(이펙트/피부는 dyeExtras 가 이미 전 프레임을 칠하고 있었다).
+        const full = await buildOverrides(dyeable, { palette: dyePalette, hsb: dyeHsb }, dyeV, true, dyeBack)
+        if (stale()) return // 새 입력 — 다음 차례가 보이는 프레임부터 다시 칠한다
+        for (const [k, v] of full) ov.set(k, v)
+        await dyeExtras(true)
+        if (stale()) return
+        setDyeOverrides(new Map(ov))
+      } finally { if (willDyeFrames) setDyeSettling(false) }
     }
   }, [equipped, metas, effMetas, dyePalette, dyeHsb, V, hidden, pv.gaze, pv.action, pv.frame, bodyMeta, headMeta, toneEntry, dyeInteracting])
 

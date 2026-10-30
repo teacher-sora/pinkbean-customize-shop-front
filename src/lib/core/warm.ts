@@ -5,22 +5,32 @@
 import { frameDelays, getFrameLayers, weaponPose, type ViewOpts } from './assemble'
 import { loadEffect, loadEffectIndex, loadMeta, type ItemMeta, type ListItem } from './data'
 import { applyHsb, buildOverrides, loadDyeImage, preloadPaletteVariant, type DyeState, type PaletteParams } from './dye'
-import { effectGroups, effectGroupsFor, loadImage } from './render'
+import { effectGroupsFor, loadImage } from './render'
 
 const warmed = new Set<string>()
 
-export function warmItem(item: ListItem, view: ViewOpts, palette?: PaletteParams): Promise<void> {
-  const key = `${item.id}|${view.action}|${view.expression}|${view.ear}|${view.weaponMotion}|${palette ? JSON.stringify(palette) : ''}`
+// full = 누르는 순간(카드에 손가락 · 마우스가 닿았을 때 — 곧 입는다): 미리보기는 돌던 시계를 이어 가 첫 그림이 0번 프레임이 아닐 수 있어
+// 그 동작의 모든 프레임과 정지 대표 그림, 이 동작에서 도는 이펙트 묶음의 모든 프레임까지 받는다(warmLook 과 같은 범위).
+// 쪽 예열(full 아님)은 첫 프레임과 이 동작의 이펙트 묶음 첫 장만 — 쪽마다 18장이라 가볍게 둔다. 다른 동작의 묶음은 미리보기의 유휴 예열 몫이다.
+export function warmItem(item: ListItem, view: ViewOpts, palette?: PaletteParams, full = false): Promise<void> {
+  const key = `${item.id}|${view.action}|${view.expression}|${view.ear}|${view.weaponMotion}|${palette ? JSON.stringify(palette) : ''}|${full ? 1 : 0}`
   if (warmed.has(key)) return Promise.resolve()
   warmed.add(key)
   return (async () => {
     const [meta, eidx] = await Promise.all([loadMeta(item.id), loadEffectIndex()])
-    const jobs: Promise<unknown>[] = getFrameLayers(meta, view, 0).filter((l) => l.png).map((l) => loadImage(l.png, true).catch(() => null))
+    const pngs = new Set<string>()
+    for (const l of getFrameLayers(meta, view, 0)) pngs.add(l.png)
+    if (full) {
+      for (const l of getFrameLayers(meta, view)) pngs.add(l.png)
+      const n = frameDelays(meta, view).length
+      for (let i = 1; i < n; i++) for (const l of getFrameLayers(meta, view, i)) pngs.add(l.png)
+    }
+    const jobs: Promise<unknown>[] = [...pngs].filter(Boolean).map((p) => loadImage(p, true).catch(() => null))
     if (palette) preloadPaletteVariant(meta, palette, view)
     if (eidx.has(String(parseInt(item.id, 10)))) {
       jobs.push(loadEffect(item.id).then((em) => {
         if (!em) return
-        return Promise.all(effectGroups(em).map((g) => (g.frames[0] ? loadImage(g.frames[0].png, true).catch(() => null) : null)))
+        return Promise.all(effectGroupsFor(em, view.action).flatMap((g) => (full ? g.frames : g.frames.slice(0, 1)).map((fr) => loadImage(fr.png, true).catch(() => null))))
       }))
     }
     await Promise.all(jobs)

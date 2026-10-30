@@ -1144,7 +1144,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const warmForPreview = useCallback((item: ListItem) => {
     if (item.slot === 'skin') return
     const { view } = buildView(pvRef.current)
-    warmItem(item, view, isMixSlot(item.slot) ? renderPaletteRef.current[item.slot] : undefined)
+    warmItem(item, view, isMixSlot(item.slot) ? renderPaletteRef.current[item.slot] : undefined, true)
   }, [])
   useEffect(() => {
     if (snapping) return
