@@ -49,7 +49,7 @@ type Layer = { src: string; w: number; h: number; fx: number; fy: number } // �
 // floor: 같은 칸의 캐릭터(SnapThumb onFloor)가 실제로 그린 발 자리 · 배율 — 있으면 그 자리에 맞춘다(미리보기 장면이 PreviewModel 의 발 자리를 받는 것과 같다).
 //   추정 공식으로 다시 계산하면 배율이 소수인 화면(125% 등)에서 1px 어긋나, 고른 칸(미리보기 장면)과 견주면 배경이 1px 내려가 보였다(사용자 지적)
 export type CardFloor = { cx: number; footY: number; scale: number }
-export function CardStageBg({ sel, fraction, zoom, floor }: { sel?: string; fraction: number; zoom?: number; floor?: CardFloor | null }) {
+export function CardStageBg({ sel, fraction, zoom, zoomMults, floor }: { sel?: string; fraction: number; zoom?: number; zoomMults?: Record<number, number>; floor?: CardFloor | null }) {
   const ref = useRef<HTMLDivElement>(null)
   const box = useBox(ref)
   const v = stageSelOf(sel)
@@ -58,7 +58,7 @@ export function CardStageBg({ sel, fraction, zoom, floor }: { sel?: string; frac
     : cash ? [{ src: cash.src, w: CASH_BG_W, h: CASH_BG_H, fx: CASH_BG_W / 2, fy: CASH_BG_GROUND }] : []
   const img = !layers.length ? getStageBg().images.find((i) => i.id === v)?.src : undefined
   const fill = v === 'room' ? '#14110f' : cash ? `linear-gradient(to bottom, ${cash.top} 50%, ${cash.bottom} 50%)` : v === 'system' ? SYS_BG_CSS : STAGE_COLORS[v]
-  const sc = !box.h ? 0 : zoom != null ? zoomStepScale({ fraction, divH: box.h, dpr: box.dpr, level: zoom, mults: ZOOM_WORLD }) : Math.max(1, Math.round((fraction * box.h * box.dpr) / MODEL_REF.bodyRefH))
+  const sc = !box.h ? 0 : zoom != null ? zoomStepScale({ fraction, divH: box.h, dpr: box.dpr, level: zoom, mults: zoomMults ?? ZOOM_WORLD }) : Math.max(1, Math.round((fraction * box.h * box.dpr) / MODEL_REF.bodyRefH))
   const px = floor ? floor.scale : sc, k = px / box.dpr
   const fx = floor ? floor.cx : box.w / 2, fy = floor ? floor.footY : box.h / 2 + (-MODEL_REF.centerDy + MODEL_DROP + FOOT_FROM_NAVEL) * k
   // 발 자리를 기기 픽셀로 — 미리보기 장면(sceneGl layout · SceneCanvas)과 같은 반올림(칸 안 좌표 × dpr 을 반올림)

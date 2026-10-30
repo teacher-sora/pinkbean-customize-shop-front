@@ -1,27 +1,29 @@
 'use client'
 
-// 운영자용 건의함. 주소(/suggestion)로 직접 들어와 아이디 · 비밀번호를 넣으면
-// '도움 및 건의함'의 건의 · 오류 글을 종류별로 보고, 어느 글이든 '운영자'로 댓글 · 답글을 달고, 어떤 글이든 지울 수 있다.
+// 운영자 화면. 주소(/dashboard)로 직접 들어와 아이디 · 비밀번호를 넣는다(앱 어디에도 링크가 없다). 탭 넷:
+//  · 건의 · 오류: '도움 및 건의함'의 글을 종류별로 보고, 어느 글이든 '운영자'로 댓글 · 답글을 달고, 어떤 글이든 지울 수 있다.
+//  · 공지: 공지를 쓰고 고친다(지우기는 없다 — 옛 건의글이 공지에 매달려 있어 함께 지워진다).
+//  · 방문자: 하루 방문자 수(lib/visit — 같은 브라우저는 하루 한 번).
 //  · 화면: 넓으면 왼쪽 글 상자 목록 + 오른쪽 상세(글 + 댓글 · 답글 나무). 좁으면 목록 → 상세로 가로로 미끄러진다.
 //    글 상자 · 나무 · 입력칸은 앱의 건의함과 같은 부품이다(plaza/FeedbackThread).
 //  · 목록 위에서 '답변 대기'(운영자 댓글이 없는 글)만 골라 볼 수 있다.
 //  · 로그인은 **이 화면이 떠 있는 동안만** 유지된다 — 값은 메모리에만 두고 저장하지 않는다(새로고침하면 다시 묻는다).
-//  · 아이디 · 비밀번호의 확인과 쓰기 · 지우기는 DB 함수가 한다(supabase/0016 · 0019). 앱에는 비밀번호도 서비스 키도 없다.
+//  · 아이디 · 비밀번호의 확인과 쓰기 · 지우기는 DB 함수가 한다(supabase/0016 · 0019 · 0023). 앱에는 비밀번호도 서비스 키도 없다.
 //  · 지우기는 두 번 누른다(3초 안에 같은 버튼을 다시). 운영자가 지우면 딸린 댓글 · 답글도 함께 지워진다.
 
 import clsx from 'clsx'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  opDelete, opLoadFeedback, opLoadThread, opLogin, opReply,
-  type FeedbackKind, type FeedbackNode, type FeedbackPost, type OpCred,
+  loadNotices, opDelete, opLoadFeedback, opLoadThread, opLoadVisits, opLogin, opReply, opSaveNotice,
+  type FeedbackKind, type FeedbackNode, type FeedbackPost, type OpCred, type OpVisits, type PlazaNotice,
 } from '@/lib/plaza'
 import { FeedbackBox, FeedbackBoxSkel, FeedbackComposer, FeedbackPostBody, FeedbackThread } from '@/components/shop/plaza/FeedbackThread'
 import plaza from '@/components/shop/plaza/plaza.module.css'
 import { useInnerSlide } from '@/components/shop/surface/innerSlide'
 import { IconChevronLeft, IconHelpTab } from '@/components/shop/ui/Icons'
-import styles from './suggestion.module.css'
+import styles from './dashboard.module.css'
 
-export default function Suggestion() {
+export default function Dashboard() {
   const [cred, setCred] = useState<OpCred | null>(null)
   return (
     <main className={styles.page}>
@@ -49,7 +51,7 @@ function Login({ onOk }: { onOk: (c: OpCred) => void }) {
       <form onSubmit={submit} className={styles.login}>
         <div className={styles.loginHead}>
           <span className={styles.brand}>핑크빈 커마샵</span>
-          <h1 className={styles.title}>건의함 관리</h1>
+          <h1 className={styles.title}>대시보드</h1>
         </div>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>아이디</span>
@@ -67,6 +69,8 @@ function Login({ onOk }: { onOk: (c: OpCred) => void }) {
 }
 
 const KINDS: { v: FeedbackKind; l: string }[] = [{ v: 'idea', l: '건의' }, { v: 'bug', l: '오류' }]
+type Tab = FeedbackKind | 'notice' | 'visit'
+const isFeedback = (t: Tab): t is FeedbackKind => t === 'idea' || t === 'bug'
 type Filter = 'all' | 'wait'
 
 // 넓은 화면(목록 + 상세 나란히)인가
@@ -84,7 +88,10 @@ function useWide() {
 
 function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
   const wide = useWide()
-  const [kind, setKind] = useState<FeedbackKind>('idea')
+  const [tab, setTab] = useState<Tab>('idea')
+  const [lastKind, setLastKind] = useState<FeedbackKind>('idea')
+  const kind = isFeedback(tab) ? tab : lastKind
+  const [tick, setTick] = useState(0) // 새로고침 — 공지 · 방문자 칸이 다시 받는다
   const [filter, setFilter] = useState<Filter>('all')
   const [lists, setLists] = useState<Partial<Record<FeedbackKind, FeedbackPost[]>>>({})
   const [msg, setMsg] = useState('')
@@ -123,7 +130,7 @@ function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
     <button type="button" onClick={() => { if (arm(id)) void run(opDelete(cred, id), '지우지 못했어요.').then((ok) => { if (ok) onDone() }) }}
       className={clsx(styles.del, armed === id && styles.delArmed)}>{armed === id ? '한 번 더' : '지우기'}</button>
   )
-  const pick = (k: FeedbackKind) => { setKind(k); setOpenId(null); if (!wide) go('list', -1) }
+  const pick = (t: Tab) => { setTab(t); if (isFeedback(t)) setLastKind(t); setOpenId(null); if (!wide) go('list', -1) }
   const openPost = (p: FeedbackPost) => { setOpenId(p.id); if (!wide) go('post', 1) }
   const back = () => go('list', -1)
 
@@ -157,23 +164,25 @@ function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
       <header className={styles.bar}>
         <div className={styles.barRow}>
           <span className={styles.brand}>핑크빈 커마샵</span>
-          <h1 className={clsx(styles.title, styles.grow)}>건의함 관리</h1>
+          <h1 className={clsx(styles.title, styles.grow)}>대시보드</h1>
           {loadedAt && <span className={styles.stamp} title="마지막으로 새로 받은 시각">{loadedAt.toLocaleTimeString('ko-KR', { hour12: false })}</span>}
-          <button type="button" onClick={() => { setMsg(''); void loadAll() }} className={styles.ghost}>새로고침</button>
+          <button type="button" onClick={() => { setMsg(''); setTick((n) => n + 1); void loadAll() }} className={styles.ghost}>새로고침</button>
           <button type="button" onClick={onLost} className={styles.ghost}>나가기</button>
         </div>
         <div role="tablist" aria-label="글 종류" className={styles.kinds}>
           {KINDS.map((k) => (
-            <button key={k.v} type="button" role="tab" aria-selected={kind === k.v} onClick={() => pick(k.v)}
-              className={clsx(plaza.hpTab, kind === k.v && plaza.hpTabOn)}>
+            <button key={k.v} type="button" role="tab" aria-selected={tab === k.v} onClick={() => pick(k.v)}
+              className={clsx(plaza.hpTab, tab === k.v && plaza.hpTabOn)}>
               <IconHelpTab tab={k.v} /><span>{k.l}</span>
               {!!waitN(k.v) && <span className={styles.wait} title="답변 대기">{waitN(k.v)}</span>}
             </button>
           ))}
+          <button type="button" role="tab" aria-selected={tab === 'notice'} onClick={() => pick('notice')} className={clsx(plaza.hpTab, tab === 'notice' && plaza.hpTabOn)}><IconHelpTab tab="notice" /><span>공지</span></button>
+          <button type="button" role="tab" aria-selected={tab === 'visit'} onClick={() => pick('visit')} className={clsx(plaza.hpTab, tab === 'visit' && plaza.hpTabOn)}><span>방문자</span></button>
         </div>
         {msg && <p className={styles.msg} role="alert">{msg}</p>}
       </header>
-      {wide ? (
+      {tab === 'notice' ? <NoticePane cred={cred} tick={tick} wide={wide} run={run} /> : tab === 'visit' ? <VisitPane cred={cred} tick={tick} onLost={onLost} /> : wide ? (
         <div className={styles.split}>
           {listPane}
           <section className={styles.detailPane}>{detail}</section>
@@ -181,6 +190,85 @@ function Board({ cred, onLost }: { cred: OpCred; onLost: () => void }) {
       ) : (
         <div className={styles.slide} style={style}>{view === 'post' && open ? <section className={styles.detailPane}>{detail}</section> : listPane}</div>
       )}
+    </div>
+  )
+}
+
+// 공지 쓰기 · 고치기. 목록에서 고르면 칸에 들어오고, [새 공지]는 칸을 비운다
+function NoticePane({ cred, tick, wide, run }: { cred: OpCred; tick: number; wide: boolean; run: (job: Promise<boolean>, fail: string) => Promise<boolean> }) {
+  const [list, setList] = useState<PlazaNotice[] | null>(null)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [pinned, setPinned] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const load = useCallback(() => loadNotices().then(setList).catch(() => setList((l) => l ?? [])), [])
+  useEffect(() => { void load() }, [load, tick])
+  const fill = (n: PlazaNotice | null) => { setEditId(n?.id ?? null); setTitle(n?.title ?? ''); setBody(n?.body ?? ''); setPinned(!!n?.pinned) }
+  const save = () => {
+    setBusy(true)
+    let saved: string | null = null
+    void run(opSaveNotice(cred, editId, title, body, pinned).then((id) => { saved = id; return id != null }), '저장하지 못했어요.')
+      .then((ok) => { if (ok) { setEditId(saved); void load() } }).finally(() => setBusy(false))
+  }
+  const form = (
+    <div className={styles.detail}>
+      <label className={styles.field}>
+        <span className={styles.fieldLabel}>제목</span>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} className={styles.input} />
+      </label>
+      <label className={styles.field}>
+        <span className={styles.fieldLabel}>내용</span>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} className={styles.textarea} />
+      </label>
+      <div className={styles.acts}>
+        <button type="button" onClick={() => setPinned((p) => !p)} aria-pressed={pinned} className={clsx(styles.chip, pinned && styles.chipOn)}>맨 위 고정</button>
+        <span className={styles.grow} />
+        <button type="button" onClick={save} disabled={busy || !title.trim()} className={styles.btn}>{busy ? '저장 중' : editId ? '고치기' : '올리기'}</button>
+      </div>
+    </div>
+  )
+  const rows = (
+    <div className={styles.listPane}>
+      <div className={styles.filters}><button type="button" onClick={() => fill(null)} className={styles.ghost}>새 공지</button></div>
+      <div className={styles.ntList}>
+        {!list && <p className={styles.empty}>불러오는 중</p>}
+        {list && !list.length && <p className={styles.empty}>아직 공지가 없어요.</p>}
+        {list?.map((n) => (
+          <button key={n.id} type="button" onClick={() => fill(n)} className={clsx(styles.ntRow, n.id === editId && styles.ntRowOn)}>
+            <span className={styles.ntTitle}>{n.pinned ? '[고정] ' : ''}{n.title}</span>
+            <span className={styles.when}>{new Date(n.createdAt).toLocaleString('ko-KR')}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+  return wide
+    ? <div className={styles.split}>{rows}<section className={styles.detailPane}>{form}</section></div>
+    : <div className={styles.pane}><section className={styles.detailPane}>{form}</section>{rows}</div>
+}
+
+// 방문자: 오늘 · 어제 · 최근 7일 · 30일(기간 안의 고유 브라우저 수) + 날짜별
+function VisitPane({ cred, tick, onLost }: { cred: OpCred; tick: number; onLost: () => void }) {
+  const [v, setV] = useState<OpVisits | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let alive = true
+    opLoadVisits(cred).then((r) => { if (!alive) return; if (r) setV(r); else onLost() }).catch(() => { if (alive) setFailed(true) })
+    return () => { alive = false }
+  }, [cred, tick, onLost])
+  if (!v) return <div className={styles.pane}><p className={styles.empty}>{failed ? '불러오지 못했어요.' : '불러오는 중'}</p></div>
+  const dayAgo = (n: number) => new Date(Date.now() + 9 * 3600e3 - n * 864e5).toISOString().slice(0, 10)
+  const countOf = (d: string) => v.days.find((x) => x.d === d)?.n ?? 0
+  const cards: [string, number][] = [['오늘', countOf(dayAgo(0))], ['어제', countOf(dayAgo(1))], ['최근 7일', v.week], ['최근 30일', v.month]]
+  return (
+    <div className={styles.pane}>
+      <div className={styles.stats}>
+        {cards.map(([l, n]) => <div key={l} className={styles.stat}><span className={styles.statLabel}>{l}</span><span className={styles.statNum}>{n.toLocaleString()}</span></div>)}
+      </div>
+      <div className={styles.days}>
+        {v.days.map((x) => <div key={x.d} className={styles.dayRow}><span>{x.d}</span><span>{x.n.toLocaleString()}</span></div>)}
+      </div>
     </div>
   )
 }

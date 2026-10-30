@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url'
 const REF = 'vymkoklwautdxzgzccef'           // Supabase 프로젝트 pinkbean-customize
 const DEV_SCHEMA = 'plaza_dev', DEV_BUCKET = 'plaza-dev'
 // 자식 표부터 지운다(외래키)
-const DEV_TABLES = ['plaza_alias', 'plaza_notice_comments', 'plaza_comments', 'plaza_likes', 'plaza_like_keys', 'plaza_post_keys', 'plaza_contest_entries', 'plaza_awards', 'plaza_posts', 'plaza_notices', 'plaza_admins']
+const DEV_TABLES = ['plaza_alias', 'plaza_notice_comments', 'plaza_comments', 'plaza_likes', 'plaza_like_keys', 'plaza_post_keys', 'plaza_contest_entries', 'plaza_awards', 'plaza_posts', 'plaza_notices', 'plaza_admins', 'plaza_visits']
 const OWNED = [['plaza_posts', 'owner'], ['plaza_comments', 'owner'], ['plaza_likes', 'owner'], ['plaza_like_keys', 'owner'], ['plaza_notice_comments', 'owner'], ['plaza_admins', 'uid']]
 
 const apply = process.argv.includes('--apply')

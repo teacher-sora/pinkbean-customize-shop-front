@@ -31,6 +31,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
+import { recordVisit } from '@/lib/visit'
 import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, ELF_TONE, EQUIP_SLOTS, viewTone, SLOT_TO_CAT, THUMB_VIEW, ITEM_KINDS, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, presetCard, snapKey } from '@/lib/core/snapRender'
 import { warmItem, warmLook } from '@/lib/core/warm'
@@ -412,6 +413,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [favorites, setFavoritesState] = useState<Set<string>>(new Set())
   const [newIds, setNewIds] = useState<Set<string>>(new Set())
   useEffect(() => { loadNewItems().then(setNewIds).catch(() => {}) }, [])
+  useEffect(() => { recordVisit() }, [])
   useEffect(() => { try { const raw = localStorage.getItem(FAV_KEY); if (raw) setFavoritesState(new Set(JSON.parse(raw))) } catch { /* noop */ } }, [])
   const toggleFavorite = useCallback((id: string) => {
     setFavoritesState((prev) => {
