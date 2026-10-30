@@ -82,7 +82,8 @@
 .clear { height: 26px; padding: 0 10px; border: 1px solid light-dark(#f2ece5, #40424a); border-radius: 6px; background: light-dark(#fff, #303238); font-size: calc(11rem / 16); font-weight: 600; color: light-dark(#cdc2b7, #787c88); cursor: default; }
 .clearOn { border-color: light-dark(#f5e2eb, #5a3a49); color: light-dark(#c05a94, #cb9ab6); cursor: pointer; }
 .pinActs { display: flex; align-items: center; gap: 6px; }
-.pinGrid { display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); grid-auto-rows: calc((var(--pin-col) - 18px - 42px) / 8); gap: 6px; } /* 줄 높이 = 비교 전 열 폭의 칸 크기(넓어진 비교 열에서도 같은 높이) */
+/* 칸 = 비교 전 열 폭(--pin-col)에서 잰 정사각형. 비교로 열이 넓어져도 칸 크기는 같고 가운데에 선다(사용자 지시) - 평소에는 열 폭이 곧 --pin-col 이라 칸이 줄을 꽉 채운다 */
+.pinGrid { --pin-slot: calc((var(--pin-col) - 18px - 42px) / 8); display: grid; grid-template-columns: repeat(8, var(--pin-slot)); grid-auto-rows: var(--pin-slot); justify-content: center; gap: 6px; }
 .slot { position: relative; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px dashed light-dark(#e4dcd2, #4d5059); background: light-dark(#fbf8f4, #36383f); cursor: default; transition: border-color .22s ease, background-color .22s ease; }
 .slotFilled { border-style: solid; border-color: light-dark(#efe8e0, #43464e); background: light-dark(#fff, #303238); cursor: pointer; }
 .slotWorn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); }
@@ -298,8 +299,7 @@
 /* 점 위치는 고른 칸의 오른쪽 아래(오른쪽 위는 칸 버튼 자리) */
 .cmpDot { top: auto; bottom: 8px; right: 8px; z-index: 2; } /* 칸에 붙는다 — 움직이는 미리보기(.cmpLive z 1) 위 */
 
-/* PC 아래 칸 머리의 탭(북마크 · 비교). 비교 탭의 본문은 북마크 줄과 같은 높이의 빈 자리 */
-.pinBlank { height: calc((var(--pin-col) - 18px - 42px) / 8); }
+/* PC 아래 칸 머리의 탭(북마크 · 비교) */
 .pinTabs { display: flex; }
 /* [북마크] [비교] 토글은 왼쪽 [비우기]와 같은 크기(높이 26 · 글자 11px — 사용자 지시: 공용 Seg 34 는 너무 컸다) */
 .pinTabs > div { padding: 2px; }

@@ -423,7 +423,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
             ? (dirY ? { height: `calc(${pageCount} * var(--pb-page-h))` } : { width: `calc(${pageCount} * 100cqw)` })
             : { transform: `${dirY ? 'translateY' : 'translateX'}(${-cur * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
           {pages.map((p) => (
-            <div key={p} className={clsx('pb-page', mobile ? (dirY ? list.pageMY : list.pageM) : list.page)}
+            <div key={p} className={clsx('pb-page', mobile ? (dirY ? list.pageMY : list.pageM) : list.page, mobile && p > 0 && list.pageSep)}
               style={dirY ? { top: mobile ? `calc(${p} * var(--pb-page-h))` : `${p * 100}%` } : { left: mobile ? `calc(${p} * 100cqw)` : `${p * 100}%` }}>
               {(!s.snapping || p === cur || Math.abs(p - s.snapFrom) <= 1) && (
                 <div className={list.grid} style={gridStyle}>{cards(p)}</div>

@@ -52,21 +52,26 @@
 /* ── 뷰포트 · 페이지 ── */
 .viewport { flex: 1 1 auto; min-height: 0; position: relative; overflow: clip; touch-action: pan-y pinch-zoom; }
 /* 모바일: 가로 스크롤 컨테이너(페이지 스냅, 스크롤바는 pb-norail 로 숨김). cqw = 이 뷰포트 폭 → 페이지 위치·폭이 정확히 한 화면. */
-.viewportM { margin: 0 7px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; container-type: inline-size; }
-/* 자유 가로 스크롤(스냅 없음). 페이지 좌우 패딩 5px + 뷰포트 들임 7px = 화면 가장자리 12px, 페이지 경계 간격(5+5)=카드 간격 10px 이라 열이 끊김 없이 이어진다.
+.viewportM { margin: 0 5px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; container-type: inline-size; }
+/* 자유 가로 스크롤(스냅 없음). 페이지 좌우 패딩 7px + 뷰포트 들임 5px = 화면 가장자리 12px. 쪽 경계 간격은 7+7=14 로 카드 간격(10)보다 넓고 가운데에 옅은 세로선(.pageSep)이 선다 —
+   자유 스크롤이라 쪽이 어디서 끝나는지 보여야 한다(사용자 지시: 간격만 넓혀서는 눈에 띄지 않았다).
    ⚠️ 열 스냅을 넣었었지만 카드의 스크롤 컨테이너가 overflow:hidden 페이지라 실제로 동작하지 않았고, 사용자는 이 자유 스크롤을 원해 제거. */
 .track { position: relative; height: 100%; width: 100%; will-change: transform; backface-visibility: hidden; }
 .page { position: absolute; top: 0; width: 100%; height: 100%; padding: 8px; overflow: hidden; }
-.pageM { position: absolute; top: 0; width: 100cqw; height: 100%; padding: 8px 5px; overflow: hidden; } /* 세로 스크롤 없음 — 좌우 넘기기 전용 */
+.pageM { position: absolute; top: 0; width: 100cqw; height: 100%; padding: 10px 7px; overflow: hidden; } /* 세로 스크롤 없음 — 좌우 넘기기 전용 */
 /* 세로로 넘기기(ShopContext.listDir 'y'). PC · 절반 · 태블릿: 트랙이 translateY 로 한 쪽씩 — 세로 끌기를 잡도록 가로만 브라우저에 맡긴다.
-   모바일: 목록 안 세로 스크롤 컨테이너(cqh = 이 뷰포트 높이 → 쪽 높이가 정확히 한 화면). 쪽 여백은 가로(.pageM)와 같은 위아래 8 · 좌우 5 —
-   방향을 바꿔도 카드가 같은 자리 · 같은 크기다(사용자 지적: 여백 5 였을 때 세로에서 카드가 3px 위로, 3px 크게 그려졌다. 높이 계산 useMobileRows 의 PAD_Y 16 도 이 값).
-   쪽 경계 간격은 16 으로 줄 간격(10)보다 6 넓지만, 쪽 번호는 스크롤 위치를 높이/2 단위로 반올림해 세므로(ListArea scrollIdx) 그대로 맞는다. */
+   모바일: 목록 안 세로 스크롤 컨테이너(cqh = 이 뷰포트 높이 → 쪽 높이가 정확히 한 화면). 쪽 여백은 가로(.pageM)와 같은 위아래 10 · 좌우 7 —
+   방향을 바꿔도 카드가 같은 자리 · 같은 크기다(사용자 지적: 여백이 달랐을 때 세로에서 카드가 3px 위로, 3px 크게 그려졌다. 높이 계산 useMobileRows 의 PAD_X 14 · PAD_Y 20 도 이 값).
+   쪽 경계 간격은 20 으로 줄 간격(10)보다 넓고 가운데에 옅은 가로선(.pageSep)이 선다. 쪽 번호는 스크롤 위치를 높이/2 단위로 반올림해 세므로(ListArea scrollIdx) 그대로 맞는다. */
 .viewportY { touch-action: pan-x pinch-zoom; }
 /* 세로 넘기기(모바일): 칸 안 스크롤 — 쪽은 한 쪽 높이(--pb-page-h)로 쌓인다(ListArea usePagerY). 칸 끝에 닿으면 페이지가 이어서 스크롤한다(브라우저 기본 이어받기 — overscroll-behavior 세로 auto).
    touch-action 은 세로 끌기를 브라우저에 맡긴다(.viewportY 의 PC 규칙 pan-x 가 남으면 손가락으로 목록이 내려가지 않는다) */
-.viewportMY { margin: 0 7px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain auto; touch-action: pan-y pinch-zoom; container-type: inline-size; }
-.pageMY { position: absolute; left: 0; width: 100%; height: var(--pb-page-h); padding: 8px 5px; overflow: hidden; }
+.viewportMY { margin: 0 5px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain auto; touch-action: pan-y pinch-zoom; container-type: inline-size; }
+.pageMY { position: absolute; left: 0; width: 100%; height: var(--pb-page-h); padding: 10px 7px; overflow: hidden; }
+/* 쪽 구분선(모바일, 첫 쪽 빼고): 앞 쪽과의 경계(이 쪽의 앞 변) 가운데에 1px 옅은 선 — 양 끝은 띄워 닫지 않는다(사용자 지시). 색은 목록 구분선(.hrM)과 같다 */
+.pageSep::before { content: ''; position: absolute; background: light-dark(#f2ebe3, #40434b); pointer-events: none; }
+.pageM.pageSep::before { left: 0; top: 24px; bottom: 24px; width: 1px; }
+.pageMY.pageSep::before { top: 0; left: 24px; right: 24px; height: 1px; }
 .grid { display: grid; gap: 10px; height: 100%; }
 /* 모바일 3×3(shopData.MOBILE_GRID — 바꾸면 여기도): 칸 높이(붙은 미리보기 아래 화면 끝까지 — ListArea useMobileRows)를 세 줄이 나눠 가진다.
    목록 안에는 세로 스크롤이 없다(세로 스크롤이 좌우 넘기기와 겹치면 조작이 불편). 카드 안 썸네일이 줄 높이를 흡수한다. */
