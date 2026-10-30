@@ -129,7 +129,11 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
         fit = lvh.offsetHeight - base.offsetHeight - (vp.getBoundingClientRect().top - hero.getBoundingClientRect().bottom) - below
       }
       const h = fit > 0 ? Math.floor(fit) : Math.ceil(floor) // 맞춤은 내림 — 올리면 소수점 몫만큼 페이지가 헤더보다 1px 더 내려갔다
-      const need = Math.floor(chrome + h) + 'px' // 내림 — 칸 위 높이(미리보기)의 소수점 몫까지 올리면 1px 더 내려갔다
+      // 하단 탭은 떠서 덮는다 — 틀 아래에 탭 높이만큼 여백을 두어 페이지를 맨 아래로 내리면 아무것도 가리지 않는다(사용자 지시). 칸 높이는 그대로다(여백은 틀의 padding)
+      const nav = document.documentElement.getAttribute('data-pb-view') === 'full' ? null : col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')
+      const navH = nav?.offsetHeight ?? 0
+      if (col.style.getPropertyValue('--pb-nav-h') !== navH + 'px') col.style.setProperty('--pb-nav-h', navH + 'px')
+      const need = Math.floor(chrome + h) + navH + 'px' // 내림 — 칸 위 높이(미리보기)의 소수점 몫까지 올리면 1px 더 내려갔다
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
       const page = h + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
       if (col.style.getPropertyValue('--pb-page-h') !== page) col.style.setProperty('--pb-page-h', page)
@@ -362,7 +366,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const viewport = (
-    <div ref={setVp} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
+    <div ref={setVp} data-pb-list className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
       {hero ? (
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>
