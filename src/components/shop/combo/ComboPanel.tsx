@@ -233,9 +233,10 @@ function ComboHead({ item, mobile, host, detail, onBack }: { item: ListItem | nu
   if (mobile) {
     return (
       <div className={list.controlsM}>
-        <HeadItem item={item} mobile host={host} onBack={back} />
-        {detail ? <DetailActs row={detail} mobile /> : <>
+        {/* 목록: [보기 설정] 오른쪽에 아이템 칩(사용자 지시 — 코디 탭 목록처럼 보기 설정이 맨 앞). 상세: [←] · 아이템 칩이 왼쪽, 두 버튼이 오른쪽 */}
+        {detail ? <><HeadItem item={item} mobile host={host} onBack={back} /><DetailActs row={detail} mobile /></> : <>
           <FilterM mobile groups={filterGroups} />
+          <HeadItem item={item} mobile host={host} onBack={back} />
           {pageChip}
           {finder}
         </>}
