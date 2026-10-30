@@ -14,7 +14,7 @@ import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
 import styles from './list.module.css'
-import { heroBaseProbe, lvhProbe, RELAYOUT_EVENT } from '@/lib/heroView'
+import { applyMobileFit, heroBaseProbe, svhProbe, RELAYOUT_EVENT } from '@/lib/heroView'
 
 const VIEW_MODES: SegOpt<ListMode>[] = [
   { v: 'sprite', l: '아이템', t: '아이템 그림만 보기' },
@@ -83,19 +83,19 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
 }
 
 // 모바일 목록 칸의 높이(--pb-min-h — 페이지 컬럼 높이). 목록은 칸 안에서 세로로 스크롤하지 않고 페이지 스크롤로 내려 본다.
-//  · 맞춤: 페이지를 끝까지 내리면 붙은 미리보기(히어로 sticky) 바로 아래부터 화면 끝까지가 목록 칸이다 = 큰 화면 높이(100lvh — 툴바가 접힌,
-//    내려 볼 때의 높이. 접히지 않는 브라우저는 작은 높이와 같다) − 미리보기(기본 보기 높이) − 목록 칸 아래(하단 탭 자리는 빼고 잰다). 붙은 머리 묶음은 내리는 동안 숨어 빼지 않는다(StickyBarM).
-//    그래서 탭 자리 바로 위까지 내리면 미리보기를 보면서 3줄이 모두 보이고(사용자 지시), 더 내려 탭 자리에 닿으면 탭이 나온다(BottomNav useHideOnScroll).
+//  · 맞춤: 들어왔을 때 화면(100svh — 툴바가 펴진 높이)에서 하단 탭이 사라지면 마지막 줄이 30 ~ 45% 보이도록 줄 높이를 정한다(사용자 지시 — 3번째 줄이 있음을 알린다).
+//    넓게 보려는 것이 아니라 알리는 것이다 — 3줄을 다 보려면 페이지를 내린다. 보이는 몫과 미리보기 높이는 마네킹이 그림 칸의 52 ~ 56% 가 되도록 함께 정한다(lib/mobileFit).
 //    부위 · 보기 설정 줄은 붙이지 않는다 — 부위를 바꿀 때는 목록에서 눈을 떼므로 살짝 올려 고르면 된다(사용자와 정한 흐름).
 //  · 바닥: 화면이 낮아(작은 폰 · 미리보기 크게) 맞춤 칸이 너무 작으면 카드 그림 칸 ≥ 폭 × ratio + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) foot 로
-//    받친다. 그때는 3줄이 한 화면에 다 들지 않고 페이지가 더 길어진다.
+//    받친다('캐릭터만' 보기 — 맞춤이 없을 때). 맞춤에서는 그림 칸만 MIN_THUMB_M 아래로 줄지 않게 받친다.
 //  그 외 요소 높이(chrome)는 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다.
 // ⚠️ 목록은 언마운트(염색 · 프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
 //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다. restore 면(코디 룩북 — 목록보다 길 수 있다) 떠날 때 붙기 전 값으로 되돌린다.
 // 0.6 = 맞춤 칸의 바닥. 툴바가 접히지 않는 앱 안 브라우저(390 × 664)에서도 3줄이 든다(그림 칸 76px)
 export const CARD_RATIO_M = 0.6
 export const CARD_FOOT_M = 61 // 카드 아래 = 이름 줄 + [북마크 · 염색] 막대 28 + 여백(코디 룩북 · 광장 카드의 바닥도 이 값)
-// 맞춤에 쓰는 미리보기 높이 = 기본 보기의 높이(heroBaseProbe — 13 Pro 216 기준으로 화면에 맞춘다). '크게'로 바꿔도 카드는 그대로이고 보이는 줄만 준다 —
+const MIN_THUMB_M = 36 // 맞춤에서 그림 칸의 바닥 — 아주 낮은 화면에서만 닿는다(그때는 마지막 줄이 덜 보인다)
+// 맞춤에 쓰는 미리보기 높이 = 기본 보기의 높이(heroBaseProbe). '크게'로 바꿔도 카드는 그대로이고 보이는 줄만 준다 —
 // 실제 높이로 맞추면 카드가 86px 까지 눌려 캐릭터가 아주 작았다
 export const LIST_COL_GAP_M = 6 // 목록 격자의 열 간격(list.module.css .gridM 과 같은 값 — 카드 폭을 조금 넓힌다)
 // 목록의 높이 — 코디 탭 · AI 코디 검색 목록 · 프리셋
@@ -109,7 +109,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     if (!vp0 || !col) return
     const before = col.style.getPropertyValue('--pb-min-h')
     const hero = col.querySelector<HTMLElement>('[data-hero]')
-    const lvh = lvhProbe(), base = heroBaseProbe()
+    const svh = svhProbe(), base = heroBaseProbe()
     const PAD_X = 14, PAD_Y = 20, GAP = 10 // 쪽 여백 좌우 7 · 위아래 10(list.module.css .pageM · .pageMY)
     const m = () => {
       const vp = vpRef.current?.isConnected ? vpRef.current : vp0 // 넘기는 방향을 바꾸면 칸이 새로 붙을 수 있다 — 지금 칸을 잰다
@@ -120,13 +120,14 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const chrome = vp.getBoundingClientRect().top - col.getBoundingClientRect().top + below
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
-      // 맞춤: 페이지를 헤더 높이만큼 내리면 미리보기가 화면 맨 위에 오고, 미리보기 + 머리 묶음 바로 아래부터 화면 끝까지가 목록 칸이다(큰 화면 높이 100lvh — 툴바가 접힌).
-      // 미리보기와 칸 사이에 놓이는 것(머리 묶음 · 룩북의 자주 쓴 염색 줄)과 칸 아래의 것(출처 줄)도 뺀다. 하단 탭은 떠 있어 빼지 않는다(내리는 동안 숨는다).
-      // 맞춤이 있으면 바닥(floor — 그림 칸 비율)보다 맞춤이 먼저다: 어느 기기든 페이지는 맨 위 헤더 높이만큼만 내려간다(사용자 지시). 낮은 화면은 카드가 그만큼 낮아진다
+      // 맞춤: 칸 위까지(헤더 + 기본 보기 미리보기 + 머리 묶음 · 룩북의 자주 쓴 염색 줄) 빼고 남은 처음 화면에 (줄 수 − 1) + 보이는 몫(peek) 줄을 넣는다. 하단 탭은 사라졌을 때가 기준이라 빼지 않는다
       let fit = 0
       if (hero && document.documentElement.getAttribute('data-pb-view') !== 'full') {
-        // 칸 아래 것(below)은 칸 뒤에 붙은 요소들의 높이다 — 틀 끝까지의 거리로 재면 앞 탭이 남긴 빈자리까지 빠져 칸이 짧아졌다(코디 정보 126px)
-        fit = lvh.offsetHeight - base.offsetHeight - (vp.getBoundingClientRect().top - hero.getBoundingClientRect().bottom) - below
+        const peek = applyMobileFit() // 미리보기 높이가 먼저 정해져야 아래 재기가 맞다
+        const heroR = hero.getBoundingClientRect()
+        const above = heroR.top - col.getBoundingClientRect().top + base.offsetHeight + vp.getBoundingClientRect().top - heroR.bottom
+        const row = (svh.offsetHeight - above - PAD_Y / 2 - GAP * (rows - 1)) / (rows - 1 + peek)
+        fit = PAD_Y + GAP * (rows - 1) + rows * Math.max(row, foot + MIN_THUMB_M)
       }
       const h = fit > 0 ? Math.floor(fit) : Math.ceil(floor) // 맞춤은 내림 — 올리면 소수점 몫만큼 페이지가 헤더보다 1px 더 내려갔다
       // 하단 탭은 떠서 덮는다 — 틀 아래에 탭 높이만큼 여백을 두어 페이지를 맨 아래로 내리면 아무것도 가리지 않는다(사용자 지시). 칸 높이는 그대로다(여백은 틀의 padding)
@@ -140,7 +141,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
-    ro?.observe(col); ro?.observe(vp0); ro?.observe(lvh); ro?.observe(base)
+    ro?.observe(col); ro?.observe(vp0); ro?.observe(svh); ro?.observe(base)
     // 칸 위아래에 함께 놓이는 것(머리 묶음 · 룩북 염색 줄 · 출처 줄)이 붙고 빠지거나 크기가 바뀌면 다시 잰다 — 칸 크기는 그대로라 위 감시가 모른다
     const sibs = () => { for (const el of vp0.parentElement?.children ?? []) if (el !== vp0) ro?.observe(el) }
     sibs()

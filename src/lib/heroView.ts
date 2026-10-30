@@ -6,6 +6,7 @@
 //    그것들은 줄어들지 않고 화면 아래로 밀려난다(틀이 overflow:hidden 이라 보이지 않는다). 되돌아오면 묶은 것을 푼다.
 //  · 평소 보기는 저장하지 않는다(새로 열면 기본). 비교 중의 보기만 따로 기억한다(처음은 '크게' — readCmpView). 모바일이 아니게 되면(폭이 넓어지면) 속성을 뗀다(AppHeader).
 import { useSyncExternalStore } from 'react'
+import { mobileFit } from './mobileFit'
 
 export type HeroView = 'base' | 'wide' | 'full'
 export const RELAYOUT_EVENT = 'pb-relayout' // 칸이 크기는 그대로 자리만 옮겨 갔을 때(보기 바꾸기)
@@ -72,7 +73,13 @@ function probe(css: string): HTMLDivElement {
   }
   return el
 }
-// 큰 화면 높이(100lvh — 툴바가 접힌, 내려 볼 때의 높이. 모르는 브라우저는 100vh)
-export const lvhProbe = () => probe('height:100vh;height:100lvh')
-// 미리보기 기본 높이(globals.css --pb-hero-base — 13 Pro 216 기준으로 화면에 맞춘다). '크게'여도 기본 보기의 높이
+// 처음 화면 높이(100svh — 툴바가 펴진, 들어왔을 때의 높이. 모르는 브라우저는 100vh)
+export const svhProbe = () => probe('height:100vh;height:100svh')
+// 미리보기 기본 높이(--pb-hero-base — lib/mobileFit). '크게'여도 기본 보기의 높이
 export const heroBaseProbe = () => probe('height:var(--pb-hero-base)')
+// 지금 화면의 맞춤을 다시 구해 넣는다(lib/mobileFit — 첫 값은 머리 스크립트). 3번째 줄이 보이는 몫을 돌려준다
+export function applyMobileFit() {
+  const f = mobileFit(window.innerWidth, svhProbe().offsetHeight, window.devicePixelRatio || 1), root = document.documentElement
+  if (root.style.getPropertyValue('--pb-hero-base') !== f.hero + 'px') root.style.setProperty('--pb-hero-base', f.hero + 'px')
+  return f.peek
+}

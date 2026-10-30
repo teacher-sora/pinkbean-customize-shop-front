@@ -111,7 +111,7 @@
    isolation(z-index 를 가진 버튼이 미끄러지는 목록 위로 올라오지 않게) */
 /* 히어로는 붙지 않는다 — 헤더 · 미리보기 · 분류 줄 · 목록 머리 · 목록이 한 흐름의 같은 층이라 무엇도 목록을 덮지 않는다(사용자 지시 — 붙여 두었더니 목록 위 층이 되어
    페이지가 조금 더 내려가면 목록이 보기 설정 밑으로 들어갔다). 목록 화면은 페이지가 맨 위 헤더 높이만큼만 내려가 그때 미리보기가 화면 맨 위에 온다(ListArea useMobileRows) */
-.hero { flex: 0 0 auto; position: relative; height: var(--pb-hero-h); /* 13 Pro 216 기준으로 화면에 맞춘다 — 리스트에 여유를 주려고 낮게 잡는다(globals.css) */ border-bottom: 1px solid light-dark(#f4efe8, #3e4048); overflow: hidden; contain: paint; isolation: isolate; }
+.hero { flex: 0 0 auto; position: relative; height: var(--pb-hero-h); /* 기기마다 맞춘다(lib/mobileFit) */ border-bottom: 1px solid light-dark(#f4efe8, #3e4048); overflow: hidden; contain: paint; isolation: isolate; }
 .heroModel { position: absolute; inset: 0; }
 /* 미리보기 크기(lib/heroView — 모바일 헤더의 보기 셋). 누르는 즉시 바뀐다(전환 없음 — 시점 바꾸기는 바로바로).
    크게 = 화면의 56%(기본보다 작아지지 않게 — 목록이 2줄 아래로 줄면 페이지가 길어진다, ListArea 의 --pb-min-h).
