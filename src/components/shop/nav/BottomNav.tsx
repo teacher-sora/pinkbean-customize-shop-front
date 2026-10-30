@@ -58,9 +58,9 @@ export function PlazaTabsM() {
   return <TabsM label="분류" items={PLAZA_FILTERS} on={s.plazaFilter} pick={(id) => s.setPlazaFilter(id as PlazaFilter)} />
 }
 
-// 모바일 부위 · 분류 줄과 목록 머리를 묶어 미리보기 바로 아래에 띄워 둔다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
-// 맨 위까지 올리지 않게). 접히지 않는다(사용자 지시 — 접고 펼치는 것이 오히려 답답했다).
-// data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
+// 모바일 부위 · 분류 줄과 목록 머리를 묶어 미리보기 바로 아래에 둔다. 붙지도 접히지도 않고 미리보기 · 목록과 한 흐름의 같은 층이다(사용자 지시 —
+// 붙여 두었더니 목록 위 층이 되어 목록이 그 밑으로 들어갔고, 접고 펼치는 것은 답답했다). 목록 화면은 페이지가 헤더 높이만큼만 내려가 늘 다 보인다.
+// data-sticky-top = 목록 칸 맞춤(ListArea useMobileRows)이 이 높이를 뺀다
 export function StickyBarM({ children }: { children: React.ReactNode }) {
   return <div data-sticky-top className={styles.barM}>{children}</div>
 }

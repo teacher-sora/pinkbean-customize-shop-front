@@ -116,11 +116,11 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
-      // 맞춤: 페이지를 끝까지 내리면 붙은 미리보기 + 머리 묶음(sticky) 바로 아래부터 화면 끝까지가 목록 칸이다(큰 화면 높이 100lvh — 툴바가 접힌).
+      // 맞춤: 페이지를 헤더 높이만큼 내리면 미리보기가 화면 맨 위에 오고, 미리보기 + 머리 묶음 바로 아래부터 화면 끝까지가 목록 칸이다(큰 화면 높이 100lvh — 툴바가 접힌).
       // 칸 아래에 함께 놓이는 것(룩북의 자주 쓴 염색 줄 · 출처 줄)도 뺀다. 하단 탭은 떠 있어 빼지 않는다(내리는 동안 숨는다).
       // 맞춤이 있으면 바닥(floor — 그림 칸 비율)보다 맞춤이 먼저다: 어느 기기든 페이지는 맨 위 헤더 높이만큼만 내려간다(사용자 지시). 낮은 화면은 카드가 그만큼 낮아진다
       let fit = 0
-      if (hero && getComputedStyle(hero).position === 'sticky') {
+      if (hero && document.documentElement.getAttribute('data-pb-view') !== 'full') {
         const bar = col.querySelector<HTMLElement>('[data-sticky-top]')
         fit = lvh.offsetHeight - base.offsetHeight - (bar?.offsetHeight ?? 0) - (col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom)
       }

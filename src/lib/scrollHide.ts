@@ -4,21 +4,15 @@
 //  · 가로로 움직이기 시작하면(목록 좌우 넘기기 · 분류 줄 끌기) 어느 쪽이든 숨는다. 그 뒤의 세로 흔들림은 더 크게(STEP_X) 움직여야 친다.
 //  · 손을 뗄 때 아직 방향이 정해지지 않았으면 뗀 점을 한 번 더 본다(빠르게 튕겨 움직임이 한두 번만 온 때). 마우스 휠은 휠 방향.
 //  · 왜: 처음 움직인 쪽이 조금이라도 가로면 그 손동작 전체를 버리고, 틀 · 탭을 처음 한 번만 찾아 두어 휘저어도 반응이 없을 때가 많았다(사용자 지적).
-//  · 손가락 신호가 빠질 때(브라우저가 스크롤을 넘겨받거나 관성으로 흐르는 동안 — 여러 번 쓸어도 반응이 없었다, 사용자 지적)를 위해 실제로 움직인 스크롤도 본다:
-//    손가락이 닿아 있거나 뗀 뒤 관성 동안(LIVE_MS) 페이지 · 목록 칸이 SCROLL_STEP 넘게 같은 쪽으로 움직이면 그 방향(내용이 올라가면 숨김), 가로로 움직이면 숨김.
-//    코드가 옮긴 스크롤(쪽 넘김 · 가이드)은 손가락이 없을 때라 세지 않는다.
+//  · 스크롤은 보지 않는다 — 실제 스크롤 방향도 보게 했더니 손을 뗀 뒤 페이지 끝에서 튕겨 돌아오는 것을 '내려옴'으로 읽어, 숨기자마자 다시 나왔다(사용자 지적).
 //  · 움직임은 브라우저의 전환(globals.css nav[data-pb-navhide])이고, 코드는 표시 하나만 바꾼다. 페이지는 늘 브라우저 기본대로 스크롤한다.
 //  · 새로고침하면 맨 위에서 시작한다(history.scrollRestoration manual): 내려 둔 위치를 툴바가 보이는 채로 되살리면 헤더 높이보다 더 내려가 목록이 보기 설정 밑으로
 //    들어갔고, 그 상태로 키패드를 여닫으면 보이는 것과 누르는 자리가 어긋났다(사용자 지적).
 const STEP = 10 // 꺾인 점에서 이만큼(px) 가면 그 방향으로 친다(누르기 · 떨림은 치지 않는다)
 const STEP_X = 28 // 가로로 시작한 손동작에서 세로로 치려면
 const START_X = 10 // 가로로 이만큼 가고 세로보다 크면 가로로 시작한 것
-const SCROLL_STEP = 12 // 스크롤이 꺾인 자리에서 이만큼 움직이면 그 방향으로 친다
-const LIVE_MS = 900 // 손을 뗀 뒤 관성 스크롤을 손가락 것으로 보는 시간
 let installed = 0, frozen = false, hidden = false, mo: MutationObserver | null = null
-let touch = false, sx = 0, sy = 0, ky = 0, dir = 0, across = false, liveUntil = 0
-type Mark = { x: number; y: number; ky: number; dir: number }
-const marks = new WeakMap<object, Mark>() // 스크롤하는 것(문서 · 목록 칸)마다 마지막 위치 · 꺾인 자리
+let touch = false, sx = 0, sy = 0, ky = 0, dir = 0, across = false
 const root = () => document.documentElement
 const navEl = () => document.querySelector<HTMLElement>('[data-mobile-col] > nav[data-hero-below]') // 늘 지금 것을 찾는다(탭을 바꿔 다시 붙어도)
 function measure() {
@@ -53,24 +47,9 @@ const onMove = (e: TouchEvent) => {
   track(t.clientY, across ? STEP_X : STEP)
 }
 const onEnd = (e: TouchEvent) => {
-  liveUntil = performance.now() + LIVE_MS
   const t = e.changedTouches[0]
   if (touch && t && dir === 0) track(t.clientY, across ? STEP_X : STEP) // 이 손동작에서 아직 방향이 정해지지 않았을 때만(정해진 것을 끝에서 뒤집지 않는다)
   touch = false
-}
-const onScroll = (e: Event) => {
-  const el = e.target === document ? document.scrollingElement : e.target
-  if (!(el instanceof Element)) return
-  const x = el.scrollLeft, y = el.scrollTop, m = marks.get(el)
-  if (!m) { marks.set(el, { x, y, ky: y, dir: 0 }); return }
-  const dx = x - m.x; m.x = x; m.y = y
-  if (frozen || !(touch || performance.now() < liveUntil) || !inCol(el === document.scrollingElement ? document.querySelector('[data-mobile-col]') : el)) { m.ky = y; m.dir = 0; return }
-  if (Math.abs(dx) >= 1 && !hidden) { set(true); return } // 가로로 넘기는 중 — 숨김
-  if (m.dir > 0 && y > m.ky) { m.ky = y; return } // 내용이 올라가는 중(손가락이 위로) — 꺾인 자리가 따라간다
-  if (m.dir < 0 && y < m.ky) { m.ky = y; return }
-  const d = y - m.ky
-  if (Math.abs(d) < SCROLL_STEP || (d > 0 ? 1 : -1) === m.dir) return
-  m.dir = d > 0 ? 1 : -1; m.ky = y; set(m.dir > 0)
 }
 const onWheel = (e: WheelEvent) => { if (!frozen && inCol(e.target) && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.deltaY) set(e.deltaY > 0) }
 export function installScrollLink(): () => void {
@@ -82,14 +61,13 @@ export function installScrollLink(): () => void {
     document.addEventListener('touchend', onEnd, { capture: true, passive: true })
     document.addEventListener('touchcancel', onEnd, { capture: true, passive: true })
     document.addEventListener('wheel', onWheel, { capture: true, passive: true })
-    document.addEventListener('scroll', onScroll, { capture: true, passive: true }) // 목록 칸 스크롤도 잡는다(scroll 은 올라오지 않아 capture)
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
     if (window.scrollY) window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }) // 브라우저가 이미 되살린 위치도 맨 위로(처음 한 번)
     measure()
   }
   return () => {
     if (--installed) return
-    for (const [k, f] of [['touchstart', onStart], ['touchmove', onMove], ['touchend', onEnd], ['touchcancel', onEnd], ['wheel', onWheel], ['scroll', onScroll]] as const) document.removeEventListener(k, f as EventListener, true)
+    for (const [k, f] of [['touchstart', onStart], ['touchmove', onMove], ['touchend', onEnd], ['touchcancel', onEnd], ['wheel', onWheel]] as const) document.removeEventListener(k, f as EventListener, true)
     mo?.disconnect(); mo = null
     set(false)
     root().removeAttribute('data-pb-nav')
