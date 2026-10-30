@@ -25,10 +25,10 @@ import ConfirmBubble from './shop/ui/ConfirmBubble'
 import styles from './shop/frame/frame.module.css'
 
 // 첫 화면에 없는 탭은 묶음 밖에 두고 한가할 때 받는다(frame/lazyPanel)
-const InfoPanel = lazyPanel(() => import('./shop/info/InfoPanel'))
+const InfoPanel = lazyPanel(() => import('./shop/info/InfoPanel'), 'rows')
 const PresetPanel = lazyPanel(() => import('./shop/preset/PresetPanel'))
 const PlazaPanel = lazyPanel(() => import('./shop/plaza/PlazaPanel'))
-const PlazaUpload = lazyPanel(() => import('./shop/plaza/PlazaUpload'))
+const PlazaUpload = lazyPanel(() => import('./shop/plaza/PlazaUpload'), 'side')
 const ComboPanel = lazyPanel(() => import('./shop/combo/ComboPanel'))
 
 function Shell() {

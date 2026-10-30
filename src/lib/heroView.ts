@@ -80,6 +80,6 @@ export const heroBaseProbe = () => probe('height:var(--pb-hero-base)')
 // 지금 화면의 맞춤을 다시 구해 넣는다(lib/mobileFit — 첫 값은 머리 스크립트). 3번째 줄이 보이는 몫을 돌려준다
 export function applyMobileFit() {
   const f = mobileFit(window.innerWidth, svhProbe().offsetHeight, window.devicePixelRatio || 1), root = document.documentElement
-  if (root.style.getPropertyValue('--pb-hero-base') !== f.hero + 'px') root.style.setProperty('--pb-hero-base', f.hero + 'px')
+  if (root.style.getPropertyValue('--pb-hero-base') !== f.hero + 'px') { root.style.setProperty('--pb-hero-base', f.hero + 'px'); root.style.setProperty('--pb-boot-row', f.row + 'px') }
   return f.peek
 }
