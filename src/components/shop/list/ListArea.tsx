@@ -128,10 +128,10 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
         // 칸 아래 것(below)은 칸 뒤에 붙은 요소들의 높이다 — 틀 끝까지의 거리로 재면 앞 탭이 남긴 빈자리까지 빠져 칸이 짧아졌다(코디 정보 126px)
         fit = lvh.offsetHeight - base.offsetHeight - (vp.getBoundingClientRect().top - hero.getBoundingClientRect().bottom) - below
       }
-      const h = fit > 0 ? fit : floor
+      const h = fit > 0 ? Math.floor(fit) : Math.ceil(floor) // 맞춤은 내림 — 올리면 소수점 몫만큼 페이지가 헤더보다 1px 더 내려갔다
       const need = Math.ceil(chrome + h) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
-      const page = Math.ceil(h) + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
+      const page = h + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
       if (col.style.getPropertyValue('--pb-page-h') !== page) col.style.setProperty('--pb-page-h', page)
     }
     m()
