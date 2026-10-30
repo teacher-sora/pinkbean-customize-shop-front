@@ -103,7 +103,7 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
     if (!item || !idx) { setParts(null); return }
     let alive = true
     ;(async () => {
-      const te = idx.base.tones.find((t) => t.tone === s.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
+      const te = idx.base.tones.find((t) => t.tone === s.shownTone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
       const eqEntries = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl] && sl !== 'riding') as [string, ListItem][]
       const [body, head, ...eqMetas] = await Promise.all([
         loadMeta(te.body), loadMeta(te.head),
@@ -165,7 +165,7 @@ export function useDotEditor(item: ListItem | null, box: { w: number; h: number 
       setTool(0); setZoom(1); setFocus({ x: faceBox.cx, y: faceBox.cy })
     })().catch(() => {})
     return () => { alive = false }
-  }, [item?.id, s.index, s.tone])
+  }, [item?.id, s.index, s.shownTone])
 
   // 염색 오버라이드 — 두 갈래로 분리해 "눈장식 염색 슬라이더 드래그"가 헤어/성형까지 매 틱 리컬러하지 않게 한다.
   //  baseOv: 편집 슬롯을 제외한 착용 아이템(헤어/성형 등) + 피부(컬러라인) — 커밋된 염색 기준.

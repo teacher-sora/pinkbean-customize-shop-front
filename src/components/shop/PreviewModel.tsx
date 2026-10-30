@@ -25,7 +25,7 @@ import { heroBaseProbe, useHeroView } from '@/lib/heroView'
 import { bindImageMenu, type GifMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, ZOOM_WORLD_M, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
+import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, viewTone, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, ZOOM_WORLD_M, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
 import { peekSavedZoom, useShop, type DotOffsets } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import { useIsoLayoutEffect } from '@/lib/uiState'
@@ -59,7 +59,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   const shop = useShop()
   const { index, bp } = shop
   // 염색 비활성화 슬롯은 제외된 렌더용 값
-  const equipped = src?.equipped ?? shop.equipped, hidden = src?.hidden ?? shop.hidden, tone = src?.tone ?? shop.tone, pv = src?.pv ?? shop.pv
+  const equipped = src?.equipped ?? shop.equipped, hidden = src?.hidden ?? shop.hidden, tone = viewTone(src?.tone ?? shop.tone, hidden), pv = src?.pv ?? shop.pv
   const dyePalette = src?.palette ?? shop.renderPalette, dyeHsb = src?.hsb ?? shop.renderHsb, dotPos = src?.dotPos ?? shop.dotPos
   const dyeInteracting = !!src?.interacting
   const zoomMults = src?.zoomMults ?? (bp === 'mobile' ? ZOOM_WORLD_M : ZOOM_WORLD) // 휴대폰은 1배가 작다(shopData.ZOOM_WORLD_M)

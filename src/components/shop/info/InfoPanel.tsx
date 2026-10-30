@@ -8,7 +8,7 @@ import { useListMinHeight } from '../list/ListArea'
 import { useEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import type { HsbParams } from '@/lib/core/dye'
-import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
+import { CAT_TO_SLOT, DEFAULT_TONE, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { IconEye, IconShareImage, IconTrashSolid } from '../ui/Icons'
@@ -37,7 +37,7 @@ export function infoRows (s: Shop, skinItem: ListItem | null, toneName: string) 
     const isMix = s.isMixSlot(slot)
     const item = isSkin ? skinItem : s.equipped[slot] || null
     const on = isSkin ? !!skinItem : !!item
-    const hidden = !isSkin && !!s.hidden[slot]
+    const hidden = !!s.hidden[slot]
     let dyed = false
     if (isSkin) dyed = isDyeableSkin(toneName) && hsbActive(s.dyeHsb.skin)
     else if (isMix) { const p = s.dyePalette[slot]; dyed = !!p && (p.baseColor !== 0 || (p.mixColor != null && p.ratio > 0)) }
@@ -102,6 +102,8 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   }
 
   const bandState = (r: Row) => bandStateOf(r, toneName)
+  // 눈 · 휴지통: 피부는 엘프 피부가 아닐 때만(엘프 피부가 기본이라 가리거나 되돌릴 것이 없다 — 사용자 지시)
+  const canClear = (r: Row) => !r.isSkin || s.tone !== DEFAULT_TONE
 
   const grid = (
     <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${cols},minmax(0,1fr))` }}>
@@ -123,7 +125,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
               <span className={styles.slotPart}>{r.c.label}</span>
               <span className={clsx(styles.slotName, ((r.on && !r.hidden) || name === '기본') && styles.slotNameOn)}>{name}</span>
             </span>
-            {r.on && !r.isSkin && (
+            {r.on && canClear(r) && (
               <span role="button" tabIndex={0} title="미리보기 표시/숨김" aria-label="미리보기 표시/숨김"
                 onClick={(e) => { e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[r.slot]) delete n[r.slot]; else n[r.slot] = true; return n }) }}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[r.slot]) delete n[r.slot]; else n[r.slot] = true; return n }) } }}
@@ -132,10 +134,10 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
               </span>
             )}
             {/* 이 부위만 벗기 — 칩 오른쪽 아래 모서리의 휴지통(이름 줄 끝의 눈 단추와 떨어지게). 두 번 눌러야 한다(lib/confirmTwice, 누른 단추 위에 되묻는 말풍선). 사용자 요청. */}
-            {r.on && !r.isSkin && (
-              <span role="button" tabIndex={0} title="이 부위 벗기" aria-label={`${r.c.label} 벗기`} {...{ [CONFIRM_ATTR]: `unequip:${r.slot}` }}
-                onClick={(e) => { e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) }}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) } }}
+            {r.on && canClear(r) && (
+              <span role="button" tabIndex={0} title={r.isSkin ? '엘프 피부로 되돌리기' : '이 부위 벗기'} aria-label={r.isSkin ? '엘프 피부로 되돌리기' : `${r.c.label} 벗기`} {...{ [CONFIRM_ATTR]: `unequip:${r.slot}` }}
+                onClick={(e) => { e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, r.isSkin ? '한 번 더 누르면 엘프 피부로 돌아가요' : '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (confirmTwice(`unequip:${r.slot}`, r.isSkin ? '한 번 더 누르면 엘프 피부로 돌아가요' : '한 번 더 누르면 벗어요')) s.unequipSlot(r.slot, r.c.label) } }}
                 className={styles.trash}>
                 <IconTrashSolid size={13} />
               </span>

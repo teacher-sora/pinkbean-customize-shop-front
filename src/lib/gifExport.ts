@@ -5,7 +5,7 @@
 //  2) 그 구간을 10ms(GIF 시간 단위)마다 훑어 보이는 그림이 바뀌는 때마다 프레임을 하나 둔다. 20ms 보다 짧은 프레임은 앞 프레임에 붙인다
 //     (브라우저가 20ms 미만을 100ms 로 늘려 재생한다).
 //  3) 그림은 한 장 저장과 같은 함수(canvasExport.drawShot)로 다시 그리고, 모든 프레임이 닿는 상자 하나로 자른다(사방 SHOT_PAD).
-//     게임 픽셀 하나 = GIF_SCALE 칸(메신저가 작은 그림을 흐릿하게 늘리지 않게). 바탕 둘:
+//     이미지 저장 · 복사와 같은 게임 크기(1배)다 — 게임 픽셀 하나가 움짤 칸 하나(사용자 지시). 바탕 둘:
 //     - '움짤 저장': 그 상자 자리에 미리보기에서 보이는 배경을 깐다(lib/stageShot — 사용자 지시: 보는 화면을 통째로 뽑지 말고 캐릭터에
 //       맞춘 판에 바탕만 지금 배경으로). 캐릭터를 미리보기 캔버스와 같은 판(stage.place)에 그려 배경과 자리가 맞는다. 반투명한 이펙트도
 //       배경 위에 섞여 그대로 담긴다.
@@ -30,7 +30,7 @@ export type GifStage = {
   paint: (g: CanvasRenderingContext2D, x0: number, y0: number, s: number) => Promise<boolean>
 }
 
-const TICK = 10, MIN_FRAME = 20, MAX_MS = 12000, FLOW_MS = 40, FLOW_LOOP = 3000, GIF_SCALE = 2, ALPHA_CUT = 128
+const TICK = 10, MIN_FRAME = 20, MAX_MS = 12000, FLOW_MS = 40, FLOW_LOOP = 3000, GIF_SCALE = 1, ALPHA_CUT = 128
 const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a)
 // 사진 배경의 색 띠 풀기 — 256색으로 줄이면 고른 그라데이션이 계단이 된다. 고정된 4×4 무늬(Bayer)로 ±DITHER 만큼 흔들어 둔다.
 // 배경 판에 한 번만 입힌다(캐릭터는 도트 그대로) — 무늬가 프레임마다 같아 '앞 프레임 그대로' 칸도 그대로 남는다.

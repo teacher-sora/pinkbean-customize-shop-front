@@ -31,7 +31,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, SLOT_TO_CAT, THUMB_VIEW, ITEM_KINDS, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, viewTone, SLOT_TO_CAT, THUMB_VIEW, ITEM_KINDS, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, presetCard, snapKey } from '@/lib/core/snapRender'
 import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -303,7 +303,7 @@ export interface ShopCtx {
   commitPage: () => void
   // 착용(실제)
   equipped: Record<string, ListItem | null>
-  tone: number
+  tone: number; shownTone: number // tone = 고른 피부, shownTone = 그릴 피부(가렸으면 엘프 피부 — viewTone)
   equipFromCat: (cat: string, item: ListItem) => void // 슬롯 라디오 토글(재클릭 해제)
   equipItem: (item: ListItem) => void                 // 토글 없이 착용(염색 적용 시)
   isEquippedInCat: (cat: string, itemId: string) => boolean
@@ -1180,7 +1180,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // 착용: skin=톤 변경, 그 외=slot 라디오(재클릭 해제) + islot 충돌 슬롯 자동 해제.
   const equipFromCat = (cat: string, item: ListItem) => {
-    if (cat === 'skin') { setTone(index?.base.tones.find((t) => t.body === item.id)?.tone ?? 0); return }
+    if (cat === 'skin') { setTone(index?.base.tones.find((t) => t.body === item.id)?.tone ?? 0); setHidden((h) => { if (!h.skin) return h; const n = { ...h }; delete n.skin; return n }); return }
     const slot = cat === CHAT_TAB ? item.slot : CAT_TO_SLOT[cat] // 명찰/말풍선 탭은 두 부위가 섞여 있다 — 아이템의 부위로 끼운다
     setEquipped((prev) => {
       const cur = prev[slot]
@@ -1194,7 +1194,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (isMixSlot(slot) && pal) loadMeta(item.id).then((m) => preloadPaletteVariant(m, pal, THUMB_VIEW)).catch(() => {})
   }
   const isEquippedInCat = (cat: string, itemId: string) => {
-    if (cat === 'skin') return index?.base.tones.find((t) => t.tone === tone)?.body === itemId
+    if (cat === 'skin') return index?.base.tones.find((t) => t.tone === viewTone(tone, hidden))?.body === itemId
     if (cat === CHAT_TAB) return equipped.nameTag?.id === itemId || equipped.chatBalloon?.id === itemId
     return equipped[CAT_TO_SLOT[cat]]?.id === itemId
   }
@@ -1205,11 +1205,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     equipFromCat(cat, item)
   }
   // 한 부위만 벗는다(코디 정보 칩의 휴지통 — 두 번 눌러야 한다). 염색 값은 그대로 둔다(같은 부위를 다시 입으면 쓰인다 — 목록에서 벗는 것과 같다).
+  // 피부는 벗을 수 없어 기본인 엘프 피부로 돌아간다(사용자 지시).
   const unequipSlot = (slot: string, label?: string) => {
+    if (slot === 'skin') setTone(DEFAULT_TONE)
     setEquipped((prev) => (prev[slot] ? { ...prev, [slot]: null } : prev))
     setHidden((h) => { if (!h[slot]) return h; const n = { ...h }; delete n[slot]; return n })
     setDyeTarget((t) => (t === slot ? null : t))
-    notify(label ? `${label} 부위를 벗었어요` : '부위를 벗었어요')
+    notify(slot === 'skin' ? '엘프 피부로 돌아갔어요' : label ? `${label} 부위를 벗었어요` : '부위를 벗었어요')
   }
 
   // 북마크 담기/해제(토글) · 비우기.
@@ -2204,7 +2206,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openPlazaPost, openNotice, guideGo, plazaTakeDirect, takeCombo: (snap: Snapshot) => openSurface({ kind: 'ptake', item: null, take: snap, combo: true }), wearFromSnap, isWornFromSnap, plazaTakeBack, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
-    equipped, tone, equipFromCat, equipItem, isEquippedInCat, unequipSlot, hidden, setHidden,
+    equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
     surface, surfaceClosing, openSheet, openDye, openCard, openDot, closeSurface,
     openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,

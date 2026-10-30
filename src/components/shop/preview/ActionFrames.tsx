@@ -25,7 +25,7 @@ type Shop = ReturnType<typeof useShop>
 const ONE: ActionInfo = { delays: [0], pingpong: false }
 // 그 액션의 프레임 박자. 탑승해 앉는 액션 · 기본(정지) · 뒷모습은 자세가 하나다(상세로 넘어가지 않는다).
 export async function actionInfo (s: Shop, action: string): Promise<ActionInfo> {
-  const bodyId = s.index?.base.tones.find((t) => t.tone === s.tone)?.body
+  const bodyId = s.index?.base.tones.find((t) => t.tone === s.shownTone)?.body
   const ride = s.equipped.riding && !s.hidden.riding ? s.equipped.riding : null
   if (!bodyId || action === 'basic' || s.pv.gaze === 'back' || (ride && ridingSeatedSet(ride).has(action))) return ONE
   try {
@@ -36,7 +36,7 @@ export async function actionInfo (s: Shop, action: string): Promise<ActionInfo> 
 export function useActionInfo (action: string | null): ActionInfo | null {
   const s = useShop()
   const [info, setInfo] = useState<{ key: string; v: ActionInfo } | null>(null)
-  const key = `${action}|${s.tone}|${s.pv.weapon}|${s.pv.gaze}|${s.equipped.riding?.id ?? ''}|${!!s.hidden.riding}`
+  const key = `${action}|${s.shownTone}|${s.pv.weapon}|${s.pv.gaze}|${s.equipped.riding?.id ?? ''}|${!!s.hidden.riding}`
   useEffect(() => {
     if (!action) return
     let alive = true

@@ -21,7 +21,7 @@ function g(u,o){var p=b[u]=fetch(B+'/'+u,o).then(function(r){if(!r.ok)throw 0;re
 g('anima.json',F);g('effects/index.json',F);g('catalog/new.json',F);g('catalog/beauty-dups.json',F);g('catalog/labels.json',F);
 var c='all';try{var s=JSON.parse(sessionStorage.getItem('pb_ui_session_v1')||'{}');if(typeof s.activeCat==='string')c=s.activeCat}catch(e){}
 var eq=${JSON.stringify(DEF_EQUIP)},tone=${DEF_TONE};
-try{var P=JSON.parse(localStorage.getItem('pb_presets_v1')),S=P&&P.data&&P.data[P.sel||'d0'];if(S&&S.equipped){eq=S.equipped;if(typeof S.tone==='number')tone=S.tone}}catch(e){}
+try{var P=JSON.parse(localStorage.getItem('pb_presets_v1')),S=P&&P.data&&P.data[P.sel||'d0'];if(S&&S.equipped){eq=S.equipped;if(typeof S.tone==='number'&&!(S.hidden&&S.hidden.skin))tone=S.tone}}catch(e){}
 for(var k in eq)if(typeof eq[k]==='string'&&eq[k]&&k!=='riding')g('meta/'+eq[k]+'.json');
 g('index.json',F).then(function(x){
 var m=c==='all'||c==='new'||c==='fav';
