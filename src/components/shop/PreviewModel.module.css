@@ -18,6 +18,8 @@
   position: absolute;
   left: 0; /* 실제 위치·크기는 JS 가 디바이스 픽셀 격자에 맞춰 지정(소수 px 재샘플링 → 세로줄 방지) */
   top: 0;
+  width: 100%; /* JS 가 크기를 넣기 전에도 칸 크기 — 브라우저 기본 300 × 150 이면 첫 로드에 크기가 바뀌어 밀림으로 잡힌다 */
+  height: 100%;
   display: block;
   image-rendering: pixelated;
 }
