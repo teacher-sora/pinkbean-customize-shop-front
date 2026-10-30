@@ -53,7 +53,7 @@
 .dyeTextM { flex-direction: row; align-items: baseline; gap: 4px; }
 @media (hover: hover) and (pointer: fine) { .dyeChip:hover { border-color: light-dark(#eeb2ce, #d37aa3); } }
 /* 받기 전 스켈레톤 칩 — 받은 칩과 같은 구조 · 크기(글자 자리만 흐린 막대) */
-.dyeSkel { cursor: default; }
+.dyeSkel { cursor: default; opacity: 0; animation: pbSkelIn .18s ease .2s forwards; }
 .hold { visibility: hidden; } /* 고르기 전 빈 상태: 묶음 자리만 잡는다 */
 .skelText { color: transparent; border-radius: 4px; }
 .dyeChipOn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fef5f8, #4c3039); }

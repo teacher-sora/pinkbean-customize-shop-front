@@ -427,14 +427,14 @@
 .fbList > p { grid-column: 1 / -1; }
 .fbBox { width: 100%; min-width: 0; padding: 12px 14px; outline-offset: 2px; display: flex; flex-direction: column; gap: 6px; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; background: light-dark(#fff, #303238); font-family: inherit; text-align: left; cursor: pointer; transition: border-color .22s ease, background-color .24s ease; }
 /* 뼈대(FeedbackBoxSkel, FeedbackNodeSkel): 진짜와 같은 칸. 막대(11px)는 글자 한 줄 높이 안 가운데에 둔다 */
-.fbSkel { cursor: default; }
+.fbSkel { cursor: default; opacity: 0; animation: pbSkelIn .18s ease .2s forwards; } /* 상자도 안의 뼈대와 함께 0.2초 뒤에 */
 .fbBox .cmtMeta { min-height: 20px; } /* 지우기 버튼(20)이 있든 없든 상자 높이가 같다 */
 .skWho { display: block; width: 38%; height: 11px; border-radius: 4px; }
 .skBody.skBody { display: flex; flex-direction: column; }
 .skBody :global(.pb-skel), .skCount { display: block; height: 11px; border-radius: 4px; }
 .skBody :global(.pb-skel) { margin: calc((1.55em - 11px) / 2) 0; }
 .skCount { width: 24px; }
-.ntRowSkel { cursor: default; }
+.ntRowSkel { cursor: default; opacity: 0; animation: pbSkelIn .18s ease .2s forwards; }
 .ntRowSkel :global(.pb-skel) { display: block; width: 46%; height: 11px; border-radius: 4px; }
 /* 본문은 PC 세 줄 · 휴대폰 두 줄까지(넘치면 말줄임) — 다 읽으려면 연다. PC 는 짧은 글도 세 줄 높이를 잡아 격자 줄이 맞는다 */
 .fbBoxBody { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; min-height: calc(1.55em * 3); overflow: hidden; font-size: calc(12.5rem / 16); line-height: 1.55; color: light-dark(#3d372f, #cacbd0); white-space: pre-line; overflow-wrap: anywhere; word-break: break-word; }

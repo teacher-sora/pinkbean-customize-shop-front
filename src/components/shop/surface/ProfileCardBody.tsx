@@ -435,7 +435,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
                   className={clsx('pb-ghost', styles.resetBtn)}><IconReset />위치 초기화</button>
               </div>
             </div>
-            {(!chips || !board || !fonts) && <div className="pb-skel" style={{ position: 'absolute', inset: 0, borderRadius: 8 }} />}
+            {(!chips || !board || !fonts) && <div className="pb-skel pb-skel-now" style={{ position: 'absolute', inset: 0, borderRadius: 8 }} />}
           </div>
         </div>
         {side}

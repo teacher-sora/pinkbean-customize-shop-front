@@ -272,7 +272,10 @@ html[data-pb-csr] [data-pb-stub='side'] { flex: 0 0 360px; }
 /* 리스트 카드 헤어 '아이템' 보기: 셀 짧은 변 크기의 정사각 캔버스를 중앙에 */
 .pb-hairsprite { position: absolute; inset: 0; container-type: size; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .pb-hairsprite-box { width: 100cqmin; height: 100cqmin; }
-.pb-skel { background: linear-gradient(100deg, light-dark(#f4ede4, #3f424a) 30%, light-dark(#efe6da, #454850) 48%, light-dark(#f4ede4, #3f424a) 66%); background-size: 220% 100%; animation: pbSkelShimmer 1.25s ease-in-out infinite; }
+.pb-skel { background: linear-gradient(100deg, light-dark(#f4ede4, #3f424a) 30%, light-dark(#efe6da, #454850) 48%, light-dark(#f4ede4, #3f424a) 66%); background-size: 220% 100%; opacity: 0; animation: pbSkelShimmer 1.25s ease-in-out infinite, pbSkelIn .18s ease .2s forwards; }
+/* 기본은 0.2초 뒤에 나타난다 — 금방 끝나는 로딩에서 번쩍이지 않게(사용자 지시). 기다림을 꼭 알려야 하는 자리(답변 대기 · 코디 프로필 만들기)만 -now 로 곧바로 */
+.pb-skel-now { opacity: 1; animation: pbSkelShimmer 1.25s ease-in-out infinite; }
+@keyframes pbSkelIn { to { opacity: 1; } }
 @keyframes pbSkelShimmer { 0% { background-position: 220% 0; } 100% { background-position: -220% 0; } }
 
 /* ── 다이얼로그(LookDialog)가 쓰는 클래스 ── */
