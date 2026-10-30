@@ -319,7 +319,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     <input data-guide="ai" value={s.aiQ} onChange={(e) => s.setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi() }} placeholder="생김새 검색"
       className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
   ) : (
-    <input value={s.search} onChange={(e) => { s.setSearch(e.target.value); s.setIdx(0) }} placeholder="아이템 검색"
+    <input value={s.search} onChange={(e) => s.setSearch(e.target.value)} placeholder="아이템 검색"
       className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
   )
 
