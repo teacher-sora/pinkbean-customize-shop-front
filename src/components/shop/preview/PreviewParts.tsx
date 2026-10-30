@@ -65,9 +65,9 @@ export function CmpDel({ id, slim }: { id: string; slim?: boolean }) {
 }
 
 // PC: 미리보기 아래 칸 — 북마크 8칸 + 머리 줄 오른쪽의 탭 [북마크] [비교](사용자 지시: 모드처럼 — 열 폭이 바뀌어도 늘 같은 자리라 오른쪽, [비우기]는 왼쪽).
-// 비교 탭을 고르면 코디 비교가 켜지고(미리보기가 칸 판으로), 북마크 탭으로 돌아오면 꺼진다. 비교 탭의 본문은 지금은 빈 자리다(사용자 지시 — 북마크 줄과 같은 높이, [비우기]도 자리만 남긴다).
+// 비교 탭을 고르면 코디 비교가 켜지고(미리보기가 칸 판으로), 북마크 탭으로 돌아오면 꺼진다. 비교 중에도 북마크(개수 · 비우기 · 8칸)는 그대로 보이고 쓴다(사용자 지시).
 // 슬롯을 누르면 입혀보기, ✕ 로 해제. ✕ · 비우기는 두 번 눌러야 지운다(lib/confirmTwice).
-// 칸 높이는 탭과 상관없이 같다 — 비교 중에 열이 넓어져도 줄 높이는 비교 전 열 폭으로 잰 값(preview.module.css 의 --pin-col).
+// 칸 크기는 탭과 상관없이 같다 — 비교 중에 열이 넓어져도 칸은 비교 전 열 폭으로 잰 정사각형이고 가운데에 선다(preview.module.css 의 --pin-col).
 const BOX_TABS: SegOpt<'bm' | 'cmp'>[] = [{ v: 'bm', l: '북마크', t: '북마크한 아이템' }, { v: 'cmp', l: '비교', t: '여러 코디를 나란히 놓고 비교하기' }]
 export function BookmarkBox() {
   const s = useShop()
@@ -79,10 +79,9 @@ export function BookmarkBox() {
   return (
     <div data-guide="bm" className={clsx('pb-pinbox', styles.pinbox)}>
       <div className={styles.pinHead}>
-        <span className={styles.pinActs} style={tab === 'cmp' ? { visibility: 'hidden' } : undefined} aria-hidden={tab === 'cmp' || undefined}><PinCount n={n} /><ClearBookmarks n={n} /></span>
+        <span className={styles.pinActs}><PinCount n={n} /><ClearBookmarks n={n} /></span>
         <span data-guide="vs" className={styles.pinTabs}><Seg opts={BOX_TABS} value={tab} onPick={pick} /></span>
       </div>
-      {tab === 'cmp' ? <div aria-hidden className={styles.pinBlank} /> : (
       <div className={styles.pinGrid}>
         {Array.from({ length: 8 }, (_, i) => {
           const it = s.bookmarks[i]
@@ -99,7 +98,6 @@ export function BookmarkBox() {
           )
         })}
       </div>
-      )}
     </div>
   )
 }
