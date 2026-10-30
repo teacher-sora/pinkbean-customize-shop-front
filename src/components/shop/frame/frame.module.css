@@ -20,7 +20,7 @@
 .waitCard { position: relative; overflow: hidden; border-radius: 8px; background: light-dark(#f4ede4, #3f424a); }
 .waitCard::after, .bootShim::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 25%, light-dark(#fbf6ef, #4b4e57) 50%, transparent 75%); transform: translateX(-100%); will-change: transform; animation: pbWaitSweep 1.6s ease-in-out infinite; }
 .bootShim { position: relative; overflow: hidden; }
-.bootShim::after { opacity: 0; animation: pbWaitSweep 1.6s ease-in-out infinite, pbWaitIn .3s ease .5s forwards; } /* 첫 화면 뼈대 — 늦어질 때만 */
+.bootShim::after { opacity: 0; animation: pbWaitSweep 1.6s ease-in-out infinite, pbWaitIn .18s ease .2s forwards; } /* 첫 화면 뼈대 — 늦어질 때만 */
 @keyframes pbWaitIn { to { opacity: 1; } }
 @keyframes pbWaitSweep { to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .waitCard::after, .bootShim::after { animation: none; opacity: 0; } }

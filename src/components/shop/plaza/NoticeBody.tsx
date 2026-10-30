@@ -121,17 +121,6 @@ const botText = (m: ChatMsg) => {
   return ''
 }
 
-// 불러오는 중이 잠깐이면 뼈대를 보이지 않는다(번쩍 나타났다 사라지는 깜빡임). 이만큼 넘게 걸릴 때만 뼈대를 그린다
-const SKEL_AFTER_MS = 400
-function useLate(loading: boolean) {
-  const [late, setLate] = useState(false)
-  useEffect(() => {
-    if (!loading) { setLate(false); return }
-    const t = setTimeout(() => setLate(true), SKEL_AFTER_MS)
-    return () => clearTimeout(t)
-  }, [loading])
-  return loading && late
-}
 // 한 번 받은 것은 기억해 두고(창을 닫았다 열거나 탭을 오가도) 바로 보여 준 뒤 새로 받아 바꾼다
 const noticeKeep: { list: PlazaNotice[] | null } = { list: null }
 const fbKeep = new Map<string, { list: FeedbackPost[]; total: number }>()
@@ -139,7 +128,7 @@ const fbKeep = new Map<string, { list: FeedbackPost[]; total: number }>()
 /* ── 공지 ── */
 function Notices({ mobile, setBack }: { mobile: boolean; setBack: (fn: (() => void) | null) => void }) {
   const [notices, setNotices] = useState<PlazaNotice[] | null>(noticeKeep.list)
-  const skel = useLate(!notices)
+  const skel = !notices // 뼈대는 0.2초 뒤에 나타난다(.pb-skel)
   const [failed, setFailed] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   useEffect(() => {
@@ -202,7 +191,7 @@ function Feedback({ kind, mobile, notify, draft, setDraft, setBack }: {
   const T = FB_TEXT[kind]
   const [page, setPage] = useState(0)
   const [data, setData] = useState<{ list: FeedbackPost[]; total: number } | null>(() => fbKeep.get(`${kind}:0`) ?? null)
-  const skel = useLate(!data)
+  const skel = !data // 뼈대는 0.2초 뒤에 나타난다(.pb-skel)
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   // 건의를 올리기 전 확인: 이미 있는 기능이면 그 기능을 보여 주고, 같은 글로 한 번 더 누르면 그대로 올린다
@@ -322,7 +311,7 @@ function FeedbackDetail({ post: post0, mobile, notify, onGone }: {
 }) {
   const [post, setPost] = useState(post0)
   const [nodes, setNodes] = useState<FeedbackNode[] | null>(null)
-  const skel = useLate(!nodes)
+  const skel = !nodes // 뼈대는 0.2초 뒤에 나타난다(.pb-skel)
   const [failed, setFailed] = useState(false)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -422,8 +411,8 @@ function BotMsg({ m, q, onLeave, onGo }: { m: ChatMsg; q: string; onLeave: (k: F
   if (m.pending) {
     return (
       <div className={clsx(styles.hpBot, styles.cmtSkel)} aria-label="답을 찾는 중">
-        <span className="pb-skel" style={{ width: '58%' }} />
-        <span className="pb-skel" style={{ width: '84%' }} />
+        <span className="pb-skel pb-skel-now" style={{ width: '58%' }} />
+        <span className="pb-skel pb-skel-now" style={{ width: '84%' }} />
       </div>
     )
   }

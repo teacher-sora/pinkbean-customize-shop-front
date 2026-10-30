@@ -7,7 +7,7 @@ import nav from '../nav/nav.module.css'
 import styles from './frame.module.css'
 
 // 휴대폰에서 JS 가 붙기 전의 뼈대 — 실제 모바일 화면과 같은 자리에 그린다(frame.module.css .bootM).
-// 미리 알 수 있는 것(로고, 부위 앞 글자, 하단 탭)은 진짜와 같은 부품으로 그려 두고, 데이터가 있어야 하는 칸만 비운다. 빛줄기는 0.5초가 넘어가면 나타나 빨리 뜨는 기기에서는 보이지 않는다
+// 미리 알 수 있는 것(로고, 부위 앞 글자, 하단 탭)은 진짜와 같은 부품으로 그려 두고, 데이터가 있어야 하는 칸만 비운다. 빛줄기는 0.2초가 넘어가면 나타나 빨리 뜨는 기기에서는 보이지 않는다
 const CATS = ['전체', '신규', '즐겨찾기', '헤어', '성형', '피부', '모자']
 export default function BootMobile() {
   return (
