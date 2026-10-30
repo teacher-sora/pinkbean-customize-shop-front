@@ -10,7 +10,7 @@ import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
 import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
-import { useSkinItem } from '../info/InfoPanel'
+import { useSkinItem } from '../info/infoRows'
 import { SlotSprite, useSlotDyed } from '../info/SlotSprite'
 import styles from './surface.module.css'
 

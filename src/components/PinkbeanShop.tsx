@@ -14,11 +14,7 @@ import AppHeader from './shop/frame/AppHeader'
 import BootMobile from './shop/frame/BootMobile'
 import BottomNav from './shop/nav/BottomNav'
 import ListArea from './shop/list/ListArea'
-import InfoPanel from './shop/info/InfoPanel'
-import PresetPanel from './shop/preset/PresetPanel'
-import PlazaPanel from './shop/plaza/PlazaPanel'
-import PlazaUpload from './shop/plaza/PlazaUpload'
-import ComboPanel from './shop/combo/ComboPanel'
+import { lazyPanel } from './shop/frame/lazyPanel'
 import PreviewColumn, { MobileHero } from './shop/preview/PreviewColumn'
 import { useRidingGuards } from './shop/preview/pvControls'
 import { useScrollFades } from './shop/ui/useScrollFade'
@@ -27,6 +23,13 @@ import LookDialog from './shop/LookDialog'
 import Toast from './shop/ui/Toast'
 import ConfirmBubble from './shop/ui/ConfirmBubble'
 import styles from './shop/frame/frame.module.css'
+
+// 첫 화면에 없는 탭은 묶음 밖에 두고 한가할 때 받는다(frame/lazyPanel)
+const InfoPanel = lazyPanel(() => import('./shop/info/InfoPanel'))
+const PresetPanel = lazyPanel(() => import('./shop/preset/PresetPanel'))
+const PlazaPanel = lazyPanel(() => import('./shop/plaza/PlazaPanel'))
+const PlazaUpload = lazyPanel(() => import('./shop/plaza/PlazaUpload'))
+const ComboPanel = lazyPanel(() => import('./shop/combo/ComboPanel'))
 
 function Shell() {
   const s = useShop()
@@ -38,6 +41,12 @@ function Shell() {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && document.activeElement instanceof HTMLButtonElement) document.activeElement.blur() }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
+  useEffect(() => {
+    const run = () => { void (async () => { for (const load of [InfoPanel.preload, PresetPanel.preload, PlazaPanel.preload, PlazaUpload.preload, ComboPanel.preload]) await load() })() }
+    if (!('requestIdleCallback' in window)) { const t = setTimeout(run, 1200); return () => clearTimeout(t) }
+    const h = requestIdleCallback(run, { timeout: 2500 })
+    return () => cancelIdleCallback(h)
   }, [])
   const mobile = s.bp === 'mobile'
   const isList = s.primary === 'codi' || s.primary === 'search'
