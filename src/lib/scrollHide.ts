@@ -4,13 +4,14 @@
 //  · 손을 뗀 뒤 관성이 잦아들어 속도가 SLOW_SPEED 아래로 떨어지면 다 멈추기 전에 나온다(사용자 지시 — 완전히 멈출 때까지 기다리면 늦다). 끝까지 스크롤이 없으면 STOP_MS 뒤에 나온다.
 //  · 손가락이 닿아 있는 동안은 움직이지 않아도 나오지 않는다(사용자 지시 — 붙잡고 보는 중이다). 뗀 뒤에 위 규칙을 탄다.
 //  · 위 손가락 규칙은 안드로이드 등 터치가 오는 환경의 것이다. 아이폰은 관성을 끊는 터치를 웹에 알리지 않아(WebKit 이 일부러 막는다 — touchstart · touchmove · touchend · pointerdown 모두 오지 않는다)
-//    터치를 보지 않고 스크롤만 본다(사용자 지시): 움직이면 숨고, SLOW_SPEED 아래로 느려지거나 멈추면 나온다. 붙잡아 두는 것은 없다.
+//    터치를 보지 않고 스크롤만 본다(사용자 지시): 움직이면 숨고, SLOW_SPEED_IOS 아래로 느려지거나 멈추면 나온다. 붙잡아 두는 것은 없다.
 //  · 페이지가 맨 아래면 숨기지 않는다 — 틀 아래에 탭 높이만큼 여백이 있어(ListArea useMobileRows 의 --pb-nav-h) 탭이 아무것도 가리지 않는다.
 //  · 움직임은 브라우저의 전환(globals.css nav[data-pb-navhide])이고, 코드는 표시 하나만 바꾼다. 페이지는 늘 브라우저 기본대로 스크롤한다.
 //  · 새로고침하면 맨 위에서 시작한다(history.scrollRestoration manual): 내려 둔 위치를 툴바가 보이는 채로 되살리면 목록이 어긋났고, 그 상태로 키패드를 여닫으면
 //    보이는 것과 누르는 자리가 어긋났다(사용자 지적).
 const STOP_MS = 160 // 스크롤이 이만큼 없으면 멈춘 것
 const SLOW_SPEED = 0.3 // 손을 뗀 뒤 이 속도(px/ms) 아래면 거의 멈춘 것 — 나오는 때를 앞당기거나 늦추는 값
+const SLOW_SPEED_IOS = 0.06 // 아이폰은 멈춤에 거의 닿았을 때(프레임당 1px 안팎)만 나온다(사용자 지시) — 나오는 때를 앞당기거나 늦추는 값
 const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) // 아이폰의 크롬도 WebKit 이다. 안드로이드는 터치가 와서 해당 없다
 let installed = 0, frozen = false, hidden = false, mo: MutationObserver | null = null
 let armed = false, finger = false, viaTouch = false, stopT: ReturnType<typeof setTimeout> | undefined
@@ -53,7 +54,7 @@ const onScroll = (e: Event) => {
   speed = speed === Infinity || now === Infinity ? now : (speed + now) / 2
   lastEl = el; lastPos = pos; lastT = e.timeStamp
   if (ios && speed === Infinity) return // 잴 수 없는 한 번(첫 스크롤 · 코드로 건너뜀)은 움직임으로 치지 않는다
-  if (!finger && speed < SLOW_SPEED) { show(); return }
+  if (!finger && speed < (ios ? SLOW_SPEED_IOS : SLOW_SPEED)) { show(); return }
   if (!atBottom()) set(true)
   wait()
 }
