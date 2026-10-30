@@ -12,26 +12,8 @@ const STEP = 10 // 꺾인 점에서 이만큼(px) 가면 그 방향으로 친다
 const STEP_X = 28 // 가로로 시작한 손동작에서 세로로 치려면
 const START_X = 10 // 가로로 이만큼 가고 세로보다 크면 가로로 시작한 것
 let installed = 0, frozen = false, hidden = false, mo: MutationObserver | null = null
-let touch = false, sx = 0, sy = 0, ky = 0, dir = 0, across = false, viaTouch = false // viaTouch = 지금 손동작이 손가락 신호로 시작했는지(그러면 포인터 신호는 시작 · 끝에 쓰지 않는다)
+let touch = false, sx = 0, sy = 0, ky = 0, dir = 0, across = false
 const root = () => document.documentElement
-// 진단 기록(dev 주소에서 ?navlog 로 켠다, ?navlog=0 으로 끈다 — 브라우저에 기억). 신호 · 걸러진 까닭 · 판단을 콘솔에 한 줄씩, window.__pbNavLog 에도 쌓는다.
-// 운영 주소에서는 켜지지 않는다. 사용자가 직접 조작한 기록으로 실기기에서만 나는 문제를 짚으려고 둔다
-const LOG = (() => {
-  if (typeof window === 'undefined' || !/^(dev\.|localhost|127\.)/.test(location.hostname)) return false
-  try {
-    const q = new URLSearchParams(location.search).get('navlog')
-    if (q !== null) localStorage.setItem('pb-navlog', q === '0' ? '' : '1')
-    return localStorage.getItem('pb-navlog') === '1'
-  } catch { return false }
-})()
-const t0 = typeof performance !== 'undefined' ? performance.now() : 0
-const log = (what: string) => {
-  if (!LOG) return
-  const line = `${Math.round(performance.now() - t0)}ms ${what} | 방향 ${dir} 꺾인점 ${Math.round(ky)} 숨김 ${hidden} 손동작 ${touch} 터치로 ${viaTouch} 가로 ${across}`
-  const w = window as unknown as { __pbNavLog?: string[] }
-  ;(w.__pbNavLog ??= []).push(line)
-  console.log('[하단탭]', line)
-}
 const navEl = () => document.querySelector<HTMLElement>('[data-mobile-col] > nav[data-hero-below]') // 늘 지금 것을 찾는다(탭을 바꿔 다시 붙어도)
 function measure() {
   const on = !!document.querySelector('[data-mobile-col]') && root().getAttribute('data-pb-view') !== 'full' // '캐릭터만'은 탭이 제자리에 있다
@@ -39,7 +21,6 @@ function measure() {
   set(on && hidden)
 }
 function set(h: boolean) {
-  if (h !== hidden) log(h ? '→ 숨김' : '→ 나옴')
   hidden = h
   const nav = navEl()
   if (nav && nav.hasAttribute('data-pb-navhide') !== h) nav.toggleAttribute('data-pb-navhide', h)
@@ -48,21 +29,18 @@ function set(h: boolean) {
 const inCol = (t: EventTarget | null) => t instanceof Element && !!t.closest('[data-mobile-col]')
 // 손동작 하나를 손가락 신호(touch)와 포인터 신호(pointer) 둘 다로 받는다 — 개발자 도구의 휴대폰 보기에서 마우스로 끌면 포인터 신호만 오고,
 // 실기기는 브라우저가 스크롤을 넘겨받으면 포인터 신호가 끊긴다(pointercancel). 먼저 온 쪽으로 시작하고, 어느 쪽이 오든 같은 점 기록에 적는다
-function begin(x: number, y: number, target: EventTarget | null, via: string) {
+function begin(x: number, y: number, target: EventTarget | null) {
   touch = !frozen && inCol(target)
-  if (!touch) { log(`${via} 시작 무시(${frozen ? '창이 떠 있음' : '틀 밖'}) y ${Math.round(y)}`); return }
+  if (!touch) return
   sx = x; sy = ky = y; dir = 0; across = false
-  log(`${via} 시작 y ${Math.round(y)}`)
 }
-function move(x: number, y: number, via: string) {
-  if (!touch) { log(`${via} 움직임 무시(손동작 없음) y ${Math.round(y)}`); return }
-  log(`${via} 움직임 y ${Math.round(y)}`)
+function move(x: number, y: number) {
+  if (!touch) return
   const dx = Math.abs(x - sx), dy = Math.abs(y - sy)
   if (!across && dir === 0 && dx >= START_X && dx > dy) { across = true; set(true); ky = y } // 가로로 시작 — 어느 쪽이든 숨는다
   track(y, across ? STEP_X : STEP)
 }
-function end(y: number | null, via: string) {
-  log(`${via} 끝 y ${y == null ? '-' : Math.round(y)}`)
+function end(y: number | null) {
   if (touch && y != null && dir === 0) track(y, across ? STEP_X : STEP) // 이 손동작에서 아직 방향이 정해지지 않았을 때만(정해진 것을 끝에서 뒤집지 않는다)
   touch = false
 }
@@ -74,14 +52,14 @@ function track(y: number, step: number) {
   if (Math.abs(d) < step || (d < 0 ? -1 : 1) === dir) return
   dir = d < 0 ? -1 : 1; ky = y; set(dir < 0) // 처음 정해졌거나 꺾었다
 }
-let pid = -1 // 지금 손동작의 포인터 번호
-const onStart = (e: TouchEvent) => { if (e.touches.length !== 1) { log(`touch 시작 무시(손가락 ${e.touches.length}개)`); touch = false; return } const t = e.touches[0]; viaTouch = true; begin(t.clientX, t.clientY, e.target, 'touch') }
-const onMove = (e: TouchEvent) => { if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY, 'touch'); else log(`touch 움직임 무시(손가락 ${e.touches.length}개)`) }
-const onEnd = (e: TouchEvent) => { viaTouch = false; end(e.changedTouches[0]?.clientY ?? null, e.type === 'touchcancel' ? 'touch 취소' : 'touch') }
-const onPDown = (e: PointerEvent) => { if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return; pid = e.pointerId; if (!viaTouch) begin(e.clientX, e.clientY, e.target, `pointer(${e.pointerType})`); else log('pointer 시작(터치로 이미 시작)') }
-const onPMove = (e: PointerEvent) => { if (e.pointerId === pid && e.buttons) move(e.clientX, e.clientY, 'pointer') }
-const onPUp = (e: PointerEvent) => { if (e.pointerId !== pid) return; pid = -1; if (!viaTouch) end(e.type === 'pointerup' ? e.clientY : null, e.type === 'pointercancel' ? 'pointer 취소' : 'pointer'); else log(`${e.type === 'pointercancel' ? 'pointer 취소' : 'pointer 끝'}(터치가 이어 받음)`) }
-const onWheel = (e: WheelEvent) => { if (!frozen && inCol(e.target) && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.deltaY) { log(`휠 ${Math.round(e.deltaY)}`); set(e.deltaY > 0) } }
+let pid = -1, viaTouch = false // 지금 손동작이 손가락 신호로 시작했는지(그러면 포인터 신호는 시작 · 끝에 쓰지 않는다)
+const onStart = (e: TouchEvent) => { if (e.touches.length !== 1) { touch = false; return } const t = e.touches[0]; viaTouch = true; begin(t.clientX, t.clientY, e.target) }
+const onMove = (e: TouchEvent) => { if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY) }
+const onEnd = (e: TouchEvent) => { viaTouch = false; end(e.changedTouches[0]?.clientY ?? null) }
+const onPDown = (e: PointerEvent) => { if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return; pid = e.pointerId; if (!viaTouch) begin(e.clientX, e.clientY, e.target) }
+const onPMove = (e: PointerEvent) => { if (e.pointerId === pid && e.buttons) move(e.clientX, e.clientY) }
+const onPUp = (e: PointerEvent) => { if (e.pointerId !== pid) return; pid = -1; if (!viaTouch) end(e.type === 'pointerup' ? e.clientY : null) }
+const onWheel = (e: WheelEvent) => { if (!frozen && inCol(e.target) && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.deltaY) set(e.deltaY > 0) }
 export function installScrollLink(): () => void {
   if (!installed++) {
     mo = new MutationObserver(() => measure())
