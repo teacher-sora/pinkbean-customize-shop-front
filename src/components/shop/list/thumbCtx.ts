@@ -83,7 +83,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
     if ((mode === 'sprite' && !spritePromote) || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx(EMPTY); setMyCtx(EMPTY) } return }
     let alive = true
     // 마네킹 = 엘프 피부 고정, 내 캐릭터 = 현재 피부.
-    const elf = toneIds(idx, DEFAULT_TONE), mine = toneIds(idx, s.tone)
+    const elf = toneIds(idx, DEFAULT_TONE), mine = toneIds(idx, s.shownTone)
     const activeSlot = mixedCat ? null : CAT_TO_SLOT[s.activeCat] // 전체·즐겨찾기는 제외할 활성 슬롯이 없다
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && !s.hidden[sl]) as [string, ListItem][]
     const eqEntries = mode === 'mymodel' ? myEq : []
@@ -91,7 +91,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
     // 내 캐릭터: 우측 미리보기에 적용된 염색(발색/HSB)을 썸네일 배경(내 착용)에도 동일 반영 → 키에 염색 시그니처 포함.
     // 점 위치(변경점/변경쩜)도 미리보기와 동일하게 배경에 반영 → 키에 포함.
     const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.renderPalette, h: s.renderHsb, d: s.dotPos }) : ''
-    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${ctxExpr}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
+    const key = `${mode}:${needMy}:${gaze}:${s.shownTone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${ctxExpr}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
     // ⚠️ ctxKeyRef 는 async 가 "실제로 setCtx 로 커밋된 뒤"에만 찍는다(StrictMode 이중 setup 대비).
     const ids = Array.from(new Set([...(isSkinCat ? [] : [elf.bodyId, elf.headId, mine.bodyId, mine.headId]), ...(mode === 'mymodel' || needMy ? myEq.map(([, it]) => it.id) : [])]))
@@ -125,7 +125,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
           // 착용 아이템의 이펙트(망토 오라 등)도 카드에 그린다 + 그 이펙트 염색을 override 에 굽는다(토글 꺼진 슬롯 제외).
           effs = await collectWornEffects(worn.map(([sl, it]) => ({ slot: sl, id: it.id, dyeable: it.dyeMode !== 'none' })), s.pv, s.renderHsb, override).catch(() => [])
         }
-        if (isMy && !isSkinCat) await bakeSkinDye(override, [map.get(mine.bodyId), map.get(mine.headId)], view, s.renderHsb, idx.base.tones.find((t) => t.tone === s.tone)?.name)
+        if (isMy && !isSkinCat) await bakeSkinDye(override, [map.get(mine.bodyId), map.get(mine.headId)], view, s.renderHsb, idx.base.tones.find((t) => t.tone === s.shownTone)?.name)
         // 표정 얼굴장식 카드는 배경의 얼굴을 **자기 표정으로 다시 그려야** 한다(ItemThumb) → 메타를 넘긴다.
         const faceEntry = worn.find(([sl]) => sl === 'face')
         return { items, key: k, override, effs, expr, faceMeta: faceEntry ? (map.get(faceEntry[1].id) ?? null) : null, stance, action: view !== view0 ? view.action : undefined }
@@ -137,7 +137,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
       setCtx(main); setMyCtx(my)
     })
     return () => { alive = false }
-  }, [mode, needMy, gaze, s.index, s.tone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.renderPalette, s.renderHsb, s.dotPos, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, ctxExpr, animaRaces, spritePromote])
+  }, [mode, needMy, gaze, s.index, s.shownTone, s.activeCat, s.equipped, s.hidden, isSkinCat, isAll, s.renderPalette, s.renderHsb, s.dotPos, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, ctxExpr, animaRaces, spritePromote])
 
   const ctxFor = (it: ListItem) => ((effMode(it) === 'mymodel' && mode === 'model') ? myCtx : ctx)
   return { mode, noSprite, effMode, ctxFor }
@@ -162,13 +162,13 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
     const needCtx = !!idx && list.length > 0 && mode !== 'sprite'
     if (!needCtx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ base: EMPTY, bySlot: {} }) } return }
     let alive = true
-    const elf = toneIds(idx!, DEFAULT_TONE), mine = toneIds(idx!, s.tone) // 마네킹 = 엘프 피부, 내 캐릭터 = 현재 피부
+    const elf = toneIds(idx!, DEFAULT_TONE), mine = toneIds(idx!, s.shownTone) // 마네킹 = 엘프 피부, 내 캐릭터 = 현재 피부
     const slotsInList = Array.from(new Set(list.map((it) => it.slot)))
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl]) as [string, ListItem][]
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
     // 점 위치(변경점/변경쩜)도 미리보기와 동일하게 배경에 반영 → 키에 포함.
     const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.renderPalette, h: s.renderHsb, d: s.dotPos }) : ''
-    const key = `${mode}:${needMy}:${gaze}:${s.tone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${mode === 'mymodel' ? s.pv.expr : ''}:${animaRaces.length}`
+    const key = `${mode}:${needMy}:${gaze}:${s.shownTone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${mode === 'mymodel' ? s.pv.expr : ''}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return
     const eqIds = (mode === 'mymodel' || needMy) ? myEq.map(([, it]) => it.id) : []
     const ids = Array.from(new Set([elf.bodyId, elf.headId, mine.bodyId, mine.headId, ...eqIds]))
@@ -204,7 +204,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
             if (sl === 'face') faceMeta = m
           }
           const override = await buildOverrides(dyeMetas, { palette: s.renderPalette, hsb: s.renderHsb }, cview).catch(() => new Map())
-          await bakeSkinDye(override, [myBody, myHead], cview, s.renderHsb, idx!.base.tones.find((t) => t.tone === s.tone)?.name)
+          await bakeSkinDye(override, [myBody, myHead], cview, s.renderHsb, idx!.base.tones.find((t) => t.tone === s.shownTone)?.name)
           const effs = await collectWornEffects(
             myEq.filter(([sl]) => sl !== slot).map(([sl, it]) => ({ slot: sl, id: it.id, dyeable: it.dyeMode !== 'none' })), s.pv, s.renderHsb, override,
           ).catch(() => [])
@@ -216,7 +216,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
       setCtx({ base: { items: baseItems, key }, bySlot })
     })
     return () => { alive = false }
-  }, [s.index, s.tone, gaze, mode, needMy, s.equipped, s.hidden, list, s.renderPalette, s.renderHsb, s.dotPos, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, s.pv.expr, animaRaces])
+  }, [s.index, s.shownTone, gaze, mode, needMy, s.equipped, s.hidden, list, s.renderPalette, s.renderHsb, s.dotPos, s.pv.wEffect, s.pv.cEffect, s.pv.capEffect, s.pv.form, s.pv.ear, s.pv.weapon, s.pv.expr, animaRaces])
 
   const ctxFor = (item: ListItem): ThumbCtx => {
     const em = effMode(item)

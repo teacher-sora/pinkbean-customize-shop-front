@@ -23,7 +23,7 @@ import { CardStageBg } from '../preview/StageBg'
 import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
 import { PLAZA_AWARD_LABEL, PLAZA_AWARD_TITLE, type PlazaPost } from '@/lib/plaza'
-import { CAT_TO_SLOT, isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
+import { CAT_TO_SLOT, isDyeableSkin, skinDyeFamily, viewTone } from '@/lib/shopData'
 import SnapThumb from '../SnapThumb'
 import { useShop, type Snapshot } from '../ShopContext'
 import { DyeBand, LookSprite, lookDyed } from '../info/SlotSprite'
@@ -144,14 +144,15 @@ export function WornItems({ snap, postId, mobile, flat }: { snap: Snapshot; post
     setItems(null)
     s.resolveSnapItems(snap).then((eq) => {
       if (!alive) return
-      const toneName = s.index?.base.tones.find((x) => x.tone === snap.tone)?.name
+      const skinTone = viewTone(snap.tone, snap.hidden) // 피부를 가린 코디는 보이는 대로 엘프 피부
+      const toneName = s.index?.base.tones.find((x) => x.tone === skinTone)?.name
       const out: Worn[] = []
       for (const c of CATS) {
         const slot = CAT_TO_SLOT[c.id]
         if (!slot) continue
         const off = !!snap.dyeOff?.[slot]
         if (slot === 'skin') {
-          out.push({ slot, label: c.label, item: null, name: toneName || `피부 ${snap.tone}`, off, dyed: lookDyed(slot, null, toneName, undefined, snap.dyeHsb?.skin), dyeable: isDyeableSkin(toneName), skinFamily: skinDyeFamily(toneName) ?? undefined })
+          out.push({ slot, label: c.label, item: null, name: toneName || `피부 ${skinTone}`, off, dyed: lookDyed(slot, null, toneName, undefined, snap.dyeHsb?.skin), dyeable: isDyeableSkin(toneName), skinFamily: skinDyeFamily(toneName) ?? undefined })
           continue
         }
         const it = eq[slot]
@@ -247,7 +248,7 @@ export function WornItems({ snap, postId, mobile, flat }: { snap: Snapshot; post
                     className={clsx(surf.partChip, styles.wornChip, ui.dyeChip)}>
                     <span className={clsx('pb-chipthumb', surf.partThumb)}>
                       <span className={surf.partSprite}>
-                        <LookSprite slot={w.slot} item={w.item} tone={snap.tone}
+                        <LookSprite slot={w.slot} item={w.item} tone={viewTone(snap.tone, snap.hidden)}
                           palette={w.off ? undefined : snap.dyePalette?.[w.slot]} hsb={w.off ? undefined : snap.dyeHsb?.[w.slot]} />
                       </span>
                       {w.dyed && <span title={w.off ? '염색 비활성화됨' : '염색됨'} className={clsx(surf.partDot, w.off && surf.partDotOff)} />}

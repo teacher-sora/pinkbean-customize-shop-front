@@ -48,7 +48,7 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, model }: Pro
     const idx = s.index
     if (!idx) return null
     const skinTone = isSkin ? idx.base.tones.find((t) => t.body === item.id)?.tone : undefined
-    const tone = skinTone ?? (mine ? s.tone : DEFAULT_TONE)
+    const tone = skinTone ?? (mine ? s.shownTone : DEFAULT_TONE)
     // 착용: 내 캐릭터는 지금 코디에 이 아이템을 입힌다(장착과 같은 규칙 — 겹치는 부위는 벗긴다).
     const equipped: Record<string, ListItem | null> = {}
     if (mine) for (const [sl, it] of Object.entries(s.equipped)) if (it) equipped[sl] = it
@@ -69,7 +69,7 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, model }: Pro
       pv: mine ? { ...s.pv, zoom } : { ...s.pv, zoom, form: 'none', ear: 'humanEar', ...(bare ? { baseTag: false } : {}) },
       interacting, zoomMults: DIALOG_ZOOM, fraction: bare ? bareFraction : fractionFor, bare,
     }
-  }, [s.index, s.tone, s.equipped, s.hidden, s.renderPalette, s.renderHsb, s.dotPos, s.pv, item, isSkin, mix, mine, bare, hsb, palette, zoom, interacting])
+  }, [s.index, s.shownTone, s.equipped, s.hidden, s.renderPalette, s.renderHsb, s.dotPos, s.pv, item, isSkin, mix, mine, bare, hsb, palette, zoom, interacting])
 
   if (!src) return <div className="pb-skel" style={{ width: '70%', height: '70%', borderRadius: 8 }} />
   return <PreviewModel src={src} />

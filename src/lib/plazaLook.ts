@@ -16,6 +16,7 @@
 //       막는 일은 없다. 브라우저를 거치지 않은 요청도 이 범위의 복제는 막는다.
 // ⚠️ normLook · paramSame 은 supabase/0009 의 plaza_look_norm · plaza_look_param_same 과 **같은 규칙**이어야 한다.
 
+import { viewTone } from './shopData'
 import { colorOf, type HsbParams, type PaletteParams } from './core/dye'
 
 export type LookSnap = {
@@ -78,7 +79,7 @@ export function normLook(s: LookSnap): NormLook {
     if (MIX_SLOTS.has(slot)) slots[slot] = { id, pal: palDist(off ? undefined : s.dyePalette?.[slot], colorOf(Number(id), slot)) }
     else slots[slot] = { id, hsb: off ? null : normHsb(s.dyeHsb?.[slot]) }
   }
-  return { tone: s.tone ?? 0, skin: s.dyeOff?.skin ? null : normHsb(s.dyeHsb?.skin), slots }
+  return { tone: viewTone(s.tone ?? 0, s.hidden), skin: s.dyeOff?.skin || s.hidden?.skin ? null : normHsb(s.dyeHsb?.skin), slots }
 }
 
 // 착용 아이템·피부가 같은가(이게 다르면 다른 조합 — 비교 대상 거르기).

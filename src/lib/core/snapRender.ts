@@ -7,7 +7,7 @@ import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor } from '.
 import { effectDraws, loadImage, type EffectDraw } from './render'
 import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from './particle'
 import { collectWornEffects } from './thumbEffects'
-import { CHAT_SLOTS, RIDING_FILE, animaLayers, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW } from '@/lib/shopData'
+import { CHAT_SLOTS, RIDING_FILE, animaLayers, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW, viewTone } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 
 // center = 라이딩일 때의 가로 정렬 기준(미리보기·부위 카드와 같은 규칙). 'x' = 캐릭터 navel, 'mount' = 메카 bbox.
@@ -16,7 +16,7 @@ export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTML
 // 받기만(합성 전 미리): 몸 · 머리 · 착용 아이템의 meta 와 카드 정지 자세(서기 0번)의 그림 파일. 조립 · 염색 · 합성은 하지 않아 화면을 붙잡지 않는다 —
 // 코디 룩북 칩에 머무는 동안 부른다(누르면 합성만 남는다). 염색 그림 · 이펙트 · 탈것은 합성 때 받는다(드물거나 무겁다)
 export async function preloadSnapshot(snap: Snapshot, index: Index, view = false): Promise<void> {
-  const te = index.base.tones.find((t) => t.tone === snap.tone) || index.base.tones[0]
+  const te = index.base.tones.find((t) => t.tone === viewTone(snap.tone, snap.hidden)) || index.base.tones[0]
   if (!te) return
   const spv = snap.pv ?? PV_SNAP_DEFAULT
   const ids = [te.body, te.head, ...Object.entries(snap.equipped).filter(([slot, id]) => id && !snap.hidden?.[slot] && !CHAT_SLOTS.has(slot) && slot !== 'riding').map(([, id]) => id)]
@@ -36,7 +36,7 @@ export const presetCard = (snap: Snapshot): Snapshot => ({ ...snap, pv: { ...(sn
 export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: AnimaRace[], view = false): Promise<SnapComposite | null> {
   // 프리셋은 "저장된 연출설정(snap.pv)"을 쓴다(형상변이·귀·무기모션·이펙트토글). 시선은 적용 안 함(왼쪽 고정).
   const spv = snap.pv ?? PV_SNAP_DEFAULT
-  const te = index.base.tones.find((t) => t.tone === snap.tone) || index.base.tones[0]
+  const te = index.base.tones.find((t) => t.tone === viewTone(snap.tone, snap.hidden)) || index.base.tones[0]
   if (!te) return null
   // 라이딩(탑승)이 들어 있으면 **목록부터** 받는다. 라이딩 meta 는 CDN 이 아니라 프론트 public 에 있어,
   // 목록이 그 경로(metaUrl)를 등록해 줘야 loadMeta 가 찾는다 — 등록 전엔 CDN 404 라 카드에서 탈것만 조용히 빠진다.
