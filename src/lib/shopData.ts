@@ -138,11 +138,11 @@ export function chatDrawOf (equipped: Record<string, ListItem | null | undefined
 
 // 모델 렌더 배치 상수(computeModelPlacement 에 전달). 캔버스는 div×margin(>1)로 div보다 크게 잡아
 // 스프라이트는 div overflow 로만 잘린다. 모델(마네킹) 높이 = fraction × divH 로 장비·카드크기 무관 일정.
-// 우측 미리보기 배율(연출 설정 1x/2x/3x)은 fraction 에 곱하는 "월드 배율".
-export const ZOOM_WORLD: Record<number, number> = { 1: 0.7, 2: 1.0, 3: 1.4 }
+// 우측 미리보기 배율(연출 설정 1 · 1.5 · 2 · 2.5 · 3배)은 fraction 에 곱하는 "월드 배율". 실제 크기는 정수 기기 배율로 반올림된다(zoomStepScale).
+export const ZOOM_WORLD: Record<number, number> = { 1: 0.7, 1.5: 0.85, 2: 1.0, 2.5: 1.2, 3: 1.4 }
 // 휴대폰 미리보기는 1배를 훨씬 작게(사용자 지시 — 0.7 이면 390 폭 3배 기기에서 마네킹 85px 로 말풍선 · 이모티콘이 잘렸다. 1배는 채팅 · 장비가 한눈에 다 보여야 한다).
-// 0.45 = 3배 기기 43px · 2배 기기 64px(정수 기기 배율 2). 2배 · 3배는 그대로
-export const ZOOM_WORLD_M: Record<number, number> = { 1: 0.45, 2: 1.0, 3: 1.4 }
+// 0.45 = 3배 기기 43px · 2배 기기 64px(정수 기기 배율 2). 1.5배 0.7 = 예전의 1배(사용자 지시 — 그 크기를 원하는 사람이 있다). 2배 · 3배는 그대로
+export const ZOOM_WORLD_M: Record<number, number> = { 1: 0.45, 1.5: 0.7, 2: 1.0, 2.5: 1.2, 3: 1.4 }
 export const PREVIEW_FRACTION = 0.25 // 우측 미리보기 기준 마네킹 높이 비율(× ZOOM_WORLD; 기본 2x=×1.0 → 실효 0.25)
 // 모바일은 미리보기 영역이 "낮고 넓다"(세로 스택). PC와 같은 0.25 를 쓰면 200px 높이의 25% = 50px 로
 // 모델이 콩알만 해진다 — 세로가 부족한 만큼 비율을 올려 남는 가로 여백을 모델에 쓴다.

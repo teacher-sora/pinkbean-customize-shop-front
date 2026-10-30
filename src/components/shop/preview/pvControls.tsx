@@ -14,7 +14,7 @@ import { Switch } from '../ui/controls'
 import PvPicker, { type PvField } from './PvPicker'
 import styles from './preview.module.css'
 
-const ZOOMS: Opt[] = [{ v: '1', l: '1배' }, { v: '2', l: '2배' }, { v: '3', l: '3배' }]
+const ZOOMS: Opt[] = [{ v: '1', l: '1배' }, { v: '1.5', l: '1.5배' }, { v: '2', l: '2배' }, { v: '2.5', l: '2.5배' }, { v: '3', l: '3배' }]
 const lb = (arr: Opt[], v: string) => (arr.find((x) => x.v === v) || arr[0]).l
 
 // 라이딩 중: 불가 액션·형상 변이를 안전한 기본값으로 되돌린다(셸에서 한 번만 마운트).
