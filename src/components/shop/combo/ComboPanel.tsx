@@ -401,7 +401,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const dyeRow = (dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>
   const credit = <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
   const viewport = (
-    <div ref={setVp} data-pb-list={mobile ? (dirY ? 'y' : '') : undefined} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
+    <div ref={setVp} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
       {inner && dyeRow}
       {failed || (first && !first.ready) ? (
         <div className={mobile ? list.emptyM : list.empty}>

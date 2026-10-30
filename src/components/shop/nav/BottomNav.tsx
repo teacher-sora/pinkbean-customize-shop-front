@@ -4,10 +4,10 @@
 // 모바일은 부위 · 광장 분류를 하단이 아니라 목록 머리 첫 줄(CatTabsM · PlazaTabsM)에 둔다 — 하단 탭 바와 붙어 있어 잘못 눌렸다(사용자 지시).
 
 import clsx from 'clsx'
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { PLAZA_FILTERS, type PlazaFilter } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
-import { installScrollLink, refreshScrollLink, setScrollFrozen } from '@/lib/scrollHide'
+import { installScrollLink, setScrollFrozen } from '@/lib/scrollHide'
 import { IconTab } from '../ui/Icons'
 import { useWheelRail } from '../ui/useWheelRail'
 import styles from './nav.module.css'
@@ -36,8 +36,7 @@ function TabsM({ label, items, on, pick }: { label: string; items: { id: string;
     else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth })
   }, [on, railRef])
   return (
-    // data-pb-cat = 스크롤을 내리면 접히는 줄(lib/scrollHide)
-    <nav ref={railRef} data-pb-cat className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label={label}>
+    <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label={label}>
       {items.map((p) => {
         const sel = on === p.id
         return (
@@ -60,18 +59,17 @@ export function PlazaTabsM() {
 }
 
 // 모바일 부위 · 분류 줄과 목록 머리를 묶어 미리보기 바로 아래에 띄워 둔다(사용자 지시 — 페이지를 내려 둔 채로 부위 · 보기 설정 · 쪽을 바꾸려고
-// 맨 위까지 올리지 않게). 목록 넓게 보기에서는 분류 줄(data-pb-cat)이 미리보기 뒤로 들어가고 목록 머리 줄은 늘 보인다(lib/scrollHide).
+// 맨 위까지 올리지 않게). 접히지 않는다(사용자 지시 — 접고 펼치는 것이 오히려 답답했다).
 // data-sticky-top = 가이드(guide.reveal)가 이 아래를 보이는 자리로 친다
 export function StickyBarM({ children }: { children: React.ReactNode }) {
-  useLayoutEffect(() => { refreshScrollLink() }) // 새로 붙거나 내용이 바뀌면 바로 다시 잰다(그리기 전에)
-  return <div data-pb-slot="bar" className={styles.barM}><div data-sticky-top className={styles.barIn}>{children}</div></div>
+  return <div data-sticky-top className={styles.barM}>{children}</div>
 }
 
 export default function BottomNav({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const railRef = useWheelRail()
   const navRef = useRef<HTMLElement | null>(null)
-  useEffect(() => (mobile ? installScrollLink() : undefined), [mobile]) // 헤더 · 미리보기 · 머리 묶음 · 하단 탭이 스크롤한 만큼 숨고 나온다(lib/scrollHide)
+  useEffect(() => (mobile ? installScrollLink() : undefined), [mobile]) // 하단 탭이 손가락 제스처 방향으로 숨고 나온다(lib/scrollHide)
   useEffect(() => { setScrollFrozen(!!s.surface) }, [s.surface]) // 창이 떠 있는 동안 숨김 상태를 그대로(lib/scrollHide)
   // 코디 광장은 부위 대신 광장 분류(전체·대회·내 등록·찜한 코디)를 쓴다. 항목이 4개뿐이라 양끝 페이드는 끈다
   // (요소는 그대로 두고 opacity 만 0 — 탭을 오갈 때 전환이 끊기지 않게).

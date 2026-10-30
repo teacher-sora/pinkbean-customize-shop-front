@@ -101,7 +101,6 @@ export const LIST_COL_GAP_M = 6 // 목록 격자의 열 간격(list.module.css .
 // 목록의 높이 — 코디 탭 · AI 코디 검색 목록 · 프리셋
 export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M, 0, 0, LIST_COL_GAP_M)
 // extra = 바닥 계산에서 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장 — 광장 목록 칸은 좌우 여백 7 이 없어 그만큼 넓다)
-const setColVar = (col: HTMLElement, k: string, v: string) => { if (col.style.getPropertyValue(k) !== v) col.style.setProperty(k, v) }
 export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0, colGap = 10) {
   useEffect(() => {
     if (!mobile) return
@@ -114,31 +113,19 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
       const vp = vpRef.current?.isConnected ? vpRef.current : vp0 // 넘기는 방향을 바꾸면 칸이 새로 붙을 수 있다 — 지금 칸을 잰다
-      const fix = document.documentElement.hasAttribute('data-pb-fix') // 목록 화면(lib/scrollHide): 틀이 화면에 붙어 페이지가 스크롤하지 않는다
       const chrome = col.clientHeight - vp.clientHeight
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
-      // 목록 화면: 칸 높이 = 넓게 보기에서 미리보기(기본 보기 높이) + 목록 머리 줄(머리 묶음 − 분류 줄) 아래 화면 끝까지 — 그때 3줄이 딱 든다(사용자 지시).
-      // 칸 밖에 함께 놓이는 것(룩북 가로의 자주 쓴 염색 줄 · 출처 줄)도 뺀다. 하단 탭 높이도 뺀다 — 처음 화면에서 셋째 줄이 탭에 가려 3줄로 안 보였다(사용자 지적).
-      // 그래서 넓게 보기에서는 아래에 탭 높이만큼 남는다(세로 목록은 칸을 그만큼 늘려 다음 줄이 보인다 — globals.css)
-      let fit = 0, full = Infinity
-      if (hero && document.documentElement.getAttribute('data-pb-view') !== 'full') {
-        if (fix) {
-          const bar = col.querySelector<HTMLElement>('[data-sticky-top]'), ctrl = bar ? bar.offsetHeight - (bar.querySelector<HTMLElement>('[data-pb-cat]')?.offsetHeight ?? 0) : 0
-          const others = [...col.querySelectorAll<HTMLElement>('[data-pb-panel] > *')]
-            .filter((el) => !el.hasAttribute('data-pb-slot') && !el.contains(vp) && !el.classList.contains('pb-fadeov') && el.getClientRects().length)
-            .reduce((n, el) => n + el.offsetHeight, 0)
-          const navH = col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')?.offsetHeight ?? 0
-          setColVar(col, '--pb-nav-h', `${navH}px`)
-          full = col.clientHeight - base.offsetHeight - ctrl - others
-          fit = full - navH
-        } else fit = lvh.offsetHeight - base.offsetHeight - (col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom)
+      // 맞춤: 페이지를 끝까지 내리면 붙은 미리보기 + 머리 묶음(sticky) 바로 아래부터 화면 끝까지가 목록 칸이다(큰 화면 높이 100lvh — 툴바가 접힌).
+      // 칸 아래에 함께 놓이는 것(룩북의 자주 쓴 염색 줄 · 출처 줄)도 뺀다. 하단 탭은 떠 있어 빼지 않는다(내리는 동안 숨는다)
+      let fit = 0
+      if (hero && getComputedStyle(hero).position === 'sticky') {
+        const bar = col.querySelector<HTMLElement>('[data-sticky-top]')
+        fit = lvh.offsetHeight - base.offsetHeight - (bar?.offsetHeight ?? 0) - (col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom)
       }
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
-      if (!fix && col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
-      // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY). 목록 화면은 페이지가 스크롤하지 않으니 바닥(floor)이 넓게 보기 높이(full)를 넘지 않게 —
-      // 낮은 폰(360 × 640 · 320 × 568)에서 넓게 보기로도 셋째 줄이 화면 밖에 잘렸다. 그때는 카드가 바닥보다 조금 낮아진다
-      const page = Math.ceil(fix ? Math.max(fit, Math.min(floor, full)) : Math.max(floor, fit)) + 'px'
+      if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
+      const page = Math.ceil(Math.max(floor, fit)) + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
       if (col.style.getPropertyValue('--pb-page-h') !== page) col.style.setProperty('--pb-page-h', page)
     }
     m()
@@ -364,7 +351,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const viewport = (
-    <div ref={setVp} data-pb-list={mobile ? (dirY ? 'y' : '') : undefined} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
+    <div ref={setVp} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
       {hero ? (
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>

@@ -51,8 +51,7 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
       { v: 'full', l: '캐릭터만 보기', icon: <IconViewFull /> },
     ]
     return (
-      // 자리 틀(높이 46) — 목록 넓게 보기에서 위로 빠진다(lib/scrollHide)
-      <div data-pb-slot="hdr" className={styles.headerSlotM}><div data-app-header className={styles.headerM}>
+      <div data-app-header className={styles.headerM}>
         <button type="button" onClick={s.goHome} title="처음 화면으로" className={clsx(styles.logoBoxM, styles.logoBtn)}>
           <Image src="/logo.png" alt="핑크빈 커마샵" width={24} height={24} priority className={styles.logoImgM} />
           <span className={styles.logoTextM}>커마샵</span>
@@ -70,7 +69,7 @@ export default function AppHeader({ mobile }: { mobile: boolean }) {
             <IconLinkCopy size={13} /><span className={styles.btnLabelM}>복사</span>
           </button>
         </div>
-      </div></div>
+      </div>
     )
   }
   return (

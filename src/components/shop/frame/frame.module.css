@@ -38,7 +38,6 @@
 
 /* ── 모바일 헤더 ── */
 /* 맨 위 헤더 자리 틀 — 안의 헤더는 스크롤에 붙어 움직인다(lib/scrollHide: 움직이는 동안 페이지에 박아 두고, 멈추면 화면에 고정) */
-.headerSlotM { flex: 0 0 auto; height: var(--pb-hdr-h); }
 .headerM { flex: 0 0 auto; background: light-dark(#fff, #303238); height: 46px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
 .logoBoxM { display: flex; align-items: center; gap: 7px; }
 .logoImgM { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
@@ -69,6 +68,3 @@
    300 이하(폴드 1 · 2 바깥 화면 280)는 로고 글자도 뺀다 */
 @media (max-width: 359px) { .btnLabelM { display: none; } .rateBtnM, .copyBtnM { padding: 0 8px; } }
 @media (max-width: 300px) { .logoTextM { display: none; } }
-/* 미리보기 자리 틀(PinkbeanShop) — 안의 미리보기는 스크롤에 붙어 움직인다. 캐릭터만 보기는 붙이지 않아 제 높이를 따른다 */
-.heroSlotM { flex: 0 0 auto; height: var(--pb-hero-h); }
-:global(html[data-pb-view='full']) .heroSlotM { height: auto; }

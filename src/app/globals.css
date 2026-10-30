@@ -49,7 +49,6 @@ input::placeholder, textarea::placeholder { color: light-dark(#b7ada2, #858893);
 :root { --pb-hero-base: clamp(168px, min(calc(100vw * 216 / 390), calc(100vh * 216 / 700)), 240px); }
 @supports (height: 1lvh) { :root { --pb-hero-base: clamp(168px, min(calc(100vw * 216 / 390), calc(100lvh * 216 / 700)), 240px); } }
 :root { --pb-hero-h: var(--pb-hero-base); }
-:root { --pb-hdr-h: 46px; } /* 모바일 맨 위 헤더(frame .headerM) — 미리보기 · 머리 묶음이 그 아래에 붙는다 */
 html[data-pb-view='wide'] { --pb-hero-h: max(var(--pb-hero-base), 56vh); }
 /* 코디 칩의 아이콘 칸(코디 정보 · 부위 염색 · 광장 상세가 함께 — pb-chipthumb): 다크에서는 코디 · 프리셋 카드 바탕과 같은 색(#3b3d45 — 주변보다 살짝 밝게, 아이템 그림이 잘 보이게 — 사용자 지시). 라이트는 그대로 */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) span.pb-chipthumb { background: #3b3d45; } }
@@ -301,29 +300,7 @@ html[data-pb-bgonly] [data-pb-body] { opacity: 0; transform: translateY(10px); v
 :where([data-guide]) { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .3s cubic-bezier(.45,0,.55,1); }
 [data-guide].pb-guidehit { outline: 2px solid light-dark(#ec86ac, #d15785) !important; outline-offset: 2px; }
 
-/* 모바일 목록 넓게 보기 · 하단 탭(lib/scrollHide). 목록 화면(html[data-pb-fix])은 틀이 화면에 딱 붙어 페이지가 스크롤하지 않는다 */
-html[data-pb-fix] [data-mobile-col] { position: fixed; inset: 0; height: auto !important; }
-/* 페이지가 스크롤하지 않으니 아래로 쓸면 브라우저가 당겨서 새로고침 · 튕김으로 가져간다 — 그 손가락은 머리를 되돌리는 제스처다(사용자 지적) */
-html[data-pb-fix], html[data-pb-fix] body { overscroll-behavior: none; }
-/* 목록 칸 = 넓게 보기 높이(--pb-page-h, ListArea useMobileRows) — 처음에는 아래가 틀 밖으로 넘쳐(틀 overflow clip) 셋째 줄이 걸쳐 보인다 */
-html[data-pb-fix] [data-pb-list] { flex: 0 0 auto !important; height: var(--pb-page-h) !important; }
-/* 세로 목록은 하단 탭 높이(한 쪽 높이에서 뺀 몫)만큼 칸을 늘려 넓게 보기에서 다음 줄이 그 자리에 보이게 — 아래 여백으로 마지막 쪽도 칸 위 끝까지 올라온다 */
-html[data-pb-fix] [data-pb-list='y'] { box-sizing: border-box; height: calc(var(--pb-page-h) + var(--pb-nav-h, 0px)) !important; padding-bottom: var(--pb-nav-h, 0px); }
-/* 겹침 순서: 헤더 > 미리보기 > 머리 묶음(보기 설정 팝박스가 목록 위에 뜨고, 분류 줄은 미리보기 뒤로 들어간다) > 목록 */
-html[data-pb-fix] [data-pb-slot='hdr'] { position: relative; z-index: 4; }
-html[data-pb-fix] [data-pb-slot='hero'] { position: relative; z-index: 3; }
-html[data-pb-fix] [data-pb-slot='bar'] { position: relative; z-index: 2; }
-html[data-pb-fix] [data-pb-panel] > :not([data-pb-slot]):not(.pb-fadeov) { position: relative; z-index: 1; }
-/* 넓게 보기(html[data-pb-compact]): 헤더 · 미리보기는 헤더 높이만큼, 그 아래 전부는 헤더 + 분류 줄만큼 함께 올라간다 — 목록이 통째로 올라와 가리는 것이 없다 */
-html[data-pb-fix] [data-pb-slot='hdr'], html[data-pb-fix] [data-pb-slot='hero'], html[data-pb-fix] [data-pb-panel] > :not([data-pb-slot='hero']) { transition: translate .26s cubic-bezier(.45,0,.55,1); }
-/* 움직이는 묶음은 늘 따로 합성한다(will-change) — 전환이 돌 때만 층으로 올렸다 내리니 시작 · 끝마다 미리보기 위 버튼을 다시 칠해 깜빡였다(사용자 지적) */
-html[data-pb-fix] [data-pb-slot='hdr'], html[data-pb-fix] [data-pb-slot='hero'], html[data-pb-fix] [data-pb-panel] > :not([data-pb-slot='hero']):not(.pb-fadeov) { will-change: translate; }
-html[data-pb-fix] [data-app-header], html[data-pb-fix] [data-pb-cat] { will-change: opacity; }
-html[data-pb-fix] [data-app-header], html[data-pb-fix] [data-pb-cat] { transition: opacity .26s ease; }
-html[data-pb-compact] [data-pb-slot='hdr'], html[data-pb-compact] [data-pb-slot='hero'] { translate: 0 calc(-1 * var(--pb-hdr-h)); }
-html[data-pb-compact] [data-pb-panel] > :not([data-pb-slot='hero']) { translate: 0 calc(-1 * (var(--pb-hdr-h) + var(--pb-cat-h, 0px))); }
-html[data-pb-compact] [data-app-header], html[data-pb-compact] [data-pb-cat] { opacity: 0; pointer-events: none; }
 /* 하단 탭: 자리 없이 화면 아래에 떠 있고(내용을 덮는다), 손가락 제스처 방향으로 제 전환을 타고 숨고 나온다(nav[data-pb-navhide]) */
 html[data-pb-nav] [data-mobile-col] > nav[data-hero-below] { position: fixed; left: 0; right: 0; bottom: 0; transition: translate .24s cubic-bezier(.45,0,.55,1), opacity .24s ease; }
 html[data-pb-nav] [data-mobile-col] > nav[data-pb-navhide] { translate: 0 100%; opacity: 0; pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { html[data-pb-fix] [data-pb-slot], html[data-pb-fix] [data-pb-panel] > *, html[data-pb-fix] [data-app-header], html[data-pb-fix] [data-pb-cat], [data-mobile-col] > nav[data-hero-below] { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { [data-mobile-col] > nav[data-hero-below] { transition: none !important; } }
