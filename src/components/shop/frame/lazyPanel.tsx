@@ -14,7 +14,7 @@ const RETRY_MS = [600, 1800]
 
 type WaitKind = 'cards' | 'rows' | 'side'
 function PanelWait({ kind, mobile }: { kind: WaitKind; mobile: boolean }) {
-  const cards = mobile ? MOBILE_GRID.cols * MOBILE_GRID.rows : 12
+  const cards = mobile ? MOBILE_GRID.cols * MOBILE_GRID.rows : 32
   return (
     <div className={clsx(styles.panelWait, mobile && styles.panelWaitM, kind === 'side' && styles.panelWaitSide)} aria-hidden>
       <div className={styles.waitBody}>
