@@ -72,7 +72,7 @@ function probe(css: string): HTMLDivElement {
   }
   return el
 }
-// 큰 화면 높이(100lvh — 툴바가 접힌, 내려 볼 때의 높이. 모르는 브라우저는 100vh)
-export const lvhProbe = () => probe('height:100vh;height:100lvh')
-// 미리보기 기본 높이(globals.css --pb-hero-base — 13 Pro 216 기준으로 화면에 맞춘다). '크게'여도 기본 보기의 높이
+// 처음 화면 높이(100svh — 툴바가 펴진, 들어왔을 때의 높이. 모르는 브라우저는 100vh)
+export const svhProbe = () => probe('height:100vh;height:100svh')
+// 미리보기 기본 높이(globals.css --pb-hero-base — 처음 화면에서 카드가 13 Pro 꼴이 되게 맞춘다). '크게'여도 기본 보기의 높이
 export const heroBaseProbe = () => probe('height:var(--pb-hero-base)')

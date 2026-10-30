@@ -3,24 +3,19 @@
 //  · 손가락 · 휠로 움직인 때만 친다(armed) — 쪽 위치를 되살리거나 번호로 건너뛰는 코드 스크롤에는 숨지 않는다. 손을 뗀 뒤의 관성은 스크롤이 이어지는 동안 그대로 친다.
 //  · 손을 뗀 뒤 관성이 잦아들어 속도가 SLOW_SPEED 아래로 떨어지면 다 멈추기 전에 나온다(사용자 지시 — 완전히 멈출 때까지 기다리면 늦다). 끝까지 스크롤이 없으면 STOP_MS 뒤에 나온다.
 //  · 손가락이 닿아 있는 동안은 움직이지 않아도 나오지 않는다(사용자 지시 — 붙잡고 보는 중이다). 뗀 뒤에 위 규칙을 탄다.
-//  · 아이폰은 관성을 끊는 터치를 웹에 알리지 않는다(WebKit 이 일부러 막는다 — touchstart · touchmove · touchend · pointerdown 모두 오지 않고, 다 멈춘 뒤의 터치만 온다). 그래서 아이폰은 스크롤 값으로 손가락을 알아낸다:
-//    관성은 줄어들기만 하므로 속도가 다시 오르거나(RISE) 빠르게 가다 뚝 멎으면(HOLD_MS) 손가락이 닿은 것이다. 나온 뒤에도 TAIL_MS 동안 남은 관성을 지켜본다(tail).
-//    손을 뗀 것도 알 수 없어, 그렇게 알아낸 손가락(ghost)은 속도가 FALL_N 번 이어서 줄면 뗀 것으로 치고, 멎은 채로는 HOLD_MS 뒤에 나온다.
+//  · 위 손가락 규칙은 안드로이드 등 터치가 오는 환경의 것이다. 아이폰은 관성을 끊는 터치를 웹에 알리지 않아(WebKit 이 일부러 막는다 — touchstart · touchmove · touchend · pointerdown 모두 오지 않는다)
+//    터치를 보지 않고 스크롤만 본다(사용자 지시): 움직이면 숨고, SLOW_SPEED 아래로 느려지거나 멈추면 나온다. 붙잡아 두는 것은 없다.
 //  · 페이지가 맨 아래면 숨기지 않는다 — 틀 아래에 탭 높이만큼 여백이 있어(ListArea useMobileRows 의 --pb-nav-h) 탭이 아무것도 가리지 않는다.
 //  · 움직임은 브라우저의 전환(globals.css nav[data-pb-navhide])이고, 코드는 표시 하나만 바꾼다. 페이지는 늘 브라우저 기본대로 스크롤한다.
 //  · 새로고침하면 맨 위에서 시작한다(history.scrollRestoration manual): 내려 둔 위치를 툴바가 보이는 채로 되살리면 목록이 어긋났고, 그 상태로 키패드를 여닫으면
 //    보이는 것과 누르는 자리가 어긋났다(사용자 지적).
 const STOP_MS = 160 // 스크롤이 이만큼 없으면 멈춘 것
 const SLOW_SPEED = 0.3 // 손을 뗀 뒤 이 속도(px/ms) 아래면 거의 멈춘 것 — 나오는 때를 앞당기거나 늦추는 값
-const RISE = 1.5, RISE_MIN = 0.1, RISE_N = 2 // 지금까지 가장 낮은 속도 × RISE + RISE_MIN 을 RISE_N 번 이어서 넘으면 손가락(프레임 흔들림은 넘지 않는 값)
-const FALL_N = 4 // 알아낸 손가락이 뗀 것으로 칠, 이어서 줄어든 횟수 — 천천히 끄는 손은 고르게 줄지 않는다
-const HOLD_MS = 2000 // 빠르게 가다 멎었을 때 붙잡은 것으로 치는 시간 — 뗀 것을 알 수 없어 이 뒤에는 나온다(그 전이라도 다시 누르면 신호가 와서 바로 풀린다)
-const TAIL_MS = 1500 // 나온 뒤에도 관성의 끝을 지켜보는 시간
 const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) // 아이폰의 크롬도 WebKit 이다. 안드로이드는 터치가 와서 해당 없다
 let installed = 0, frozen = false, hidden = false, mo: MutationObserver | null = null
 let armed = false, finger = false, viaTouch = false, stopT: ReturnType<typeof setTimeout> | undefined
 let lastEl: Element | null = null, lastPos = 0, lastT = 0, speed = Infinity // 이벤트 사이 속도의 평균(한 번 튀는 값에 나오지 않게)
-let ios = false, ghost = false, tail = false, low = Infinity, lastNow = Infinity, rising = 0, falling = 0 // 아이폰에서 스크롤 값으로 알아낸 손가락
+let ios = false
 const root = () => document.documentElement
 const navEl = () => document.querySelector<HTMLElement>('[data-mobile-col] > nav[data-hero-below]') // 늘 지금 것을 찾는다(탭을 바꿔 다시 붙어도)
 function measure() {
@@ -37,39 +32,30 @@ function set(h: boolean) {
 const inCol = (t: EventTarget | null) => t instanceof Element && !!t.closest('[data-mobile-col]')
 const atBottom = () => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
 // 손을 뗀 뒤 나온다 — 여기서 끝이라 남은 관성은 다시 숨기지 않는다
-function show() {
-  clearTimeout(stopT); set(false); armed = ghost = false
-  if (ios) { tail = true; stopT = setTimeout(() => { tail = false }, TAIL_MS) }
-}
+function show() { clearTimeout(stopT); set(false); armed = false }
 // 멈춤을 기다린다 — 스크롤이 이어지면 다시 잰다. 손가락이 닿아 있으면 기다리지 않는다(뗄 때 end 가 다시 부른다)
-function wait(hold = false) {
+function wait() {
   clearTimeout(stopT)
-  if (!finger) stopT = setTimeout(show, hold ? HOLD_MS : STOP_MS)
+  if (!finger) stopT = setTimeout(show, STOP_MS)
 }
-function begin(t: EventTarget | null) { if (!frozen && inCol(t)) { clearTimeout(stopT); armed = finger = true; ghost = tail = false; low = Infinity } }
-function end() { if (finger || ghost) { finger = ghost = false; low = Infinity; wait() } }
+function begin(t: EventTarget | null) { if (!ios && !frozen && inCol(t)) { clearTimeout(stopT); armed = finger = true } }
+function end() { if (finger) { finger = false; wait() } }
 // 손동작을 손가락 신호와 포인터 신호 둘 다로 받는다 — 개발자 도구의 휴대폰 보기에서 마우스로 끌면 포인터 신호만 온다. 실기기는 손가락 신호가 끝까지 온다
 const onStart = (e: TouchEvent) => { viaTouch = true; begin(e.target) }
 const onEnd = (e: TouchEvent) => { if (e.touches.length) return; viaTouch = false; end() }
 const onPDown = (e: PointerEvent) => { if (!viaTouch && e.isPrimary) begin(e.target) }
 const onPUp = () => { if (!viaTouch) end() }
-const onWheel = (e: WheelEvent) => { if (!frozen && inCol(e.target)) { armed = true; wait() } }
+const onWheel = (e: WheelEvent) => { if (!ios && !frozen && inCol(e.target)) { armed = true; wait() } }
 const onScroll = (e: Event) => {
-  if (!(armed || tail) || frozen || !(e.target instanceof Element) || !e.target.matches('[data-pb-list]')) return
+  if (!(armed || ios) || frozen || !(e.target instanceof Element) || !e.target.matches('[data-pb-list]')) return
   const el = e.target, pos = el.scrollLeft + el.scrollTop, dt = e.timeStamp - lastT
   const now = el === lastEl && dt > 0 && dt < 100 ? Math.abs(pos - lastPos) / dt : Infinity
   speed = speed === Infinity || now === Infinity ? now : (speed + now) / 2
   lastEl = el; lastPos = pos; lastT = e.timeStamp
-  falling = now < lastNow ? falling + 1 : 0; lastNow = now
-  low = Math.min(low, speed)
-  if (ios && !finger) {
-    rising = speed < Infinity && speed > low * RISE + RISE_MIN ? rising + 1 : 0
-    if (rising >= RISE_N) { armed = ghost = true; tail = false; low = speed; rising = falling = 0 }
-  }
-  if (!armed) { clearTimeout(stopT); stopT = setTimeout(() => { tail = false }, TAIL_MS); return } // 남은 관성 — 숨기지 않고 지켜보기만 한다
-  if (!finger && speed < SLOW_SPEED && (!ghost || falling >= FALL_N)) { show(); return }
+  if (ios && speed === Infinity) return // 잴 수 없는 한 번(첫 스크롤 · 코드로 건너뜀)은 움직임으로 치지 않는다
+  if (!finger && speed < SLOW_SPEED) { show(); return }
   if (!atBottom()) set(true)
-  wait(ios && (ghost || (speed >= SLOW_SPEED && speed < Infinity))) // 여기서 끊기면 관성이 다한 것이 아니라 붙잡은 것이다
+  wait()
 }
 export function installScrollLink(): () => void {
   if (!installed++) {
@@ -98,4 +84,4 @@ export function installScrollLink(): () => void {
   }
 }
 // 창(시트 · 다이얼로그)이 떠 있는 동안은 움직임을 세지 않는다(시트를 끄는 손가락으로 탭이 바뀌지 않게)
-export function setScrollFrozen(f: boolean) { frozen = f; if (f) { armed = finger = ghost = tail = false; clearTimeout(stopT); set(false) } }
+export function setScrollFrozen(f: boolean) { frozen = f; if (f) { armed = finger = false; clearTimeout(stopT); set(false) } }
