@@ -316,6 +316,9 @@ html[data-pb-fix] [data-pb-slot='bar'] { position: relative; z-index: 2; }
 html[data-pb-fix] [data-pb-panel] > :not([data-pb-slot]):not(.pb-fadeov) { position: relative; z-index: 1; }
 /* 넓게 보기(html[data-pb-compact]): 헤더 · 미리보기는 헤더 높이만큼, 그 아래 전부는 헤더 + 분류 줄만큼 함께 올라간다 — 목록이 통째로 올라와 가리는 것이 없다 */
 html[data-pb-fix] [data-pb-slot='hdr'], html[data-pb-fix] [data-pb-slot='hero'], html[data-pb-fix] [data-pb-panel] > :not([data-pb-slot='hero']) { transition: translate .26s cubic-bezier(.45,0,.55,1); }
+/* 움직이는 묶음은 늘 따로 합성한다(will-change) — 전환이 돌 때만 층으로 올렸다 내리니 시작 · 끝마다 미리보기 위 버튼을 다시 칠해 깜빡였다(사용자 지적) */
+html[data-pb-fix] [data-pb-slot='hdr'], html[data-pb-fix] [data-pb-slot='hero'], html[data-pb-fix] [data-pb-panel] > :not([data-pb-slot='hero']):not(.pb-fadeov) { will-change: translate; }
+html[data-pb-fix] [data-app-header], html[data-pb-fix] [data-pb-cat] { will-change: opacity; }
 html[data-pb-fix] [data-app-header], html[data-pb-fix] [data-pb-cat] { transition: opacity .26s ease; }
 html[data-pb-compact] [data-pb-slot='hdr'], html[data-pb-compact] [data-pb-slot='hero'] { translate: 0 calc(-1 * var(--pb-hdr-h)); }
 html[data-pb-compact] [data-pb-panel] > :not([data-pb-slot='hero']) { translate: 0 calc(-1 * (var(--pb-hdr-h) + var(--pb-cat-h, 0px))); }

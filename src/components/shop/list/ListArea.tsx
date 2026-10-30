@@ -121,7 +121,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       // 목록 화면: 칸 높이 = 넓게 보기에서 미리보기(기본 보기 높이) + 목록 머리 줄(머리 묶음 − 분류 줄) 아래 화면 끝까지 — 그때 3줄이 딱 든다(사용자 지시).
       // 칸 밖에 함께 놓이는 것(룩북 가로의 자주 쓴 염색 줄 · 출처 줄)도 뺀다. 하단 탭 높이도 뺀다 — 처음 화면에서 셋째 줄이 탭에 가려 3줄로 안 보였다(사용자 지적).
       // 그래서 넓게 보기에서는 아래에 탭 높이만큼 남는다(세로 목록은 칸을 그만큼 늘려 다음 줄이 보인다 — globals.css)
-      let fit = 0
+      let fit = 0, full = Infinity
       if (hero && document.documentElement.getAttribute('data-pb-view') !== 'full') {
         if (fix) {
           const bar = col.querySelector<HTMLElement>('[data-sticky-top]'), ctrl = bar ? bar.offsetHeight - (bar.querySelector<HTMLElement>('[data-pb-cat]')?.offsetHeight ?? 0) : 0
@@ -130,12 +130,15 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
             .reduce((n, el) => n + el.offsetHeight, 0)
           const navH = col.querySelector<HTMLElement>(':scope > nav[data-hero-below]')?.offsetHeight ?? 0
           setColVar(col, '--pb-nav-h', `${navH}px`)
-          fit = col.clientHeight - base.offsetHeight - ctrl - others - navH
+          full = col.clientHeight - base.offsetHeight - ctrl - others
+          fit = full - navH
         } else fit = lvh.offsetHeight - base.offsetHeight - (col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom)
       }
       const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
       if (!fix && col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
-      const page = Math.ceil(Math.max(floor, fit)) + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
+      // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY). 목록 화면은 페이지가 스크롤하지 않으니 바닥(floor)이 넓게 보기 높이(full)를 넘지 않게 —
+      // 낮은 폰(360 × 640 · 320 × 568)에서 넓게 보기로도 셋째 줄이 화면 밖에 잘렸다. 그때는 카드가 바닥보다 조금 낮아진다
+      const page = Math.ceil(fix ? Math.max(fit, Math.min(floor, full)) : Math.max(floor, fit)) + 'px'
       if (col.style.getPropertyValue('--pb-page-h') !== page) col.style.setProperty('--pb-page-h', page)
     }
     m()
