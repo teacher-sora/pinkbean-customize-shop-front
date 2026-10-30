@@ -16,6 +16,7 @@
  *  - 모든 종류에 공용 푸터(닫기)가 있다. 부위 염색을 거쳐 들어온 염색/점 위치만 '이전'.
  */
 
+import { lockBody } from '@/lib/bodyLock'
 import clsx from 'clsx'
 import dynamic from 'next/dynamic'
 import { useEffect, useRef, useState } from 'react'
@@ -87,15 +88,11 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   // 모바일은 문서 스크롤이 열려 있어, 시트가 떠 있는 동안 뒤 페이지를 **제자리에 고정**한다.
   // overflow:hidden 만으로는 부족하다: 가상 키보드가 뜨면서 입력칸을 보이게 하려는
   // 브라우저의 스크롤은 막지 못해, 키보드가 닫힌 뒤 뒤 페이지가 엉뚱한 위치(빈 공간)에 남고 터치 위치도 어긋난다.
-  // body 를 현재 스크롤 위치 그대로 position:fixed 로 세워 두면 문서가 움직일 수 없고, 닫을 때 그 위치로 되돌린다.
+  // body 를 현재 스크롤 위치 그대로 position:fixed 로 세워 두면 문서가 움직일 수 없고, 닫을 때 그 위치로 되돌린다(lib/bodyLock).
   // 터치 기기(태블릿 포함)는 모두 문서 스크롤이 열려 있어(globals.css pointer:coarse) 같은 잠금이 필요하다.
   useEffect(() => {
     if (!mobile && !window.matchMedia('(pointer: coarse)').matches) return
-    const y = window.scrollY
-    const b = document.body.style
-    const prev = { position: b.position, top: b.top, left: b.left, right: b.right, width: b.width, overflow: b.overflow }
-    Object.assign(b, { position: 'fixed', top: `-${y}px`, left: '0', right: '0', width: '100%', overflow: 'hidden' })
-    return () => { Object.assign(b, prev); window.scrollTo({ top: y, behavior: 'instant' as ScrollBehavior }) }
+    return lockBody() // lib/bodyLock — 아이폰 키패드도 같은 잠금을 쓴다
   }, [mobile])
 
   // 모바일 끌어내리기(터치 — 마우스 에뮬레이션은 넣지 않는다).
@@ -201,7 +198,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const slideStyle: React.CSSProperties = { transform: `translateX(${s.partSlide}px)`, opacity: s.partSlide ? 0 : 1 }
 
   return (
-    <div className={styles.layer}>
+    <div data-pb-layer className={styles.layer}>
       <div
         ref={overlayRef}
         className={clsx(styles.overlay, mobile && styles.overlayM, hidden && styles.overlayHidden)}

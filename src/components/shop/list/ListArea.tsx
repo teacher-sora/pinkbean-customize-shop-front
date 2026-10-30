@@ -10,14 +10,15 @@ import { ITEM_KINDS, MOBILE_GRID } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
-import { CatTabsM } from '../nav/BottomNav'
+import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
 import styles from './list.module.css'
+import { heroBaseProbe, lvhProbe, RELAYOUT_EVENT } from '@/lib/heroView'
 
 const VIEW_MODES: SegOpt<ListMode>[] = [
   { v: 'sprite', l: '아이템', t: '아이템 그림만 보기' },
-  { v: 'model', l: '기본 캐릭터', t: '기본 캐릭터에 입힌 모습' },
+  { v: 'model', l: '마네킹', t: '마네킹에 입힌 모습' },
   { v: 'mymodel', l: '내 캐릭터', t: '내 캐릭터에 입힌 모습' },
 ]
 export const GENDERS: SegOpt<GenderFilter>[] = [
@@ -49,22 +50,25 @@ const scrollIdx = (vp: HTMLElement, y: boolean) => {
 export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; set?: boolean }
 export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
   const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement | null>(null)
+  // 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다. 화면 전체 덮개를 두었더니 그보다 위에 붙은 헤더 · 미리보기를 누를 때는
+  // 닫히지 않아(모바일 — 헤더 · 미리보기가 머리 묶음보다 위에 붙는다) 문서 전체의 누름을 먼저 받아 가로챈다
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); setOpen(false) } }
+    const onClick = (e: MouseEvent) => { if (root.current?.contains(e.target as Node)) return; e.preventDefault(); e.stopPropagation(); setOpen(false) }
     window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
+    window.addEventListener('click', onClick, true)
+    return () => { window.removeEventListener('keydown', onKey, true); window.removeEventListener('click', onClick, true) }
   }, [open])
   const now = groups.map((g) => g.opts.find((o) => o.v === g.value)?.l ?? '').join(', ')
   const set = groups.some((g) => g.set)
   return (
-    <div className={styles.filterM}>
+    <div ref={root} className={styles.filterM}>
       <button type="button" data-guide={guide} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, (open || set) && styles.filterBtnOn, set && styles.filterBtnSet)}>
         <span className={styles.filterText}>보기 설정</span>
         <IconCaretDown className={clsx(styles.filterCaret, open && styles.filterCaretOn)} />
       </button>
-      {/* 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다 */}
-      {open && <div className={styles.filterShade} onClick={() => setOpen(false)} />}
       {/* 늘 붙여 두고 보임만 바꾼다 — 닫힐 때도 전환이 보이게 */}
       <div role="group" aria-label={groups.map((g) => g.label).join(' · ')} aria-hidden={!open} className={clsx(styles.filterPop, open && styles.filterPopOn)}>
         {groups.map((g) => (
@@ -78,40 +82,108 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
   )
 }
 
-// 모바일: 카드가 세로형(높이/폭 ≥ ratio)으로 rows 줄 들어갈 최소 뷰포트 높이를 보장한다. 부족하면 페이지 컬럼
-// 높이(--pb-min-h)를 늘려 페이지 스크롤로 흡수(리스트 안 세로 스크롤은 만들지 않음). 그 외 요소 높이(chrome)는
-// 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다. 코디 탭 목록(MOBILE_GRID)과 코디 룩북(최소 2줄 — 사용자 지시)이 함께 쓴다.
-// ⚠️ 목록은 언마운트(염색·프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
+// 모바일 목록 칸의 높이(--pb-min-h — 페이지 컬럼 높이). 목록은 칸 안에서 세로로 스크롤하지 않고 페이지 스크롤로 내려 본다.
+//  · 맞춤: 페이지를 끝까지 내리면 붙은 미리보기(히어로 sticky) 바로 아래부터 화면 끝까지가 목록 칸이다 = 큰 화면 높이(100lvh — 툴바가 접힌,
+//    내려 볼 때의 높이. 접히지 않는 브라우저는 작은 높이와 같다) − 미리보기(기본 보기 높이) − 목록 칸 아래(하단 탭 자리는 빼고 잰다). 붙은 머리 묶음은 내리는 동안 숨어 빼지 않는다(StickyBarM).
+//    그래서 탭 자리 바로 위까지 내리면 미리보기를 보면서 3줄이 모두 보이고(사용자 지시), 더 내려 탭 자리에 닿으면 탭이 나온다(BottomNav useHideOnScroll).
+//    부위 · 보기 설정 줄은 붙이지 않는다 — 부위를 바꿀 때는 목록에서 눈을 떼므로 살짝 올려 고르면 된다(사용자와 정한 흐름).
+//  · 바닥: 화면이 낮아(작은 폰 · 미리보기 크게) 맞춤 칸이 너무 작으면 카드 그림 칸 ≥ 폭 × ratio + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) foot 로
+//    받친다. 그때는 3줄이 한 화면에 다 들지 않고 페이지가 더 길어진다.
+//  그 외 요소 높이(chrome)는 컬럼 − 뷰포트로 실측 → 컬럼이 늘어도 chrome 은 그대로라 값이 수렴한다.
+// ⚠️ 목록은 언마운트(염색 · 프리셋 탭 이동) 때 값을 지우지 않는다 — 지우면 페이지가 100vh 로 줄어 스크롤 위치가 끌려 올라가고
 //    하단 공백이 남았다. 마지막 계산값을 유지해 탭을 오가도 페이지 높이가 그대로다. restore 면(코디 룩북 — 목록보다 길 수 있다) 떠날 때 붙기 전 값으로 되돌린다.
-// 모바일 목록 카드의 최소 크기 = 그림 칸 높이 ≥ 폭 × CARD_RATIO_M + 카드 아래(이름 줄 · [북마크 · 염색] 막대 · 여백) CARD_FOOT_M.
-// 예전에는 카드 전체를 폭 × 1.34 로만 잡아, 화면이 낮으면(실제 휴대폰 · 위를 줄인 창) 아래 57px 를 빼고 남은 그림 칸이 75px 까지 줄어
-// 캐릭터가 45px 로 아주 작았다(사용자 지적 — 실측 343 × 684). 그림 칸을 따로 보장해 어느 높이에서든 캐릭터가 줄지 않는다
-export const CARD_RATIO_M = 1.45
-const CARD_FOOT_M = 61 // 카드 아래 = 이름 줄 + [북마크 · 염색] 막대 28 + 여백. 1.45 = 좁은 폭(343 · 360)도 그림 칸이 정수 배율 한 단계에 닿는다 — LIST_FRACTION_M 0.5 와 함께 캐릭터 64px 안팎
+// 0.6 = 맞춤 칸의 바닥. 툴바가 접히지 않는 앱 안 브라우저(390 × 664)에서도 3줄이 든다(그림 칸 76px)
+export const CARD_RATIO_M = 0.6
+export const CARD_FOOT_M = 61 // 카드 아래 = 이름 줄 + [북마크 · 염색] 막대 28 + 여백(코디 룩북 · 광장 카드의 바닥도 이 값)
+// 맞춤에 쓰는 미리보기 높이 = 기본 보기의 높이(heroBaseProbe — 13 Pro 216 기준으로 화면에 맞춘다). '크게'로 바꿔도 카드는 그대로이고 보이는 줄만 준다 —
+// 실제 높이로 맞추면 카드가 86px 까지 눌려 캐릭터가 아주 작았다
 export const LIST_COL_GAP_M = 6 // 목록 격자의 열 간격(list.module.css .gridM 과 같은 값 — 카드 폭을 조금 넓힌다)
-// 목록의 최소 높이 — 코디 탭 · AI 코디 검색 목록
+// 목록의 높이 — 코디 탭 · AI 코디 검색 목록 · 프리셋
 export const useListMinHeight = (vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean) => useMobileRows(vpRef, mobile, MOBILE_GRID.cols, CARD_RATIO_M, MOBILE_GRID.rows, false, CARD_FOOT_M, 0, 0, LIST_COL_GAP_M)
-// extra = 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장의 다른 분류가 코디 룩북과 같은 높이 — 광장 목록 칸은
-// 좌우 여백 7 이 없어 그만큼 넓다. 분류를 바꿔도 페이지 높이가 같게)
+// extra = 바닥 계산에서 목록 칸 밖에 더 잡아 둘 높이, inset = 카드 폭을 잴 때 칸 폭에서 더 뺄 값(코디 광장 — 광장 목록 칸은 좌우 여백 7 이 없어 그만큼 넓다)
 export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mobile: boolean, cols: number, ratio: number, rows = 2, restore = false, foot = 0, extra = 0, inset = 0, colGap = 10) {
   useEffect(() => {
     if (!mobile) return
-    const vp = vpRef.current
-    const col = vp?.closest('[data-mobile-col]') as HTMLElement | null
-    if (!vp || !col) return
+    const vp0 = vpRef.current
+    const col = vp0?.closest('[data-mobile-col]') as HTMLElement | null
+    if (!vp0 || !col) return
     const before = col.style.getPropertyValue('--pb-min-h')
+    const hero = col.querySelector<HTMLElement>('[data-hero]')
+    const lvh = lvhProbe(), base = heroBaseProbe()
     const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
     const m = () => {
-      const chrome = col.clientHeight - vp.clientHeight
+      const vp = vpRef.current?.isConnected ? vpRef.current : vp0 // 넘기는 방향을 바꾸면 칸이 새로 붙을 수 있다 — 지금 칸을 잰다
+      // 칸 밖 높이 = 틀 위 끝에서 칸 위 끝까지 + 칸 뒤에 붙은 요소들(룩북 출처 줄). 하단 탭은 떠 있어 세지 않는다.
+      // 틀 높이에서 칸 높이를 빼 재면 앞 탭이 남긴 틀 높이의 빈자리까지 들어가 그대로 남았다(코디 정보에서 페이지가 172px 내려갔다)
+      let below = 0
+      for (let el = vp.nextElementSibling; el; el = el.nextElementSibling) if (el instanceof HTMLElement && el.getClientRects().length && !el.matches('nav[data-hero-below]')) below += el.offsetHeight
+      const chrome = vp.getBoundingClientRect().top - col.getBoundingClientRect().top + below
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
-      const need = Math.ceil(chrome + extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)) + 'px'
+      const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
+      // 맞춤: 페이지를 헤더 높이만큼 내리면 미리보기가 화면 맨 위에 오고, 미리보기 + 머리 묶음 바로 아래부터 화면 끝까지가 목록 칸이다(큰 화면 높이 100lvh — 툴바가 접힌).
+      // 미리보기와 칸 사이에 놓이는 것(머리 묶음 · 룩북의 자주 쓴 염색 줄)과 칸 아래의 것(출처 줄)도 뺀다. 하단 탭은 떠 있어 빼지 않는다(내리는 동안 숨는다).
+      // 맞춤이 있으면 바닥(floor — 그림 칸 비율)보다 맞춤이 먼저다: 어느 기기든 페이지는 맨 위 헤더 높이만큼만 내려간다(사용자 지시). 낮은 화면은 카드가 그만큼 낮아진다
+      let fit = 0
+      if (hero && document.documentElement.getAttribute('data-pb-view') !== 'full') {
+        // 칸 아래 것(below)은 칸 뒤에 붙은 요소들의 높이다 — 틀 끝까지의 거리로 재면 앞 탭이 남긴 빈자리까지 빠져 칸이 짧아졌다(코디 정보 126px)
+        fit = lvh.offsetHeight - base.offsetHeight - (vp.getBoundingClientRect().top - hero.getBoundingClientRect().bottom) - below
+      }
+      const h = fit > 0 ? Math.floor(fit) : Math.ceil(floor) // 맞춤은 내림 — 올리면 소수점 몫만큼 페이지가 헤더보다 1px 더 내려갔다
+      const need = Math.floor(chrome + h) + 'px' // 내림 — 칸 위 높이(미리보기)의 소수점 몫까지 올리면 1px 더 내려갔다
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
+      const page = h + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
+      if (col.style.getPropertyValue('--pb-page-h') !== page) col.style.setProperty('--pb-page-h', page)
     }
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
-    ro?.observe(col); ro?.observe(vp)
-    return () => { ro?.disconnect(); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
+    ro?.observe(col); ro?.observe(vp0); ro?.observe(lvh); ro?.observe(base)
+    // 칸 위아래에 함께 놓이는 것(머리 묶음 · 룩북 염색 줄 · 출처 줄)이 붙고 빠지거나 크기가 바뀌면 다시 잰다 — 칸 크기는 그대로라 위 감시가 모른다
+    const sibs = () => { for (const el of vp0.parentElement?.children ?? []) if (el !== vp0) ro?.observe(el) }
+    sibs()
+    const mo = vp0.parentElement ? new MutationObserver(() => { sibs(); m() }) : null
+    if (mo && vp0.parentElement) mo.observe(vp0.parentElement, { childList: true })
+    window.addEventListener(RELAYOUT_EVENT, m) // 보기를 바꿔 칸이 자리만 옮겨 갔을 때 — 틀 높이가 그대로라 ResizeObserver 가 모른다
+    return () => { ro?.disconnect(); mo?.disconnect(); window.removeEventListener(RELAYOUT_EVENT, m); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
   }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset, colGap])
+}
+
+// 모바일 세로 넘기기: 목록 칸 안 스크롤(사용자 지시 — 페이지 하나로 합쳤더니 목록을 스크롤할 수 없었고 페이지가 쪽 수만큼 길어졌다). 쪽은 한 쪽 높이(--pb-page-h,
+// useMobileRows — 칸 높이와 같다)로 쌓인다. 칸 끝에 닿으면 페이지가 이어서 스크롤한다.
+// 스크롤 위치 ↔ 쪽 번호: 쪽 i 의 자리 = 그 쪽 위 끝이 칸 위 끝에 오는 스크롤. 줄 단위로 반올림해 센다(가로와 같다)
+export function usePagerY(vpRef: React.RefObject<HTMLDivElement | null>, on: boolean, idx: number, setIdx: (i: number, anim?: boolean) => void, pageCount: number, key: string, rows: number = MOBILE_GRID.rows) {
+  const live = useRef({ idx, setIdx, pageCount, rows })
+  live.current = { idx, setIdx, pageCount, rows }
+  const geo = useCallback(() => {
+    const vp = vpRef.current, tr = vp?.querySelector<HTMLElement>('[data-pb-pages]')
+    if (!vp || !tr) return null
+    const ph = parseFloat(getComputedStyle(vp).getPropertyValue('--pb-page-h'))
+    if (!ph) return null
+    return { vp, off: tr.offsetTop, ph } // off = 쪽들 위의 것(룩북의 자주 쓴 염색 줄)
+  }, [vpRef])
+  const at = (g: { vp: HTMLElement; off: number; ph: number }) => {
+    const { pageCount: n, rows: r } = live.current
+    return Math.max(0, Math.min(n - 1, Math.floor(Math.round((g.vp.scrollTop - g.off) / (g.ph / r)) / r)))
+  }
+  useEffect(() => {
+    const vp = vpRef.current
+    if (!on || !vp) return
+    let raf = 0
+    const f = () => { raf = 0; const g = geo(); if (!g) return; const i = at(g); if (i !== live.current.idx) live.current.setIdx(i, false) }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(f) }
+    vp.addEventListener('scroll', onScroll, { passive: true })
+    return () => { vp.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf) }
+  }, [on, geo, vpRef])
+  // 쪽 번호가 스크롤 밖에서 바뀌면(번호 입력 · 부위 · 검색을 바꿔 첫 쪽으로) 그 쪽 자리로 옮긴다. 멀거나 목록이 바뀌었으면 바로, 가까우면 부드럽게
+  const lastKey = useRef(key)
+  useLayoutEffect(() => {
+    if (!on) return
+    const jump = lastKey.current !== key
+    lastKey.current = key
+    const g = geo(); if (!g) return
+    if (at(g) === idx && !(jump && idx === 0)) return
+    const to = idx === 0 ? 0 : g.off + idx * g.ph
+    g.vp.scrollTo({ top: to, behavior: jump || Math.abs(g.vp.scrollTop - to) > g.ph * 3 ? ('instant' as ScrollBehavior) : 'smooth' })
+  }, [on, idx, key, pageCount, geo])
 }
 
 export default function ListArea({ mobile }: { mobile: boolean }) {
@@ -154,7 +226,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
-  useListMinHeight(vpRef, mobile) // 모바일: 카드 2줄이 들어갈 높이를 보장한다(위 주석)
+  useListMinHeight(vpRef, mobile) // 모바일: 붙은 미리보기 아래에 3줄이 다 들어가는 높이(위 주석)
   // ── 모바일: 네이티브 자유 스크롤(스냅 없음, 스크롤바 숨김) ↔ 페이지 인덱스 동기화. 가로면 가로, 세로면 세로(쪽 = MOBILE_GRID 열 × 줄) ──
   //  세로: 쪽 높이 = 뷰포트 높이(100cqh), 줄 = 높이/2 — 스크롤 → 인덱스는 줄 = round(스크롤/(높이/2)), 쪽 = floor(줄/2).
   //  페이지 좌우 패딩 5px + 뷰포트 좌우 7px 들임 → 열 간격 = 페이지 경계 간격 = 10px 이라 열 위치가 정확히 폭/열 수의 배수.
@@ -167,7 +239,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   live.current = { idx: s.curIdx, setIdx: s.setIdx }
   useEffect(() => {
     const vp = vpRef.current
-    if (!mobile || !vp) return
+    if (!mobile || !vp || dirY) return // 세로는 usePagerY
     let raf = 0
     const onScroll = () => {
       if (raf) return
@@ -185,7 +257,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const scrolledOnce = useRef(false)
   useLayoutEffect(() => {
     const vp = vpRef.current
-    if (!mobile || !vp) return
+    if (!mobile || !vp || dirY) return
     const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
     // 첫 마운트(예: 태블릿 → 모바일 폭 전환)도 즉시 이동 — 보던 위치가 스크롤 애니메이션 없이 유지돼 보이게. 방향을 바꿔도 즉시.
     const jump = lastScrollKey.current !== scrollKey || !scrolledOnce.current
@@ -212,6 +284,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     go()
     return () => { if (raf) cancelAnimationFrame(raf) }
   }, [mobile, s.curIdx, scrollKey, s.pageCount, dirY])
+  usePagerY(vpRef, mobile && dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey)
   const hero = isAi && s.searchQuery === null && !loading
   const noSprite = thumbs.noSprite
   const viewOpts = VIEW_MODES.map((m) => (m.v === 'sprite' && noSprite
@@ -315,13 +388,13 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       ) : (
         // 트랙 위치·전환은 즉시 반영 값이라 인라인(스와이프 중엔 ShopContext 가 DOM 직접 갱신). 셀은 현재 페이지 ±1 만
         // 마운트하되, 스냅 애니메이션 중에는 새로 창에 들어온 페이지 마운트를 미뤄(캔버스 합성 부하) 전환이 끊기지 않게 한다.
-        <div ref={mobile ? undefined : s.bindTrack} className={styles.track}
+        <div ref={mobile ? undefined : s.bindTrack} data-pb-pages className={styles.track}
           style={mobile
-            ? (dirY ? { height: `calc(${s.pageCount} * 100cqh)` } : { width: `calc(${s.pageCount} * 100cqw)` }) // 모바일: 스크롤 길이만 페이지 수만큼(페이지 DOM 은 ±1)
+            ? (dirY ? { height: `calc(${s.pageCount} * var(--pb-page-h))` } : { width: `calc(${s.pageCount} * 100cqw)` }) // 모바일: 길이만 페이지 수만큼(페이지 DOM 은 ±1)
             : { transform: `${dirY ? 'translateY' : 'translateX'}(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
           {pages.map(({ pi, items }) => (
             <div key={pi} className={clsx('pb-page', mobile && 'pb-scroll pb-norail', mobile ? (dirY ? styles.pageMY : styles.pageM) : styles.page)}
-              style={dirY ? { top: mobile ? `calc(${pi} * 100cqh)` : `${pi * 100}%` } : { left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
+              style={dirY ? { top: mobile ? `calc(${pi} * var(--pb-page-h))` : `${pi * 100}%` } : { left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
               {(!s.snapping || pi === s.curIdx || Math.abs(pi - s.snapFrom) <= 1) && (
                 <div className={mobile ? styles.gridM : styles.grid} style={gridStyle}>
                   {items.map((it) => (
@@ -339,9 +412,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   if (mobile) {
     return (
       <>
-        <CatTabsM />
-        {controls}
-        <div className={styles.hrM} />
+        <StickyBarM><CatTabsM />{controls}<div className={styles.hrM} /></StickyBarM>
         {viewport}
       </>
     )

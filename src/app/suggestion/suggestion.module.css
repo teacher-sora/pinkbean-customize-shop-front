@@ -9,15 +9,15 @@
 .loginWrap { min-height: 100svh; padding: 24px 16px; display: flex; align-items: center; justify-content: center; }
 .login { width: min(100%, 360px); padding: 28px 24px 24px; display: flex; flex-direction: column; gap: 14px; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 12px; background: light-dark(#fff, #303238); }
 .loginHead { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
-.brand { font-size: 12px; font-weight: 600; color: light-dark(#ec86ac, #d881a1); white-space: nowrap; }
-.title { margin: 0; font-size: 18px; font-weight: 700; color: light-dark(#2a2521, #d4d5d8); white-space: nowrap; }
+.brand { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#ec86ac, #d881a1); white-space: nowrap; }
+.title { margin: 0; font-size: calc(18rem / 16); font-weight: 700; color: light-dark(#2a2521, #d4d5d8); white-space: nowrap; }
 .field { display: flex; flex-direction: column; gap: 6px; }
-.fieldLabel { font-size: 12px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
-.input { width: 100%; height: 42px; padding: 0 12px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 8px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: 16px; color: light-dark(#3d372f, #cacbd0); outline: none; transition: border-color .22s ease, background-color .24s ease; }
+.fieldLabel { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
+.input { width: 100%; height: 42px; padding: 0 12px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 8px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(16rem / 16); color: light-dark(#3d372f, #cacbd0); outline: none; transition: border-color .22s ease, background-color .24s ease; }
 .input:focus { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fff, #303238); }
-.btn { height: 42px; border: none; border-radius: 8px; background: light-dark(#ec86ac, #d15785); font-family: inherit; font-size: 14px; font-weight: 600; color: light-dark(#fff, #ececef); cursor: pointer; transition: background-color .24s ease; }
+.btn { height: 42px; border: none; border-radius: 8px; background: light-dark(#ec86ac, #d15785); font-family: inherit; font-size: calc(14rem / 16); font-weight: 600; color: light-dark(#fff, #ececef); cursor: pointer; transition: background-color .24s ease; }
 .btn:disabled { background: light-dark(#f0c9d9, #6a4453); cursor: default; }
-.msg { min-height: 18px; margin: 0; font-size: 12px; line-height: 1.5; color: light-dark(#d1735f, #d19f94); }
+.msg { min-height: 18px; margin: 0; font-size: calc(12rem / 16); line-height: 1.5; color: light-dark(#d1735f, #d19f94); }
 
 /* ── 관리 화면 ── */
 .board { max-width: 1180px; margin: 0 auto; padding: 0 16px 32px; }
@@ -25,10 +25,10 @@
 .bar { position: sticky; top: 0; z-index: 5; margin: 0 -16px; padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 12px; background: light-dark(#faf7f3, #373940); border-bottom: 1px solid light-dark(#f0e9e1, #42454d); }
 .barRow { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .grow { flex: 1 1 auto; min-width: 0; }
-.stamp { flex: 0 0 auto; align-self: center; font-size: 11.5px; font-weight: 600; color: light-dark(#a89e93, #8e919a); font-variant-numeric: tabular-nums; } /* 마지막 새로고침 시각 — 숫자 폭이 같아 바뀌어도 밀리지 않는다 */
+.stamp { flex: 0 0 auto; align-self: center; font-size: calc(11.5rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); font-variant-numeric: tabular-nums; } /* 마지막 새로고침 시각 — 숫자 폭이 같아 바뀌어도 밀리지 않는다 */
 .kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 420px; }
-.wait { min-width: 20px; height: 18px; padding: 0 6px; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: light-dark(#ec86ac, #d15785); font-size: 10.5px; font-weight: 700; color: light-dark(#fff, #ececef); font-variant-numeric: tabular-nums; }
-.ghost { flex: 0 0 auto; height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 2px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: 12px; font-weight: 600; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: border-color .22s ease, color .22s ease; }
+.wait { min-width: 20px; height: 18px; padding: 0 6px; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: light-dark(#ec86ac, #d15785); font-size: calc(10.5rem / 16); font-weight: 700; color: light-dark(#fff, #ececef); font-variant-numeric: tabular-nums; }
+.ghost { flex: 0 0 auto; height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 2px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: border-color .22s ease, color .22s ease; }
 .back { align-self: flex-start; padding: 0 10px 0 6px; }
 
 /* 넓은 화면: 목록 | 상세 */
@@ -37,9 +37,9 @@
 .split .listPane { padding-top: 0; }
 .slide { padding-top: 16px; transition: transform .26s cubic-bezier(.45,0,.55,1), opacity .2s ease; }
 .filters { display: flex; gap: 6px; }
-.chip { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: 12px; font-weight: 500; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
+.chip { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(12rem / 16); font-weight: 500; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: border-color .22s ease, background-color .24s ease, color .22s ease; }
 .chipOn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf4f8, #4d313d); color: light-dark(#d76d9a, #d293ae); font-weight: 600; }
-.chipN { font-size: 11px; font-variant-numeric: tabular-nums; color: inherit; opacity: .8; }
+.chipN { font-size: calc(11rem / 16); font-variant-numeric: tabular-nums; color: inherit; opacity: .8; }
 /* 고른 글: 상자 테두리를 핑크로(목록에서 지금 열린 글) */
 .boxWrap { display: flex; min-width: 0; }
 .boxOn > div { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf4f8, #4d313d); }
@@ -48,10 +48,10 @@
 .split .detailPane { position: sticky; top: 128px; max-height: calc(100svh - 144px); overflow: hidden auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .detail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .pick { min-height: 160px; display: flex; align-items: center; justify-content: center; }
-.when { margin-top: -6px; font-size: 11px; color: light-dark(#b7ada2, #858893); }
-.empty { margin: 0; padding: 8px 0; font-size: 13px; color: light-dark(#a89e93, #8e919a); }
+.when { margin-top: -6px; font-size: calc(11rem / 16); color: light-dark(#b7ada2, #858893); }
+.empty { margin: 0; padding: 8px 0; font-size: calc(13rem / 16); color: light-dark(#a89e93, #8e919a); }
 /* 지우기: 글자가 바뀌어도 자리가 밀리지 않게 폭을 잡아 둔다 */
-.del { flex: 0 0 auto; width: 64px; height: 22px; border: 1px solid light-dark(#f2d7d2, #644640); border-radius: 4px; background: light-dark(#fff, #303238); font-family: inherit; font-size: 11px; font-weight: 700; color: light-dark(#d1735f, #d19f94); cursor: pointer; transition: border-color .22s ease, color .22s ease, background-color .24s ease; }
+.del { flex: 0 0 auto; width: 64px; height: 22px; border: 1px solid light-dark(#f2d7d2, #644640); border-radius: 4px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(11rem / 16); font-weight: 700; color: light-dark(#d1735f, #d19f94); cursor: pointer; transition: border-color .22s ease, color .22s ease, background-color .24s ease; }
 .delArmed { border-color: light-dark(#d1735f, #ae5845); background: light-dark(#d1735f, #ae5845); color: light-dark(#fff, #ececef); }
 @media (hover: hover) and (pointer: fine) {
   .ghost:hover { border-color: light-dark(#ec86ac, #d15785); color: light-dark(#d76d9a, #d293ae); }

@@ -20,7 +20,7 @@ function below(): HTMLElement[] {
   if (!col) return []
   const hero = col.querySelector('[data-hero]')
   // 가장자리 흐림 층(.pb-fadeov — 칸 바로 뒤에 붙는다)은 빼고 묶는다. 묶으면 층이 옛 자리에 굳어 보기를 바꿔도 남아 있었다.
-  const inPanel = [...col.querySelectorAll<HTMLElement>('[data-pb-panel] > *')].filter((el) => el !== hero && !el.classList.contains('pb-fadeov'))
+  const inPanel = [...col.querySelectorAll<HTMLElement>('[data-pb-panel] > *')].filter((el) => el !== hero && !(hero && el.contains(hero)) && !el.classList.contains('pb-fadeov'))
   const rest = [...col.querySelectorAll<HTMLElement>(':scope > [data-hero-below]')]
   return [...inPanel, ...rest].filter((el) => el.getClientRects().length)
 }
@@ -58,3 +58,21 @@ export function resetHeroView() {
   subs.forEach((fn) => fn())
   requestAnimationFrame(() => window.dispatchEvent(new Event(RELAYOUT_EVENT)))
 }
+
+// 재는 막대(보이지 않는다) — CSS 로 정한 높이를 px 로 읽는다. 목록 칸 맞춤(ListArea useMobileRows) · 미리보기 캐릭터 크기(PreviewModel)가 쓴다
+const probes: Record<string, HTMLDivElement> = {}
+function probe(css: string): HTMLDivElement {
+  let el = probes[css]
+  if (!el || !el.isConnected) {
+    el = document.createElement('div')
+    el.setAttribute('aria-hidden', 'true')
+    el.style.cssText = `position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;${css}`
+    document.body.appendChild(el)
+    probes[css] = el
+  }
+  return el
+}
+// 큰 화면 높이(100lvh — 툴바가 접힌, 내려 볼 때의 높이. 모르는 브라우저는 100vh)
+export const lvhProbe = () => probe('height:100vh;height:100lvh')
+// 미리보기 기본 높이(globals.css --pb-hero-base — 13 Pro 216 기준으로 화면에 맞춘다). '크게'여도 기본 보기의 높이
+export const heroBaseProbe = () => probe('height:var(--pb-hero-base)')

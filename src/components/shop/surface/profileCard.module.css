@@ -13,7 +13,7 @@
    화면 밖이면 보이는 아래 끝에 붙는다(사용자 지시 — 모바일에서 버튼이 보이지 않았다) */
 .photoTools { position: absolute; z-index: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; pointer-events: none; }
 .toolRow { position: sticky; bottom: 8px; margin: 8px; display: flex; gap: 6px; pointer-events: auto; }
-.resetBtn { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: 12px; font-weight: 600; color: light-dark(#d76d9a, #d293ae); cursor: pointer; box-shadow: 0 1px 4px light-dark(rgba(42,37,33,.12), rgba(25, 22, 20, 0.192)); opacity: .75; transition: opacity .2s cubic-bezier(.45,0,.55,1); }
+.resetBtn { height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#d76d9a, #d293ae); cursor: pointer; box-shadow: 0 1px 4px light-dark(rgba(42,37,33,.12), rgba(25, 22, 20, 0.192)); opacity: .75; transition: opacity .2s cubic-bezier(.45,0,.55,1); }
 /* 늘 누를 수 있고 늘 반투명(사용자 지시 — 사진이 비쳐 보이게): 터치 .75, 마우스 .5 · 올리면 1 */
 @media (hover: hover) and (pointer: fine) { .resetBtn { opacity: .5; } .resetBtn:hover { opacity: 1; } }
 
@@ -30,8 +30,8 @@
 .themeLine { position: absolute; inset: 5px; border: 1.5px solid; border-radius: 3px; opacity: .8; }
 
 .row { height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-.rowLabel { flex: 0 0 44px; font-size: 13px; font-weight: 500; color: light-dark(#5c534b, #b9bbc1); }
-.input { flex: 1 1 auto; min-width: 0; width: 100%; height: 34px; padding: 0 12px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: 13px; color: light-dark(#3d372f, #cacbd0); outline: none; }
+.rowLabel { flex: 0 0 44px; font-size: calc(13rem / 16); font-weight: 500; color: light-dark(#5c534b, #b9bbc1); }
+.input { flex: 1 1 auto; min-width: 0; width: 100%; height: 34px; padding: 0 12px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(13rem / 16); color: light-dark(#3d372f, #cacbd0); outline: none; }
 .input:focus { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fff, #303238); }
 .iconBtn { flex: 0 0 auto; width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#fff, #303238); color: light-dark(#a89e93, #8e919a); cursor: pointer; }
 .iconBtnOn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fef5f8, #4c3039); color: light-dark(#d76d9a, #d293ae); }
@@ -39,6 +39,6 @@
 /* 고른 이모티콘 — 글 칸과 같은 자리 · 같은 크기 */
 .emoChip { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 4px 0 6px; display: flex; align-items: center; gap: 6px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); }
 .emoImg { flex: 0 0 auto; width: 24px; height: 24px; object-fit: contain; image-rendering: pixelated; }
-.emoName { flex: 1 1 auto; min-width: 0; font-size: 12px; color: light-dark(#5c534b, #b9bbc1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.emoName { flex: 1 1 auto; min-width: 0; font-size: calc(12rem / 16); color: light-dark(#5c534b, #b9bbc1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .emoDel { flex: 0 0 auto; width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 4px; background: transparent; color: light-dark(#a89e93, #8e919a); cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .emoDel:hover { color: light-dark(#d76d9a, #d293ae); } }

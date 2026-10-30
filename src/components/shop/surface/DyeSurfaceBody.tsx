@@ -31,12 +31,12 @@ const RANGE: Record<F, [number, number]> = { h: [0, 359], s: [-99, 99], b: [-99,
 const NO_HSB: HsbParams = { h: 0, s: 0, b: 0, t: 0 } // 헤어·성형은 HSB 를 쓰지 않는다
 const DEF_PAL = (): PaletteParams => ({ baseColor: 0, mixColor: null, ratio: 50 }) // 코디 정보 탭과 같은 기본값
 
-// 보기 모델(아이템 · 기본 캐릭터 · 내 캐릭터)과 배율(1x·2x·3x) 알약 — 두 본문이 함께 쓴다.
+// 보기 모델(아이템 · 마네킹 · 내 캐릭터)과 배율(1x·2x·3x) 알약 — 두 본문이 함께 쓴다.
 // 보기 모델은 내 캐릭터가 기본이다(사용자 지시). 피부는 '아이템' 그림이 곧 피부라 목록처럼 '아이템'을 잠근다.
 // pills = 보기 모델 묶음 + 배율 묶음. PC 는 미리보기 아래 한 줄에 나란히, 모바일은 미리보기 오른쪽 세로줄 아래에 배율, 그 위에 간격을 두고 보기 모델(styles.zoomCol).
 const VIEW_MODELS: { v: ListMode; l: string }[] = [
   { v: 'sprite', l: '아이템' },
-  { v: 'model', l: '기본 캐릭터' },
+  { v: 'model', l: '마네킹' },
   { v: 'mymodel', l: '내 캐릭터' },
 ]
 function useViewPills(skin: boolean) {

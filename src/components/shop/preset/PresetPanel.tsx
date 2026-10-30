@@ -3,13 +3,14 @@
 // 프리셋 100칸(사용자 지시 — 기기에만 저장되고 공유할 때만 서버에 오른다). 카드 그림은 스크롤 칸에서 보일 즈음에만 합성 · 그린다(ui/useSeen). 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
-import { CatTabsM } from '../nav/BottomNav'
+import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Preset } from '@/lib/catalog'
-import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
+import { CARD_FIT_W_M, CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
 import { DIRS } from '../list/ListArea'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
+import { useListMinHeight } from '../list/ListArea'
 import { presetFileName } from '@/lib/canvasExport'
 import SnapThumb from '../SnapThumb'
 import { presetCard } from '@/lib/core/snapRender'
@@ -19,7 +20,7 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
 const PRESET_FRACTION = 0.38
-const PRESET_FRACTION_M = CARD_FRACTION_M // 모바일은 모든 모바일 카드와 같은 비율 · 격자(사용자 지시)
+const PRESET_FRACTION_M = 0.45 // 모바일 프리셋 카드는 한 단계 작게 — 전신이라 0.55 면 키 큰 화면(414 × 896)에서 97px 로 목록 카드보다 컸다(사용자 지적: 많이 줄인다)
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
 import { IconCheck, IconLinkCopy, IconPencil, IconImport, IconReorder, IconTrashSolid } from '../ui/Icons'
@@ -42,6 +43,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const dir = s.presetDir ?? (mobile ? 'x' : 'y')
   const across = dir === 'x'
   const boxRef = useWheelRail<HTMLDivElement>(across && !mobile)
+  useListMinHeight(boxRef, mobile) // 모바일: 코디 탭 목록처럼 붙은 미리보기 아래에 3줄이 다 들어가는 높이(ListArea useMobileRows)
   // 고른 프리셋 = 비교 중이면 비교의 주인 프리셋(사용자 지시 — 비교 중에도 프리셋 탭에서 지금 프리셋이 '선택됨'으로 보인다. 고른 비교 칸 = 그 프리셋)
   const selId = s.cmpOn ? s.cmpBack : s.selectedPreset
   const centered = useRef(false)
@@ -121,6 +123,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   if (mobile) {
     return (
       <>
+        <StickyBarM>
         <CatTabsM jump />
         <div className={styles.headerM}>
           {chip}
@@ -133,6 +136,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           </div>
         </div>
         <div className={styles.hrM} />
+        </StickyBarM>
         {/* 모바일: 코디 리스트처럼 가로 스크롤(열 단위 스냅, 스크롤바 숨김) — 2줄 × 폭에 따라 2열/3열 */}
         <div ref={boxRef} className={clsx('pb-norail', across ? styles.hscrollM : styles.vscrollM)}>{grid}</div>
       </>

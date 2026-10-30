@@ -131,6 +131,9 @@ export const GUIDE: GuideEntry[] = [
   { id: 'kind', title: '마라벨, 스라벨로 거르기', words: '마라벨, 마스터라벨, 마라벨 헤어, 마라벨 성형, 스라벨, 스페셜라벨, 일반 아이템, 캐시 아이템, 메소 아이템, 필터, 등급 필터',
     how: '맨 아래의 [코디] 탭에서\n목록 위의 [보기 설정]을 누르고, 맨 아래 [필터]에서 고르세요.\n[전체]를 고르면 전부 보여요.', go: { tab: 'codi', spot: 'listdir' },
     pc: { how: '맨 아래의 [코디] 탭에서\n왼쪽 목록 맨 위의 [보기 설정]을 누르고, 맨 아래 [필터]에서 고르세요.\n[전체]를 고르면 전부 보여요.' } },
+  { id: 'listmode', title: '목록 카드를 무엇에 입혀 볼지', words: '마네킹, 내 캐릭터, 착용샷, 입혀 보기, 아이템만 보기, 카드 보기 방식, 내 캐릭터에 입혀 보기',
+    how: '맨 아래의 [코디] 탭에서\n목록 위의 [보기 설정]을 누르고, [보기]에서 고르세요.\n[아이템]은 아이템만, [마네킹]은 마네킹에, [내 캐릭터]는 지금 코디에 입혀 보여요.', go: { tab: 'codi', spot: 'listdir' },
+    pc: { how: '맨 아래의 [코디] 탭에서\n왼쪽 목록 맨 위의 [보기 설정]을 누르고, [보기]에서 고르세요.\n[아이템]은 아이템만, [마네킹]은 마네킹에, [내 캐릭터]는 지금 코디에 입혀 보여요.' } },
   { id: 'listdir', title: '목록 넘기는 방향', words: '가로 세로, 세로로 넘기기, 위아래로 넘기기, 스크롤 방향, 목록 방향',
     how: '맨 아래의 [코디] 탭에서\n목록 위의 [보기 설정]을 누르고, [방향]에서 고르세요.', go: { tab: 'codi', spot: 'listdir' },
     pc: { how: '맨 아래의 [코디] 탭에서\n왼쪽 목록 맨 위의 [보기 설정]을 누르고, [방향]에서 고르세요.' } },
@@ -260,7 +263,12 @@ function reveal(el: HTMLElement) {
     if (pr.bottom > 0 && pr.top < window.innerHeight) return
     r = pr
   }
-  if (r.top < 0 || r.bottom > window.innerHeight) window.scrollBy({ top: r.top - (window.innerHeight - Math.min(r.height, window.innerHeight)) / 2, behavior: 'smooth' })
+  // 모바일 미리보기(히어로) · 머리 묶음(data-sticky-top)은 화면 위에 붙어 있다 — 그 아래가 보이는 자리다(그 안의 것은 그대로)
+  const sticky = (h: HTMLElement) => getComputedStyle(h).position !== 'static' && getComputedStyle(h).position !== 'relative'
+  const stuck = [...document.querySelectorAll<HTMLElement>('[data-app-header], [data-hero], [data-sticky-top]')].filter((h) => !h.contains(el) && sticky(h))
+  const top = stuck.reduce((n, h) => Math.max(n, h.getBoundingClientRect().bottom), 0)
+  const room = window.innerHeight - top
+  if (r.top < top || r.bottom > window.innerHeight) window.scrollBy({ top: r.top - top - (room - Math.min(r.height, room)) / 2, behavior: 'smooth' })
 }
 
 // 도착한 화면에서 그 요소(data-guide)를 잠깐 테두리로 가리킨다. 입력칸이면 커서를 둔다. 보이는 것 하나만.

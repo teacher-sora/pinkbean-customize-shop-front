@@ -37,6 +37,9 @@ export function computeModelPlacement(a: {
   snap?: boolean      // 배율을 가장 가까운 정수로 스냅(도트 완전 선명; 크기는 살짝 이산적)
   scale?: number      // 디바이스 배율을 직접 지정(연출 배율 단계별 정수 — zoomStepScale). 주면 fraction/zoom/snap 무시
   drop?: boolean      // 캐릭터를 살짝 아래로(아래 MODEL_DROP 설명). 화면에 보여 주는 모델 캔버스만 켠다.
+  // snap 뒤 한 단계 올리기(모바일 카드 — shopData.CARD_LIFT_M): 마네킹이 칸 높이의 min 보다 작고, 한 단계 위가 칸 높이의 max · 폭 상한 maxW(px) 안이면 +1.
+  // 정수 배율은 기기 배율 2 에서 32 → 64px 로 뛰어, 작은 화면(SE 2 · 3 그림 칸 77px)에서 반올림이 32px 쪽으로 떨어져 마네킹이 칸의 절반도 안 됐다
+  lift?: { min: number; max: number; maxW: number }
 }): ModelPlacement {
   const zoom = a.zoomMult ?? 1
   const cx = a.centerDx ?? MODEL_REF.centerDx
@@ -51,6 +54,10 @@ export function computeModelPlacement(a: {
   // snap=true 면 정수 배율로 스냅 → nearest 확대가 완벽히 선명(모든 카드 동일 배율, 화면 크기별로만 살짝 다름).
   let scale = Math.max(0.01, (a.fraction * zoom * a.divH * a.dpr) / MODEL_REF.bodyRefH)
   if (a.snap) scale = Math.max(1, Math.round(scale))
+  if (a.snap && a.lift) {
+    const h = (sc: number) => (sc * MODEL_REF.bodyRefH) / a.dpr
+    if (h(scale) < a.lift.min * a.divH && h(scale + 1) <= Math.min(a.lift.max * a.divH, a.lift.maxW)) scale += 1
+  }
   if (a.scale) scale = a.scale
   // box*scale = 캔버스 디바이스 해상도(1:1 표시로 선명).
   const box = { w: canvasDevW / scale, h: canvasDevH / scale }

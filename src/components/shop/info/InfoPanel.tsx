@@ -3,7 +3,8 @@
 // 코디 정보 · 염색. 18부위 행 그리드. 부위를 누르면 염색/점 위치 서피스를 연다(PC 는 가운데 다이얼로그, 모바일은 바텀 시트).
 
 import clsx from 'clsx'
-import { CatTabsM } from '../nav/BottomNav'
+import { CatTabsM, StickyBarM } from '../nav/BottomNav'
+import { useListMinHeight } from '../list/ListArea'
 import { useEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import type { HsbParams } from '@/lib/core/dye'
@@ -69,6 +70,8 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
 
   // 부위 그리드 열 = min(최대 열, 150px 카드가 들어가는 수)
   const slotsRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useListMinHeight(scrollRef, mobile) // 모바일: 목록 화면과 같은 칸 높이 · 페이지 높이(ListArea useMobileRows)
   const [infoW, setInfoW] = useState(0)
   useEffect(() => {
     const el = slotsRef.current; if (!el) return
@@ -163,10 +166,14 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   if (mobile) {
     return (
       <>
-        <CatTabsM jump />
-        <div className={styles.headerM}>{chip}<div className={styles.right}>{share}</div></div>
-        <div className={styles.hrM} />
-        <div className={clsx('pb-scroll', 'pb-norail', 'pb-fade', styles.scrollM)}>
+        <StickyBarM>
+          <CatTabsM jump />
+          <div className={styles.headerM}>{chip}<div className={styles.right}>{share}</div></div>
+          <div className={styles.hrM} />
+        </StickyBarM>
+        {/* 칸 안 스크롤 — 목록 화면과 같다(사용자 지시): 페이지는 맨 위 헤더 높이만큼만 내려가고, 부위 칸은 이 칸 안에서 스크롤한다.
+            칸 높이 = 헤더만큼 내렸을 때 미리보기 + 머리 묶음 아래 화면 끝까지(ListArea useMobileRows), 끝에 닿으면 페이지가 이어서 스크롤한다 */}
+        <div ref={scrollRef} className={clsx('pb-scroll', 'pb-norail', styles.scrollM)}>
           <div ref={slotsRef}>{grid}</div>
         </div>
       </>

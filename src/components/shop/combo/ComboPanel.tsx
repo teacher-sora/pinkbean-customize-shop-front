@@ -19,10 +19,12 @@ import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
-import { CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, type FilterGroup } from '../list/ListArea'
+import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, usePagerY, type FilterGroup } from '../list/ListArea'
+import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
+import { fitAboveKeyboard } from '@/lib/keyboard'
 import { ChipAct } from '../ui/ChipAct'
 import { IconChevronLeft, IconChevronRight, IconDrop, IconSearch, IconTakeDown } from '../ui/Icons'
 import list from '../list/list.module.css'
@@ -33,20 +35,9 @@ import styles from './combo.module.css'
 const FRACTION = 0.4, FRACTION_M = CARD_FRACTION_M // 모바일은 모든 모바일 카드와 같은 비율
 const FIT_W = 0.55 // 카드 그림(PC): 캐릭터 높이 ≤ 칸 폭 × 0.55 — 칸이 좁고 길면 1배, 폭이 넉넉할 때만 2배(SnapThumb fitW).
 // 모바일은 걸지 않는다 — 코디 탭 목록 카드와 같은 크기로 보이게(사용자 지시, 기기 픽셀 기준 정수 배율이라 옆이 잘릴 만큼 뛰지 않는다)
-// 모바일 카드 최소 높이 = 폭 × 목록 카드 그림 칸 비율(CARD_RATIO_M) — 캐릭터가 코디 탭 목록과 같은 크기가 된다
+// 모바일 목록 칸 = 코디 탭 목록과 같은 맞춤(붙은 미리보기 아래에 3줄) · 같은 바닥 비율(CARD_RATIO_M — ListArea useMobileRows)
 const mobileRatio = (cols: number) => (cols >= 3 ? CARD_RATIO_M : 1.05)
-// 모바일에서 목록 칸 밖에 코디 룩북만 더 있는 줄(자주 쓴 염색 묶음 · 구분선 · 출처 줄 — data-combo-extra)의 높이. 코디 광장의 다른 분류가 이만큼
-// 페이지를 더 잡아 분류를 바꿔도 아래가 밀리지 않는다(사용자 지시, PlazaPanel). 패널이 그려지면 잰 값으로 바꾼다(처음 값 = 실측 — 염색 묶음 82 + 위아래 여백 16 + 구분선 1 + 출처 위 구분선 1 + 출처 줄 26)
-let extraM = 126
-export const comboExtraM = () => extraM
-function useExtraM(ref: React.RefObject<HTMLDivElement | null>, mobile: boolean) {
-  useLayoutEffect(() => {
-    const col = ref.current?.closest('[data-mobile-col]')
-    if (!mobile || !col) return
-    const h = [...col.querySelectorAll<HTMLElement>('[data-combo-extra]')].reduce((n, el) => { const cs = getComputedStyle(el); return n + el.getBoundingClientRect().height + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom) }, 0)
-    if (h > 0) extraM = Math.round(h)
-  })
-}
+const mobileFoot = (cols: number) => (cols >= 3 ? CARD_FOOT_M : 0)
 
 export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'codi' | 'plaza' }) {
   const s = useShop()
@@ -72,8 +63,10 @@ export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'c
   // 머리는 패널이 **한 번만** 그린다 — 목록 · 빈 화면 · 상세는 그 아래 내용만 바꾼다. 그래서 목록 ↔ 상세를 오가도 아이템 칩(그림 캔버스)이 같은 자리에
   // 그대로 남아 다시 그려지지 않는다(사용자 지적 — 상세로 넘어갈 때 칩 그림이 움찔했다. 화면마다 머리를 따로 그리면 칩이 새로 붙는다)
   const head = <><ComboHead item={item} mobile={mobile} host={host} detail={item ? detail : null} onBack={() => setDetail(null)} /><div className={mobile ? list.hrM : list.hr} /></>
+  // 모바일 머리([←] · 아이템 · 보기 설정 · 쪽 — 광장은 분류 줄까지)는 다른 탭의 머리처럼 붙은 미리보기 아래에 붙고, 내리는 동안 숨는다(StickyBarM)
+  const headM = <StickyBarM>{host === 'plaza' && <PlazaTabsM />}{head}</StickyBarM>
   // 열고 닫기 · 상세 오가기 · 탭 오가기 모두 움직임 없이 바로 바뀐다(사용자 지시 — 탭을 바꾸듯)
-  if (mobile) return <>{head}{body}</>
+  if (mobile) return <>{headM}{body}</>
   return <section className={list.panel}>{head}{body}</section>
 }
 
@@ -133,6 +126,10 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
   // 결과 줄에 120ms 머물거나 닿는 순간 그 아이템의 첫 쪽을 받아 둔다(목록 카드의 '코디' 칩과 같은 warmCombo)
   const hover = useRef(0)
   useEffect(() => () => window.clearTimeout(hover.current), [])
+  // 휴대폰: 고르기 칸 높이를 지금 보이는 화면(가상 키패드 위)까지로 — lib/keyboard(키패드는 화면을 덮기만 한다)
+  const popRef = useRef<HTMLDivElement | null>(null)
+  const showing = open && !!q.trim()
+  useLayoutEffect(() => (mobile && showing ? fitAboveKeyboard(popRef) : undefined), [mobile, showing])
   return (
     <div className={mobile ? list.searchWrapM : clsx(list.searchWrap, narrow && list.searchWrapNarrow)}>
       <IconSearch className={mobile ? list.searchIconM : list.searchIcon} />
@@ -140,7 +137,7 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
         onKeyDown={(e) => { if (e.key === 'Enter' && hits[0]) pick(hits[0].it); if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
         placeholder={now ? now.name || now.id : '아이템 이름으로 찾기'} aria-label="아이템 찾기" className={clsx('pb-input', mobile ? list.searchInputM : list.searchInput)} />
       {open && q.trim() && (
-        <div className={styles.finderPop} role="listbox">
+        <div ref={popRef} className={clsx('pb-scroll', styles.finderPop, mobile && styles.finderPopM)} role="listbox">
           {hits.length ? hits.map(({ it, n }) => (
             <button key={it.id} type="button" role="option" aria-selected={false} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(it)} className={styles.finderRow}
               onPointerEnter={(e) => { if (e.pointerType !== 'mouse') return; window.clearTimeout(hover.current); hover.current = window.setTimeout(() => s.warmCombo(it.id), 120) }}
@@ -166,13 +163,12 @@ function useCountsMap(): Record<string, number> {
 // 자주 쓴 염색 묶음 자리(보이지 않는 같은 칸) + 목록과 같은 최소 높이(useMobileRows)
 function ComboEmpty({ mobile }: { mobile: boolean }) {
   const vpRef = useRef<HTMLDivElement | null>(null)
-  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), MOBILE_GRID.rows, true) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 목록과 같은 4열)
-  useExtraM(vpRef, mobile)
+  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), MOBILE_GRID.rows, true, mobileFoot(MOBILE_GRID.cols)) // 고른 뒤와 같은 격자(코디 룩북 모바일 = 목록과 같은 3열 3줄)
   return (
     <>
       {mobile && <>
-        <div aria-hidden data-combo-extra className={clsx(styles.dyes, styles.dyesM, styles.hold)} style={{ '--dye-n': 3 } as React.CSSProperties}><DyeSkels n={3} mobile /></div>
-        <div aria-hidden data-combo-extra className={clsx(styles.dyesSep, styles.dyesSepM, styles.hold)} />
+        <div aria-hidden className={clsx(styles.dyes, styles.dyesM, styles.hold)} style={{ '--dye-n': 3 } as React.CSSProperties}><DyeSkels n={3} mobile /></div>
+        <div aria-hidden className={clsx(styles.dyesSep, styles.dyesSepM, styles.hold)} />
       </>}
       <div ref={vpRef} className={clsx(list.viewport, mobile && list.viewportM, styles.emptyWrap)}>{/* 모바일 목록 칸과 같은 좌우 여백 — 최소 높이를 같은 칸 폭으로 잰다 */}
         <div className={mobile ? list.emptyM : list.empty}>
@@ -190,8 +186,8 @@ function Credit({ mobile, hint }: { mobile: boolean; hint?: string }) {
   // 모바일은 목록과 출처 사이를 구분선으로 가른다(PC 는 힌트 바의 윗선)
   return (
     <>
-      {mobile && <div data-combo-extra className={list.hrM} />}
-      <div data-combo-extra={mobile || undefined} className={clsx(mobile ? styles.creditM : clsx('pb-hintbar', list.hintBar), styles.credit)}>
+      {mobile && <div className={list.hrM} />}
+      <div className={clsx(mobile ? styles.creditM : clsx('pb-hintbar', list.hintBar), styles.credit)}>
         {hint && !mobile && <span className={list.hintText}>{hint}</span>}
         <span className={list.hintText}>{NEXON_CREDIT}</span>
       </div>
@@ -237,9 +233,10 @@ function ComboHead({ item, mobile, host, detail, onBack }: { item: ListItem | nu
   if (mobile) {
     return (
       <div className={list.controlsM}>
-        <HeadItem item={item} mobile host={host} onBack={back} />
-        {detail ? <DetailActs row={detail} mobile /> : <>
+        {/* 목록: [보기 설정] 오른쪽에 아이템 칩(사용자 지시 — 코디 탭 목록처럼 보기 설정이 맨 앞). 상세: [←] · 아이템 칩이 왼쪽, 두 버튼이 오른쪽 */}
+        {detail ? <><HeadItem item={item} mobile host={host} onBack={back} /><DetailActs row={detail} mobile /></> : <>
           <FilterM mobile groups={filterGroups} />
+          <HeadItem item={item} mobile host={host} onBack={back} />
           {pageChip}
           {finder}
         </>}
@@ -344,14 +341,13 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const vpRef = useRef<HTMLDivElement | null>(null)
   const bindVp = s.bindVp
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
-  // 모바일은 늘 두 줄 이상(사용자 지시 — 빠른 파악). 칸이 모자라면 목록처럼 페이지를 늘려 화면 스크롤로 흡수한다(같은 훅). 2열(광장)은 카드가 넓어 낮게 잡는다
-  useMobileRows(vpRef, mobile, cols, mobileRatio(cols), MOBILE_GRID.rows, true)
-  useExtraM(vpRef, mobile)
+  // 모바일은 목록과 같은 높이 규칙(같은 훅). 2열(광장)은 카드가 넓어 바닥을 낮게 잡는다
+  useMobileRows(vpRef, mobile, cols, mobileRatio(cols), MOBILE_GRID.rows, true, mobileFoot(cols))
   const live = useRef({ idx: cur, setIdx: s.setIdx, cols, rows })
   live.current = { idx: cur, setIdx: s.setIdx, cols, rows }
   useEffect(() => {
     const vp = vpRef.current
-    if (!mobile || !vp) return
+    if (!mobile || !vp || dirY) return // 세로는 ListArea usePagerY
     let raf = 0
     const onScroll = () => {
       if (raf) return
@@ -369,7 +365,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const scrolledOnce = useRef(false)
   useLayoutEffect(() => {
     const vp = vpRef.current
-    if (!mobile || !vp) return
+    if (!mobile || !vp || dirY) return
     const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
     const jump = lastKey.current !== scrollKey || !scrolledOnce.current
     lastKey.current = scrollKey
@@ -390,6 +386,7 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
     go()
     return () => { if (raf) cancelAnimationFrame(raf) }
   }, [mobile, cur, scrollKey, pageCount, dirY, cols, rows])
+  usePagerY(vpRef, mobile && dirY, cur, s.setIdx, pageCount, scrollKey, rows)
 
   // 자주 쓴 염색: 받기 전에는 같은 칸 수의 스켈레톤으로 자리를 잡아 둔다(받은 뒤 목록이 밀리지 않게 — 표본에 있는 아이템은 거의 다 염색 기록이 있다)
   const dyes = dyes0 ?? []
@@ -404,6 +401,10 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
       : Array.from({ length: Math.min(per, Math.max(0, (total ?? per) - p * per)) }, (_, i) => <div key={i} className={clsx('pb-skel', list.skel, mobile && list.skelM)} />)
   }
 
+  // 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다).
+  // 염색 줄 · 출처 줄은 넘기는 방향과 상관없이 목록 칸 밖에 그대로 있다 — 세로에서도 칸 안에서는 프리셋 목록만 스크롤한다(사용자 지시, PC 와 같다)
+  const dyeRow = (dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>
+  const credit = <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
   const viewport = (
     <div ref={setVp} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
       {failed || (first && !first.ready) ? (
@@ -417,13 +418,13 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
           <span className={mobile ? list.emptyHintM : list.emptyHint}>{dye == null ? '표본에 아직 없는 아이템이에요.' : '고른 염색 칩을 다시 누르면 전체 코디로 돌아가요.'}</span>
         </div>
       ) : (
-        <div ref={mobile ? undefined : s.bindTrack} className={list.track}
+        <div ref={mobile ? undefined : s.bindTrack} data-pb-pages className={list.track}
           style={mobile
-            ? (dirY ? { height: `calc(${pageCount} * 100cqh)` } : { width: `calc(${pageCount} * 100cqw)` })
+            ? (dirY ? { height: `calc(${pageCount} * var(--pb-page-h))` } : { width: `calc(${pageCount} * 100cqw)` })
             : { transform: `${dirY ? 'translateY' : 'translateX'}(${-cur * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
           {pages.map((p) => (
             <div key={p} className={clsx('pb-page', mobile ? (dirY ? list.pageMY : list.pageM) : list.page)}
-              style={dirY ? { top: mobile ? `calc(${p} * 100cqh)` : `${p * 100}%` } : { left: mobile ? `calc(${p} * 100cqw)` : `${p * 100}%` }}>
+              style={dirY ? { top: mobile ? `calc(${p} * var(--pb-page-h))` : `${p * 100}%` } : { left: mobile ? `calc(${p} * 100cqw)` : `${p * 100}%` }}>
               {(!s.snapping || p === cur || Math.abs(p - s.snapFrom) <= 1) && (
                 <div className={list.grid} style={gridStyle}>{cards(p)}</div>
               )}
@@ -436,10 +437,9 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
 
   return (
     <>
-      {/* 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다) */}
-      {(dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div data-combo-extra className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>}
+      {dyeRow}
       {viewport}
-      <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
+      {credit}
     </>
   )
 }
@@ -459,7 +459,7 @@ function DyeRow({ item, dyes, mobile }: { item: ListItem; dyes: LookDye[]; mobil
   const openDye = (d: LookDye) => s.openDye(item, d.kind === 'palette' ? { pal: d.v } : { hsb: d.v })
   return (
     // 묶음(바탕 · 테두리 · 안쪽 여백)이 곧 가로 스크롤 칸이다 — 흐림이 칩이 아니라 묶음의 끝(안쪽 여백까지)에 붙는다(pinkbean-design: 칸의 안쪽 여백까지 덮는다, 염색 보관함과 같다)
-    <div ref={rail} data-combo-extra className={clsx('pb-norail', 'pb-fade', styles.dyes, mobile && styles.dyesM)} style={{ '--dye-n': n } as React.CSSProperties}>
+    <div ref={rail} className={clsx('pb-norail', 'pb-fade', styles.dyes, mobile && styles.dyesM)} style={{ '--dye-n': n } as React.CSSProperties}>
         {!dyes.length && <DyeSkels n={n} mobile={mobile} />}
         {dyes.map((d, i) => {
           const on = s.comboDye === i

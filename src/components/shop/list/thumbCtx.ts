@@ -1,7 +1,7 @@
 'use client'
 
 // 카드 썸네일(ItemThumb) 배경 컨텍스트.
-//  · 기본 캐릭터(model) = 맨 마네킹(엘프 피부 고정) / 내 캐릭터(mymodel) = 내 착용(해당 슬롯 제외) + 염색 + 이펙트 + 형상변이·귀
+//  · 마네킹(model) = 맨 마네킹(엘프 피부 고정) / 내 캐릭터(mymodel) = 내 착용(해당 슬롯 제외) + 염색 + 이펙트 + 형상변이·귀
 //  · 표정 얼굴장식은 맨 마네킹에 올려도 안 보여 '내 캐릭터'로 승격한다.
 
 import { useEffect, useRef, useState } from 'react'
@@ -14,7 +14,7 @@ import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 
 type Tones = { base: { tones: { tone: number; body: string; head: string; name?: string }[]; default: number } }
 // 컬러라인 피부의 라인 염색(dyeHsb.skin)을 몸 · 머리 그림에 굽는다 — 미리보기(PreviewModel) · 프리셋 카드(snapRender)와 같은 규칙.
-// '내 캐릭터' 배경만(기본 캐릭터는 엘프 피부 고정). 빠져 있어 내 캐릭터 카드에서 피부 염색이 안 보였다(사용자 지적)
+// '내 캐릭터' 배경만(마네킹은 엘프 피부 고정). 빠져 있어 내 캐릭터 카드에서 피부 염색이 안 보였다(사용자 지적)
 async function bakeSkinDye(ov: Map<string, HTMLCanvasElement>, metas: (ItemMeta | undefined)[], view: Parameters<typeof getFrameLayers>[1], hsb: Record<string, HsbParams>, toneName: string | undefined) {
   const h = hsb['skin'], fam = skinDyeFamily(toneName)
   if (!h || !(h.h || h.s || h.b) || fam == null) return
@@ -41,7 +41,7 @@ function useAnimaRaces() {
 }
 
 export type ThumbApi = {
-  mode: ListMode                          // 실효 보기 방식(피부 부위의 '아이템'은 '기본 캐릭터'로 대체)
+  mode: ListMode                          // 실효 보기 방식(피부 부위의 '아이템'은 '마네킹'으로 대체)
   noSprite: 'skin' | null                 // '아이템' 보기를 지원하지 않는 부위
   effMode: (it: ListItem) => ListMode
   ctxFor: (it: ListItem) => ThumbCtx
@@ -53,7 +53,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
   const isAll = s.activeCat === 'all'
   const mixedCat = isMultiCat(s.activeCat) // 전체·신규·즐겨찾기 = 여러 부위가 섞인 리스트(활성 슬롯 없음, 아이템 자신의 슬롯으로 판단)
   const isSkinCat = s.activeCat === 'skin'
-  // 피부는 스프라이트=모델이라 '아이템' 보기 무의미 → 잠그고 '기본 캐릭터'로 대체.
+  // 피부는 스프라이트=모델이라 '아이템' 보기 무의미 → 잠그고 '마네킹'으로 대체.
   // 헤어의 '아이템' 보기 = 몸 없이 모든 파츠를 합성한 스프라이트(염색표·북마크와 동일, ItemThumb).
   const noSprite = isSkinCat ? 'skin' : null
   const mode: ListMode = noSprite && s.listMode === 'sprite' ? 'model' : s.listMode
@@ -66,14 +66,14 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
   const animaRaces = useAnimaRaces()
   const activeSlotForExpr = mixedCat ? null : CAT_TO_SLOT[s.activeCat]
   // 배경(내 착용)에 구워질 표정. 활성 슬롯의 아이템은 배경에서 빠지므로(후보로 대체됨) 여기서도 제외한다.
-  // '내 캐릭터'는 연출 설정 표정(pv.expr)을 따라간다(표정 얼굴장식이 있으면 그게 우선). '기본 캐릭터'는 THUMB_VIEW 'default'.
+  // '내 캐릭터'는 연출 설정 표정(pv.expr)을 따라간다(표정 얼굴장식이 있으면 그게 우선). '마네킹'은 THUMB_VIEW 'default'.
   const ctxExpr = fixedExpr(
     mode === 'mymodel'
       ? Object.entries(s.equipped).filter(([sl]) => sl !== activeSlotForExpr && !s.hidden[sl]).map(([, it]) => it)
       : [],
     mode === 'mymodel' ? s.pv.expr : THUMB_VIEW.expression,
   )
-  // 표정 얼굴장식은 '기본 캐릭터'에 올리면 안 보여서 '내 캐릭터'로 승격 → 그 카드용 내 착용 배경(myCtx)을 하나 더 만든다.
+  // 표정 얼굴장식은 '마네킹'에 올리면 안 보여서 '내 캐릭터'로 승격 → 그 카드용 내 착용 배경(myCtx)을 하나 더 만든다.
   const needMy = mode === 'model' && list.some(hasFixedExpr)
   const [ctx, setCtx] = useState<ThumbCtx>(EMPTY)
   const [myCtx, setMyCtx] = useState<ThumbCtx>(EMPTY)
@@ -82,7 +82,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
     const idx = s.index
     if ((mode === 'sprite' && !spritePromote) || !idx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx(EMPTY); setMyCtx(EMPTY) } return }
     let alive = true
-    // 기본 캐릭터 = 엘프 피부 고정, 내 캐릭터 = 현재 피부.
+    // 마네킹 = 엘프 피부 고정, 내 캐릭터 = 현재 피부.
     const elf = toneIds(idx, DEFAULT_TONE), mine = toneIds(idx, s.tone)
     const activeSlot = mixedCat ? null : CAT_TO_SLOT[s.activeCat] // 전체·즐겨찾기는 제외할 활성 슬롯이 없다
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && !s.hidden[sl]) as [string, ListItem][]
@@ -147,14 +147,14 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
 export function useSearchThumbs(list: ListItem[]): ThumbApi {
   const s = useShop()
   const gaze = s.pv.gaze
-  const tv = thumbView(gaze, undefined, undefined, s.pv.weapon) // base(기본 캐릭터): 무기모션만, 귀/형상변이 ✗
+  const tv = thumbView(gaze, undefined, undefined, s.pv.weapon) // base(마네킹): 무기모션만, 귀/형상변이 ✗
   const animaRaces = useAnimaRaces()
   const mode = s.listMode
   const needMy = mode === 'model' && list.some((it) => !!it.fixedEmotion)
   const effMode = (it: ListItem): ListMode =>
     forceMyModel(mode, it) ? 'mymodel' : mode
 
-  // 기본 캐릭터(body+head, 현재 톤) + 내 캐릭터는 슬롯별(내 착용 − 그 슬롯)
+  // 마네킹(body+head, 현재 톤) + 내 캐릭터는 슬롯별(내 착용 − 그 슬롯)
   const [ctx, setCtx] = useState<{ base: ThumbCtx; bySlot: Record<string, ThumbCtx> }>({ base: EMPTY, bySlot: {} })
   const ctxKeyRef = useRef('')
   useEffect(() => {
@@ -162,7 +162,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
     const needCtx = !!idx && list.length > 0 && mode !== 'sprite'
     if (!needCtx) { if (ctxKeyRef.current) { ctxKeyRef.current = ''; setCtx({ base: EMPTY, bySlot: {} }) } return }
     let alive = true
-    const elf = toneIds(idx!, DEFAULT_TONE), mine = toneIds(idx!, s.tone) // 기본 캐릭터 = 엘프 피부, 내 캐릭터 = 현재 피부
+    const elf = toneIds(idx!, DEFAULT_TONE), mine = toneIds(idx!, s.tone) // 마네킹 = 엘프 피부, 내 캐릭터 = 현재 피부
     const slotsInList = Array.from(new Set(list.map((it) => it.slot)))
     const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl]) as [string, ListItem][]
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
