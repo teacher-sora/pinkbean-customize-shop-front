@@ -260,8 +260,7 @@ function reveal(el: HTMLElement) {
     if (pr.bottom > 0 && pr.top < window.innerHeight) return
     r = pr
   }
-  // 모바일 맨 위 헤더 · 미리보기(히어로) · 머리 묶음(data-sticky-top — 붙는 틀 안의 내용)은 화면 위에 붙어 있다 — 그 아래가 보이는 자리다(그 안의 것은 그대로).
-  // 스크롤한 만큼 숨어 있으면 그만큼 위로 올라가 있어 아래 끝이 그대로 맞다(lib/scrollHide)
+  // 모바일 미리보기(히어로) · 머리 묶음(data-sticky-top)은 화면 위에 붙어 있다 — 그 아래가 보이는 자리다(그 안의 것은 그대로)
   const sticky = (h: HTMLElement) => getComputedStyle(h).position !== 'static' && getComputedStyle(h).position !== 'relative'
   const stuck = [...document.querySelectorAll<HTMLElement>('[data-app-header], [data-hero], [data-sticky-top]')].filter((h) => !h.contains(el) && sticky(h))
   const top = stuck.reduce((n, h) => Math.max(n, h.getBoundingClientRect().bottom), 0)
