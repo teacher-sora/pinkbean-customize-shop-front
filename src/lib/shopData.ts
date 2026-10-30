@@ -230,7 +230,7 @@ export const forceMyModel = (mode: string, it: ListItem): boolean => mode === 'm
 //   · 비비드 컬러: 전부 파랑 100%                                                   → 파랑(5)
 //   · 좀비: (141,217,207) 등 청록 81%(피부 전체)                                    → 청록(4)
 //   · 삼색 냥이: (255,187,51) 등 노랑 42%(무늬)                                     → 노랑(2)
-//   · 홍조 피치: 빨강 29% 뿐 — 기본 피부(엘프 빨강 39%)와 같은 구조라 포인트 색이 없다 → 빨강(1, 피부 음영)
+//   · 홍조 피치: 빨강 29% 뿐 — 엘프 피부(빨강 39%)와 같은 구조라 포인트 색이 없다 → 빨강(1, 피부 음영)
 // 인게임 확인(메애기 드레스룸): 비비드·블루 팬더·컬러라인 2종이 명도에 따라 변한다 = 실측대로 모두 파랑 계열이다.
 const SKIN_DYE_FAMILY: [RegExp, number][] = [
   [/컬러라인/, 5], [/비비드/, 5], [/블루\s*팬더/, 5],
@@ -245,8 +245,9 @@ export const isDyeableSkin = (name?: string): boolean => skinDyeFamily(name) !==
 
 // 초기 진입 시 기본 착용(빈 모델 방지). 슬롯 리스트를 미로드해도 되도록 최소 ListItem 으로 하드코딩.
 // 헤어/성형은 검정 대표(color 0) id. 실제 부위 리스트를 열면 folded 대표와 id가 일치해 선택 표시됨.
-export const DEFAULT_TONE = 12 // 엘프 피부
-// 그릴 때 쓰는 피부 — 피부를 가리면(hidden.skin) 엘프 피부로 그린다. 고른 피부(tone)는 그대로 남아 다시 보이면 돌아온다
+export const DEFAULT_TONE = 15 // 뽀송 꽃잎 피부(기본 피부 — 새 프리셋 · 초기화 · 마네킹 · 가린 피부가 모두 이것이다)
+export const ELF_TONE = 12 // 예전 기본 피부 — 손대지 않은 저장 프리셋을 옮길 때만 쓴다(ShopContext migrateLegacyDefault)
+// 그릴 때 쓰는 피부 — 피부를 가리면(hidden.skin) 기본 피부로 그린다. 고른 피부(tone)는 그대로 남아 다시 보이면 돌아온다
 export const viewTone = (tone: number, hidden?: Record<string, boolean>) => (hidden?.skin ? DEFAULT_TONE : tone)
 export const DEFAULT_EQUIP: Record<string, ListItem> = {
   hair: { id: '00071540', slot: 'hair', isCash: false, grade: 'none', islot: null, vslot: null, dyeMode: 'palette', colorGroup: 7154, color: 0, name: '밤의 레아 헤어 (여)', actions: [] },

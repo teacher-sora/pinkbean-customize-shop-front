@@ -25,7 +25,7 @@ import { heroBaseProbe, useHeroView } from '@/lib/heroView'
 import { bindImageMenu, type GifMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
-import { MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, viewTone, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, ZOOM_WORLD_M, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
+import { DEFAULT_TONE, MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, viewTone, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, ZOOM_WORLD_M, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
 import { peekSavedZoom, useShop, type DotOffsets } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import { useIsoLayoutEffect } from '@/lib/uiState'
@@ -127,7 +127,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   useIsoLayoutEffect(() => { measureRef.current() }, [cmp?.fraction])
 
   const toneEntry = index
-    ? index.base.tones.find((t) => t.tone === tone) || index.base.tones.find((t) => t.tone === index.base.default) || index.base.tones[0]
+    ? index.base.tones.find((t) => t.tone === tone) || index.base.tones.find((t) => t.tone === DEFAULT_TONE) || index.base.tones[0]
     : null
   const bodyId = toneEntry?.body
   const headId = toneEntry?.head

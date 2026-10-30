@@ -31,7 +31,7 @@ import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaH
 import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, viewTone, SLOT_TO_CAT, THUMB_VIEW, ITEM_KINDS, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, ELF_TONE, EQUIP_SLOTS, viewTone, SLOT_TO_CAT, THUMB_VIEW, ITEM_KINDS, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, presetCard, snapKey } from '@/lib/core/snapRender'
 import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -111,7 +111,7 @@ function copyAsyncText(make: () => Promise<string>): Promise<void> {
   return make().then((t) => navigator.clipboard?.writeText(t)).then(() => {}).catch(() => {})
 }
 
-// ── 프리셋: 100칸, 초깃값은 코디 기본(밤의 레아 헤어·운명의 인도자 얼굴·엘프 피부·금단의 계약). localStorage 영속(서버 없음). ──
+// ── 프리셋: 100칸, 초깃값은 코디 기본(밤의 레아 헤어·운명의 인도자 얼굴·뽀송 꽃잎 피부·금단의 계약). localStorage 영속(서버 없음). ──
 // 칸 id 는 'd0'…'d99' 다. 칸 수를 늘려도 앞 칸의 id 는 그대로이고,
 // 복원은 저장소에 있는 칸만 읽어 오므로(아래 PRESET_IDS.forEach) 기존 코디·이름은 손대지 않는다. 새 칸만 기본값으로 생긴다.
 const PRESET_COUNT = 100 // 사용자 지시(30 → 100). 기기의 localStorage 에만 있고 서버에 오르지 않는다(공유 · 광장 등록 때만)
@@ -147,12 +147,12 @@ const DEFAULT_CORE_KEY = snapCoreKey(defaultSnapshot())
 // 사용자가 한 번이라도 꾸민 스냅샷인가(기본 코디 그대로면 false) — 광장 등록에서 올릴 프리셋만 추리는 데 쓴다.
 export const isCustomSnapshot = (s: Snapshot) => snapCoreKey(s) !== DEFAULT_CORE_KEY
 // 대회 '같은 조합' 판정은 lib/plazaLook.ts(정규화·DB 안전망 규칙) + lib/plazaLookPixels.ts(결과 픽셀 비교) — DB 는 0009.
-// 이전 기본 헤어(녹셀 헤어 (여) 00071400) 그대로 손대지 않은 저장 프리셋 → 새 기본값(밤의 레아 헤어)으로 이관.
+// 예전 기본 코디(녹셀 헤어 (여) 00071400 · 밤의 레아 헤어 + 엘프 피부) 그대로 손대지 않은 저장 프리셋 → 지금 기본값(밤의 레아 헤어 + 뽀송 꽃잎 피부)으로 이관.
 // 조금이라도 바꾼 프리셋(다른 착용·염색·숨김·점 위치)은 사용자 코디라 건드리지 않는다.
 // ★ 이관은 **저장소당 한 번만**(v < PRESET_STORE_V 일 때). 매 로드마다 돌리면 기본 코디에 녹셀 헤어만 입힌
-//   코디(정당한 사용자 코디)가 새로고침할 때마다 레아 헤어로 되돌아간다.
-const LEGACY_DEFAULT_CORE_KEY = (() => { const d = defaultSnapshot(); return snapCoreKey({ ...d, equipped: { ...d.equipped, hair: '00071400' } }) })()
-const migrateLegacyDefault = (s: Snapshot): Snapshot => (snapCoreKey(s) === LEGACY_DEFAULT_CORE_KEY ? { ...s, equipped: defaultSnapshot().equipped } : s)
+//   코디(정당한 사용자 코디)가 새로고침할 때마다 기본값으로 되돌아간다. 기본값을 또 바꾸면 PRESET_STORE_V 를 올린다.
+const LEGACY_DEFAULT_CORE_KEYS = (() => { const d = defaultSnapshot(); return new Set(['00071400', d.equipped.hair].map((hair) => snapCoreKey({ ...d, tone: ELF_TONE, equipped: { ...d.equipped, hair } }))) })()
+const migrateLegacyDefault = (s: Snapshot): Snapshot => { if (!LEGACY_DEFAULT_CORE_KEYS.has(snapCoreKey(s))) return s; const d = defaultSnapshot(); return { ...s, equipped: d.equipped, tone: d.tone } }
 const PRESET_KEY = 'pb_presets_v1'
 // 쪽 위치 기억(pageByCat)에서 prefix 로 시작하는 칸을 뺀다(없으면 같은 객체 — 다시 그리지 않는다)
 const dropPages = (s: Record<string, number>, prefix: string) => { const ks = Object.keys(s).filter((k) => k.startsWith(prefix)); if (!ks.length) return s; const n = { ...s }; for (const k of ks) delete n[k]; return n }
@@ -172,7 +172,7 @@ const presetOrder = (store: PresetStore | null): string[] => {
   for (const id of [...(Array.isArray(store?.order) ? store!.order : []), ...PRESET_IDS]) if (PRESET_IDS.includes(id) && !seen.has(id)) { seen.add(id); out.push(id) }
   return out
 }
-const PRESET_STORE_V = 2 // 2 = 녹셀→레아 기본 헤어 이관을 마친 저장소
+const PRESET_STORE_V = 3 // 2 = 녹셀→레아 기본 헤어, 3 = 엘프→뽀송 꽃잎 기본 피부 이관을 마친 저장소
 // 저장된 미리보기 배율을 미리 읽는다(없으면 null). 연출 설정(pv)은 목록을 받은 뒤에야 복원되므로, 그 전에 깔리는
 // 피팅룸 배경이 이 값으로 크기를 잡는다. 복원 순서와 같다: 전역 연출 설정 → 고른 프리셋에 담긴 값.
 export const peekSavedZoom = (): number | null => {
@@ -303,7 +303,7 @@ export interface ShopCtx {
   commitPage: () => void
   // 착용(실제)
   equipped: Record<string, ListItem | null>
-  tone: number; shownTone: number // tone = 고른 피부, shownTone = 그릴 피부(가렸으면 엘프 피부 — viewTone)
+  tone: number; shownTone: number // tone = 고른 피부, shownTone = 그릴 피부(가렸으면 기본 피부 — viewTone)
   equipFromCat: (cat: string, item: ListItem) => void // 슬롯 라디오 토글(재클릭 해제)
   equipItem: (item: ListItem) => void                 // 토글 없이 착용(염색 적용 시)
   isEquippedInCat: (cat: string, itemId: string) => boolean
@@ -1205,13 +1205,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     equipFromCat(cat, item)
   }
   // 한 부위만 벗는다(코디 정보 칩의 휴지통 — 두 번 눌러야 한다). 염색 값은 그대로 둔다(같은 부위를 다시 입으면 쓰인다 — 목록에서 벗는 것과 같다).
-  // 피부는 벗을 수 없어 기본인 엘프 피부로 돌아간다(사용자 지시).
+  // 피부는 벗을 수 없어 기본 피부(뽀송 꽃잎)로 돌아간다(사용자 지시).
   const unequipSlot = (slot: string, label?: string) => {
     if (slot === 'skin') setTone(DEFAULT_TONE)
     setEquipped((prev) => (prev[slot] ? { ...prev, [slot]: null } : prev))
     setHidden((h) => { if (!h[slot]) return h; const n = { ...h }; delete n[slot]; return n })
     setDyeTarget((t) => (t === slot ? null : t))
-    notify(slot === 'skin' ? '엘프 피부로 돌아갔어요' : label ? `${label} 부위를 벗었어요` : '부위를 벗었어요')
+    notify(slot === 'skin' ? '뽀송 꽃잎 피부로 돌아갔어요' : label ? `${label} 부위를 벗었어요` : '부위를 벗었어요')
   }
 
   // 북마크 담기/해제(토글) · 비우기.
@@ -1373,7 +1373,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       return n
     }
     const items = slots.filter((sl) => sl !== 'skin' && eq[sl])
-    if (slots.includes('skin')) setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
+    if (slots.includes('skin')) setTone(snap.tone ?? DEFAULT_TONE)
     setEquipped((prev) => {
       const next = { ...prev }
       for (const sl of items) {
@@ -1399,7 +1399,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const warmWear = (snap: Snapshot, dye = false, take = false) => {
     resolveEquipped(snap).then((eq) => {
       const idx = indexRef.current; if (!idx) return
-      const te = idx.base.tones.find((t) => t.tone === snap.tone) || idx.base.tones.find((t) => t.tone === idx.base.default) || idx.base.tones[0]
+      const te = idx.base.tones.find((t) => t.tone === snap.tone) || idx.base.tones.find((t) => t.tone === DEFAULT_TONE) || idx.base.tones[0]
       if (!te) return
       const shown = Object.entries(eq).filter(([sl, it]) => !!it && !snap.hidden?.[sl]).map(([, it]) => it!)
       const p = take ? { ...pvRef.current, ...withTakenView(snap).pv } : { ...pvRef.current, ...(snap.pv?.ear ? { ear: snap.pv.ear } : {}) }
@@ -1779,7 +1779,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (skipAutosave) applyingRef.current = true
     const eq = await resolveEquipped(snap)
     setEquipped(eq)
-    setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
+    setTone(snap.tone ?? DEFAULT_TONE)
     setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setDyeOff({ ...(snap.dyeOff || {}) }); setHidden({ ...(snap.hidden || {}) })
     setDotPos({ ...(snap.dotPos || {}) })
     applyPvSnap(snap.pv)
@@ -1802,7 +1802,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     applyingRef.current = true
     resolveEquipped(snap).then((eq) => {
       setEquipped(eq)
-      setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
+      setTone(snap.tone ?? DEFAULT_TONE)
       setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setDyeOff({ ...(snap.dyeOff || {}) }); setHidden({ ...(snap.hidden || {}) })
       setDotPos({ ...(snap.dotPos || {}) })
       applyPvSnap(keep === 'all' ? withView(snap.pv, pv) : keep === 'zoom' && snap.pv ? { ...snap.pv, zoom: pv.zoom } : snap.pv)
@@ -1828,7 +1828,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     applyingRef.current = true
     resolveEquipped(snap).then((eq) => {
       setEquipped(eq)
-      setTone(snap.tone ?? indexRef.current?.base.default ?? DEFAULT_TONE)
+      setTone(snap.tone ?? DEFAULT_TONE)
       setDyePalette({ ...(snap.dyePalette || {}) }); setDyeHsb({ ...(snap.dyeHsb || {}) }); setDyeOff({ ...(snap.dyeOff || {}) }); setHidden({ ...(snap.hidden || {}) })
       setDotPos({ ...(snap.dotPos || {}) })
       applyPvSnap(snap.pv)
