@@ -25,8 +25,8 @@ export function mobileFit(vw: number, svh: number, dpr: number) {
     p = clamp((room - MAX_H) / (t + FOOT) - 2, PEEK, PEEK_HI)
     if (heroOf(t, p) > MAX_H) t = clamp((room - MAX_H) / (2 + p) - FOOT, t, m / SHARE_LO)
   }
-  return { hero: Math.max(MIN_H, Math.floor(heroOf(t, p))), peek: p }
+  return { hero: Math.max(MIN_H, Math.floor(heroOf(t, p))), peek: p, row: t + FOOT }
 }
 
-// 머리 스크립트 — 모바일 폭(useBreakpoint ≤ 520)에서만. 100svh 는 재는 막대로 읽는다
-export const MOBILE_FIT_INIT = `try{if(innerWidth<=520){var d=document.documentElement,b=document.createElement('div');b.style.cssText='position:fixed;visibility:hidden;width:0;height:100vh;height:100svh';d.appendChild(b);var f=(${mobileFit.toString()})(innerWidth,b.offsetHeight,devicePixelRatio||1);b.remove();d.style.setProperty('--pb-hero-base',f.hero+'px')}}catch(e){}`
+// 머리 스크립트 — 모바일 폭(useBreakpoint ≤ 520)에서만. 100svh 는 재는 막대로 읽는다. --pb-boot-row 는 JS 가 붙기 전의 뼈대(frame/BootMobile)가 쓴다
+export const MOBILE_FIT_INIT = `try{if(innerWidth<=520){var d=document.documentElement,b=document.createElement('div');b.style.cssText='position:fixed;visibility:hidden;width:0;height:100vh;height:100svh';d.appendChild(b);var f=(${mobileFit.toString()})(innerWidth,b.offsetHeight,devicePixelRatio||1);b.remove();d.style.setProperty('--pb-hero-base',f.hero+'px');d.style.setProperty('--pb-boot-row',f.row+'px')}}catch(e){}`

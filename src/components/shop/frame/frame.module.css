@@ -1,6 +1,17 @@
 /* 셸·헤더. */
 
 .root { position: fixed; inset: 0; height: 100svh; z-index: 2; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+/* 서버 HTML 은 폭을 몰라 PC 틀로 나간다 — 휴대폰에서 JS 가 붙기 전에 잘린 PC 화면이 보이지 않게 숨기고 뼈대(BootMobile)를 보인다. 모바일 틀이 붙으면 둘 다 사라진다 */
+.bootM { display: none; }
+@media (max-width: 520px) {
+  .rootPc { display: none; }
+  .bootM { display: flex; flex-direction: column; position: fixed; inset: 0; z-index: 2; overflow: hidden; background: light-dark(#fff, #303238); }
+}
+.bootHero { flex: 0 0 auto; height: var(--pb-hero-base); background: light-dark(#f7f2ec, #3a3c43); border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
+.bootBars { flex: 0 0 auto; height: 89px; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
+.bootGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: var(--pb-boot-row, 132px); gap: 10px 6px; padding: 10px 12px; }
+.bootCard { border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; background: light-dark(#fff, #303238); }
+.bootNav { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: light-dark(#fff, #303238); border-top: 1px solid light-dark(#f0e9e1, #42454d); }
 
 /* PC / 절반 / 태블릿 프레임 */
 .frame { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }

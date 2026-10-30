@@ -11,6 +11,7 @@ import { useEffect } from 'react'
 import { ShopProvider, useShop } from './shop/ShopContext'
 import Background from './shop/frame/Background'
 import AppHeader from './shop/frame/AppHeader'
+import BootMobile from './shop/frame/BootMobile'
 import BottomNav from './shop/nav/BottomNav'
 import ListArea from './shop/list/ListArea'
 import InfoPanel from './shop/info/InfoPanel'
@@ -71,7 +72,7 @@ function Shell() {
         </div>
       ) : (
         // PC·절반·태블릿: 2분할은 높이가 고정돼야(리스트 그리드 height:100%) 하므로 문서 스크롤로 풀지 않는다.
-        <div className={styles.root}>
+        <div className={clsx(styles.root, styles.rootPc)}>
           <div className={clsx(styles.frame, s.bp === 'pc' ? styles.framePc : s.bp === 'half' ? styles.frameHalf : styles.frameTablet)}>
             <AppHeader mobile={false} />
             <main className={styles.main} data-pb-body>
@@ -92,6 +93,7 @@ function Shell() {
           </div>
         </div>
       )}
+      {!mobile && <BootMobile />}
       <Surface />
       <LookDialog />
       <Toast />
