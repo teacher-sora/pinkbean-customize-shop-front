@@ -46,10 +46,6 @@
    캐릭터만 = 페이지가 스크롤되지 않게 화면 높이로 */
 :global(html[data-pb-view='wide']) .mobileCol { height: max(calc(100vh + max(0px, 56vh - var(--pb-hero-base))), var(--pb-min-h, 0px)); }
 :global(html[data-pb-view='full']) .mobileCol { height: 100svh; }
-/* 코디 정보 / 염색: 틀이 내용만큼 길어진다(칸 안 스크롤 없이 페이지 하나로 — InfoPanel). 최소 높이는 위와 같아 탭을 오가도 페이지가 줄지 않는다 */
-.mobileCol.mobileColFlow { height: auto; min-height: 100vh; min-height: max(100vh, var(--pb-min-h, 0px)); }
-:global(html[data-pb-view='wide']) .mobileCol.mobileColFlow { height: auto; min-height: max(calc(100vh + max(0px, 56vh - var(--pb-hero-base))), var(--pb-min-h, 0px)); }
-:global(html[data-pb-view='full']) .mobileCol.mobileColFlow { height: 100svh; min-height: 0; }
 .headerActsM { display: flex; align-items: center; min-height: 32px; gap: 6px; }
 /* 미리보기 크기 셋(아이콘 칸). 평가 · 복사와 같은 높이(28) — 칸 24 + 안쪽 2 */
 .viewSegM { display: flex; border-radius: 6px; }

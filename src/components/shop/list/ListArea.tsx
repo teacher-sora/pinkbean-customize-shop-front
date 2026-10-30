@@ -117,12 +117,12 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
       // 맞춤: 페이지를 헤더 높이만큼 내리면 미리보기가 화면 맨 위에 오고, 미리보기 + 머리 묶음 바로 아래부터 화면 끝까지가 목록 칸이다(큰 화면 높이 100lvh — 툴바가 접힌).
-      // 칸 아래에 함께 놓이는 것(룩북의 자주 쓴 염색 줄 · 출처 줄)도 뺀다. 하단 탭은 떠 있어 빼지 않는다(내리는 동안 숨는다).
+      // 미리보기와 칸 사이에 놓이는 것(머리 묶음 · 룩북의 자주 쓴 염색 줄)과 칸 아래의 것(출처 줄)도 뺀다. 하단 탭은 떠 있어 빼지 않는다(내리는 동안 숨는다).
       // 맞춤이 있으면 바닥(floor — 그림 칸 비율)보다 맞춤이 먼저다: 어느 기기든 페이지는 맨 위 헤더 높이만큼만 내려간다(사용자 지시). 낮은 화면은 카드가 그만큼 낮아진다
       let fit = 0
       if (hero && document.documentElement.getAttribute('data-pb-view') !== 'full') {
-        const bar = col.querySelector<HTMLElement>('[data-sticky-top]')
-        fit = lvh.offsetHeight - base.offsetHeight - (bar?.offsetHeight ?? 0) - (col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom)
+        const v = vp.getBoundingClientRect()
+        fit = lvh.offsetHeight - base.offsetHeight - (v.top - hero.getBoundingClientRect().bottom) - (col.getBoundingClientRect().bottom - v.bottom)
       }
       const h = fit > 0 ? fit : floor
       const need = Math.ceil(chrome + h) + 'px'
@@ -133,8 +133,13 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     m()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(m) : null
     ro?.observe(col); ro?.observe(vp0); ro?.observe(lvh); ro?.observe(base)
-    window.addEventListener(RELAYOUT_EVENT, m) // 목록 칸 안 스크롤로 들어가고 나올 때(lib/scrollHide) — 틀 높이가 그대로라 ResizeObserver 가 모른다
-    return () => { ro?.disconnect(); window.removeEventListener(RELAYOUT_EVENT, m); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
+    // 칸 위아래에 함께 놓이는 것(머리 묶음 · 룩북 염색 줄 · 출처 줄)이 붙고 빠지거나 크기가 바뀌면 다시 잰다 — 칸 크기는 그대로라 위 감시가 모른다
+    const sibs = () => { for (const el of vp0.parentElement?.children ?? []) if (el !== vp0) ro?.observe(el) }
+    sibs()
+    const mo = vp0.parentElement ? new MutationObserver(() => { sibs(); m() }) : null
+    if (mo && vp0.parentElement) mo.observe(vp0.parentElement, { childList: true })
+    window.addEventListener(RELAYOUT_EVENT, m) // 보기를 바꿔 칸이 자리만 옮겨 갔을 때 — 틀 높이가 그대로라 ResizeObserver 가 모른다
+    return () => { ro?.disconnect(); mo?.disconnect(); window.removeEventListener(RELAYOUT_EVENT, m); if (restore) { if (before) col.style.setProperty('--pb-min-h', before); else col.style.removeProperty('--pb-min-h') } }
   }, [vpRef, mobile, cols, ratio, rows, restore, foot, extra, inset, colGap])
 }
 

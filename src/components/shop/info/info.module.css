@@ -20,7 +20,8 @@
 .btnSolid { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
 
 .scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; justify-content: space-between; }
-.flowM { flex: 1 0 auto; padding: 8px 12px; } /* 모바일: 스크롤 칸이 아니다 — 페이지에 이어진다(InfoPanel) */
+/* 모바일: 칸 안 스크롤(InfoPanel) — 높이는 한 쪽 높이(ListArea useMobileRows), 위 · 아래 끝에서 더 밀면 페이지가 이어 움직인다(브라우저 기본 이어받기). 가로는 막는다 */
+.scrollM { flex: 0 0 auto; height: var(--pb-page-h, auto); min-height: 0; overflow: hidden auto; overscroll-behavior: contain auto; touch-action: pan-y pinch-zoom; padding: 8px 12px; }
 .slots { flex: 0 0 auto; padding: 10px 6px; }
 .grid { display: grid; gap: 8px; }
 

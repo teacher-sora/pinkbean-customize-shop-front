@@ -27,10 +27,22 @@ function set(h: boolean) {
 }
 // 틀 밖(시트 · 다이얼로그 — 몸 밖에 붙는 것)의 손가락은 세지 않는다
 const inCol = (t: EventTarget | null) => t instanceof Element && !!t.closest('[data-mobile-col]')
-const onStart = (e: TouchEvent) => {
-  touch = !frozen && e.touches.length === 1 && inCol(e.target)
+// 손동작 하나를 손가락 신호(touch)와 포인터 신호(pointer) 둘 다로 받는다 — 개발자 도구의 휴대폰 보기에서 마우스로 끌면 포인터 신호만 오고,
+// 실기기는 브라우저가 스크롤을 넘겨받으면 포인터 신호가 끊긴다(pointercancel). 먼저 온 쪽으로 시작하고, 어느 쪽이 오든 같은 점 기록에 적는다
+function begin(x: number, y: number, target: EventTarget | null) {
+  touch = !frozen && inCol(target)
   if (!touch) return
-  const t = e.touches[0]; sx = t.clientX; sy = ky = t.clientY; dir = 0; across = false
+  sx = x; sy = ky = y; dir = 0; across = false
+}
+function move(x: number, y: number) {
+  if (!touch) return
+  const dx = Math.abs(x - sx), dy = Math.abs(y - sy)
+  if (!across && dir === 0 && dx >= START_X && dx > dy) { across = true; set(true); ky = y } // 가로로 시작 — 어느 쪽이든 숨는다
+  track(y, across ? STEP_X : STEP)
+}
+function end(y: number | null) {
+  if (touch && y != null && dir === 0) track(y, across ? STEP_X : STEP) // 이 손동작에서 아직 방향이 정해지지 않았을 때만(정해진 것을 끝에서 뒤집지 않는다)
+  touch = false
 }
 // 세로 한 점을 적는다: 지금 방향으로 가면 꺾인 점이 따라가고, 반대로 step 넘게 가면 방향을 바꾸며 친다
 function track(y: number, step: number) {
@@ -40,17 +52,13 @@ function track(y: number, step: number) {
   if (Math.abs(d) < step || (d < 0 ? -1 : 1) === dir) return
   dir = d < 0 ? -1 : 1; ky = y; set(dir < 0) // 처음 정해졌거나 꺾었다
 }
-const onMove = (e: TouchEvent) => {
-  if (!touch || e.touches.length !== 1) return
-  const t = e.touches[0], dx = Math.abs(t.clientX - sx), dy = Math.abs(t.clientY - sy)
-  if (!across && dir === 0 && dx >= START_X && dx > dy) { across = true; set(true); ky = t.clientY } // 가로로 시작 — 어느 쪽이든 숨는다
-  track(t.clientY, across ? STEP_X : STEP)
-}
-const onEnd = (e: TouchEvent) => {
-  const t = e.changedTouches[0]
-  if (touch && t && dir === 0) track(t.clientY, across ? STEP_X : STEP) // 이 손동작에서 아직 방향이 정해지지 않았을 때만(정해진 것을 끝에서 뒤집지 않는다)
-  touch = false
-}
+let pid = -1, viaTouch = false // 지금 손동작이 손가락 신호로 시작했는지(그러면 포인터 신호는 시작 · 끝에 쓰지 않는다)
+const onStart = (e: TouchEvent) => { if (e.touches.length !== 1) { touch = false; return } const t = e.touches[0]; viaTouch = true; begin(t.clientX, t.clientY, e.target) }
+const onMove = (e: TouchEvent) => { if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY) }
+const onEnd = (e: TouchEvent) => { viaTouch = false; end(e.changedTouches[0]?.clientY ?? null) }
+const onPDown = (e: PointerEvent) => { if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return; pid = e.pointerId; if (!viaTouch) begin(e.clientX, e.clientY, e.target) }
+const onPMove = (e: PointerEvent) => { if (e.pointerId === pid && e.buttons) move(e.clientX, e.clientY) }
+const onPUp = (e: PointerEvent) => { if (e.pointerId !== pid) return; pid = -1; if (!viaTouch) end(e.type === 'pointerup' ? e.clientY : null) }
 const onWheel = (e: WheelEvent) => { if (!frozen && inCol(e.target) && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.deltaY) set(e.deltaY > 0) }
 export function installScrollLink(): () => void {
   if (!installed++) {
@@ -60,6 +68,10 @@ export function installScrollLink(): () => void {
     document.addEventListener('touchmove', onMove, { capture: true, passive: true })
     document.addEventListener('touchend', onEnd, { capture: true, passive: true })
     document.addEventListener('touchcancel', onEnd, { capture: true, passive: true })
+    document.addEventListener('pointerdown', onPDown, { capture: true, passive: true })
+    document.addEventListener('pointermove', onPMove, { capture: true, passive: true })
+    document.addEventListener('pointerup', onPUp, { capture: true, passive: true })
+    document.addEventListener('pointercancel', onPUp, { capture: true, passive: true })
     document.addEventListener('wheel', onWheel, { capture: true, passive: true })
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
     if (window.scrollY) window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }) // 브라우저가 이미 되살린 위치도 맨 위로(처음 한 번)
@@ -67,7 +79,7 @@ export function installScrollLink(): () => void {
   }
   return () => {
     if (--installed) return
-    for (const [k, f] of [['touchstart', onStart], ['touchmove', onMove], ['touchend', onEnd], ['touchcancel', onEnd], ['wheel', onWheel]] as const) document.removeEventListener(k, f as EventListener, true)
+    for (const [k, f] of [['touchstart', onStart], ['touchmove', onMove], ['touchend', onEnd], ['touchcancel', onEnd], ['pointerdown', onPDown], ['pointermove', onPMove], ['pointerup', onPUp], ['pointercancel', onPUp], ['wheel', onWheel]] as const) document.removeEventListener(k, f as EventListener, true)
     mo?.disconnect(); mo = null
     set(false)
     root().removeAttribute('data-pb-nav')

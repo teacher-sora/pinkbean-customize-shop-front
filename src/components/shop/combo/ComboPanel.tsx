@@ -401,13 +401,11 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   }
 
   // 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다).
-  // 모바일 세로는 목록 칸 안 스크롤이라 염색 줄 · 출처 줄도 칸 안에서 쪽들과 함께 스크롤한다
-  const inner = mobile && dirY
+  // 염색 줄 · 출처 줄은 넘기는 방향과 상관없이 목록 칸 밖에 그대로 있다 — 세로에서도 칸 안에서는 프리셋 목록만 스크롤한다(사용자 지시, PC 와 같다)
   const dyeRow = (dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>
   const credit = <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
   const viewport = (
     <div ref={setVp} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
-      {inner && dyeRow}
       {failed || (first && !first.ready) ? (
         <div className={mobile ? list.emptyM : list.empty}>
           <span className={mobile ? list.emptyTitleM : list.emptyTitle}>코디를 불러오지 못했어요</span>
@@ -433,15 +431,14 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
           ))}
         </div>
       )}
-      {inner && credit}
     </div>
   )
 
   return (
     <>
-      {!inner && dyeRow}
+      {dyeRow}
       {viewport}
-      {!inner && credit}
+      {credit}
     </>
   )
 }
