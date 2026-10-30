@@ -12,7 +12,7 @@ import { animaNow, animaOnce, composePeek, composeSnapshotCached, snapKey, type 
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { BASE_TAG, type ChatUi } from '@/lib/core/chatUi'
-import { CARD_FRACTION, CARD_MARGIN, CHAT_FILES, ZOOM_WORLD } from '@/lib/shopData'
+import { CARD_FIT_W_M, CARD_FRACTION, CARD_LIFT_SNAP_M, CARD_MARGIN, CHAT_FILES, ZOOM_WORLD } from '@/lib/shopData'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop, type Snapshot } from './ShopContext'
 
@@ -166,7 +166,9 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     // view 면 몸통 중심도 미리보기와 같은 값 — 뒷쪽 · 맨몸 사다리 · 밧줄은 등반 자세용 중심(PreviewModel 의 climbCenter)
     const sp = snap.pv, rideOn = !!snap.equipped.riding && !snap.hidden?.riding
     const climb = !!view && (sp?.gaze === 'back' || (!rideOn && (sp?.action === 'ladder' || sp?.action === 'rope')))
-    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction: fr, scale, snap: true, drop: true,
+    // 모바일 카드(한 단계 올리기 — shopData.CARD_LIFT_SNAP_M): 전신 카드라 맨 마네킹 목록 카드보다 문턱이 낮다
+    const lift = fitW === CARD_FIT_W_M ? { ...CARD_LIFT_SNAP_M, maxW: fitW * dims.w } : undefined
+    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin, fraction: fr, scale, snap: true, lift, drop: true,
       ...(climb ? { centerDx: MODEL_REF.previewBackDx, centerDy: MODEL_REF.previewBackDy } : {}) })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
