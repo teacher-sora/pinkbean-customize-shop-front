@@ -27,6 +27,9 @@ body { font-family: var(--font-wanted), "Wanted Sans Rest", -apple-system, Blink
   /* 넘침은 clip — hidden 이면 셸이 스크롤 칸이 되어 모바일 하단 탭(nav .tabNavM)의 sticky 가 문서를 따르지 않는다(frame .mobileCol 과 같은 까닭) */
   .pb-shell { position: relative !important; inset: auto !important; height: auto !important; overflow: clip !important; }
 }
+/* 휴대폰 화면(모바일 틀이 있을 때): 문서 바탕 색 = 목록 · 헤더 색 — 위아래로 튕기거나 당겨서 새로고침할 때 보이는 화면 밖이 바탕 색이라,
+   그라데이션(그림)만 있고 색이 비어 다크 모드에서 검게 보였다(사용자 지적) */
+html:has([data-mobile-col]) { background-color: light-dark(#fff, #303238); }
 a { color: light-dark(#ec86ac, #d881a1); text-decoration: none; }
 @media (hover: hover) and (pointer: fine) { a:hover { color: light-dark(#d76d9a, #d293ae); } }
 input, select, button { font-family: inherit; color: light-dark(#2a2521, #d4d5d8); }

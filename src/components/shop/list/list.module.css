@@ -149,7 +149,7 @@
 .act { flex: 1 1 0; min-width: 0; width: 50%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: transparent; color: light-dark(#8a8075, #9fa2aa); font-size: calc(12rem / 16); font-weight: 500; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
 .actM { font-size: calc(11rem / 16); }
 .actPinned { background: light-dark(#fdf1f6, #4e323e); color: light-dark(#d76d9a, #d293ae); }
-.actDye { border-left: 1px solid light-dark(#f4efe8, #3e4048); }
+.actDye { border-left: 1px solid light-dark(#f4efe8, #3e4048); } /* 막대 두 칸 사이의 세로 구분선 — [북마크 | 염색], 광장 카드 [가져오기 | ♡](PlazaCard — 사용자 지시) */
 /* 좁은 휴대폰: 340 미만(아이폰 SE 1세대 320 · 폴드 바깥 화면 280)은 코디 칩의 옷걸이를 빼고 수만 — 그림 칸이 68px 아래라 왼쪽 아래 등급 배지와 겹쳤다.
    300 이하는 카드 막대를 아이콘으로, 등급 배지 · '보기 설정' 글자를 줄인다(북마크가 잘리고 배지가 칩과 겹쳤다) */
 @media (max-width: 339px) { .comboM > svg { display: none; } .comboM { padding: 0 5px; } }
