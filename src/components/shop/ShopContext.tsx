@@ -154,6 +154,8 @@ export const isCustomSnapshot = (s: Snapshot) => snapCoreKey(s) !== DEFAULT_CORE
 const LEGACY_DEFAULT_CORE_KEY = (() => { const d = defaultSnapshot(); return snapCoreKey({ ...d, equipped: { ...d.equipped, hair: '00071400' } }) })()
 const migrateLegacyDefault = (s: Snapshot): Snapshot => (snapCoreKey(s) === LEGACY_DEFAULT_CORE_KEY ? { ...s, equipped: defaultSnapshot().equipped } : s)
 const PRESET_KEY = 'pb_presets_v1'
+// 쪽 위치 기억(pageByCat)에서 prefix 로 시작하는 칸을 뺀다(없으면 같은 객체 — 다시 그리지 않는다)
+const dropPages = (s: Record<string, number>, prefix: string) => { const ks = Object.keys(s).filter((k) => k.startsWith(prefix)); if (!ks.length) return s; const n = { ...s }; for (const k of ks) delete n[k]; return n }
 const FAV_KEY = 'pb_favorites_v1' // 즐겨찾기 아이템 id 목록(localStorage 영속, 서버 없음)
 const BOOKMARK_KEY = 'pb_bookmarks_v1' // 북마크(간이 가방) 아이템 — 최대 8개, 즐겨찾기와 별개. sessionStorage(사용자 지시 — 새로고침에는 남고 창을 닫으면 사라진다)
 const BOOKMARK_MAX = 8
@@ -244,7 +246,7 @@ export interface ShopCtx {
   chatMsg: ChatMsg | null; sendChat: (m: ChatMsg) => void // 채팅 칸에서 보낸 말 · 이모티콘(CHAT_SHOW_MS 동안)
   catLoading: boolean
   activeList: ListItem[] // 활성 부위의 folded 리스트에 검색·성별 필터 적용(정렬 순서 유지)
-  search: string; setSearch: Dispatch<string>
+  search: string; setSearch: (v: string) => void
   genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용
   kindFilter: string; setKindFilter: (v: string) => void // '필터' 라디오(shopData.ITEM_KINDS, 'all' = 전부) — 코디 · AI 코디 검색 공용
   // primary/screen
@@ -451,6 +453,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const listDirRef = useRef<ListDir>('x')
   listDirRef.current = listDir
   const [search, setSearch] = useState('')
+  // 목록 검색어 바꾸기 — 검색어가 들어가면(같든 다르든) 검색 중의 쪽 위치('q:')를 모두 비워 1쪽부터 본다. 부위 칸은 건드리지 않는다
+  const setSearchQ = useCallback((v: string) => { setSearch(v); if (v.trim()) setPageByCat((s) => dropPages(s, 'q:')) }, [])
   const [equipped, setEquipped] = useState<Record<string, ListItem | null>>({})
   const [tone, setTone] = useState(0)
   const [hidden, setHidden] = useState<Record<string, boolean>>({})
@@ -783,7 +787,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const runSearch = useCallback(async (query: string) => {
     const t = query.trim(); if (!t) return
     setSearchQuery(t); setSearchLoading(true); setSearchResults([])
-    setPageByCat((s) => ({ ...s, ['search:' + activeCatRef.current]: 0 }))
+    setPageByCat((s) => dropPages(s, 'search:'))
     try {
       if (isEgg(t)) {
         // 이스터에그(lib/easterEgg): 서버에 묻지 않고 정해진 아이템만 돌려준다
@@ -955,7 +959,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 페이지 위치는 탭 × 부위 조합별로 기억한다. ⚠️ 페이지 번호가 아니라 '그 페이지 첫(왼쪽 위) 아이템 순번'을 저장한다 →
   //   화면 비율이 바뀌어 한 페이지 카드 수가 달라져도(PC 6x3 → 절반 3x3) 보던 왼쪽 위 아이템이 든 페이지로 즉시 환산된다
   //   (setIdx 를 거치지 않으니 스냅 전환·스크롤 애니메이션 없이 리스트가 그대로 유지되는 인상).
-  const pageKey = comboPaging ? `combo:${comboKey}` : primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : activeCat
+  // 검색 중에는 따로 기억한다(사용자 지시): 코디 탭에서 검색어가 있으면 'q:부위' — 검색어를 넣거나 바꾸면 1쪽부터, 지우면 부위 칸이 그대로라 보던 쪽으로 돌아간다.
+  // AI 코디 검색은 검색할 때마다 모든 부위의 'search:' 칸을 비운다 — 다른 부위에서 검색하고 돌아와도 1쪽부터.
+  const pageKey = comboPaging ? `combo:${comboKey}` : primary === 'share' ? 'plaza:' + plazaFilter : primary === 'search' ? 'search:' + activeCat : search.trim() ? 'q:' + activeCat : activeCat
 
   // ── 페이지네이션 ── (광장은 자기 그리드·목록 길이를 쓴다)
   const isPlazaTab = primary === 'share'
@@ -1144,7 +1150,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const warmForPreview = useCallback((item: ListItem) => {
     if (item.slot === 'skin') return
     const { view } = buildView(pvRef.current)
-    warmItem(item, view, isMixSlot(item.slot) ? renderPaletteRef.current[item.slot] : undefined)
+    warmItem(item, view, isMixSlot(item.slot) ? renderPaletteRef.current[item.slot] : undefined, true)
   }, [])
   useEffect(() => {
     if (snapping) return
@@ -2181,7 +2187,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const selIdx = presets.findIndex((p) => p.id === nameSel)
   const saveName = selIdx >= 0 ? presetFileName(presets[selIdx].name, selIdx) : CHAT_NAME_FALLBACK
   const value: ShopCtx = {
-    index, cats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch,
+    index, cats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch: setSearchQ,
     genderFilter, setGenderFilter, kindFilter, setKindFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
