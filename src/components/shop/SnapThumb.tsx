@@ -50,7 +50,7 @@ export function warmSnap (snap: Snapshot, index: Index | null | undefined, view?
   if (composePeek(key, index, ar, view) !== undefined) return Promise.resolve()
   return composeSnapshotCached(key, snap, index, ar, view).catch(() => {})
 }
-export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom, chatText, defBalloon, fitW, keep, onFloor }: {
+export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CARD_MARGIN, priority = 0, view, tagName, baseTag: forceBase, fileName, holdMenu = true, onDrawn, deco, zoom, zoomMults, chatText, defBalloon, fitW, keep, onFloor }: {
   snap: Snapshot; fraction?: number; margin?: number; priority?: number; view?: boolean; tagName?: string; fileName?: string
   // 코디가 바뀌어 다시 합성하는 동안 그리던 그림을 두고, 다 되면 바꾼다(뼈대를 비추지 않는다) — 목록 카드(ItemThumb)와 같은 몸짓.
   // 같은 코디에 연출만 바뀌는 카드(코디 룩북 — 지금 연출을 얹는다)에 쓴다. 다른 코디로 갈아 끼우는 칸에는 쓰지 않는다
@@ -58,7 +58,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   // 그린 발 자리(칸 기준 CSS px) · 배율을 알린다 — 같은 칸의 배경(CardStageBg floor)이 캐릭터와 같은 자리에 깔리게(코디 비교의 칸, PreviewModel 의 setStageFloor 와 같은 계산 — 발 높이도 그 자세의 실제 발 자리)
   onFloor?: (f: { cx: number; footY: number; scale: number }) => void
   fitW?: number // 캐릭터 높이(fraction × 칸 높이)가 칸 폭 × fitW 를 넘지 않게 — 좁고 긴 칸에서 배율이 2배로 뛰어 옆이 잘리지 않게(코디 룩북 카드)
-  zoom?: number // 미리보기 배율 단계(1 ~ 3, 0.5 단위)로 그린다 — 코디 비교의 칸들이 고른 칸(PreviewModel)과 같은 도트 크기가 되게(zoomStepScale)
+  zoomMults?: Record<number, number> // 배율표(휴대폰 코디 비교 — 없으면 PC 표)
+  zoom?: number // 미리보기 배율 단계(1 ~ 3)로 그린다 — 코디 비교의 칸들이 고른 칸(PreviewModel)과 같은 도트 크기가 되게(zoomStepScale)
   deco?: boolean // 칭호 · 훈장 · 말풍선도 그린다(불러오기 창 — 가져올 장식 토글이 무엇을 바꾸는지 보이게. 말풍선은 '안녕하세요')
   // 말풍선을 미리보기와 같은 규칙으로(코디 비교의 정지 칸): null = 보낸 말이 없어 말풍선 없음, 글 = 그 칸의 말풍선 반지(없으면 defBalloon)에 그 글
   chatText?: string | null; defBalloon?: ChatUi | null
@@ -162,7 +163,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     if (!canvas || !placed || !dims.w || !dims.h) return
     let cancelled = false
     const fr = fitW ? Math.min(fraction, (fitW * dims.w) / dims.h) : fraction
-    const scale = zoom != null ? zoomStepScale({ fraction: fr, divH: dims.h, dpr: dims.dpr, level: zoom, mults: ZOOM_WORLD }) : undefined
+    const scale = zoom != null ? zoomStepScale({ fraction: fr, divH: dims.h, dpr: dims.dpr, level: zoom, mults: zoomMults ?? ZOOM_WORLD }) : undefined
     // view 면 몸통 중심도 미리보기와 같은 값 — 뒷쪽 · 맨몸 사다리 · 밧줄은 등반 자세용 중심(PreviewModel 의 climbCenter)
     const sp = snap.pv, rideOn = !!snap.equipped.riding && !snap.hidden?.riding
     const climb = !!view && (sp?.gaze === 'back' || (!rideOn && (sp?.action === 'ladder' || sp?.action === 'rope')))
@@ -180,7 +181,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     // view 면 그 코디의 시선도 따른다(오른쪽 = 좌우 반전 — 미리보기와 같은 규칙. 코디 비교의 정지 칸)
     renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip: view && snap.pv?.gaze === 'right', centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, ov, effects, particles, center, dims, fraction, fitW, margin, chat, zoom, view, snap.pv?.gaze, snap.pv?.action, snap.equipped.riding, snap.hidden?.riding])
+  }, [placed, ov, effects, particles, center, dims, fraction, fitW, margin, chat, zoom, zoomMults, view, snap.pv?.gaze, snap.pv?.action, snap.equipped.riding, snap.hidden?.riding])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
   // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 게임 크기 1배).

@@ -14,7 +14,8 @@ import { Switch } from '../ui/controls'
 import PvPicker, { type PvField } from './PvPicker'
 import styles from './preview.module.css'
 
-const ZOOMS: Opt[] = [{ v: '1', l: '1배' }, { v: '1.5', l: '1.5배' }, { v: '2', l: '2배' }, { v: '2.5', l: '2.5배' }, { v: '3', l: '3배' }]
+const ZOOMS: Opt[] = [{ v: '1', l: '1배' }, { v: '2', l: '2배' }, { v: '3', l: '3배' }]
+const ZOOMS_M: Opt[] = [{ v: '1', l: '1배' }, { v: '1.5', l: '1.5배' }, { v: '2', l: '2배' }, { v: '2.5', l: '2.5배' }, { v: '3', l: '3배' }] // 휴대폰만 사이 단계가 있다(shopData.ZOOM_WORLD)
 const lb = (arr: Opt[], v: string) => (arr.find((x) => x.v === v) || arr[0]).l
 
 // 라이딩 중: 불가 액션·형상 변이를 안전한 기본값으로 되돌린다(셸에서 한 번만 마운트).
@@ -47,7 +48,7 @@ export function usePvFields(): PvFieldDef[] {
   const { disabledActions } = useRiding()
   const pv = s.pv
   return [
-    { key: 'zoom', title: '배율', short: '배율', def: '2', hint: '미리보기 캐릭터 크기', options: ZOOMS, value: String(pv.zoom), set: (v) => s.setPv('zoom', Number(v)) },
+    { key: 'zoom', title: '배율', short: '배율', def: '2', hint: '미리보기 캐릭터 크기', options: s.bp === 'mobile' ? ZOOMS_M : ZOOMS, value: String(s.bp === 'mobile' ? pv.zoom : Math.ceil(pv.zoom)), set: (v) => s.setPv('zoom', Number(v)) },
     { key: 'action', title: '액션', short: '액션', def: 'basic', hint: '캐릭터 동작 (서기, 걷기, 점프 등)', options: PV_ACTIONS_FLAT, value: pv.action, set: (v) => s.setPv('action', v), disabled: disabledActions },
     { key: 'weapon', title: '무기 모션', short: '모션', def: 'basic', hint: '무기를 든 자세 (스윙, 찌르기, 사격 등)', options: PV_WEAPONS, value: pv.weapon, set: (v) => s.setPv('weapon', v) },
     { key: 'expr', title: '표정', short: '표정', def: 'default', hint: '얼굴 표정', options: PV_EXPRS, value: pv.expr, set: (v) => s.setPv('expr', v) },

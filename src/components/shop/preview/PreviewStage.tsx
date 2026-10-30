@@ -14,7 +14,7 @@
 
 import clsx from 'clsx'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { DOT_MOVER_IDS, PREVIEW_MARGIN } from '@/lib/shopData'
+import { DOT_MOVER_IDS, PREVIEW_MARGIN, ZOOM_WORLD_M } from '@/lib/shopData'
 import { useHeroView } from '@/lib/heroView'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import PreviewModel from '../PreviewModel'
@@ -73,9 +73,9 @@ function Pane({ id, index, active, fraction, pos, slim, onPick }: { id: string; 
       className={clsx(styles.cmpPane, !active && styles.cmpPaneOff)} style={pos}>
       {/* 그림은 테두리 안쪽(1px)에만 — 어두운 배경이 둥근 모서리의 테두리 바깥으로 번져 보이지 않게 */}
       <div className={styles.cmpArt}>
-        {shown && <CardStageBg sel={shown.bg} fraction={fraction} zoom={zoom} floor={floor} />}
+        {shown && <CardStageBg sel={shown.bg} fraction={fraction} zoom={zoom} zoomMults={slim ? ZOOM_WORLD_M : undefined} floor={floor} />}
         {/* 칭호 · 명찰 · 훈장 · 말풍선도 그 칸의 것으로(고른 칸의 미리보기와 같은 규칙 — 말풍선은 보낸 말이 있을 때만) */}
-        {shown && <SnapThumb snap={shown} fraction={fraction} zoom={zoom} margin={PREVIEW_MARGIN} view onFloor={onFloor} tagName={s.chatName} baseTag={s.chatOn && !!shown.pv?.baseTag}
+        {shown && <SnapThumb snap={shown} fraction={fraction} zoom={zoom} zoomMults={slim ? ZOOM_WORLD_M : undefined} margin={PREVIEW_MARGIN} view onFloor={onFloor} tagName={s.chatName} baseTag={s.chatOn && !!shown.pv?.baseTag}
           deco chatText={s.chatMsg ? s.chatMsg.text : null} defBalloon={s.chatDefault} />}
       </div>
       <div className={clsx(styles.cmpRing, active && styles.cmpRingOn)}>

@@ -551,10 +551,10 @@ export function plazaWhen(iso: string): string {
 }
 
 // ── 도움 및 건의함(supabase/0011 · 0013 · 0018 · 0019) ──
-// 공지는 운영자가 Supabase 대시보드(Table Editor → plaza_notices)에서 쓴다 — 앱에는 쓰기 화면이 없다. 공지에는 댓글이 없다.
+// 공지는 운영자 화면(/dashboard)에서 쓴다. 공지에는 댓글이 없다.
 // 건의 · 오류는 같은 표(plaza_notice_comments)에 종류(kind)로 나눠 담는다. 목록은 원글만, 한 쪽에 20개, 최신이 위.
 // 글을 열면 그 글의 댓글 · 답글이 나무로 붙는다(depth 1 = 댓글, 2 · 3 = 답글 — 댓글부터 세 단까지. 깊이 · 원글은 DB 트리거가 정한다).
-// op = 운영자 글(/suggestion 에서만 켜진다), deleted = 답글이 달린 채 지운 글(자리만 남는다).
+// op = 운영자 글(/dashboard 에서만 켜진다), deleted = 답글이 달린 채 지운 글(자리만 남는다).
 export type PlazaNotice = { id: string; createdAt: string; title: string; body: string; pinned: boolean }
 export type FeedbackKind = 'idea' | 'bug'
 export const FEEDBACK_DEPTH = 3   // 댓글부터 세 단까지(댓글 → 답글 → 답글)
@@ -652,7 +652,7 @@ export async function deleteFeedback(id: string): Promise<void> {
   if (data !== true) throw new Error('not removed')
 }
 
-// ── 운영자용 건의함(/suggestion, supabase/0016 · 0019) ──
+// ── 운영자 화면(/dashboard, supabase/0016 · 0019 · 0023) ──
 // 아이디 · 비밀번호는 DB 함수가 확인한다(앱에는 서비스 키가 없다). 화면은 로그인한 값을 메모리에만 쥐고 부를 때마다 함께 보낸다.
 export type OpCred = { id: string; pw: string }
 const opRpc = async <T>(fn: string, args: Record<string, unknown>): Promise<T | null> => {
@@ -672,3 +672,9 @@ export const opReply = async (cred: OpCred, parentId: string, body: string) =>
 // 지우기(딸린 댓글 · 답글도 함께 지워진다)
 export const opDelete = async (cred: OpCred, id: string) =>
   (await opRpc<boolean>('plaza_op_delete', { p_id: cred.id, p_pw: cred.pw, p_comment: id })) != null
+// 공지 쓰기(id 없음) · 고치기. 돌려주는 값: 공지 id, 로그인이 틀렸으면 null
+export const opSaveNotice = (cred: OpCred, id: string | null, title: string, body: string, pinned: boolean) =>
+  opRpc<string>('plaza_op_notice_save', { p_id: cred.id, p_pw: cred.pw, p_notice: id, p_title: title.trim().slice(0, 80), p_body: body, p_pinned: pinned })
+// 방문자 수(lib/visit). 로그인이 틀렸으면 null
+export type OpVisits = { days: { d: string; n: number }[]; week: number; month: number }
+export const opLoadVisits = (cred: OpCred) => opRpc<OpVisits>('plaza_op_visits', { p_id: cred.id, p_pw: cred.pw })

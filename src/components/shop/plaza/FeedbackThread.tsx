@@ -1,6 +1,6 @@
 'use client'
 
-// 건의 · 오류 글의 부품 — 도움 및 건의함(NoticeBody)와 운영자 화면(/suggestion)이 함께 쓴다.
+// 건의 · 오류 글의 부품 — 도움 및 건의함(NoticeBody)와 운영자 화면(/dashboard)이 함께 쓴다.
 //  · FeedbackBox  = 목록의 글 하나(상자, 격자로 늘어선다). 누르면 상세로 간다. 본문은 몇 줄만(넘치면 말줄임), 댓글 수, 운영자 답변 여부.
 //    본인 글은 상자에서 바로 지운다(del). 상자 안에 버튼이 있어 상자는 button 이 아니라 role=button 이다.
 //  · FeedbackPost = 상세 맨 위의 글 본문.

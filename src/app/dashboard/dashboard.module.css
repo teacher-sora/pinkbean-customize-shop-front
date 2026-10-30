@@ -1,4 +1,4 @@
-/* 운영자용 건의함(/suggestion). 글 상자 · 나무 · 입력칸은 앱의 건의함 부품(plaza.module.css)을 그대로 쓰고, 여기는 화면 틀만 둔다. */
+/* 운영자 화면(/dashboard). 글 상자 · 나무 · 입력칸은 앱의 건의함 부품(plaza.module.css)을 그대로 쓰고, 여기는 화면 틀만 둔다. */
 /* 앱은 문서가 스크롤하지 않는다(globals.css 의 body). 건의함은 글이 쌓이면 화면보다 길어지므로 안내 글처럼 문서 스크롤을 푼다 */
 /* 스크롤바 자리는 늘 잡아 둔다 — 글이 늘어 스크롤바가 생기거나 사라질 때 화면이 옆으로 밀리지 않게(사용자 지시) */
 :global(html):has(.page) { height: auto; scrollbar-gutter: stable; }
@@ -26,7 +26,7 @@
 .barRow { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .grow { flex: 1 1 auto; min-width: 0; }
 .stamp { flex: 0 0 auto; align-self: center; font-size: calc(11.5rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); font-variant-numeric: tabular-nums; } /* 마지막 새로고침 시각 — 숫자 폭이 같아 바뀌어도 밀리지 않는다 */
-.kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 420px; }
+.kinds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 640px; }
 .wait { min-width: 20px; height: 18px; padding: 0 6px; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: light-dark(#ec86ac, #d15785); font-size: calc(10.5rem / 16); font-weight: 700; color: light-dark(#fff, #ececef); font-variant-numeric: tabular-nums; }
 .ghost { flex: 0 0 auto; height: 30px; padding: 0 12px; display: flex; align-items: center; gap: 2px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: border-color .22s ease, color .22s ease; }
 .back { align-self: flex-start; padding: 0 10px 0 6px; }
@@ -51,6 +51,24 @@
 .when { margin-top: -6px; font-size: calc(11rem / 16); color: light-dark(#b7ada2, #858893); }
 .empty { margin: 0; padding: 8px 0; font-size: calc(13rem / 16); color: light-dark(#a89e93, #8e919a); }
 /* 지우기: 글자가 바뀌어도 자리가 밀리지 않게 폭을 잡아 둔다 */
+/* 공지: 넓으면 목록 | 쓰기, 좁으면 쓰기 아래 목록 */
+.pane { padding-top: 16px; display: flex; flex-direction: column; gap: 16px; }
+.textarea { width: 100%; min-height: 240px; padding: 10px 12px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 8px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(13rem / 16); line-height: 1.6; color: inherit; resize: vertical; outline: none; }
+.textarea:focus { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fff, #303238); }
+.acts { display: flex; align-items: center; gap: 8px; }
+.acts .btn { height: 34px; padding: 0 16px; font-size: calc(13rem / 16); }
+.ntList { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ntRow { width: 100%; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; background: light-dark(#fff, #303238); font-family: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ntRowOn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf4f8, #4d313d); }
+.ntTitle { font-size: calc(13rem / 16); font-weight: 600; overflow-wrap: anywhere; }
+/* 방문자 */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 640px; }
+.stat { padding: 12px; display: flex; flex-direction: column; gap: 4px; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; background: light-dark(#fff, #303238); }
+.statLabel { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
+.statNum { font-size: calc(22rem / 16); font-weight: 700; font-variant-numeric: tabular-nums; }
+.days { max-width: 640px; display: flex; flex-direction: column; }
+.dayRow { padding: 8px 12px; display: flex; justify-content: space-between; border-bottom: 1px solid light-dark(#f0e9e1, #42454d); font-size: calc(13rem / 16); font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .del { flex: 0 0 auto; width: 64px; height: 22px; border: 1px solid light-dark(#f2d7d2, #644640); border-radius: 4px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(11rem / 16); font-weight: 700; color: light-dark(#d1735f, #d19f94); cursor: pointer; transition: border-color .22s ease, color .22s ease, background-color .24s ease; }
 .delArmed { border-color: light-dark(#d1735f, #ae5845); background: light-dark(#d1735f, #ae5845); color: light-dark(#fff, #ececef); }
 @media (hover: hover) and (pointer: fine) {
