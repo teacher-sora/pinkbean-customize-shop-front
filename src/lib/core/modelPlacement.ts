@@ -88,18 +88,13 @@ export const canvasBitmap = (pl: ModelPlacement) => ({ bw: Math.round(pl.box.w *
 //  - 가운데 정렬도 translate(-50%)(소수 px)가 아니라 디바이스 픽셀로 반올림한 left/top 으로, 감싼 박스가
 //    소수 위치에 있으면 그만큼 되빼서 보정한다. 소수 위치면 재샘플링돼 세로줄이 찢겨 보였다(우측 미리보기 관측).
 // wrap = position:relative 인 표시 영역, canvas = 그 안의 position:absolute.
-// 쓰기는 모아서 읽기가 끝난 뒤 한 번에 한다(그리기 전) — 카드마다 읽고 쓰기를 번갈아 하면 새 쪽의 카드 수만큼 레이아웃이 다시 돌았다.
-let fits: (() => void)[] = []
 export function fitCanvas(canvas: HTMLCanvasElement, wrap: HTMLElement | null, bw: number, bh: number, divW: number, divH: number, dpr: number) {
   const rect = wrap?.getBoundingClientRect()
   const fx = rect ? (rect.left * dpr) % 1 : 0, fy = rect ? (rect.top * dpr) % 1 : 0
-  if (!fits.length) queueMicrotask(() => { const q = fits; fits = []; for (const f of q) f() })
-  fits.push(() => {
-    canvas.style.width = `${bw / dpr}px`
-    canvas.style.height = `${bh / dpr}px`
-    canvas.style.left = `${(Math.round((divW * dpr - bw) / 2) - fx) / dpr}px`
-    canvas.style.top = `${(Math.round((divH * dpr - bh) / 2) - fy) / dpr}px`
-  })
+  canvas.style.width = `${bw / dpr}px`
+  canvas.style.height = `${bh / dpr}px`
+  canvas.style.left = `${(Math.round((divW * dpr - bw) / 2) - fx) / dpr}px`
+  canvas.style.top = `${(Math.round((divH * dpr - bh) / 2) - fy) / dpr}px`
 }
 
 // 연출 배율(1x/2x/3x) 단계별 정수 디바이스 배율. 단계마다 따로 반올림하면 미리보기 높이에 따라 1x·2x 가 같은 정수로

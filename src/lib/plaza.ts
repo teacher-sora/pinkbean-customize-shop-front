@@ -118,7 +118,7 @@ const makeClient = (createClient: CreateClient) => createClient(URL_ENV!, KEY_EN
   auth: { persistSession: true, autoRefreshToken: true },
   db: { schema: plazaTarget().schema },
 })
-// 라이브러리(약 250KB)는 첫 로드 묶음에 넣지 않는다 — 처음 쓸 때 받고, 첫 화면이 뜬 뒤 한가할 때 미리 받아 둔다(warmPlazaLib). 못 받으면 붙잡아 두지 않아 다음 호출이 다시 받는다
+// 라이브러리(약 250KB)는 첫 로드 묶음에 넣지 않는다 — 처음 쓸 때 받는다(첫 화면 뒤 한가할 때의 광장 미리 받기가 그 처음이다). 못 받으면 붙잡아 두지 않아 다음 호출이 다시 받는다
 let clientP: Promise<ReturnType<typeof makeClient>> | null = null
 async function sb() {
   if (!plazaConfigured()) return null
@@ -128,7 +128,6 @@ async function sb() {
   }
   return clientP
 }
-export function warmPlazaLib() { if (plazaConfigured()) void import('@supabase/supabase-js').catch(() => undefined) }
 
 // 익명 로그인 세션(없으면 만든다). 실패하면 null — 읽기는 되고 쓰기만 막힌다.
 let authP: Promise<string | null> | null = null
