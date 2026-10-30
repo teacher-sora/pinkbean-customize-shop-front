@@ -302,6 +302,6 @@ html[data-pb-bgonly] [data-pb-body] { opacity: 0; transform: translateY(10px); v
 [data-guide].pb-guidehit { outline: 2px solid light-dark(#ec86ac, #d15785) !important; outline-offset: 2px; }
 
 /* 하단 탭: 자리 없이 화면 아래에 떠 있고(내용을 덮는다), 목록이 움직이는 동안만 제 전환을 타고 숨었다가 멈추면 나온다(lib/scrollHide, nav[data-pb-navhide]) */
-html[data-pb-nav] [data-mobile-col] > nav[data-hero-below] { position: fixed; left: 0; right: 0; bottom: 0; transition: translate .24s cubic-bezier(.45,0,.55,1), opacity .24s ease; }
+html[data-pb-nav] [data-mobile-col] > nav[data-hero-below] { position: fixed; left: 0; right: 0; bottom: 0; transition: translate .24s cubic-bezier(.45,0,.55,1), opacity .24s ease; will-change: translate; }
 html[data-pb-nav] [data-mobile-col] > nav[data-pb-navhide] { translate: 0 100%; opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { [data-mobile-col] > nav[data-hero-below] { transition: none !important; } }

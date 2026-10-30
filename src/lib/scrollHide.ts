@@ -33,7 +33,7 @@ function set(h: boolean) {
 const inCol = (t: EventTarget | null) => t instanceof Element && !!t.closest('[data-mobile-col]')
 const atBottom = () => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
 // 손을 뗀 뒤 나온다 — 여기서 끝이라 남은 관성은 다시 숨기지 않는다
-function show() { clearTimeout(stopT); set(false); armed = false }
+function show() { clearTimeout(stopT); if (hidden) set(false); armed = false }
 // 멈춤을 기다린다 — 스크롤이 이어지면 다시 잰다. 손가락이 닿아 있으면 기다리지 않는다(뗄 때 end 가 다시 부른다)
 function wait() {
   clearTimeout(stopT)
@@ -55,7 +55,7 @@ const onScroll = (e: Event) => {
   lastEl = el; lastPos = pos; lastT = e.timeStamp
   if (ios && speed === Infinity) return // 잴 수 없는 한 번(첫 스크롤 · 코드로 건너뜀)은 움직임으로 치지 않는다
   if (!finger && speed < (ios ? SLOW_SPEED_IOS : SLOW_SPEED)) { show(); return }
-  if (!atBottom()) set(true)
+  if (!hidden && !atBottom()) set(true) // 이미 숨었으면 재지 않는다 — 페이지 높이를 읽으면 스크롤마다 레이아웃을 강제하고, 탭 찾기도 스크롤마다 돈다
   wait()
 }
 export function installScrollLink(): () => void {
