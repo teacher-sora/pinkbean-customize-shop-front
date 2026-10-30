@@ -5,6 +5,7 @@
 //  · PC · 절반 · 태블릿 = 연출 설정 드로어에 붙어 있다(드로어 윗변 위). 드로어가 오르내리면 같은 전환으로 함께 오르내리고,
 //    접혀 있을 때는 아래 줄(배율 · 액션 · 연출 설정) 바로 위에 뜬다. 드로어가 화면 밖으로 내려갈 때 칸만 그만큼(아래 줄 높이) 되올린다.
 //  · 모바일 = 미리보기가 낮아 늘 띄워 두면 명찰을 가린다. 아래 줄의 말풍선 버튼을 누르면 아래 줄 자리에 칸이 올라오고, 바깥을 누르면 내려간다.
+//    바깥 누름만으로는 닫는 법이 드러나지 않아 칸 왼쪽 끝에 정사각형 닫기 버튼(x)을 둔다(사용자 지시) — [닫기][입력][이모티콘][전송].
 // 게임 채팅에는 줄바꿈이 없다 — Enter(휴대폰 자판의 보내기 · 완료 포함)가 곧 전송이다. 칸을 form 으로 감싸 제출로 보낸다:
 // 한글 조합 중 Enter 도 조합이 끝난 뒤 한 번만 제출되고, 휴대폰 자판의 Enter 는 keydown 이 오지 않는 기기도 제출은 온다.
 // 이모티콘(ChatEmoPicker): PC 는 표정 · 모션 고르기와 같은 팝박스(PopBox — 미리보기 안쪽 10px)가 칸 위에, 모바일은 아래 시트(Surface 'emo')로.
@@ -16,7 +17,7 @@ import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { warmChat, warmChatUi } from '@/lib/core/chatUi'
 import { CHAT_TEXT_MAX } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
-import { IconSmile } from '../ui/Icons'
+import { IconClose, IconSmile } from '../ui/Icons'
 import ChatEmoPicker from './ChatEmoPicker'
 import { PopBox, popNear, usePop } from './PopBox'
 import styles from './preview.module.css'
@@ -67,6 +68,7 @@ export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; s
   const send = () => { const t = text.trim(); if (!t) return; s.sendChat({ text: t }); setText('') }
   return (
     <form ref={box} data-guide={mobile ? undefined : 'chat'} inert={!show || undefined} onSubmit={(e) => { e.preventDefault(); send() }} className={clsx(styles.chatBox, mobile && styles.chatBoxM, show && styles.chatBoxOn)}>
+      {mobile && <button type="button" onClick={onClose} tabIndex={show ? 0 : -1} title="닫기" aria-label="채팅 닫기" className={styles.chatClose}><IconClose size={14} /></button>}
       <input value={text} maxLength={CHAT_TEXT_MAX} onChange={(e) => setText(e.target.value)} tabIndex={show ? 0 : -1}
         placeholder="메시지..." aria-label="채팅" enterKeyHint="send" autoComplete="off" className={styles.chatField} />
       <button ref={btn} type="button" data-guide={mobile ? undefined : 'emo'} onClick={toggle} aria-expanded={mobile ? sheetOn : open} title="이모티콘" aria-label="이모티콘"

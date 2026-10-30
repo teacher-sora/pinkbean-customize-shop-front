@@ -223,6 +223,10 @@
 .chatBox:focus-within { border-color: light-dark(#ec86ac, #d15785); }
 /* 모바일: 아래 줄(연출 설정 · 배경 · 말풍선 | 점 위치 · 부위 염색 · 북마크) 자리에 올라온다 */
 .chatBoxM { position: absolute; left: 12px; right: 12px; bottom: 11px; height: 34px; z-index: 2; }
+/* 모바일 닫기(x): 칸 왼쪽 끝 안쪽의 정사각형 — 오른쪽 끝(전송)과 같은 3px 여백, 이모티콘 버튼과 같은 색 */
+.chatBoxM { padding-left: 3px; }
+.chatClose { flex: 0 0 auto; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; padding: 0; border: none; border-radius: 4px; background: transparent; color: light-dark(#b7ada2, #858893); cursor: pointer; }
+.chatBoxM .chatField { margin-left: 6px; }
 .chatField { flex: 1 1 0; min-width: 0; height: 100%; padding: 0; margin-right: 4px; border: none; background: transparent; font-family: inherit; font-size: calc(13rem / 16); color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; outline: none; text-overflow: ellipsis; }
 .chatField::placeholder { color: light-dark(#b7ada2, #858893); }
 .chatEmoBtn { flex: 0 0 auto; width: 28px; height: 26px; display: flex; align-items: center; justify-content: center; padding: 0; border: none; border-radius: 4px; background: transparent; color: light-dark(#b7ada2, #858893); cursor: pointer; }
