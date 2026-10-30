@@ -121,8 +121,10 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       // 맞춤이 있으면 바닥(floor — 그림 칸 비율)보다 맞춤이 먼저다: 어느 기기든 페이지는 맨 위 헤더 높이만큼만 내려간다(사용자 지시). 낮은 화면은 카드가 그만큼 낮아진다
       let fit = 0
       if (hero && document.documentElement.getAttribute('data-pb-view') !== 'full') {
-        const v = vp.getBoundingClientRect()
-        fit = lvh.offsetHeight - base.offsetHeight - (v.top - hero.getBoundingClientRect().bottom) - (col.getBoundingClientRect().bottom - v.bottom)
+        // 칸 아래 것은 칸 뒤에 붙은 요소들의 높이로 잰다 — 틀 끝까지의 거리로 재면 앞 탭이 남긴 틀 높이의 빈자리까지 빠져 칸이 짧아졌다(코디 정보 126px)
+        let below = 0
+        for (let el = vp.nextElementSibling; el; el = el.nextElementSibling) if (el instanceof HTMLElement && el.getClientRects().length && !el.matches('nav[data-hero-below]')) below += el.offsetHeight
+        fit = lvh.offsetHeight - base.offsetHeight - (vp.getBoundingClientRect().top - hero.getBoundingClientRect().bottom) - below
       }
       const h = fit > 0 ? fit : floor
       const need = Math.ceil(chrome + h) + 'px'
