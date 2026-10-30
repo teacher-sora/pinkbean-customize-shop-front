@@ -8,6 +8,7 @@ import { useEffect, useRef } from 'react'
 import { PLAZA_FILTERS, type PlazaFilter } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import { installScrollLink, setScrollFrozen } from '@/lib/scrollHide'
+import { installKeyboardOverlay } from '@/lib/keyboard'
 import { IconTab } from '../ui/Icons'
 import { useWheelRail } from '../ui/useWheelRail'
 import styles from './nav.module.css'
@@ -70,6 +71,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   const railRef = useWheelRail()
   const navRef = useRef<HTMLElement | null>(null)
   useEffect(() => (mobile ? installScrollLink() : undefined), [mobile]) // 하단 탭이 손가락 제스처 방향으로 숨고 나온다(lib/scrollHide)
+  useEffect(() => (mobile ? installKeyboardOverlay() : undefined), [mobile]) // 머리 묶음 안 입력칸은 키패드가 화면을 줄이지 않고 덮는다(lib/keyboard)
   useEffect(() => { setScrollFrozen(!!s.surface) }, [s.surface]) // 창이 떠 있는 동안 숨김 상태를 그대로(lib/scrollHide)
   // 코디 광장은 부위 대신 광장 분류(전체·대회·내 등록·찜한 코디)를 쓴다. 항목이 4개뿐이라 양끝 페이드는 끈다
   // (요소는 그대로 두고 opacity 만 0 — 탭을 오갈 때 전환이 끊기지 않게).

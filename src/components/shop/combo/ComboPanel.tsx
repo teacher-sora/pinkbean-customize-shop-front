@@ -24,6 +24,7 @@ import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
+import { fitAboveKeyboard } from '@/lib/keyboard'
 import { ChipAct } from '../ui/ChipAct'
 import { IconChevronLeft, IconChevronRight, IconDrop, IconSearch, IconTakeDown } from '../ui/Icons'
 import list from '../list/list.module.css'
@@ -125,6 +126,10 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
   // 결과 줄에 120ms 머물거나 닿는 순간 그 아이템의 첫 쪽을 받아 둔다(목록 카드의 '코디' 칩과 같은 warmCombo)
   const hover = useRef(0)
   useEffect(() => () => window.clearTimeout(hover.current), [])
+  // 휴대폰: 고르기 칸 높이를 지금 보이는 화면(가상 키패드 위)까지로 — lib/keyboard(머리 묶음 안 입력칸은 키패드가 화면을 줄이지 않고 덮는다)
+  const popRef = useRef<HTMLDivElement | null>(null)
+  const showing = open && !!q.trim()
+  useLayoutEffect(() => (mobile && showing ? fitAboveKeyboard(popRef) : undefined), [mobile, showing])
   return (
     <div className={mobile ? list.searchWrapM : clsx(list.searchWrap, narrow && list.searchWrapNarrow)}>
       <IconSearch className={mobile ? list.searchIconM : list.searchIcon} />
@@ -132,7 +137,7 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
         onKeyDown={(e) => { if (e.key === 'Enter' && hits[0]) pick(hits[0].it); if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
         placeholder={now ? now.name || now.id : '아이템 이름으로 찾기'} aria-label="아이템 찾기" className={clsx('pb-input', mobile ? list.searchInputM : list.searchInput)} />
       {open && q.trim() && (
-        <div className={styles.finderPop} role="listbox">
+        <div ref={popRef} className={clsx('pb-scroll', styles.finderPop, mobile && styles.finderPopM)} role="listbox">
           {hits.length ? hits.map(({ it, n }) => (
             <button key={it.id} type="button" role="option" aria-selected={false} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(it)} className={styles.finderRow}
               onPointerEnter={(e) => { if (e.pointerType !== 'mouse') return; window.clearTimeout(hover.current); hover.current = window.setTimeout(() => s.warmCombo(it.id), 120) }}

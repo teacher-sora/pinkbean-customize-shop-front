@@ -117,15 +117,17 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
       const cardW = (vp.clientWidth - inset - PAD_X - colGap * (cols - 1)) / cols
       const floor = extra + PAD_Y + GAP * (rows - 1) + rows * (cardW * ratio + foot)
       // 맞춤: 페이지를 끝까지 내리면 붙은 미리보기 + 머리 묶음(sticky) 바로 아래부터 화면 끝까지가 목록 칸이다(큰 화면 높이 100lvh — 툴바가 접힌).
-      // 칸 아래에 함께 놓이는 것(룩북의 자주 쓴 염색 줄 · 출처 줄)도 뺀다. 하단 탭은 떠 있어 빼지 않는다(내리는 동안 숨는다)
+      // 칸 아래에 함께 놓이는 것(룩북의 자주 쓴 염색 줄 · 출처 줄)도 뺀다. 하단 탭은 떠 있어 빼지 않는다(내리는 동안 숨는다).
+      // 맞춤이 있으면 바닥(floor — 그림 칸 비율)보다 맞춤이 먼저다: 어느 기기든 페이지는 맨 위 헤더 높이만큼만 내려간다(사용자 지시). 낮은 화면은 카드가 그만큼 낮아진다
       let fit = 0
       if (hero && getComputedStyle(hero).position === 'sticky') {
         const bar = col.querySelector<HTMLElement>('[data-sticky-top]')
         fit = lvh.offsetHeight - base.offsetHeight - (bar?.offsetHeight ?? 0) - (col.getBoundingClientRect().bottom - vp.getBoundingClientRect().bottom)
       }
-      const need = Math.ceil(chrome + Math.max(floor, fit)) + 'px'
+      const h = fit > 0 ? fit : floor
+      const need = Math.ceil(chrome + h) + 'px'
       if (col.style.getPropertyValue('--pb-min-h') !== need) col.style.setProperty('--pb-min-h', need)
-      const page = Math.ceil(Math.max(floor, fit)) + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
+      const page = Math.ceil(h) + 'px' // 한 쪽 높이 — 세로 넘기기에서 목록 칸 안에 쪽을 쌓을 때(usePagerY)
       if (col.style.getPropertyValue('--pb-page-h') !== page) col.style.setProperty('--pb-page-h', page)
     }
     m()
@@ -137,7 +139,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
 }
 
 // 모바일 세로 넘기기: 목록 칸 안 스크롤(사용자 지시 — 페이지 하나로 합쳤더니 목록을 스크롤할 수 없었고 페이지가 쪽 수만큼 길어졌다). 쪽은 한 쪽 높이(--pb-page-h,
-// useMobileRows — 칸 높이와 같다)로 쌓인다. 페이지는 스크롤하지 않는다(lib/scrollHide).
+// useMobileRows — 칸 높이와 같다)로 쌓인다. 칸 끝에 닿으면 페이지가 이어서 스크롤한다.
 // 스크롤 위치 ↔ 쪽 번호: 쪽 i 의 자리 = 그 쪽 위 끝이 칸 위 끝에 오는 스크롤. 줄 단위로 반올림해 센다(가로와 같다)
 export function usePagerY(vpRef: React.RefObject<HTMLDivElement | null>, on: boolean, idx: number, setIdx: (i: number, anim?: boolean) => void, pageCount: number, key: string, rows: number = MOBILE_GRID.rows) {
   const live = useRef({ idx, setIdx, pageCount, rows })
