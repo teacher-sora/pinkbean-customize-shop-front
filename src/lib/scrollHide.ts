@@ -12,7 +12,7 @@ import { RELAYOUT_EVENT } from './heroView'
 //  · 왜: 머리를 내용 위에 띄워 가리게 하거나 손가락 · 스크롤을 따라 위치를 적게 했더니, 아이폰에서 떨리고 빈 띠가 보이고 쪽 넘김이 어긋났다(사용자 지적 — 폐기).
 // 코디 정보 / 염색처럼 목록 칸이 없는 탭은 페이지 하나로 스크롤하고(머리도 내용과 함께 지나간다) 하단 탭만 같은 제스처로 숨고 나온다.
 const GESTURE = 8 // 손가락이 같은 방향으로 이만큼(px) 움직이면 그 방향으로 친다(누르기 · 떨림은 치지 않는다)
-let installed = 0, frozen = false, compact = false, tx = 0, ty = 0, ay = 0, touch = false, axis: '' | 'x' | 'y' = ''
+let installed = 0, frozen = false, compact = false, tx = 0, ty = 0, ay = 0, touch = false, flipped = false, axis: '' | 'x' | 'y' = ''
 let col: HTMLElement | null = null, nav: HTMLElement | null = null, ro: ResizeObserver | null = null, mo: MutationObserver | null = null, roTargets: Element[] = []
 const root = () => document.documentElement
 const q = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)
@@ -45,7 +45,7 @@ const inCol = (t: EventTarget | null) => !!col && t instanceof Node && col.conta
 const onStart = (e: TouchEvent) => {
   touch = !frozen && inCol(e.target) && e.touches.length === 1
   if (!touch) return
-  const t = e.touches[0]; tx = t.clientX; ty = ay = t.clientY; axis = ''
+  const t = e.touches[0]; tx = t.clientX; ty = ay = t.clientY; axis = ''; flipped = false
 }
 const onMove = (e: TouchEvent) => {
   if (!touch || e.touches.length !== 1) return
@@ -53,10 +53,18 @@ const onMove = (e: TouchEvent) => {
   if (!axis) { if (Math.max(Math.abs(dx), Math.abs(dy)) < GESTURE) return; axis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x' } // 처음 움직인 쪽으로 정한다
   if (axis !== 'y') return
   // 기준점 = 지금 상태 쪽으로 가장 멀리 민 자리. 거기서 반대로 GESTURE 넘게 밀면 바뀐다(손가락이 위로 = 넓게 보기)
-  if (compact) { ay = Math.min(ay, y); if (y - ay >= GESTURE) { set(false); ay = y } }
-  else { ay = Math.max(ay, y); if (ay - y >= GESTURE) { set(true); ay = y } }
+  if (compact) { ay = Math.min(ay, y); if (y - ay >= GESTURE) { set(false); ay = y; flipped = true } }
+  else { ay = Math.max(ay, y); if (ay - y >= GESTURE) { set(true); ay = y; flipped = true } }
 }
-const onEnd = () => { touch = false }
+// 빠르게 튕기면 움직임이 한두 번만 오거나 브라우저가 중간에 가져가(touchcancel) 위에서 못 셀 때가 있다 — 뗀 자리로 한 번 더 본다
+const onEnd = (e: TouchEvent) => {
+  const t = e.changedTouches[0]
+  if (touch && !flipped && t && axis !== 'x') {
+    const dx = t.clientX - tx, dy = t.clientY - ty
+    if (Math.abs(dy) >= GESTURE && Math.abs(dy) > Math.abs(dx) && dy < 0 !== compact) set(dy < 0)
+  }
+  touch = false
+}
 const onWheel = (e: WheelEvent) => { if (!frozen && inCol(e.target) && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.deltaY) set(e.deltaY > 0) }
 // 분류 줄 크기가 바뀌면(탭 전환으로 줄이 바뀜) 다시 잰다
 function watch(cat: HTMLElement | null) {

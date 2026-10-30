@@ -303,8 +303,12 @@ html[data-pb-bgonly] [data-pb-body] { opacity: 0; transform: translateY(10px); v
 
 /* 모바일 목록 넓게 보기 · 하단 탭(lib/scrollHide). 목록 화면(html[data-pb-fix])은 틀이 화면에 딱 붙어 페이지가 스크롤하지 않는다 */
 html[data-pb-fix] [data-mobile-col] { position: fixed; inset: 0; height: auto !important; }
+/* 페이지가 스크롤하지 않으니 아래로 쓸면 브라우저가 당겨서 새로고침 · 튕김으로 가져간다 — 그 손가락은 머리를 되돌리는 제스처다(사용자 지적) */
+html[data-pb-fix], html[data-pb-fix] body { overscroll-behavior: none; }
 /* 목록 칸 = 넓게 보기 높이(--pb-page-h, ListArea useMobileRows) — 처음에는 아래가 틀 밖으로 넘쳐(틀 overflow clip) 셋째 줄이 걸쳐 보인다 */
 html[data-pb-fix] [data-pb-list] { flex: 0 0 auto !important; height: var(--pb-page-h) !important; }
+/* 세로 목록은 하단 탭 높이(한 쪽 높이에서 뺀 몫)만큼 칸을 늘려 넓게 보기에서 다음 줄이 그 자리에 보이게 — 아래 여백으로 마지막 쪽도 칸 위 끝까지 올라온다 */
+html[data-pb-fix] [data-pb-list='y'] { box-sizing: border-box; height: calc(var(--pb-page-h) + var(--pb-nav-h, 0px)) !important; padding-bottom: var(--pb-nav-h, 0px); }
 /* 겹침 순서: 헤더 > 미리보기 > 머리 묶음(보기 설정 팝박스가 목록 위에 뜨고, 분류 줄은 미리보기 뒤로 들어간다) > 목록 */
 html[data-pb-fix] [data-pb-slot='hdr'] { position: relative; z-index: 4; }
 html[data-pb-fix] [data-pb-slot='hero'] { position: relative; z-index: 3; }
