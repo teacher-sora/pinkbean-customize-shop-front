@@ -110,7 +110,7 @@ export function useMobileRows(vpRef: React.RefObject<HTMLDivElement | null>, mob
     const before = col.style.getPropertyValue('--pb-min-h')
     const hero = col.querySelector<HTMLElement>('[data-hero]')
     const lvh = lvhProbe(), base = heroBaseProbe()
-    const PAD_X = 10, PAD_Y = 16, GAP = 10 // 페이지 패딩 좌우 5px(열 간격과 페이지 경계 간격을 맞춤)
+    const PAD_X = 14, PAD_Y = 20, GAP = 10 // 쪽 여백 좌우 7 · 위아래 10(list.module.css .pageM · .pageMY)
     const m = () => {
       const vp = vpRef.current?.isConnected ? vpRef.current : vp0 // 넘기는 방향을 바꾸면 칸이 새로 붙을 수 있다 — 지금 칸을 잰다
       // 칸 밖 높이 = 틀 위 끝에서 칸 위 끝까지 + 칸 뒤에 붙은 요소들(룩북 출처 줄). 하단 탭은 떠 있어 세지 않는다.
@@ -393,7 +393,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
             ? (dirY ? { height: `calc(${s.pageCount} * var(--pb-page-h))` } : { width: `calc(${s.pageCount} * 100cqw)` }) // 모바일: 길이만 페이지 수만큼(페이지 DOM 은 ±1)
             : { transform: `${dirY ? 'translateY' : 'translateX'}(${-s.curIdx * 100}%)`, transition: s.snapping ? 'transform .34s cubic-bezier(.22,.61,.36,1)' : 'none' }}>
           {pages.map(({ pi, items }) => (
-            <div key={pi} className={clsx('pb-page', mobile && 'pb-scroll pb-norail', mobile ? (dirY ? styles.pageMY : styles.pageM) : styles.page)}
+            <div key={pi} className={clsx('pb-page', mobile && 'pb-scroll pb-norail', mobile ? (dirY ? styles.pageMY : styles.pageM) : styles.page, mobile && pi > 0 && styles.pageSep)}
               style={dirY ? { top: mobile ? `calc(${pi} * var(--pb-page-h))` : `${pi * 100}%` } : { left: mobile ? `calc(${pi} * 100cqw)` : `${pi * 100}%` }}>
               {(!s.snapping || pi === s.curIdx || Math.abs(pi - s.snapFrom) <= 1) && (
                 <div className={mobile ? styles.gridM : styles.grid} style={gridStyle}>
