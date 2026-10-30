@@ -41,7 +41,7 @@ import { setStageBg, stageSelOf, useStageBg } from '@/lib/stageBg'
 import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, dropUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
-export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 기본 캐릭터 / 내 캐릭터
+export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 마네킹 / 내 캐릭터
 export type ListDir = 'x' | 'y' // 목록 넘기는 방향: 가로 / 세로
 // 성별 필터: 전체 / 여캐가 입을 수 있는 것 / 남캐가 입을 수 있는 것 (공용은 항상 포함)
 export type GenderFilter = 'all' | 'f' | 'm'
@@ -443,7 +443,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     resolveShareCode(code).then((snap) => { if (!cancelled && snap) openShared(snap) }).catch(() => {})
     return () => { cancelled = true }
   }, [])
-  const [listMode, setListMode] = useState<ListMode>('model') // 기본=기본 캐릭터(코디는 모델이 기본)
+  const [listMode, setListMode] = useState<ListMode>('model') // 기본=마네킹(코디는 모델이 기본)
   // 목록 넘기는 방향. 가로 = 지금까지의 넘기기, 세로 = 같은 넘기기를 위아래로(PC · 절반 · 태블릿은 한 쪽씩, 모바일은 목록 안 세로 스크롤 — ListArea).
   const [listDir, setListDir] = useState<ListDir>('x')
   // 프리셋 탭의 넘기는 방향(사용자 지시 — 프리셋에도). 목록과 따로다: 고르기 전에는 지금까지의 배치(PC 세로 스크롤 · 모바일 가로 스크롤)를 그대로 둔다(null)

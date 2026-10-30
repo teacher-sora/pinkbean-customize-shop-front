@@ -18,7 +18,7 @@ import { heroBaseProbe, lvhProbe, RELAYOUT_EVENT } from '@/lib/heroView'
 
 const VIEW_MODES: SegOpt<ListMode>[] = [
   { v: 'sprite', l: '아이템', t: '아이템 그림만 보기' },
-  { v: 'model', l: '기본 캐릭터', t: '기본 캐릭터에 입힌 모습' },
+  { v: 'model', l: '마네킹', t: '마네킹에 입힌 모습' },
   { v: 'mymodel', l: '내 캐릭터', t: '내 캐릭터에 입힌 모습' },
 ]
 export const GENDERS: SegOpt<GenderFilter>[] = [
