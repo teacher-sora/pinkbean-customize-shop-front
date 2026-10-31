@@ -21,7 +21,11 @@ export interface PlacedLayer extends Layer {
   twinOf?: string // 내 뒤에 나의 복제(slot 'clone')면 원래 부위 — 발끝을 맞출 때 몸 · 신발만 보려고 둔다
 }
 
+// 마네킹(몸 · 머리와 그 복제)을 그리지 않는다 — 피부를 가렸을 때(hidden.skin). 조립에는 그대로 넣어 앵커 · 발끝이 같고, 옷 · 헤어 자리가 달라지지 않는다
+export const dropBase = (placed: PlacedLayer[]) => placed.filter((p) => { const s = p.twinOf ?? p.slot; return s !== 'body' && s !== 'head' })
+
 export interface AssembleInput {
+  noDraw?: boolean // 마네킹을 가린 카드(dropBase — ItemThumb 이 그릴 때 뺀다)
   itemId: string
   slot: string
   vslot: string | null

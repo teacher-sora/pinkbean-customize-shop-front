@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { watchSize } from '@/lib/sizeWatch'
 import { useIsoLayoutEffect } from '@/lib/uiState'
-import { assemble, dropWeaponEffects, footOf, getFrameLayers, ringIllusion, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
+import { assemble, dropBase, dropWeaponEffects, footOf, getFrameLayers, ringIllusion, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, loadParticle, loadParticleIndex, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
@@ -277,7 +277,8 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       // 무기 이펙트를 끄면 무기(후보든 내 착용이든)의 이펙트 레이어도 뺀다 — 미리보기와 같은 규칙.
       const wOn = !pvEff || pvEff.wEffect
       const { placed: p, anchors } = assemble([...bgF, ...self].map((ci) => ({ ...ci, layers: dropWeaponEffects(ci.slot, ci.layers, wOn) })), zmap, smap)
-      setPlaced(p)
+      const shown = item.slot !== 'skin' && bgF.some((ci) => ci.noDraw) ? dropBase(p) : p // 피부를 가린 내 캐릭터 — 고르는 후보 피부는 그대로 보인다
+      setPlaced(shown)
       // 이펙트(망토 오라 등) = 배경(내 착용)의 것 + 이 아이템 자신의 것. 둘 다 같은 앵커로 배치한다.
       const foot = footOf(p) ?? { x: 8, y: 21 }
       const anch = { foot, brow: anchors.brow ?? foot }
@@ -306,7 +307,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
           parts = placeParticles(spots, descs, foot, (d) => stillSim(d))
         }
       }
-      memo(modelDone, mkey, { placed: p, effs: draws, parts, ovr: doneOvr })
+      memo(modelDone, mkey, { placed: shown, effs: draws, parts, ovr: doneOvr })
       if (alive) { setEffs(draws); setParts(parts) }
     })().catch(() => {})
     return () => { alive = false }

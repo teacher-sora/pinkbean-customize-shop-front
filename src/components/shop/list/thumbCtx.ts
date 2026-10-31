@@ -91,7 +91,7 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
     // 내 캐릭터: 우측 미리보기에 적용된 염색(발색/HSB)을 썸네일 배경(내 착용)에도 동일 반영 → 키에 염색 시그니처 포함.
     // 점 위치(변경점/변경쩜)도 미리보기와 동일하게 배경에 반영 → 키에 포함.
     const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.renderPalette, h: s.renderHsb, d: s.dotPos }) : ''
-    const key = `${mode}:${needMy}:${gaze}:${s.shownTone}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${ctxExpr}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
+    const key = `${mode}:${needMy}:${gaze}:${s.shownTone}${s.hidden.skin ? 'x' : ''}:${isSkinCat ? 'skin' : 'base'}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${ctxExpr}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return // 이미 최신 컨텍스트 → 불필요한 재조립/리렌더 방지
     // ⚠️ ctxKeyRef 는 async 가 "실제로 setCtx 로 커밋된 뒤"에만 찍는다(StrictMode 이중 setup 대비).
     const ids = Array.from(new Set([...(isSkinCat ? [] : [elf.bodyId, elf.headId, mine.bodyId, mine.headId]), ...(mode === 'mymodel' || needMy ? myEq.map(([, it]) => it.id) : [])]))
@@ -108,7 +108,8 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
         if (!isSkinCat) {
           const t = isMy ? mine : elf
           const body = map.get(t.bodyId), head = map.get(t.headId)
-          if (body) items.push({ itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, view) })
+          const noDraw = isMy && !!s.hidden.skin // 내 캐릭터에서 피부를 가렸으면 마네킹을 그리지 않는다
+          if (body) items.push({ itemId: body.id, slot: 'body', vslot: null, layers: getFrameLayers(body, view), noDraw })
           if (head) items.push({ itemId: head.id, slot: 'head', vslot: null, layers: getFrameLayers(head, view) })
         }
         for (const [sl, it] of worn) {
@@ -168,7 +169,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
     // 점 위치(변경점/변경쩜)도 미리보기와 동일하게 배경에 반영 → 키에 포함.
     const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.renderPalette, h: s.renderHsb, d: s.dotPos }) : ''
-    const key = `${mode}:${needMy}:${gaze}:${s.shownTone}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${mode === 'mymodel' ? s.pv.expr : ''}:${animaRaces.length}`
+    const key = `${mode}:${needMy}:${gaze}:${s.shownTone}${s.hidden.skin ? 'x' : ''}:${slotsInList.join(',')}:${eqSig}:${dyeSig}:${s.pv.wEffect}${s.pv.cEffect}${s.pv.capEffect}:${s.pv.form}:${s.pv.ear}:${s.pv.weapon}:${mode === 'mymodel' ? s.pv.expr : ''}:${animaRaces.length}`
     if (key === ctxKeyRef.current) return
     const eqIds = (mode === 'mymodel' || needMy) ? myEq.map(([, it]) => it.id) : []
     const ids = Array.from(new Set([elf.bodyId, elf.headId, mine.bodyId, mine.headId, ...eqIds]))
@@ -191,7 +192,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
           const myWpn = slot === 'weapon' ? undefined : myEq.find(([sl]) => sl === 'weapon')
           const cview = weaponPose(myWpn ? map.get(myWpn[1].id) : null, cview0)
           const items: AssembleInput[] = []
-          if (myBody) items.push({ itemId: myBody.id, slot: 'body', vslot: null, layers: getFrameLayers(myBody, cview) })
+          if (myBody) items.push({ itemId: myBody.id, slot: 'body', vslot: null, layers: getFrameLayers(myBody, cview), noDraw: !!s.hidden.skin })
           if (myHead) items.push({ itemId: myHead.id, slot: 'head', vslot: null, layers: getFrameLayers(myHead, cview) })
           if (myHead) items.push(...animaLayers(s.pv.form, animaRaces))
           const dyeMetas: ItemMeta[] = []
