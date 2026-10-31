@@ -144,7 +144,7 @@ export function WornItems({ snap, postId, mobile, flat }: { snap: Snapshot; post
     setItems(null)
     s.resolveSnapItems(snap).then((eq) => {
       if (!alive) return
-      const skinTone = viewTone(snap.tone, snap.hidden) // 피부를 가린 코디는 보이는 대로 기본 피부
+      const skinTone = viewTone(snap.tone, snap.hidden) // 피부를 가린 코디는 고른 피부 대신 기본 피부로 적는다
       const toneName = s.index?.base.tones.find((x) => x.tone === skinTone)?.name
       const out: Worn[] = []
       for (const c of CATS) {

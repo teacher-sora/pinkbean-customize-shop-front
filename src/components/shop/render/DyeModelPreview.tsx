@@ -53,6 +53,7 @@ export default function DyeModelPreview({ item, hsb, palette, zoom, model }: Pro
     const equipped: Record<string, ListItem | null> = {}
     if (mine) for (const [sl, it] of Object.entries(s.equipped)) if (it) equipped[sl] = it
     const hidden: Record<string, boolean> = mine ? { ...s.hidden } : {}
+    if (isSkin) delete hidden.skin // 피부를 염색하는 창은 피부가 보여야 한다
     if (!isSkin) {
       for (const c of conflictSlots(equipped, item.slot, item)) delete equipped[c]
       equipped[item.slot] = item

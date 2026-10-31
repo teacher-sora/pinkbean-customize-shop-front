@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
-import { assemble, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
+import { assemble, dropBase, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
@@ -279,7 +279,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       const bf = footOf(raw)
       const foot = bf ? { x: bf.x + stab.x, y: bf.y + stab.y } : { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
       const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
-      return { placed: bare ? placed.filter((p) => p.slot !== 'body' && p.slot !== 'head') : placed, foot, brow, navel: stab } // navel = 배꼽(월드 원점) + 같은 보정 — 허리에 붙는 이펙트(pos 4)
+      return { placed: bare || hidden.skin ? dropBase(placed) : placed, foot, brow, navel: stab } // navel = 배꼽(월드 원점) + 같은 보정 — 허리에 붙는 이펙트(pos 4)
     })
     // 핑퐁(왕복)은 "캐릭터가 클럭"일 때(전투대기 등 일어선 액션)만. 앉은 채(seated)는 재규어가 클럭이고 4족
     // 보행은 루프여야 뒷발이 되돌아가며 움찔하지 않는다. (전투대기가 중간에 툭 끊기던 건 라이딩 전체를 loop 로

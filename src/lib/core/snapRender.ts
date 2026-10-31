@@ -1,6 +1,6 @@
 // 스냅샷(착용+톤+염색+점 위치+연출설정 일부) → 합성 결과(placed·염색 override·이펙트). 렌더 캔버스와 무관한 순수 조립.
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
-import { assemble, dropWeaponEffects, frameDelays, getFrameLayers, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
+import { assemble, dropBase, dropWeaponEffects, frameDelays, getFrameLayers, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
 import { loadMeta, loadAnima, loadParticle, loadParticleIndex, loadSlot, type AnimaRace, type Index, type ItemMeta, type ListItem } from './data'
 import { LRU } from './lru'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor } from './dye'
@@ -134,7 +134,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const particles = placeParticles(spots, pDescs, foot, (d) => stillSim(d))
   // 탑승 중엔 가로 정렬 기준이 다르다(포즈마다 폭이 달라진다) — 메탈아머는 메카(mount) bbox, 그 외는 캐릭터 navel.
   const center = rideId ? (rideItem?.ridingCenterMount ? 'mount' : 'x') : undefined
-  return { placed, overrides, effects, ...(particles.length ? { particles } : {}), ...(center ? { center } : {}) }
+  return { placed: snap.hidden?.skin ? dropBase(placed) : placed, overrides, effects, ...(particles.length ? { particles } : {}), ...(center ? { center } : {}) }
 }
 
 // ── 합성 결과 캐시 ─────────────────────────────────────────────────────────────

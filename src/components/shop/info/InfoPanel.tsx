@@ -55,8 +55,8 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   }
 
   const bandState = (r: Row) => bandStateOf(r, toneName)
-  // 눈 · 휴지통: 피부는 기본 피부(뽀송 꽃잎)가 아닐 때만(가리거나 되돌릴 것이 없다 — 사용자 지시)
-  const canClear = (r: Row) => !r.isSkin || s.tone !== DEFAULT_TONE
+  // 휴지통: 피부는 되돌릴 것이 있을 때만(기본 피부로 보이는 중이면 없다). 눈은 늘 있다 — 기본 피부여도 마네킹을 가릴 수 있다(사용자 지시)
+  const canClear = (r: Row) => !r.isSkin || s.tone !== DEFAULT_TONE || r.hidden
 
   const grid = (
     <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${cols},minmax(0,1fr))` }}>
@@ -78,7 +78,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
               <span className={styles.slotPart}>{r.c.label}</span>
               <span className={clsx(styles.slotName, ((r.on && !r.hidden) || name === '기본') && styles.slotNameOn)}>{name}</span>
             </span>
-            {r.on && canClear(r) && (
+            {r.on && (
               <span role="button" tabIndex={0} title="미리보기 표시/숨김" aria-label="미리보기 표시/숨김"
                 onClick={(e) => { e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[r.slot]) delete n[r.slot]; else n[r.slot] = true; return n }) }}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); s.setHidden((h) => { const n = { ...h }; if (n[r.slot]) delete n[r.slot]; else n[r.slot] = true; return n }) } }}

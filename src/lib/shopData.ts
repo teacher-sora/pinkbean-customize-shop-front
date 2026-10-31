@@ -248,7 +248,7 @@ export const isDyeableSkin = (name?: string): boolean => skinDyeFamily(name) !==
 // 헤어/성형은 검정 대표(color 0) id. 실제 부위 리스트를 열면 folded 대표와 id가 일치해 선택 표시됨.
 export const DEFAULT_TONE = 15 // 뽀송 꽃잎 피부(기본 피부 — 새 프리셋 · 초기화 · 마네킹 · 가린 피부가 모두 이것이다)
 export const ELF_TONE = 12 // 예전 기본 피부 — 손대지 않은 저장 프리셋을 옮길 때만 쓴다(ShopContext migrateLegacyDefault)
-// 그릴 때 쓰는 피부 — 피부를 가리면(hidden.skin) 기본 피부로 그린다. 고른 피부(tone)는 그대로 남아 다시 보이면 돌아온다
+// 조립에 쓰는 피부 — 피부를 가리면(hidden.skin) 마네킹은 그리지 않고(assemble.dropBase) 뼈대만 기본 피부로 쓴다. 고른 피부(tone)는 그대로 남아 다시 보이면 돌아온다
 export const viewTone = (tone: number, hidden?: Record<string, boolean>) => (hidden?.skin ? DEFAULT_TONE : tone)
 export const DEFAULT_EQUIP: Record<string, ListItem> = {
   hair: { id: '00071540', slot: 'hair', isCash: false, grade: 'none', islot: null, vslot: null, dyeMode: 'palette', colorGroup: 7154, color: 0, name: '밤의 레아 헤어 (여)', actions: [] },

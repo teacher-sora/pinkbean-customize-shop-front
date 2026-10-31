@@ -304,7 +304,7 @@ export interface ShopCtx {
   commitPage: () => void
   // 착용(실제)
   equipped: Record<string, ListItem | null>
-  tone: number; shownTone: number // tone = 고른 피부, shownTone = 그릴 피부(가렸으면 기본 피부 — viewTone)
+  tone: number; shownTone: number // tone = 고른 피부, shownTone = 조립할 피부(가렸으면 기본 피부 — viewTone, 마네킹은 그리지 않는다)
   equipFromCat: (cat: string, item: ListItem) => void // 슬롯 라디오 토글(재클릭 해제)
   equipItem: (item: ListItem) => void                 // 토글 없이 착용(염색 적용 시)
   isEquippedInCat: (cat: string, itemId: string) => boolean
