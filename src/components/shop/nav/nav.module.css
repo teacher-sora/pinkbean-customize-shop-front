@@ -49,6 +49,7 @@
 .catPop.catPop { box-shadow: 0 0 10px light-dark(rgba(42,37,33,.1), rgba(25, 22, 20, 0.16)), 0 10px 26px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.224)); }
 /* 창 안쪽 여백은 머리와 격자 모두 상하좌우 8 — 높이를 잡지 않아 빈 곳이 생기지 않는다 */
 .catHead { flex: 0 0 auto; padding: 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
+.catHeadBtns { display: flex; gap: 6px; }
 .catTitle { font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#2a2521, #d4d5d8); }
 .catSort { height: 28px; padding: 0 9px; display: flex; align-items: center; gap: 4px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12rem / 16); font-weight: 500; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
 .catSort.catSortOn { background: light-dark(#ec86ac, #d15785); border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
