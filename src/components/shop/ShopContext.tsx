@@ -157,6 +157,7 @@ const migrateLegacyDefault = (s: Snapshot): Snapshot => { if (!LEGACY_DEFAULT_CO
 const PRESET_KEY = 'pb_presets_v1'
 // 쪽 위치 기억(pageByCat)에서 prefix 로 시작하는 칸을 뺀다(없으면 같은 객체 — 다시 그리지 않는다)
 const dropPages = (s: Record<string, number>, prefix: string) => { const ks = Object.keys(s).filter((k) => k.startsWith(prefix)); if (!ks.length) return s; const n = { ...s }; for (const k of ks) delete n[k]; return n }
+const CAT_ORDER_KEY = 'pb_cat_order_v1' // 부위 줄 순서(localStorage 영속, 서버 없음)
 const FAV_KEY = 'pb_favorites_v1' // 즐겨찾기 아이템 id 목록(localStorage 영속, 서버 없음)
 const BOOKMARK_KEY = 'pb_bookmarks_v1' // 북마크(간이 가방) 아이템 — 최대 8개, 즐겨찾기와 별개. sessionStorage(사용자 지시 — 새로고침에는 남고 창을 닫으면 사라진다)
 const BOOKMARK_MAX = 8
@@ -239,6 +240,8 @@ export interface ShopCtx {
   // 데이터
   index: Index | null
   cats: Cat[] // 부위 탭(CATS + 명찰/말풍선 목록이 있으면 CHAT_CATS)
+  catBar: Cat[] // 부위 줄에 놓는 순서(사용자가 바꾼 순서 — 목록의 정렬은 cats 그대로다)
+  reorderCats: (ids: string[]) => void // 카테고리 창에서 끌어 옮긴 순서
   infoCats: Cat[] // 코디 정보 칩(CATS + 명찰/말풍선 목록이 있으면 명찰 · 말풍선 둘 — CHAT_INFO_CATS)
   chatOn: boolean // 명찰 · 말풍선을 쓸 수 있는가(목록 파일이 있을 때만)
   chatDefault: ChatUi | null // 기본 말풍선(말풍선 반지 없이 보낸 채팅)
@@ -638,6 +641,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const withChat = (extra: Cat[]) => { const i = CATS.findIndex((c) => c.id === 'ring') + 1; return [...CATS.slice(0, i), ...extra, ...CATS.slice(i)] }
   const cats = useMemo(() => (chatOn ? withChat(CHAT_CATS) : CATS), [chatOn])
   const infoCats = useMemo(() => (chatOn ? withChat(CHAT_INFO_CATS) : CATS), [chatOn])
+  // 부위 줄의 순서(기기에만 저장). 저장에 없는 새 부위는 뒤에 붙는다. '전체' 목록의 정렬은 바꾸지 않으려고 cats 와 나눠 둔다
+  const [catOrder, setCatOrder] = useState<string[]>([])
+  useIsoLayoutEffect(() => { try { const v = JSON.parse(localStorage.getItem(CAT_ORDER_KEY) || '[]'); if (Array.isArray(v)) setCatOrder(v) } catch { /* noop */ } }, [])
+  const catBar = useMemo(() => {
+    const rank = new Map(catOrder.map((id, i) => [id, i]))
+    return [...cats].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity))
+  }, [cats, catOrder])
+  const reorderCats = (ids: string[]) => { setCatOrder(ids); try { localStorage.setItem(CAT_ORDER_KEY, JSON.stringify(ids)) } catch { /* noop */ } }
 
   useEffect(() => {
     // '전체'·'즐겨찾기' 는 모든 부위를 한 리스트로 보여주므로 전 슬롯을 로드한다(각 슬롯은 캐시돼 1회만 받음).
@@ -2191,7 +2202,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const selIdx = presets.findIndex((p) => p.id === nameSel)
   const saveName = selIdx >= 0 ? presetFileName(presets[selIdx].name, selIdx) : CHAT_NAME_FALLBACK
   const value: ShopCtx = {
-    index, cats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch: setSearchQ,
+    index, cats, catBar, reorderCats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch: setSearchQ,
     genderFilter, setGenderFilter, kindFilter, setKindFilter,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,

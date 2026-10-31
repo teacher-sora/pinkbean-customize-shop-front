@@ -78,8 +78,8 @@ export function PopBox ({ pop, label, keep, children }: { pop: ReturnType<typeof
 }
 
 // 창 안의 스크롤 칸(격자)
-export function PopScroll ({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={clsx('pb-scroll', 'pb-gutter', 'pb-fade', styles.popScroll, className)}>{children}</div>
+export function PopScroll ({ children, className, boxRef }: { children: React.ReactNode; className?: string; boxRef?: React.RefObject<HTMLDivElement> }) {
+  return <div ref={boxRef} className={clsx('pb-scroll', 'pb-gutter', 'pb-fade', styles.popScroll, className)}>{children}</div>
 }
 
 // 아래 줄: [이전] [닫기]
