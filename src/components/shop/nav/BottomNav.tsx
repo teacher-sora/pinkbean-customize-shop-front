@@ -8,11 +8,11 @@ import { useEffect, useRef } from 'react'
 import { PLAZA_FILTERS, type PlazaFilter } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import { installScrollLink, setScrollFrozen } from '@/lib/scrollHide'
+import { CAT_FIXED, CatExpand } from './CatPicker'
 import { IconTab } from '../ui/Icons'
 import { useWheelRail } from '../ui/useWheelRail'
 import styles from './nav.module.css'
 
-const MULTI = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }]
 export const TABS = [
   { id: 'codi', label: '코디', short: '코디' },
   { id: 'search', label: 'AI 코디 검색', short: 'AI 검색' },
@@ -25,7 +25,7 @@ const READY = new Set(['codi', 'search', 'info', 'preset', 'share'])
 
 // 모바일 목록 머리의 분류 탭(밑줄 탭). 미리보기 위 둥근 버튼들과 다른 모양이라 '이 목록에서 무엇을 볼지'로 읽힌다.
 // 고른 것이 바뀌면(다른 곳에서 바뀌어도) 고른 탭이 보이도록 가로로 당겨 온다. 코디 탭의 부위(CatTabsM)와 광장 분류(PlazaTabsM)가 같은 부품이다
-function TabsM({ label, items, on, pick }: { label: string; items: { id: string; label: string }[]; on: string; pick: (id: string) => void }) {
+function TabsM({ label, items, on, pick, end }: { label: string; items: { id: string; label: string }[]; on: string; pick: (id: string) => void; end?: React.ReactNode }) {
   const railRef = useWheelRail()
   useEffect(() => {
     const el = railRef.current
@@ -35,7 +35,7 @@ function TabsM({ label, items, on, pick }: { label: string; items: { id: string;
     if (l < el.scrollLeft) el.scrollTo({ left: l })
     else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth })
   }, [on, railRef])
-  return (
+  const rail = (
     <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label={label}>
       {items.map((p) => {
         const sel = on === p.id
@@ -46,11 +46,13 @@ function TabsM({ label, items, on, pick }: { label: string; items: { id: string;
       })}
     </nav>
   )
+  return end ? <div className={styles.catRowM}>{rail}{end}</div> : rail
 }
 // 부위. jump = 코디 정보 / 염색 · 프리셋 탭에서 쓸 때 — 부위를 누르면 그 부위의 아이템을 보려는 것이라 코디 탭으로 넘어간다(하단 줄에 있던 때와 같다)
 export function CatTabsM({ jump }: { jump?: boolean } = {}) {
   const s = useShop()
-  return <TabsM label="부위" items={[...MULTI, ...s.cats]} on={s.activeCat} pick={(id) => { s.setActiveCat(id); if (jump) s.setPrimary('codi') }} />
+  const pick = (id: string) => { s.setActiveCat(id); if (jump) s.setPrimary('codi') }
+  return <TabsM label="부위" items={[...CAT_FIXED, ...s.catBar]} on={s.activeCat} pick={pick} end={<CatExpand mobile on={s.activeCat} onPick={pick} />} />
 }
 // 코디 광장 분류(자유 코디 ~ 코디 룩북) — 모바일은 코디 탭의 부위처럼 미리보기와 목록 머리 사이에 둔다(사용자 지시, PinkbeanShop)
 export function PlazaTabsM() {
@@ -76,7 +78,16 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   const plaza = s.primary === 'share'
   const chips = plaza
     ? PLAZA_FILTERS.map((f) => ({ id: f.id as string, label: f.label, on: s.plazaFilter === f.id, pick: () => s.setPlazaFilter(f.id) }))
-    : [...MULTI, ...s.cats].map((p) => ({ id: p.id, label: p.label, on: s.activeCat === p.id, pick: () => pickPart(p.id) }))
+    : [...CAT_FIXED, ...s.catBar].map((p) => ({ id: p.id, label: p.label, on: s.activeCat === p.id, pick: () => pickPart(p.id) }))
+  // 고른 칩이 보이도록 줄을 당겨 온다 — 펼친 창에서 줄 밖의 부위를 고를 수 있다
+  const onChip = chips.find((c) => c.on)?.id
+  useEffect(() => {
+    const el = railRef.current, cur = el?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!el || !cur) return
+    const l = cur.offsetLeft - 8, r = cur.offsetLeft + cur.offsetWidth + 8
+    if (l < el.scrollLeft) el.scrollTo({ left: l })
+    else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth })
+  }, [onChip, railRef])
   // 코디 정보 / 염색 · 프리셋에서 부위를 바꾸면 그 부위의 아이템을 보려는 것이다 — 코디 탭으로 넘어가 바로 보인다(사용자 지시).
   const pickPart = (id: string) => {
     s.setActiveCat(id)
@@ -112,10 +123,11 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
       <div className={clsx('pb-partnav', styles.partNav)}>
         <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.rail)} aria-label={plaza ? '분류' : '부위'}>
           {chips.map((c) => (
-            <button key={c.id} type="button" onClick={c.pick} title={c.label}
+            <button key={c.id} type="button" onClick={c.pick} title={c.label} aria-pressed={c.on}
               className={clsx(c.on ? 'pb-solid' : 'pb-soft', styles.part, c.on && styles.partOn)}>{c.label}</button>
           ))}
         </nav>
+        {!plaza && <CatExpand mobile={false} on={s.activeCat} onPick={pickPart} />}
         <div className={styles.partLine} />
       </div>
       <div className={styles.tabBox}>

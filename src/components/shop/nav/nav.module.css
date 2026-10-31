@@ -4,8 +4,8 @@
 
 /* ── PC(절반·태블릿 포함) ── */
 .bottom { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
-.partNav { position: relative; height: 42px; width: fit-content; max-width: 95%; margin-bottom: -1px; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-bottom: none; border-radius: 7px 7px 0 0; overflow: hidden; z-index: 2; }
-.rail { height: 100%; padding: 0 5px 1px; /* 아래 1px = 구분선(partLine) 몫. 버튼 둘레의 빈 곳은 위아래 · 좌우 모두 5px */ display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
+.partNav { position: relative; display: flex; align-items: center; height: 42px; width: fit-content; max-width: 95%; margin-bottom: -1px; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-bottom: none; border-radius: 7px 7px 0 0; overflow: hidden; z-index: 2; }
+.rail { flex: 1 1 auto; min-width: 0; height: 100%; padding: 0 5px 1px; /* 아래 1px = 구분선(partLine) 몫. 버튼 둘레의 빈 곳은 위아래 · 좌우 모두 5px */ display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
 .part { flex: 0 0 auto; height: 30px; padding: 0 13px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: calc(12.5rem / 16); font-weight: 500; white-space: nowrap; color: light-dark(#8a8075, #9fa2aa); background: transparent; }
 :global(html:not([data-pb-csr])) .partOn { font-weight: 600; color: light-dark(#fff, #ececef); background: light-dark(#ec86ac, #d15785); }
 .partLine { position: absolute; left: 5px; right: 5px; bottom: 0; height: 1px; background: light-dark(#f0e9e1, #42454d); }
@@ -33,3 +33,34 @@
 .tabMLabel { max-width: 100%; font-size: calc(10rem / 16); font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: light-dark(#8a8075, #9fa2aa); }
 :global(html:not([data-pb-csr])) .tabMOn { color: light-dark(#ec86ac, #d881a1); border-top-color: light-dark(#ec86ac, #d15785); }
 :global(html:not([data-pb-csr])) .tabMOn .tabMLabel { font-weight: 600; color: light-dark(#d76d9a, #d293ae); }
+
+/* 카테고리 펼치기(CatPicker) — 부위 줄 오른쪽 끝의 버튼 + 팝박스 */
+.catRowM { flex: 0 0 auto; display: flex; height: 40px; }
+.catRowM > .catTabsM { flex: 1 1 0; min-width: 0; }
+.catExpand { flex: 0 0 auto; width: 30px; height: 30px; margin: 0 5px 1px; /* 왼쪽 목록과 오른쪽 끝의 공간이 같다 */ display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
+.catExpand svg { transition: transform .18s cubic-bezier(.45,0,.55,1); }
+.catExpandUp svg { transform: rotate(180deg); }
+.catExpandOpen { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#d76d9a, #d293ae); }
+.catExpandOpen svg { transform: rotate(180deg); }
+.catExpandUp.catExpandOpen svg { transform: none; }
+.catExpandM { width: 38px; height: 40px; margin: 0; border: 0; border-left: 1px solid light-dark(#f2ebe3, #40434b); border-bottom: 1px solid light-dark(#f2ebe3, #40434b); border-radius: 0; background: light-dark(#fff, #303238); }
+@media (hover: hover) and (pointer: fine) { .catExpand:hover { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#d76d9a, #d293ae); } }
+/* 보기 설정 창(list .filterPop)과 같은 그림자에 사방으로 아주 연한 한 겹을 더한다 — 목록과 배경 위에서 창의 네 변이 모두 갈린다 */
+.catPop.catPop { box-shadow: 0 0 10px light-dark(rgba(42,37,33,.1), rgba(25, 22, 20, 0.16)), 0 10px 26px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.224)); }
+/* 창 안쪽 여백은 머리와 격자 모두 상하좌우 8 — 높이를 잡지 않아 빈 곳이 생기지 않는다 */
+.catHead { flex: 0 0 auto; padding: 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
+.catTitle { font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#2a2521, #d4d5d8); }
+.catSort { height: 28px; padding: 0 9px; display: flex; align-items: center; gap: 4px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12rem / 16); font-weight: 500; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
+.catSort.catSortOn { background: light-dark(#ec86ac, #d15785); border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
+.catSortLabel { display: inline-grid; }
+.catSortLabel > span { grid-area: 1 / 1; text-align: center; }
+.catBody { flex: 0 1 auto; min-height: 0; padding: 8px; overflow: hidden auto; overscroll-behavior: contain; }
+.catGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); grid-auto-rows: 34px; gap: 6px; }
+.catGridM { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.catCell { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 6px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12.5rem / 16); font-weight: 500; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; user-select: none; -webkit-user-select: none; }
+.catCellName { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.catCellOn { font-weight: 600; background: light-dark(#ec86ac, #d15785); border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
+.catCellLock { opacity: .5; filter: grayscale(1); cursor: not-allowed; }
+.catCellMove { cursor: grab; touch-action: none; border-style: dashed; }
+.catDragging { position: relative; z-index: 10; pointer-events: none; will-change: transform; border-style: solid; border-color: light-dark(#ec86ac, #d15785); box-shadow: 0 6px 16px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.3)); }
+@media (hover: hover) and (pointer: fine) { .catCell:not(.catCellOn):not(.catCellLock):not(.catCellMove):hover { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#d76d9a, #d293ae); } }
