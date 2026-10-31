@@ -1,5 +1,6 @@
 // 모바일 하단 탭 — 자리 없이 화면 아래에 떠 있고, 목록이 움직이는 동안만 잠깐 숨었다가 멈추면 다시 나온다(사용자 지시 — 탭을 숨기는 까닭은 목록을 깔끔하게 보려는 것이다).
-//  · 목록 = 쪽을 넘기는 스크롤 칸(data-pb-list — 코디 · AI 검색 · 룩북 · 광장 · 프리셋 · 코디 정보). 가로든 세로든 그 칸의 스크롤만 본다. 페이지 스크롤 · 분류 줄은 보지 않는다.
+//  · 목록 = 쪽을 넘기는 스크롤 칸(data-pb-list — 코디 · AI 검색 · 룩북 · 광장 · 프리셋 · 코디 정보). 가로로 넘기는 칸(data-pb-list="x")의 스크롤만 본다. 세로 칸("y", 코디 정보는 늘)에서는 탭이 고정이다(사용자 지시). 페이지 스크롤 · 분류 줄은 보지 않는다.
+//  · 천천히 넘기면 숨기지 않는다 — HIDE_SPEED 를 넘어야 숨는다(사용자 지시 — 카드를 확인하며 넘길 때 나왔다 들어갔다 했다).
 //  · 손가락 · 휠로 움직인 때만 친다(armed) — 쪽 위치를 되살리거나 번호로 건너뛰는 코드 스크롤에는 숨지 않는다. 손을 뗀 뒤의 관성은 스크롤이 이어지는 동안 그대로 친다.
 //  · 손을 뗀 뒤 관성이 잦아들어 속도가 SLOW_SPEED 아래로 떨어지면 다 멈추기 전에 나온다(사용자 지시 — 완전히 멈출 때까지 기다리면 늦다). 끝까지 스크롤이 없으면 STOP_MS 뒤에 나온다.
 //  · 손가락이 닿아 있는 동안은 움직이지 않아도 나오지 않는다(사용자 지시 — 붙잡고 보는 중이다). 뗀 뒤에 위 규칙을 탄다.
@@ -10,6 +11,7 @@
 //  · 새로고침하면 맨 위에서 시작한다(history.scrollRestoration manual): 내려 둔 위치를 툴바가 보이는 채로 되살리면 목록이 어긋났고, 그 상태로 키패드를 여닫으면
 //    보이는 것과 누르는 자리가 어긋났다(사용자 지적).
 const STOP_MS = 160 // 스크롤이 이만큼 없으면 멈춘 것
+const HIDE_SPEED = 0.15 // 이 속도(px/ms)를 넘어야 숨는다 — 숨는 민감도를 낮추거나 높이는 값
 const SLOW_SPEED = 0.3 // 손을 뗀 뒤 이 속도(px/ms) 아래면 거의 멈춘 것 — 나오는 때를 앞당기거나 늦추는 값
 const SLOW_SPEED_IOS = 0.06 // 아이폰은 멈춤에 거의 닿았을 때(프레임당 1px 안팎)만 나온다(사용자 지시) — 나오는 때를 앞당기거나 늦추는 값
 const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) // 아이폰의 크롬도 WebKit 이다. 안드로이드는 터치가 와서 해당 없다
@@ -48,13 +50,14 @@ const onPDown = (e: PointerEvent) => { if (!viaTouch && e.isPrimary) begin(e.tar
 const onPUp = () => { if (!viaTouch) end() }
 const onWheel = (e: WheelEvent) => { if (!ios && !frozen && inCol(e.target)) { armed = true; wait() } }
 const onScroll = (e: Event) => {
-  if (!(armed || ios) || frozen || !(e.target instanceof Element) || !e.target.matches('[data-pb-list]')) return
+  if (!(armed || ios) || frozen || !(e.target instanceof Element) || !e.target.matches('[data-pb-list="x"]')) return
   const el = e.target, pos = el.scrollLeft + el.scrollTop, dt = e.timeStamp - lastT
   const now = el === lastEl && dt > 0 && dt < 100 ? Math.abs(pos - lastPos) / dt : Infinity
   speed = speed === Infinity || now === Infinity ? now : (speed + now) / 2
   lastEl = el; lastPos = pos; lastT = e.timeStamp
-  if (ios && speed === Infinity) return // 잴 수 없는 한 번(첫 스크롤 · 코드로 건너뜀)은 움직임으로 치지 않는다
+  if (speed === Infinity) return // 잴 수 없는 한 번(첫 스크롤 · 코드로 건너뜀)은 움직임으로 치지 않는다
   if (!finger && speed < (ios ? SLOW_SPEED_IOS : SLOW_SPEED)) { show(); return }
+  if (!hidden && speed < HIDE_SPEED) return
   if (!hidden && !atBottom()) set(true) // 이미 숨었으면 재지 않는다 — 페이지 높이를 읽으면 스크롤마다 레이아웃을 강제하고, 탭 찾기도 스크롤마다 돈다
   wait()
 }

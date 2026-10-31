@@ -367,7 +367,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   )
 
   const viewport = (
-    <div ref={setVp} data-pb-list className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
+    <div ref={setVp} data-pb-list={dirY ? 'y' : 'x'} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
       {hero ? (
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>
