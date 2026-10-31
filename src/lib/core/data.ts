@@ -92,7 +92,7 @@ export interface ListItem {
   ridingBackSit?: boolean     // 라이딩 아이템: 뒷쪽 시선에도 캐릭터 sit 강제(탱크: 뒤=줄타기 프레임+앉은 조종사).
   metaUrl?: string            // 프론트 public 의 meta.json 경로(CDN 밖 — 라이딩 · 명찰과 말풍선)
   chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(core/chatUi)
-  dupOf?: number              // 헤어 · 성형: 같은 그림 · 같은 이름의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
+  dupOf?: number              // 헤어 · 성형: 같은 그림의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
   dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups)
 }
 
