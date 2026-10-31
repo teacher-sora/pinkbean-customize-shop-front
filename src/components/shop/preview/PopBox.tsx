@@ -52,7 +52,7 @@ export function usePop () {
 }
 
 // 창. keep = 바깥으로 치지 않을 요소(창을 연 버튼 등)
-export function PopBox ({ pop, label, keep, children }: { pop: ReturnType<typeof usePop>; label: string; keep?: React.RefObject<HTMLElement | null>[]; children: React.ReactNode }) {
+export function PopBox ({ pop, label, keep, className, children }: { pop: ReturnType<typeof usePop>; label: string; keep?: React.RefObject<HTMLElement | null>[]; className?: string; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   const on = !!pop.pos
   useEffect(() => {
@@ -70,7 +70,7 @@ export function PopBox ({ pop, label, keep, children }: { pop: ReturnType<typeof
   if (!pop.pos || typeof document === 'undefined') return null
   const p = pop.pos
   return createPortal(
-    <div ref={ref} role="dialog" aria-label={label} className={clsx(styles.pvPanel, p.dir === 'down' && styles.pvPanelDown, pop.shown && styles.pvPanelOn)}
+    <div ref={ref} role="dialog" aria-label={label} className={clsx(styles.pvPanel, p.dir === 'down' && styles.pvPanelDown, pop.shown && styles.pvPanelOn, className)}
       style={{ left: p.left, ...(p.dir === 'down' ? { top: p.top } : { bottom: p.bottom }), width: p.w, ...(p.fit ? { maxHeight: p.h } : { height: p.h }) }}>
       {children}
     </div>,

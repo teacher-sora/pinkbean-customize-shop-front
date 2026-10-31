@@ -37,7 +37,7 @@
 /* 카테고리 펼치기(CatPicker) — 부위 줄 오른쪽 끝의 버튼 + 팝박스 */
 .catRowM { flex: 0 0 auto; display: flex; height: 40px; }
 .catRowM > .catTabsM { flex: 1 1 0; min-width: 0; }
-.catExpand { flex: 0 0 auto; width: 30px; height: 30px; margin: 0 5px 1px 2px; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
+.catExpand { flex: 0 0 auto; width: 30px; height: 30px; margin: 0 5px 1px; /* 왼쪽 목록과 오른쪽 끝의 공간이 같다 */ display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
 .catExpand svg { transition: transform .18s cubic-bezier(.45,0,.55,1); }
 .catExpandUp svg { transform: rotate(180deg); }
 .catExpandOpen { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#d76d9a, #d293ae); }
@@ -45,6 +45,8 @@
 .catExpandUp.catExpandOpen svg { transform: none; }
 .catExpandM { width: 38px; height: 40px; margin: 0; border: 0; border-left: 1px solid light-dark(#f2ebe3, #40434b); border-bottom: 1px solid light-dark(#f2ebe3, #40434b); border-radius: 0; background: light-dark(#fff, #303238); }
 @media (hover: hover) and (pointer: fine) { .catExpand:hover { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#d76d9a, #d293ae); } }
+/* 보기 설정 창(list .filterPop)과 같은 그림자에 사방으로 아주 연한 한 겹을 더한다 — 목록과 배경 위에서 창의 네 변이 모두 갈린다 */
+.catPop.catPop { box-shadow: 0 0 10px light-dark(rgba(42,37,33,.1), rgba(25, 22, 20, 0.16)), 0 10px 26px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.224)); }
 /* 창 안쪽 여백은 머리와 격자 모두 상하좌우 8 — 높이를 잡지 않아 빈 곳이 생기지 않는다 */
 .catHead { flex: 0 0 auto; padding: 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
 .catTitle { font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#2a2521, #d4d5d8); }

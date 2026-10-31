@@ -61,7 +61,7 @@ export function CatExpand({ mobile, on, onPick }: { mobile: boolean; on: string;
   const s = useShop()
   const pop = usePop()
   const btnRef = useRef<HTMLButtonElement>(null)
-  const open = !!pop.pos
+  const open = pop.isOpen // 닫는 전환이 끝나기를 기다리지 않는다 — 화살표는 누른 즉시 돈다
   useEffect(() => { if (s.surface && open) pop.close() }, [s.surface]) // eslint-disable-line react-hooks/exhaustive-deps -- 다른 창이 뜨면 닫는다
   const toggle = () => {
     if (open) { pop.close(); return }
@@ -69,10 +69,11 @@ export function CatExpand({ mobile, on, onPick }: { mobile: boolean; on: string;
     const screen = { left: 0, width: window.innerWidth, top: 0, bottom: window.innerHeight }
     const main = mobile ? null : document.querySelector('main[data-pb-body]')?.getBoundingClientRect()
     const p = popNear(b, main ?? screen)
-    // 높이는 내용을 따른다. PC 는 창 아래 끝을 목록 아래 끝에, 모바일은 좌우 끝을 카드 끝에 맞춘다
+    // 높이는 내용을 따른다. PC 는 창 아래 끝을 목록 아래 끝에, 오른쪽 끝을 부위 줄 끝에, 모바일은 좌우 끝을 카드 끝에 맞춘다
     if (mobile) { pop.open({ ...p, left: CAT_SIDE_M, w: window.innerWidth - CAT_SIDE_M * 2, fit: true }); return }
-    const w = Math.min(p.w, CAT_W_PC)
-    pop.open({ ...p, w, left: Math.max(p.left, Math.round(b.right - w)), bottom: main ? Math.round(window.innerHeight - main.bottom) : p.bottom, fit: true })
+    const right = btnRef.current?.parentElement?.getBoundingClientRect().right ?? b.right // 창 오른쪽 끝 = 부위 줄 오른쪽 끝
+    const w = Math.min(right - p.left, CAT_W_PC)
+    pop.open({ ...p, w, left: right - w, bottom: main ? Math.round(window.innerHeight - main.bottom) : p.bottom, fit: true })
   }
   return (
     <>
@@ -80,7 +81,7 @@ export function CatExpand({ mobile, on, onPick }: { mobile: boolean; on: string;
         className={clsx(styles.catExpand, mobile && styles.catExpandM, !mobile && styles.catExpandUp, open && styles.catExpandOpen)}>
         <IconCaretDown size={12} />
       </button>
-      <PopBox pop={pop} label="카테고리" keep={[btnRef]}>
+      <PopBox pop={pop} label="카테고리" keep={[btnRef]} className={styles.catPop}>
         <CatPickBody mobile={mobile} on={on} onPick={onPick} close={pop.close} />
       </PopBox>
     </>
