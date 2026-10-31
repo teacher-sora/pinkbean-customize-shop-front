@@ -8,14 +8,14 @@
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { useShop } from '../ShopContext'
-import { PopBox, PopScroll, popNear, usePop } from '../preview/PopBox'
+import { PopBox, popNear, usePop } from '../preview/PopBox'
 import { usePresetDrag } from '../preset/usePresetDrag'
 import { IconCaretDown, IconLock, IconReorder } from '../ui/Icons'
 import styles from './nav.module.css'
 
 export const CAT_FIXED = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }]
-const CAT_HEAD_H = 44, CAT_ROW_H = 40, CAT_PAD = 24 // 창 높이 = 머리 + 줄 수 × 칸 + 위아래 여백(칸이 적으면 창도 낮다)
-const CAT_W_PC = 760, CAT_CELL_PC = 102, CAT_COLS_M = 4
+const CAT_W_PC = 760
+const CAT_SIDE_M = 12 // 모바일 카드의 좌우 끝 = 목록 칸 여백 5(.viewportM) + 쪽 여백 7(.pageM). 창의 좌우 끝을 카드에 맞춘다
 
 function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: string; onPick: (id: string) => void; close: () => void }) {
   const s = useShop()
@@ -35,7 +35,7 @@ function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: strin
           </span>
         </button>
       </div>
-      <PopScroll boxRef={boxRef}>
+      <div ref={boxRef} className={clsx('pb-scroll', 'pb-fade', styles.catBody)}>
         <div ref={gridRef} className={clsx(styles.catGrid, mobile && styles.catGridM)}>
           {CAT_FIXED.map((c) => (
             <button key={c.id} type="button" disabled={sorting} onClick={() => pick(c.id)} title={sorting ? '이 칸은 순서를 바꿀 수 없어요' : c.label}
@@ -51,7 +51,7 @@ function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: strin
             </div>
           ))}
         </div>
-      </PopScroll>
+      </div>
     </>
   )
 }
@@ -69,10 +69,10 @@ export function CatExpand({ mobile, on, onPick }: { mobile: boolean; on: string;
     const screen = { left: 0, width: window.innerWidth, top: 0, bottom: window.innerHeight }
     const main = mobile ? null : document.querySelector('main[data-pb-body]')?.getBoundingClientRect()
     const p = popNear(b, main ?? screen)
-    const w = mobile ? p.w : Math.min(p.w, CAT_W_PC)
-    const cols = mobile ? CAT_COLS_M : Math.max(3, Math.floor((w - CAT_PAD) / CAT_CELL_PC))
-    const rows = Math.ceil((CAT_FIXED.length + s.catBar.length) / cols)
-    pop.open({ ...p, w, left: mobile ? p.left : Math.max(p.left, Math.round(b.right - w)), h: Math.min(p.h, CAT_HEAD_H + rows * CAT_ROW_H + CAT_PAD) })
+    // 높이는 내용을 따른다. PC 는 창 아래 끝을 목록 아래 끝에, 모바일은 좌우 끝을 카드 끝에 맞춘다
+    if (mobile) { pop.open({ ...p, left: CAT_SIDE_M, w: window.innerWidth - CAT_SIDE_M * 2, fit: true }); return }
+    const w = Math.min(p.w, CAT_W_PC)
+    pop.open({ ...p, w, left: Math.max(p.left, Math.round(b.right - w)), bottom: main ? Math.round(window.innerHeight - main.bottom) : p.bottom, fit: true })
   }
   return (
     <>

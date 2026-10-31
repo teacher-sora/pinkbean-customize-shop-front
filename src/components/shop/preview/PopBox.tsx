@@ -19,7 +19,8 @@ export const POP_INSET = 10 // 영역 안쪽 여백 — 이만큼은 늘 영역 
 const OUT_MS = 180          // 닫힘 전환이 끝난 뒤 떼어낸다
 
 // dir = 'up'(버튼 위 — bottom 으로 놓는다) · 'down'(버튼 아래 — top 으로 놓는다)
-export type PopPos = { left: number; w: number; h: number; dir: 'up' | 'down'; top?: number; bottom?: number }
+// fit = 높이를 내용에 맡긴다(h 는 상한) — 줄 수가 사용자마다 다른 창이 쓴다
+export type PopPos = { left: number; w: number; h: number; dir: 'up' | 'down'; top?: number; bottom?: number; fit?: boolean }
 type Box = { left: number; width: number; top: number; bottom: number }
 const POP_GAP = 6   // 버튼과 창 사이
 const POP_MIN = 240 // 아래에 이만큼(또는 위보다 많이) 남으면 아래에 둔다
@@ -70,7 +71,7 @@ export function PopBox ({ pop, label, keep, children }: { pop: ReturnType<typeof
   const p = pop.pos
   return createPortal(
     <div ref={ref} role="dialog" aria-label={label} className={clsx(styles.pvPanel, p.dir === 'down' && styles.pvPanelDown, pop.shown && styles.pvPanelOn)}
-      style={{ left: p.left, ...(p.dir === 'down' ? { top: p.top } : { bottom: p.bottom }), width: p.w, height: p.h }}>
+      style={{ left: p.left, ...(p.dir === 'down' ? { top: p.top } : { bottom: p.bottom }), width: p.w, ...(p.fit ? { maxHeight: p.h } : { height: p.h }) }}>
       {children}
     </div>,
     document.body,
@@ -78,8 +79,8 @@ export function PopBox ({ pop, label, keep, children }: { pop: ReturnType<typeof
 }
 
 // 창 안의 스크롤 칸(격자)
-export function PopScroll ({ children, className, boxRef }: { children: React.ReactNode; className?: string; boxRef?: React.RefObject<HTMLDivElement> }) {
-  return <div ref={boxRef} className={clsx('pb-scroll', 'pb-gutter', 'pb-fade', styles.popScroll, className)}>{children}</div>
+export function PopScroll ({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={clsx('pb-scroll', 'pb-gutter', 'pb-fade', styles.popScroll, className)}>{children}</div>
 }
 
 // 아래 줄: [이전] [닫기]
