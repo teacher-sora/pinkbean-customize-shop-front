@@ -3,14 +3,16 @@
 // 카테고리 펼치기 — 부위 줄 오른쪽 끝의 버튼(사용자 지시: 카테고리가 많아져 옆으로 넘기기만으로는 멀다). 가로 스크롤은 그대로 두고 하나 더 생긴 길이다.
 //  · 연출 설정 고르기와 같은 팝박스(preview/PopBox)다 — PC · 태블릿은 줄 위로 올라오고, 모바일은 줄 아래로 내려온다. 고르면 바로 닫힌다.
 //  · 머리의 [순서 변경]을 켜면 프리셋과 같은 끌기(usePresetDrag)로 순서를 바꾼다. 바뀐 순서는 부위 줄에 그대로 반영되고 기기에 저장된다(ShopContext catBar).
+//  · 순서 변경 중에는 [초기화]가 그 왼쪽에 나온다 — 두 번 눌러야 처음 순서로 돌아간다(lib/confirmTwice).
 //  · 전체 · 신규 · 즐겨찾기는 늘 1, 2, 3번이다 — 순서 변경 중에는 흐려지고 자물쇠가 붙어 집을 수 없다.
 
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
+import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { useShop } from '../ShopContext'
 import { PopBox, popNear, usePop } from '../preview/PopBox'
 import { usePresetDrag } from '../preset/usePresetDrag'
-import { IconCaretDown, IconLock, IconReorder } from '../ui/Icons'
+import { IconCaretDown, IconLock, IconReorder, IconReset } from '../ui/Icons'
 import styles from './nav.module.css'
 
 export const CAT_FIXED = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }]
@@ -27,13 +29,20 @@ function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: strin
     <>
       <div className={styles.catHead}>
         <span className={styles.catTitle}>카테고리</span>
-        <button type="button" onClick={() => setSorting((v) => !v)} aria-pressed={sorting} title={sorting ? '순서 변경 끝내기' : '끌어서 순서 바꾸기'} className={clsx(styles.catSort, sorting && styles.catSortOn)}>
-          <IconReorder size={14} />
-          <span className={styles.catSortLabel}>
-            <span aria-hidden={sorting || undefined} style={sorting ? { visibility: 'hidden' } : undefined}>순서 변경</span>
-            <span aria-hidden={!sorting || undefined} style={sorting ? undefined : { visibility: 'hidden' }}>완료</span>
-          </span>
-        </button>
+        <div className={styles.catHeadBtns}>
+          {sorting && (
+            <button type="button" onClick={() => { if (confirmTwice('cat:reset', '한 번 더 누르면 처음 순서로 돌아가요')) s.reorderCats([]) }} {...{ [CONFIRM_ATTR]: 'cat:reset' }} title="처음 순서로 (두 번 누르기)" className={styles.catSort}>
+              <IconReset />초기화
+            </button>
+          )}
+          <button type="button" onClick={() => setSorting((v) => !v)} aria-pressed={sorting} title={sorting ? '순서 변경 끝내기' : '끌어서 순서 바꾸기'} className={clsx(styles.catSort, sorting && styles.catSortOn)}>
+            <IconReorder size={14} />
+            <span className={styles.catSortLabel}>
+              <span aria-hidden={sorting || undefined} style={sorting ? { visibility: 'hidden' } : undefined}>순서 변경</span>
+              <span aria-hidden={!sorting || undefined} style={sorting ? undefined : { visibility: 'hidden' }}>완료</span>
+            </span>
+          </button>
+        </div>
       </div>
       <div ref={boxRef} className={clsx('pb-scroll', 'pb-fade', styles.catBody)}>
         <div ref={gridRef} className={clsx(styles.catGrid, mobile && styles.catGridM)}>
