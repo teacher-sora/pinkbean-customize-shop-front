@@ -145,7 +145,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   for (let pi = Math.max(0, s.curIdx - 1); pi <= Math.min(s.pageCount - 1, s.curIdx + 1); pi++) pages.push({ pi, items: list.slice(pi * per, pi * per + per) })
 
   const viewport = (
-    <div ref={setVp} data-pb-list className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
+    <div ref={setVp} data-pb-list={dirY ? 'y' : 'x'} className={clsx(styles.viewport, dirY && styles.viewportY, mobile && 'pb-norail', mobile && (dirY ? styles.viewportMY : styles.viewportM))}>
       {s.plazaLoading ? (
         <div className={mobile ? styles.pageM : styles.page} style={{ left: 0 }}>
           <div className={styles.grid} style={gridStyle}>
