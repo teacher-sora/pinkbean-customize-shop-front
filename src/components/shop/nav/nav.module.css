@@ -53,7 +53,7 @@
 .catTitle { font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#2a2521, #d4d5d8); }
 .catSort { height: 28px; padding: 0 9px; display: flex; align-items: center; gap: 4px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12rem / 16); font-weight: 500; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }
 .catSort.catSortOn { background: light-dark(#ec86ac, #d15785); border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
-@media (hover: hover) and (pointer: fine) { .catSort:hover { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#c05a94, #cb9ab6); } .catSort.catSortOn:hover { background: light-dark(#d5578e, #b94673); border-color: light-dark(#d5578e, #b94673); color: light-dark(#fff, #ececef); } }
+@media (hover: hover) and (pointer: fine) { .catSort:hover { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#c05a94, #cb9ab6); } .catSort.catSortOn:hover { background: light-dark(#d5578e, #b04071); border-color: light-dark(#d5578e, #b04071); color: light-dark(#fff, #ececef); } }
 .catSortLabel { display: inline-grid; }
 .catSortLabel > span { grid-area: 1 / 1; text-align: center; }
 .catBody { flex: 0 1 auto; min-height: 0; padding: 8px; overflow: hidden auto; overscroll-behavior: contain; }
@@ -66,4 +66,4 @@
 .catCellLock { opacity: .5; filter: grayscale(1); cursor: not-allowed; }
 .catCellMove { cursor: grab; touch-action: none; border-style: dashed; }
 .catDragging { position: relative; z-index: 10; pointer-events: none; will-change: transform; border-style: solid; border-color: light-dark(#ec86ac, #d15785); box-shadow: 0 6px 16px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.3)); }
-@media (hover: hover) and (pointer: fine) { .catCell:not(.catCellOn):not(.catCellLock):hover { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#c05a94, #cb9ab6); } .catCellOn:not(.catCellLock):hover { background: light-dark(#d5578e, #b94673); border-color: light-dark(#d5578e, #b94673); } }
+@media (hover: hover) and (pointer: fine) { .catCell:not(.catCellOn):not(.catCellLock):hover { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#c05a94, #cb9ab6); } .catCellOn:not(.catCellLock):hover { background: light-dark(#d5578e, #b04071); border-color: light-dark(#d5578e, #b04071); } }
