@@ -141,7 +141,7 @@ export const IconPencil = ({ className }: P) => (
   <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" style={PENCIL} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 4.5l3 3L8 19H5v-3z" /></svg>
 )
 export const IconReset = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 5v6h-6" /></svg>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 7.5-7.5 8 8 0 0 0-5.5 2.2L4.5 9" /><path d="M4.5 4.5V9H9" /></svg>
 )
 export const IconEye = ({ hidden }: { hidden: boolean }) => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

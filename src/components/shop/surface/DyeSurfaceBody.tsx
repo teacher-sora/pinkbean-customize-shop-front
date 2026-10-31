@@ -17,7 +17,7 @@ import { useShop, type ListMode } from '../ShopContext'
 import DyeCellCanvas from '../render/DyeCellCanvas'
 import DyeModelPreview from '../render/DyeModelPreview'
 import { DyeRow, FamilyDots, MixRatio, MixSwatches, Stepper } from '../ui/controls'
-import { IconCheck, IconReset, IconViewModel } from '../ui/Icons'
+import { IconCheck, IconViewModel } from '../ui/Icons'
 import DyeVault from './DyeVault'
 import { useInnerSlide } from './innerSlide'
 import { readUiPref, writeUiPref } from '@/lib/uiState'
@@ -160,9 +160,7 @@ function MixBody({ item, mobile, name, init }: { item: ListItem; mobile: boolean
         className={clsx(big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn), styles.tickBtn, off && styles.offOn)}>
         <span className={clsx(styles.tick, off && styles.tickOn)} aria-hidden="true"><IconCheck size={9} /></span>비활성화
       </button>
-      {big
-        ? <button type="button" onClick={reset} title="염색 초기화" aria-label="염색 초기화" className={styles.resetIcon}><IconReset />초기화</button>
-        : <button type="button" onClick={reset} className={clsx('pb-ghost', styles.resetBtn)}>염색 초기화</button>}
+      <button type="button" onClick={reset} className={big ? styles.resetIcon : clsx('pb-ghost', styles.resetBtn)}>염색 초기화</button>
     </div>
   )
   const preview = <DyeModelPreview item={item} hsb={NO_HSB} palette={off || cleared ? undefined : commit} zoom={zoom} model={model} />
@@ -296,7 +294,7 @@ function HsbBody({ item, mobile, name, init }: { item: ListItem; mobile: boolean
           <div className={clsx(styles.resetRow, isSkin && styles.resetRowEnd)}>
             {!isSkin && edgeBtn(true)}
             {offBtn(true)}
-            <button type="button" onClick={reset} title="수치 초기화" aria-label="수치 초기화" className={styles.resetIcon}><IconReset />초기화</button>
+            <button type="button" onClick={reset} className={styles.resetIcon}>염색 초기화</button>
           </div>
           {vault}
         </div>
