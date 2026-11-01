@@ -198,6 +198,19 @@ function compose (A: HTMLImageElement, pieces: Piece[], extra: (g: CanvasRenderi
   return { c, ox: x0, oy: y0 }
 }
 
+// 게임은 장식까지 포함한 명찰 전체를 캐릭터 가운데에 맞춘다 — 왼쪽 문양이 넓으면 이름이 오른쪽으로 밀린다(ARK · BEYOND · 세이비어 · 크리스마스 위시).
+// 조각의 투명 여백은 치지 않는다(세이비어: 조각 폭은 좌우 20 으로 같고 그려진 폭이 20 · 12). 좌우가 같은 명찰은 0 이다.
+function balance (bm: Bitmap, band: [number, number]): number {
+  try {
+    const { width: W, height: H } = bm.c, a = bm.c.getContext('2d')!.getImageData(0, 0, W, H).data
+    const on = (x: number) => { for (let y = 0; y < H; y++) if (a[(y * W + x) * 4 + 3]) return true; return false }
+    let l = 0, r = W - 1
+    while (l < r && !on(l)) l++
+    while (r > l && !on(r)) r--
+    return Math.floor(((band[0] - (bm.ox + l)) - (bm.ox + r + 1 - band[1])) / 2)
+  } catch { return 0 }
+}
+
 // 기본 명찰 — 명찰 반지를 끼지 않았을 때의 게임 명찰. 원본에 그림이 없다(클라이언트가 직접 그린다) — 게임 화면을 점 단위로 재어 맞췄다:
 // 판 = 이름 폭 + 5(펜 시작 2칸 왼쪽부터) × 16(글자 줄 12 의 위 2, 아래 2), 위 끝이 발끝 2칸 아래, 네 모서리 1칸씩 깎음, 검정 55% 불투명. 글자는 흰색, 글자 줄의 위 = 판 위 + 2.
 export const BASE_TAG: ChatUi = { kind: 'nameTag', clr: '#ffffff', atlas: 'base', parts: {}, plain: true }
@@ -224,6 +237,7 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
   const ani = Object.keys(P).filter((k) => /^ani\d+$/.test(k)).sort((a, b) => +a.slice(3) - +b.slice(3))
   let tl = -Math.floor((t.adv + 4) / 2) // 글자 칸 왼끝(펜 시작)
   let moving: string | undefined // 움직이는 조각(이 판에서 프레임마다 바뀌는 것)
+  let band: [number, number] | undefined // w · c · e 판의 글자 칸(왼끝, 오른끝)
   if (ani.length && ui.baked) {
     moving = ani[0]
     // 글자가 박힌 움직이는 판(훈장 · 칭호): 판 한 장을 캐릭터 가운데에 — 원본 기준점은 한쪽으로 치우친 것이 많다(사용자 지적: 칭호가 옆으로 비켜 섰다)
@@ -255,6 +269,7 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
     // 글자 칸 = 이름 폭. 이름이 아주 짧아도 양끝 조각이 안쪽으로 들어온 만큼은 남겨 서로 겹치지 않게.
     const inner = Math.max(t.adv, P.w.w - P.w.origin.x + P.e.origin.x)
     const L = -Math.floor((t.adv + 4) / 2), R = L + inner
+    band = [L, R]
     const w = at(P.w, L, T), e = at(P.e, R, T)
     hfill(pieces, P.c, right(w), e.x, T - P.c.origin.y)
     pieces.push(w, e)
@@ -262,6 +277,7 @@ async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
   // 글자: 글자 칸 왼끝부터 돋움의 펜 위치대로, 세로는 글자 칸의 기준선에 — 띠가 아니라 글자 칸을 기준으로 놓는다.
   const text = (g: CanvasRenderingContext2D, x0: number, y0: number) => { if (!ui.baked) g.drawImage(t.c, tl + t.left - x0, T + t.top - y0) }
   const bm = compose(A, pieces, text)
+  if (band && ui.kind === 'nameTag') bm.ox += balance(bm, band)
   const d = moving ? ui.anim?.[moving] : undefined
   if (!d || !moving || !ui.animAtlas || !ui.animParts) return bm
   // 움직이는 판: 바뀌는 조각만 그 프레임의 조각으로 바꿔(같은 자리 — origin 차이만큼 옮긴다) 프레임마다 한 장씩. animAtlas 는 load() 때 받는다
