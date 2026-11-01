@@ -108,6 +108,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const act = useRef<CardAct>(null!)
   act.current = {
     select: (id) => { if (!dnd.swallowClick()) s.selectPreset(id) },
+    warm: (snap, dye) => s.warmWear(snap, dye, 'preset'),
     down: dnd.onPointerDown, share: s.sharePreset, remove, rename: s.renamePreset, commit: s.commitPresetName,
   }
 
@@ -163,7 +164,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
 }
 
 type CardAct = {
-  select: (id: string) => void; down: (e: React.PointerEvent<HTMLElement>, id: string) => void
+  select: (id: string) => void; warm: (snap: Snapshot, dye: boolean) => void; down: (e: React.PointerEvent<HTMLElement>, id: string) => void
   share: (p: Preset) => void; remove: (p: Preset) => void; rename: (id: string, name: string) => void; commit: (id: string, fallback: string) => void
 }
 // 프리셋 카드 한 장. 받는 값이 같으면 다시 그리지 않는다(memo) — act 는 늘 같은 ref, p 는 이름이 바뀔 때만 새 객체다
@@ -172,8 +173,16 @@ const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, fill, sor
   const thumbRef = useRef<HTMLDivElement>(null)
   const seen = useSeen(thumbRef, root)
   const card = useMemo(() => (snap ? presetCard(snap) : undefined), [snap]) // 그 프리셋의 연출 그대로(액션 첫 프레임 · 표정 · 이펙트 · 형상 변이 · 귀)
+  // 누르기 전에 미리(전부 입기와 같다): 마우스가 120ms 머물면 받고 염색까지 칠해 두고, 터치는 닿는 순간 받는다. 고른 칸 · 순서 변경 중에는 하지 않는다
+  const hover = useRef(0)
+  const canWarm = !on && !sorting && !!snap
+  const enter = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse' || !canWarm) return
+    window.clearTimeout(hover.current); hover.current = window.setTimeout(() => act.current.warm(snap!, true), 120)
+  }
+  const down = (e: React.PointerEvent<HTMLElement>) => { if (e.pointerType !== 'mouse' && canWarm) act.current.warm(snap!, false); act.current.down(e, p.id) }
   return (
-    <div data-preset-id={p.id} onClick={() => { if (!sorting) act.current.select(p.id) }} onPointerDown={(e) => act.current.down(e, p.id)}
+    <div data-preset-id={p.id} onClick={() => { if (!sorting) act.current.select(p.id) }} onPointerEnter={enter} onPointerLeave={() => window.clearTimeout(hover.current)} onPointerDown={down}
       className={clsx('pb-presetwrap', styles.wrap, sorting && styles.sorting)}>
       <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
         <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>

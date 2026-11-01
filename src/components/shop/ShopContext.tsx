@@ -350,7 +350,7 @@ export interface ShopCtx {
   cardPv: PvSnap
   comboGender: GenderFilter; setComboGender: (g: GenderFilter) => void
   comboDye: number | null; setComboDye: (d: number | null) => void // 염색 칩으로 거른 목록(자주 쓴 염색의 순번 — 같은 칩을 다시 누르면 풀린다)
-  comboTotal: number; comboTotalKnown: boolean; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot, dye?: boolean, take?: boolean) => void
+  comboTotal: number; comboTotalKnown: boolean; setComboTotal: (key: string, n: number) => void; holdPager: (b: boolean) => void; warmWear: (snap: Snapshot, dye?: boolean, take?: boolean | 'preset') => void
   searchItems: (q: string) => Promise<ListItem[]>
   selectPreset: (id: string) => void; sharePreset: (p: Preset) => void; resetPreset: (id: string) => void
   renamePreset: (id: string, name: string) => void
@@ -1408,14 +1408,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 입기 전에 미리(코디 룩북 — 카드에 머물 때 · 상세가 열리는 순간): 미리보기가 그 코디를 그릴 때 기다리는 것을 모두 받아 둔다(core/warm.warmLook —
   // 지금 연출의 그 동작 모든 프레임 · 무기 자세 · 이펙트 · 명찰 틀, dye 면 염색 칠하기까지). [전부 입기] · 프리셋에 저장은 **지금 연출 그대로** 입히므로
   // (카드 그림이 지금 연출이다 — ComboDetail) 같은 연출로 받는다. 누르면 받을 것도 칠할 것도 없이 바로 바뀐다(사용자 지시)
-  // take = 광장 가져오기 · 공유받은 코디처럼 그 코디의 연출로 입을 때(applySharedToPreset 의 withTakenView). 아니면 코디 룩북 — 지금 연출에 귀만 그 코디의 것(lib/looks lookPv)
-  const warmWear = (snap: Snapshot, dye = false, take = false) => {
+  // take = 광장 가져오기 · 공유받은 코디처럼 그 코디의 연출로 입을 때(applySharedToPreset 의 withTakenView). 'preset' = 프리셋을 고를 때(applyPvSnap 과 같은 연출).
+  // 아니면 코디 룩북 — 지금 연출에 귀만 그 코디의 것(lib/looks lookPv)
+  const warmWear = (snap: Snapshot, dye = false, take: boolean | 'preset' = false) => {
     resolveEquipped(snap).then((eq) => {
       const idx = indexRef.current; if (!idx) return
       const te = idx.base.tones.find((t) => t.tone === snap.tone) || idx.base.tones.find((t) => t.tone === DEFAULT_TONE) || idx.base.tones[0]
       if (!te) return
       const shown = Object.entries(eq).filter(([sl, it]) => !!it && !snap.hidden?.[sl]).map(([, it]) => it!)
-      const p = take ? { ...pvRef.current, ...withTakenView(snap).pv } : { ...pvRef.current, ...(snap.pv?.ear ? { ear: snap.pv.ear } : {}) }
+      const p = take === 'preset' ? pvFromSnap(pvRef.current, snap.pv) : take ? { ...pvRef.current, ...withTakenView(snap).pv } : { ...pvRef.current, ...(snap.pv?.ear ? { ear: snap.pv.ear } : {}) }
       const { view } = buildView({ ...p, expr: fixedExpr(shown, p.expr) })
       const off = snap.dyeOff || {}
       const on = <T,>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r || {}).filter(([k]) => !off[k])) as Record<string, T>
@@ -1753,12 +1754,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 스냅샷의 연출설정을 라이브 pv 에 반영. 코디에 속하는 연출(형상변이·귀·무기모션·이펙트)은 없으면 기본값으로,
   // 보기 설정(시선·액션·표정·배율)은 **담겨 있을 때만** 되살린다 — 광장 코디나 오래된 프리셋처럼 담기지 않은 것을
   // 적용할 때 보던 화면 설정이 제멋대로 바뀌면 안 된다. fps 는 담지 않는다.
-  const applyPvSnap = (v?: PvSnap) => {
+  const pvFromSnap = (prev: Pv, v?: PvSnap): Pv => {
     const s = v ?? PV_LOOK_DEFAULT
-    setPvState((prev) => ({ ...prev,
+    return { ...prev,
       form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, floatFx: s.floatFx ?? true, baseTag: s.baseTag ?? false,
-      gaze: v?.gaze ?? prev.gaze, action: v?.action ?? prev.action, frame: v?.frame ?? (v?.action != null ? -1 : prev.frame), expr: v?.expr ?? prev.expr, zoom: v?.zoom ?? prev.zoom }))
+      gaze: v?.gaze ?? prev.gaze, action: v?.action ?? prev.action, frame: v?.frame ?? (v?.action != null ? -1 : prev.frame), expr: v?.expr ?? prev.expr, zoom: v?.zoom ?? prev.zoom }
   }
+  const applyPvSnap = (v?: PvSnap) => setPvState((prev) => pvFromSnap(prev, v))
   // 슬롯 리스트를 로드+폴드해서 반환(캐시). 스냅샷의 아이템 id 를 실제 ListItem 으로 해석하기 위해 필요.
   const loadSlotFolded = async (slot: string): Promise<ListItem[]> => {
     const idx = indexRef.current
