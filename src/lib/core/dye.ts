@@ -177,7 +177,7 @@ export function blendPixels(A: Uint8ClampedArray, B: Uint8ClampedArray, ratio: n
   const r = Math.max(0, Math.min(100, Math.round(ratio)))
   const q4 = is16Step(A, B)
   warmDye()
-  if (wasm && A.length <= wasm.cap) {
+  if (wasm && !q4 && A.length <= wasm.cap) { // 16단계는 32비트 float 계산이라 아래 JS 로 돈다
     const m = new Uint8Array(wasm.memory.buffer, wasm.a, A.length)
     m.set(A); new Uint8Array(wasm.memory.buffer, wasm.b, B.length).set(B)
     wasm.blend(wasm.a, wasm.b, A.length, r, q4 ? 1 : 0); A.set(m)
@@ -185,12 +185,15 @@ export function blendPixels(A: Uint8ClampedArray, B: Uint8ClampedArray, ratio: n
   }
   // [blend 루프 시작] — wasm/dye.c 의 blend 와 같은 식이다. 고치면 그쪽도 고친다
   const t = r / 100
+  // 16단계는 게임처럼 32비트 float 로 곱하고 더해 내린다 — 오차로 값이 같은 두 색의 12 · 14 가 11 · 13 이 되는 것까지 같다(시원한 아침등교 헤어 검정 90 + 주황 10 대조)
+  const fr = Math.fround, tf = fr(t), kf = fr(1 - tf)
+  const step = (a: number, b: number) => 17 * Math.floor(fr(fr((a / 17) * kf) + fr((b / 17) * tf)))
   for (let i = 0; i < A.length; i += 4) {
     if (A[i + 3] === 0) continue
     if (q4) {
-      A[i] = 17 * Math.floor(((A[i] / 17) * (100 - r) + (B[i] / 17) * r) / 100)
-      A[i + 1] = 17 * Math.floor(((A[i + 1] / 17) * (100 - r) + (B[i + 1] / 17) * r) / 100)
-      A[i + 2] = 17 * Math.floor(((A[i + 2] / 17) * (100 - r) + (B[i + 2] / 17) * r) / 100)
+      A[i] = step(A[i], B[i])
+      A[i + 1] = step(A[i + 1], B[i + 1])
+      A[i + 2] = step(A[i + 2], B[i + 2])
     } else {
       A[i] = A[i] * (1 - t) + B[i] * t
       A[i + 1] = A[i + 1] * (1 - t) + B[i + 1] * t
