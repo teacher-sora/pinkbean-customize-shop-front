@@ -195,11 +195,12 @@ export async function prepareShare(origin: string, snap: Snapshot): Promise<Shar
 //  · 'fail' — 저장 실패, 또는 해시 충돌로 더 긴 id 가 발급됐다(사실상 없음).
 // 저장은 두 번이다. ① 코드만 **곧바로** — 링크·불러오기는 이것만 있으면 된다.
 // ② 카드 이미지는 렌더(수백 ms~수 초)가 끝나는 대로 따로 — 서버는 코드가 이미 있으면 이미지만 붙인다(없을 때만 저장).
-// ①이 이미지 렌더를 기다리면 복사 직후 붙여 넣었을 때 '없는 코디'가 뜬다. 카톡 카드 쪽은 공유 페이지 메타가 이미지를 최대 5초 기다린다.
+// 코드 저장이 끝난 뒤에 카드를 그린다. ①이 이미지 렌더를 기다리면 복사 직후 붙여 넣었을 때 '없는 코디'가 뜬다. 카톡 카드 쪽은 공유 페이지 메타가 이미지를 최대 5초 기다린다.
 async function postShare(long: string, image?: string | null): Promise<string | null | false> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const r = await fetch('/api/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: long, ...(image ? { image } : {}) }) })
+      // 코드만 보낼 때는 keepalive — 복사하고 바로 다른 앱으로 넘어가 페이지가 멈춰도 요청은 끝까지 간다(이미지는 크기 제한에 걸려 쓰지 못한다)
+      const r = await fetch('/api/share', { method: 'POST', keepalive: !image, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: long, ...(image ? { image } : {}) }) })
       if (r.ok) return (await r.json())?.id ?? null
       if (r.status === 400) return false
     } catch { /* 재시도 */ }
@@ -207,12 +208,22 @@ async function postShare(long: string, image?: string | null): Promise<string | 
   }
   return null
 }
+// 저장이 끝나기 전에 페이지가 사라지면(다른 앱으로 넘어간 뒤 브라우저가 탭을 비움) 링크가 '없는 코디'가 된다 → 끝날 때까지 적어 두고 다음 접속 때 다시 보낸다
+const PENDING_KEY = 'pb_share_pending_v1'
+const setPending = (long: string | null) => { try { if (long) localStorage.setItem(PENDING_KEY, long); else localStorage.removeItem(PENDING_KEY) } catch { /* 저장소를 못 쓰면 재전송만 빠진다 */ } }
+export function flushPendingShare() {
+  let long: string | null = null
+  try { long = localStorage.getItem(PENDING_KEY) } catch { return }
+  if (long) void postShare(long).then((id) => { if (id !== null) setPending(null) })
+}
 export async function uploadShare(prep: SharePrep, snap: Snapshot): Promise<'ok' | 'fail' | 'stale'> {
   if (!prep.id) return 'ok' // 긴 코드 링크는 저장할 게 없다
-  const image = renderShareImage(snap).catch(() => null) // 코드 저장과 동시에 그리기 시작
+  setPending(prep.long)
   const id = await postShare(prep.long)
+  if (id !== null) setPending(null)
   if (id !== prep.id) return typeof id === 'string' && id.length === prep.id.length ? 'stale' : 'fail'
-  const img = await image
+  if (document.hidden) return 'ok' // 다른 앱으로 넘어갔다 — 큰 캔버스를 그리다 휴대폰이 탭을 내리지 않게 카드 이미지는 건너뛴다
+  const img = await renderShareImage(snap).catch(() => null) // 코드를 저장한 뒤에 그린다(메모리가 모자란 휴대폰에서 코드부터 지킨다)
   if (img) void postShare(prep.long, img)
   return 'ok'
 }
