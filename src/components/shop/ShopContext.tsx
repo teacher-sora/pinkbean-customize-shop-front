@@ -23,7 +23,7 @@ import { prefetchGlyphs } from '@/lib/core/chatGlyphs'
 import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
 import { lookChunk, withCardPv, type LookRow } from '@/lib/looks'
 import type { DyeSave } from '@/lib/dyeVault'
-import { prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
+import { flushPendingShare, prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
 import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, loadPlazaPulse, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
@@ -1938,6 +1938,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     await applyImported({ ...opt.snap, equipped: eq }, lp.nick)
   }
   // 공유 링크 복사: 링크는 로컬에서 즉시 만들어 바로 클립보드에 넣고, 카드 이미지·서버 저장은 뒤에서 한다(shareCode).
+  useEffect(flushPendingShare, [])
   const copyShareLink = (snap: Snapshot, done = '프리셋을 복사했어요') => {
     const prep = prepareShare(location.origin, snap)
     void copyAsyncText(() => prep.then((x) => x.url))
