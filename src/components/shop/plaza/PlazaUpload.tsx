@@ -12,6 +12,7 @@ import { contestCandidates, plazaContestClosed, plazaMe, PLAZA_CONTEST, PLAZA_CO
 import { shrinkPlazaImage } from '@/lib/plazaImage'
 import { isNarrow } from '@/lib/useBreakpoint'
 import SnapThumb from '../SnapThumb'
+import { useDismiss } from '../ui/useDismiss'
 import { presetCard } from '@/lib/core/snapRender'
 import { lookItems, normLook } from '@/lib/plazaLook'
 import { sameLookDeep, type SkinInfo } from '@/lib/plazaLookPixels'
@@ -139,15 +140,9 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
   const needImage = contest && !image
   const canSubmit = !!current && !!snap && !!finalName && (!contest || /.+@.+\..+/.test(email)) && !needImage && !contestFull && !taken && !checking && !s.plazaSubmitting && !shrinking
 
-  useEffect(() => {
-    const onDown = (e: PointerEvent) => {
-      const t = e.target as Node
-      if (!pickRef.current?.contains(t)) setPickOpen(false)
-      if (!scopeRef.current?.contains(t)) setScopeOpen(false)
-    }
-    window.addEventListener('pointerdown', onDown, true)
-    return () => window.removeEventListener('pointerdown', onDown, true)
-  }, [])
+  // 고르기 창 둘: 바깥을 누르면 닫는다(Esc 는 받지 않는다 — 지금 동작 그대로)
+  useDismiss(pickOpen, (t) => !!pickRef.current?.contains(t), () => setPickOpen(false), { esc: false })
+  useDismiss(scopeOpen, (t) => !!scopeRef.current?.contains(t), () => setScopeOpen(false), { esc: false })
 
   const addTag = () => {
     const v = tagDraft.trim().replace(/^#/, '')

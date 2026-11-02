@@ -4,6 +4,7 @@
 //  PC(절반·태블릿 포함) = 패널(section) + 헤더 + 뷰포트 + 힌트 바 / 모바일 = 컨트롤 2줄 + 뷰포트.
 
 import clsx from 'clsx'
+import EmptyState from '../frame/EmptyState'
 import SearchBox, { searchInputClass } from '../frame/SearchBox'
 import PageChip from '../frame/PageChip'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -15,6 +16,7 @@ import { IconCaretDown, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
+import { useDismiss } from '../ui/useDismiss'
 import styles from './list.module.css'
 import { applyMobileFit, heroBaseProbe, svhProbe, RELAYOUT_EVENT } from '@/lib/heroView'
 
@@ -37,10 +39,66 @@ export const DIRS: SegOpt<ListDir>[] = [
 const AI_EXAMPLES = [{ q: '동물 귀', keep: 2 }, { q: '한벌옷 스타킹', keep: 0 }, { q: '귀여운 얼굴', keep: 3 }, { q: '단발 헤어', keep: 1 }]
 
 // 모바일 뷰포트의 스크롤 위치 → 쪽 번호(쪽 = MOBILE_GRID 열 × 줄). 가로는 열 = 폭/열 수, 세로는 줄 = 높이/줄 수 단위로 반올림한 뒤 쪽으로. 크기가 없으면 -1.
-const scrollIdx = (vp: HTMLElement, y: boolean) => {
+export const scrollIdx = (vp: HTMLElement, y: boolean, cols: number = MOBILE_GRID.cols, rows: number = MOBILE_GRID.rows) => {
   const w = y ? vp.clientHeight : vp.clientWidth; if (!w) return -1
-  const n = y ? MOBILE_GRID.rows : MOBILE_GRID.cols
+  const n = y ? rows : cols
   return Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / n)) / n)
+}
+
+// 모바일 가로 쪽 넘김: 브라우저 스크롤 ↔ 쪽 번호를 서로 맞춘다 — 목록 · 광장 · 코디 룩북이 함께 쓴다(세로는 usePagerY).
+//  스크롤 → 번호: 한 프레임에 한 번, 열 단위로 반올림해 쪽을 정한다.
+//  번호 → 스크롤: 화살표 · 번호 입력 등으로 번호가 바뀌어 스크롤 위치와 어긋날 때만 이동(같으면 아무것도 안 함 →
+//  사용자 스크롤 · 프로그램 스크롤이 서로 싸우지 않는다). key(부위 · 탭 · 거르기)가 바뀌거나 처음이면 움직임 없이 즉시.
+//  farJump: 세 쪽보다 멀리 가면 움직임 없이 바로 간다(광장은 끈다 — 멀리 가도 미끄러진다, 지금 동작 그대로).
+export function usePagerX (vpRef: React.RefObject<HTMLDivElement | null>, on: boolean, idx: number, setIdx: (i: number, anim?: boolean) => void, pageCount: number, key: string,
+  cols: number = MOBILE_GRID.cols, rows: number = MOBILE_GRID.rows, farJump = true) {
+  const live = useRef({ idx, setIdx, cols, rows })
+  live.current = { idx, setIdx, cols, rows }
+  useEffect(() => {
+    const vp = vpRef.current
+    if (!on || !vp) return
+    let raf = 0
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const i = scrollIdx(vp, false, live.current.cols, live.current.rows); if (i < 0) return
+        if (i !== live.current.idx) live.current.setIdx(i, false)
+      })
+    }
+    vp.addEventListener('scroll', onScroll, { passive: true })
+    return () => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
+  }, [on]) // eslint-disable-line react-hooks/exhaustive-deps -- vpRef 는 같은 ref
+  const lastKey = useRef(key)
+  const scrolledOnce = useRef(false)
+  useLayoutEffect(() => {
+    const vp = vpRef.current
+    if (!on || !vp) return
+    const w = vp.clientWidth; if (!w) return
+    // 첫 마운트(예: 태블릿 → 모바일 폭 전환)도 즉시 이동 — 보던 위치가 스크롤 애니메이션 없이 유지돼 보이게. 방향을 바꿔도 즉시.
+    const jump = lastKey.current !== key || !scrolledOnce.current
+    lastKey.current = key
+    scrolledOnce.current = true
+    if (scrollIdx(vp, false, live.current.cols, live.current.rows) === idx && !jump) return
+    const target = idx * w
+    const smooth = !(jump || (farJump && Math.abs(vp.scrollLeft - target) > w * 3))
+    // ⚠️ 트랙 폭은 `pageCount * 100cqw`(컨테이너 쿼리 단위)라, 페이지 수가 늘어난 **그 커밋의 layout effect
+    //    시점엔 아직 한 페이지 폭**이다. 그때 scrollTo 를 부르면 브라우저가 목표를 최대 스크롤(=0)로 깎는다
+    //    → 인덱스는 6 인데 스크롤은 0 이라 페이지 DOM(현재 ±1) 이 화면 밖에 있어 **빈 리스트**가 보인다.
+    //    트랙이 다 자랄 때까지 프레임을 넘겨 다시 시도한다(조건이 맞는 즉시 끝난다).
+    let raf = 0
+    let left = 120 // 폭주 방지용 상한(≈2초). 대기 시간이 아니라 안전장치다 — 조건이 맞는 즉시 빠져나간다.
+    const go = () => {
+      raf = 0
+      if (!vp.isConnected) return
+      // 트랙이 목표까지 자랐으면 이동. 아직이면 다음 프레임에 다시 본다(보통 1~3프레임).
+      const room = vp.scrollWidth - vp.clientWidth
+      if (room < target && left-- > 0) { raf = requestAnimationFrame(go); return }
+      vp.scrollTo({ left: Math.min(target, Math.max(0, room)), top: 0, behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
+    }
+    go()
+    return () => { if (raf) cancelAnimationFrame(raf) }
+  }, [on, idx, key, pageCount, cols, rows]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 // 한번 정해 두고 쓰는 보기 값들(목록 = 보기 · 성별 · 방향 · 필터 — 어느 폭이든, 코디 룩북 · 광장 = 모바일 · 절반 · 태블릿)을 버튼 하나에 접어 둔다.
@@ -55,14 +113,7 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
   const root = useRef<HTMLDivElement | null>(null)
   // 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다. 화면 전체 덮개를 두었더니 그보다 위에 붙은 헤더 · 미리보기를 누를 때는
   // 닫히지 않아(모바일 — 헤더 · 미리보기가 머리 묶음보다 위에 붙는다) 문서 전체의 누름을 먼저 받아 가로챈다
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); setOpen(false) } }
-    const onClick = (e: MouseEvent) => { if (root.current?.contains(e.target as Node)) return; e.preventDefault(); e.stopPropagation(); setOpen(false) }
-    window.addEventListener('keydown', onKey, true)
-    window.addEventListener('click', onClick, true)
-    return () => { window.removeEventListener('keydown', onKey, true); window.removeEventListener('click', onClick, true) }
-  }, [open])
+  useDismiss(open, (t) => !!root.current?.contains(t), () => setOpen(false), { event: 'click', swallow: true })
   const now = groups.map((g) => g.opts.find((o) => o.v === g.value)?.l ?? '').join(', ')
   const set = groups.some((g) => g.set)
   return (
@@ -242,55 +293,8 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   //  사용자 스크롤·프로그램 스크롤이 서로 싸우지 않는다). 부위·탭이 바뀌면 애니메이션 없이 즉시.
   //  가상화 유지: 트랙 폭만 페이지 수만큼 잡고, 페이지 DOM 은 현재 ±1 만 만든다(아래 pages).
   const dirY = s.listDir === 'y'
-  const live = useRef({ idx: s.curIdx, setIdx: s.setIdx })
-  live.current = { idx: s.curIdx, setIdx: s.setIdx }
-  useEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return // 세로는 usePagerY
-    let raf = 0
-    const onScroll = () => {
-      if (raf) return
-      raf = requestAnimationFrame(() => {
-        raf = 0
-        const i = scrollIdx(vp, dirY); if (i < 0) return
-        if (i !== live.current.idx) live.current.setIdx(i, false)
-      })
-    }
-    vp.addEventListener('scroll', onScroll, { passive: true })
-    return () => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
-  }, [mobile, dirY])
   const scrollKey = `${s.primary}|${s.activeCat}|${isAi ? s.searchQuery : ''}|${s.listDir}`
-  const lastScrollKey = useRef(scrollKey)
-  const scrolledOnce = useRef(false)
-  useLayoutEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return
-    const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
-    // 첫 마운트(예: 태블릿 → 모바일 폭 전환)도 즉시 이동 — 보던 위치가 스크롤 애니메이션 없이 유지돼 보이게. 방향을 바꿔도 즉시.
-    const jump = lastScrollKey.current !== scrollKey || !scrolledOnce.current
-    lastScrollKey.current = scrollKey
-    scrolledOnce.current = true
-    if (scrollIdx(vp, dirY) === s.curIdx && !jump) return
-    const target = s.curIdx * w
-    const smooth = !(jump || Math.abs((dirY ? vp.scrollTop : vp.scrollLeft) - target) > w * 3)
-    // ⚠️ 트랙 폭은 `pageCount * 100cqw`(컨테이너 쿼리 단위)라, 페이지 수가 늘어난 **그 커밋의 layout effect
-    //    시점엔 아직 한 페이지 폭**이다. 그때 scrollTo 를 부르면 브라우저가 목표를 최대 스크롤(=0)로 깎는다
-    //    → 인덱스는 6 인데 스크롤은 0 이라 페이지 DOM(현재 ±1) 이 화면 밖에 있어 **빈 리스트**가 보인다.
-    //    트랙이 다 자랄 때까지 프레임을 넘겨 다시 시도한다(조건이 맞는 즉시 끝난다).
-    let raf = 0
-    let left = 120 // 폭주 방지용 상한(≈2초). 대기 시간이 아니라 안전장치다 — 조건이 맞는 즉시 빠져나간다.
-    const go = () => {
-      raf = 0
-      if (!vp.isConnected) return
-      // 트랙이 목표까지 자랐으면 이동. 아직이면 다음 프레임에 다시 본다(보통 1~3프레임).
-      const room = dirY ? vp.scrollHeight - vp.clientHeight : vp.scrollWidth - vp.clientWidth
-      if (room < target && left-- > 0) { raf = requestAnimationFrame(go); return }
-      const to = Math.min(target, Math.max(0, room))
-      vp.scrollTo({ ...(dirY ? { top: to, left: 0 } : { left: to, top: 0 }), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
-    }
-    go()
-    return () => { if (raf) cancelAnimationFrame(raf) }
-  }, [mobile, s.curIdx, scrollKey, s.pageCount, dirY])
+  usePagerX(vpRef, mobile && !dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey)
   usePagerY(vpRef, mobile && dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey)
   const hero = isAi && s.searchQuery === null && !loading
   const noSprite = thumbs.noSprite
@@ -369,10 +373,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
           <span className={mobile ? styles.betaM : styles.beta}>원하는 코디 생김새를 적어보아요</span>
         </div>
       ) : loading ? skeletons : emptyTitle ? (
-        <div className={mobile ? styles.emptyM : styles.empty}>
-          <span className={mobile ? styles.emptyTitleM : styles.emptyTitle}>{emptyTitle}</span>
-          <span className={mobile ? styles.emptyHintM : styles.emptyHint}>{emptyHint}</span>
-        </div>
+        <EmptyState size={mobile ? 'm' : 'pc'} title={emptyTitle} hint={emptyHint} />
       ) : (
         // 트랙 위치·전환은 즉시 반영 값이라 인라인(스와이프 중엔 ShopContext 가 DOM 직접 갱신). 셀은 현재 페이지 ±1 만
         // 마운트하되, 스냅 애니메이션 중에는 새로 창에 들어온 페이지 마운트를 미뤄(캔버스 합성 부하) 전환이 끊기지 않게 한다.

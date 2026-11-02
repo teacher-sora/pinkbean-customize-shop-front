@@ -15,7 +15,7 @@ import { BASE_TAG, type ChatUi } from '@/lib/core/chatUi'
 import { CARD_FIT_W_M, CARD_FRACTION, CARD_LIFT_SNAP_M, CARD_MARGIN, CHAT_FILES, ZOOM_WORLD } from '@/lib/shopData'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop, type Snapshot } from './ShopContext'
-import { useSeen } from './ui/useSeen'
+import { useNear, useSeen } from './ui/useSeen'
 
 // 스냅샷(착용+톤+염색)을 실제 모델로 합성해 부모 div 중앙에 그린다.
 // 코디/미리보기와 동일한 computeModelPlacement 규칙 → 어디서 쓰든 모델 비율이 같다.
@@ -27,9 +27,12 @@ import { useSeen } from './ui/useSeen'
 // 보일 때만 그린다: 칸이 가장 가까운 스크롤 칸에서 보이는 자리 가까이 와야 합성하고 캔버스를 만든다(ui/useSeen). 한 번 그린 칸은 그대로 둔다.
 //   칸이 많은 목록(프리셋 탭, 공유받은 코디 창, 광장 올리기 등)이 따로 막지 않아도 같은 규칙을 받는다 — 100칸을 한꺼번에 그리면 캔버스가 240MB 를 넘어
 //   휴대폰 브라우저가 탭을 끄고 새로고침했다. priority 1 이상(화면 밖 미리 그리기 — 앞뒤 쪽 등)은 부른 쪽이 바란 것이라 기다리지 않는다.
+// 멀리 벗어나면 캔버스를 놓는다: 보이는 자리에서 FAR 보다 멀어진 칸은 캔버스를 떼고(합성 결과는 그대로 쥔다), 다시 가까워지면 그 결과로 바로 다시 그린다.
+//   끝까지 넘겨도 살아 있는 캔버스가 보이는 근처 몇 줄로 묶인다(넘긴 칸마다 캔버스가 남아 100칸이 다 살아 있었다).
 // tagName: 끼운 명찰(칸이 비었으면 그 프리셋의 기본 명찰 — pv.baseTag)을 이 이름으로 함께 그린다 — 프리셋 카드만(프리셋 이름, 사용자 지시). 말풍선은 그리지 않는다.
 
 const RETRY_MS = 9000
+const FAR = '1600px' // 이보다 멀어진 칸은 캔버스를 놓는다(보일 즈음 그리기 200px 보다 넉넉히 — 오가며 떼고 붙이기를 되풀이하지 않게)
 // 명찰 조각 정보(id → chatUi). 명찰 · 말풍선 목록 파일을 처음 쓸 때 한 번만 받는다.
 let tagUis: Promise<Map<string, ChatUi>> | null = null
 // 칭호 · 훈장 · 말풍선(deco 일 때만 — 불러오기 창이 가져올 장식을 미리 보여 준다). 부위별 목록을 한 번만 받는다
@@ -90,6 +93,8 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const liveRef = useRef(false)
   if (seen || priority >= 1) liveRef.current = true
   const live = liveRef.current
+  const near = useNear(wrapRef, 'auto', FAR)
+  const keepCanvas = live && (near || priority >= 1)
   useEffect(() => { if (!animaRaces) animaOnce().then(setAnimaRaces).catch(() => {}) }, [animaRaces])
   const key = useMemo(() => snapKey(snap), [snap])
   // 프리셋 카드의 명찰: 끼웠고 숨기지 않았을 때만
@@ -168,7 +173,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
 
   useIsoLayoutEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !placed || !dims.w || !dims.h) return // 캔버스는 live 일 때만 있다
+    if (!canvas || !placed || !dims.w || !dims.h) return // 캔버스는 가까이 있을 때만 있다(keepCanvas)
     let cancelled = false
     const fr = fitW ? Math.min(fraction, (fitW * dims.w) / dims.h) : fraction
     const scale = zoom != null ? zoomStepScale({ fraction: fr, divH: dims.h, dpr: dims.dpr, level: zoom, mults: zoomMults ?? ZOOM_WORLD }) : undefined
@@ -189,7 +194,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     // view 면 그 코디의 시선도 따른다(오른쪽 = 좌우 반전 — 미리보기와 같은 규칙. 코디 비교의 정지 칸)
     renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip: view && snap.pv?.gaze === 'right', centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
     return () => { cancelled = true }
-  }, [placed, ov, effects, particles, center, dims, fraction, fitW, margin, chat, zoom, zoomMults, view, snap.pv?.gaze, snap.pv?.action, snap.equipped.riding, snap.hidden?.riding])
+  }, [keepCanvas, placed, ov, effects, particles, center, dims, fraction, fitW, margin, chat, zoom, zoomMults, view, snap.pv?.gaze, snap.pv?.action, snap.equipped.riding, snap.hidden?.riding])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 live 부터 있다). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
   // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 게임 크기 1배).
@@ -199,12 +204,12 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     const el = canvasRef.current
     if (!el) return
     return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), fileName || 'pinkbean-cody', undefined, { hold: holdMenu }) // 프리셋 카드는 프리셋 이름(presetFileName)
-  }, [fileName, holdMenu, live])
+  }, [fileName, holdMenu, keepCanvas])
 
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       {live && !placed && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '58%', height: '58%', borderRadius: 8 }} />}
-      {live && <canvas ref={canvasRef} style={{ position: 'absolute', transform: 'translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />}
+      {keepCanvas && <canvas ref={canvasRef} style={{ position: 'absolute', transform: 'translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />}
     </div>
   )
 }

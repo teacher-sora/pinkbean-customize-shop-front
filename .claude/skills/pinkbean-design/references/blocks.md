@@ -26,7 +26,12 @@
 | 아이템 카드(즐겨찾기·북마크·염색 버튼) | `list/ItemCard.tsx` — 전역 `pb-cardwrap > pb-card` |
 | 코디(스냅샷) 카드(좋아요·수상 배지·지우기) | `plaza/PlazaCard.tsx` |
 | 프리셋 카드 격자(이름 바로 고치기) | `preset/PresetPanel.tsx` — 전역 `pb-presetwrap > pb-preset` |
-| 빈 상태 | `list.module.css` 의 `.empty` `.emptyTitle` `.emptyHint`(제목 15/600 `#8a8075` + 안내 12.5 `#b7ada2`, 아이콘 없음) |
+| 빈 상태 | `frame/EmptyState.tsx` — `size` 로 자리를 고른다(`pc` 제목 15/600 + 안내 12.5, `m` · `plaza` · `plazaM` 14 + 12, `part` 13 + 11.5). 색 `#8a8075` / `#b7ada2`, 아이콘 없음 |
+| 패널 틀(면 · 머리 · 가로줄 · 아래 안내 줄) | `frame/panel.module.css` — 각 패널 모듈이 `composes` 로 받고 다른 값만 덧붙인다 |
+| 쪽 칩 `[N개 \| ‹ 번호 / 총수 ›]` | `frame/PageChip.tsx` — 목록 · 광장(`tight`) · 코디 룩북(`idle`) · 도움 및 건의함(`num`) |
+| 작업 칩 `[라벨 n / 총수]` | `frame/CountChip.tsx` — 프리셋 · 착용(`digits` 3 · 2) |
+| 머리의 검색 칸(돋보기 + 입력) | `frame/SearchBox.tsx` + `searchInputClass` — 광장은 `plaza` |
+| 모바일 가로 쪽 넘김(스크롤 ↔ 쪽 번호) | `list/ListArea.tsx` 의 `usePagerX`(세로는 `usePagerY`) |
 | 불러오는 중 | 전역 `.pb-skel` 을 실제 칸과 같은 격자로 |
 
 ## 창 · 시트
@@ -35,6 +40,8 @@
 |---|---|
 | 창(PC) / 하단 시트(모바일) | `surface/Surface.tsx` — 종류 `pv` `bm` `dye` `dot` `part` `bg` `vs` `plaza` `ptake` `notice`. 발의 버튼은 `SurfaceFooter({ onApply, applyLabel, onBack })` |
 | 막 닫기 | `ui/useMaskClose.ts` — 누름과 뗌이 모두 막일 때만 닫고, 닫은 뒤 따라오는 click 은 버린다 |
+| 바깥 누름 · Esc 로 닫기(펼침 창 · 팝박스 · 말 입력칸) | `ui/useDismiss.ts` — `event: 'click'` + `swallow` 면 바깥 누름을 아래로 넘기지 않는다, `esc` 로 Esc 를 끄거나 그때그때 묻는다 |
+| 펼침 창의 겉(흰 면 · 분홍 테두리 · 반경 8 · 그림자) | `ui/pop.module.css` 의 `.pop` — `composes` |
 | 미리보기 배경 | `lib/stageBg.ts`(`useStageBg`·`setStageBg`·`addStageBg`·`removeStageBg`) + `preview/StageBg.tsx`(미리보기 칸에 까는 것) + `surface/StageBgBody.tsx`(고르는 격자) |
 | 펼침·접힘 움직임 | `surface/glide.ts`(`place`·`glideTo`·`release`), `surface/sheetMotion.ts` |
 | 창 안에서 옆으로 바꿔 끼우기 | `surface/innerSlide.ts` — `useInnerSlide` |
@@ -66,6 +73,10 @@
 | 숫자 증감 | `Stepper` |
 | 슬라이더 + 증감 한 줄 | `DyeRow` — 전역 `.pb-slider` `.pb-track-h/-s/-v` `.pb-dyerow` |
 | 고르기(select 대신) | `ui/Dropdown.tsx` — `row` / `rowM` / `field` / `fieldM` |
+| 입력 + 버튼을 한 테두리에 묶은 칸 | `ui/fieldbox.module.css` 의 `.box` · `.field` — `composes`(프리셋 불러오기 칸, 말 입력칸) |
+| 머리 줄 글자 버튼의 바탕 | `ui/headbtn.module.css` 의 `.headBtn` · `.headBtnM` — 면 · 색은 자리마다 |
+| 모서리의 작은 동그라미 ✕ | `ui/xdot.module.css` 의 `.xdot` · `.lg` · `.vault` |
+| 분홍 작은 알약 · 띠지 꼴 | `ui/marks.module.css` 의 `.pinkTag` · `.ribbon` |
 | 아이콘 | `ui/Icons.tsx`(인라인 SVG, `IconTab`) — 새 아이콘도 여기에 같은 굵기로. **역할마다 하나만 둔다**: 복사 · 링크 복사 `IconLinkCopy`, 닫기 `IconClose`, 검색 `IconSearch`(버튼 옆은 `bold`), 지우기 `IconTrashSolid`, 받기 · 불러오기 · 저장 `IconTakeDown`, 염색은 팔레트(`IconDrop` = 탭 아이콘 `info` 와 같은 경로), 공지는 하단 탭의 확성기(`TAB_ICONS.notice`), 더하기는 `IconAdd` |
 
 ## 전역 클래스 (`app/globals.css`)

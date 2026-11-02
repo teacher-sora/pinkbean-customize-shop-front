@@ -32,10 +32,6 @@
 .page { position: absolute; top: 0; width: 100%; height: 100%; padding: 8px; overflow: hidden; }
 .pageM { position: absolute; top: 0; width: 100cqw; height: 100%; padding: 10px 12px; overflow: hidden; } /* 모바일 트랙은 페이지 수만큼 넓다 — width:100% 면 한 페이지가 트랙 전체 폭이 된다 */
 .grid { display: grid; height: 100%; }
-.empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 0 24px; }
-.emptyM { padding: 0 20px; }
-.emptyTitle { font-size: calc(14rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
-.emptyHint { font-size: calc(12rem / 16); color: light-dark(#b7ada2, #858893); }
 .hintBar { composes: hintBar from '../frame/panel.module.css'; }
 .hintText { composes: hintText from '../frame/panel.module.css'; }
 .skel { width: 100%; height: 100%; border-radius: 8px; }
@@ -57,7 +53,7 @@
 .railLeft.railM { left: 5px; right: auto; top: 5px; }
 /* 대회 수상 배지 — 좌상단. 날짜 칩(.contestNo)과 같은 높이·글자, 내리기 버튼이 있으면 그 위에 온다(왼쪽 맞춤). */
 .railLeftAward { align-items: flex-start; }
-.award { flex: 0 0 auto; height: 20px; padding: 0 8px; display: flex; align-items: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 20px; background: light-dark(#fff, #303238); font-size: calc(10.5rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.award { composes: pinkTag from '../ui/marks.module.css'; flex: 0 0 auto; padding: 0 8px; white-space: nowrap; }
 .awardRank { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
 .awardPick { background: light-dark(#fdf1f6, #4e323e); }
 .awardLucky { background: light-dark(#fff, #303238); }
@@ -66,7 +62,7 @@
 .delBtn { border-color: light-dark(#f2d7d2, #644640); color: light-dark(#d1735f, #d19f94); }
 .likeWrap { position: absolute; right: 6px; bottom: 6px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 /* 대회 출품 날짜(M.D) — 썸네일 왼쪽 아래. 하트는 오른쪽 아래라 겹치지 않는다. */
-.contestNo { position: absolute; left: 6px; bottom: 6px; z-index: 4; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 20px; background: light-dark(#fff, #303238); font-size: calc(10.5rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); font-variant-numeric: tabular-nums; }
+.contestNo { composes: pinkTag from '../ui/marks.module.css'; position: absolute; left: 6px; bottom: 6px; z-index: 4; padding: 0 7px; }
 .contestNoM { left: 5px; bottom: 5px; }
 .likeCount { font-size: calc(10rem / 16); font-weight: 700; color: light-dark(#8a8075, #9fa2aa); line-height: 1; font-variant-numeric: tabular-nums; }
 .likeBtn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#efe8e0, #43464e); border-radius: 50%; background: light-dark(rgba(255,255,255,0.94), rgba(48, 50, 56, 0.94)); color: light-dark(#a89e93, #8e919a); cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
@@ -87,7 +83,7 @@
    색은 카드 배지(.award)와 같다: 순위 = 솔리드 핑크 · 주최자 픽 = 핑크 배경 + 테두리 · 추첨 = 흰 바탕 + 테두리.
    clip-path 로 자른 모양에는 border 가 안 먹으므로 두 겹으로 그린다 — 바깥(본체) = 테두리 색, 안쪽(::before, 1px 안) = 바탕 색.
    안쪽 V 홈은 빗변에서도 테두리가 1px 로 보이게 수직으로 조금 더 올린다(빗변 기울기 ≈ 35° → 1px ÷ cos). */
-.ribbon { --rb-line: light-dark(#ec86ac, #d15785); --rb-bg: light-dark(#ec86ac, #d15785); position: absolute; left: 12px; top: -3px; z-index: 2; width: 48px; height: 62px; padding: 0 0 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--rb-line); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); font-size: calc(15rem / 16); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; color: light-dark(#fff, #ececef); text-align: center; white-space: nowrap; }
+.ribbon { composes: ribbon from '../ui/marks.module.css'; --rb-line: light-dark(#ec86ac, #d15785); --rb-bg: light-dark(#ec86ac, #d15785); position: absolute; left: 12px; top: -3px; z-index: 2; width: 48px; height: 62px; padding: 0 0 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--rb-line); font-size: calc(15rem / 16); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; color: light-dark(#fff, #ececef); text-align: center; white-space: nowrap; }
 .ribbon::before { content: ''; position: absolute; inset: 1px 1px 0; z-index: -1; background: var(--rb-bg); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 1.9px), 50% calc(72% - 1.5px), 0 calc(100% - 1.9px)); }
 .ribbonPick { --rb-line: light-dark(#f8e0ea, #5a3947); --rb-bg: light-dark(#fdf1f6, #4e323e); color: light-dark(#d76d9a, #d293ae); }
 .ribbonLucky { --rb-line: light-dark(#f8e0ea, #5a3947); --rb-bg: light-dark(#fff, #303238); color: light-dark(#d76d9a, #d293ae); }
@@ -159,7 +155,7 @@
 .pickText { flex: 1 1 0; min-width: 0; font-size: calc(12.5rem / 16); font-weight: 500; color: light-dark(#3d372f, #cacbd0); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pickCaret { flex: 0 0 auto; color: light-dark(#a89e93, #8e919a); transition: transform .22s cubic-bezier(.45,0,.55,1); transform: rotate(0deg); }
 .caretOpen { transform: rotate(180deg); }
-.pickPanel { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; padding: 8px; background: light-dark(#fff, #303238); border: 1px solid light-dark(#f5e8ee, #573846); border-radius: 8px; box-shadow: 0 10px 26px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.224)); transform-origin: top center; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none; }
+.pickPanel { composes: pop from '../ui/pop.module.css'; position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; padding: 8px; transform-origin: top center; transition: opacity .2s ease, transform .2s cubic-bezier(.45,0,.55,1); opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none; }
 .panelOn { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
 /* 아래로 자리가 없는 하단 항목(등록할 곳)은 위로 펼친다 */
 .pickPanelUp { top: auto; bottom: calc(100% + 6px); transform-origin: bottom center; transform: translateY(6px) scale(.98); }

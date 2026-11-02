@@ -7,8 +7,8 @@
 .hrM { composes: hrM from '../frame/panel.module.css'; }
 
 .right { flex: 1 1 0; min-width: 0; display: flex; justify-content: flex-end; }
-.btn { flex: 0 0 auto; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); white-space: nowrap; cursor: pointer; }
-.btnM { height: 32px; border-radius: 6px; }
+.btn { composes: headBtn from '../ui/headbtn.module.css'; flex: 0 0 auto; padding: 0 12px; border-color: light-dark(#f0e9e1, #42454d); background: light-dark(#fff, #303238); font-size: calc(12rem / 16); color: light-dark(#8a8075, #9fa2aa); }
+.btnM { composes: headBtnM from '../ui/headbtn.module.css'; }
 .btnIcon { display: inline-flex; align-items: center; gap: 6px; }
 .btn:disabled { opacity: .6; cursor: progress; }
 .btnSolid { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }

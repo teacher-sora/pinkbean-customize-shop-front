@@ -23,7 +23,7 @@ export async function loadLookPixels(url: string): Promise<ImageData | null> {
     const r = await fetch(`/api/nick/img?u=${encodeURIComponent(url)}`)
     if (!r.ok) return null
     const bmp = await createImageBitmap(await r.blob())
-    return pixelsOf(bmp, bmp.width, bmp.height)
+    try { return pixelsOf(bmp, bmp.width, bmp.height) } finally { bmp.close() }
   } catch { return null }
 }
 

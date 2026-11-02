@@ -1,0 +1,4 @@
+/* 패널 머리 줄의 글자 버튼(코디 프로필 · 순서 변경 · 코디 룩북의 작업 버튼) — composes 로 함께 쓴다. 높이 · 테두리 꼴 · 반경 · 글자 굵기가 같고,
+   면 · 테두리 색 · 글자 크기와 색 · 여백은 자리마다 달라 각 모듈이 정한다(채운 분홍 변형도 각 모듈 — 순서가 뒤여야 이긴다) */
+.headBtn { height: 34px; border-width: 1px; border-style: solid; border-radius: 6px; font-family: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.headBtnM { height: 32px; }

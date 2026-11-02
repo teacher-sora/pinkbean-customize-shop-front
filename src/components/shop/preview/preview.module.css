@@ -89,7 +89,7 @@
 .slotWorn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); }
 /* 스프라이트 캔버스 = 칸 거의 전체 */
 .slotSprite { width: calc(100% - 6px); height: calc(100% - 6px); display: flex; align-items: center; justify-content: center; }
-.slotX { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f5e2eb, #5a3a49); border-radius: 50%; background: light-dark(#fff, #303238); color: light-dark(#d76d9a, #d293ae); font-size: calc(9rem / 16); line-height: 1; cursor: pointer; }
+.slotX { composes: xdot from '../ui/xdot.module.css'; }
 
 /* 북마크 시트(모바일) */
 /* 본문은 항상 스크롤 가능(내비게이션 바 등으로 시트가 줄면 잘리지 않고 스크롤). 자식은 줄어들지 않는다. */
@@ -104,7 +104,7 @@
 .chip { position: relative; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border: 1.5px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
 .chipWorn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); }
 .chipSprite { width: calc(100% - 8px); height: calc(100% - 8px); display: flex; align-items: center; justify-content: center; }
-.chipX { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f5e2eb, #5a3a49); border-radius: 50%; background: light-dark(#fff, #303238); color: light-dark(#d76d9a, #d293ae); font-size: calc(10rem / 16); line-height: 1; }
+.chipX { composes: lg from '../ui/xdot.module.css'; }
 
 /* 모바일 히어로 */
 /* 안의 것(캔버스 · 배경 장면 · 버튼)은 칸 밖으로 그려지지 않는다: overflow 에 더해 contain: paint(합성되는 WebGL 캔버스도 확실히 자른다),
@@ -218,17 +218,16 @@
    칸만 46px 되올려 아래 줄 바로 위 10px 에 둔다(두 전환이 같은 곡선 · 같은 시간이라 합친 움직임도 같은 곡선이다). */
 .chatDock { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 10px); transition: transform .3s cubic-bezier(.45, 0, .55, 1); }
 .chatDockDown { transform: translateY(-48px); } /* 칸 아래 끝 = 미리보기 아래 끝 10px 위 — 팝박스 아래 끝과 같은 줄(사용자 지시) */
-.chatBox { height: 34px; padding: 0 3px 0 11px; display: flex; align-items: center; gap: 2px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#fff, #303238); box-shadow: 0 1px 4px light-dark(rgba(42,37,33,.12), rgba(25, 22, 20, 0.192));
+.chatBox { composes: box from '../ui/fieldbox.module.css'; padding: 0 3px 0 11px; gap: 2px; background: light-dark(#fff, #303238); box-shadow: 0 1px 4px light-dark(rgba(42,37,33,.12), rgba(25, 22, 20, 0.192));
   opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity .18s ease, transform .18s cubic-bezier(.45,0,.55,1), border-color .22s ease; }
 .chatBoxOn { opacity: 1; transform: translateY(0); pointer-events: auto; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), border-color .22s ease; }
-.chatBox:focus-within { border-color: light-dark(#ec86ac, #d15785); }
 /* 모바일: 아래 줄(연출 설정 · 배경 · 말풍선 | 점 위치 · 부위 염색 · 북마크) 자리에 올라온다 */
 .chatBoxM { position: absolute; left: 12px; right: 12px; bottom: 11px; height: 34px; z-index: 2; }
 /* 모바일 닫기(x): 칸 왼쪽 끝 안쪽의 정사각형 — 오른쪽 끝(전송)과 같은 3px 여백, 이모티콘 버튼과 같은 색 */
 .chatBoxM { padding-left: 3px; }
 .chatClose { flex: 0 0 auto; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; padding: 0; border: none; border-radius: 4px; background: transparent; color: light-dark(#b7ada2, #858893); cursor: pointer; }
 .chatBoxM .chatField { margin-left: 6px; }
-.chatField { flex: 1 1 0; min-width: 0; height: 100%; padding: 0; margin-right: 4px; border: none; background: transparent; font-family: inherit; font-size: calc(13rem / 16); color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; outline: none; text-overflow: ellipsis; }
+.chatField { composes: field from '../ui/fieldbox.module.css'; margin-right: 4px; }
 .chatField::placeholder { color: light-dark(#b7ada2, #858893); }
 .chatEmoBtn { flex: 0 0 auto; width: 28px; height: 26px; display: flex; align-items: center; justify-content: center; padding: 0; border: none; border-radius: 4px; background: transparent; color: light-dark(#b7ada2, #858893); cursor: pointer; }
 .chatEmoBtnOn { background: light-dark(#fdf1f6, #4e323e); color: light-dark(#d76d9a, #d293ae); }
@@ -255,8 +254,6 @@
 @media (hover: none), (pointer: coarse) { .chatEmoM .chatEmoScroll { padding: 12px; } }
 .chatPx { display: block; flex: 0 0 auto; image-rendering: pixelated; } /* 이모티콘은 게임 크기 그대로(1배) — 칸(76px 높이)보다 작다 */
 @media (hover: hover) and (pointer: fine) {
-  .chatBox:hover { border-color: light-dark(#eeb2ce, #d37aa3); }
-  .chatBox:focus-within:hover { border-color: light-dark(#ec86ac, #d15785); }
   .chatEmoBtn:hover { color: light-dark(#d76d9a, #d293ae); }
   .chatEmoSet:hover { border-color: light-dark(#ec86ac, #d15785); }
 }

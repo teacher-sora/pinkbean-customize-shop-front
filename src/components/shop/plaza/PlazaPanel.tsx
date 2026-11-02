@@ -6,13 +6,14 @@
 // 그리드 열·행은 ShopContext 한 곳에서만 계산한다(perPage 와 렌더 그리드가 어긋나면 페이지 수가 틀어진다).
 
 import clsx from 'clsx'
+import EmptyState from '../frame/EmptyState'
 import SearchBox, { searchInputClass } from '../frame/SearchBox'
 import PageChip from '../frame/PageChip'
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, plazaContestClosed, type PlazaSort } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
-import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, useMobileRows, usePagerY, type FilterGroup } from '../list/ListArea'
+import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, useMobileRows, usePagerX, usePagerY, type FilterGroup } from '../list/ListArea'
 import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { MOBILE_GRID } from '@/lib/shopData'
 import { Seg, type SegOpt } from '../ui/controls'
@@ -41,57 +42,8 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   // 모바일: 가로 스크롤 ↔ 페이지 인덱스 양방향 동기화(광장 뷰포트에도 따로 연결해야 인덱스가 멈추지 않는다).
   // 넘기는 방향은 목록과 같은 설정(ShopContext listDir — 사용자 지시: 광장에도). 세로면 PC 는 트랙이 위아래로, 모바일은 세로 스크롤 칸(한 쪽 = 한 화면 높이)
   const dirY = s.listDir === 'y'
-  const live = useRef({ idx: s.curIdx, setIdx: s.setIdx, cols: s.plazaCols, rows: s.plazaRows, y: dirY })
-  live.current = { idx: s.curIdx, setIdx: s.setIdx, cols: s.plazaCols, rows: s.plazaRows, y: dirY }
-  useEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return // 세로는 ListArea usePagerY
-    let raf = 0
-    const onScroll = () => {
-      if (raf) return
-      raf = requestAnimationFrame(() => {
-        raf = 0
-        const y = live.current.y, w = y ? vp.clientHeight : vp.clientWidth; if (!w) return
-        const c = y ? live.current.rows : live.current.cols
-        const i = Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / c)) / c)
-        if (i !== live.current.idx) live.current.setIdx(i, false)
-      })
-    }
-    vp.addEventListener('scroll', onScroll, { passive: true })
-    return () => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
-  }, [mobile, dirY])
   const scrollKey = `plaza|${s.plazaFilter}|${s.plazaQ}|${s.plazaSort}|${s.listDir}`
-  const lastKey = useRef(scrollKey)
-  const scrolledOnce = useRef(false)
-  useLayoutEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return
-    const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
-    const jump = lastKey.current !== scrollKey || !scrolledOnce.current
-    lastKey.current = scrollKey
-    scrolledOnce.current = true
-    const c = dirY ? live.current.rows : live.current.cols
-    if (Math.floor(Math.round((dirY ? vp.scrollTop : vp.scrollLeft) / (w / c)) / c) === s.curIdx && !jump) return
-    const target = s.curIdx * w
-    const smooth = !jump
-    // ⚠️ 트랙 폭은 `pageCount * 100cqw`(컨테이너 쿼리 단위)라, 페이지 수가 늘어난 **그 커밋의 layout effect
-    //    시점엔 아직 한 페이지 폭**이다. 그때 scrollTo 를 부르면 브라우저가 목표를 최대 스크롤(=0)로 깎는다
-    //    → 인덱스는 6 인데 스크롤은 0 이라 페이지 DOM(현재 ±1) 이 화면 밖에 있어 **빈 리스트**가 보인다.
-    //    트랙이 다 자랄 때까지 프레임을 넘겨 다시 시도한다(조건이 맞는 즉시 끝난다).
-    let raf = 0
-    let left = 120 // 폭주 방지용 상한(≈2초). 대기 시간이 아니라 안전장치다 — 조건이 맞는 즉시 빠져나간다.
-    const go = () => {
-      raf = 0
-      if (!vp.isConnected) return
-      // 트랙이 목표까지 자랐으면 이동. 아직이면 다음 프레임에 다시 본다(보통 1~3프레임).
-      const room = dirY ? vp.scrollHeight - vp.clientHeight : vp.scrollWidth - vp.clientWidth
-      if (room < target && left-- > 0) { raf = requestAnimationFrame(go); return }
-      const to = Math.min(target, Math.max(0, room))
-      vp.scrollTo({ ...(dirY ? { top: to, left: 0 } : { left: to, top: 0 }), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
-    }
-    go()
-    return () => { if (raf) cancelAnimationFrame(raf) }
-  }, [mobile, s.curIdx, scrollKey, s.pageCount, dirY])
+  usePagerX(vpRef, mobile && !dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey, s.plazaCols, s.plazaRows, false)
   usePagerY(vpRef, mobile && dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey, s.plazaRows)
 
   const pageChip = (
@@ -141,15 +93,9 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
           </div>
         </div>
       ) : !s.plazaReady ? (
-        <div className={clsx(styles.empty, mobile && styles.emptyM)}>
-          <span className={styles.emptyTitle}>광장을 준비하고 있어요</span>
-          <span className={styles.emptyHint}>잠시 뒤에 다시 들러주세요.</span>
-        </div>
+        <EmptyState size={mobile ? 'plazaM' : 'plaza'} title="광장을 준비하고 있어요" hint="잠시 뒤에 다시 들러주세요." />
       ) : empty ? (
-        <div className={clsx(styles.empty, mobile && styles.emptyM)}>
-          <span className={styles.emptyTitle}>{emptyTitle}</span>
-          <span className={styles.emptyHint}>{emptyHint}</span>
-        </div>
+        <EmptyState size={mobile ? 'plazaM' : 'plaza'} title={emptyTitle} hint={emptyHint} />
       ) : (
         <div ref={mobile ? undefined : s.bindTrack} data-pb-pages className={styles.track}
           style={mobile

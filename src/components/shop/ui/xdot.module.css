@@ -1,0 +1,6 @@
+/* 칸 모서리의 작은 동그라미 ✕(빼기) — 북마크 칸 · 북마크 칩 · 염색 보관함이 composes 로 함께 쓴다. 크기 · 자리만 변형 */
+.xdot { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f5e2eb, #5a3a49); border-radius: 50%; background: light-dark(#fff, #303238); color: light-dark(#d76d9a, #d293ae); font-size: calc(9rem / 16); line-height: 1; cursor: pointer; }
+/* 북마크 칩(조금 크고, 누르는 손 모양은 칩이 정한다) */
+.lg { composes: xdot; top: -5px; right: -5px; width: 18px; height: 18px; font-size: calc(10rem / 16); cursor: inherit; }
+/* 염색 보관함(카드 모서리에 조금 더 바깥, 마우스가 올라올 때만 보인다 — 보이기는 surface 모듈) */
+.vault { composes: xdot; top: -5px; right: -5px; font-family: inherit; transition: opacity .18s ease; }

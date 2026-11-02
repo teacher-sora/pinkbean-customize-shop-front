@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 
 const MARGIN = '200px'
-type Shared = { io: IntersectionObserver; cbs: Map<Element, () => void> }
+type Shared = { io: IntersectionObserver; cbs: Map<Element, (on: boolean) => void> }
 const byRoot = new WeakMap<Element, Map<string, Shared>>()
 const viewport = new Map<string, Shared>()
 
@@ -18,8 +18,8 @@ function shared (root: Element | null, margin: string): Shared {
   if (!m) { m = new Map(); byRoot.set(root!, m) }
   const hit = m.get(margin)
   if (hit) return hit
-  const cbs = new Map<Element, () => void>()
-  const io = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { const f = cbs.get(e.target); if (f) f() } }, { root, rootMargin: margin })
+  const cbs = new Map<Element, (on: boolean) => void>()
+  const io = new IntersectionObserver((es) => { for (const e of es) { const f = cbs.get(e.target); if (f) f(e.isIntersecting) } }, { root, rootMargin: margin })
   const s = { io, cbs }
   m.set(margin, s)
   return s
@@ -54,9 +54,27 @@ export function useSeen (el: React.RefObject<Element | null>, root: React.RefObj
     const r = root === 'auto' ? scrollParent(t) : root?.current ?? null
     if (nearNow(t, r, margin)) { setSeen(true); return }
     const s = shared(r, margin)
-    s.cbs.set(t, () => { s.io.unobserve(t); s.cbs.delete(t); setSeen(true) })
+    s.cbs.set(t, (on) => { if (!on) return; s.io.unobserve(t); s.cbs.delete(t); setSeen(true) })
     s.io.observe(t)
     return () => { s.io.unobserve(t); s.cbs.delete(t) }
   }, [seen])
   return seen
+}
+
+// 지금 root 안 margin 거리 안에 있는가(오갈 때마다 바뀐다) — 멀리 벗어난 칸의 캔버스를 놓을 때 쓴다(SnapThumb).
+// 처음 값은 false, 마운트하자마자 페이지 그리기 전에 판정한다(처음부터 가까운 칸은 첫 페인트부터 true)
+export function useNear (el: React.RefObject<Element | null>, root: React.RefObject<Element | null> | null | 'auto', margin: string): boolean {
+  const [near, setNear] = useState(false)
+  useIsoLayoutEffect(() => {
+    const t = el.current
+    if (!t) return
+    if (typeof IntersectionObserver === 'undefined') { setNear(true); return }
+    const r = root === 'auto' ? scrollParent(t) : root?.current ?? null
+    if (nearNow(t, r, margin)) setNear(true)
+    const s = shared(r, margin)
+    s.cbs.set(t, setNear)
+    s.io.observe(t)
+    return () => { s.io.unobserve(t); s.cbs.delete(t) }
+  }, [])
+  return near
 }

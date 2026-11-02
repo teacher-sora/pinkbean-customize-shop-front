@@ -4,10 +4,11 @@
 // 바깥 누름·Esc 로 닫힘. Esc 는 캡처 단계에서 먼저 받아 시트/다이얼로그가 함께 닫히지 않게 한다.
 
 import clsx from 'clsx'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Opt } from '@/lib/catalog'
 import styles from './ui.module.css'
+import { useDismiss } from './useDismiss'
 
 type Pos = { left: number; width: number; maxH: number; top: number | null; bottom: number | null }
 
@@ -38,18 +39,7 @@ export default function Dropdown({ options, value, onChange, variant, title, ari
     setPos({ left: Math.round(r.left), width: Math.max(120, Math.round(r.width)), maxH: Math.max(90, Math.round(maxH)), top: up ? null : Math.round(r.bottom + GAP), bottom: up ? Math.round(window.innerHeight - r.top + GAP) : null })
   }
 
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: PointerEvent) => {
-      const t = e.target as Node
-      if (btnRef.current?.contains(t) || menuRef.current?.contains(t)) return
-      setPos(null)
-    }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); setPos(null) } }
-    window.addEventListener('pointerdown', onDown, true)
-    window.addEventListener('keydown', onKey, true)
-    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey, true) }
-  }, [open])
+  useDismiss(open, (t) => !!(btnRef.current?.contains(t) || menuRef.current?.contains(t)), () => setPos(null))
 
   const isField = variant === 'field' || variant === 'fieldM'
   const cls = clsx('pb-ddbtn',

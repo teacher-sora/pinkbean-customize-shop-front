@@ -10,6 +10,7 @@
 // 카드를 누르면 패널 안에서 상세로 넘어간다(부위만 골라 입기 · 프리셋에 저장).
 
 import clsx from 'clsx'
+import EmptyState from '../frame/EmptyState'
 import SearchBox, { searchInputClass } from '../frame/SearchBox'
 import PageChip from '../frame/PageChip'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -21,7 +22,7 @@ import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
-import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, usePagerY, type FilterGroup } from '../list/ListArea'
+import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, usePagerX, usePagerY, type FilterGroup } from '../list/ListArea'
 import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
@@ -172,10 +173,7 @@ function ComboEmpty({ mobile }: { mobile: boolean }) {
         <div aria-hidden className={clsx(styles.dyesSep, styles.dyesSepM, styles.hold)} />
       </>}
       <div ref={vpRef} className={clsx(list.viewport, mobile && list.viewportM, styles.emptyWrap)}>{/* 모바일 목록 칸과 같은 좌우 여백 — 최소 높이를 같은 칸 폭으로 잰다 */}
-        <div className={mobile ? list.emptyM : list.empty}>
-          <span className={mobile ? list.emptyTitleM : list.emptyTitle}>아이템을 골라 주세요</span>
-          <span className={mobile ? list.emptyHintM : list.emptyHint}>그 아이템을 입은 실제 유저 코디와 자주 쓴 염색이 보여요.</span>
-        </div>
+        <EmptyState size={mobile ? 'm' : 'pc'} title="아이템을 골라 주세요" hint="그 아이템을 입은 실제 유저 코디와 자주 쓴 염색이 보여요." />
       </div>
       <Credit mobile={mobile} />
     </>
@@ -258,13 +256,6 @@ function ComboHead({ item, mobile, host, detail, onBack }: { item: ListItem | nu
 }
 
 // ── 목록 ──────────────────────────────────────────────────────────
-// 모바일 스크롤 위치 → 쪽 번호. 쪽 = cols × rows, 쪽 안 여백 5 + 칸 사이 10 이라 열(줄)이 정확히 폭/cols(높이/rows)마다 이어진다(목록과 같은 규칙)
-const scrollIdx = (vp: HTMLElement, y: boolean, cols: number, rows: number) => {
-  const w = y ? vp.clientHeight : vp.clientWidth; if (!w) return -1
-  const n = y ? rows : cols
-  return Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / n)) / n)
-}
-
 function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boolean; host: 'codi' | 'plaza'; onOpen: (r: LookRow) => void }) {
   const s = useShop()
   const cols = host === 'plaza' ? s.plazaCols : s.cols
@@ -331,49 +322,8 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
   // 모바일은 목록과 같은 높이 규칙(같은 훅). 2열(광장)은 카드가 넓어 바닥을 낮게 잡는다
   useMobileRows(vpRef, mobile, cols, mobileRatio(cols), MOBILE_GRID.rows, true, mobileFoot(cols))
-  const live = useRef({ idx: cur, setIdx: s.setIdx, cols, rows })
-  live.current = { idx: cur, setIdx: s.setIdx, cols, rows }
-  useEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return // 세로는 ListArea usePagerY
-    let raf = 0
-    const onScroll = () => {
-      if (raf) return
-      raf = requestAnimationFrame(() => {
-        raf = 0
-        const i = scrollIdx(vp, dirY, live.current.cols, live.current.rows); if (i < 0) return
-        if (i !== live.current.idx) live.current.setIdx(i, false)
-      })
-    }
-    vp.addEventListener('scroll', onScroll, { passive: true })
-    return () => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
-  }, [mobile, dirY])
   const scrollKey = `combo|${item.id}|${s.listDir}`
-  const lastKey = useRef(scrollKey)
-  const scrolledOnce = useRef(false)
-  useLayoutEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return
-    const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
-    const jump = lastKey.current !== scrollKey || !scrolledOnce.current
-    lastKey.current = scrollKey
-    scrolledOnce.current = true
-    if (scrollIdx(vp, dirY, cols, rows) === cur && !jump) return
-    const target = cur * w
-    const smooth = !(jump || Math.abs((dirY ? vp.scrollTop : vp.scrollLeft) - target) > w * 3)
-    // 트랙 길이가 쪽 수만큼 자랄 때까지 프레임을 넘겨 다시 본다(ListArea 의 같은 자리 주석)
-    let raf = 0, left = 120
-    const go = () => {
-      raf = 0
-      if (!vp.isConnected) return
-      const room = dirY ? vp.scrollHeight - vp.clientHeight : vp.scrollWidth - vp.clientWidth
-      if (room < target && left-- > 0) { raf = requestAnimationFrame(go); return }
-      const to = Math.min(target, Math.max(0, room))
-      vp.scrollTo({ ...(dirY ? { top: to, left: 0 } : { left: to, top: 0 }), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
-    }
-    go()
-    return () => { if (raf) cancelAnimationFrame(raf) }
-  }, [mobile, cur, scrollKey, pageCount, dirY, cols, rows])
+  usePagerX(vpRef, mobile && !dirY, cur, s.setIdx, pageCount, scrollKey, cols, rows)
   usePagerY(vpRef, mobile && dirY, cur, s.setIdx, pageCount, scrollKey, rows)
 
   // 자주 쓴 염색: 받기 전에는 같은 칸 수의 스켈레톤으로 자리를 잡아 둔다(받은 뒤 목록이 밀리지 않게 — 표본에 있는 아이템은 거의 다 염색 기록이 있다)
@@ -396,15 +346,9 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const viewport = (
     <div ref={setVp} data-pb-list={dirY ? 'y' : 'x'} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
       {failed || (first && !first.ready) ? (
-        <div className={mobile ? list.emptyM : list.empty}>
-          <span className={mobile ? list.emptyTitleM : list.emptyTitle}>코디를 불러오지 못했어요</span>
-          <span className={mobile ? list.emptyHintM : list.emptyHint}>잠시 뒤에 다시 열어 주세요.</span>
-        </div>
+        <EmptyState size={mobile ? 'm' : 'pc'} title="코디를 불러오지 못했어요" hint="잠시 뒤에 다시 열어 주세요." />
       ) : first && first.total === 0 ? (
-        <div className={mobile ? list.emptyM : list.empty}>
-          <span className={mobile ? list.emptyTitleM : list.emptyTitle}>{dye == null ? '이 아이템을 입은 코디가 없어요' : '이 염색을 쓴 코디가 없어요'}</span>
-          <span className={mobile ? list.emptyHintM : list.emptyHint}>{dye == null ? '표본에 아직 없는 아이템이에요.' : '고른 염색 칩을 다시 누르면 전체 코디로 돌아가요.'}</span>
-        </div>
+        <EmptyState size={mobile ? 'm' : 'pc'} title={dye == null ? '이 아이템을 입은 코디가 없어요' : '이 염색을 쓴 코디가 없어요'} hint={dye == null ? '표본에 아직 없는 아이템이에요.' : '고른 염색 칩을 다시 누르면 전체 코디로 돌아가요.'} />
       ) : (
         <div ref={mobile ? undefined : s.bindTrack} data-pb-pages className={list.track}
           style={mobile

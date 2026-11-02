@@ -1,0 +1,15 @@
+/* 빈 상태(제목 한 줄 + 안내 한 줄, 아이콘 없음) — 목록 · 코디 룩북 · 광장 · 부위 고르기가 함께 쓴다(frame/EmptyState). 크기만 자리마다 다르다 */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.title { font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
+.hint { color: light-dark(#b7ada2, #858893); }
+.pc { width: 100%; height: 100%; gap: 7px; text-align: center; padding: 0 24px; }
+.pc .title { font-size: calc(15rem / 16); }
+.pc .hint { font-size: calc(12.5rem / 16); }
+.m { width: 100%; height: 100%; gap: 6px; text-align: center; padding: 0 20px; }
+.plaza { height: 100%; gap: 6px; text-align: center; padding: 0 24px; }
+.plazaM { height: 100%; gap: 6px; text-align: center; padding: 0 20px; }
+.m .title, .plaza .title, .plazaM .title { font-size: calc(14rem / 16); }
+.m .hint, .plaza .hint, .plazaM .hint { font-size: calc(12rem / 16); }
+.part { height: 120px; gap: 5px; }
+.part .title { font-size: calc(13rem / 16); }
+.part .hint { font-size: calc(11.5rem / 16); }

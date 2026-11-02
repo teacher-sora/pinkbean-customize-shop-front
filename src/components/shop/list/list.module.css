@@ -20,7 +20,7 @@
 .filterText { white-space: nowrap; }
 .filterCaret { flex: 0 0 auto; color: light-dark(#b7ada2, #858893); transition: transform .22s ease; }
 .filterCaretOn { transform: rotate(180deg); }
-.filterPop { position: absolute; left: 0; top: calc(100% + 5px); z-index: 30; width: min(300px, calc(100vw - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; background: light-dark(#fff, #303238); border: 1px solid light-dark(#f5e8ee, #573846); border-radius: 8px; box-shadow: 0 10px 26px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.224)); opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
+.filterPop { composes: pop from '../ui/pop.module.css'; position: absolute; left: 0; top: calc(100% + 5px); z-index: 30; width: min(300px, calc(100vw - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
 .filterPopOn { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
 .filterLabel { font-size: calc(11rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); }
 .filterLabel:not(:first-child) { margin-top: 4px; }
@@ -59,12 +59,6 @@
 .loadWrapM { height: 100%; padding: 8px 5px; } /* 뷰포트 들임 7px 과 합쳐 가장자리 12px */
 
 /* 빈 상태 */
-.empty { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; padding: 0 24px; }
-.emptyTitle { font-size: calc(15rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
-.emptyHint { font-size: calc(12.5rem / 16); color: light-dark(#b7ada2, #858893); }
-.emptyM { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 0 20px; }
-.emptyTitleM { font-size: calc(14rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
-.emptyHintM { font-size: calc(12rem / 16); color: light-dark(#b7ada2, #858893); }
 
 /* AI 히어로 */
 .hero { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 0 48px; }
@@ -102,7 +96,7 @@
 .labelBadge { position: absolute; bottom: 4px; left: 4px; height: 17px; image-rendering: pixelated; z-index: 2; }
 .labelBadgeCash { height: 14px; }
 /* 코디 룩북 칩 — 썸네일 오른쪽 아래(왼쪽 아래는 등급 배지). 광장 카드의 날짜 칩과 같은 꼴. 늘 보인다(숨은 기능이 되지 않게 — 사용자 지시) */
-.combo { position: absolute; right: 4px; bottom: 4px; z-index: 3; height: 20px; padding: 0 7px; display: flex; align-items: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 20px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(10.5rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); white-space: nowrap; font-variant-numeric: tabular-nums; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
+.combo { composes: pinkTag from '../ui/marks.module.css'; position: absolute; right: 4px; bottom: 4px; z-index: 3; padding: 0 7px; font-family: inherit; white-space: nowrap; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
 /* 모바일 = 옷걸이(하단 '코디' 탭과 같은 아이콘) + 수 — 글자 '코디'를 빼 칩이 좁다(4열 카드에서 왼쪽 아래 등급 배지와 겹쳤다, 320 폭까지) */
 .comboM { right: 3px; bottom: 3px; height: 18px; padding: 0 5px 0 4px; gap: 2px; font-size: calc(10rem / 16); }
 @media (hover: hover) and (pointer: fine) { .combo:hover { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); } }
@@ -112,10 +106,10 @@
 
 /* 즐겨찾기 · 북마크 띠지(우상단, 카드 경계에 살짝 걸침) */
 /* 띠지 규격(코디·프리셋 공통): PC 큰 25×32 · 작은 23×29 / 모바일 큰 22×29 · 작은 20×26 · 사이 간격 5px */
-.fav { position: absolute; top: -3px; right: 5px; z-index: 4; width: 25px; height: 32px; padding: 6px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#e2d9cf, #4f525b); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
+.fav { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 5px; z-index: 4; width: 25px; height: 32px; padding: 6px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#e2d9cf, #4f525b); cursor: pointer; }
 .favOn { background: light-dark(#f5b91f, #bd9120); }
 .favGlyph { display: block; color: light-dark(#fff, #ececef); }
-.pinMark { position: absolute; top: -3px; right: 35px; z-index: 4; width: 23px; height: 29px; padding: 0; border: none; cursor: pointer; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); background: light-dark(#ec86ac, #d15785); pointer-events: none; opacity: 0; transform: translateY(-2px); }
+.pinMark { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 35px; z-index: 4; width: 23px; height: 29px; padding: 0; border: none; cursor: pointer; background: light-dark(#ec86ac, #d15785); pointer-events: none; opacity: 0; transform: translateY(-2px); }
 .pinMarkOn { pointer-events: auto; opacity: 1; transform: translateY(0); }
 .fav.favM { width: 22px; height: 29px; padding-top: 5px; }
 .pinMark.pinMarkM { width: 20px; height: 26px; right: 32px; } /* 5 + 22 + 5 */
