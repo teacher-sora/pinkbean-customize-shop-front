@@ -690,10 +690,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const listForCat = useCallback((cat: string): ListItem[] => {
     if (cat === 'skin') return skinList
     if (cat === 'all') return allList
-    // '즐겨찾기' = 전 부위(피부 포함)에서 즐겨찾기한 아이템만. 전 슬롯 로드가 필요(위 ensureSlot).
-    if (cat === 'fav') return allList.filter((it) => favorites.has(it.id))
+    // '즐겨찾기' = 전 부위(피부 포함)에서 즐겨찾기한 아이템만. 전 슬롯 로드가 필요(위 ensureSlot). 걸러 낸 목록 안에서 다시 세트끼리 모은다
+    // (전체에서는 흔한 머리말로 보여 묶지 않던 것도 몇 개만 남으면 세트로 묶인다 — 신규의 '크림슨' 세트)
+    if (cat === 'fav') return groupSets(allList.filter((it) => favorites.has(it.id)))
     // '신규' = 최근 패치에서 추가된 아이템만(전 부위). 헤어/성형은 폴딩 대표 id 로 매칭된다.
-    if (cat === 'new') return allList.filter((it) => it.slot !== 'skin' && newIds.has(it.id))
+    if (cat === 'new') return groupSets(allList.filter((it) => it.slot !== 'skin' && newIds.has(it.id)))
     // 한 부위 = 그 부위 목록에서 같은 세트끼리 모은 것(같은 배열이면 기억해 둔 결과)
     const l = lists[CAT_TO_SLOT[cat]]
     return l ? groupSets(l) : []
