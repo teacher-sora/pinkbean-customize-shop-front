@@ -1,6 +1,6 @@
 'use client'
 
-// 프리셋 100칸(사용자 지시 — 기기에만 저장되고 공유할 때만 서버에 오른다). 카드 그림은 스크롤 칸에서 보일 즈음에만 합성 · 그린다(ui/useSeen). 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
+// 프리셋 100칸(사용자 지시 — 기기에만 저장되고 공유할 때만 서버에 오른다). 카드 그림은 스크롤 칸에서 보일 즈음에만 합성 · 그린다(SnapThumb 이 스스로 — ui/useSeen). 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
@@ -15,7 +15,6 @@ import { presetFileName } from '@/lib/canvasExport'
 import SnapThumb from '../SnapThumb'
 import { presetCard } from '@/lib/core/snapRender'
 import { usePresetDrag } from './usePresetDrag'
-import { useSeen } from '../ui/useSeen'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
@@ -116,7 +115,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     <div ref={gridRef} className={mobile ? (across ? styles.gridHM : styles.gridVM) : across ? clsx(styles.gridH, narrow && styles.gridHNarrow) : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
       {s.presets.map((p, i) => {
         const on = selId === p.id
-        return <PresetCard key={p.id} p={p} i={i} on={on} snap={on ? liveSnap : s.presetData[p.id]} mobile={mobile} fill={mobile || across} sorting={sorting} act={act} root={boxRef} />
+        return <PresetCard key={p.id} p={p} i={i} on={on} snap={on ? liveSnap : s.presetData[p.id]} mobile={mobile} fill={mobile || across} sorting={sorting} act={act} />
       })}
     </div>
   )
@@ -168,10 +167,8 @@ type CardAct = {
   share: (p: Preset) => void; remove: (p: Preset) => void; rename: (id: string, name: string) => void; commit: (id: string, fallback: string) => void
 }
 // 프리셋 카드 한 장. 받는 값이 같으면 다시 그리지 않는다(memo) — act 는 늘 같은 ref, p 는 이름이 바뀔 때만 새 객체다
-// 그림은 스크롤 칸(root)에서 보일 즈음에만 그린다(useSeen) — 100칸을 한꺼번에 합성 · 그리지 않게. 한 번 그린 것은 그대로 둔다
-const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, fill, sorting, act, root }: { p: Preset; i: number; on: boolean; snap: Snapshot | undefined; mobile: boolean; fill: boolean; sorting: boolean; act: React.MutableRefObject<CardAct>; root: React.RefObject<HTMLDivElement | null> }) {
-  const thumbRef = useRef<HTMLDivElement>(null)
-  const seen = useSeen(thumbRef, root)
+// 그림은 스크롤 칸에서 보일 즈음에만 그린다(SnapThumb 이 스스로) — 100칸을 한꺼번에 합성 · 그리지 않게. 한 번 그린 것은 그대로 둔다
+const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, fill, sorting, act }: { p: Preset; i: number; on: boolean; snap: Snapshot | undefined; mobile: boolean; fill: boolean; sorting: boolean; act: React.MutableRefObject<CardAct> }) {
   const card = useMemo(() => (snap ? presetCard(snap) : undefined), [snap]) // 그 프리셋의 연출 그대로(액션 첫 프레임 · 표정 · 이펙트 · 형상 변이 · 귀)
   // 누르기 전에 미리(전부 입기와 같다): 마우스가 120ms 머물면 받고 염색까지 칠해 두고, 터치는 닿는 순간 받는다. 고른 칸 · 순서 변경 중에는 하지 않는다
   const hover = useRef(0)
@@ -187,9 +184,9 @@ const PresetCard = memo(function PresetCard ({ p, i, on, snap, mobile, fill, sor
       <div className={clsx('pb-preset', on && 'pb-preset-sel')}>
         <span className={clsx(styles.badge, mobile && styles.badgeM, on && styles.badgeOn)} aria-label="선택됨">{mobile ? <IconCheck /> : '선택됨'}</span>
         {/* 바탕(사용자 지시): 손대지 않은 프리셋(광장 등록의 올릴 프리셋 판정과 같다)은 시스템 테마 색, 꾸민 프리셋은 그 프리셋의 미리보기 배경 */}
-        <div ref={thumbRef} className={clsx(styles.thumb, fill && styles.thumbM)} style={snap && !isCustomSnapshot(snap) ? { background: SYS_BG_CSS } : undefined}>
+        <div className={clsx(styles.thumb, fill && styles.thumbM)} style={snap && !isCustomSnapshot(snap) ? { background: SYS_BG_CSS } : undefined}>
           {snap && isCustomSnapshot(snap) && <div className={styles.thumbBg}><CardStageBg sel={snap.bg} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} /></div>}
-          {card && seen && <SnapThumb snap={card} view fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} fitW={mobile ? CARD_FIT_W_M : undefined} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
+          {card && <SnapThumb snap={card} view fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} fitW={mobile ? CARD_FIT_W_M : undefined} tagName={p.name.trim() || CHAT_NAME_FALLBACK} fileName={presetFileName(p.name, i)} holdMenu={!sorting} />}</div>
         <div className={clsx(styles.nameRow, mobile && styles.nameRowM)}>
           <span className={styles.nameWrap}>
             <input value={p.name} aria-label="프리셋 이름" title={mobile ? undefined : '이름을 입력해 바꿀 수 있어요'}

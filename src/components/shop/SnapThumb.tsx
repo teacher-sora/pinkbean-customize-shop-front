@@ -15,6 +15,7 @@ import { BASE_TAG, type ChatUi } from '@/lib/core/chatUi'
 import { CARD_FIT_W_M, CARD_FRACTION, CARD_LIFT_SNAP_M, CARD_MARGIN, CHAT_FILES, ZOOM_WORLD } from '@/lib/shopData'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { useShop, type Snapshot } from './ShopContext'
+import { useSeen } from './ui/useSeen'
 
 // 스냅샷(착용+톤+염색)을 실제 모델로 합성해 부모 div 중앙에 그린다.
 // 코디/미리보기와 동일한 computeModelPlacement 규칙 → 어디서 쓰든 모델 비율이 같다.
@@ -23,6 +24,9 @@ import { useShop, type Snapshot } from './ShopContext'
 // 부모는 position:relative + 크기가 있어야 한다(이 컴포넌트는 inset:0 으로 채운다).
 // priority: 0 = 보이는 것(곧바로), 1 이상 = 화면 밖 미리 그리기(보이는 것이 다 끝난 뒤) — lib/thumbQueue.
 // view: 스냅샷의 연출 설정(액션·표정)까지 그려 준다 — 연출 설정 고르기의 작은 미리보기 전용.
+// 보일 때만 그린다: 칸이 가장 가까운 스크롤 칸에서 보이는 자리 가까이 와야 합성하고 캔버스를 만든다(ui/useSeen). 한 번 그린 칸은 그대로 둔다.
+//   칸이 많은 목록(프리셋 탭, 공유받은 코디 창, 광장 올리기 등)이 따로 막지 않아도 같은 규칙을 받는다 — 100칸을 한꺼번에 그리면 캔버스가 240MB 를 넘어
+//   휴대폰 브라우저가 탭을 끄고 새로고침했다. priority 1 이상(화면 밖 미리 그리기 — 앞뒤 쪽 등)은 부른 쪽이 바란 것이라 기다리지 않는다.
 // tagName: 끼운 명찰(칸이 비었으면 그 프리셋의 기본 명찰 — pv.baseTag)을 이 이름으로 함께 그린다 — 프리셋 카드만(프리셋 이름, 사용자 지시). 말풍선은 그리지 않는다.
 
 const RETRY_MS = 9000
@@ -82,6 +86,10 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[] | null>(animaNow)
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const seen = useSeen(wrapRef, 'auto')
+  const liveRef = useRef(false)
+  if (seen || priority >= 1) liveRef.current = true
+  const live = liveRef.current
   useEffect(() => { if (!animaRaces) animaOnce().then(setAnimaRaces).catch(() => {}) }, [animaRaces])
   const key = useMemo(() => snapKey(snap), [snap])
   // 프리셋 카드의 명찰: 끼웠고 숨기지 않았을 때만
@@ -125,7 +133,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const [retry, setRetry] = useState(0)
   // 그리기 전에(layout effect) 캐시를 본다 — 합성해 둔 코디는 첫 페인트부터 그림이라 탭을 오갈 때 뼈대가 깜빡이지 않는다(사용자 지시: 프리셋 탭). 바뀐 코디만 새로 합성한다
   useIsoLayoutEffect(() => {
-    if (!index || !animaRaces) return
+    if (!live || !index || !animaRaces) return
     let alive = true, got = false
     const done = (r: SnapComposite | null) => {
       got = true
@@ -140,7 +148,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     jobRef.current = job
     const t = retry < 3 ? setTimeout(() => { if (alive && !got) setRetry((n) => n + 1) }, RETRY_MS) : undefined
     return () => { alive = false; job.cancel(); clearTimeout(t) }
-  }, [key, index, animaRaces, view, retry])
+  }, [live, key, index, animaRaces, view, retry])
   useEffect(() => { jobRef.current?.setPrio(priority) }, [priority])
 
   // 칸 재기 · 그리기는 페인트 전에 — 합성해 둔 코디는 첫 페인트부터 그림이다(코디 비교 칸이 생기는 순간 빈 칸이 비치지 않게)
@@ -160,7 +168,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
 
   useIsoLayoutEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !placed || !dims.w || !dims.h) return
+    if (!canvas || !placed || !dims.w || !dims.h) return // 캔버스는 live 일 때만 있다
     let cancelled = false
     const fr = fitW ? Math.min(fraction, (fitW * dims.w) / dims.h) : fraction
     const scale = zoom != null ? zoomStepScale({ fraction: fr, divH: dims.h, dpr: dims.dpr, level: zoom, mults: zoomMults ?? ZOOM_WORLD }) : undefined
@@ -183,7 +191,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     return () => { cancelled = true }
   }, [placed, ov, effects, particles, center, dims, fraction, fitW, margin, chat, zoom, zoomMults, view, snap.pv?.gaze, snap.pv?.action, snap.equipped.riding, snap.hidden?.riding])
 
-  // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
+  // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 live 부터 있다). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
   // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 게임 크기 1배).
   const shotRef = useRef<ModelShot | null>(null)
   shotRef.current = placed ? { placed, override: ov, effects, particles, chat, centerX: center === 'x', centerMount: center === 'mount' } : null
@@ -191,12 +199,12 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     const el = canvasRef.current
     if (!el) return
     return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), fileName || 'pinkbean-cody', undefined, { hold: holdMenu }) // 프리셋 카드는 프리셋 이름(presetFileName)
-  }, [fileName, holdMenu])
+  }, [fileName, holdMenu, live])
 
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-      {!placed && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '58%', height: '58%', borderRadius: 8 }} />}
-      <canvas ref={canvasRef} style={{ position: 'absolute', transform: 'translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />
+      {live && !placed && <div className="pb-skel" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '58%', height: '58%', borderRadius: 8 }} />}
+      {live && <canvas ref={canvasRef} style={{ position: 'absolute', transform: 'translateZ(0)', imageRendering: 'pixelated', display: 'block', backfaceVisibility: 'hidden' }} />}
     </div>
   )
 }
