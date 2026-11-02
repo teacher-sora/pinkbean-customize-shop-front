@@ -6,6 +6,8 @@
 // 그리드 열·행은 ShopContext 한 곳에서만 계산한다(perPage 와 렌더 그리드가 어긋나면 페이지 수가 틀어진다).
 
 import clsx from 'clsx'
+import SearchBox, { searchInputClass } from '../frame/SearchBox'
+import PageChip from '../frame/PageChip'
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, plazaContestClosed, type PlazaSort } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
@@ -14,7 +16,7 @@ import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, useMobileRows, usePagerY, typ
 import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { MOBILE_GRID } from '@/lib/shopData'
 import { Seg, type SegOpt } from '../ui/controls'
-import { IconChevronLeft, IconChevronRight, IconClose, IconPlus, IconSearch } from '../ui/Icons'
+import { IconClose, IconPlus } from '../ui/Icons'
 import PlazaCard from './PlazaCard'
 import PlazaUpload from './PlazaUpload'
 import styles from './plaza.module.css'
@@ -93,21 +95,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   usePagerY(vpRef, mobile && dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey, s.plazaRows)
 
   const pageChip = (
-    <div className={mobile ? styles.pageChipM : styles.pageChip}>
-      {!mobile && (
-        <>
-          <span title="이 분류의 코디 수" className={styles.count}>{`${list.length}개`}</span>
-          <span className={styles.chipDiv} />
-        </>
-      )}
-      {/* 모바일에는 화살표를 두지 않는다(목록과 같다) — 옆으로 밀어 넘기고, 멀리 갈 때는 번호를 적는다 */}
-      {!mobile && <button type="button" onClick={() => s.step(-1)} disabled={s.curIdx <= 0} title="이전 페이지" aria-label="이전 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx > 0 && styles.arrowOn)}><IconChevronLeft /></button>}
-      <input value={s.pageEditing ? s.pageInput : `${s.curIdx + 1}`} onFocus={s.onPageFocus} onChange={s.onPageChange} onKeyDown={s.onPageKey} onBlur={s.commitPage}
-        inputMode="numeric" aria-label="현재 페이지" className={clsx('pb-input', 'pb-pageinput', styles.pageInput)} />
-      <span className={styles.slash}>/</span>
-      <span className={styles.total}>{s.pageCount}</span>
-      {!mobile && <button type="button" onClick={() => s.step(1)} disabled={s.curIdx >= s.pageCount - 1} title="다음 페이지" aria-label="다음 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx < s.pageCount - 1 && styles.arrowOn)}><IconChevronRight /></button>}
-    </div>
+    <PageChip mobile={mobile} tight count={`${list.length}개`} countTitle="이 분류의 코디 수" cur={s.curIdx} pageCount={s.pageCount} onStep={s.step} prevTitle="이전 페이지" nextTitle="다음 페이지" />
   )
 
   const sortDd = (
@@ -125,7 +113,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   const viewCtl = fold ? <FilterM mobile={mobile} groups={filterGroups} /> : <>{sortDd}<Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} /></>
   const search = (
     <input value={s.plazaQ} onChange={(e) => s.setPlazaQ(e.target.value)} placeholder="이름, 태그 검색"
-      aria-label="코디 검색" className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
+      aria-label="코디 검색" className={searchInputClass(mobile)} />
   )
 
   const empty = !s.plazaLoading && list.length === 0
@@ -193,7 +181,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
         <div className={styles.controlsM}>
           {viewCtl}
           {pageChip}
-          <div className={styles.searchWrapM}><IconSearch className={styles.searchIconM} />{search}</div>
+          <SearchBox mobile plaza>{search}</SearchBox>
           <button type="button" onClick={() => s.setPlazaUpload(!s.plazaUpload)} title={s.plazaUpload ? '닫기' : '내 코디 등록'} aria-label={s.plazaUpload ? '닫기' : '내 코디 등록'} className={styles.upBtn}>
             {s.plazaUpload ? <IconClose /> : <IconPlus />}
           </button>
@@ -210,7 +198,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
         {viewCtl}
         <div className={styles.groupB}>
           {pageChip}
-          <div className={styles.searchWrap}><IconSearch className={styles.searchIcon} />{search}</div>
+          <SearchBox mobile={false} plaza>{search}</SearchBox>
         </div>
       </div>
       <div className={styles.hr} />

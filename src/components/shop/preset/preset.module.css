@@ -1,18 +1,13 @@
 /* 프리셋. */
 
-.panel { flex: 1 1 0; min-width: 0; min-height: 0; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
-.header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; }
-.groupA { flex: 0 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
-.groupB { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
-.hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: light-dark(#f2ebe3, #40434b); }
-.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 8px; }
-.hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: light-dark(#f2ebe3, #40434b); }
+.panel { composes: panel from '../frame/panel.module.css'; }
+.header { composes: header from '../frame/panel.module.css'; }
+.groupA { composes: groupA from '../frame/panel.module.css'; }
+.groupB { composes: groupB from '../frame/panel.module.css'; }
+.hr { composes: hr from '../frame/panel.module.css'; }
+.headerM { composes: headerM from '../frame/panel.module.css'; }
+.hrM { composes: hrM from '../frame/panel.module.css'; }
 
-.chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
-.chipM { gap: 5px; height: 32px; padding: 0 10px; border-radius: 6px; }
-.chipLabel { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); line-height: 1; }
-.chipNum { min-width: 3ch; text-align: center; font-size: calc(12rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); line-height: 1; } /* 세 자리(100)까지 폭을 미리 — 숫자가 바뀌어도 칩이 늘지 않게, 숫자는 그 칸 가운데(사용자 지시) */
-.chipSlash { font-size: calc(12rem / 16); color: light-dark(#ccc2b8, #787c88); line-height: 1; }
 /* 순서 변경 버튼(칩 옆): 꺼짐 = 칩과 같은 면 · 테두리, 켜짐 = 채운 핑크 + '완료'(사용자 지시 — 켜짐 · 꺼짐이 확실히 보이게) */
 .sortBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 34px; padding: 0 11px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12.5rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
 .sortBtnM { height: 32px; padding: 0 9px; gap: 4px; font-size: calc(12rem / 16); }

@@ -1,32 +1,14 @@
 /* 코디 · AI 코디 검색 리스트. */
 
-.panel { flex: 1 1 0; min-width: 0; min-height: 0; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+.panel { composes: panel from '../frame/panel.module.css'; }
 
 /* ── 리스트 헤더(PC) ── */
-.header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; }
-.groupA { flex: 0 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
-.groupB { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
-.pageChip { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; height: 34px; padding: 0 4px 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
-.pageChipNarrow { padding: 0 4px; }
-/* 머리가 아주 좁으면(절반 화면의 아래 끝) 쪽 화살표를 접는다 — 쪽은 휠 · 밀기 · 방향키 · 번호로도 넘긴다 */
+.header { composes: header from '../frame/panel.module.css'; }
+.groupA { composes: groupA from '../frame/panel.module.css'; }
+.groupB { composes: groupB from '../frame/panel.module.css'; }
+/* 쪽 칩(frame/PageChip)의 좁은 머리 규칙이 이 칸의 폭을 본다 */
 .header { container-type: inline-size; }
-@container (max-width: 400px) { .pageChipNarrow .arrow { display: none; } .pageChipNarrow { padding: 0 5px; } }
-.count { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); white-space: nowrap; }
-.chipDiv { width: 1px; height: 16px; margin: 0 12px; background: light-dark(#e7ded4, #4b4e57); }
-.arrow { flex: 0 0 auto; width: 22px; height: 24px; margin: 0 2px; padding: 0; display: flex; align-items: center; justify-content: center; border: none; border-radius: 4px; background: transparent; color: light-dark(#ded5cb, #52555f); cursor: default; transition: background-color .2s ease, color .2s ease; }
-.arrowOn { color: light-dark(#c08fa4, #888b95); cursor: pointer; }
-/* 페이지 번호는 **4자리(9999)** 까지 자리를 미리 잡는다 — 숫자가 바뀔 때마다 칸이 넓어지며
-   화살표가 밀리는 것을 막는다.
-   폭을 px 로 박으면 글꼴이 두툼할 때 모자라므로 숫자 한 칸(ch) 기준으로 잡고 여유를 더한다.
-   입력칸과 총 페이지 수를 같은 폭으로 둬 '/' 양옆이 대칭이 되게 한다. */
-.pageInput { width: calc(4ch + 16px); height: 22px; padding: 0 4px; border: 1px solid transparent; border-radius: 4px; background: light-dark(#f1e7ec, #5a394a); text-align: center; font-size: calc(12rem / 16); font-weight: 700; color: light-dark(#b0748f, #c2a3b1); outline: none; }
-.slash { font-size: calc(12rem / 16); color: light-dark(#ccc2b8, #787c88); margin: 0 4px; }
-.total { min-width: calc(4ch + 16px); text-align: center; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
-.searchWrap { flex: 0 1 200px; min-width: 148px; position: relative; display: flex; align-items: center; }
-.searchWrapNarrow { flex: 1 1 200px; min-width: 80px; max-width: 200px; } /* 넓어도 PC 전체 화면의 크기(200)까지만 — 남는 폭은 쪽 칩 왼쪽(margin-left auto)으로 간다 */
-.searchIcon { position: absolute; left: 10px; color: light-dark(#b7ada2, #858893); pointer-events: none; }
-.searchInput { height: 34px; width: 100%; min-width: 0; padding: 0 12px 0 30px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: calc(13rem / 16); letter-spacing: -0.01em; outline: none; }
-.hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: light-dark(#f2ebe3, #40434b); }
+.hr { composes: hr from '../frame/panel.module.css'; }
 
 /* ── 리스트 컨트롤(모바일) ── */
 .controlsM { flex: 0 0 auto; position: relative; height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
@@ -42,12 +24,7 @@
 .filterPopOn { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
 .filterLabel { font-size: calc(11rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); }
 .filterLabel:not(:first-child) { margin-top: 4px; }
-.pageChipM { flex: 0 0 auto; display: flex; align-items: center; height: 32px; padding: 0 5px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
-.slashM { font-size: calc(12rem / 16); color: light-dark(#ccc2b8, #787c88); margin: 0 3px; }
-.searchWrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
-.searchIconM { position: absolute; left: 11px; color: light-dark(#b7ada2, #858893); pointer-events: none; }
-.searchInputM { width: 100%; min-width: 0; height: 32px; padding: 0 12px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: calc(12rem / 16); letter-spacing: -0.02em; outline: none; text-overflow: ellipsis; }
-.hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: light-dark(#f2ebe3, #40434b); }
+.hrM { composes: hrM from '../frame/panel.module.css'; }
 
 /* ── 뷰포트 · 페이지 ── */
 .viewport { flex: 1 1 auto; min-height: 0; position: relative; overflow: clip; touch-action: pan-y pinch-zoom; }
@@ -106,8 +83,8 @@
 .beta { font-size: calc(11.5rem / 16); color: light-dark(#c3b9ad, #7e828d); max-width: 420px; line-height: 1.6; }
 .betaM { font-size: calc(11.5rem / 16); color: light-dark(#c3b9ad, #7e828d); text-align: center; line-height: 1.6; }
 
-.hintBar { flex: 0 0 auto; height: 30px; display: flex; align-items: center; justify-content: center; border-top: 1px solid light-dark(#f0e9e1, #42454d); }
-.hintText { font-size: calc(11.5rem / 16); color: light-dark(#b7ada2, #858893); }
+.hintBar { composes: hintBar from '../frame/panel.module.css'; }
+.hintText { composes: hintText from '../frame/panel.module.css'; }
 
 /* ── 아이템 카드 ── */
 .card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 8px 6px; border-radius: 8px; min-width: 0; min-height: 0; background: light-dark(#fff, #303238); }

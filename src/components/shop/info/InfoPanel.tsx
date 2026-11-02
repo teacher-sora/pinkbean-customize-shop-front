@@ -3,6 +3,7 @@
 // 코디 정보 · 염색. 18부위 행 그리드. 부위를 누르면 염색/점 위치 서피스를 연다(PC 는 가운데 다이얼로그, 모바일은 바텀 시트).
 
 import clsx from 'clsx'
+import CountChip from '../frame/CountChip'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { useListMinHeight } from '../list/ListArea'
 import { useEffect, useRef, useState } from 'react'
@@ -103,14 +104,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
     </div>
   )
 
-  const chip = (
-    <div title="착용한 부위 수" className={clsx(styles.chip, mobile && styles.chipM)}>
-      <span className={styles.chipLabel}>착용</span>
-      <span className={styles.chipNum}>{wornCount}</span>
-      <span className={styles.chipSlash}>/</span>
-      <span className={styles.chipLabel}>{s.infoCats.length}</span>
-    </div>
-  )
+  const chip = <CountChip mobile={mobile} label="착용" n={wornCount} total={s.infoCats.length} digits={2} title="착용한 부위 수" />
   // 코디 프로필 저장(헤더 오른쪽 — 예전 '전체 벗기' 자리). 눈에 띄게 진한 핑크(사용자 지시 — 옅은 버튼은 있는 줄도 몰랐다).
   // 누르면 꾸미는 창(코디 프로필 — 디자인 · 배경 · 명찰 · 말풍선 · 자리)이 열리고 거기서 저장한다
   const share = (

@@ -10,6 +10,8 @@
 // 카드를 누르면 패널 안에서 상세로 넘어간다(부위만 골라 입기 · 프리셋에 저장).
 
 import clsx from 'clsx'
+import SearchBox, { searchInputClass } from '../frame/SearchBox'
+import PageChip from '../frame/PageChip'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { COMBO_SKIP, LOOK_CHUNK, lookPv, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
@@ -26,7 +28,7 @@ import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
 import { fitAboveKeyboard } from '@/lib/keyboard'
 import { ChipAct } from '../ui/ChipAct'
-import { IconChevronLeft, IconChevronRight, IconDrop, IconSearch, IconTakeDown } from '../ui/Icons'
+import { IconChevronLeft, IconDrop, IconTakeDown } from '../ui/Icons'
 import list from '../list/list.module.css'
 import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
@@ -102,7 +104,7 @@ function ItemTag({ item, mobile, thumbOnly }: { item: ListItem | null; mobile: b
 }
 
 // 광장의 코디 룩북: 이름으로 아이템을 찾는다(모든 부위 + 피부). 표본에 있는 것만, 코디가 많은 순으로 8개
-// 칸은 목록 머리의 검색 칸과 같은 부품 · 같은 폭이다(list.searchWrap · searchWrapNarrow · searchWrapM — 사용자 지시: 같은 자리 · 같은 크기)
+// 칸은 목록 머리의 검색 칸과 같은 부품 · 같은 폭이다(frame/SearchBox — 사용자 지시: 같은 자리 · 같은 크기)
 function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) {
   const s = useShop()
   const narrow = s.listNarrow
@@ -131,11 +133,10 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
   const showing = open && !!q.trim()
   useLayoutEffect(() => (mobile && showing ? fitAboveKeyboard(popRef) : undefined), [mobile, showing])
   return (
-    <div className={mobile ? list.searchWrapM : clsx(list.searchWrap, narrow && list.searchWrapNarrow)}>
-      <IconSearch className={mobile ? list.searchIconM : list.searchIcon} />
+    <SearchBox mobile={mobile} narrow={narrow}>
       <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 120)}
         onKeyDown={(e) => { if (e.key === 'Enter' && hits[0]) pick(hits[0].it); if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
-        placeholder={now ? now.name || now.id : '아이템 이름으로 찾기'} aria-label="아이템 찾기" className={clsx('pb-input', mobile ? list.searchInputM : list.searchInput)} />
+        placeholder={now ? now.name || now.id : '아이템 이름으로 찾기'} aria-label="아이템 찾기" className={searchInputClass(mobile)} />
       {open && q.trim() && (
         <div ref={popRef} className={clsx('pb-scroll', styles.finderPop, mobile && styles.finderPopM)} role="listbox">
           {hits.length ? hits.map(({ it, n }) => (
@@ -149,7 +150,7 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
           )) : <span className={styles.finderNone}>표본에 없는 아이템이에요</span>}
         </div>
       )}
-    </div>
+    </SearchBox>
   )
 }
 // 아이템 찾기에서 쓸 코디 수 표(카드 칩과 같은 counts.json — lib/looks 가 한 번 받아 둔 것)
@@ -207,22 +208,9 @@ function ComboHead({ item, mobile, host, detail, onBack }: { item: ListItem | nu
   const dirY = s.listDir === 'y'
   const cur = paged ? s.curIdx : 0, pageCount = paged ? s.pageCount : 1
   const pageChip = (
-    <div className={mobile ? clsx(list.pageChipM, styles.pageEndM) : clsx(list.pageChip, narrow && list.pageChipNarrow)}>
-      {!mobile && !narrow && (
-        <>
-          <span title="이 아이템을 입은 코디 수" className={clsx(list.count, styles.countFix)}>{paged && total == null ? ' ' : `${(total ?? 0).toLocaleString()}벌`}</span>
-          <span className={list.chipDiv} />
-        </>
-      )}
-      {!mobile && <button type="button" onClick={() => s.step(-1)} disabled={!paged || cur <= 0} title={dirY ? '이전 페이지 (↑)' : '이전 페이지 (←)'} aria-label="이전 페이지" className={clsx('pb-arrow', list.arrow, paged && cur > 0 && list.arrowOn)}><IconChevronLeft /></button>}
-      {paged
-        ? <input value={s.pageEditing ? s.pageInput : `${cur + 1}`} onFocus={s.onPageFocus} onChange={s.onPageChange} onKeyDown={s.onPageKey} onBlur={s.commitPage}
-            inputMode="numeric" aria-label="현재 페이지" title={mobile ? undefined : '번호를 입력해 이동'} className={clsx('pb-input', 'pb-pageinput', list.pageInput)} />
-        : <input value="1" readOnly tabIndex={-1} aria-label="현재 페이지" title="아이템을 고르면 넘길 수 있어요" className={clsx('pb-input', 'pb-pageinput', list.pageInput)} />}
-      <span className={mobile ? list.slashM : list.slash}>/</span>
-      <span className={list.total}>{pageCount.toLocaleString()}</span>
-      {!mobile && <button type="button" onClick={() => s.step(1)} disabled={!paged || cur >= pageCount - 1} title={dirY ? '다음 페이지 (↓)' : '다음 페이지 (→)'} aria-label="다음 페이지" className={clsx('pb-arrow', list.arrow, paged && cur < pageCount - 1 && list.arrowOn)}><IconChevronRight /></button>}
-    </div>
+    <PageChip mobile={mobile} narrow={narrow} className={mobile ? styles.pageEndM : undefined} count={paged && total == null ? ' ' : `${(total ?? 0).toLocaleString()}벌`} countTitle="이 아이템을 입은 코디 수" countClass={styles.countFix}
+      cur={cur} pageCount={pageCount} totalText={pageCount.toLocaleString()} onStep={s.step} idle={!paged}
+      prevTitle={dirY ? '이전 페이지 (↑)' : '이전 페이지 (←)'} nextTitle={dirY ? '다음 페이지 (↓)' : '다음 페이지 (→)'} inputTitle="번호를 입력해 이동" />
   )
   const filterGroups: FilterGroup[] = [
     { label: '성별', title: '코디의 성별(입은 아이템으로 나눈다)', opts: GENDERS, value: s.comboGender, onPick: s.setComboGender },

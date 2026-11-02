@@ -4,12 +4,14 @@
 //  PC(절반·태블릿 포함) = 패널(section) + 헤더 + 뷰포트 + 힌트 바 / 모바일 = 컨트롤 2줄 + 뷰포트.
 
 import clsx from 'clsx'
+import SearchBox, { searchInputClass } from '../frame/SearchBox'
+import PageChip from '../frame/PageChip'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { ITEM_KINDS, MOBILE_GRID } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
-import { IconCaretDown, IconChevronLeft, IconChevronRight, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
+import { IconCaretDown, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
@@ -304,28 +306,15 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const runAi = (q?: string) => { const t = (q ?? s.aiQ).trim(); if (!t) return; if (q !== undefined) s.setAiQ(q); s.runSearch(t) }
 
   const pageChip = (
-    <div className={mobile ? styles.pageChipM : clsx(styles.pageChip, narrow && styles.pageChipNarrow)}>
-      {!mobile && !narrow && (
-        <>
-          <span title="이 부위, 조건의 아이템 수" className={styles.count}>{`${list.length.toLocaleString()}개`}</span>
-          <span className={styles.chipDiv} />
-        </>
-      )}
-      {/* 모바일에는 화살표를 두지 않는다 — 쪽은 목록을 옆으로 밀어 넘기고, 멀리 갈 때는 번호를 적는다 */}
-      {!mobile && <button type="button" onClick={() => s.step(-1)} disabled={s.curIdx <= 0} title="이전 페이지 (←)" aria-label="이전 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx > 0 && styles.arrowOn)}><IconChevronLeft /></button>}
-      <input value={s.pageEditing ? s.pageInput : `${s.curIdx + 1}`} onFocus={s.onPageFocus} onChange={s.onPageChange} onKeyDown={s.onPageKey} onBlur={s.commitPage}
-        inputMode="numeric" aria-label="현재 페이지" title={mobile ? undefined : '번호를 입력해 이동'} className={clsx('pb-input', 'pb-pageinput', styles.pageInput)} />
-      <span className={mobile ? styles.slashM : styles.slash}>/</span>
-      <span className={styles.total}>{s.pageCount}</span>
-      {!mobile && <button type="button" onClick={() => s.step(1)} disabled={s.curIdx >= s.pageCount - 1} title="다음 페이지 (→)" aria-label="다음 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx < s.pageCount - 1 && styles.arrowOn)}><IconChevronRight /></button>}
-    </div>
+    <PageChip mobile={mobile} narrow={narrow} count={`${list.length.toLocaleString()}개`} countTitle="이 부위, 조건의 아이템 수" cur={s.curIdx} pageCount={s.pageCount} onStep={s.step}
+      prevTitle="이전 페이지 (←)" nextTitle="다음 페이지 (→)" inputTitle="번호를 입력해 이동" />
   )
   const searchInput = isAi ? (
     <input data-guide="ai" value={s.aiQ} onChange={(e) => s.setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi() }} placeholder="생김새 검색"
-      className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
+      className={searchInputClass(mobile)} />
   ) : (
     <input value={s.search} onChange={(e) => s.setSearch(e.target.value)} placeholder="아이템 검색"
-      className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
+      className={searchInputClass(mobile)} />
   )
 
   const controls = mobile ? (
@@ -333,10 +322,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     <div className={styles.controlsM}>
       <FilterM mobile guide="listdir" groups={filterGroups} />
       {pageChip}
-      <div className={styles.searchWrapM}>
-        <IconSearch className={styles.searchIconM} />
-        {searchInput}
-      </div>
+      <SearchBox mobile>{searchInput}</SearchBox>
     </div>
   ) : (
     <div className={styles.header}>
@@ -344,10 +330,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       <FilterM mobile={false} guide="listdir" groups={filterGroups} />
       <div className={styles.groupB}>
         {pageChip}
-        <div className={clsx(styles.searchWrap, narrow && styles.searchWrapNarrow)}>
-          <IconSearch className={styles.searchIcon} />
-          {searchInput}
-        </div>
+        <SearchBox mobile={false} narrow={narrow}>{searchInput}</SearchBox>
       </div>
     </div>
   )

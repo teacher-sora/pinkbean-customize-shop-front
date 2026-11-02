@@ -1,0 +1,9 @@
+/* 작업 칩 [라벨 n / 총수] — 프리셋 탭(프리셋 n / 100) · 코디 정보(착용 n / 16)가 함께 쓴다(frame/CountChip) */
+.chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
+.chipM { gap: 5px; height: 32px; padding: 0 10px; border-radius: 6px; }
+.label { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); line-height: 1; }
+/* 숫자는 나올 자리 수만큼 폭을 미리 잡는다 — 숫자가 바뀌어도 칩이 늘지 않게. 세 자리(100)는 그 칸 가운데(사용자 지시), 두 자리는 오른쪽 */
+.num { font-size: calc(12rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); line-height: 1; }
+.num2 { min-width: 2ch; text-align: right; }
+.num3 { min-width: 3ch; text-align: center; }
+.slash { font-size: calc(12rem / 16); color: light-dark(#ccc2b8, #787c88); line-height: 1; }
