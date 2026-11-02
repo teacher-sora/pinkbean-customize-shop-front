@@ -254,7 +254,7 @@ export interface ShopCtx {
   // 데이터
   index: Index | null
   cats: Cat[] // 부위 탭(CATS + 명찰/말풍선 목록이 있으면 CHAT_CATS)
-  catBar: Cat[] // 부위 줄에 놓는 순서(사용자가 바꾼 순서 — 목록의 정렬은 cats 그대로다)
+  catBar: Cat[] // 부위 줄에 놓는 순서(사용자가 바꾼 순서 — '전체' 목록도 이 순서로 잇는다)
   reorderCats: (ids: string[]) => void // 카테고리 창에서 끌어 옮긴 순서
   infoCats: Cat[] // 코디 정보 칩(CATS + 명찰/말풍선 목록이 있으면 명찰 · 말풍선 둘 — CHAT_INFO_CATS)
   chatOn: boolean // 명찰 · 말풍선을 쓸 수 있는가(목록 파일이 있을 때만)
@@ -656,7 +656,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const withChat = (extra: Cat[]) => { const i = CATS.findIndex((c) => c.id === 'ring') + 1; return [...CATS.slice(0, i), ...extra, ...CATS.slice(i)] }
   const cats = useMemo(() => (chatOn ? withChat(CHAT_CATS) : CATS), [chatOn])
   const infoCats = useMemo(() => (chatOn ? withChat(CHAT_INFO_CATS) : CATS), [chatOn])
-  // 부위 줄의 순서(기기에만 저장). 저장에 없는 새 부위는 뒤에 붙는다. '전체' 목록의 정렬은 바꾸지 않으려고 cats 와 나눠 둔다
+  // 부위 줄의 순서(기기에만 저장). 저장에 없는 새 부위는 뒤에 붙는다. '전체' 목록도 이 순서로 잇는다
   const [catOrder, setCatOrder] = useState<string[]>([])
   useIsoLayoutEffect(() => { try { const v = JSON.parse(localStorage.getItem(CAT_ORDER_KEY) || '[]'); if (Array.isArray(v)) setCatOrder(v) } catch { /* noop */ } }, [])
   const catBar = useMemo(() => {
@@ -684,11 +684,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       dyeMode: 'hsb', thumb: `sprites/${t.body}/thumb.png`, headId: t.head, name: t.name || `피부 ${t.tone}`, actions: [],
     }))
   }, [index])
-  // '전체' = 모든 부위를 부위 순서(cats — 사용자가 바꾼 순서)로 이어붙인 뒤 같은 세트끼리 모은 하나의 리스트(lib/setOrder).
+  // '전체' = 모든 부위를 부위 줄 순서(catBar — 사용자가 바꾼 순서)로 이어붙인 뒤 같은 세트끼리 모은 하나의 리스트(lib/setOrder).
   // 부위 순서가 바뀌면 다시 만든다. 즐겨찾기 · 신규는 이 순서에서 거른다
   // 머리말이 다른 남녀 짝 세트를 잇는 표는 전 부위를 보고 한 번 만든다(부위 순서와 상관없다) — 부위 하나짜리 목록도 같은 표로 묶는다
   const setLinkMap = useMemo(() => setLinks(Object.entries(lists).flatMap(([sl, l]) => (sl === 'hair' || sl === 'face' ? [] : l || []))), [lists])
-  const allList = useMemo(() => groupSets(cats.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || [])), setLinkMap), [lists, skinList, cats, setLinkMap])
+  const allList = useMemo(() => groupSets(catBar.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || [])), setLinkMap), [lists, skinList, catBar, setLinkMap])
   const listForCat = useCallback((cat: string): ListItem[] => {
     if (cat === 'skin') return skinList
     if (cat === 'all') return allList

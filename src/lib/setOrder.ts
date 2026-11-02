@@ -10,6 +10,7 @@
 //       흔한 머리말(전 부위 TOKEN_MAX 개 초과)은 잇지 않고, 양쪽 묶음의 절반 이상이 뒷이름으로 맞고 짝이 하나로 정해지는 두 머리말끼리만 잇는다.
 //    3. 끝의 '(남)' · '(여)' 만 다른 같은 이름(같은 부위).
 //  · 무리는 그 무리에서 가장 앞에 있던 아이템 자리에 모이고, 무리 안 순서는 원래 순서(= '전체' 면 부위 순서)를 따른다.
+//    짝으로 이은 무리는 머리말마다 먼저 모은다(사용자 지시 — '복닥복닥' 세트를 다 보인 뒤 '포근포근' 세트, 섞지 않는다).
 //    그래서 '전체' 는 부위 순서를 바꾸면 세트 안의 순서도 함께 바뀐다. 성별 필터는 이 뒤에 걸러 여자 아이템만 볼 수도 있다.
 //  · 한 번 훑는 계산이다(1만 4천 개에 몇 ms). 같은 목록 배열은 결과를 기억한다.
 import type { ListItem } from './core/data'
@@ -112,7 +113,14 @@ export function groupSets (list: ListItem[], links?: SetLinks): ListItem[] {
     if (!k) { out.push(it); return }
     if (done.has(k)) return
     done.add(k)
-    out.push(...groups.get(k)!)
+    const g = groups.get(k)!
+    // 짝으로 이은 무리: 원래 머리말이 먼저 나온 순서대로 나눠 잇는다(sort 는 안정 정렬이라 머리말 안 순서는 그대로)
+    if (links && k[0] === 't' && g.length > 2) {
+      const rank = new Map<string, number>()
+      for (const x of g) { const r = firstToken(x)!; if (!rank.has(r)) rank.set(r, rank.size) }
+      if (rank.size > 1) g.sort((x, y) => rank.get(firstToken(x)!)! - rank.get(firstToken(y)!)!)
+    }
+    out.push(...g)
   })
   memo.set(list, { links, out })
   return out
