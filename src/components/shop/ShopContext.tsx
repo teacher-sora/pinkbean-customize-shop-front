@@ -11,7 +11,7 @@
 import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
-import { literalFirst, nameMatcher } from '@/lib/nameSearch'
+import { rankSort, nameMatcher } from '@/lib/nameSearch'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
 import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
@@ -724,7 +724,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (isEgg(deferredSearch)) return list.filter((it) => isEggItem(it.id))   // 이스터에그(lib/easterEgg)
     const match = nameMatcher(deferredSearch)
     if (!match) return list
-    return literalFirst(list.filter((it) => match(it.name || it.id)), match, (it) => it.name || it.id)
+    return rankSort(list.filter((it) => match(it.name || it.id)), match, (it) => it.name || it.id)
   }, [activeListFull, deferredSearch, byGender, genderFilter, byKind, kindFilter])
 
   // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
@@ -1283,7 +1283,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const match = nameMatcher(q) // 목록 · 광장 검색과 같은 규칙(영문 자판으로 친 한글 en2ko, 띄어쓰기 무시)
     if (!match) return []
     const lists = await Promise.all(EQUIP_SLOTS.filter((sl) => slotFile(sl, indexRef.current)).map((sl) => loadSlotFolded(sl)))
-    return literalFirst([...lists.flat(), ...skinList].filter((it) => match(it.name || '')), match, (it) => it.name || '')
+    return rankSort([...lists.flat(), ...skinList].filter((it) => match(it.name || '')), match, (it) => it.name || '')
   }
   const clearBookmarks = () => {
     if (!bookmarks.length) return
