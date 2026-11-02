@@ -11,7 +11,7 @@
 import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
-import { nameMatcher } from '@/lib/nameSearch'
+import { literalFirst, nameMatcher } from '@/lib/nameSearch'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
 import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
@@ -710,7 +710,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (isEgg(deferredSearch)) return list.filter((it) => isEggItem(it.id))   // 이스터에그(lib/easterEgg)
     const match = nameMatcher(deferredSearch)
     if (!match) return list
-    return list.filter((it) => match(it.name || it.id))
+    return literalFirst(list.filter((it) => match(it.name || it.id)), match, (it) => it.name || it.id)
   }, [activeListFull, deferredSearch, byGender, genderFilter, byKind, kindFilter])
 
   // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
@@ -1195,6 +1195,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const equipFromCat = (cat: string, item: ListItem) => {
     if (cat === 'skin') { setTone(index?.base.tones.find((t) => t.body === item.id)?.tone ?? 0); setHidden((h) => { if (!h.skin) return h; const n = { ...h }; delete n.skin; return n }); return }
     const slot = cat === CHAT_TAB ? item.slot : CAT_TO_SLOT[cat] // 명찰/말풍선 탭은 두 부위가 섞여 있다 — 아이템의 부위로 끼운다
+    // 숨긴 부위에 다른 아이템을 입히면 숨김을 푼다(사용자 지시 — 바꾼 아이템을 보려는 것이다). 벗을 때는 그대로 둔다
+    if (equipped[slot]?.id !== item.id) setHidden((h) => { if (!h[slot]) return h; const n = { ...h }; delete n[slot]; return n })
     setEquipped((prev) => {
       const cur = prev[slot]
       if (cur && cur.id === item.id) return { ...prev, [slot]: null } // 토글 해제
@@ -1267,7 +1269,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const match = nameMatcher(q) // 목록 · 광장 검색과 같은 규칙(영문 자판으로 친 한글 en2ko, 띄어쓰기 무시)
     if (!match) return []
     const lists = await Promise.all(EQUIP_SLOTS.filter((sl) => slotFile(sl, indexRef.current)).map((sl) => loadSlotFolded(sl)))
-    return [...lists.flat(), ...skinList].filter((it) => match(it.name || ''))
+    return literalFirst([...lists.flat(), ...skinList].filter((it) => match(it.name || '')), match, (it) => it.name || '')
   }
   const clearBookmarks = () => {
     if (!bookmarks.length) return
