@@ -6,15 +6,18 @@
 // 그리드 열·행은 ShopContext 한 곳에서만 계산한다(perPage 와 렌더 그리드가 어긋나면 페이지 수가 틀어진다).
 
 import clsx from 'clsx'
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import EmptyState from '../frame/EmptyState'
+import SearchBox, { searchInputClass } from '../frame/SearchBox'
+import PageChip from '../frame/PageChip'
+import { useCallback, useRef } from 'react'
 import { PLAZA_CONTEST, PLAZA_CONTEST_PERIOD, PLAZA_OPEN, plazaContestClosed, type PlazaSort } from '@/lib/plaza'
 import { useShop } from '../ShopContext'
 import Dropdown from '../ui/Dropdown'
-import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, useMobileRows, usePagerY, type FilterGroup } from '../list/ListArea'
+import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, useMobileRows, usePagerX, usePagerY, type FilterGroup } from '../list/ListArea'
 import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { MOBILE_GRID } from '@/lib/shopData'
 import { Seg, type SegOpt } from '../ui/controls'
-import { IconChevronLeft, IconChevronRight, IconClose, IconPlus, IconSearch } from '../ui/Icons'
+import { IconClose, IconPlus } from '../ui/Icons'
 import PlazaCard from './PlazaCard'
 import PlazaUpload from './PlazaUpload'
 import styles from './plaza.module.css'
@@ -39,75 +42,12 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   // 모바일: 가로 스크롤 ↔ 페이지 인덱스 양방향 동기화(광장 뷰포트에도 따로 연결해야 인덱스가 멈추지 않는다).
   // 넘기는 방향은 목록과 같은 설정(ShopContext listDir — 사용자 지시: 광장에도). 세로면 PC 는 트랙이 위아래로, 모바일은 세로 스크롤 칸(한 쪽 = 한 화면 높이)
   const dirY = s.listDir === 'y'
-  const live = useRef({ idx: s.curIdx, setIdx: s.setIdx, cols: s.plazaCols, rows: s.plazaRows, y: dirY })
-  live.current = { idx: s.curIdx, setIdx: s.setIdx, cols: s.plazaCols, rows: s.plazaRows, y: dirY }
-  useEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return // 세로는 ListArea usePagerY
-    let raf = 0
-    const onScroll = () => {
-      if (raf) return
-      raf = requestAnimationFrame(() => {
-        raf = 0
-        const y = live.current.y, w = y ? vp.clientHeight : vp.clientWidth; if (!w) return
-        const c = y ? live.current.rows : live.current.cols
-        const i = Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / c)) / c)
-        if (i !== live.current.idx) live.current.setIdx(i, false)
-      })
-    }
-    vp.addEventListener('scroll', onScroll, { passive: true })
-    return () => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
-  }, [mobile, dirY])
   const scrollKey = `plaza|${s.plazaFilter}|${s.plazaQ}|${s.plazaSort}|${s.listDir}`
-  const lastKey = useRef(scrollKey)
-  const scrolledOnce = useRef(false)
-  useLayoutEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return
-    const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
-    const jump = lastKey.current !== scrollKey || !scrolledOnce.current
-    lastKey.current = scrollKey
-    scrolledOnce.current = true
-    const c = dirY ? live.current.rows : live.current.cols
-    if (Math.floor(Math.round((dirY ? vp.scrollTop : vp.scrollLeft) / (w / c)) / c) === s.curIdx && !jump) return
-    const target = s.curIdx * w
-    const smooth = !jump
-    // ⚠️ 트랙 폭은 `pageCount * 100cqw`(컨테이너 쿼리 단위)라, 페이지 수가 늘어난 **그 커밋의 layout effect
-    //    시점엔 아직 한 페이지 폭**이다. 그때 scrollTo 를 부르면 브라우저가 목표를 최대 스크롤(=0)로 깎는다
-    //    → 인덱스는 6 인데 스크롤은 0 이라 페이지 DOM(현재 ±1) 이 화면 밖에 있어 **빈 리스트**가 보인다.
-    //    트랙이 다 자랄 때까지 프레임을 넘겨 다시 시도한다(조건이 맞는 즉시 끝난다).
-    let raf = 0
-    let left = 120 // 폭주 방지용 상한(≈2초). 대기 시간이 아니라 안전장치다 — 조건이 맞는 즉시 빠져나간다.
-    const go = () => {
-      raf = 0
-      if (!vp.isConnected) return
-      // 트랙이 목표까지 자랐으면 이동. 아직이면 다음 프레임에 다시 본다(보통 1~3프레임).
-      const room = dirY ? vp.scrollHeight - vp.clientHeight : vp.scrollWidth - vp.clientWidth
-      if (room < target && left-- > 0) { raf = requestAnimationFrame(go); return }
-      const to = Math.min(target, Math.max(0, room))
-      vp.scrollTo({ ...(dirY ? { top: to, left: 0 } : { left: to, top: 0 }), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
-    }
-    go()
-    return () => { if (raf) cancelAnimationFrame(raf) }
-  }, [mobile, s.curIdx, scrollKey, s.pageCount, dirY])
+  usePagerX(vpRef, mobile && !dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey, s.plazaCols, s.plazaRows, false)
   usePagerY(vpRef, mobile && dirY, s.curIdx, s.setIdx, s.pageCount, scrollKey, s.plazaRows)
 
   const pageChip = (
-    <div className={mobile ? styles.pageChipM : styles.pageChip}>
-      {!mobile && (
-        <>
-          <span title="이 분류의 코디 수" className={styles.count}>{`${list.length}개`}</span>
-          <span className={styles.chipDiv} />
-        </>
-      )}
-      {/* 모바일에는 화살표를 두지 않는다(목록과 같다) — 옆으로 밀어 넘기고, 멀리 갈 때는 번호를 적는다 */}
-      {!mobile && <button type="button" onClick={() => s.step(-1)} disabled={s.curIdx <= 0} title="이전 페이지" aria-label="이전 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx > 0 && styles.arrowOn)}><IconChevronLeft /></button>}
-      <input value={s.pageEditing ? s.pageInput : `${s.curIdx + 1}`} onFocus={s.onPageFocus} onChange={s.onPageChange} onKeyDown={s.onPageKey} onBlur={s.commitPage}
-        inputMode="numeric" aria-label="현재 페이지" className={clsx('pb-input', 'pb-pageinput', styles.pageInput)} />
-      <span className={styles.slash}>/</span>
-      <span className={styles.total}>{s.pageCount}</span>
-      {!mobile && <button type="button" onClick={() => s.step(1)} disabled={s.curIdx >= s.pageCount - 1} title="다음 페이지" aria-label="다음 페이지" className={clsx('pb-arrow', styles.arrow, s.curIdx < s.pageCount - 1 && styles.arrowOn)}><IconChevronRight /></button>}
-    </div>
+    <PageChip mobile={mobile} tight count={`${list.length}개`} countTitle="이 분류의 코디 수" cur={s.curIdx} pageCount={s.pageCount} onStep={s.step} prevTitle="이전 페이지" nextTitle="다음 페이지" />
   )
 
   const sortDd = (
@@ -125,7 +65,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   const viewCtl = fold ? <FilterM mobile={mobile} groups={filterGroups} /> : <>{sortDd}<Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} /></>
   const search = (
     <input value={s.plazaQ} onChange={(e) => s.setPlazaQ(e.target.value)} placeholder="이름, 태그 검색"
-      aria-label="코디 검색" className={clsx('pb-input', mobile ? styles.searchInputM : styles.searchInput)} />
+      aria-label="코디 검색" className={searchInputClass(mobile)} />
   )
 
   const empty = !s.plazaLoading && list.length === 0
@@ -153,15 +93,9 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
           </div>
         </div>
       ) : !s.plazaReady ? (
-        <div className={clsx(styles.empty, mobile && styles.emptyM)}>
-          <span className={styles.emptyTitle}>광장을 준비하고 있어요</span>
-          <span className={styles.emptyHint}>잠시 뒤에 다시 들러주세요.</span>
-        </div>
+        <EmptyState size={mobile ? 'plazaM' : 'plaza'} title="광장을 준비하고 있어요" hint="잠시 뒤에 다시 들러주세요." />
       ) : empty ? (
-        <div className={clsx(styles.empty, mobile && styles.emptyM)}>
-          <span className={styles.emptyTitle}>{emptyTitle}</span>
-          <span className={styles.emptyHint}>{emptyHint}</span>
-        </div>
+        <EmptyState size={mobile ? 'plazaM' : 'plaza'} title={emptyTitle} hint={emptyHint} />
       ) : (
         <div ref={mobile ? undefined : s.bindTrack} data-pb-pages className={styles.track}
           style={mobile
@@ -193,7 +127,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
         <div className={styles.controlsM}>
           {viewCtl}
           {pageChip}
-          <div className={styles.searchWrapM}><IconSearch className={styles.searchIconM} />{search}</div>
+          <SearchBox mobile plaza>{search}</SearchBox>
           <button type="button" onClick={() => s.setPlazaUpload(!s.plazaUpload)} title={s.plazaUpload ? '닫기' : '내 코디 등록'} aria-label={s.plazaUpload ? '닫기' : '내 코디 등록'} className={styles.upBtn}>
             {s.plazaUpload ? <IconClose /> : <IconPlus />}
           </button>
@@ -210,7 +144,7 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
         {viewCtl}
         <div className={styles.groupB}>
           {pageChip}
-          <div className={styles.searchWrap}><IconSearch className={styles.searchIcon} />{search}</div>
+          <SearchBox mobile={false} plaza>{search}</SearchBox>
         </div>
       </div>
       <div className={styles.hr} />

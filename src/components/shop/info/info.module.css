@@ -1,20 +1,14 @@
 /* 코디 정보 · 염색. */
 
-.panel { flex: 1 1 0; min-width: 0; min-height: 0; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
-.header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; flex-wrap: wrap; row-gap: 10px; }
-.hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: light-dark(#f2ebe3, #40434b); }
-.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 8px; }
-.hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: light-dark(#f2ebe3, #40434b); }
+.panel { composes: panel from '../frame/panel.module.css'; }
+.header { composes: header from '../frame/panel.module.css'; flex-wrap: wrap; row-gap: 10px; }
+.hr { composes: hr from '../frame/panel.module.css'; }
+.headerM { composes: headerM from '../frame/panel.module.css'; }
+.hrM { composes: hrM from '../frame/panel.module.css'; }
 
-/* 착용 n / 16 칩 */
-.chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
-.chipM { gap: 5px; height: 32px; padding: 0 10px; border-radius: 6px; }
-.chipLabel { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); line-height: 1; }
-.chipNum { min-width: 2ch; text-align: right; /* 두 자리까지 폭을 미리 — 숫자가 바뀌어도 칩이 늘지 않게 */ font-size: calc(12rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); line-height: 1; }
-.chipSlash { font-size: calc(12rem / 16); color: light-dark(#ccc2b8, #787c88); line-height: 1; }
 .right { flex: 1 1 0; min-width: 0; display: flex; justify-content: flex-end; }
-.btn { flex: 0 0 auto; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); white-space: nowrap; cursor: pointer; }
-.btnM { height: 32px; border-radius: 6px; }
+.btn { composes: headBtn from '../ui/headbtn.module.css'; flex: 0 0 auto; padding: 0 12px; border-color: light-dark(#f0e9e1, #42454d); background: light-dark(#fff, #303238); font-size: calc(12rem / 16); color: light-dark(#8a8075, #9fa2aa); }
+.btnM { composes: headBtnM from '../ui/headbtn.module.css'; }
 .btnIcon { display: inline-flex; align-items: center; gap: 6px; }
 .btn:disabled { opacity: .6; cursor: progress; }
 .btnSolid { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }

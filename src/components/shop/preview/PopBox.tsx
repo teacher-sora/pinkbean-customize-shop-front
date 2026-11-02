@@ -12,6 +12,7 @@
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useDismiss } from '../ui/useDismiss'
 import styles from './preview.module.css'
 
 export const POP_H = 330  // 3열 × 2줄 남짓 + 아래 줄
@@ -55,18 +56,7 @@ export function usePop () {
 export function PopBox ({ pop, label, keep, className, children }: { pop: ReturnType<typeof usePop>; label: string; keep?: React.RefObject<HTMLElement | null>[]; className?: string; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   const on = !!pop.pos
-  useEffect(() => {
-    if (!on) return
-    const onDown = (e: PointerEvent) => {
-      const t = e.target as Node
-      if (ref.current?.contains(t) || keep?.some((k) => k.current?.contains(t))) return
-      pop.close()
-    }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); pop.close() } }
-    window.addEventListener('pointerdown', onDown, true)
-    window.addEventListener('keydown', onKey, true)
-    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey, true) }
-  }, [on]) // eslint-disable-line react-hooks/exhaustive-deps -- 열려 있는 동안 한 번
+  useDismiss(on, (t) => !!(ref.current?.contains(t) || keep?.some((k) => k.current?.contains(t))), () => pop.close())
   if (!pop.pos || typeof document === 'undefined') return null
   const p = pop.pos
   return createPortal(

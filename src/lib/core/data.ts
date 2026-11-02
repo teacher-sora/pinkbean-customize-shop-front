@@ -296,6 +296,9 @@ export function loadSlot(file: string): Promise<ListItem[]> {
       return items.map((it) => (it.colorGroup != null && dup[it.colorGroup] != null ? { ...it, dupOf: dup[it.colorGroup] } : it))
     })
     slotCache.set(file, p)
+    // 실패는 남기지 않는다 — 망이 한 번 끊겼다고 그 부위 목록이 새로고침 전까지 계속 비지 않게(다음에 부르면 다시 받는다)
+    const mine = p
+    mine.catch(() => { if (slotCache.get(file) === mine) slotCache.delete(file) })
   }
   return p
 }
@@ -334,13 +337,18 @@ export function loadEffectIndex(): Promise<Set<string>> {
   }
   return effectIndexPromise
 }
-const effectCache = new Map<string, Promise<EffectMeta | null>>()
+// 이펙트 · 파티클 규칙은 최근에 쓴 것만 둔다(목록 카드가 카드마다 받아, 캐시 이펙트 · 망토 목록을 넘길수록 끝없이 자랐다 — meta 와 같은 이유).
+// 없는 것(404)은 null 로 기억하고, 받기 실패(망 끊김 · 5xx)는 기억하지 않는다 — 새로고침 전까지 그 이펙트가 빠지지 않게
+const FX_MAX = 240
+const fxGet = (r: Response) => (r.ok ? r.json() : r.status === 404 ? null : Promise.reject(new Error(String(r.status))))
+const effectCache = new LRU<Promise<EffectMeta | null>>(FX_MAX)
 // id may be padded (meta id "01104029") or bare ("1104029"); effects are keyed bare.
 export function loadEffect(id: string): Promise<EffectMeta | null> {
   const bare = String(parseInt(id, 10))
   let p = effectCache.get(bare)
   if (!p) {
-    p = fetch(url(`effects/${bare}.json`)).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    const mine: Promise<EffectMeta | null> = fetch(url(`effects/${bare}.json`)).then(fxGet).catch(() => { if (effectCache.peek(bare) === mine) effectCache.delete(bare); return null })
+    p = mine
     effectCache.set(bare, p)
   }
   return p
@@ -353,10 +361,14 @@ export function loadParticleIndex(): Promise<Record<string, Record<string, Parti
   if (!particleIndexPromise) particleIndexPromise = fetch(url('particles/index.json'), FRESH).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
   return particleIndexPromise
 }
-const particleCache = new Map<string, Promise<ParticleDesc | null>>()
+const particleCache = new LRU<Promise<ParticleDesc | null>>(FX_MAX)
 export function loadParticle(name: string): Promise<ParticleDesc | null> {
   let p = particleCache.get(name)
-  if (!p) { p = fetch(url(`particles/${name}.json`)).then((r) => (r.ok ? r.json() : null)).catch(() => null); particleCache.set(name, p) }
+  if (!p) {
+    const mine: Promise<ParticleDesc | null> = fetch(url(`particles/${name}.json`)).then(fxGet).catch(() => { if (particleCache.peek(name) === mine) particleCache.delete(name); return null })
+    p = mine
+    particleCache.set(name, p)
+  }
   return p
 }
 // 부유 아이템(별빛 걸음 · 이펙트 수면안대 등 — parser scripts/float-items.cjs → CDN effects/float.json, { 8자리 id: 값 }).

@@ -97,7 +97,9 @@ function HairSprite({ item, zmap }: { item: ListItem; zmap: string[] }) {
 // 새로 만든 카드는 비동기 합성이 끝날 때까지 뼈대를 보여 목록 전체가 깜빡였다(실측: 끌 때 보이는 카드 28장 모두 뼈대).
 // 같은 입력이면 기억해 둔 결과로 **첫 페인트부터** 그린다 — 칸 크기 재기와 그리기도 페인트 전(layout effect)에 한다.
 // 입력의 객체(배경 이펙트 · 염색 등)는 내용이 아니라 같은 객체인지로 가른다(목록이 같은 값이면 같은 객체를 넘긴다).
-const THUMB_CACHE_MAX = 600
+// 상한 200 = PC 세 쪽(지금 ± 1, 96장)이 폭이 바뀌어 다시 만들어져도 남는 양의 두 배. 600 이던 때는 이 표가 쥔 염색 · 말풍선 캔버스가
+// 염색 캐시(400) · 말풍선 캐시(48)의 상한을 넘어 남았다(그 캐시에서 밀려나도 여기서 놓지 않았다)
+const THUMB_CACHE_MAX = 200
 const objIds = new WeakMap<object, number>()
 let nextObj = 0
 const oid = (o: object | null | undefined) => { if (!o) return 0; let v = objIds.get(o); if (v == null) { v = ++nextObj; objIds.set(o, v) } return v }

@@ -10,6 +10,9 @@
 // 카드를 누르면 패널 안에서 상세로 넘어간다(부위만 골라 입기 · 프리셋에 저장).
 
 import clsx from 'clsx'
+import EmptyState from '../frame/EmptyState'
+import SearchBox, { searchInputClass } from '../frame/SearchBox'
+import PageChip from '../frame/PageChip'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ListItem } from '@/lib/core/data'
 import { COMBO_SKIP, LOOK_CHUNK, lookPv, withCardPv, countLabel, loadLookCounts, lookChunk, useLookCount, type LookDye, type LookGender, type LookPage, type LookRow } from '@/lib/looks'
@@ -19,14 +22,14 @@ import SnapThumb, { warmSnap } from '../SnapThumb'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
-import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, usePagerY, type FilterGroup } from '../list/ListArea'
+import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, usePagerX, usePagerY, type FilterGroup } from '../list/ListArea'
 import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
 import { fitAboveKeyboard } from '@/lib/keyboard'
 import { ChipAct } from '../ui/ChipAct'
-import { IconChevronLeft, IconChevronRight, IconDrop, IconSearch, IconTakeDown } from '../ui/Icons'
+import { IconChevronLeft, IconDrop, IconTakeDown } from '../ui/Icons'
 import list from '../list/list.module.css'
 import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
@@ -102,7 +105,7 @@ function ItemTag({ item, mobile, thumbOnly }: { item: ListItem | null; mobile: b
 }
 
 // 광장의 코디 룩북: 이름으로 아이템을 찾는다(모든 부위 + 피부). 표본에 있는 것만, 코디가 많은 순으로 8개
-// 칸은 목록 머리의 검색 칸과 같은 부품 · 같은 폭이다(list.searchWrap · searchWrapNarrow · searchWrapM — 사용자 지시: 같은 자리 · 같은 크기)
+// 칸은 목록 머리의 검색 칸과 같은 부품 · 같은 폭이다(frame/SearchBox — 사용자 지시: 같은 자리 · 같은 크기)
 function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) {
   const s = useShop()
   const narrow = s.listNarrow
@@ -131,11 +134,10 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
   const showing = open && !!q.trim()
   useLayoutEffect(() => (mobile && showing ? fitAboveKeyboard(popRef) : undefined), [mobile, showing])
   return (
-    <div className={mobile ? list.searchWrapM : clsx(list.searchWrap, narrow && list.searchWrapNarrow)}>
-      <IconSearch className={mobile ? list.searchIconM : list.searchIcon} />
+    <SearchBox mobile={mobile} narrow={narrow}>
       <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 120)}
         onKeyDown={(e) => { if (e.key === 'Enter' && hits[0]) pick(hits[0].it); if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
-        placeholder={now ? now.name || now.id : '아이템 이름으로 찾기'} aria-label="아이템 찾기" className={clsx('pb-input', mobile ? list.searchInputM : list.searchInput)} />
+        placeholder={now ? now.name || now.id : '아이템 이름으로 찾기'} aria-label="아이템 찾기" className={searchInputClass(mobile)} />
       {open && q.trim() && (
         <div ref={popRef} className={clsx('pb-scroll', styles.finderPop, mobile && styles.finderPopM)} role="listbox">
           {hits.length ? hits.map(({ it, n }) => (
@@ -149,7 +151,7 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
           )) : <span className={styles.finderNone}>표본에 없는 아이템이에요</span>}
         </div>
       )}
-    </div>
+    </SearchBox>
   )
 }
 // 아이템 찾기에서 쓸 코디 수 표(카드 칩과 같은 counts.json — lib/looks 가 한 번 받아 둔 것)
@@ -171,10 +173,7 @@ function ComboEmpty({ mobile }: { mobile: boolean }) {
         <div aria-hidden className={clsx(styles.dyesSep, styles.dyesSepM, styles.hold)} />
       </>}
       <div ref={vpRef} className={clsx(list.viewport, mobile && list.viewportM, styles.emptyWrap)}>{/* 모바일 목록 칸과 같은 좌우 여백 — 최소 높이를 같은 칸 폭으로 잰다 */}
-        <div className={mobile ? list.emptyM : list.empty}>
-          <span className={mobile ? list.emptyTitleM : list.emptyTitle}>아이템을 골라 주세요</span>
-          <span className={mobile ? list.emptyHintM : list.emptyHint}>그 아이템을 입은 실제 유저 코디와 자주 쓴 염색이 보여요.</span>
-        </div>
+        <EmptyState size={mobile ? 'm' : 'pc'} title="아이템을 골라 주세요" hint="그 아이템을 입은 실제 유저 코디와 자주 쓴 염색이 보여요." />
       </div>
       <Credit mobile={mobile} />
     </>
@@ -207,22 +206,9 @@ function ComboHead({ item, mobile, host, detail, onBack }: { item: ListItem | nu
   const dirY = s.listDir === 'y'
   const cur = paged ? s.curIdx : 0, pageCount = paged ? s.pageCount : 1
   const pageChip = (
-    <div className={mobile ? clsx(list.pageChipM, styles.pageEndM) : clsx(list.pageChip, narrow && list.pageChipNarrow)}>
-      {!mobile && !narrow && (
-        <>
-          <span title="이 아이템을 입은 코디 수" className={clsx(list.count, styles.countFix)}>{paged && total == null ? ' ' : `${(total ?? 0).toLocaleString()}벌`}</span>
-          <span className={list.chipDiv} />
-        </>
-      )}
-      {!mobile && <button type="button" onClick={() => s.step(-1)} disabled={!paged || cur <= 0} title={dirY ? '이전 페이지 (↑)' : '이전 페이지 (←)'} aria-label="이전 페이지" className={clsx('pb-arrow', list.arrow, paged && cur > 0 && list.arrowOn)}><IconChevronLeft /></button>}
-      {paged
-        ? <input value={s.pageEditing ? s.pageInput : `${cur + 1}`} onFocus={s.onPageFocus} onChange={s.onPageChange} onKeyDown={s.onPageKey} onBlur={s.commitPage}
-            inputMode="numeric" aria-label="현재 페이지" title={mobile ? undefined : '번호를 입력해 이동'} className={clsx('pb-input', 'pb-pageinput', list.pageInput)} />
-        : <input value="1" readOnly tabIndex={-1} aria-label="현재 페이지" title="아이템을 고르면 넘길 수 있어요" className={clsx('pb-input', 'pb-pageinput', list.pageInput)} />}
-      <span className={mobile ? list.slashM : list.slash}>/</span>
-      <span className={list.total}>{pageCount.toLocaleString()}</span>
-      {!mobile && <button type="button" onClick={() => s.step(1)} disabled={!paged || cur >= pageCount - 1} title={dirY ? '다음 페이지 (↓)' : '다음 페이지 (→)'} aria-label="다음 페이지" className={clsx('pb-arrow', list.arrow, paged && cur < pageCount - 1 && list.arrowOn)}><IconChevronRight /></button>}
-    </div>
+    <PageChip mobile={mobile} narrow={narrow} className={mobile ? styles.pageEndM : undefined} count={paged && total == null ? ' ' : `${(total ?? 0).toLocaleString()}벌`} countTitle="이 아이템을 입은 코디 수" countClass={styles.countFix}
+      cur={cur} pageCount={pageCount} totalText={pageCount.toLocaleString()} onStep={s.step} idle={!paged}
+      prevTitle={dirY ? '이전 페이지 (↑)' : '이전 페이지 (←)'} nextTitle={dirY ? '다음 페이지 (↓)' : '다음 페이지 (→)'} inputTitle="번호를 입력해 이동" />
   )
   const filterGroups: FilterGroup[] = [
     { label: '성별', title: '코디의 성별(입은 아이템으로 나눈다)', opts: GENDERS, value: s.comboGender, onPick: s.setComboGender },
@@ -270,13 +256,6 @@ function ComboHead({ item, mobile, host, detail, onBack }: { item: ListItem | nu
 }
 
 // ── 목록 ──────────────────────────────────────────────────────────
-// 모바일 스크롤 위치 → 쪽 번호. 쪽 = cols × rows, 쪽 안 여백 5 + 칸 사이 10 이라 열(줄)이 정확히 폭/cols(높이/rows)마다 이어진다(목록과 같은 규칙)
-const scrollIdx = (vp: HTMLElement, y: boolean, cols: number, rows: number) => {
-  const w = y ? vp.clientHeight : vp.clientWidth; if (!w) return -1
-  const n = y ? rows : cols
-  return Math.floor(Math.round((y ? vp.scrollTop : vp.scrollLeft) / (w / n)) / n)
-}
-
 function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boolean; host: 'codi' | 'plaza'; onOpen: (r: LookRow) => void }) {
   const s = useShop()
   const cols = host === 'plaza' ? s.plazaCols : s.cols
@@ -343,49 +322,8 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const setVp = useCallback((el: HTMLDivElement | null) => { vpRef.current = el; bindVp(el) }, [bindVp])
   // 모바일은 목록과 같은 높이 규칙(같은 훅). 2열(광장)은 카드가 넓어 바닥을 낮게 잡는다
   useMobileRows(vpRef, mobile, cols, mobileRatio(cols), MOBILE_GRID.rows, true, mobileFoot(cols))
-  const live = useRef({ idx: cur, setIdx: s.setIdx, cols, rows })
-  live.current = { idx: cur, setIdx: s.setIdx, cols, rows }
-  useEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return // 세로는 ListArea usePagerY
-    let raf = 0
-    const onScroll = () => {
-      if (raf) return
-      raf = requestAnimationFrame(() => {
-        raf = 0
-        const i = scrollIdx(vp, dirY, live.current.cols, live.current.rows); if (i < 0) return
-        if (i !== live.current.idx) live.current.setIdx(i, false)
-      })
-    }
-    vp.addEventListener('scroll', onScroll, { passive: true })
-    return () => { vp.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
-  }, [mobile, dirY])
   const scrollKey = `combo|${item.id}|${s.listDir}`
-  const lastKey = useRef(scrollKey)
-  const scrolledOnce = useRef(false)
-  useLayoutEffect(() => {
-    const vp = vpRef.current
-    if (!mobile || !vp || dirY) return
-    const w = dirY ? vp.clientHeight : vp.clientWidth; if (!w) return
-    const jump = lastKey.current !== scrollKey || !scrolledOnce.current
-    lastKey.current = scrollKey
-    scrolledOnce.current = true
-    if (scrollIdx(vp, dirY, cols, rows) === cur && !jump) return
-    const target = cur * w
-    const smooth = !(jump || Math.abs((dirY ? vp.scrollTop : vp.scrollLeft) - target) > w * 3)
-    // 트랙 길이가 쪽 수만큼 자랄 때까지 프레임을 넘겨 다시 본다(ListArea 의 같은 자리 주석)
-    let raf = 0, left = 120
-    const go = () => {
-      raf = 0
-      if (!vp.isConnected) return
-      const room = dirY ? vp.scrollHeight - vp.clientHeight : vp.scrollWidth - vp.clientWidth
-      if (room < target && left-- > 0) { raf = requestAnimationFrame(go); return }
-      const to = Math.min(target, Math.max(0, room))
-      vp.scrollTo({ ...(dirY ? { top: to, left: 0 } : { left: to, top: 0 }), behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
-    }
-    go()
-    return () => { if (raf) cancelAnimationFrame(raf) }
-  }, [mobile, cur, scrollKey, pageCount, dirY, cols, rows])
+  usePagerX(vpRef, mobile && !dirY, cur, s.setIdx, pageCount, scrollKey, cols, rows)
   usePagerY(vpRef, mobile && dirY, cur, s.setIdx, pageCount, scrollKey, rows)
 
   // 자주 쓴 염색: 받기 전에는 같은 칸 수의 스켈레톤으로 자리를 잡아 둔다(받은 뒤 목록이 밀리지 않게 — 표본에 있는 아이템은 거의 다 염색 기록이 있다)
@@ -408,15 +346,9 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const viewport = (
     <div ref={setVp} data-pb-list={dirY ? 'y' : 'x'} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
       {failed || (first && !first.ready) ? (
-        <div className={mobile ? list.emptyM : list.empty}>
-          <span className={mobile ? list.emptyTitleM : list.emptyTitle}>코디를 불러오지 못했어요</span>
-          <span className={mobile ? list.emptyHintM : list.emptyHint}>잠시 뒤에 다시 열어 주세요.</span>
-        </div>
+        <EmptyState size={mobile ? 'm' : 'pc'} title="코디를 불러오지 못했어요" hint="잠시 뒤에 다시 열어 주세요." />
       ) : first && first.total === 0 ? (
-        <div className={mobile ? list.emptyM : list.empty}>
-          <span className={mobile ? list.emptyTitleM : list.emptyTitle}>{dye == null ? '이 아이템을 입은 코디가 없어요' : '이 염색을 쓴 코디가 없어요'}</span>
-          <span className={mobile ? list.emptyHintM : list.emptyHint}>{dye == null ? '표본에 아직 없는 아이템이에요.' : '고른 염색 칩을 다시 누르면 전체 코디로 돌아가요.'}</span>
-        </div>
+        <EmptyState size={mobile ? 'm' : 'pc'} title={dye == null ? '이 아이템을 입은 코디가 없어요' : '이 염색을 쓴 코디가 없어요'} hint={dye == null ? '표본에 아직 없는 아이템이에요.' : '고른 염색 칩을 다시 누르면 전체 코디로 돌아가요.'} />
       ) : (
         <div ref={mobile ? undefined : s.bindTrack} data-pb-pages className={list.track}
           style={mobile

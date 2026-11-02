@@ -12,6 +12,7 @@ import { createContext, useCallback, useContext, useDeferredValue, useEffect, us
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
 import { rankSort, nameMatcher } from '@/lib/nameSearch'
+import { groupSets } from '@/lib/setOrder'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
 import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
@@ -683,16 +684,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       dyeMode: 'hsb', thumb: `sprites/${t.body}/thumb.png`, headId: t.head, name: t.name || `피부 ${t.tone}`, actions: [],
     }))
   }, [index])
+  // '전체' = 모든 부위를 부위 순서(cats — 사용자가 바꾼 순서)로 이어붙인 뒤 같은 세트끼리 모은 하나의 리스트(lib/setOrder).
+  // 부위 순서가 바뀌면 다시 만든다. 즐겨찾기 · 신규는 이 순서에서 거른다
+  const allList = useMemo(() => groupSets(cats.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || []))), [lists, skinList, cats])
   const listForCat = useCallback((cat: string): ListItem[] => {
     if (cat === 'skin') return skinList
-    // '전체' = 모든 부위를 CATS 순서(헤어→방패)로 이어붙인 하나의 리스트. 슬롯 내부 정렬은 그대로 유지.
-    if (cat === 'all') return cats.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || []))
-    // '즐겨찾기' = 전 부위(피부 포함)에서 즐겨찾기한 아이템만. CATS 순서 유지. 전 슬롯 로드가 필요(위 ensureSlot).
-    if (cat === 'fav') return cats.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || [])).filter((it) => favorites.has(it.id))
-    // '신규' = 최근 패치에서 추가된 아이템만(전 부위, CATS 순서). 헤어/성형은 폴딩 대표 id 로 매칭된다.
-    if (cat === 'new') return cats.flatMap((c) => (c.id === 'skin' ? [] : lists[CAT_TO_SLOT[c.id]] || [])).filter((it) => newIds.has(it.id))
-    return lists[CAT_TO_SLOT[cat]] || []
-  }, [lists, skinList, favorites, newIds, cats])
+    if (cat === 'all') return allList
+    // '즐겨찾기' = 전 부위(피부 포함)에서 즐겨찾기한 아이템만. 전 슬롯 로드가 필요(위 ensureSlot).
+    if (cat === 'fav') return allList.filter((it) => favorites.has(it.id))
+    // '신규' = 최근 패치에서 추가된 아이템만(전 부위). 헤어/성형은 폴딩 대표 id 로 매칭된다.
+    if (cat === 'new') return allList.filter((it) => it.slot !== 'skin' && newIds.has(it.id))
+    // 한 부위 = 그 부위 목록에서 같은 세트끼리 모은 것(같은 배열이면 기억해 둔 결과)
+    const l = lists[CAT_TO_SLOT[cat]]
+    return l ? groupSets(l) : []
+  }, [lists, skinList, favorites, newIds, allList])
 
   // 활성 부위 리스트 로딩중?(index 미로드 또는 해당 slot 미로드)
   const catLoading = dataLoading || (isMultiCat(activeCat)

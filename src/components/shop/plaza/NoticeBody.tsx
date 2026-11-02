@@ -13,6 +13,7 @@
 //  · 탭을 바꾸면 본문이 가로로 미끄러진다 — 부위 염색 ↔ 염색 전환과 같은 움직임 · 시간(ShopContext 의 slideTo).
 
 import clsx from 'clsx'
+import PageChip from '../frame/PageChip'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   NOTICE_PAGE, addFeedback, deleteFeedback, loadFeedback, loadFeedbackThread, loadNotices, plazaWhen,
@@ -23,7 +24,7 @@ import { askGuide, guideById, guideFor, guideOn, type GuideEntry, type GuideRepl
 import { useShop } from '../ShopContext'
 import { useInnerSlide } from '../surface/innerSlide'
 import { SurfaceFooter } from '../surface/Surface'
-import { IconChevronLeft, IconChevronRight, IconHelpTab, IconTrashSolid } from '../ui/Icons'
+import { IconHelpTab, IconTrashSolid } from '../ui/Icons'
 import { FeedbackBox, FeedbackBoxSkel, FeedbackNodeSkel, FeedbackPostBody, FeedbackThread, InputBar } from './FeedbackThread'
 import styles from './plaza.module.css'
 
@@ -274,11 +275,7 @@ function Feedback({ kind, mobile, notify, draft, setDraft, setBack }: {
             </div>
             {pages > 1 && (
               <div className={styles.ntPager}>
-                <div className={styles.pageChipM}>
-                  <button type="button" onClick={() => goPage(page - 1)} disabled={page <= 0} title="이전 쪽" aria-label="이전 쪽" className={clsx('pb-arrow', styles.arrow, page > 0 && styles.arrowOn)}><IconChevronLeft /></button>
-                  <span className={styles.ntPageNum}>{page + 1} / {pages}</span>
-                  <button type="button" onClick={() => goPage(page + 1)} disabled={page >= pages - 1} title="다음 쪽" aria-label="다음 쪽" className={clsx('pb-arrow', styles.arrow, page < pages - 1 && styles.arrowOn)}><IconChevronRight /></button>
-                </div>
+                <PageChip mobile arrows cur={page} pageCount={pages} onStep={(d) => goPage(page + d)} prevTitle="이전 쪽" nextTitle="다음 쪽" num={`${page + 1} / ${pages}`} />
               </div>
             )}
           </div>

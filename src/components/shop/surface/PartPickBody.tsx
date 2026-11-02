@@ -6,6 +6,7 @@
 // 염색할 수 없는 칩은 보여주지 않는다.
 
 import clsx from 'clsx'
+import EmptyState from '../frame/EmptyState'
 import { CATS } from '@/lib/catalog'
 import type { ListItem } from '@/lib/core/data'
 import { CAT_TO_SLOT, DOT_MOVER_IDS, isDyeableSkin } from '@/lib/shopData'
@@ -31,10 +32,7 @@ export default function PartPickBody({ mobile }: { mobile: boolean }) {
   return (
     <div className={clsx('pb-scroll', 'pb-fade', styles.partBody)}>
       {chips.length === 0 ? (
-        <div className={styles.partEmpty}>
-          <span className={styles.partEmptyTitle}>염색할 수 있는 부위가 없어요</span>
-          <span className={styles.partEmptyHint}>아이템을 먼저 착용해주세요.</span>
-        </div>
+        <EmptyState size="part" title="염색할 수 있는 부위가 없어요" hint="아이템을 먼저 착용해주세요." />
       ) : (
         <div className={clsx(styles.partGrid, mobile && styles.partGridM)}>
           {chips.map(({ label, slot, item }) => {

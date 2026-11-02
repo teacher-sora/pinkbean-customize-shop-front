@@ -1,30 +1,23 @@
 /* 프리셋. */
 
-.panel { flex: 1 1 0; min-width: 0; min-height: 0; background: light-dark(#fff, #303238); border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
-.header { flex: 0 0 auto; padding: 8px 8px 0; display: flex; align-items: center; column-gap: 10px; }
-.groupA { flex: 0 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
-.groupB { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
-.hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: light-dark(#f2ebe3, #40434b); }
-.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 8px; }
-.hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: light-dark(#f2ebe3, #40434b); }
+.panel { composes: panel from '../frame/panel.module.css'; }
+.header { composes: header from '../frame/panel.module.css'; }
+.groupA { composes: groupA from '../frame/panel.module.css'; }
+.groupB { composes: groupB from '../frame/panel.module.css'; }
+.hr { composes: hr from '../frame/panel.module.css'; }
+.headerM { composes: headerM from '../frame/panel.module.css'; }
+.hrM { composes: hrM from '../frame/panel.module.css'; }
 
-.chip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-variant-numeric: tabular-nums; }
-.chipM { gap: 5px; height: 32px; padding: 0 10px; border-radius: 6px; }
-.chipLabel { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); line-height: 1; }
-.chipNum { min-width: 3ch; text-align: center; font-size: calc(12rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); line-height: 1; } /* 세 자리(100)까지 폭을 미리 — 숫자가 바뀌어도 칩이 늘지 않게, 숫자는 그 칸 가운데(사용자 지시) */
-.chipSlash { font-size: calc(12rem / 16); color: light-dark(#ccc2b8, #787c88); line-height: 1; }
 /* 순서 변경 버튼(칩 옆): 꺼짐 = 칩과 같은 면 · 테두리, 켜짐 = 채운 핑크 + '완료'(사용자 지시 — 켜짐 · 꺼짐이 확실히 보이게) */
-.sortBtn { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; height: 34px; padding: 0 11px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12.5rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
-.sortBtnM { height: 32px; padding: 0 9px; gap: 4px; font-size: calc(12rem / 16); }
+.sortBtn { composes: headBtn from '../ui/headbtn.module.css'; flex: 0 0 auto; display: flex; align-items: center; gap: 5px; padding: 0 11px; border-color: light-dark(#f0e9e1, #42454d); background: light-dark(#faf7f3, #373940); font-size: calc(12.5rem / 16); color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
+.sortBtnM { composes: headBtnM from '../ui/headbtn.module.css'; padding: 0 9px; gap: 4px; font-size: calc(12rem / 16); }
 @media (hover: hover) and (pointer: fine) { .sortBtn:hover { border-color: light-dark(#eeb2ce, #d37aa3); color: light-dark(#c05a94, #cb9ab6); } .sortBtn.sortOn:hover { border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); } }
 .sortBtn.sortOn { background: light-dark(#ec86ac, #d15785); border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
 
 /* 불러오기: 입력과 버튼을 한 테두리 안에 묶은 칸. 면 · 테두리 · 아이콘 색은 다른 탭의 검색 칸과 같다 — 이 칸만 색을 달리하면 머리마다 생김새가 달라진다. 눈에 띄는 것은 안의 채운 버튼 하나다 */
-.importBox { flex: 0 1 200px; min-width: 148px; margin-left: auto; height: 34px; padding: 0 3px 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); transition: border-color .22s ease; }
+.importBox { composes: box from '../ui/fieldbox.module.css'; flex: 0 1 200px; min-width: 148px; margin-left: auto; padding: 0 3px 0 10px; gap: 6px; background: light-dark(#faf7f3, #373940); transition: border-color .22s ease; }
 .importBoxNarrow { flex: 1 1 200px; min-width: 80px; max-width: 200px; } /* 폭 규칙은 목록 검색 칸(list .searchWrap · .searchWrapNarrow)과 같다(사용자 지시) */
-.importBox:focus-within { border-color: light-dark(#ec86ac, #d15785); }
-@media (hover: hover) and (pointer: fine) { .importBox:hover { border-color: light-dark(#eeb2ce, #d37aa3); } .importBox:focus-within:hover { border-color: light-dark(#ec86ac, #d15785); } }
-.importField { flex: 1 1 0; min-width: 0; height: 100%; padding: 0; border: none; background: transparent; font-family: inherit; font-size: calc(13rem / 16); color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; outline: none; text-overflow: ellipsis; }
+.importField { composes: field from '../ui/fieldbox.module.css'; }
 .importBoxM { flex: 1 1 0; min-width: 0; max-width: none; margin-left: 0; height: 32px; padding: 0 3px 0 11px; gap: 6px; }
 .importBoxM .importField { font-size: calc(12rem / 16); letter-spacing: -0.02em; } /* 모바일 입력 글자 12px — 16px 보다 작아도 포커스 확대는 NoFocusZoom 이 막는다 */
 /* 문구 두 개를 같은 칸에 겹친다(폭 고정) */
@@ -93,8 +86,8 @@
 .nameRowM .pencil { right: 4px; width: 10px; height: 10px; }
 .pencil { position: absolute; right: 7px; pointer-events: none; }
 /* 띠지 규격(코디 카드와 동일): 공유 = 즐겨찾기 크기, 휴지통 = 북마크 크기, 사이 간격 5px (PC 25×32/23×29, 모바일 22×29/20×26) */
-.share { position: absolute; top: -3px; right: 6px; z-index: 4; width: 25px; height: 32px; padding: 6px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#a9b7cf, #7c7f8b); color: light-dark(#fff, #ececef); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
-.del { position: absolute; top: -3px; right: 36px; z-index: 4; width: 23px; height: 29px; padding: 5px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#e08a9b, #c35f73); color: light-dark(#fff, #ececef); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); cursor: pointer; }
+.share { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 6px; z-index: 4; width: 25px; height: 32px; padding: 6px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#a9b7cf, #7c7f8b); color: light-dark(#fff, #ececef); cursor: pointer; }
+.del { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 36px; z-index: 4; width: 23px; height: 29px; padding: 5px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#e08a9b, #c35f73); color: light-dark(#fff, #ececef); cursor: pointer; }
 .share.shareM { width: 22px; height: 29px; padding-top: 5px; }
 .del.delM { width: 20px; height: 26px; padding-top: 4px; right: 33px; } /* 6 + 22 + 5 */
 /* 300 이하: 머리 줄이 화면 밖으로 밀려 [순서]를 아이콘만 */

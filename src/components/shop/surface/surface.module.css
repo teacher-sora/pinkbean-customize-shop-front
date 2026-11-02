@@ -113,9 +113,6 @@
 
 /* ── 부위 염색(부위 고르기) ── */
 .partBody { container-type: inline-size; }
-.partEmpty { height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
-.partEmptyTitle { font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); }
-.partEmptyHint { font-size: calc(11.5rem / 16); color: light-dark(#b7ada2, #858893); }
 .partGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
 .partGridM { grid-template-columns: repeat(2, minmax(0,1fr)); }
 .partChip { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px 10px; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; background: light-dark(#fff, #303238); font-family: inherit; text-align: left; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
@@ -173,7 +170,7 @@
 .vaultCell { width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#ebe3da, #474a52); border-radius: 6px; background: light-dark(#fff, #303238); cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
 .vaultCellOn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); }
 .vaultSprite { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
-.vaultX { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f5e2eb, #5a3a49); border-radius: 50%; background: light-dark(#fff, #303238); color: light-dark(#d76d9a, #d293ae); font-family: inherit; font-size: calc(9rem / 16); line-height: 1; cursor: pointer; transition: opacity .18s ease; }
+.vaultX { composes: vault from '../ui/xdot.module.css'; }
 .vaultAdd { width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px dashed light-dark(#ddd3c8, #535761); border-radius: 6px; background: light-dark(#fff, #303238); color: light-dark(#d76d9a, #d293ae); cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
 .vaultAdd:disabled { color: light-dark(#cdc2b7, #787c88); cursor: default; }
 /* ✕ 는 마우스면 칸에 올렸을 때(되묻는 중에는 늘), 터치면 늘 보인다 */

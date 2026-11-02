@@ -3,6 +3,7 @@
 // 프리셋 100칸(사용자 지시 — 기기에만 저장되고 공유할 때만 서버에 오른다). 카드 그림은 스크롤 칸에서 보일 즈음에만 합성 · 그린다(SnapThumb 이 스스로 — ui/useSeen). 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
+import CountChip from '../frame/CountChip'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Preset } from '@/lib/catalog'
@@ -67,15 +68,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   }
 
   const dirSeg = <Seg variant={mobile ? 'mobileFit' : 'pc'} title="넘기는 방향" opts={DIRS} value={dir} onPick={s.setPresetDir} />
-  const chip = (
-    <div title="선택된 프리셋에 자동 저장돼요" className={clsx(styles.chip, mobile && styles.chipM)}>
-      {!mobile && <span className={styles.chipLabel}>프리셋</span>}{/* 모바일은 머리에 방향이 더 들어가 글자를 뺀다 — 바로 위 탭 이름이 '프리셋'이다 */}
-      <span className={styles.chipNum}>{s.presetUsed}</span>
-      <span className={styles.chipSlash}>/</span>
-      {/* 칸 수는 **실제 프리셋 목록**에서 센다 — 숫자를 박아 두면 칸 수를 바꿀 때 어긋난다. */}
-      <span className={styles.chipLabel}>{s.presets.length}</span>
-    </div>
-  )
+  // 모바일은 머리에 방향이 더 들어가 글자를 뺀다 — 바로 위 탭 이름이 '프리셋'이다. 칸 수는 **실제 프리셋 목록**에서 센다 — 숫자를 박아 두면 칸 수를 바꿀 때 어긋난다
+  const chip = <CountChip mobile={mobile} label={mobile ? undefined : '프리셋'} n={s.presetUsed} total={s.presets.length} digits={3} title="선택된 프리셋에 자동 저장돼요" />
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') s.importFetch() }
 
   // 순서 변경(헤더 칩 옆 버튼, 사용자 지시): 켠 동안만 카드를 끌어 순서를 바꾼다(usePresetDrag). 켠 동안은 카드를 눌러도 고르지 않고

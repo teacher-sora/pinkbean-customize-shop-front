@@ -28,6 +28,10 @@ async function decode(file: File): Promise<ImageBitmap | HTMLImageElement> {
 export async function shrinkPlazaImage(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) throw new Error('이미지 파일만 올릴 수 있어요')
   const src = await decode(file)
+  // 다 쓰면 바로 놓는다 — 원본 해상도로 푼 그림(12MP 면 약 48MB)을 GC 가 치울 때까지 쥐지 않게
+  try { return await shrinkFrom(file, src) } finally { if ('close' in src) src.close() }
+}
+async function shrinkFrom(file: File, src: ImageBitmap | HTMLImageElement): Promise<File> {
   const w0 = 'naturalWidth' in src ? src.naturalWidth : src.width
   const h0 = 'naturalHeight' in src ? src.naturalHeight : src.height
   if (!w0 || !h0) throw new Error('이미지를 읽지 못했어요')

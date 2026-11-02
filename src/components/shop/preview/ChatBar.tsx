@@ -21,6 +21,7 @@ import { IconClose, IconSmile } from '../ui/Icons'
 import ChatEmoPicker from './ChatEmoPicker'
 import { PopBox, popNear, usePop } from './PopBox'
 import styles from './preview.module.css'
+import { useDismiss } from '../ui/useDismiss'
 
 const WARM_MS = 90  // 적다가 이만큼 멈추면 말풍선을 미리 만든다
 
@@ -41,14 +42,7 @@ export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; s
     pop.open(popNear(r, a))
   }
   // 모바일: 바깥을 누르거나 Esc 면 칸을 내린다(창은 PopBox 가 닫는다). 시트(이모티콘 시트) 안을 누른 것은 바깥이 아니다.
-  useEffect(() => {
-    if (!(mobile && show)) return
-    const inside = (t: Node) => !!(box.current?.contains(t) || (t instanceof Element && t.closest('[role="dialog"]')))
-    const onDown = (e: PointerEvent) => { if (!inside(e.target as Node)) onClose?.() }
-    const onKey = (e: KeyboardEvent) => { if (e.key !== 'Escape' || sheetOn) return; e.stopImmediatePropagation(); onClose?.() }
-    window.addEventListener('pointerdown', onDown, true); window.addEventListener('keydown', onKey, true)
-    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey, true) }
-  }, [mobile, show, onClose, sheetOn])
+  useDismiss(mobile && show, (t) => !!(box.current?.contains(t) || (t instanceof Element && t.closest('[role="dialog"]'))), () => onClose?.(), { esc: () => !sheetOn })
   useEffect(() => { if (!show && open) pop.close() }, [show]) // eslint-disable-line react-hooks/exhaustive-deps
   // 모바일: 칸이 올라오면 바로 적을 수 있게
   useEffect(() => { if (mobile && show) box.current?.querySelector('input')?.focus({ preventScroll: true }) }, [mobile, show])
