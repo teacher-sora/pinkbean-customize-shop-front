@@ -111,7 +111,7 @@ src/app/
   layout.tsx            문서 틀·메타·폰트·viewport·분석 스크립트
   (shop)/layout.tsx     앱 본문(여기 한 번만 놓는다)
   (shop)/page.tsx · search · info · preset · plaza     탭 주소(내용은 비어 있다)
-  (shop)/share/         공유 링크의 메타(카톡 카드). 주소로 직접 들어오지 않고 middleware 가 rewrite 해 온다
+  (shop)/share/         공유 링크의 메타(카톡 카드). 주소로 직접 들어오지 않고 middleware 가 rewrite 해 온다 복사는 ClipboardItem → writeText → 숨긴 입력칸 → 휴대폰 공유창 순으로 시도하고, 성공했을 때만 '복사했어요'를 띄운다(막는 브라우저에서 클립보드의 다른 글을 붙여 넣게 하지 않게). 못 푸는 링크로 들어오면 안내를 띄운다.
   guide/, guide/[slug]  검색엔진용 안내 글. 정식 페이지가 아니다(2-5 의 '안내 글'). 내용은 lib/seoPages.ts, 틀은 guide/GuideShell
   dashboard/            운영자 화면(주소로만 들어간다. 검색 제외). 건의 · 오류 · 공지 · 방문자(3-6)
   viewer/               개발용 화면 뷰어 — dev 전용, main 에 없다(CONTRIBUTING.md)

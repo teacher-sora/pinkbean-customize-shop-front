@@ -102,14 +102,27 @@ const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫�
 // 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
 // 사파리는 await 후 writeText 가 사용자 제스처 밖이라 거부될 수 있어, ClipboardItem 에 Promise(Blob)를 넘겨
 // 제스처와 동기적으로 쓰기를 시작하는 방식을 우선 쓴다(크롬/파폭은 writeText 폴백).
-function copyAsyncText(make: () => Promise<string>): Promise<void> {
+// 복사 = 'copied', 공유창으로 넘김 = 'shared', 모두 막힘 = false. 한 길이 막히면 다음 길로 간다(파이어폭스 계열 · 인앱 브라우저는
+// ClipboardItem 쓰기를 거절한다 — 전에는 거절을 삼키고 '복사했어요'를 띄워, 클립보드에 남은 다른 글을 붙여 넣게 했다)
+async function copyAsyncText(make: () => Promise<string>): Promise<'copied' | 'shared' | false> {
   try {
     if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
-      const blob = make().then((t) => new Blob([t], { type: 'text/plain' }))
-      return navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]).catch(() => {})
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': make().then((t) => new Blob([t], { type: 'text/plain' })) })])
+      return 'copied'
     }
-  } catch { /* writeText 폴백 */ }
-  return make().then((t) => navigator.clipboard?.writeText(t)).then(() => {}).catch(() => {})
+  } catch { /* 다음 길 */ }
+  const text = await make().catch(() => '')
+  if (!text) return false
+  try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return 'copied' } } catch { /* 다음 길 */ }
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length)
+    const ok = document.execCommand('copy'); ta.remove()
+    if (ok) return 'copied'
+  } catch { /* 다음 길 */ }
+  try { if (navigator.share) { await navigator.share({ url: text }); return 'shared' } } catch { /* 닫았거나 막힘 */ }
+  return false
 }
 
 // ── 프리셋: 100칸, 초깃값은 코디 기본(밤의 레아 헤어·운명의 인도자 얼굴·뽀송 꽃잎 피부·금단의 계약). localStorage 영속(서버 없음). ──
@@ -445,9 +458,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (!code) { const h = location.hash.match(/(?:^#|&)c=([^&]+)/); if (h) code = decodeURIComponent(h[1]) }
     } catch { /* noop */ }
     if (!code) return
-    try { history.replaceState(null, '', location.pathname) } catch {} // URL 청소: 새로고침 재적용 방지
+    try { history.replaceState(history.state, '', location.pathname) } catch {} // URL 청소: 새로고침 재적용 방지. 상태는 그대로(Next 라우터의 기록 표지)
     let cancelled = false
-    resolveShareCode(code).then((snap) => { if (!cancelled && snap) openShared(snap) }).catch(() => {})
+    const miss = () => { if (!cancelled) notify('공유 코디를 찾지 못했어요. 링크를 다시 확인해 주세요') } // 잘린 링크 — 아무 안내 없이 홈만 뜨면 새로고침된 것처럼 보인다
+    resolveShareCode(code).then((snap) => { if (cancelled) return; if (snap) openShared(snap); else miss() }).catch(miss)
     return () => { cancelled = true }
   }, [])
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=마네킹(코디는 모델이 기본)
@@ -1943,8 +1957,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(flushPendingShare, [])
   const copyShareLink = (snap: Snapshot, done = '프리셋을 복사했어요') => {
     const prep = prepareShare(location.origin, snap)
-    void copyAsyncText(() => prep.then((x) => x.url))
-    notify(done)
+    void copyAsyncText(() => prep.then((x) => x.url)).then((r) => { if (r === 'copied') notify(done); else if (!r) notify('브라우저가 복사를 막았어요. 다른 브라우저에서 다시 복사해 주세요') })
     prep.then((x) => uploadShare(x, snap))
       .then((r) => { if (r === 'stale') notify('사이트가 바뀌었어요. 새로고침한 뒤 다시 복사해 주세요'); else if (r === 'fail') notify('링크 저장에 실패했어요. 다시 복사해 주세요') })
       .catch(() => {})
