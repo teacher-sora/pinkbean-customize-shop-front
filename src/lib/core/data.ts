@@ -95,7 +95,7 @@ export interface ListItem {
   dupOf?: number              // 헤어 · 성형: 같은 그림의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
   dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups)
   setGroup?: number           // 공식 세트 무리 번호(loadSets — lib/setOrder 가 목록에서 한자리에 모은다)
-  setSub?: number             // 무리 안의 세트 순서(0 = (여) 세트, 1 = (남) 세트 — 여자 먼저)
+  setSub?: number             // 무리 안 순서(0 = 여자 전용, 1 = 남자 전용, 2 = 공용 — 남녀 세트에 함께 든 것)
 }
 
 export interface SlotSummary {
