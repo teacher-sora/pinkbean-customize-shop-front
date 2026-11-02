@@ -6,6 +6,9 @@
 //  - 조합 중인 마지막 글자는 느슨하게: "가ㅂ"·"가바"(→ 가방 입력 도중)는 "가방"에 걸린다(받침 넘김 완화는 안 함, 아래 참고).
 //  - Shift 없이 친 영문 자판("rhakqjqmf")은 쌍자음·ㅒ·ㅖ 구분 없이 비교한다. 한글로 친 검색어는 정확히("고마"≠"꼬마").
 //  - 영문이 섞인 이름("BTS", "007 가방")은 원문 대소문자 무시 비교도 함께 한다.
+//  - 영문 이름 + 한글을 영문 자판으로 이어 친 검색어("vaud" · "v aud" · "V명")는 앞의 영문은 그대로, 뒤만 en2ko 로 바꿔 비교한다("v명" → "V 명찰 반지").
+//    나누는 자리마다 이름에 그대로 들어 있어야 하므로 엉뚱한 조합은 걸리지 않는다.
+//  - 영문 그대로 걸린 이름(literal)을 en2ko 로 걸린 이름보다 앞에 둔다("v" 를 치면 'ㅍ' 로 시작하는 이름보다 "V 명찰 반지" 가 먼저).
 
 const CHO_KEYS = 'rRseEfaqQtTdwWczxvg'
 const CHO_JAMO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'
@@ -99,15 +102,16 @@ function includesLoose(name: string, q: string): boolean {
   return false
 }
 
-const stripCache = new Map<string, { exact: string; loose: string; lower: string }>()
+const stripCache = new Map<string, { exact: string; loose: string; lower: string; lowerLoose: string }>()
 function keysOf(name: string) {
   let k = stripCache.get(name)
-  if (!k) { const exact = name.replace(/\s+/g, ''); k = { exact, loose: loosen(exact), lower: exact.toLowerCase() }; stripCache.set(name, k) }
+  if (!k) { const exact = name.replace(/\s+/g, ''), lower = exact.toLowerCase(); k = { exact, loose: loosen(exact), lower, lowerLoose: loosen(lower) }; stripCache.set(name, k) }
   return k
 }
 
-// 검색어 → 이름 판정 함수. 빈 검색어면 null(필터 없음).
-export function nameMatcher(query: string): ((name: string) => boolean) | null {
+// 검색어 → 이름 판정 함수. 빈 검색어면 null(필터 없음). literal = 영문이 그대로 걸렸는가(순서를 앞으로).
+export type NameMatch = ((name: string) => boolean) & { literal: (name: string) => boolean }
+export function nameMatcher(query: string): NameMatch | null {
   const raw = query.replace(/\s+/g, '')
   if (!raw) return null
   const latin = /[a-z]/i.test(raw)
@@ -115,10 +119,30 @@ export function nameMatcher(query: string): ((name: string) => boolean) | null {
   // Shift 를 안 친 영문 자판 입력이면 쌍자음·ㅒ·ㅖ 구분 없이. 한글로 친 검색어는 정확히.
   const loose = latin && raw === raw.toLowerCase() ? loosen(ko) : null
   const lowerRaw = raw.toLowerCase()
-  return (name: string) => {
+  // 앞은 영문 그대로, 뒤는 en2ko(뒤에 영문 자판 글자가 있을 때만)
+  const mixed: string[] = []
+  if (latin) for (let i = 1; i < raw.length; i++) {
+    const tail = raw.slice(i)
+    if (!/^[a-z0-9]+$/i.test(raw.slice(0, i)) || !/[a-z]/i.test(tail)) continue
+    mixed.push(lowerRaw.slice(0, i) + en2ko(tail))
+  }
+  const literal = (name: string) => {
+    if (!latin) return false
+    const k = keysOf(name)
+    return k.lower.includes(lowerRaw) || mixed.some((m) => includesLoose(k.lower, m) || includesLoose(k.lowerLoose, loosen(m))) // 영문이 들어간 이름("BTS")은 원문 대소문자 무시
+  }
+  const fn = (name: string) => {
     const k = keysOf(name)
     if (includesLoose(k.exact, ko)) return true
     if (loose !== null && includesLoose(k.loose, loose)) return true
-    return latin && k.lower.includes(lowerRaw) // 영문이 들어간 이름("BTS")은 원문 대소문자 무시
+    return literal(name)
   }
+  return Object.assign(fn, { literal })
+}
+
+// 걸린 목록에서 영문이 그대로 걸린 것을 앞으로(같은 무리 안의 순서는 그대로)
+export function literalFirst<T>(list: T[], match: NameMatch, nameOf: (x: T) => string): T[] {
+  const a: T[] = [], b: T[] = []
+  for (const x of list) (match.literal(nameOf(x)) ? a : b).push(x)
+  return a.length && b.length ? [...a, ...b] : list
 }

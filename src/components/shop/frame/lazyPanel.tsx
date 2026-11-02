@@ -40,7 +40,8 @@ export function lazyPanel<P extends { mobile: boolean }>(load: () => Promise<{ d
         get().then((c) => { if (alive) setC(() => c) }).catch(() => {
           if (!alive) return
           if (tries < RETRY_MS.length) { t = window.setTimeout(run, RETRY_MS[tries++]); return }
-          try { if (sessionStorage.getItem(RELOAD_KEY)) return; sessionStorage.setItem(RELOAD_KEY, '1') } catch { return }
+          // 한 번 새로고침한 뒤 1분 안에 또 실패하면 멈춘다(무한 새로고침 방지). 그 뒤의 새 배포에는 다시 새로고침한다 — 휴대폰 탭은 며칠씩 열려 있다
+          try { if (Date.now() - Number(sessionStorage.getItem(RELOAD_KEY) || 0) < 60000) return; sessionStorage.setItem(RELOAD_KEY, String(Date.now())) } catch { return }
           location.reload()
         })
       }
