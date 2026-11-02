@@ -12,7 +12,7 @@ import { createContext, useCallback, useContext, useDeferredValue, useEffect, us
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
 import { rankSort, nameMatcher } from '@/lib/nameSearch'
-import { groupSets, setLinks } from '@/lib/setOrder'
+import { groupSets } from '@/lib/setOrder'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
 import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
@@ -686,21 +686,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [index])
   // '전체' = 모든 부위를 부위 줄 순서(catBar — 사용자가 바꾼 순서)로 이어붙인 뒤 같은 세트끼리 모은 하나의 리스트(lib/setOrder).
   // 부위 순서가 바뀌면 다시 만든다. 즐겨찾기 · 신규는 이 순서에서 거른다
-  // 머리말이 다른 남녀 짝 세트를 잇는 표는 전 부위를 보고 한 번 만든다(부위 순서와 상관없다) — 부위 하나짜리 목록도 같은 표로 묶는다
-  const setLinkMap = useMemo(() => setLinks(Object.entries(lists).flatMap(([sl, l]) => (sl === 'hair' || sl === 'face' ? [] : l || []))), [lists])
-  const allList = useMemo(() => groupSets(catBar.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || [])), setLinkMap), [lists, skinList, catBar, setLinkMap])
+  const allList = useMemo(() => groupSets(catBar.flatMap((c) => (c.id === 'skin' ? skinList : lists[CAT_TO_SLOT[c.id]] || []))), [lists, skinList, catBar])
   const listForCat = useCallback((cat: string): ListItem[] => {
     if (cat === 'skin') return skinList
     if (cat === 'all') return allList
     // '즐겨찾기' = 전 부위(피부 포함)에서 즐겨찾기한 아이템만. 전 슬롯 로드가 필요(위 ensureSlot). 걸러 낸 목록 안에서 다시 세트끼리 모은다
     // (전체에서는 흔한 머리말로 보여 묶지 않던 것도 몇 개만 남으면 세트로 묶인다 — 신규의 '크림슨' 세트)
-    if (cat === 'fav') return groupSets(allList.filter((it) => favorites.has(it.id)), setLinkMap)
+    if (cat === 'fav') return groupSets(allList.filter((it) => favorites.has(it.id)))
     // '신규' = 최근 패치에서 추가된 아이템만(전 부위). 헤어/성형은 폴딩 대표 id 로 매칭된다.
-    if (cat === 'new') return groupSets(allList.filter((it) => it.slot !== 'skin' && newIds.has(it.id)), setLinkMap)
+    if (cat === 'new') return groupSets(allList.filter((it) => it.slot !== 'skin' && newIds.has(it.id)))
     // 한 부위 = 그 부위 목록에서 같은 세트끼리 모은 것(같은 배열이면 기억해 둔 결과)
     const l = lists[CAT_TO_SLOT[cat]]
-    return l ? groupSets(l, setLinkMap) : []
-  }, [lists, skinList, favorites, newIds, allList, setLinkMap])
+    return l ? groupSets(l) : []
+  }, [lists, skinList, favorites, newIds, allList])
 
   // 활성 부위 리스트 로딩중?(index 미로드 또는 해당 slot 미로드)
   const catLoading = dataLoading || (isMultiCat(activeCat)

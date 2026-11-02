@@ -10,7 +10,7 @@ const DESC = '메이플 코디, 메이플 커마, 염색, 헤어, 성형, 드레
 export const metadata: Metadata = {
   title: TITLE,
   description: DESC,
-  keywords: ['메이플 코디', '메이플 커마', '메이플 염색', '메이플 헤어', '메이플 성형', '메이플 드레스룸', '메이플 코디 추천'],
+  keywords: ['메이플 코디', '메이플 커마', '메이플 염색', '메이플 헤어', '메이플 성형', '메이플 드레스룸', '드레스룸', '메애기', '메애기 드레스룸', '메이플 코디 추천', '메이플 캐시템', '메이플 치장'],
   alternates: { canonical: '/guide' },
   openGraph: { type: 'website', url: `${SITE_URL}/guide`, title: `핑크빈 커마샵 - ${TITLE}`, description: DESC },
 }

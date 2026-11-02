@@ -94,6 +94,8 @@ export interface ListItem {
   chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(core/chatUi)
   dupOf?: number              // 헤어 · 성형: 같은 그림의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
   dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups)
+  setGroup?: number           // 공식 세트 무리 번호(loadSets — lib/setOrder 가 목록에서 한자리에 모은다)
+  setSub?: number             // 무리 안의 세트 순서(0 = (남) 세트, 1 = (여) 세트)
 }
 
 export interface SlotSummary {
@@ -263,11 +265,24 @@ export function loadLabels(): Promise<Labels> {
   }
   return labelsPromise
 }
+// 공식 세트 표(parser scripts/sets-build.py → CDN catalog/sets.json) = { items: { id: [무리 번호, 무리 안 세트 순서] }, names: [무리 이름] }.
+// 공지 본문 · 선택권 설명 · 옛 캐시 패키지로 확인된 세트만 있다. 없거나 실패하면 빈 표(세트 번호 · 남녀판만 묶인다)
+type SetTable = Record<string, [number, number]>
+let setsPromise: Promise<SetTable> | null = null
+export function loadSets(): Promise<SetTable> {
+  if (!setsPromise) {
+    setsPromise = pre<{ items?: SetTable }>('catalog/sets.json', () => fetch(url('catalog/sets.json'), FRESH).then((r) => (r.ok ? r.json() : {})))
+      .catch(() => ({} as { items?: SetTable }))
+      .then((d) => d.items ?? {})
+  }
+  return setsPromise
+}
 const slotCache = new Map<string, Promise<ListItem[]>>()
 export function loadSlot(file: string): Promise<ListItem[]> {
   let p = slotCache.get(file)
   if (!p) {
     const labels = loadLabels() // 목록과 함께 받는다(기다리는 시간이 겹치게)
+    const sets = loadSets()
     p = pre<ListItem[]>(file, () => fetch(url(file), FRESH).then((r) => r.json())).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
       // 같은 동작 목록은 한 배열을 함께 쓴다 — JSON 은 아이템마다 같은 글자를 새로 만든다(무기 3,961개의 동작 목록은 365가지뿐인데
@@ -284,6 +299,9 @@ export function loadSlot(file: string): Promise<ListItem[]> {
       const { master } = await labels
       if (!master.size) return items
       return items.map((it) => (!it.label && master.has(it.id) ? { ...it, label: 'master' as const } : it))
+    }).then(async (items) => {
+      const tb = await sets
+      return items.map((it) => { const s = tb[it.id]; return s ? { ...it, setGroup: s[0], setSub: s[1] } : it })
     }).then(async (items) => {
       const first = items[0]
       if (!first) return items
