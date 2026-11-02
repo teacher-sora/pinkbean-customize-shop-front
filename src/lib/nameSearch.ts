@@ -8,7 +8,8 @@
 //  - 영문이 섞인 이름("BTS", "007 가방")은 원문 대소문자 무시 비교도 함께 한다.
 //  - 영문 이름 + 한글을 영문 자판으로 이어 친 검색어("vaud" · "v aud" · "V명")는 앞의 영문은 그대로, 뒤만 en2ko 로 바꿔 비교한다("v명" → "V 명찰 반지").
 //    나누는 자리마다 이름에 그대로 들어 있어야 하므로 엉뚱한 조합은 걸리지 않는다.
-//  - 영문 그대로 걸린 이름(literal)을 en2ko 로 걸린 이름보다 앞에 둔다("v" 를 치면 'ㅍ' 로 시작하는 이름보다 "V 명찰 반지" 가 먼저).
+//  - 순서(rank, 사용자 지시): 영문 앞부분이 낱말 하나로 들어맞은 이름("[BTS] V 가면", "V 명찰 반지") → 낱말 첫머리에 걸린 이름("Ver.2", "VIP")
+//    → 낱말 가운데 걸린 이름("MVP", "Blavy") → en2ko 로만 걸린 이름. 같은 무리 안의 순서는 그대로다.
 
 const CHO_KEYS = 'rRseEfaqQtTdwWczxvg'
 const CHO_JAMO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'
@@ -109,8 +110,9 @@ function keysOf(name: string) {
   return k
 }
 
-// 검색어 → 이름 판정 함수. 빈 검색어면 null(필터 없음). literal = 영문이 그대로 걸렸는가(순서를 앞으로).
-export type NameMatch = ((name: string) => boolean) & { literal: (name: string) => boolean }
+// 검색어 → 이름 판정 함수. 빈 검색어면 null(필터 없음). rank = 순서 무리(작을수록 앞, 위 설명).
+export type NameMatch = ((name: string) => boolean) & { rank: (name: string) => number }
+const isWordCh = (c: string | undefined) => !!c && /[a-z0-9]/i.test(c)
 export function nameMatcher(query: string): NameMatch | null {
   const raw = query.replace(/\s+/g, '')
   if (!raw) return null
@@ -131,18 +133,37 @@ export function nameMatcher(query: string): NameMatch | null {
     const k = keysOf(name)
     return k.lower.includes(lowerRaw) || mixed.some((m) => includesLoose(k.lower, m) || includesLoose(k.lowerLoose, loosen(m))) // 영문이 들어간 이름("BTS")은 원문 대소문자 무시
   }
+  // 영문 앞부분 가운데 이름에 들어 있는 가장 긴 것이 낱말 경계에 걸리는 모양으로 무리를 정한다
+  const head = (lowerRaw.match(/^[a-z0-9]+/) || [''])[0]
+  const rank = (name: string) => {
+    if (!literal(name)) return 3
+    const low = name.toLowerCase()
+    let best = 2
+    for (let n = head.length; n > 0 && best === 2; n--) {
+      const p = head.slice(0, n)
+      let found = false
+      for (let i = low.indexOf(p); i >= 0; i = low.indexOf(p, i + 1)) {
+        found = true
+        if (isWordCh(low[i - 1])) continue
+        best = Math.min(best, isWordCh(low[i + n]) ? 1 : 0)
+        if (best === 0) break
+      }
+      if (found) break
+    }
+    return best
+  }
   const fn = (name: string) => {
     const k = keysOf(name)
     if (includesLoose(k.exact, ko)) return true
     if (loose !== null && includesLoose(k.loose, loose)) return true
     return literal(name)
   }
-  return Object.assign(fn, { literal })
+  return Object.assign(fn, { rank })
 }
 
-// 걸린 목록에서 영문이 그대로 걸린 것을 앞으로(같은 무리 안의 순서는 그대로)
-export function literalFirst<T>(list: T[], match: NameMatch, nameOf: (x: T) => string): T[] {
-  const a: T[] = [], b: T[] = []
-  for (const x of list) (match.literal(nameOf(x)) ? a : b).push(x)
-  return a.length && b.length ? [...a, ...b] : list
+// 걸린 목록을 rank 무리 순으로(같은 무리 안의 순서는 그대로)
+export function rankSort<T>(list: T[], match: NameMatch, nameOf: (x: T) => string): T[] {
+  const g: T[][] = [[], [], [], []]
+  for (const x of list) g[match.rank(nameOf(x))].push(x)
+  return g.flat()
 }
