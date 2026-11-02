@@ -17,6 +17,7 @@ import { DYE_VAULT_MAX, dyeSaveKey, useDyeVault, type DyeSave } from '@/lib/dyeV
 import { useShop } from '../ShopContext'
 import { LookSprite } from '../info/SlotSprite'
 import { IconAdd } from '../ui/Icons'
+import { useSeen } from '../ui/useSeen'
 import styles from './surface.module.css'
 
 // 칸 하나 — 메모해서 수치를 바꿀 때(조절 칸이 매번 다시 그려질 때) 칸들은 다시 그리지 않는다(실측: 20칸이면 수치를 바꿀 때마다 칸이 통째로 다시 그려져
@@ -28,15 +29,7 @@ const VaultCell = memo(function VaultCell ({ d, on, item, tone, root, pick, drop
   pick: (d: DyeSave) => void; drop: (d: DyeSave) => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [seen, setSeen] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el || seen) return
-    if (typeof IntersectionObserver === 'undefined') { setSeen(true); return }
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setSeen(true); io.disconnect() } }, { root: root.current, rootMargin: '0px 60px' })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [seen, root])
+  const seen = useSeen(ref, root, '0px 60px') // 보이는 칸만 그리기는 다른 칸 그림과 같은 관찰기(ui/useSeen)
   const k = dyeSaveKey(d), xKey = `vault:x:${item.id}:${k}`
   return (
     <div ref={ref} role="listitem" className={styles.vaultItem}>
