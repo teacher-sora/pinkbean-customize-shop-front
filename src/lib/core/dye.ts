@@ -47,12 +47,14 @@ export function warmDye(): void {
   }).catch(() => {})   // 못 받으면 JS 로 계속 간다
 }
 
-// ─── Faithful port of MapleStory's dye/recolor (seotbeo/WzComparerR2 AvatarCommon/Prism.cs, 2026-07 "v2") ───
-// HSV 공간에서 색조를 돌리고 채도 · 명도를 옮긴다. 픽셀 하나씩 float(32비트)으로 계산한다 — 원본(C#)이 float 라 같은 자리에서
+// ─── Faithful port of MapleStory's dye/recolor (seotbeo/WzComparerR2 AvatarCommon/Prism.cs, 2026-07 "v2" + 마지막 자르기는 내림) ───
+// HSV 공간에서 색조를 돌리고 채도 · 명도를 옮긴다. 픽셀 하나씩 float(32비트)으로 계산한다 — 게임이 float 라 같은 자리에서
 // 같은 값으로 잘리게 Math.fround 로 맞췄다(wasm/dye.c 도 float).
-// 2026-10 사용자 지시로 넥슨 캐릭터 이미지와 픽셀로 견줘 바꿨다: 캐시 아이템 28벌 · 1만 5천여 칸에서 옛 공식(v1, HSL + 238 상한)은
-// 69%, 이 공식은 89% 가 정확히 같았다(나머지는 다른 아이템에 가린 칸). 특히 명도를 낮춘 염색 · 풀컬러 그림에서 옛 공식이 틀렸다.
-// 추측으로 고치지 않는다 — 원본이 바뀌면 원본을 다시 옮긴다.
+// 정답은 **공홈 아바타 그림**(avatar.maplestory.nexon.com — 인게임과 같다)이다. 넥슨 Open API 캐릭터 이미지는 렌더러가 달라 기준으로 쓰지 않는다.
+// 2026-11 랭킹 820명(염색 아이템 605개 · 25만 칸)을 공홈 아바타와 칸마다 맞춰 정했다: 식은 원본 v2 그대로, 마지막 자르기만 **내림**
+// (원본의 '0.985 이상이면 올림'은 Open API 이미지에 맞춘 것이다 — 이론값이 17의 배수인 칸이 float 로 33.9999 가 되면 게임은 17 로 내린다).
+// 맞은 칸: 내림 99.09% · 원본 96.56%(나머지는 다른 아이템 · 이펙트에 가린 칸). 풀컬러 그림도 내림이 맞다(99.9%).
+// 추측으로 고치지 않는다 — 바꿀 때는 공홈 아바타로 다시 맞춘다(ARCHITECTURE 2-4 '확인하는 법').
 const fr = Math.fround
 const clampN = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
 // 색상 계열(type) 별 색조 범위 안의 픽셀만 변환.
@@ -68,11 +70,9 @@ function checkColorType(type: number, hue: number, sat: number): boolean {
     default: return true                 // 0 전체
   }
 }
-// 0.985f 이상이면 올리고 아니면 내린다(원본 CustomRound — 문턱은 float 값 그대로). step 17 = 16단계 그림, 1 = 풀컬러 그림 · 이펙트.
-const STEP_UP = fr(0.985)
+// float 로 나눠 내린다. step 17 = 16단계 그림, 1 = 풀컬러 그림 · 이펙트.
 function applyStep(v: number, step: number): number {
-  const q = fr(v / step)
-  return (q - Math.floor(q) >= STEP_UP ? Math.ceil(q) : Math.floor(q)) * step
+  return Math.floor(fr(v / step)) * step
 }
 // 16단계 그림인가(원본은 그림 전체에서 한 번 판단한다). 불투명 칸만 본다 — 반투명 칸은 캔버스의 곱한 알파를 거치며 값이 흔들린다.
 function is16Image(a: Uint8ClampedArray): boolean {
@@ -158,12 +158,15 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
 // ⚠️ 커스텀 피부는 **테두리 포함을 쓰지 않는다**. 버튼을 감추는 것만으로는 이미 저장된 값이 남아 그려질 수 있어, 피부로 가는 유일한 길목인 여기서 끈다.
 export const skinHsb = (h: HsbParams, family = 5): HsbParams => ({ ...h, t: h.t ?? family, edge: false })
 
-// Blend base sprite toward mix sprite by ratio% (alpha from base). 게임과 같은 식이다 — 넥슨 캐릭터 이미지(믹스염색 12명)와 픽셀로 맞춰 정했다:
-//  · 보통 그림: 채널마다 base·(1-t) + mix·t 를 반올림.
+// Blend base sprite toward mix sprite by ratio% (alpha from base). 게임과 같은 식이다 — 2026-11 랭킹 820명(헤어 504 · 성형 518)의
+// 공홈 아바타와 칸마다 맞춰 정했다. 두 비율(믹스 t · 베이스 k)을 **따로** float 로 만들고, float 로 곱해 더한 뒤 **내림**한다:
 //  · **16단계 그림**(두 장의 보이는 칸이 전부 17의 배수 = 게임 안에서 채널당 4비트로 저장된 그림. 예전 헤어 대부분):
-//    4비트 값으로 섞고 **내림**한다 → 결과도 17 단위에 머문다. 이렇게 하지 않으면 그 사이 색이 나와 인게임과 미묘하게 다르다
-//    (건의함 · 조용한 단발 검노 7030). 맞춘 비율: 16단계 헤어 4명에서 정확히 같은 칸 65~85%(나머지는 모자 · 얼굴에 가린 칸),
-//    반올림 섞기는 3% 안팎.
+//    t = r/100, k = (100-r)/100. 4비트 값으로 섞어 내린다 → 결과도 17 단위에 머문다. 그냥 섞으면 그 사이 색이 나와 인게임과
+//    미묘하게 달랐다(건의함 · 조용한 단발 검노 7030). float 오차로 값이 같은 두 색의 12 · 14 가 11 · 13 이 되는 것까지 같다
+//    (시원한 아침등교 헤어 검정 90 + 주황 10 대조). 맞은 칸: 헤어 97.9% · 성형 98.2%(k = 1 - t 로 만들면 95.7%).
+//  · 풀컬러 그림: t = r × 0.01f, k = (100-r) × 0.01f. 합이 1 보다 조금 작아 같은 색끼리 섞어도 1 낮아지는 칸이 있다(게임과 같다).
+//    맞은 칸: 헤어 94.9% · 성형 99.6%(예전의 반올림은 74% · 59%). 베이스 = 믹스인 칸 495곳의 '그대로 / 1 낮음'이 전부 맞는다.
+//  나머지는 모자 · 얼굴 · 반투명 이펙트에 가린 칸이다. 두 형식의 비율 식이 다른 것은 그 칸들에서 따로 맞춘 결과다(한 식으로는 두쪽이 다 맞지 않았다).
 export function is16Step(A: Uint8ClampedArray, B: Uint8ClampedArray): boolean {
   // 불투명 칸만 본다 — 반투명 칸은 캔버스의 곱한 알파를 거치며 17 단위에서 흔들린다(그림 형식은 불투명 칸으로 충분히 가린다).
   for (let i = 0; i < A.length; i += 4) {
@@ -184,10 +187,10 @@ export function blendPixels(A: Uint8ClampedArray, B: Uint8ClampedArray, ratio: n
     return
   }
   // [blend 루프 시작] — wasm/dye.c 의 blend 와 같은 식이다. 고치면 그쪽도 고친다
-  const t = r / 100
-  // 16단계는 게임처럼 32비트 float 로 곱하고 더해 내린다 — 오차로 값이 같은 두 색의 12 · 14 가 11 · 13 이 되는 것까지 같다(시원한 아침등교 헤어 검정 90 + 주황 10 대조)
-  const fr = Math.fround, tf = fr(t), kf = fr(1 - tf)
+  const fr = Math.fround
+  const tf = q4 ? fr(r / 100) : fr(r * fr(0.01)), kf = q4 ? fr((100 - r) / 100) : fr((100 - r) * fr(0.01))
   const step = (a: number, b: number) => 17 * Math.floor(fr(fr((a / 17) * kf) + fr((b / 17) * tf)))
+  const full = (a: number, b: number) => Math.floor(fr(fr(a * kf) + fr(b * tf)))
   for (let i = 0; i < A.length; i += 4) {
     if (A[i + 3] === 0) continue
     if (q4) {
@@ -195,9 +198,9 @@ export function blendPixels(A: Uint8ClampedArray, B: Uint8ClampedArray, ratio: n
       A[i + 1] = step(A[i + 1], B[i + 1])
       A[i + 2] = step(A[i + 2], B[i + 2])
     } else {
-      A[i] = A[i] * (1 - t) + B[i] * t
-      A[i + 1] = A[i + 1] * (1 - t) + B[i + 1] * t
-      A[i + 2] = A[i + 2] * (1 - t) + B[i + 2] * t
+      A[i] = full(A[i], B[i])
+      A[i + 1] = full(A[i + 1], B[i + 1])
+      A[i + 2] = full(A[i + 2], B[i + 2])
     }
   }
   // [blend 루프 끝]

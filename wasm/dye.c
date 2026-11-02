@@ -19,9 +19,9 @@ static inline int checkColorType(int type, float hue, float sat) {
     default: return 1;
   }
 }
+// float 로 나눠 내린다(게임과 같다 — dye.ts applyStep).
 static inline float applyStep(float v, float step) {
-  float q = v / step;
-  float o = (q - floorf(q) >= 0.985f ? ceilf(q) : floorf(q)) * step;
+  float o = floorf(v / step) * step;
   return o < 0 ? 0 : o > 255 ? 255 : o;   // JS 의 Uint8ClampedArray 대입과 같게
 }
 
@@ -67,21 +67,18 @@ void hsb(uint8_t *a, int len, int hue, int saturation, int brightness, int type,
   }
 }
 
-static inline uint8_t clamp8(double v) { if (!(v > 0)) return 0; if (v > 255) return 255; return (uint8_t)lrint(v); }
-
-// 믹스 염색: A 를 B 쪽으로 t 만큼 섞는다(알파가 0 인 칸은 그대로). JS 의 Uint8ClampedArray 대입과 같은 반올림.
+// 믹스 염색: A 를 B 쪽으로 섞는다(알파가 0 인 칸은 그대로). 두 비율을 따로 float 로 만들고, float 로 곱해 더한 뒤 내린다(dye.ts blendPixels).
 EMSCRIPTEN_KEEPALIVE
 // ratio 는 0..100 정수. q4 = 16단계 그림(dye.ts is16Step) — 4비트 값으로 섞고 내림해 17 단위에 머문다.
 void blend(uint8_t *a, const uint8_t *b, int len, int r, int q4) {
-  double t = r / 100.0;
+  // 16단계: t = r/100 · k = (100-r)/100, 풀컬러: t = r × 0.01f · k = (100-r) × 0.01f. JS 의 fround 와 같은 값이 되게 double 로 나눠 float 로 자른다.
+  float t = q4 ? (float)((double)r / 100.0) : (float)r * 0.01f;
+  float k = q4 ? (float)((double)(100 - r) / 100.0) : (float)(100 - r) * 0.01f;
   for (int i = 0; i < len; i += 4) {
     if (a[i + 3] == 0) continue;
-    if (q4) {
-      for (int k = 0; k < 3; k++) a[i + k] = (uint8_t)(17 * (((a[i + k] / 17) * (100 - r) + (b[i + k] / 17) * r) / 100));
-    } else {
-      a[i] = clamp8(a[i] * (1 - t) + b[i] * t);
-      a[i + 1] = clamp8(a[i + 1] * (1 - t) + b[i + 1] * t);
-      a[i + 2] = clamp8(a[i + 2] * (1 - t) + b[i + 2] * t);
+    for (int c = 0; c < 3; c++) {
+      float x = q4 ? (float)(a[i + c] / 17) * k + (float)(b[i + c] / 17) * t : (float)a[i + c] * k + (float)b[i + c] * t;
+      a[i + c] = (uint8_t)(q4 ? 17 * (int)floorf(x) : (int)floorf(x));
     }
   }
 }
