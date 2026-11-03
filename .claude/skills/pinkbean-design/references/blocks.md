@@ -31,7 +31,7 @@
 | 쪽 칩 `[N개 \| ‹ 번호 / 총수 ›]` | `frame/PageChip.tsx` — 목록 · 광장(`tight`) · 코디 룩북(`idle`) · 도움 및 건의함(`num`) |
 | 작업 칩 `[라벨 n / 총수]` | `frame/CountChip.tsx` — 프리셋 · 착용(`digits` 3 · 2) |
 | 머리의 검색 칸(돋보기 + 입력) | `frame/SearchBox.tsx` + `searchInputClass` — 광장은 `plaza` |
-| 입력 지우기(칸 안 오른쪽 x) | `ui/ClearField.tsx` — 한 줄 입력 칸을 감싼다(검색 칸, 불러오기 칸, 말 입력칸, 올리기 칸 모두). placeholder 가 있어야 x 가 가려진다. 쪽 번호 · 숫자 칸 · 프리셋 이름 · 여러 줄 칸에는 쓰지 않는다 |
+| 검색 칸 지우기(칸 안 오른쪽 x) | `ui/ClearField.tsx` — **검색 칸에만** 감싼다(아이템 검색, 생김새 검색, 코디 룩북 찾기, 광장 검색). placeholder 가 있어야 x 가 가려진다. 불러오기 · 채팅 · 올리기 같은 다른 입력 칸에는 쓰지 않는다(사용자 지시) |
 | 모바일 가로 쪽 넘김(스크롤 ↔ 쪽 번호) | `list/ListArea.tsx` 의 `usePagerX`(세로는 `usePagerY`) |
 | 불러오는 중 | 전역 `.pb-skel` 을 실제 칸과 같은 격자로 |
 

@@ -19,7 +19,6 @@ import { sameLookDeep, type SkinInfo } from '@/lib/plazaLookPixels'
 import { skinDyeFamily } from '@/lib/shopData'
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { IconCaretDown } from '../ui/Icons'
-import ClearField from '../ui/ClearField'
 import PlazaRefViewer from './PlazaRefViewer'
 import styles from './plaza.module.css'
 
@@ -215,10 +214,8 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
       {/* 이름 */}
       <div>
         <div className={styles.label}>이름 <span className={styles.star}>*</span></div>
-        <ClearField onClear={() => setName('')}>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={current?.name || '코디 이름'} maxLength={40}
-            aria-label="코디 이름" className={clsx('pb-input', styles.field, styles.nameField, mobile && styles.fieldM)} />
-        </ClearField>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={current?.name || '코디 이름'} maxLength={40}
+          aria-label="코디 이름" className={clsx('pb-input', styles.field, styles.nameField, mobile && styles.fieldM)} />
       </div>
 
       {/* 설명 */}
@@ -235,10 +232,8 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
             AI 코디 검색(입력 + 옆 솔리드 버튼)과 같은 모양: 안에 끼운 26px 버튼보다 누르기 쉽고 글자 자리도 넓다.
             누를 때 입력칸 포커스를 뺏지 않아 모바일 키보드가 내려가지 않고 이어서 칠 수 있다. */}
         <div className={styles.tagField}>
-          <ClearField onClear={() => setTagDraft('')}>
-            <input value={tagDraft} onChange={(e) => setTagDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-              placeholder={`입력 후 Enter (최대 ${PLAZA_TAG_MAX}개)`} aria-label="태그" className={clsx('pb-input', styles.field, styles.tagInput, mobile && styles.fieldM)} />
-          </ClearField>
+          <input value={tagDraft} onChange={(e) => setTagDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+            placeholder={`입력 후 Enter (최대 ${PLAZA_TAG_MAX}개)`} aria-label="태그" className={clsx('pb-input', styles.field, styles.tagInput, mobile && styles.fieldM)} />
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={addTag} disabled={!tagDraft.trim()} title="태그 추가"
             className={clsx('pb-solid', styles.tagAdd, !tagDraft.trim() && styles.tagAddOff)}>추가</button>
         </div>
@@ -309,10 +304,8 @@ export default function PlazaUpload({ mobile }: { mobile: boolean }) {
         </div>
         {contest && (
           <div>
-            <ClearField onClear={() => setEmail('')}>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일" inputMode="email" aria-label="이메일"
-                className={clsx('pb-input', styles.field, mobile && styles.fieldM)} />
-            </ClearField>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일" inputMode="email" aria-label="이메일"
+              className={clsx('pb-input', styles.field, mobile && styles.fieldM)} />
             <div className={styles.emailHint}>당첨 안내용으로만 사용해요</div>
           </div>
         )}

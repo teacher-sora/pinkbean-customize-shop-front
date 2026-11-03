@@ -22,7 +22,6 @@ import ChatEmoPicker from './ChatEmoPicker'
 import { PopBox, popNear, usePop } from './PopBox'
 import styles from './preview.module.css'
 import { useDismiss } from '../ui/useDismiss'
-import ClearField from '../ui/ClearField'
 
 const WARM_MS = 90  // 적다가 이만큼 멈추면 말풍선을 미리 만든다
 
@@ -64,10 +63,8 @@ export default function ChatBar ({ mobile, show, onClose }: { mobile: boolean; s
   return (
     <form ref={box} data-guide={mobile ? undefined : 'chat'} inert={!show || undefined} onSubmit={(e) => { e.preventDefault(); send() }} className={clsx(styles.chatBox, mobile && styles.chatBoxM, show && styles.chatBoxOn)}>
       {mobile && <button type="button" onClick={onClose} tabIndex={show ? 0 : -1} title="닫기" aria-label="채팅 닫기" className={styles.chatClose}><IconClose size={14} /></button>}
-      <ClearField onClear={() => setText('')}>
-        <input value={text} maxLength={CHAT_TEXT_MAX} onChange={(e) => setText(e.target.value)} tabIndex={show ? 0 : -1}
-          placeholder="메시지..." aria-label="채팅" enterKeyHint="send" autoComplete="off" className={styles.chatField} />
-      </ClearField>
+      <input value={text} maxLength={CHAT_TEXT_MAX} onChange={(e) => setText(e.target.value)} tabIndex={show ? 0 : -1}
+        placeholder="메시지..." aria-label="채팅" enterKeyHint="send" autoComplete="off" className={styles.chatField} />
       <button ref={btn} type="button" data-guide={mobile ? undefined : 'emo'} onClick={toggle} aria-expanded={mobile ? sheetOn : open} title="이모티콘" aria-label="이모티콘"
         className={clsx(styles.chatEmoBtn, (open || sheetOn) && styles.chatEmoBtnOn)}><IconSmile size={16} /></button>
       <button type="submit" disabled={!can} title={can ? '말풍선 띄우기' : '말을 적으면 보낼 수 있어요'}

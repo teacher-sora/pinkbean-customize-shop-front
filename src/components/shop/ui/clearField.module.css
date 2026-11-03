@@ -1,4 +1,4 @@
-/* 입력 칸 지우기(ui/ClearField). 감싼 칸이 입력칸의 자리(flex 1)를 대신 차지하고, 입력칸은 그 안을 채운다 */
+/* 검색 칸 지우기(ui/ClearField). 감싼 칸이 입력칸의 자리(flex 1)를 대신 차지하고, 입력칸은 그 안을 채운다 */
 .wrap { flex: 1 1 0; min-width: 0; align-self: stretch; position: relative; display: flex; align-items: center; }
 .wrap > input { flex: 1 1 0; min-width: 0; width: 100%; }
 /* 글이 있을 때만 x 자리(오른쪽 4 + 24 + 글자와 띄움 4)를 비운다 — 글자가 x 와 겹치지 않는다 */
