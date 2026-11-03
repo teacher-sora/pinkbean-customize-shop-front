@@ -11,7 +11,7 @@
 .hrM { composes: hrM from '../frame/panel.module.css'; }
 
 /* 모바일: 한 줄 — 정렬 · 쪽 번호 · 검색 · 등록(다른 탭의 머리와 같은 높이 · 간격) */
-.controlsM { flex: 0 0 auto; height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+.controlsM { flex: 0 0 auto; height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 6px; }
 .sortWrapM { flex: 0 1 72px; min-width: 62px; display: flex; }
 .sortWrapM :global(.pb-ddbtn) { flex: 1 1 auto; min-width: 0; height: 32px; padding: 0 8px 0 10px; font-size: calc(12rem / 16); }
 .upBtn { flex: 0 0 auto; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#d76d9a, #d293ae); white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }

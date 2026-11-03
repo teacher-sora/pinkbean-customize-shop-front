@@ -1,13 +1,13 @@
 /* 목록 머리의 검색 칸(돋보기 + 입력) — 코디 · AI 검색 · 코디 룩북 · 광장이 함께 쓴다(frame/SearchBox) */
-.wrap { flex: 0 1 200px; min-width: 148px; position: relative; display: flex; align-items: center; }
-.wrapNarrow { flex: 1 1 200px; min-width: 80px; max-width: 200px; } /* 넓어도 PC 전체 화면의 크기(200)까지만 — 남는 폭은 쪽 칩 왼쪽(margin-left auto)으로 간다 */
+.wrap { flex: 0 1 220px; min-width: 160px; position: relative; display: flex; align-items: center; }
+.wrapNarrow { flex: 1 1 220px; min-width: 80px; max-width: 220px; } /* 넓어도 PC 전체 화면의 크기(220)까지만 — 남는 폭은 쪽 칩 왼쪽(margin-left auto)으로 간다 */
 .icon { position: absolute; left: 10px; color: light-dark(#b7ada2, #858893); pointer-events: none; }
 .input { height: 34px; width: 100%; min-width: 0; padding: 0 12px 0 30px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: calc(13rem / 16); letter-spacing: -0.01em; outline: none; }
 .wrapM { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }
 .iconM { position: absolute; left: 11px; color: light-dark(#b7ada2, #858893); pointer-events: none; }
 .inputM { width: 100%; min-width: 0; height: 32px; padding: 0 12px 0 31px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: calc(12rem / 16); letter-spacing: -0.02em; outline: none; text-overflow: ellipsis; }
-/* 광장: 남는 폭을 채우되 200 까지, 글자색을 박아 둔다. 휴대폰은 [내 코디 등록]과 나란해 최소 64(300 이하는 0 — 버튼이 화면 밖으로 밀렸다) */
-.plaza.wrap { flex: 1 1 0; min-width: 96px; max-width: 200px; }
+/* 광장: 남는 폭을 채우되 220 까지, 글자색을 박아 둔다. 휴대폰은 [내 코디 등록]과 나란해 최소 64(300 이하는 0 — 버튼이 화면 밖으로 밀렸다) */
+.plaza.wrap { flex: 1 1 0; min-width: 96px; max-width: 220px; }
 .plaza .input { letter-spacing: normal; color: light-dark(#3d372f, #cacbd0); }
 .plaza.wrapM { min-width: 64px; }
 .plaza .inputM { padding-right: 10px; color: light-dark(#3d372f, #cacbd0); }

@@ -39,6 +39,7 @@ import { IconAdd, IconClose, IconReset, IconSmile } from '../ui/Icons'
 import { SurfaceFooter } from './Surface'
 import sf from './surface.module.css'
 import ui from '../ui/ui.module.css'
+import ClearField from '../ui/ClearField'
 import styles from './profileCard.module.css'
 
 const THEME_KEY = 'pb_card_theme_v1' // 마지막에 고른 카드 디자인(이 브라우저만 — 편의)
@@ -353,7 +354,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
         {toggleRow('QR 코드', qrOn && !!share, flipQr, share ? undefined : 'QR을 만드는 중이에요')}
         <div className={styles.row}>
           <span className={styles.rowLabel}>이름</span>
-          <input value={name} onChange={(e) => setName(e.target.value.slice(0, 20))} placeholder={CHAT_NAME_FALLBACK} aria-label="이름" className={clsx('pb-input', styles.input)} />
+          <ClearField onClear={() => setName('')}><input value={name} onChange={(e) => setName(e.target.value.slice(0, 20))} placeholder={CHAT_NAME_FALLBACK} aria-label="이름" className={clsx('pb-input', styles.input)} /></ClearField>
         </div>
         {s.chatOn && (
           <div className={styles.row}>
@@ -366,7 +367,7 @@ export default function ProfileCardBody({ mobile }: { mobile: boolean }) {
                 <button type="button" onClick={() => { setEmo(null); setFrame(1) }} title="이모티콘 빼기" aria-label="이모티콘 빼기" className={styles.emoDel}><IconClose size={12} /></button>
               </span>
             ) : (
-              <input value={text} onChange={(e) => setText(e.target.value.slice(0, CHAT_TEXT_MAX))} placeholder="메시지..." aria-label="말풍선 글" className={clsx('pb-input', styles.input)} />
+              <ClearField onClear={() => setText('')}><input value={text} onChange={(e) => setText(e.target.value.slice(0, CHAT_TEXT_MAX))} placeholder="메시지..." aria-label="말풍선 글" className={clsx('pb-input', styles.input)} /></ClearField>
             )}
             <button ref={emoBtn} type="button" onClick={() => openPop(emoPop, emoBtn)} aria-expanded={!!emoPop.pos} title="이모티콘" aria-label="이모티콘"
               className={clsx('pb-ghost', styles.iconBtn, emoPop.pos && styles.iconBtnOn)}><IconSmile size={16} /></button>

@@ -33,6 +33,7 @@ import { IconChevronLeft, IconDrop, IconTakeDown } from '../ui/Icons'
 import list from '../list/list.module.css'
 import surf from '../surface/surface.module.css'
 import ui from '../ui/ui.module.css'
+import ClearField from '../ui/ClearField'
 import styles from './combo.module.css'
 
 const FRACTION = 0.4, FRACTION_M = CARD_FRACTION_M // 모바일은 모든 모바일 카드와 같은 비율
@@ -135,9 +136,11 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
   useLayoutEffect(() => (mobile && showing ? fitAboveKeyboard(popRef) : undefined), [mobile, showing])
   return (
     <SearchBox mobile={mobile} narrow={narrow}>
-      <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 120)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && hits[0]) pick(hits[0].it); if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
-        placeholder={now ? now.name || now.id : '아이템 이름으로 찾기'} aria-label="아이템 찾기" className={searchInputClass(mobile)} />
+      <ClearField onClear={() => setQ('')}>
+        <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && hits[0]) pick(hits[0].it); if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
+          placeholder={now ? now.name || now.id : '아이템 이름으로 찾기'} aria-label="아이템 찾기" className={searchInputClass(mobile)} />
+      </ClearField>
       {open && q.trim() && (
         <div ref={popRef} className={clsx('pb-scroll', styles.finderPop, mobile && styles.finderPopM)} role="listbox">
           {hits.length ? hits.map(({ it, n }) => (

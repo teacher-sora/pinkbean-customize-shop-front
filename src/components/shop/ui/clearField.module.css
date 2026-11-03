@@ -1,0 +1,12 @@
+/* 입력 칸 지우기(ui/ClearField). 감싼 칸이 입력칸의 자리(flex 1)를 대신 차지하고, 입력칸은 그 안을 채운다 */
+.wrap { flex: 1 1 0; min-width: 0; align-self: stretch; position: relative; display: flex; align-items: center; }
+.wrap > input { flex: 1 1 0; min-width: 0; width: 100%; }
+/* 글이 있을 때만 x 자리(오른쪽 4 + 24 + 글자와 띄움 4)를 비운다 — 글자가 x 와 겹치지 않는다 */
+.wrap > input:not(:placeholder-shown) { padding-right: 32px; }
+/* 바탕은 비운다. 색은 검색 칸 돋보기와 같고, 마우스를 올리면 지우기 버튼(profileCard .emoDel)의 분홍 */
+.x { position: absolute; right: 4px; top: 50%; width: 24px; height: 24px; margin-top: -12px; padding: 0; display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 4px; background: transparent; color: light-dark(#b7ada2, #858893); cursor: pointer;
+  transition: opacity .16s ease, visibility .16s ease, color .2s ease; }
+.wrap > input:placeholder-shown ~ .x { opacity: 0; visibility: hidden; pointer-events: none; }
+@media (hover: hover) and (pointer: fine) { .x:hover { color: light-dark(#d76d9a, #d293ae); } }
+@media (prefers-reduced-motion: reduce) { .x { transition-duration: .01s; } }

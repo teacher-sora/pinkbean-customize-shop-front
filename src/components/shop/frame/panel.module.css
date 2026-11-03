@@ -4,7 +4,7 @@
 .groupA { flex: 0 1 auto; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
 .groupB { flex: 1 1 0; min-width: 0; height: 34px; display: flex; align-items: center; gap: 10px; }
 .hr { flex: 0 0 auto; height: 1px; margin: 8px 8px 0; background: light-dark(#f2ebe3, #40434b); }
-.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 8px; }
+.headerM { flex: 0 0 auto; padding: 8px 12px; display: flex; align-items: center; height: 48px; gap: 6px; }
 .hrM { flex: 0 0 auto; height: 1px; margin: 0 12px; background: light-dark(#f2ebe3, #40434b); }
 .hintBar { flex: 0 0 auto; height: 30px; display: flex; align-items: center; justify-content: center; border-top: 1px solid light-dark(#f0e9e1, #42454d); }
 .hintText { font-size: calc(11.5rem / 16); color: light-dark(#b7ada2, #858893); }

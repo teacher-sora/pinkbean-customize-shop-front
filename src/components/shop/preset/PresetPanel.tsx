@@ -24,6 +24,7 @@ const PRESET_FRACTION_M = 0.45 // 모바일 프리셋 카드는 한 단계 작�
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
 import { IconCheck, IconLinkCopy, IconPencil, IconImport, IconReorder, IconTrashSolid } from '../ui/Icons'
+import ClearField from '../ui/ClearField'
 import styles from './preset.module.css'
 
 export default function PresetPanel({ mobile }: { mobile: boolean }) {
@@ -125,7 +126,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           {dirSeg}
           {/* 불러오기: 입력과 버튼을 한 칸에 묶는다(아래 PC 와 같은 모양) */}
           <div className={clsx(styles.importBox, styles.importBoxM)}>
-            <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
+            <ClearField onClear={() => s.setNickInput('')}><input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} /></ClearField>
             <button type="button" onClick={s.importFetch} disabled={s.importing} title="불러오기" aria-label="불러오기" aria-busy={s.importing || undefined} className={clsx('pb-solid', styles.loadBtnM, s.importing && styles.busy)}><IconImport size={15} /></button>
           </div>
         </div>
@@ -143,7 +144,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
         <div className={styles.groupB}>
           {/* 불러오기: 입력 + 채운 아이콘 버튼을 한 테두리 안에(모바일과 같은 모양). 칸의 생김새는 다른 탭의 검색 칸과 같다 */}
           <div className={clsx(styles.importBox, narrow && styles.importBoxNarrow)}>
-            <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
+            <ClearField onClear={() => s.setNickInput('')}><input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} /></ClearField>
             {/* 불러오기는 아이콘 버튼(모바일과 같은 부품 — 사용자 지시: 글자 버튼이면 비교 중 좁은 머리에서 입력 칸이 26px 까지 눌렸다) */}
             <button type="button" onClick={s.importFetch} disabled={s.importing} title={s.importing ? '불러오는 중' : '닉네임 또는 공유 링크로 코디 불러오기'} aria-label="불러오기" aria-busy={s.importing || undefined}
               className={clsx('pb-solid', styles.loadBtnM, styles.loadBtnPc, s.importing && styles.busy)}><IconImport size={15} /></button>
