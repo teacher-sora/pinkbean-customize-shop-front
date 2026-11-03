@@ -18,6 +18,7 @@ import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { MOBILE_GRID } from '@/lib/shopData'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconClose, IconPlus } from '../ui/Icons'
+import ClearField from '../ui/ClearField'
 import PlazaCard from './PlazaCard'
 import PlazaUpload from './PlazaUpload'
 import styles from './plaza.module.css'
@@ -64,8 +65,10 @@ export default function PlazaPanel({ mobile }: { mobile: boolean }) {
   ]
   const viewCtl = fold ? <FilterM mobile={mobile} groups={filterGroups} /> : <>{sortDd}<Seg title="넘기는 방향" opts={DIRS} value={s.listDir} onPick={s.setListDir} /></>
   const search = (
-    <input value={s.plazaQ} onChange={(e) => s.setPlazaQ(e.target.value)} placeholder="이름, 태그 검색"
-      aria-label="코디 검색" className={searchInputClass(mobile)} />
+    <ClearField onClear={() => s.setPlazaQ('')}>
+      <input value={s.plazaQ} onChange={(e) => s.setPlazaQ(e.target.value)} placeholder="이름, 태그 검색"
+        aria-label="코디 검색" className={searchInputClass(mobile)} />
+    </ClearField>
   )
 
   const empty = !s.plazaLoading && list.length === 0

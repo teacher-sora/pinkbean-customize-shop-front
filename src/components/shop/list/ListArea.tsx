@@ -17,6 +17,7 @@ import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
 import { useDismiss } from '../ui/useDismiss'
+import ClearField from '../ui/ClearField'
 import styles from './list.module.css'
 import { applyMobileFit, heroBaseProbe, svhProbe, RELAYOUT_EVENT } from '@/lib/heroView'
 
@@ -314,11 +315,15 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       prevTitle="이전 페이지 (←)" nextTitle="다음 페이지 (→)" inputTitle="번호를 입력해 이동" />
   )
   const searchInput = isAi ? (
-    <input data-guide="ai" value={s.aiQ} onChange={(e) => s.setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi() }} placeholder="생김새 검색"
-      className={searchInputClass(mobile)} />
+    <ClearField onClear={() => s.setAiQ('')}>
+      <input data-guide="ai" value={s.aiQ} onChange={(e) => s.setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi() }} placeholder="생김새 검색"
+        className={searchInputClass(mobile)} />
+    </ClearField>
   ) : (
-    <input value={s.search} onChange={(e) => s.setSearch(e.target.value)} placeholder="아이템 검색"
-      className={searchInputClass(mobile)} />
+    <ClearField onClear={() => s.setSearch('')}>
+      <input value={s.search} onChange={(e) => s.setSearch(e.target.value)} placeholder="아이템 검색"
+        className={searchInputClass(mobile)} />
+    </ClearField>
   )
 
   const controls = mobile ? (
@@ -359,8 +364,10 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
         <div className={mobile ? styles.heroM : styles.hero}>
           <span className={clsx(styles.heroTitle, mobile && styles.heroTitleM)}>코디 생김새로 검색</span>
           <div className={mobile ? styles.heroRowM : styles.heroRow}>
-            <input data-guide="ai" value={s.aiQ} onChange={(e) => s.setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi() }} placeholder="예: 동물 귀 모자" aria-label="생김새 묘사"
-              className={clsx('pb-input', styles.heroInput, mobile && styles.heroInputM)} />
+            <ClearField onClear={() => s.setAiQ('')}>
+              <input data-guide="ai" value={s.aiQ} onChange={(e) => s.setAiQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi() }} placeholder="예: 동물 귀 모자" aria-label="생김새 묘사"
+                className={clsx('pb-input', styles.heroInput, mobile && styles.heroInputM)} />
+            </ClearField>
             <button type="button" onClick={() => runAi()} className={clsx('pb-solid', styles.heroBtn, mobile && styles.heroBtnM)}>
               <IconSearch size={mobile ? 14 : 15} bold />찾기
             </button>
