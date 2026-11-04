@@ -326,7 +326,7 @@ export interface ShopCtx {
   equipItem: (item: ListItem) => void                 // 토글 없이 착용(염색 적용 시)
   isEquippedInCat: (cat: string, itemId: string) => boolean
   unequipSlot: (slot: string, label?: string) => void
-  resetOutfit: () => void; resetDyes: () => void // 코디 정보 머리의 [모두 벗기] · [염색 초기화]
+  resetOutfit: () => void; resetDyes: () => void // 코디 정보 머리의 [염색 초기화] · [모두 벗기]
   hidden: Record<string, boolean>; setHidden: Dispatch<Record<string, boolean>>
   // 염색(slot 키)
   dyeTarget: string | null; setDyeTarget: Dispatch<string | null>
