@@ -326,6 +326,7 @@ export interface ShopCtx {
   equipItem: (item: ListItem) => void                 // 토글 없이 착용(염색 적용 시)
   isEquippedInCat: (cat: string, itemId: string) => boolean
   unequipSlot: (slot: string, label?: string) => void
+  resetOutfit: () => void; resetDyes: () => void // 코디 정보 머리의 [모두 벗기] · [염색 초기화]
   hidden: Record<string, boolean>; setHidden: Dispatch<Record<string, boolean>>
   // 염색(slot 키)
   dyeTarget: string | null; setDyeTarget: Dispatch<string | null>
@@ -1247,6 +1248,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setHidden((h) => { if (!h[slot]) return h; const n = { ...h }; delete n[slot]; return n })
     setDyeTarget((t) => (t === slot ? null : t))
     notify(slot === 'skin' ? '뽀송 꽃잎 피부로 돌아갔어요' : label ? `${label} 부위를 벗었어요` : '부위를 벗었어요')
+  }
+
+  // 모두 벗기(코디 정보 머리 — 두 번 눌러야 한다): 코디만 프리셋 초기화(resetPreset)와 같은 기본 코디로 — 기본 아이템 · 기본 피부, 염색 · 숨김 · 점 위치도 비운다.
+  // 연출 설정 · 미리보기 배경 · 프리셋 이름은 그대로 둔다(사용자 지시: 옷 프리셋 초기화). 되돌리기 한 번에 돌아온다(자동 저장 · 기록은 applySnapshot 그대로)
+  const resetOutfit = () => {
+    const d = defaultSnapshot()
+    applySnapshot({ ...snapshot(), equipped: d.equipped, tone: d.tone, dyePalette: {}, dyeHsb: {}, dyeOff: undefined, hidden: {}, dotPos: {} }, false)
+      .then(() => notify('기본 코디로 돌아갔어요')).catch(() => {})
+  }
+  // 염색 초기화(코디 정보 머리 — 두 번 눌러야 한다): 입은 옷은 그대로, 모든 부위의 염색(믹스 · HSB · 피부)과 염색 끄기만 비운다
+  const resetDyes = () => {
+    setDyePalette({}); setDyeHsb({}); setDyeOff({})
+    notify('모든 염색을 초기화했어요')
   }
 
   // 북마크 담기/해제(토글) · 비우기.
@@ -2243,7 +2257,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openPlazaPost, openNotice, guideGo, plazaTakeDirect, takeCombo: (snap: Snapshot) => openSurface({ kind: 'ptake', item: null, take: snap, combo: true }), wearFromSnap, isWornFromSnap, plazaTakeBack, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
-    equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, hidden, setHidden,
+    equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, resetOutfit, resetDyes, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
     surface, surfaceClosing, openSheet, openDye, openCard, openDot, closeSurface,
     openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,

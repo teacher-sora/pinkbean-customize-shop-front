@@ -7,10 +7,10 @@ import CountChip from '../frame/CountChip'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { useListMinHeight } from '../list/ListArea'
 import { useEffect, useRef, useState } from 'react'
-import { DEFAULT_TONE, DOT_MOVER_IDS, isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
+import { DEFAULT_EQUIP, DEFAULT_TONE, DOT_MOVER_IDS, EQUIP_SLOTS, isDyeableSkin, skinDyeFamily } from '@/lib/shopData'
 import { useShop } from '../ShopContext'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
-import { IconEye, IconShareImage, IconTrashSolid } from '../ui/Icons'
+import { IconDrop, IconEye, IconShareImage, IconTab, IconTrashSolid } from '../ui/Icons'
 import { DyeBand, SlotSprite } from './SlotSprite'
 import { bandStateOf, infoRows, useSkinItem, useToneName, type Row } from './infoRows'
 import styles from './info.module.css'
@@ -107,6 +107,23 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const chip = <CountChip mobile={mobile} label="착용" n={wornCount} total={s.infoCats.length} digits={2} title="착용한 부위 수" />
   // 코디 프로필 저장(헤더 오른쪽 — 예전 '전체 벗기' 자리). 눈에 띄게 진한 핑크(사용자 지시 — 옅은 버튼은 있는 줄도 몰랐다).
   // 누르면 꾸미는 창(코디 프로필 — 디자인 · 배경 · 명찰 · 말풍선 · 자리)이 열리고 거기서 저장한다
+  // [모두 벗기] · [염색 초기화](코디 프로필 왼쪽, 사용자 지시). 두 번 눌러야 한다(누른 버튼 위에 되묻는 말풍선 — 부위 벗기와 같다).
+  // 휴대폰은 머리 줄에 글자 버튼 둘이 들어가지 않아(390 폭 빈자리 150px) 머리 버튼 높이의 정사각형 아이콘만 둔다
+  const atDefault = s.tone === DEFAULT_TONE && !Object.keys(s.hidden).length && !Object.keys(s.dotPos).length && !Object.keys(s.dyePalette).length && !Object.keys(s.dyeHsb).length
+    && EQUIP_SLOTS.every((sl) => (s.equipped[sl]?.id ?? null) === (DEFAULT_EQUIP[sl]?.id ?? null))
+  const dyed = Object.keys(s.dyePalette).length + Object.keys(s.dyeHsb).length > 0
+  const resetBtn = (key: string, guide: string, label: string, ask: string, run: () => void, off: string | null, icon: React.ReactNode) => (
+    <button type="button" data-guide={guide} disabled={!!off} {...{ [CONFIRM_ATTR]: key }} onClick={() => { if (confirmTwice(key, ask)) run() }}
+      title={off ?? label} aria-label={label} className={clsx('pb-ghost', styles.btn, styles.btnIcon, styles.btnReset, mobile && styles.btnM, mobile && styles.btnSq)}>
+      {icon}{!mobile && <span>{label}</span>}
+    </button>
+  )
+  const resets = (
+    <>
+      {resetBtn('reset:outfit', 'reset-outfit', '모두 벗기', '한 번 더 누르면 기본 코디로 돌아가요', s.resetOutfit, atDefault ? '이미 기본 코디예요' : null, <IconTab id="codi" size={14} />)}
+      {resetBtn('reset:dye', 'reset-dye', '염색 초기화', '한 번 더 누르면 모든 염색을 지워요', s.resetDyes, dyed ? null : '염색한 부위가 없어요', <IconDrop size={14} />)}
+    </>
+  )
   const share = (
     <button type="button" data-guide="share-image" onClick={s.openCard} title="내 캐릭터와 코디 정보를 카드 한 장으로 꾸며 저장"
       className={clsx('pb-solid', styles.btn, styles.btnIcon, styles.btnSolid, mobile && styles.btnM)}><IconShareImage size={14} /><span>코디 프로필 저장</span></button>
@@ -117,7 +134,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
       <>
         <StickyBarM>
           <CatTabsM jump />
-          <div className={styles.headerM}>{chip}<div className={styles.right}>{share}</div></div>
+          <div className={styles.headerM}>{chip}<div className={styles.right}>{resets}{share}</div></div>
           <div className={styles.hrM} />
         </StickyBarM>
         {/* 칸 안 스크롤 — 목록 화면과 같다(사용자 지시): 페이지는 맨 위 헤더 높이만큼만 내려가고, 부위 칸은 이 칸 안에서 스크롤한다.
@@ -130,7 +147,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   }
   return (
     <section className={styles.panel}>
-      <div className={styles.header}>{chip}<div className={styles.right}>{share}</div></div>
+      <div className={styles.header}>{chip}<div className={styles.right}>{resets}{share}</div></div>
       <div className={styles.hr} />
       <div className={clsx('pb-scroll', 'pb-fade', styles.scroll)}>
         <div ref={slotsRef} className={styles.slots}>{grid}</div>
