@@ -107,7 +107,7 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   const chip = <CountChip mobile={mobile} label="착용" n={wornCount} total={s.infoCats.length} digits={2} title="착용한 부위 수" />
   // 코디 프로필 저장(헤더 오른쪽 — 예전 '전체 벗기' 자리). 눈에 띄게 진한 핑크(사용자 지시 — 옅은 버튼은 있는 줄도 몰랐다).
   // 누르면 꾸미는 창(코디 프로필 — 디자인 · 배경 · 명찰 · 말풍선 · 자리)이 열리고 거기서 저장한다
-  // [모두 벗기] · [염색 초기화](코디 프로필 왼쪽, 사용자 지시). 두 번 눌러야 한다(누른 버튼 위에 되묻는 말풍선 — 부위 벗기와 같다).
+  // [염색 초기화] · [모두 벗기](코디 프로필 왼쪽, 사용자 지시 — 코디는 자주 바꾸니 모두 벗기가 코디 프로필 바로 옆). 두 번 눌러야 한다(누른 버튼 위에 되묻는 말풍선 — 부위 벗기와 같다).
   // 휴대폰은 머리 줄에 글자 버튼 둘이 들어가지 않아(390 폭 빈자리 150px) 머리 버튼 높이의 정사각형 아이콘만 둔다
   const atDefault = s.tone === DEFAULT_TONE && !Object.keys(s.hidden).length && !Object.keys(s.dotPos).length && !Object.keys(s.dyePalette).length && !Object.keys(s.dyeHsb).length
     && EQUIP_SLOTS.every((sl) => (s.equipped[sl]?.id ?? null) === (DEFAULT_EQUIP[sl]?.id ?? null))
@@ -120,8 +120,8 @@ export default function InfoPanel({ mobile }: { mobile: boolean }) {
   )
   const resets = (
     <>
-      {resetBtn('reset:outfit', 'reset-outfit', '모두 벗기', '한 번 더 누르면 기본 코디로 돌아가요', s.resetOutfit, atDefault ? '이미 기본 코디예요' : null, <IconTab id="codi" size={14} />)}
       {resetBtn('reset:dye', 'reset-dye', '염색 초기화', '한 번 더 누르면 모든 염색을 지워요', s.resetDyes, dyed ? null : '염색한 부위가 없어요', <IconDrop size={14} />)}
+      {resetBtn('reset:outfit', 'reset-outfit', '모두 벗기', '한 번 더 누르면 기본 코디로 돌아가요', s.resetOutfit, atDefault ? '이미 기본 코디예요' : null, <IconTab id="codi" size={14} />)}
     </>
   )
   const share = (
