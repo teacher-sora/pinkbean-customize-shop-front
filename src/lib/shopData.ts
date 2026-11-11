@@ -173,10 +173,12 @@ export const ITEM_KINDS: { v: string; l: string; t: string; test?: (it: ListItem
   { v: 'all', l: '전체', t: '전부 보기' },
   { v: 'master', l: '마라벨', t: '마스터라벨(세트의 헤어 · 성형 · 얼굴장식 포함)', test: (it) => it.label === 'master' },
   { v: 'special', l: '스라벨', t: '스페셜라벨', test: (it) => it.label === 'special' },
-  // 캐시 · 일반은 원본의 캐시 표시(isCash)로 가른다(사용자 지시 — 모루용으로 메소 아이템만 보기). 피부는 원본에 표시가 없어(모두 false) 양쪽에 다 보인다
-  { v: 'cash', l: '캐시', t: '라벨이 없는 캐시 아이템', test: (it) => it.slot === 'skin' || (it.isCash && !it.label) },
-  { v: 'normal', l: '일반', t: '메소 아이템(캐시가 아닌 것)', test: (it) => it.slot === 'skin' || !it.isCash },
+  // 캐시 · 일반은 원본의 캐시 표시(isCash)로 가른다(사용자 지시 — 모루용으로 메소 아이템만 보기)
+  { v: 'cash', l: '캐시', t: '라벨이 없는 캐시 아이템', test: (it) => it.isCash && !it.label },
+  { v: 'normal', l: '일반', t: '메소 아이템(캐시가 아닌 것)', test: (it) => !it.isCash },
 ]
+// 필터를 받지 않고 어느 칸에서나 늘 보이는 부위(사용자 지시): 헤어 · 성형 · 피부 · 일루전 링 · 명찰 / 말풍선 · 칭호 · 훈장 · 이펙트 · 라이딩
+export const KIND_FREE_SLOTS = new Set(['hair', 'face', 'skin', 'ring', 'nameTag', 'chatBalloon', 'chatRing', 'title', 'medal', 'effect', 'riding'])
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.
