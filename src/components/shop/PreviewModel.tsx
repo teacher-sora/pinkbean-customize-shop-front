@@ -109,7 +109,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   } | null>(null)
   // 우클릭 "움짤 저장"용 — 지금 그리는 동작의 전 프레임과 움직이는 것들(이펙트 · 입자 · 부유). draw effect 가 그림을 그리기 시작할 때 갱신한다.
   const animRef = useRef<{
-    frames: { placed: PlacedLayer[]; foot: { x: number; y: number }; brow: { x: number; y: number }; navel: { x: number; y: number }; flip?: boolean; ground?: { x: number; y: number } }[]
+    frames: { placed: PlacedLayer[]; foot: { x: number; y: number }; brow: { x: number; y: number }; navel: { x: number; y: number }; core: { x: number; y: number }; flip?: boolean; ground?: { x: number; y: number } }[]
     delays: number[]; animated: boolean; pingpong: boolean; effList: EffectMeta[]; action: string
     spots: ParticleSpot[]; descs: Map<string, ParticleDesc>; floating: boolean; ringFloor?: number; chatRef: ChatRef | null
     // 미리보기 캔버스의 판(게임 1배 상자 · 기준점)과 칸 안 자리(디바이스 px) — 배경 움짤이 같은 자리에 얹는다
@@ -311,8 +311,12 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       const foot = bf ? { x: bf.x + stab.x, y: bf.y + stab.y } : { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
       const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
       // navel = 배꼽(월드 원점) + 같은 보정 — 허리 · 몸통에 붙는 이펙트(pos 4 — 소울). flip · ground = 펫 자리(pos 5 — 늘 캐릭터 왼쪽, 의자에 앉으면 의자가 딛는 바닥)
-      return { placed: bare || hidden.skin ? dropBase(placed) : placed, foot, brow, navel: stab, flip: viewInfo.flip, ground: { x: foot.x, y: foot.y + lift } }
+      return { placed: bare || hidden.skin ? dropBase(placed) : placed, foot, brow, navel: stab, core: stab, flip: viewInfo.flip, ground: { x: foot.x, y: foot.y + lift } }
     })
+    // core = 소울 자리(pos 7): 서기 0프레임의 배꼽 = 첫 프레임의 발 + stand1 배꼽. 모든 프레임이 같은 값을 본다 — 숨 쉬기 · 동작 · 탈것의 출렁임에 흔들리지 않는다
+    // (사용자 지시 — 칭호 · 명찰처럼 고정. 배꼽(navel)을 따르면 프레임마다 1~2px 씩 움직였다)
+    const core = frames[0] && refNav ? { x: frames[0].foot.x + refNav.x, y: frames[0].foot.y + refNav.y } : frames[0]?.navel
+    if (core) for (const f of frames) f.core = core
     // 핑퐁(왕복)은 "캐릭터가 클럭"일 때(전투대기 등 일어선 액션)만. 앉은 채(seated)는 재규어가 클럭이고 4족
     // 보행은 루프여야 뒷발이 되돌아가며 움찔하지 않는다. (전투대기가 중간에 툭 끊기던 건 라이딩 전체를 loop 로
     // 막았기 때문 — seated 아닐 때는 원래대로 왕복시킨다.)
