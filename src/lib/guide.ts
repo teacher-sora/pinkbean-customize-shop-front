@@ -146,10 +146,13 @@ export const GUIDE: GuideEntry[] = [
     pc: { how: '맨 아래의 [프리셋] 탭에서\n왼쪽 목록 맨 위, [순서 변경] 옆의 방향 버튼으로 고르세요.' } },
   { id: 'ring', title: '일루전링(변신, 거대한 몸)', words: '일루전 링, 변신, 변신 반지, 거대한 머리, 거대한 몸, 내 뒤에 나, 분신',
     how: '맨 아래의 [코디] 탭에서\n부위 줄의 [일루전링]을 고르세요.', go: { tab: 'codi' } },
-  // 펫 · 안드로이드 · 소울 · 의자 부위는 아직 dev 사이트에만 있다(catalog.DEV_ONLY_CATS) — 운영에 낼 때 조건을 함께 뺀다
+  // 의자는 운영 반영 요청이 와도 dev 에만 둔다(catalog.DEV_HOLD_CATS — 사용자가 의자를 운영에 내라고 따로 말할 때만 조건을 뺀다)
   ...(DEV_SITE ? [
     { id: 'chair', title: '의자에 앉기', words: '의자, 카드 의자, 의자 아이템, 앉기',
       how: '맨 아래의 [코디] 탭에서\n부위 줄의 [의자]를 고르세요.', go: { tab: 'codi' as const } },
+  ] : []),
+  // 펫 · 안드로이드 · 소울 부위는 아직 dev 사이트에만 있다(catalog.DEV_ONLY_CATS) — 운영에 낼 때 조건을 함께 뺀다
+  ...(DEV_SITE ? [
     { id: 'soul', title: '소울 이펙트 달기', words: '소울, 소울 스킨, 소울 이펙트, 머리 위 문장, 소울 외형, 위대한 소울',
       how: '맨 아래의 [코디] 탭에서\n부위 줄의 [소울]을 고르세요.', go: { tab: 'codi' as const } },
     { id: 'pet', title: '펫 데려오기', words: '펫, 애완동물, 옆에 서는 펫, 펫 고르기',

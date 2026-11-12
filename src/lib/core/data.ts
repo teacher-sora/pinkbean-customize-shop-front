@@ -1,7 +1,7 @@
 // Static data access. Everything is fetched from DATA_BASE — the Cloudflare R2/CDN bucket
 // (bucket contents live at the bucket root, e.g. <cdn>/index.json). NEXT_PUBLIC_DATA_BASE
 // overrides the base. Index is split per slot for virtualization.
-import { CATS } from '@/lib/catalog'
+import { CATS, DEV_SITE } from '@/lib/catalog'
 import { LRU } from './lru'
 import type { ChatUi } from './chatUi'
 import type { ParticleDesc, ParticleSpot } from './particle'
@@ -176,11 +176,28 @@ function boot<T>(rel: string): Promise<T> | null {
 }
 const pre = <T,>(rel: string, load: () => Promise<T>): Promise<T> => { const p = boot<T>(rel); return p ? p.catch(load) : load() }
 
+// dev 사이트가 운영보다 먼저 보는 목록(테스트 서버 신규 — 사용자 지시: 신규는 dev 에서 보고 운영 반영을 정한다. parser scripts/dev-stage.py 가 올린다).
+// CDN dev/manifest.json = { files: [CDN 경로…] } 에 적힌 파일은 dev/<경로>(병합된 전체 목록 — 순서가 운영 반영 뒤와 같다)를 대신 받는다.
+// 운영 빌드는 이 파일을 받지 않고 경로도 그대로다 — CDN 을 같이 읽어도 운영 화면은 바뀌지 않는다. 운영에 낼 때는 parser 가 dev/ 의 목록을 제자리에 올리고 manifest 를 비운다.
+const NO_STAGE = Promise.resolve(new Set<string>())
+let devStagePromise: Promise<Set<string>> | null = null
+function devStage(): Promise<Set<string>> {
+  if (!DEV_SITE) return NO_STAGE
+  if (!devStagePromise) {
+    devStagePromise = fetch(url('dev/manifest.json'), FRESH).then((r) => (r.ok ? r.json() : {}))
+      .then((j: { files?: string[] }) => new Set(j.files || []))
+      .catch(() => new Set<string>())
+  }
+  return devStagePromise
+}
+// 받을 경로 — dev 사이트에서 먼저 보는 목록이면 dev/<경로>, 아니면 그대로(운영은 늘 그대로)
+const stagedRel = async (rel: string) => ((await devStage()).has(rel) ? `dev/${rel}` : rel)
+
 // 최근 패치 신규 아이템 id(파서 stringwz-merge 가 패치마다 catalog/new.json 을 교체). 없거나 실패하면 빈 집합.
 let newItemsPromise: Promise<Set<string>> | null = null
 export function loadNewItems(): Promise<Set<string>> {
   if (!newItemsPromise) {
-    newItemsPromise = pre<{ ids?: string[] }>('catalog/new.json', () => fetch(url('catalog/new.json'), FRESH).then((r) => (r.ok ? r.json() : { ids: [] })))
+    newItemsPromise = stagedRel('catalog/new.json').then((rel) => pre<{ ids?: string[] }>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : { ids: [] }))))
       .then((j: { ids?: string[] }) => new Set(j.ids || []))
       .catch(() => new Set<string>())
   }
@@ -266,7 +283,7 @@ type Labels = { master: Set<string> }
 let labelsPromise: Promise<Labels> | null = null
 export function loadLabels(): Promise<Labels> {
   if (!labelsPromise) {
-    labelsPromise = pre<{ master?: string[] }>('catalog/labels.json', () => fetch(url('catalog/labels.json'), FRESH).then((r) => (r.ok ? r.json() : {})))
+    labelsPromise = stagedRel('catalog/labels.json').then((rel) => pre<{ master?: string[] }>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : {}))))
       .catch(() => ({} as { master?: string[] }))
       .then((d) => ({ master: new Set(d.master ?? []) }))
   }
@@ -290,7 +307,7 @@ export function loadSlot(file: string): Promise<ListItem[]> {
   if (!p) {
     const labels = loadLabels() // 목록과 함께 받는다(기다리는 시간이 겹치게)
     const sets = loadSets()
-    p = pre<ListItem[]>(file, () => fetch(url(file), FRESH).then((r) => r.json())).then((items: ListItem[]) => {
+    p = stagedRel(file).then((rel) => pre<ListItem[]>(rel, () => fetch(url(rel), FRESH).then((r) => r.json()))).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
       // 같은 동작 목록은 한 배열을 함께 쓴다 — JSON 은 아이템마다 같은 글자를 새로 만든다(무기 3,961개의 동작 목록은 365가지뿐인데
       // 문자열 20만 개가 힙에 남았다). 동작 목록은 읽기만 한다
