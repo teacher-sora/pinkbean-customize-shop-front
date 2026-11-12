@@ -293,12 +293,12 @@ export function loadLabels(): Promise<Labels> {
   return labelsPromise
 }
 // 공식 세트 표(parser scripts/sets-build.py → CDN catalog/sets.json) = { items: { id: [무리 번호, 무리 안 세트 순서] }, names: [무리 이름] }.
-// 공지 본문 · 선택권 설명 · 옛 캐시 패키지로 확인된 세트만 있다. 없거나 실패하면 빈 표(세트 번호 · 남녀판만 묶인다)
+// 공지 본문 · 선택권 설명 · 옛 캐시 패키지 · 사용자 확인 묶음으로 확인된 세트만 있다. dev 빌드는 dev 단계의 표를 먼저 본다(stagedRel). 없거나 실패하면 빈 표(세트 번호 · 남녀판만 묶인다)
 type SetTable = Record<string, [number, number]>
 let setsPromise: Promise<SetTable> | null = null
 export function loadSets(): Promise<SetTable> {
   if (!setsPromise) {
-    setsPromise = pre<{ items?: SetTable }>('catalog/sets.json', () => fetch(url('catalog/sets.json'), FRESH).then((r) => (r.ok ? r.json() : {})))
+    setsPromise = stagedRel('catalog/sets.json').then((rel) => pre<{ items?: SetTable }>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : {}))))
       .catch(() => ({} as { items?: SetTable }))
       .then((d) => d.items ?? {})
   }
