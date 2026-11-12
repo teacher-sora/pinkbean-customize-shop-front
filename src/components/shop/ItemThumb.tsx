@@ -285,15 +285,17 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       // 무기 이펙트를 끄면 무기(후보든 내 착용이든)의 이펙트 레이어도 뺀다 — 미리보기와 같은 규칙.
       const wOn = !pvEff || pvEff.wEffect
       const { placed: p, anchors } = assemble([...bgF, ...self].map((ci) => ({ ...ci, layers: dropWeaponEffects(ci.slot, ci.layers, wOn) })), zmap, smap)
-      const shown = item.slot !== 'skin' && bgF.some((ci) => ci.noDraw) ? dropBase(p) : p // 피부를 가린 내 캐릭터 — 고르는 후보 피부는 그대로 보인다
+      // 펫 카드의 주인공은 펫이다 — 캐릭터는 발 자리(앵커)만 잡고 그리지 않는다(사용자 지시: 마네킹 옆에서 잘리지 않게, 안드로이드 카드처럼 그것만)
+      const alone = item.slot === 'pet'
+      const shown = alone ? [] : item.slot !== 'skin' && bgF.some((ci) => ci.noDraw) ? dropBase(p) : p // 피부를 가린 내 캐릭터 — 고르는 후보 피부는 그대로 보인다
       setPlaced(shown)
       // 이펙트(망토 오라 등) = 배경(내 착용)의 것 + 이 아이템 자신의 것. 둘 다 같은 앵커로 배치한다.
       const foot = footOf(p) ?? { x: 8, y: 21 }
-      const anch = { foot, brow: anchors.brow ?? foot, flip } // flip = 펫 자리(pos 5)를 시선과 상관없이 캐릭터 왼쪽에
+      const anch = { foot, brow: anchors.brow ?? foot, flip, alone } // flip = 펫 자리(pos 5)를 시선과 상관없이 캐릭터 왼쪽에(alone 이면 발 자리에)
       const draws: EffectDraw[] = []
       // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기 · 프리셋 카드와 같은 규칙.
       const noFx = !!ringIllusion([...bgF, ...self])?.hideEffect
-      if (!noFx && item.slot !== 'android') for (const { em } of ctxEffs || []) draws.push(...effectDraws(em, view.action, anch, 0))
+      if (!noFx && item.slot !== 'android' && !alone) for (const { em } of ctxEffs || []) draws.push(...effectDraws(em, view.action, anch, 0))
       // 이 아이템 "자신의" 이펙트(망토 오라 등)는 아이템 모습의 일부 → 모델·내 모델 모두 그린다(연출 토글은 적용).
       //   ('내 모델/프리셋만' 규칙은 배경=내 착용 아이템들의 이펙트(ctxEffs) 얘기고, 그건 모델엔 배경이 없어 자연히 없다.)
       if (!noFx && item.slot !== 'skin' && (!pvEff || effectEnabled(item.slot, pvEff))) {
@@ -306,7 +308,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       }
       // 이 아이템 자신의 파티클(제네시스 무기의 붉은 파장 등) — 다 퍼진 한 장. 무기 이펙트를 끄면 없다.
       let parts: ParticleDraw[] = []
-      if (!noFx && !ringIllusion([...bgF, ...self])?.hideWeapon && (!pvEff || effectEnabled(item.slot, pvEff))) {
+      if (!noFx && !alone && !ringIllusion([...bgF, ...self])?.hideWeapon && (!pvEff || effectEnabled(item.slot, pvEff))) {
         const pIdx = await loadParticleIndex()
         const spots = spotsFor(pIdx[item.id], view.action)
         if (spots.length) {
@@ -391,6 +393,8 @@ export default function ItemThumb(props: {
   fraction?: number; fitW?: number
 }) {
   if (props.mode !== 'sprite' && props.item.chatUi && props.chat) return <ChatThumb item={props.item} chat={props.chat} />
+  // 소울: 마네킹 · 내 모델 보기는 몸 없이 이펙트의 대표 장 하나만(사용자 지시 — 머리 위 이펙트가 칸 위로 잘렸다). 아이템 보기는 소울 아이템 아이콘(icon)
+  if (props.mode !== 'sprite' && props.item.slot === 'soul' && props.item.thumb) return <Sprite item={{ ...props.item, icon: props.item.thumb }} />
   if (props.mode === 'sprite') return props.item.slot === 'hair' ? <HairSprite item={props.item} zmap={props.zmap} /> : <Sprite item={props.item} />
   return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} fraction={props.fraction} fitW={props.fitW} />
 }

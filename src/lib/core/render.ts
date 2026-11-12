@@ -76,7 +76,8 @@ export interface EffectDraw { png: string; origin: { x: number; y: number }; z: 
 // Character reference points an effect can attach to (world coords; navel = (0,0)).
 // foot = body sprite origin (-navel); brow = resolved head brow anchor.
 // flip = 시선 반전(오른쪽을 본다) — 펫 자리처럼 캐릭터의 '왼쪽'에 늘 있어야 하는 것은 반전돼도 왼쪽에 남게 거꾸로 둔다. ground = 딛는 바닥(의자에 앉으면 의자가 딛는 줄)
-export interface EffectAnchors { foot: Vec; brow: Vec; navel?: Vec; flip?: boolean; ground?: Vec }
+// alone = 캐릭터 없이 그 아이템만 그리는 목록 카드(펫) — 펫 자리(pos 5)도 캐릭터가 서 있을 발 자리에 둔다
+export interface EffectAnchors { foot: Vec; brow: Vec; navel?: Vec; flip?: boolean; ground?: Vec; alone?: boolean }
 
 // Pick the STATIC representative effect frame for a given action (falls back to the
 // `default` group, then repGroup). One frame only — effects never animate.
@@ -102,7 +103,7 @@ function groupDraw(g: EffectGroup | undefined, anchors: EffectAnchors, elapsed: 
   // animate: pick the frame for the current time (single frame → static rep frame).
   const idx = g.frames.length > 1 ? frameAtElapsed(g.frames.map((f) => f.delay), elapsed) : g.repFrame
   const fr = g.frames[idx] || g.frames[g.repFrame] || g.frames[0]
-  const pt = g.pos === 1 ? anchors.brow : g.pos === 4 ? (anchors.navel ?? { x: 0, y: 0 }) : g.pos === 5 ? { x: (anchors.ground ?? anchors.foot).x + (anchors.flip ? -PET_DX : PET_DX), y: (anchors.ground ?? anchors.foot).y } : anchors.foot
+  const pt = g.pos === 1 ? anchors.brow : g.pos === 4 ? (anchors.navel ?? { x: 0, y: 0 }) : g.pos === 5 && !anchors.alone ? { x: (anchors.ground ?? anchors.foot).x + (anchors.flip ? -PET_DX : PET_DX), y: (anchors.ground ?? anchors.foot).y } : anchors.foot
   return { png: fr.png, origin: fr.origin, z: fr.z ?? g.z, ox: pt.x, oy: pt.y }
 }
 // 이펙트의 모든 묶음(두 번째 층 extra 까지) — 그림을 미리 받거나 염색할 때 빠뜨리지 않게 한 곳에서 모은다.

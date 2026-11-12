@@ -100,7 +100,7 @@ export interface ListItem {
   metaUrl?: string            // 프론트 public 의 meta.json 경로(CDN 밖 — 라이딩 · 명찰과 말풍선)
   chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(core/chatUi)
   dupOf?: number              // 헤어 · 성형: 같은 그림의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
-  dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups)
+  dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups). 소울은 목록 파일에 직접 — 같은 생김새의 대표 id(parser soul-build.py)
   setGroup?: number           // 공식 세트 무리 번호(loadSets — lib/setOrder 가 목록에서 한자리에 모은다)
   setSub?: number             // 무리 안 순서(0 = 여자 전용, 1 = 남자 전용, 2 = 공용 — 남녀 세트에 함께 든 것)
 }
@@ -368,7 +368,8 @@ export function loadEffectIndex(): Promise<Set<string>> {
       loadSlot(CASHFX_FILE).catch(() => [] as ListItem[]),
       // 의자 · 소울 · 펫 부위가 없는 빌드(운영 — catalog.DEV_ONLY_CATS)는 받지 않는다
       ...[['chair', CHAIR_FILE], ['soul', SOUL_FILE], ['pet', PET_FILE]].map(([cat, f]) => (CATS.some((c) => c.id === cat) ? loadSlot(f).catch(() => [] as ListItem[]) : Promise.resolve([] as ListItem[]))),
-    ]).then(([ids, ...lists]) => new Set([...(ids as string[]), ...(lists as ListItem[][]).flat().map((it) => String(parseInt(it.id, 10)))]))
+    // 복제(dupId — 소울의 같은 생김새 아이템들)는 이펙트 파일이 없다 — 대표로 읽힌다(ShopContext.toOriginal)
+    ]).then(([ids, ...lists]) => new Set([...(ids as string[]), ...(lists as ListItem[][]).flat().filter((it) => !it.dupId).map((it) => String(parseInt(it.id, 10)))]))
   }
   return effectIndexPromise
 }

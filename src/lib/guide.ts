@@ -148,9 +148,9 @@ export const GUIDE: GuideEntry[] = [
     how: '맨 아래의 [코디] 탭에서\n부위 줄의 [일루전링]을 고르세요.', go: { tab: 'codi' } },
   // 펫 · 안드로이드 · 소울 · 의자 부위는 아직 dev 사이트에만 있다(catalog.DEV_ONLY_CATS) — 운영에 낼 때 조건을 함께 뺀다
   ...(DEV_SITE ? [
-    { id: 'chair', title: '의자에 앉기', words: '의자, 카드 의자, 의자 아이템, 블루 아카이브 의자',
+    { id: 'chair', title: '의자에 앉기', words: '의자, 카드 의자, 의자 아이템, 앉기',
       how: '맨 아래의 [코디] 탭에서\n부위 줄의 [의자]를 고르세요.', go: { tab: 'codi' as const } },
-    { id: 'soul', title: '소울 이펙트 달기', words: '소울, 소울 스킨, 소울 이펙트, 머리 위 문장, 소울 외형',
+    { id: 'soul', title: '소울 이펙트 달기', words: '소울, 소울 스킨, 소울 이펙트, 머리 위 문장, 소울 외형, 위대한 소울',
       how: '맨 아래의 [코디] 탭에서\n부위 줄의 [소울]을 고르세요.', go: { tab: 'codi' as const } },
     { id: 'pet', title: '펫 데려오기', words: '펫, 애완동물, 옆에 서는 펫, 펫 고르기',
       how: '맨 아래의 [코디] 탭에서\n부위 줄의 [펫]을 고르세요.', go: { tab: 'codi' as const } },
