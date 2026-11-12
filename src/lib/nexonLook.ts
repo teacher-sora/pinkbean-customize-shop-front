@@ -55,12 +55,17 @@ export type NexonLook = { key: 'normal' | 'additional'; label: string; gender: s
 // weaponMotion = 게임이 이 캐릭터를 그리는 무기 모션(연출 설정의 PV_WEAPONS 값) — weaponMotionOf
 export type NexonLooks = { gender: string | null; charClass: string | null; lookMode: string | null; weaponMotion: string; looks: NexonLook[] }
 
-// 무기 모션은 **착용한 일반 무기의 분류**가 정한다. 캐시 무기는 그 모션의 자세로 그려진다(30 한손 / 40 두손 / 49 건).
-// 실측(랭킹 300명): 넥슨 캐릭터 그림의 기본 모션(wmotion W00)이 건 → 건(W03), 두손검 · 두손둔기 · 창 · 폴암 · 석궁 → 두손(W02),
-// 그 밖(활 · 너클 · 아대 · 핸드캐논 · 스태프 …) → 한손(W01)과 같았다. 두손도끼는 표본에 없었고 두손 계열(코드 41)이라 두손에 둔다.
-// 왜: 이걸 넣지 않으면 불러온 코디가 늘 '기본'이라 건 캐릭터의 캐시 무기가 한손 자세로, 두손 무기 캐릭터가 한 손을 내린 채 그려졌다.
+// 무기 모션은 **게임에서 고른 값**이 먼저다. 넥슨 기본 정보의 캐릭터 이미지 주소(`character_image`)가 그 값을 `wmotion=W0n` 으로
+// 싣는다(W01 한손 · W02 두손 · W03 건, W00 = 고르지 않음). 랭킹 300명 가운데 약 140명이 W01~W03 이었다(활 직업이 건 모션 등).
+// W00 이거나 주소가 없으면 **착용한 일반 무기의 분류**가 정한다. 실측(같은 300명, 주소에 W00 을 붙인 그림): 건 → 건(W03),
+// 두손검 · 두손둔기 · 창 · 폴암 · 석궁 → 두손(W02), 그 밖(활 · 너클 · 아대 · 핸드캐논 · 스태프 …) → 한손(W01)과 같았다(299/300).
+// 두손도끼는 표본에 없었고 두손 계열(코드 41)이라 두손에 둔다. 캐시 무기는 그 모션의 자세로 그려진다(30 한손 / 40 두손 / 49 건).
+// 왜: 이걸 넣지 않으면 불러온 코디가 늘 '기본'이라 건 모션으로 든 캐시 무기가 한손 자세로 그려졌다.
 const TWO_HAND_PARTS = new Set(['두손검', '두손도끼', '두손둔기', '창', '폴암', '석궁'])
-export function weaponMotionOf(itemData: NexonRaw | null): string {
+const WMOTION: Record<string, string> = { W01: 'one', W02: 'two', W03: 'gun' }
+export function weaponMotionOf(itemData: NexonRaw | null, image?: string | null): string {
+  const set = /[?&]wmotion=(W0\d)/.exec(image || '')?.[1]
+  if (set && WMOTION[set]) return WMOTION[set]
   const w = ((itemData?.item_equipment as RawRegItem[]) || []).find((it) => it.item_equipment_slot === '무기')
   const p = w?.item_equipment_part || ''
   return p === '건' ? 'gun' : TWO_HAND_PARTS.has(p) ? 'two' : 'basic'
@@ -171,7 +176,8 @@ function genderForLook(charClass: string | null, kkey: 'normal' | 'additional', 
 }
 
 // 넥슨 세 응답(cashitem-equipment · beauty-equipment · item-equipment) → 코디 벌들. 일반 장비는 없어도 된다.
-export function buildLooks(data: NexonRaw, beauty: NexonBeautyRaw | null, itemData: NexonRaw | null): NexonLooks {
+// image = 기본 정보의 캐릭터 이미지 주소(게임에서 고른 무기 모션이 들어 있다 — weaponMotionOf). 없으면 무기 분류로 정한다.
+export function buildLooks(data: NexonRaw, beauty: NexonBeautyRaw | null, itemData: NexonRaw | null, image?: string | null): NexonLooks {
   const reg = regularVisible(itemData) // 아바타에 보이는 일반 장비(캐시의 베이스 레이어)
   const charClass = (data.character_class as string) ?? null
   const charGender = (data.character_gender as string) ?? null
@@ -213,7 +219,7 @@ export function buildLooks(data: NexonRaw, beauty: NexonBeautyRaw | null, itemDa
   // 일반 직업에도 헛노출됨). 실제 2번째 코디일 때만 일반 장비를 베이스로 병합해 추가한다.
   const extraCash = look('additional', labelB, false)
   if (extraCash.presets.some((x) => x.items.length) || extraCash.hair || extraCash.face || extraCash.skin) looks.push(look('additional', labelB, true))
-  return { gender: charGender, charClass, lookMode: (data.character_look_mode as string) ?? null, weaponMotion: weaponMotionOf(itemData), looks }
+  return { gender: charGender, charClass, lookMode: (data.character_look_mode as string) ?? null, weaponMotion: weaponMotionOf(itemData, image), looks }
 }
 
 // ── ② 코디 벌 → 스냅샷 ─────────────────────────────────────────────────

@@ -1907,7 +1907,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const importByNick = async (nick: string): Promise<LookOption[] | null> => {
     try {
       // v: 캐시 버스터. 브라우저에 남아 있을 수 있는 잘못된 옛 응답을 다시 쓰지 않게 한다(서버는 읽지 않는다). 응답 형식을 바꾸면 올린다.
-      const r = await fetch(`/api/nick?name=${encodeURIComponent(nick)}&v=3`)
+      const r = await fetch(`/api/nick?name=${encodeURIComponent(nick)}&v=4`)
       const j = await r.json().catch(() => null)
       if (!r.ok) { notify(j?.error || '불러오기에 실패했어요'); return null }
       const gender: string | null = j?.gender ?? null

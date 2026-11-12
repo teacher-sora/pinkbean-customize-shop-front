@@ -94,7 +94,8 @@ export async function GET(req: NextRequest) {
     if (!cr.ok) return nexonFail(cr, { error: '코디 정보를 불러오지 못했어요' }, 502)
     const data: NexonRaw = await cr.json()
     // 통과했으면 뷰티와 일반 장비를 병렬로.
-    // 기본 정보는 캐릭터 이미지 주소 하나 때문에 받는다 — 이름이 같은 헤어·성형을 그림으로 가려낸다(lib/lookMatch). 실패해도 된다.
+    // 기본 정보는 캐릭터 이미지 주소 하나 때문에 받는다 — 이름이 같은 헤어·성형을 그림으로 가려내고(lib/lookMatch),
+    // 주소의 wmotion 으로 게임에서 고른 무기 모션을 읽는다(nexonLook.weaponMotionOf). 실패해도 된다(무기 분류로 정한다).
     const [br, ir, bi] = await Promise.all([
       fetchNexon(`${BASE}/character/beauty-equipment?ocid=${encodeURIComponent(ocid)}`, init),
       fetchNexon(`${BASE}/character/item-equipment?ocid=${encodeURIComponent(ocid)}`, init),
@@ -108,7 +109,7 @@ export async function GET(req: NextRequest) {
     const image: string | null = bi.ok ? ((await bi.json().catch(() => null))?.character_image as string) || null : null
     const itemData: NexonRaw | null = ir.ok ? await ir.json().catch(() => null) : null // 일반 장비는 실패해도 치명적이지 않다
     return NextResponse.json({
-      ...buildLooks(data, beauty, itemData),
+      ...buildLooks(data, beauty, itemData, image), // 이미지 주소에 게임에서 고른 무기 모션(wmotion)이 있다
       image,
     }, {
       headers: { 'Cache-Control': 'no-store' }, // 항상 지금의 코디를 준다 — 캐시하지 않는다
