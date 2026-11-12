@@ -55,7 +55,11 @@ export interface ChatUi {
   anim?: Record<string, number[]> // 움직이는 조각 → 프레임마다 머무는 시간(ms). 프레임 i(1부터)의 조각 = animParts['<키>#i']
   animAtlas?: string; animParts?: Record<string, ChatPart>
   arrowPad?: number // 말풍선 꼬리의 왼쪽 빈 열 수(origin.x 만큼 띠 위에 걸치는 자리 중 띠 높이에서 투명한 열) — 띠를 그만큼 꼬리 밑으로 늘린다
+  special?: SpecialTag // 특수 명찰(원본 SpecialNameTag — 학생 이름표): 판 위에 이름 · 레벨 · 직업 아이콘 · 경험치 막대를 찍는다
 }
+// 특수 명찰: 층(판) i 의 조각 = bg<i> · bar<i>(막대 채움) · edge<i>(채움 끝 한 열), 직업 아이콘 = job<계열 번호>.
+// sizes[i] = 그 층을 쓰는 최소 이름 폭. layers[i] = 기준점에서 이름 · 레벨 글자의 펜 시작과 줄 위, 직업 아이콘 · 막대의 왼쪽 위까지
+export interface SpecialTag { sizes: number[]; layers: { Name: Vec; Level: Vec; jobIcon: Vec; levelBar: Vec }[]; levelClr: string }
 // 이모티콘 프레임: 가로로 이은 그림(strip) 안의 자리 x · 크기 · origin(ox, oy) · 머무는 시간(d, ms)
 export interface EmoFrame { x: number; w: number; h: number; ox: number; oy: number; d: number }
 // png = 대표 그림(mainImg — 고르기 칸 · 정지 그림). 움직이는 것은 strip · frames 가 있다.
@@ -225,11 +229,35 @@ function plainTag (name: string): Bitmap {
   return { c, ox: x, oy: TAG_TOP }
 }
 
+// 특수 명찰(학생 이름표). 판은 원본 origin 대로 기준점에 두고(쌓기는 다른 명찰처럼 prepareChat 이 그림 위를 TAG_TOP 에), 이름 · 레벨 글자와
+// 직업 아이콘 · 경험치 막대를 원본 자리(vector)에 찍는다. 막대는 채운 길이만큼 자르고 끝 열을 edge 로 바꾼다(막대의 마지막 열 = edge — 원본 대조).
+// 레벨 · 직업 · 경험치는 서비스에 없는 값이라 게임 캐시샵의 미리보기처럼 고정한다(Lv.200, 직업 아이콘 1, 경험치 SPECIAL_EXP).
+const SPECIAL_LEVEL = '200', SPECIAL_JOB = 1, SPECIAL_EXP = 0.5
+async function specialTag (ui: ChatUi, name: string): Promise<Bitmap> {
+  const A = await loadImage(ui.atlas, true), P = ui.parts, s = ui.special!
+  const t = textBitmap(name, ui.clr), lv = textBitmap(SPECIAL_LEVEL, s.levelClr)
+  let li = 0
+  s.sizes.forEach((w, i) => { if (t.adv >= w && s.layers[i]) li = i })
+  const L = s.layers[li], bar = P[`bar${li}`], edge = P[`edge${li}`], job = P[`job${SPECIAL_JOB}`]
+  const pieces: Piece[] = [at(P[`bg${li}`], 0, 0)]
+  const fill = Math.round(bar.w * SPECIAL_EXP)
+  if (fill > 0) {
+    pieces.push({ p: bar, x: L.levelBar.x, y: L.levelBar.y, w: fill - 1 })
+    pieces.push({ p: edge, x: L.levelBar.x + fill - 1, y: L.levelBar.y })
+  }
+  if (job) pieces.push(at(job, L.jobIcon.x, L.jobIcon.y))
+  return compose(A, pieces, (g, x0, y0) => {
+    g.drawImage(t.c, L.Name.x + t.left - x0, L.Name.y + t.top - y0)
+    g.drawImage(lv.c, L.Level.x + lv.left - x0, L.Level.y + lv.top - y0)
+  })
+}
+
 // 명찰. 기준점(0,0) = 발끝. 글자 칸(높이 12)의 위 = TAG_TEXT, 글자 칸의 왼끝 = -(이름 폭 + 4) / 2.
 // 양끝(w · e)은 origin 대로 글자 칸 양옆에 두고, 가운데(c)는 두 조각이 실제로 그려진 사이만 메운다 — origin 이 조각 폭과 몇 px
 // 어긋난 디자인도 겹치거나(진한 줄) 비지(빈 틈) 않는다.
 async function nameTag (ui: ChatUi, name: string): Promise<Bitmap> {
   if (ui.plain) return plainTag(name)
+  if (ui.special) return specialTag(ui, name)
   const A = await loadImage(ui.atlas, true), P = ui.parts
   const t = textBitmap(name, ui.clr)
   const T = TAG_TEXT
@@ -384,7 +412,7 @@ function bitmapOf (ui: ChatUi, s: string, keep: boolean, emo?: ChatEmo): Promise
 // 명찰 · 말풍선을 하나씩 따로 만든다(목록 카드가 쓴다 — 몸 없이 그 아이템만). 기준점 정보(ox, oy)는 버리고 그림만(카드에는 이모티콘이 없다).
 // 칭호 · 훈장은 name 에 그 아이템 이름을 준다.
 export async function chatPreview (ui: ChatUi, d: Pick<ChatDraw, 'name' | 'text' | 'emo'>): Promise<HTMLCanvasElement | null> {
-  const keep = await loadGlyphs([d.name, d.text, ' : '])
+  const keep = await loadGlyphs([d.name, d.text, ' : ', ui.special ? SPECIAL_LEVEL : ''])
   const bub = ui.kind === 'chatBalloon'
   const b = await bitmapOf(ui, bub ? `${d.name} : ${d.text}` : d.name, keep, bub ? d.emo : undefined)
   return b?.c ?? null
@@ -418,7 +446,7 @@ export function warmEmo (emo: ChatEmo): Promise<unknown> {
 export async function prepareChat (d: ChatDraw | undefined, full = false): Promise<Bitmap[]> {
   if (!d) return []
   // 글자 도트를 먼저 받는다(이미 받았으면 바로 끝난다) — 받기 전에 그리지 않는다. 받지 못했으면 그린 그림을 기억하지 않아 다음에 다시 그린다.
-  const keep = await loadGlyphs([d.name, d.text, ' : ', d.title?.name ?? '', d.medal?.name ?? ''])
+  const keep = await loadGlyphs([d.name, d.text, ' : ', d.title?.name ?? '', d.medal?.name ?? '', d.tag?.special ? SPECIAL_LEVEL : ''])
   let emo = d.emo
   if (!full && emo?.strip && emo.frames?.length && !imageLoaded(emo.strip, true)) { void warmEmo(emo); emo = { ...emo, still: true } }
   const [bub, tag, title, medal] = await Promise.all([
