@@ -429,8 +429,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // 즐겨찾기: 아이템 id Set. SSR 안전을 위해 빈 값으로 시작 → 클라이언트에서 localStorage 하이드레이트.
   const [favorites, setFavoritesState] = useState<Set<string>>(new Set())
-  const [newIds, setNewIds] = useState<Set<string>>(new Set())
-  useEffect(() => { loadNewItems().then(setNewIds).catch(() => {}) }, [])
+  // 장비 · 부위 신규(CDN catalog/new.json)와 명찰 · 말풍선 신규(public/chatui/new.json)를 따로 받아 합친다 — 한 상태에 차례로 넣으면
+  // 늦게 온 쪽이 먼저 온 쪽을 덮어 명찰 · 말풍선 신규가 '신규'에서 빠졌다(운영 — 받는 순서에 따라)
+  const [itemNewIds, setItemNewIds] = useState<Set<string>>(new Set())
+  const [chatNewIds, setChatNewIds] = useState<string[]>([])
+  useEffect(() => { loadNewItems().then(setItemNewIds).catch(() => {}) }, [])
+  const newIds = useMemo(() => (chatNewIds.length ? new Set([...itemNewIds, ...chatNewIds]) : itemNewIds), [itemNewIds, chatNewIds])
   useEffect(() => { recordVisit() }, [])
   useEffect(() => { try { const raw = localStorage.getItem(FAV_KEY); if (raw) setFavoritesState(new Set(JSON.parse(raw))) } catch { /* noop */ } }, [])
   const toggleFavorite = useCallback((id: string) => {
@@ -651,7 +655,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       prefetchGlyphs() // 글자 도트는 한가할 때 미리
       stagedUrl(CHAT_DEFAULT_BALLOON).then((u) => fetch(u)).then((x) => (x.ok ? x.json() : null)).then((u: ChatUi | null) => { if (u?.parts) setChatDefault(u) }).catch(() => {})
       // 테스트 서버에 새로 나온 명찰 · 말풍선(본 서버에 없는 것) — NEW 라벨 · '신규' 필터에 더한다
-      stagedUrl(CHAT_NEW_FILE).then((u) => fetch(u)).then((x) => (x.ok ? x.json() : null)).then((j: { ids?: string[] } | null) => { if (j?.ids?.length) setNewIds((prev) => new Set([...prev, ...j.ids!])) }).catch(() => {})
+      stagedUrl(CHAT_NEW_FILE).then((u) => fetch(u)).then((x) => (x.ok ? x.json() : null)).then((j: { ids?: string[] } | null) => { if (j?.ids?.length) setChatNewIds(j.ids) }).catch(() => {})
     }).catch(() => {})
   }, [])
   const withChat = (extra: Cat[]) => { const i = CATS.findIndex((c) => c.id === 'ring') + 1; return [...CATS.slice(0, i), ...extra, ...CATS.slice(i)] }
@@ -731,7 +735,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (isEgg(deferredSearch)) return list.filter((it) => isEggItem(it.id))   // 이스터에그(lib/easterEgg)
     const match = nameMatcher(deferredSearch)
     if (!match) return list
-    return rankSort(list.filter((it) => match(it.name || it.id)), match, (it) => it.name || it.id)
+    // 세트 이름도 본다 — 이름에 없어도 그 세트면 걸린다('와카모' → 진홍빛 재액, '안개제독' → 푸른 물결). 세트로만 걸린 것은 이름으로 걸린 것 뒤(rank 3)
+    return rankSort(list.filter((it) => match(it.name || it.id) || (!!it.setName && match(it.setName))), match, (it) => it.name || it.id)
   }, [activeListFull, deferredSearch, byGender, genderFilter, byKind, kindFilter])
 
   // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
