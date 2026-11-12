@@ -52,7 +52,19 @@ export type NexonPreset = { key: string; label: string; items: NexonItem[]; acti
 // 넥슨이 주는 코디 1벌. gender 는 코디별로 다를 수 있다 — 제로는 캐릭터 성별이 '기타'로 오고 알파=남/베타=여 이므로
 // 이걸 쓰지 않으면 헤어 · 성형의 (남)/(여) 변형이 엉뚱하게 잡힌다.
 export type NexonLook = { key: 'normal' | 'additional'; label: string; gender: string | null; presets: NexonPreset[]; hair: NexonBeauty | null; face: NexonBeauty | null; skin: { name: string; prism: NexonPrism | null } | null }
-export type NexonLooks = { gender: string | null; charClass: string | null; lookMode: string | null; looks: NexonLook[] }
+// weaponMotion = 게임이 이 캐릭터를 그리는 무기 모션(연출 설정의 PV_WEAPONS 값) — weaponMotionOf
+export type NexonLooks = { gender: string | null; charClass: string | null; lookMode: string | null; weaponMotion: string; looks: NexonLook[] }
+
+// 무기 모션은 **착용한 일반 무기의 분류**가 정한다. 캐시 무기는 그 모션의 자세로 그려진다(30 한손 / 40 두손 / 49 건).
+// 실측(랭킹 300명): 넥슨 캐릭터 그림의 기본 모션(wmotion W00)이 건 → 건(W03), 두손검 · 두손둔기 · 창 · 폴암 · 석궁 → 두손(W02),
+// 그 밖(활 · 너클 · 아대 · 핸드캐논 · 스태프 …) → 한손(W01)과 같았다. 두손도끼는 표본에 없었고 두손 계열(코드 41)이라 두손에 둔다.
+// 왜: 이걸 넣지 않으면 불러온 코디가 늘 '기본'이라 건 캐릭터의 캐시 무기가 한손 자세로, 두손 무기 캐릭터가 한 손을 내린 채 그려졌다.
+const TWO_HAND_PARTS = new Set(['두손검', '두손도끼', '두손둔기', '창', '폴암', '석궁'])
+export function weaponMotionOf(itemData: NexonRaw | null): string {
+  const w = ((itemData?.item_equipment as RawRegItem[]) || []).find((it) => it.item_equipment_slot === '무기')
+  const p = w?.item_equipment_part || ''
+  return p === '건' ? 'gun' : TWO_HAND_PARTS.has(p) ? 'two' : 'basic'
+}
 
 // 메이플 치장 프리셋 구조(실측):
 //   base       = 베이스 코디 전체(예: 11개)
@@ -201,7 +213,7 @@ export function buildLooks(data: NexonRaw, beauty: NexonBeautyRaw | null, itemDa
   // 일반 직업에도 헛노출됨). 실제 2번째 코디일 때만 일반 장비를 베이스로 병합해 추가한다.
   const extraCash = look('additional', labelB, false)
   if (extraCash.presets.some((x) => x.items.length) || extraCash.hair || extraCash.face || extraCash.skin) looks.push(look('additional', labelB, true))
-  return { gender: charGender, charClass, lookMode: (data.character_look_mode as string) ?? null, looks }
+  return { gender: charGender, charClass, lookMode: (data.character_look_mode as string) ?? null, weaponMotion: weaponMotionOf(itemData), looks }
 }
 
 // ── ② 코디 벌 → 스냅샷 ─────────────────────────────────────────────────

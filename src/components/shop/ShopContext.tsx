@@ -14,7 +14,7 @@ import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
 import { rankSort, nameMatcher } from '@/lib/nameSearch'
 import { groupSets } from '@/lib/setOrder'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
-import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
+import { CATS, MIX_PALETTE, PV_WEAPONS, type Cat, type Preset, type Pv } from '@/lib/catalog'
 import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, stagedUrl, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import type { ChatUi } from '@/lib/core/chatUi'
@@ -1907,10 +1907,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const importByNick = async (nick: string): Promise<LookOption[] | null> => {
     try {
       // v: 캐시 버스터. 브라우저에 남아 있을 수 있는 잘못된 옛 응답을 다시 쓰지 않게 한다(서버는 읽지 않는다). 응답 형식을 바꾸면 올린다.
-      const r = await fetch(`/api/nick?name=${encodeURIComponent(nick)}&v=2`)
+      const r = await fetch(`/api/nick?name=${encodeURIComponent(nick)}&v=3`)
       const j = await r.json().catch(() => null)
       if (!r.ok) { notify(j?.error || '불러오기에 실패했어요'); return null }
       const gender: string | null = j?.gender ?? null
+      // 무기 모션은 그 캐릭터의 무기가 정한다(nexonLook.weaponMotionOf). 나머지 연출은 기본, 보기 설정(시선 · 액션 · 표정 · 배율)은 지금 값
+      const pv: PvSnap = { ...PV_LOOK_DEFAULT, weapon: PV_WEAPONS.some((w) => w.v === j?.weaponMotion) ? j.weaponMotion : PV_LOOK_DEFAULT.weapon }
       const looks: NexonLook[] = Array.isArray(j?.looks) ? j.looks : []
       // 캐릭터 이미지는 지금 모습(제로 · 엔버는 지금 쓰는 쪽) 하나다. 그 코디의 헤어 · 성형을 고를 때만 쓴다.
       const imgKey = j?.lookMode === '1' ? 'additional' : 'normal'
@@ -1922,7 +1924,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         const presets: PresetOption[] = []
         for (const pr of lk.presets || []) {
           const snap = await lookToSnapshot(lk, pr.items, g, nickDeps(lk.key === imgKey ? lookPx : null))
-          if (snap) presets.push({ key: pr.key, label: pr.label, active: pr.active, snap })
+          if (snap) presets.push({ key: pr.key, label: pr.label, active: pr.active, snap: { ...snap, pv } })
         }
         if (presets.length) out.push({ key: lk.key, label: lk.label, presets })
       }
