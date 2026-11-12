@@ -33,8 +33,8 @@ const toneIds = (idx: Tones, tone: number) => {
 //          stand2 로 선 경우(assemble.weaponPose). 카드의 후보 아이템도 이 액션으로 그려야 한다.
 export type ThumbCtx = { items: AssembleInput[]; key: string; override?: Map<string, HTMLCanvasElement>; effs?: WornEff[]; expr?: string; faceMeta?: ItemMeta | null; stance?: boolean; action?: string }
 const EMPTY: ThumbCtx = { items: [], key: '' }
-// 착용해도 '내 모델' 카드 배경에 얹지 않는 부위(아래 myEq — 의자 · 안드로이드)
-const NOT_IN_CARD = new Set(['chair', 'android'])
+// 착용해도 '내 모델' 카드 배경에 얹지 않는 부위(아래 myEq — 의자 · 안드로이드 · 펫: 캐릭터 옆에 서는 것이라 카드 칸에 함께 서면 고르는 아이템이 작아진다)
+const NOT_IN_CARD = new Set(['chair', 'android', 'pet'])
 
 function useAnimaRaces() {
   const [animaRaces, setAnimaRaces] = useState<AnimaRace[]>([])

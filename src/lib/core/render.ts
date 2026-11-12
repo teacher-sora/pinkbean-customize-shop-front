@@ -94,12 +94,14 @@ function frameAtElapsed(delays: number[], elapsed: number): number {
   return ds.length - 1
 }
 // 캐시 이펙트(이펙트 부위)는 pos 4 도 쓴다 — 허리(배꼽)에 붙는다(호영 꼬리). pos 3 은 발과 같다(땅 위 동반자).
+// pos 5 = 펫 자리(펫 부위 — parser pet-build.py): 발에서 PET_DX 만큼 옆. 안드로이드(core/android ANDROID_DX — 뒤쪽)와 겹치지 않게 앞쪽(왼쪽, 그림은 왼쪽을 본다)이다. 사용자가 dev 에서 보고 정한다
+export const PET_DX = -50
 function groupDraw(g: EffectGroup | undefined, anchors: EffectAnchors, elapsed: number): EffectDraw | null {
   if (!g || !g.frames.length) return null
   // animate: pick the frame for the current time (single frame → static rep frame).
   const idx = g.frames.length > 1 ? frameAtElapsed(g.frames.map((f) => f.delay), elapsed) : g.repFrame
   const fr = g.frames[idx] || g.frames[g.repFrame] || g.frames[0]
-  const pt = g.pos === 1 ? anchors.brow : g.pos === 4 ? (anchors.navel ?? { x: 0, y: 0 }) : anchors.foot
+  const pt = g.pos === 1 ? anchors.brow : g.pos === 4 ? (anchors.navel ?? { x: 0, y: 0 }) : g.pos === 5 ? { x: anchors.foot.x + PET_DX, y: anchors.foot.y } : anchors.foot
   return { png: fr.png, origin: fr.origin, z: fr.z ?? g.z, ox: pt.x, oy: pt.y }
 }
 // 이펙트의 모든 묶음(두 번째 층 extra 까지) — 그림을 미리 받거나 염색할 때 빠뜨리지 않게 한 곳에서 모은다.

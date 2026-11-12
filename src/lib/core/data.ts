@@ -357,6 +357,8 @@ export const CHAIR_FILE = 'chairs/list.json'
 export const ANDROID_FILE = 'androids/list.json'
 // 소울 부위의 목록 — CDN souls/(parser scripts/soul-build.py). 소울 이펙트도 이펙트(effects/<id>.json)라 이 목록의 id 를 이펙트 색인에 합친다
 export const SOUL_FILE = 'souls/list.json'
+// 펫 부위의 목록 — CDN pets/(parser scripts/pet-build.py). 펫 그림도 이펙트(effects/<id>.json, pos 5 = 펫 자리)라 이 목록의 id 를 이펙트 색인에 합친다
+export const PET_FILE = 'pets/list.json'
 let effectIndexPromise: Promise<Set<string>> | null = null
 // Set of item ids (non-padded, as stored in ItemEff) that have an extracted effect.
 export function loadEffectIndex(): Promise<Set<string>> {
@@ -364,8 +366,8 @@ export function loadEffectIndex(): Promise<Set<string>> {
     effectIndexPromise = Promise.all([
       pre<string[]>('effects/index.json', () => fetch(url('effects/index.json'), FRESH).then((r) => (r.ok ? r.json() : []))).catch(() => [] as string[]),
       loadSlot(CASHFX_FILE).catch(() => [] as ListItem[]),
-      // 의자 · 소울 부위가 없는 빌드(운영 — catalog.DEV_ONLY_CATS)는 받지 않는다
-      ...[['chair', CHAIR_FILE], ['soul', SOUL_FILE]].map(([cat, f]) => (CATS.some((c) => c.id === cat) ? loadSlot(f).catch(() => [] as ListItem[]) : Promise.resolve([] as ListItem[]))),
+      // 의자 · 소울 · 펫 부위가 없는 빌드(운영 — catalog.DEV_ONLY_CATS)는 받지 않는다
+      ...[['chair', CHAIR_FILE], ['soul', SOUL_FILE], ['pet', PET_FILE]].map(([cat, f]) => (CATS.some((c) => c.id === cat) ? loadSlot(f).catch(() => [] as ListItem[]) : Promise.resolve([] as ListItem[]))),
     ]).then(([ids, ...lists]) => new Set([...(ids as string[]), ...(lists as ListItem[][]).flat().map((it) => String(parseInt(it.id, 10)))]))
   }
   return effectIndexPromise

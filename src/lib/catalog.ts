@@ -16,10 +16,10 @@ export type Pv = {
 // 왜: 핫픽스마다 dev 를 곧바로 main 에 병합하므로(CLAUDE.md), 운영에 아직 내지 않을 부위는 dev 에 두되 운영 빌드에서는 빠져야 한다.
 export const DEV_SITE = process.env.NEXT_PUBLIC_SITE_ENV !== 'production'
 // dev 사이트에서만 보이는 부위 — 운영에 낼 때 여기서 뺀다
-const DEV_ONLY_CATS = new Set<string>(['android', 'soul', 'chair'])
+const DEV_ONLY_CATS = new Set<string>(['pet', 'android', 'soul', 'chair'])
 
-// 부위(고정 순서 21): 헤어, 성형, 피부, 모자, 얼굴장식, 눈장식, 귀고리, 한벌옷, 상의, 하의, 신발, 장갑, 망토, 무기, 방패, 반지, 안드로이드, 이펙트, 소울, 의자, 라이딩
-// (명찰 / 말풍선 · 칭호 · 훈장은 반지 바로 뒤에 끼운다 — ShopContext withChat. 그래서 안드로이드는 훈장 오른쪽이다)
+// 부위(고정 순서 22): 헤어, 성형, 피부, 모자, 얼굴장식, 눈장식, 귀고리, 한벌옷, 상의, 하의, 신발, 장갑, 망토, 무기, 방패, 펫, 안드로이드, 반지, 이펙트, 소울, 라이딩, 의자
+// (명찰 / 말풍선 · 칭호 · 훈장은 반지 바로 뒤에 끼운다 — ShopContext withChat)
 const ALL_CATS: Cat[] = [
   { id: 'hair', label: '헤어' },
   { id: 'plastic', label: '성형' },
@@ -36,12 +36,13 @@ const ALL_CATS: Cat[] = [
   { id: 'cape', label: '망토' },
   { id: 'weapon', label: '무기' },
   { id: 'shield', label: '방패' },
-  { id: 'ring', label: '일루전링' }, // 일루전 링(변신 · 거대한 머리 · 거대한 몸) — 명찰 · 말풍선 반지는 따로(CHAT_CATS). 염색 불가
+  { id: 'pet', label: '펫' }, // 펫 — 캐릭터 옆에 서는 펫의 서기 애니메이션(이펙트로 그린다 — 자리는 render.PET_DX), 염색 불가, AI검색 제외
   { id: 'android', label: '안드로이드' }, // 안드로이드 — 그림이 없는 두 번째 캐릭터(외형 = 피부 · 헤어 · 성형 · 옷)를 캐릭터 옆에 세운다(core/android), 염색 불가, AI검색 제외
+  { id: 'ring', label: '일루전링' }, // 일루전 링(변신 · 거대한 머리 · 거대한 몸) — 명찰 · 말풍선 반지는 따로(CHAT_CATS). 염색 불가
   { id: 'effect', label: '이펙트' }, // 캐시 이펙트(내가 바로 스타 등) — 장비와 따로 켜는 꾸밈. 레이어 없이 이펙트만 그린다, 염색 불가
-  { id: 'soul', label: '소울' }, // 소울 — 무기에 부여한 소울이 머리 위에 띄우는 이펙트(블루 아카이브 소울 스킨). 레이어 없이 이펙트만 그린다, 염색 불가, AI검색 제외
-  { id: 'chair', label: '의자' }, // 의자(블루 아카이브 의자만 — 사용자 지시) — 끼면 캐릭터가 앉고 의자 그림(이펙트)이 발밑에 붙는다. 라이딩과 함께 끼지 않는다, 염색 불가, AI검색 제외
+  { id: 'soul', label: '소울' }, // 소울 — 무기에 부여한 소울이 캐릭터 뒤에 띄우는 문장 이펙트(블루 아카이브 소울 스킨). 레이어 없이 이펙트만 그린다, 염색 불가, AI검색 제외
   { id: 'riding', label: '라이딩' }, // 탑승(재규어/메탈아머) — 정적 코디 아이템, AI검색 제외
+  { id: 'chair', label: '의자' }, // 의자(블루 아카이브 의자만 — 사용자 지시) — 끼면 캐릭터가 앉고 의자 그림(이펙트)이 발밑에 붙는다. 라이딩과 함께 끼지 않는다, 염색 불가, AI검색 제외
 ]
 export const CATS: Cat[] = ALL_CATS.filter((c) => DEV_SITE || !DEV_ONLY_CATS.has(c.id))
 
