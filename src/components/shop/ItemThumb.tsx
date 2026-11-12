@@ -289,7 +289,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       setPlaced(shown)
       // 이펙트(망토 오라 등) = 배경(내 착용)의 것 + 이 아이템 자신의 것. 둘 다 같은 앵커로 배치한다.
       const foot = footOf(p) ?? { x: 8, y: 21 }
-      const anch = { foot, brow: anchors.brow ?? foot }
+      const anch = { foot, brow: anchors.brow ?? foot, flip } // flip = 펫 자리(pos 5)를 시선과 상관없이 캐릭터 왼쪽에
       const draws: EffectDraw[] = []
       // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기 · 프리셋 카드와 같은 규칙.
       const noFx = !!ringIllusion([...bgF, ...self])?.hideEffect

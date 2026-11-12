@@ -7,7 +7,7 @@ import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor } from '.
 import { effectDraws, loadImage, type EffectDraw } from './render'
 import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from './particle'
 import { collectWornEffects } from './thumbEffects'
-import { ANDROID_DX, androidPlaced, androidView, loadAndroidParts } from './android'
+import { androidDx, androidPlaced, androidView, loadAndroidParts } from './android'
 import { CHAT_SLOTS, RIDING_FILE, animaLayers, chairLift, chairSeat, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW, viewTone } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 
@@ -110,7 +110,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   // 안드로이드: 캐릭터 옆(뒤쪽)에 두 번째 캐릭터로 — 미리보기와 같은 규칙(core/android). 부위를 못 받으면 안드로이드만 빠진다
   const andLook = equipMetas.find(({ slot }) => slot === 'android')?.meta.android
   const andParts = andLook ? await loadAndroidParts(andLook) : null
-  const andLayers = andParts ? androidPlaced(andParts, androidView(TV, seated), undefined, index.zmap, index.smap, ANDROID_DX, lift) : []
+  const andLayers = andParts ? androidPlaced(andParts, androidView(TV, seated), undefined, index.zmap, index.smap, androidDx(view && spv.gaze === 'right'), lift) : []
   // 그릴 그림을 지금 받기 시작한다(그리는 쪽 renderCharacter 가 같은 캐시를 쓴다) — 아래의 염색 · 이펙트를 기다리는 동안 함께 온다.
   for (const p of [...andLayers, ...placed]) void loadImage(p.png, true).catch(() => {})
   // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (오래된 프리셋엔 dye 키가 없을 수 있어 방어)
@@ -134,7 +134,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기와 같은 규칙.
   const noFx = !!equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion?.hideEffect
   const worn = noFx ? [] : await collectWornEffects(shown.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
-  const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, charTV.action, { foot, brow }, 0))
+  const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, charTV.action, { foot, brow, flip: view && spv.gaze === 'right', ground: { x: foot.x, y: foot.y + lift } }, 0)) // 그리는 쪽(SnapThumb)이 view 의 오른쪽 시선을 반전한다
   // 파티클(제네시스 무기 등) — 다 퍼진 한 장(stillSim). 무기 이펙트를 끄거나 무기를 숨기는 링이면 없다(미리보기와 같은 규칙).
   const ringIll = equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion
   const pIdx = noFx || ringIll?.hideWeapon ? {} : await loadParticleIndex()

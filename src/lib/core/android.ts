@@ -6,8 +6,10 @@ import { loadMeta, type AndroidLook, type ItemMeta } from './data'
 
 export interface AndroidParts { body: ItemMeta; head: ItemMeta; worn: ItemMeta[] }
 
-// 캐릭터 옆에 세우는 자리(게임 px, 캐릭터의 발 기준) — 보는 쪽의 반대편(그림은 왼쪽을 본다 → 오른쪽이 뒤). 사용자가 dev 에서 보고 정한다
-export const ANDROID_DX = 45
+// 캐릭터 옆에 세우는 자리(게임 px, 캐릭터의 발 기준) — **늘 오른쪽**(시선과 상관없이), 발 줄은 캐릭터와 같다(같은 바닥에 서 있다 — 사용자 지시).
+// 그리기가 시선 반전(flip)으로 캔버스를 통째로 뒤집으므로, 반전될 때는 부르는 쪽이 -ANDROID_DX 를 넘긴다(androidDx)
+export const ANDROID_DX = 60
+export const androidDx = (flip: boolean) => (flip ? -ANDROID_DX : ANDROID_DX)
 
 // 받은 부위(같은 외형은 한 번만 받는다). CDN 에 없는 부위(이름 없는 안드로이드 전용 장식 등)는 빼고 그린다 — 못 받았다고 안드로이드를 비우지 않는다
 const partsCache = new Map<string, Promise<AndroidParts | null>>()

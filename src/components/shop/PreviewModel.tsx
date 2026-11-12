@@ -14,7 +14,7 @@ import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, dropBase, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
-import { ANDROID_DX, androidKey, androidPlaced, androidView, loadAndroidParts, type AndroidParts } from '@/lib/core/android'
+import { androidDx, androidKey, androidPlaced, androidView, loadAndroidParts, type AndroidParts } from '@/lib/core/android'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { effectDraws, effectGroups, effectGroupsFor, effectPeriods, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
@@ -102,7 +102,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   } | null>(null)
   // 우클릭 "움짤 저장"용 — 지금 그리는 동작의 전 프레임과 움직이는 것들(이펙트 · 입자 · 부유). draw effect 가 그림을 그리기 시작할 때 갱신한다.
   const animRef = useRef<{
-    frames: { placed: PlacedLayer[]; foot: { x: number; y: number }; brow: { x: number; y: number }; navel: { x: number; y: number } }[]
+    frames: { placed: PlacedLayer[]; foot: { x: number; y: number }; brow: { x: number; y: number }; navel: { x: number; y: number }; flip?: boolean; ground?: { x: number; y: number } }[]
     delays: number[]; animated: boolean; pingpong: boolean; effList: EffectMeta[]; action: string
     spots: ParticleSpot[]; descs: Map<string, ParticleDesc>; floating: boolean; ringFloor?: number; chatRef: ChatRef | null
     // 미리보기 캔버스의 판(게임 1배 상자 · 기준점)과 칸 안 자리(디바이스 px) — 배경 움짤이 같은 자리에 얹는다
@@ -297,13 +297,14 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       const shift = riding && seated ? { x: 0, y: 0 } : stab
       const placed0 = shift.x || shift.y ? raw.map((p) => ({ ...p, x: p.x + shift.x, y: p.y + shift.y })) : raw
       // 안드로이드: 캐릭터 옆(뒤쪽)에 같은 바닥으로 — 캐릭터가 의자에 앉았으면 의자가 딛는 바닥에 선다. 캐릭터보다 먼저(뒤에) 그린다
-      const placed = andP && andV ? [...androidPlaced(andP, andV, ci, index.zmap, index.smap, ANDROID_DX, lift), ...placed0] : placed0
+      const placed = andP && andV ? [...androidPlaced(andP, andV, ci, index.zmap, index.smap, androidDx(viewInfo.flip), lift), ...placed0] : placed0
       // 발 = 몸 그림의 origin(일루전이 몸을 옮겼으면 옮긴 자리 — 바닥 장면이 이 높이에 깔린다). 변신은 몸이 없어 맨몸의 발.
       const bnav = curBody?.map?.navel
       const bf = footOf(raw)
       const foot = bf ? { x: bf.x + stab.x, y: bf.y + stab.y } : { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
       const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
-      return { placed: bare || hidden.skin ? dropBase(placed) : placed, foot, brow, navel: stab } // navel = 배꼽(월드 원점) + 같은 보정 — 허리에 붙는 이펙트(pos 4)
+      // navel = 배꼽(월드 원점) + 같은 보정 — 허리 · 몸통에 붙는 이펙트(pos 4 — 소울). flip · ground = 펫 자리(pos 5 — 늘 캐릭터 왼쪽, 의자에 앉으면 의자가 딛는 바닥)
+      return { placed: bare || hidden.skin ? dropBase(placed) : placed, foot, brow, navel: stab, flip: viewInfo.flip, ground: { x: foot.x, y: foot.y + lift } }
     })
     // 핑퐁(왕복)은 "캐릭터가 클럭"일 때(전투대기 등 일어선 액션)만. 앉은 채(seated)는 재규어가 클럭이고 4족
     // 보행은 루프여야 뒷발이 되돌아가며 움찔하지 않는다. (전투대기가 중간에 툭 끊기던 건 라이딩 전체를 loop 로
@@ -453,7 +454,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
           const frames = allFrames ? g.frames : g.frames.slice(0, 1)
           for (const fr of frames) pngs.push(fr.png)
         }
-        if (!allFrames && shownFrame) for (const d of effectDraws(em, V.action, { foot: shownFrame.foot, brow: shownFrame.brow, navel: shownFrame.navel }, shownAt)) pngs.push(d.png)
+        if (!allFrames && shownFrame) for (const d of effectDraws(em, V.action, shownFrame, shownAt)) pngs.push(d.png)
         const loaded = await Promise.all(pngs.map((p) => loadDyeImage(p).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
         for (const e of loaded) {
@@ -627,7 +628,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       if (cancelled) return
       const fi = animated ? (pingpong ? frameAtElapsedAlt : frameAtElapsed)(delays, elapsed) : 0
       const f = frames[Math.min(fi, frames.length - 1)]
-      const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow, navel: f.navel }, elapsed)) : []
+      const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, f, elapsed)) : []
       if (!f.placed.every((p) => loaded.has(p.png)) || !effects.every((d) => loaded.has(d.png))) return // 아직 로드 중 → 직전 프레임 유지
       // 파티클은 시계만큼 흘리고 매 프레임(약 30fps) 다시 그린다 — 입자는 프레임 그림이 아니라 계속 움직인다.
       const particles = hasPart ? placeParticles(partSpots, partDescs, f.foot, simOf) : []
@@ -664,7 +665,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     copyRef.current = f0
       ? {
           placed: f0.placed,
-          effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow, navel: f0.navel }, 0)) : [],
+          effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, f0, 0)) : [],
           particles: hasPart ? placeParticles(partSpots, partDescs, f0.foot, (d) => stillSim(d)) : [],
           chat: chatRef.current,
           flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides,
@@ -675,7 +676,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       : null
     const essential = new Set<string>()
     fNow?.placed.forEach((p) => essential.add(p.png))
-    if (hasEff && fNow) effList.flatMap((em) => effectDraws(em, V.action, { foot: fNow.foot, brow: fNow.brow, navel: fNow.navel }, e0)).forEach((d) => essential.add(d.png))
+    if (hasEff && fNow) effList.flatMap((em) => effectDraws(em, V.action, fNow, e0)).forEach((d) => essential.add(d.png))
     // 변신(일루전 링): 동작의 모든 프레임으로 그림을 바닥에 맞출 만큼을 잰다(render.ringFloorOf — 반지 그림만 받는다, 변신이 아니면 바로 끝).
     // 첫 그림부터 맞춘 자리에 그리도록 기다린다 — 나중에 맞추면 한 번 툭 내려앉는다.
     let ringFloor: number | undefined
@@ -738,7 +739,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
         if (!p) return null
         const { a, snap, emo } = p
         const fiAt = (t: number) => a.animated ? Math.min((a.pingpong ? frameAtElapsedAlt : frameAtElapsed)(a.delays, t), a.frames.length - 1) : 0
-        const effAt = (t: number) => { const f = a.frames[fiAt(t)]; return a.effList.flatMap((em) => effectDraws(em, a.action, { foot: f.foot, brow: f.brow, navel: f.navel }, t)) }
+        const effAt = (t: number) => { const f = a.frames[fiAt(t)]; return a.effList.flatMap((em) => effectDraws(em, a.action, f, t)) }
         const liftAt = (t: number) => a.floating ? Math.round(-FLOAT_AMP * (1 - Math.cos((2 * Math.PI * t) / FLOAT_MS)) / 2) : 0
         const sims = new Map<string, ParticleSim>()
         const simOf = (d: ParticleDesc, i: number) => {
