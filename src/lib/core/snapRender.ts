@@ -7,6 +7,7 @@ import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor } from '.
 import { effectDraws, loadImage, type EffectDraw } from './render'
 import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from './particle'
 import { collectWornEffects } from './thumbEffects'
+import { ANDROID_DX, androidPlaced, androidView, loadAndroidParts } from './android'
 import { CHAT_SLOTS, RIDING_FILE, animaLayers, chairLift, chairSeat, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW, viewTone } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 
@@ -104,8 +105,14 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const refNav = fi != null || (view && !seated) ? bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel : undefined
   const curNav = refNav ? asm.placed.find((p) => p.slot === 'body' && p.name === 'body')?.map?.navel : undefined
   const placed = refNav && curNav && (curNav.x !== refNav.x || curNav.y !== refNav.y) ? asm.placed.map((p) => ({ ...p, x: p.x + curNav.x - refNav.x, y: p.y + curNav.y - refNav.y })) : asm.placed
+  // 의자: 의자가 딛는 바닥이 발보다 아래인 만큼(shopData.chairLift) — 안드로이드는 그 바닥에 서고, 그리는 쪽은 그 절반만큼 올린다
+  const lift = chair ? chairLift(equipMetas.find(({ slot }) => slot === 'chair')?.meta) : 0
+  // 안드로이드: 캐릭터 옆(뒤쪽)에 두 번째 캐릭터로 — 미리보기와 같은 규칙(core/android). 부위를 못 받으면 안드로이드만 빠진다
+  const andLook = equipMetas.find(({ slot }) => slot === 'android')?.meta.android
+  const andParts = andLook ? await loadAndroidParts(andLook) : null
+  const andLayers = andParts ? androidPlaced(andParts, androidView(TV, seated), undefined, index.zmap, index.smap, ANDROID_DX, lift) : []
   // 그릴 그림을 지금 받기 시작한다(그리는 쪽 renderCharacter 가 같은 캐시를 쓴다) — 아래의 염색 · 이펙트를 기다리는 동안 함께 온다.
-  for (const p of placed) void loadImage(p.png, true).catch(() => {})
+  for (const p of [...andLayers, ...placed]) void loadImage(p.png, true).catch(() => {})
   // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (오래된 프리셋엔 dye 키가 없을 수 있어 방어)
   // 염색 비활성화(dyeOff) 슬롯은 수치가 있어도 렌더에서 뺀다.
   const off = snap.dyeOff || {}
@@ -137,8 +144,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const particles = placeParticles(spots, pDescs, foot, (d) => stillSim(d))
   // 탑승 중엔 가로 정렬 기준이 다르다(포즈마다 폭이 달라진다) — 메탈아머는 메카(mount) bbox, 그 외는 캐릭터 navel.
   const center = rideId ? (rideItem?.ridingCenterMount ? 'mount' : 'x') : undefined
-  const lift = chair ? chairLift(equipMetas.find(({ slot }) => slot === 'chair')?.meta) : 0
-  return { placed: snap.hidden?.skin ? dropBase(placed) : placed, overrides, effects, ...(particles.length ? { particles } : {}), ...(center ? { center } : {}), ...(lift ? { lift } : {}) }
+  return { placed: [...andLayers, ...(snap.hidden?.skin ? dropBase(placed) : placed)], overrides, effects, ...(particles.length ? { particles } : {}), ...(center ? { center } : {}), ...(lift ? { lift } : {}) }
 }
 
 // ── 합성 결과 캐시 ─────────────────────────────────────────────────────────────

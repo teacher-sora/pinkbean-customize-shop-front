@@ -146,9 +146,13 @@ export const GUIDE: GuideEntry[] = [
     pc: { how: '맨 아래의 [프리셋] 탭에서\n왼쪽 목록 맨 위, [순서 변경] 옆의 방향 버튼으로 고르세요.' } },
   { id: 'ring', title: '일루전링(변신, 거대한 몸)', words: '일루전 링, 변신, 변신 반지, 거대한 머리, 거대한 몸, 내 뒤에 나, 분신',
     how: '맨 아래의 [코디] 탭에서\n부위 줄의 [일루전링]을 고르세요.', go: { tab: 'codi' } },
-  // 의자 부위는 아직 dev 사이트에만 있다(catalog.DEV_ONLY_CATS) — 운영에 낼 때 조건을 함께 뺀다
-  ...(DEV_SITE ? [{ id: 'chair', title: '의자에 앉기', words: '의자, 카드 의자, 의자 아이템, 블루 아카이브 의자',
-    how: '맨 아래의 [코디] 탭에서\n부위 줄의 [의자]를 고르세요.', go: { tab: 'codi' as const } }] : []),
+  // 의자 · 안드로이드 부위는 아직 dev 사이트에만 있다(catalog.DEV_ONLY_CATS) — 운영에 낼 때 조건을 함께 뺀다
+  ...(DEV_SITE ? [
+    { id: 'chair', title: '의자에 앉기', words: '의자, 카드 의자, 의자 아이템, 블루 아카이브 의자',
+      how: '맨 아래의 [코디] 탭에서\n부위 줄의 [의자]를 고르세요.', go: { tab: 'codi' as const } },
+    { id: 'android', title: '안드로이드 데려오기', words: '안드로이드, 로이드, 옆에 서는 캐릭터, 동반 캐릭터, 블루 아카이브 로이드',
+      how: '맨 아래의 [코디] 탭에서\n부위 줄의 [안드로이드]를 고르세요.', go: { tab: 'codi' as const } },
+  ] : []),
   { id: 'chat', title: '채팅 보내기', words: '채팅, 말 걸기, 대사 띄우기, 말풍선 띄우기, 메시지',
     how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n말풍선 버튼을 누르고, 말을 적어 보내세요.', go: { tab: 'preview', spot: 'chat', click: true },
     pc: { how: '오른쪽의 캐릭터 화면 아래 채팅 칸에\n말을 적고 Enter 를 누르세요.', go: { tab: 'preview', spot: 'chat' } } },

@@ -14,6 +14,7 @@ import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, dropBase, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { ANDROID_DX, androidKey, androidPlaced, androidView, loadAndroidParts, type AndroidParts } from '@/lib/core/android'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { effectDraws, effectGroups, effectGroupsFor, effectPeriods, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
@@ -140,6 +141,18 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   const [floatItems, setFloatItems] = useState<Record<string, number>>({})
   useEffect(() => { loadParticleIndex().then(setParticleIndex); loadWeaponMotion().then(setWeaponMotion); loadFloatItems().then(setFloatItems) }, [])
   useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
+  // 안드로이드의 부위(피부 · 헤어 · 성형 · 옷 meta) — 착용 meta 와 따로 받는다. CDN 에 없는 부위가 있어도 기다림이 멈추지 않게(core/android)
+  const andItem = equipped['android'] && !hidden['android'] ? equipped['android'] : null
+  const andLook = andItem ? andItem.android ?? metas.get(andItem.id)?.android : undefined
+  const [andParts, setAndParts] = useState<{ key: string; parts: AndroidParts | null } | null>(null)
+  useEffect(() => {
+    if (!andLook) return
+    const key = androidKey(andLook)
+    if (andParts?.key === key) return
+    let alive = true
+    loadAndroidParts(andLook).then((parts) => { if (alive) setAndParts({ key, parts }) })
+    return () => { alive = false }
+  }, [andLook, andParts])
   useEffect(() => {
     if (!index || !bodyId || !headId) return
     const need = new Set<string>([bodyId, headId])
@@ -189,6 +202,9 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     // ⚠️ 착용 아이템 메타가 하나라도 아직 안 왔으면 조립하지 않는다(null → 캔버스는 직전 그림 유지). 되돌리기/다시실행·
     //    프리셋 전환처럼 여러 부위가 한꺼번에 바뀔 때 "일부 부위가 빠진 중간 상태"가 한 프레임 그려지던 티어링의 원인.
     for (const it of Object.values(equipped)) if (it && !metas.has(it.id)) return null
+    // 안드로이드를 끼었으면 그 부위를 다 받을 때까지 기다린다(위와 같은 이유 — 안드로이드만 늦게 붙는 그림을 한 번 그리지 않게)
+    if (andLook && andParts?.key !== androidKey(andLook)) return null
+    const andP = andLook ? andParts!.parts : null
     const ridingItem = equipped['riding']
     const ridingMeta = ridingItem && !hidden['riding'] ? metas.get(ridingItem.id) : undefined
     const riding = !!ridingMeta
@@ -216,6 +232,9 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const refNav = bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel
     // 형상변이(정적 파츠) — 프레임 공통. 공용 헬퍼(리스트 카드와 동일 로직).
     const animaParts = animaLayers(pv.form, animaRaces)
+    // 의자는 의자가 딛는 줄(발 - bodyRelMove)이 바닥이다 — 그 아래로 안드로이드를 세우고(아래), 화면은 그 절반만큼 올린다(raise)
+    const lift = chair ? chairLift(equipped['chair']) : 0
+    const andV = andP ? androidView(V, seated) : null
     // '기본'(정지)에서도 머리에 붙는 아이템이 그 액션의 프레임을 따로 가지면(액션 헤어 · 움직이는 모자) 그것만 돈다 — 망토 · 무기
     // 이펙트가 정지 화면에서도 도는 것과 같다(사용자 지시). 캐릭터(몸 · 머리)와 몸에 붙는 옷 · 탈것은 0번 프레임에 그대로 둔다:
     // 옷은 몸과 함께 숨 쉬는 프레임이라 몸이 멈춘 채 돌리면 어긋나고, 재규어는 통짜 그림이라 돌리면 1px 씩 떨린다.
@@ -276,7 +295,9 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       //   centerX/centerMount(캐릭터 navel/마운트 bbox 재중심)에서 stab 만큼 마운트가 어긋난다(카드는 stab 이
       //   없어 안 어긋남 → 미리보기만 왼쪽 치우침). 균일 적용하면 재중심에서 stab 이 상쇄돼 카드와 동일해진다.
       const shift = riding && seated ? { x: 0, y: 0 } : stab
-      const placed = shift.x || shift.y ? raw.map((p) => ({ ...p, x: p.x + shift.x, y: p.y + shift.y })) : raw
+      const placed0 = shift.x || shift.y ? raw.map((p) => ({ ...p, x: p.x + shift.x, y: p.y + shift.y })) : raw
+      // 안드로이드: 캐릭터 옆(뒤쪽)에 같은 바닥으로 — 캐릭터가 의자에 앉았으면 의자가 딛는 바닥에 선다. 캐릭터보다 먼저(뒤에) 그린다
+      const placed = andP && andV ? [...androidPlaced(andP, andV, ci, index.zmap, index.smap, ANDROID_DX, lift), ...placed0] : placed0
       // 발 = 몸 그림의 origin(일루전이 몸을 옮겼으면 옮긴 자리 — 바닥 장면이 이 높이에 깔린다). 변신은 몸이 없어 맨몸의 발.
       const bnav = curBody?.map?.navel
       const bf = footOf(raw)
@@ -291,8 +312,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const centerMount = riding && !!ridingItem?.ridingCenterMount
     // 바닥에 닿는 높이(navel 기준). 맨몸은 발, 탑승 중이면 탈것의 원점 — 배경 장면이 이 높이에 바닥을 깐다(lib/stageFloor).
     const mount = riding ? frames[0]?.placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount')) : undefined
-    // 의자는 의자가 딛는 줄(발 - bodyRelMove)이 바닥이고, 캐릭터와 그 바닥의 가운데가 화면 가운데에 오게 그 절반만큼 올린다(raise)
-    const lift = chair ? chairLift(equipped['chair']) : 0
+    // 의자는 캐릭터와 의자가 딛는 바닥의 가운데가 화면 가운데에 오게 그 절반만큼 올린다(raise)
     const ground = mount ? mount.y + mount.origin.y : (frames[0]?.foot.y ?? 21) + lift
     const raise = Math.round(lift / 2)
     // 멈춘 프레임(pv.frame — 연출 설정 > 액션에서 고른 자세): 그 한 장만 남긴다. 복사 · 움짤 · 염색이 모두 이 목록을 보므로 함께 따른다.
@@ -300,7 +320,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const fz = !viewInfo.isStatic && pv.frame >= 0 && pv.frame < N ? pv.frame : -1
     if (fz >= 0) return { frames: [frames[fz]], delays: [delays[fz]], N: 1, riding, chair, centerMount, ground, raise, animated: false, pingpong: false, frozen: fz }
     return { frames, delays, N, riding, chair, centerMount, ground, raise, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action), frozen: -1 }
-  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, pv.frame, V, viewInfo.isStatic, weaponMotion, bare])
+  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, andLook, andParts, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, pv.frame, V, viewInfo.isStatic, weaponMotion, bare])
   // 아이템만 볼 때의 가운데 — 합성이 바뀔 때마다 새로(첫 프레임의 bbox 로 한 번 정하고 애니메이션 내내 같은 자리)
   const bareBox = useMemo(() => (bare ? {} : undefined), [bare, spec, dims, pv.zoom]) // eslint-disable-line react-hooks/exhaustive-deps
 

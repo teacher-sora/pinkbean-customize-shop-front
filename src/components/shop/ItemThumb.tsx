@@ -18,6 +18,7 @@ import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from '@/lib/core/particle'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
+import { androidInputs, androidView, loadAndroidParts } from '@/lib/core/android'
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
@@ -227,6 +228,10 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
         const m = await loadMeta(item.id)
         selfMeta = m
         self = [{ itemId: m.id, slot: m.slot, vslot: m.vslot ?? null, layers: getFrameLayers(m, view), invisibleFace: m.invisibleFace, name: m.name, dotOffsets }]
+        // 안드로이드 카드의 주인공은 안드로이드다 — 그 외형(피부 · 헤어 · 성형 · 옷)을 캐릭터처럼 조립하고, 내 캐릭터는 그리지 않는다(아래 bgF)
+        const look = item.android ?? m.android
+        const parts = look ? await loadAndroidParts(look) : null
+        if (parts) self = androidInputs(parts, androidView(view, false))
       }
       if (!alive) return
       // 후보 아이템 자신도 "내가 고른 색"으로 물들여 보여준다 — 단, 헤어·성형만(내 모델에서만 dye 전달됨).
@@ -276,7 +281,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       }
       // 내 모델: 후보 아이템과 "같은 슬롯"은 배경(내 착용)에서 빼야 그 부위가 후보로 대체된 장착샷이 된다.
       //   (특정 부위 탭은 목록 쪽(list/thumbCtx)이 이미 제외하지만 '전체' 탭·검색은 카드마다 슬롯이 달라 여기서 처리.)
-      const bgF = item.slot === 'skin' ? bg : bg.filter((ci) => ci.slot !== item.slot)
+      const bgF = item.slot === 'skin' ? bg : item.slot === 'android' ? [] : bg.filter((ci) => ci.slot !== item.slot)
       // 무기 이펙트를 끄면 무기(후보든 내 착용이든)의 이펙트 레이어도 뺀다 — 미리보기와 같은 규칙.
       const wOn = !pvEff || pvEff.wEffect
       const { placed: p, anchors } = assemble([...bgF, ...self].map((ci) => ({ ...ci, layers: dropWeaponEffects(ci.slot, ci.layers, wOn) })), zmap, smap)
@@ -288,7 +293,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       const draws: EffectDraw[] = []
       // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기 · 프리셋 카드와 같은 규칙.
       const noFx = !!ringIllusion([...bgF, ...self])?.hideEffect
-      if (!noFx) for (const { em } of ctxEffs || []) draws.push(...effectDraws(em, view.action, anch, 0))
+      if (!noFx && item.slot !== 'android') for (const { em } of ctxEffs || []) draws.push(...effectDraws(em, view.action, anch, 0))
       // 이 아이템 "자신의" 이펙트(망토 오라 등)는 아이템 모습의 일부 → 모델·내 모델 모두 그린다(연출 토글은 적용).
       //   ('내 모델/프리셋만' 규칙은 배경=내 착용 아이템들의 이펙트(ctxEffs) 얘기고, 그건 모델엔 배경이 없어 자연히 없다.)
       if (!noFx && item.slot !== 'skin' && (!pvEff || effectEnabled(item.slot, pvEff))) {
