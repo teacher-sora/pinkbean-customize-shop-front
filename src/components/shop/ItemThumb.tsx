@@ -22,7 +22,7 @@ import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
 import { chatPreview } from '@/lib/core/chatUi'
-import { CARD_FIT_W_M, CARD_FRACTION, CARD_LIFT_M, CARD_MARGIN, thumbView, type ChatState } from '@/lib/shopData'
+import { CARD_FIT_W_M, CARD_FRACTION, CARD_LIFT_M, CARD_MARGIN, chairLift, thumbView, type ChatState } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
 import { CARD_FRAC_HAIR, DyeSprite } from './render/DyeSprite'
 
@@ -263,8 +263,9 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       //   · 방패는 탑승 중 숨김. 무기는 앉은 채(비-back)에선 숨김.
       //   · 앞/옆(비-back)=캐릭터 sit 재합성. 뒤 시선=보통 rope 뒷모습(캐릭터·마운트 줄타기)이지만,
       //     ridingBackSit(탱크)면 뒤에서도 sit(앉은 조종사) — 미리보기와 동일.
-      if (item.slot === 'riding') {
-        const back = gaze === 'back'
+      // 의자 카드 = 앉은 장착샷 — 어느 시선이든 앉고 무기 · 방패를 숨긴다(미리보기와 같은 규칙, shopData.chairSeat).
+      if (item.slot === 'riding' || item.slot === 'chair') {
+        const back = gaze === 'back' && item.slot === 'riding'
         const sitCard = !back || !!item.ridingBackSit
         bg = bg.filter((ci) => ci.slot !== 'shield' && !(ci.slot === 'weapon' && !back))
         if (sitCard) {
@@ -344,7 +345,10 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
     // 마네킹 중심을 셀 중앙에 고정(anchor 보정). flip=오른쪽 시선. 분수 scale=디바이스 해상도.
     const cm = item.slot === 'riding' && !!item.ridingCenterMount // 메탈아머는 메카(마운트) 중앙정렬
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, shouldCancel: () => cancelled }).catch(() => {})
+    // 의자: 캐릭터와 의자가 딛는 바닥의 가운데를 칸 가운데에(미리보기와 같은 규칙 — 그 높이의 절반만큼 올린다)
+    const raise = item.slot === 'chair' ? Math.round(chairLift(item) / 2) : 0
+    const anchor = raise ? { x: p.anchor.x, y: p.anchor.y - raise } : p.anchor
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, shouldCancel: () => cancelled }).catch(() => {})
     // 우클릭 복사용 입력 — 화면과 같은 값(중심 오프셋·반전·라이딩 정렬)으로 다시 그린다(lib/canvasExport.modelShotBlob).
     shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
     return () => { cancelled = true }

@@ -85,7 +85,8 @@ export function useCodiThumbs(list: ListItem[]): ThumbApi {
     // 마네킹 = 기본 피부 고정, 내 캐릭터 = 현재 피부.
     const elf = toneIds(idx, DEFAULT_TONE), mine = toneIds(idx, s.shownTone)
     const activeSlot = mixedCat ? null : CAT_TO_SLOT[s.activeCat] // 전체·즐겨찾기는 제외할 활성 슬롯이 없다
-    const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && !s.hidden[sl]) as [string, ListItem][]
+    // 착용 중인 의자는 배경에 얹지 않는다 — 캐릭터 몇 배 크기의 그림이 다른 부위 카드를 덮고, 카드의 캐릭터는 서 있다(의자 카드만 앉힌다 — ItemThumb)
+    const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && sl !== activeSlot && sl !== 'chair' && !s.hidden[sl]) as [string, ListItem][]
     const eqEntries = mode === 'mymodel' ? myEq : []
     const eqSig = (mode === 'mymodel' || needMy ? myEq : []).map(([sl, it]) => sl + it.id).sort().join(',')
     // 내 캐릭터: 우측 미리보기에 적용된 염색(발색/HSB)을 썸네일 배경(내 착용)에도 동일 반영 → 키에 염색 시그니처 포함.
@@ -165,7 +166,7 @@ export function useSearchThumbs(list: ListItem[]): ThumbApi {
     let alive = true
     const elf = toneIds(idx!, DEFAULT_TONE), mine = toneIds(idx!, s.shownTone) // 마네킹 = 기본 피부, 내 캐릭터 = 현재 피부
     const slotsInList = Array.from(new Set(list.map((it) => it.slot)))
-    const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && !s.hidden[sl]) as [string, ListItem][]
+    const myEq = Object.entries(s.equipped).filter(([sl, it]) => it && sl !== 'chair' && !s.hidden[sl]) as [string, ListItem][] // 의자는 배경에 얹지 않는다(위와 같은 이유)
     const eqSig = myEq.map(([sl, it]) => sl + it.id).sort().join(',')
     // 점 위치(변경점/변경쩜)도 미리보기와 동일하게 배경에 반영 → 키에 포함.
     const dyeSig = (mode === 'mymodel' || needMy) ? JSON.stringify({ p: s.renderPalette, h: s.renderHsb, d: s.dotPos }) : ''

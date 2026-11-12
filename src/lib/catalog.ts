@@ -12,8 +12,14 @@ export type Pv = {
   wEffect: boolean; cEffect: boolean; capEffect: boolean; floatFx: boolean; baseTag: boolean; fps: number; zoom: number
 }
 
-// 부위(고정 순서 18): 헤어, 성형, 피부, 모자, 얼굴장식, 눈장식, 귀고리, 한벌옷, 상의, 하의, 신발, 장갑, 망토, 무기, 방패, 반지, 이펙트, 라이딩
-export const CATS: Cat[] = [
+// dev 사이트(dev 브랜치 배포 · 로컬)인가 — 빌드 때 정해진다(next.config 의 NEXT_PUBLIC_SITE_ENV = Vercel 의 VERCEL_ENV). 운영 빌드만 'production'.
+// 왜: 핫픽스마다 dev 를 곧바로 main 에 병합하므로(CLAUDE.md), 운영에 아직 내지 않을 부위는 dev 에 두되 운영 빌드에서는 빠져야 한다.
+export const DEV_SITE = process.env.NEXT_PUBLIC_SITE_ENV !== 'production'
+// dev 사이트에서만 보이는 부위 — 운영에 낼 때 여기서 뺀다
+const DEV_ONLY_CATS = new Set<string>(['chair'])
+
+// 부위(고정 순서 19): 헤어, 성형, 피부, 모자, 얼굴장식, 눈장식, 귀고리, 한벌옷, 상의, 하의, 신발, 장갑, 망토, 무기, 방패, 반지, 이펙트, 의자, 라이딩
+const ALL_CATS: Cat[] = [
   { id: 'hair', label: '헤어' },
   { id: 'plastic', label: '성형' },
   { id: 'skin', label: '피부' },
@@ -31,8 +37,10 @@ export const CATS: Cat[] = [
   { id: 'shield', label: '방패' },
   { id: 'ring', label: '일루전링' }, // 일루전 링(변신 · 거대한 머리 · 거대한 몸) — 명찰 · 말풍선 반지는 따로(CHAT_CATS). 염색 불가
   { id: 'effect', label: '이펙트' }, // 캐시 이펙트(내가 바로 스타 등) — 장비와 따로 켜는 꾸밈. 레이어 없이 이펙트만 그린다, 염색 불가
+  { id: 'chair', label: '의자' }, // 의자(블루 아카이브 의자만 — 사용자 지시) — 끼면 캐릭터가 앉고 의자 그림(이펙트)이 발밑에 붙는다. 라이딩과 함께 끼지 않는다, 염색 불가, AI검색 제외
   { id: 'riding', label: '라이딩' }, // 탑승(재규어/메탈아머) — 정적 코디 아이템, AI검색 제외
 ]
+export const CATS: Cat[] = ALL_CATS.filter((c) => DEV_SITE || !DEV_ONLY_CATS.has(c.id))
 
 // 믹스 염색 8색 팔레트
 export const MIX_PALETTE = [

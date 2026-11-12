@@ -12,6 +12,7 @@
 //    sheet · drawer 와 함께 쓰면 창이 다 열린 뒤 그 줄까지 창 안을 스크롤해 가리킨다(아래쪽 줄도 보이게 — 사용자 지시).
 
 import { backApi } from './backApi'
+import { DEV_SITE } from './catalog'
 import { safeBubble } from './safeText'
 
 // tab: 'preview' = 미리보기에 있는 기능. 미리보기는 코디 광장을 뺀 모든 탭에 있으므로 탭을 바꾸지 않는다(광장에서만 코디 탭으로)
@@ -145,6 +146,9 @@ export const GUIDE: GuideEntry[] = [
     pc: { how: '맨 아래의 [프리셋] 탭에서\n왼쪽 목록 맨 위, [순서 변경] 옆의 방향 버튼으로 고르세요.' } },
   { id: 'ring', title: '일루전링(변신, 거대한 몸)', words: '일루전 링, 변신, 변신 반지, 거대한 머리, 거대한 몸, 내 뒤에 나, 분신',
     how: '맨 아래의 [코디] 탭에서\n부위 줄의 [일루전링]을 고르세요.', go: { tab: 'codi' } },
+  // 의자 부위는 아직 dev 사이트에만 있다(catalog.DEV_ONLY_CATS) — 운영에 낼 때 조건을 함께 뺀다
+  ...(DEV_SITE ? [{ id: 'chair', title: '의자에 앉기', words: '의자, 카드 의자, 의자 아이템, 블루 아카이브 의자',
+    how: '맨 아래의 [코디] 탭에서\n부위 줄의 [의자]를 고르세요.', go: { tab: 'codi' as const } }] : []),
   { id: 'chat', title: '채팅 보내기', words: '채팅, 말 걸기, 대사 띄우기, 말풍선 띄우기, 메시지',
     how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n말풍선 버튼을 누르고, 말을 적어 보내세요.', go: { tab: 'preview', spot: 'chat', click: true },
     pc: { how: '오른쪽의 캐릭터 화면 아래 채팅 칸에\n말을 적고 Enter 를 누르세요.', go: { tab: 'preview', spot: 'chat' } } },

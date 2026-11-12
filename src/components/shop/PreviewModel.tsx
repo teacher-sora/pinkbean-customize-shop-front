@@ -25,7 +25,7 @@ import { heroBaseProbe, useHeroView } from '@/lib/heroView'
 import { bindImageMenu, type GifMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
-import { DEFAULT_TONE, MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, viewTone, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, ZOOM_WORLD_M, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
+import { DEFAULT_TONE, MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, viewTone, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, ZOOM_WORLD_M, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, chairSeat, chairLift, skinDyeFamily } from '@/lib/shopData'
 import { peekSavedZoom, useShop, type DotOffsets } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import { useIsoLayoutEffect } from '@/lib/uiState'
@@ -198,7 +198,9 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const seatedSet = ridingSeatedSet(ridingItem)
     // 뒷쪽 시선은 보통 sit 로 안 덮지만(캐릭터 등반 뒷모습), ridingBackSit(탱크)면 뒤에서도 sit 강제.
     const backOk = pv.gaze !== 'back' || !!ridingItem?.ridingBackSit
-    const seated = riding && backOk && seatedSet.has(pv.action) // 앉은 채(캐릭터 sit)
+    // 의자: 어느 동작 · 시선에서나 앉는다(shopData.chairSeat). 의자와 라이딩은 함께 끼지 않는다(자리 코드 Tm)
+    const chair = chairSeat(equipped, hidden)
+    const seated = chair || (riding && backOk && seatedSet.has(pv.action)) // 앉은 채(캐릭터 sit)
     const charV = seated ? { ...V, action: 'sit' } : V     // 앉는 액션이면 캐릭터는 sit 로 그린다
     // 재규어 액션 키 매핑: 엎드리기(캐릭터 proneStab) → 재규어 'prone'. 나머지는 V.action 그대로 매칭된다.
     const jagV = riding ? { ...V, action: V.action === 'proneStab' ? 'prone' : V.action } : V
@@ -206,7 +208,8 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     // 변신 링은 캐릭터 대신 반지 그림이 돈다 → 반지가 클럭(그림 수 · 박자가 몸과 다르다).
     const ringMeta = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
     const transform = ringMeta?.illusion?.kind === 'transform'
-    const delays = transform ? frameDelays(ringMeta!, charV) : frameDelays((seated ? ridingMeta : bodyMeta) ?? bodyMeta, seated ? jagV : charV)
+    const rideClock = seated && riding
+    const delays = transform ? frameDelays(ringMeta!, charV) : frameDelays((rideClock ? ridingMeta : bodyMeta) ?? bodyMeta, rideClock ? jagV : charV)
     const N = Math.max(1, delays.length)
     // stabOffset 기준 navel = stand1 고정(라이딩 포함). 액션 내 navel 드리프트는 "상체 상하 모션"이므로 죽이지
     // 않는다(발은 고정, 상체가 오르내림). 라이딩 가로 정렬은 렌더의 centerXOnly 가 담당(세로는 이 드리프트 유지).
@@ -242,7 +245,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       ]
       for (const [slot, it] of Object.entries(equipped)) {
         if (!it || hidden[slot]) continue
-        if (riding && slot === 'shield') continue // 탑승 중 방패 숨김(직업 불일치)
+        if ((riding || chair) && slot === 'shield') continue // 탑승 중 · 의자에 앉으면 방패 숨김
         if (seated && slot === 'weapon') continue  // 앉은 채(기본/서기/걷기)에선 무기 미출력
         const m = metas.get(it.id); if (!m) continue
         const itemV = slot === 'riding' ? jagV : charV // 탈것은 자기(매핑된) 액션, 나머지는 캐릭터 포즈(sit/선택)를 따른다
@@ -288,12 +291,15 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const centerMount = riding && !!ridingItem?.ridingCenterMount
     // 바닥에 닿는 높이(navel 기준). 맨몸은 발, 탑승 중이면 탈것의 원점 — 배경 장면이 이 높이에 바닥을 깐다(lib/stageFloor).
     const mount = riding ? frames[0]?.placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount')) : undefined
-    const ground = mount ? mount.y + mount.origin.y : frames[0]?.foot.y ?? 21
+    // 의자는 의자가 딛는 줄(발 - bodyRelMove)이 바닥이고, 캐릭터와 그 바닥의 가운데가 화면 가운데에 오게 그 절반만큼 올린다(raise)
+    const lift = chair ? chairLift(equipped['chair']) : 0
+    const ground = mount ? mount.y + mount.origin.y : (frames[0]?.foot.y ?? 21) + lift
+    const raise = Math.round(lift / 2)
     // 멈춘 프레임(pv.frame — 연출 설정 > 액션에서 고른 자세): 그 한 장만 남긴다. 복사 · 움짤 · 염색이 모두 이 목록을 보므로 함께 따른다.
     // 이펙트 · 입자는 계속 돈다(몸만 멈춘다 — 게임에서 멈춰 선 캐릭터의 망토 이펙트가 도는 것과 같다)
     const fz = !viewInfo.isStatic && pv.frame >= 0 && pv.frame < N ? pv.frame : -1
-    if (fz >= 0) return { frames: [frames[fz]], delays: [delays[fz]], N: 1, riding, centerMount, ground, animated: false, pingpong: false, frozen: fz }
-    return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action), frozen: -1 }
+    if (fz >= 0) return { frames: [frames[fz]], delays: [delays[fz]], N: 1, riding, chair, centerMount, ground, raise, animated: false, pingpong: false, frozen: fz }
+    return { frames, delays, N, riding, chair, centerMount, ground, raise, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action), frozen: -1 }
   }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, pv.frame, V, viewInfo.isStatic, weaponMotion, bare])
   // 아이템만 볼 때의 가운데 — 합성이 바뀔 때마다 새로(첫 프레임의 bbox 로 한 번 정하고 애니메이션 내내 같은 자리)
   const bareBox = useMemo(() => (bare ? {} : undefined), [bare, spec, dims, pv.zoom]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -394,7 +400,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const dyeRidingIt = equipped['riding']
     const dyeSeatedSet = ridingSeatedSet(dyeRidingIt)
     const dyeBackOk = pv.gaze !== 'back' || !!dyeRidingIt?.ridingBackSit
-    const dyeSeated = !!dyeRidingIt && !hidden['riding'] && dyeBackOk && dyeSeatedSet.has(pv.action)
+    const dyeSeated = chairSeat(equipped, hidden) || (!!dyeRidingIt && !hidden['riding'] && dyeBackOk && dyeSeatedSet.has(pv.action))
     const dyeV = dyeSeated ? { ...V, action: 'sit' } : V
     // 이 액션에 뒷모습 프레임이 섞여 있으면(두손/한손 스윙 마무리) 그 프레임의 '뒷' 스프라이트도 칠한다.
     const dyeBack = !!bodyMeta && hasBackFrame(bodyMeta, dyeV)
@@ -551,7 +557,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     if (!canvas || !spec || !dims.w || !dims.h) return
     if (effPending || dyeStale) return // 입력이 다 모일 때까지 직전 그림 유지(중간 상태 미표시)
     let cancelled = false, raf = 0
-    const { frames, delays, animated, pingpong, riding, centerMount, ground } = spec
+    const { frames, delays, animated, pingpong, riding, chair, centerMount, ground, raise } = spec
     // 명찰 · 말풍선 · 칭호 · 훈장의 기준점 — 이 동작 0프레임으로 한 번 잰다(동작 내내 제자리, chatUi.chatRefOf)
     const chatAt = frames[0] ? chatRefOf(frames[0].placed, centerMount) : null
     const hasEff = effList.length > 0
@@ -562,9 +568,10 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const back = pv.gaze === 'back'
     // 사다리/밧줄(등반) 포즈는 stand1 과 navel↔시각중심 오프셋이 달라 centerDx(stand1 튜닝)로는 오른쪽으로 쏠린다.
     // 뒷쪽 시선(rope 첫프레임)이 previewBack* 로 중앙에 오는 것과 동일하게, 비라이딩 사다리/밧줄도 previewBack* 사용.
-    const climbCenter = back || (!riding && (pv.action === 'ladder' || pv.action === 'rope'))
+    const climbCenter = !chair && (back || (!riding && (pv.action === 'ladder' || pv.action === 'rope'))) // 의자에 앉으면 어느 시선 · 동작이든 앉은 앞모습이다
     // snap:true — 정수 배율로 렌더해 도트(애교점 등)가 픽셀에 딱 맞고 선명하다(카드 썸네일·내보내기와 동일 규칙).
-    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: pv.zoom, mults: zoomMults }), centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true, drop: true })
+    const pl0 = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: pv.zoom, mults: zoomMults }), centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true, drop: true })
+    const pl = raise ? { ...pl0, anchor: { x: pl0.anchor.x, y: pl0.anchor.y - raise } } : pl0 // 의자: 캐릭터와 의자 바닥의 가운데를 화면 가운데에
     // 캔버스를 화면 픽셀 격자에 정확히 맞춘다: CSS 크기 = 비트맵 ÷ dpr, 위치는 translate(-50%) 대신 디바이스 픽셀 단위로
     // 반올림한 left/top(+ wrap 자신의 소수 px 위치 보정). 소수 px 크기·위치면 재샘플링돼 세로줄이 찢겨 보였다.
     const bw = Math.round(pl.box.w * pl.scale), bh = Math.round(pl.box.h * pl.scale)

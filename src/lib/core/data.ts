@@ -1,6 +1,7 @@
 // Static data access. Everything is fetched from DATA_BASE — the Cloudflare R2/CDN bucket
 // (bucket contents live at the bucket root, e.g. <cdn>/index.json). NEXT_PUBLIC_DATA_BASE
 // overrides the base. Index is split per slot for virtualization.
+import { CATS } from '@/lib/catalog'
 import { LRU } from './lru'
 import type { ChatUi } from './chatUi'
 import type { ParticleDesc, ParticleSpot } from './particle'
@@ -58,7 +59,8 @@ export interface ItemMeta {
   illusion?: Illusion         // 일루전 링 · 내 뒤에 나(프레임의 표지 레이어와 같은 값 — 그리기 밖에서 이펙트 · 박자를 정할 때 쓴다)
   chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(core/chatUi)
   fixedEmotion?: string       // info.fixedEmotion: 착용 시 표정을 이 값으로 고정(표정 얼굴장식 25종)
-  stances?: string[]          // weapon only: available weapon-type stance codes (30s한손/40s두손/49건)
+  bodyRelMove?: Vec           // 의자(ListItem 과 같은 값 — 스냅샷처럼 id 만 들고 있을 때 meta 에서 읽는다)
+  stances?: string[]         // weapon only: available weapon-type stance codes (30s한손/40s두손/49건)
   // frameKey → animation frames. (Legacy data may still be Layer[]; assemble.ts normalizes.)
   frames: Record<string, Frame[]>
 }
@@ -90,6 +92,7 @@ export interface ListItem {
   ridingSeated?: string[]     // 라이딩 아이템: 캐릭터가 앉는(sit) 액션(UI값). 메탈아머는 전부 앉음.
   ridingCenterMount?: boolean // 라이딩 아이템: 캐릭터가 아니라 마운트(메카)를 중앙정렬(메탈아머).
   ridingBackSit?: boolean     // 라이딩 아이템: 뒷쪽 시선에도 캐릭터 sit 강제(탱크: 뒤=줄타기 프레임+앉은 조종사).
+  bodyRelMove?: Vec           // 의자: 앉은 캐릭터를 의자가 딛는 바닥에서 옮긴 값(원본 info.bodyRelMove — 카드 의자 (0,-182)). 바닥 = 발 - 이 값
   metaUrl?: string            // 프론트 public 의 meta.json 경로(CDN 밖 — 라이딩 · 명찰과 말풍선)
   chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(core/chatUi)
   dupOf?: number              // 헤어 · 성형: 같은 그림의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
@@ -344,6 +347,8 @@ export function loadMeta(id: string): Promise<ItemMeta> {
 export const CASHFX_FILE = 'cashfx/list.json'
 // 반지 부위(일루전 링)의 목록 — CDN rings/(parser scripts/ring-build.py). 카탈로그 index 밖이라 slotFile 이 고른다.
 export const RING_FILE = 'rings/list.json'
+// 의자 부위의 목록 — CDN chairs/(parser scripts/chair-build.py). 의자 그림도 이펙트(effects/<id>.json)라 이 목록의 id 를 이펙트 색인에 합친다.
+export const CHAIR_FILE = 'chairs/list.json'
 let effectIndexPromise: Promise<Set<string>> | null = null
 // Set of item ids (non-padded, as stored in ItemEff) that have an extracted effect.
 export function loadEffectIndex(): Promise<Set<string>> {
@@ -351,7 +356,8 @@ export function loadEffectIndex(): Promise<Set<string>> {
     effectIndexPromise = Promise.all([
       pre<string[]>('effects/index.json', () => fetch(url('effects/index.json'), FRESH).then((r) => (r.ok ? r.json() : []))).catch(() => [] as string[]),
       loadSlot(CASHFX_FILE).catch(() => [] as ListItem[]),
-    ]).then(([ids, fx]) => new Set([...ids, ...fx.map((it) => String(parseInt(it.id, 10)))]))
+      CATS.some((c) => c.id === 'chair') ? loadSlot(CHAIR_FILE).catch(() => [] as ListItem[]) : Promise.resolve([] as ListItem[]), // 의자 부위가 없는 빌드(운영 — catalog.DEV_ONLY_CATS)는 받지 않는다
+    ]).then(([ids, fx, chairs]) => new Set([...ids, ...[...fx, ...chairs].map((it) => String(parseInt(it.id, 10)))]))
   }
   return effectIndexPromise
 }

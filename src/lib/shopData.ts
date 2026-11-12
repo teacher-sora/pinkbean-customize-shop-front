@@ -3,7 +3,7 @@
 
 import type { AssembleInput, ViewOpts } from '@/lib/core/assemble'
 import { BASE_TAG, type ChatDraw, type ChatEmo, type ChatUi } from '@/lib/core/chatUi'
-import { CASHFX_FILE, RING_FILE, type AnimaRace, type ItemMeta, type ListItem, type SlotSummary } from '@/lib/core/data'
+import { CASHFX_FILE, CHAIR_FILE, RING_FILE, type AnimaRace, type ItemMeta, type ListItem, type SlotSummary } from '@/lib/core/data'
 import type { Cat } from '@/lib/catalog'
 
 // 시각적 중복 폴딩:
@@ -57,7 +57,7 @@ export const CAT_TO_SLOT: Record<string, string> = {
   hair: 'hair', plastic: 'face', skin: 'skin', cap: 'cap', faceacc: 'faceAcc',
   eyeacc: 'eyeAcc', earring: 'earring', overall: 'longcoat', top: 'coat', bottom: 'pants',
   shoes: 'shoes', gloves: 'glove', cape: 'cape', weapon: 'weapon', shield: 'shield',
-  ring: 'ring', effect: 'effect', riding: 'riding',
+  ring: 'ring', effect: 'effect', chair: 'chair', riding: 'riding',
   nametag: 'nameTag', balloon: 'chatBalloon', chatring: 'chatRing', // 부위 탭은 명찰/말풍선 하나(chatring), 코디 정보 칩은 둘(CHAT_INFO_CATS)
   title: 'title', medal: 'medal', // 칭호 · 훈장(부위 탭 · 코디 정보 칩 모두 하나씩)
 }
@@ -71,6 +71,7 @@ export const EQUIP_SLOTS = [
   'coat', 'longcoat', 'pants', 'shoes', 'glove', 'cape', 'weapon', 'shield',
   'ring', // 일루전 링 — 그릴 레이어 대신 표지 레이어(Layer.illusion)로 캐릭터를 키우거나 바꾼다(assemble.applyIllusion)
   'effect', // 캐시 이펙트 — 그릴 레이어가 없고(빈 meta) 이펙트(effects/<id>.json)만 그린다
+  'chair', // 의자 — 이펙트 부위처럼 빈 meta + 이펙트(의자 그림). 끼면 캐릭터가 앉는다(chairSeat)
   'riding', // 탑승 — 마운트/모프 레이어를 코디처럼 합성
   'nameTag', 'chatBalloon', // 명찰 · 말풍선(그릴 레이어 없이 core/chatUi 가 덧그린다)
   'title', 'medal', // 칭호 · 훈장(명찰과 같다 — 칭호는 머리 위, 훈장은 명찰 아래)
@@ -91,9 +92,18 @@ export const RIDING_SEATED_DEFAULT = new Set(['basic', 'walk']) // 캐릭터가 
 type RidingOpts = { ridingActions?: string[]; ridingSeated?: string[] } | null | undefined
 export const ridingActionSet = (it: RidingOpts) => (it?.ridingActions?.length ? new Set(it.ridingActions) : RIDING_ACTIONS_DEFAULT)
 export const ridingSeatedSet = (it: RidingOpts) => (it?.ridingSeated?.length ? new Set(it.ridingSeated) : RIDING_SEATED_DEFAULT)
-// 슬롯 → 목록 파일. 라이딩(프론트 public)과 반지 · 이펙트(CDN rings/ · cashfx/ — 카탈로그 index 밖)만 갈라지는 지점이 **여기 하나**다.
+// 슬롯 → 목록 파일. 라이딩(프론트 public)과 반지 · 이펙트 · 의자(CDN rings/ · cashfx/ · chairs/ — 카탈로그 index 밖)만 갈라지는 지점이 **여기 하나**다.
+const OWN_FILES: Record<string, string> = { riding: RIDING_FILE, ring: RING_FILE, effect: CASHFX_FILE, chair: CHAIR_FILE }
 export const slotFile = (slot: string, index?: { slots: SlotSummary[] } | null): string | undefined =>
-  CHAT_FILES[slot] ?? (slot === 'riding' ? RIDING_FILE : slot === 'ring' ? RING_FILE : slot === 'effect' ? CASHFX_FILE : index?.slots.find((s) => s.slot === slot)?.file)
+  CHAT_FILES[slot] ?? OWN_FILES[slot] ?? index?.slots.find((s) => s.slot === slot)?.file
+
+/* ── 의자 ───────────────────────────────────────────────────────────────
+ * 끼면(숨기지 않았으면) 캐릭터는 **어느 동작 · 시선에서나 앉는다**(sit) — 게임에서 의자에 앉으면 동작을 바꿀 수 없고, 의자 그림은 앞모습뿐이다.
+ * 앉으면 무기 · 방패를 그리지 않는다(라이딩의 앉은 자세와 같은 규칙). 의자 그림은 이펙트(effects/<id>.json)로 발에 붙는다.
+ * 바닥(배경 장면 · 그림자)은 발이 아니라 의자가 딛는 줄 = 발 - bodyRelMove(카드 의자는 발 182px 아래).
+ * 미리보기(PreviewModel) · 부위 카드(ItemThumb) · 스냅샷(snapRender) · 염색이 모두 이 판정을 쓴다. */
+export const chairSeat = (equipped: Record<string, unknown>, hidden?: Record<string, boolean>) => !!equipped.chair && !hidden?.chair
+export const chairLift = (it?: { bodyRelMove?: { x: number; y: number } } | null) => -(it?.bodyRelMove?.y ?? 0)
 
 /* ── 명찰 · 말풍선 반지 ──────────────────────────────────────
  * 데이터는 front public/chatui(본 서버에서 뽑은 명찰 · 말풍선 603 · 칭호 431 · 훈장 853 · 채팅 이모티콘 141 — parser 의 chatui-build.py 가 통째로 다시 쓴다).
@@ -177,8 +187,8 @@ export const ITEM_KINDS: { v: string; l: string; t: string; test?: (it: ListItem
   { v: 'cash', l: '캐시', t: '라벨이 없는 캐시 아이템', test: (it) => it.isCash && !it.label },
   { v: 'normal', l: '일반', t: '메소 아이템(캐시가 아닌 것)', test: (it) => !it.isCash },
 ]
-// 필터를 받지 않고 어느 칸에서나 늘 보이는 부위(사용자 지시): 헤어 · 성형 · 피부 · 일루전 링 · 명찰 / 말풍선 · 칭호 · 훈장 · 이펙트 · 라이딩
-export const KIND_FREE_SLOTS = new Set(['hair', 'face', 'skin', 'ring', 'nameTag', 'chatBalloon', 'chatRing', 'title', 'medal', 'effect', 'riding'])
+// 필터를 받지 않고 어느 칸에서나 늘 보이는 부위(사용자 지시): 헤어 · 성형 · 피부 · 일루전 링 · 명찰 / 말풍선 · 칭호 · 훈장 · 이펙트 · 의자 · 라이딩
+export const KIND_FREE_SLOTS = new Set(['hair', 'face', 'skin', 'ring', 'nameTag', 'chatBalloon', 'chatRing', 'title', 'medal', 'effect', 'chair', 'riding'])
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.
