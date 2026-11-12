@@ -401,7 +401,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       if (slot === 'cape' && !pv.cEffect) continue
       if (slot === 'weapon' && !pv.wEffect) continue
       if (slot === 'cap' && !pv.capEffect) continue
-      const em = effMetas.get(it.id); if (em) out.push(slot === 'pet' && basicPose ? freezeEffect(em) : em)
+      const em = effMetas.get(it.id); if (em) out.push((slot === 'pet' || slot === 'android') && basicPose ? freezeEffect(em) : em) // 변신 모습 로이드도 펫처럼 '기본'에서 멈춘다
     }
     return out
   }, [equipped, hidden, metas, effMetas, pv.cEffect, pv.wEffect, pv.capEffect, viewInfo.isStatic, pv.action])

@@ -190,8 +190,11 @@ function devStage(): Promise<Set<string>> {
   }
   return devStagePromise
 }
-// 받을 경로 — dev 사이트에서 먼저 보는 목록이면 dev/<경로>, 아니면 그대로(운영은 늘 그대로)
-const stagedRel = async (rel: string) => ((await devStage()).has(rel) ? `dev/${rel}` : rel)
+// 받을 경로 — dev 사이트에서 먼저 보는 목록이면 dev/<경로>, 아니면 그대로(운영은 늘 그대로).
+// front public 의 파일(/chatui/… — 명찰 · 말풍선 · 훈장 · 칭호 · 이모티콘)도 manifest 에 있으면 CDN 의 dev/chatui/… 로 받는다
+const stagedRel = async (rel: string) => ((await devStage()).has(rel) ? `dev/${rel.replace(/^\/+/, '')}` : rel)
+// 직접 fetch 하는 곳(명찰 계열)이 쓰는 주소
+export const stagedUrl = async (rel: string) => url(await stagedRel(rel))
 
 // 최근 패치 신규 아이템 id(파서 stringwz-merge 가 패치마다 catalog/new.json 을 교체). 없거나 실패하면 빈 집합.
 let newItemsPromise: Promise<Set<string>> | null = null
@@ -383,10 +386,10 @@ export function loadEffectIndex(): Promise<Set<string>> {
     effectIndexPromise = Promise.all([
       pre<string[]>('effects/index.json', () => fetch(url('effects/index.json'), FRESH).then((r) => (r.ok ? r.json() : []))).catch(() => [] as string[]),
       loadSlot(CASHFX_FILE).catch(() => [] as ListItem[]),
-      // 의자 · 소울 · 펫 부위가 없는 빌드(운영 — catalog.DEV_ONLY_CATS)는 받지 않는다
-      ...[['chair', CHAIR_FILE], ['soul', SOUL_FILE], ['pet', PET_FILE]].map(([cat, f]) => (CATS.some((c) => c.id === cat) ? loadSlot(f).catch(() => [] as ListItem[]) : Promise.resolve([] as ListItem[]))),
-    // 복제(dupId — 소울의 같은 생김새 아이템들)는 이펙트 파일이 없다 — 대표로 읽힌다(ShopContext.toOriginal)
-    ]).then(([ids, ...lists]) => new Set([...(ids as string[]), ...(lists as ListItem[][]).flat().filter((it) => !it.dupId).map((it) => String(parseInt(it.id, 10)))]))
+      // 의자 · 소울 · 펫 · 안드로이드(변신 모습 로이드의 Morph 그림) 부위가 없는 빌드(운영 — catalog.DEV_ONLY_CATS)는 받지 않는다
+      ...[['chair', CHAIR_FILE], ['soul', SOUL_FILE], ['pet', PET_FILE], ['android', ANDROID_FILE]].map(([cat, f]) => (CATS.some((c) => c.id === cat) ? loadSlot(f).catch(() => [] as ListItem[]) : Promise.resolve([] as ListItem[]))),
+    // 복제(dupId — 소울의 같은 생김새 아이템들)와 조립형 안드로이드(android 외형)는 이펙트 파일이 없다 — 복제는 대표로 읽힌다(ShopContext.toOriginal)
+    ]).then(([ids, ...lists]) => new Set([...(ids as string[]), ...(lists as ListItem[][]).flat().filter((it) => !it.dupId && !it.android).map((it) => String(parseInt(it.id, 10)))]))
   }
   return effectIndexPromise
 }

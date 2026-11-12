@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { watchSize } from '@/lib/sizeWatch'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import { footOf, type PlacedLayer } from '@/lib/core/assemble'
-import { type AnimaRace, type Index } from '@/lib/core/data'
+import { stagedUrl, type AnimaRace, type Index } from '@/lib/core/data'
 import { canvasBitmap, computeModelPlacement, fitCanvas, MODEL_REF, zoomStepScale } from '@/lib/core/modelPlacement'
 import type { ParticleDraw } from '@/lib/core/particle'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
@@ -41,7 +41,7 @@ const decoLists = new Map<string, Promise<Map<string, DecoEntry>>>()
 const loadDeco = (slot: 'title' | 'medal' | 'chatBalloon') => {
   let p = decoLists.get(slot)
   if (!p) {
-    p = fetch(CHAT_FILES[slot]).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; name?: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === slot && x.chatUi).map((x) => [x.id, { ui: x.chatUi!, name: x.name ?? '' }]))).catch(() => new Map())
+    p = stagedUrl(CHAT_FILES[slot]).then((u) => fetch(u)).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; name?: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === slot && x.chatUi).map((x) => [x.id, { ui: x.chatUi!, name: x.name ?? '' }]))).catch(() => new Map())
     decoLists.set(slot, p)
   }
   return p

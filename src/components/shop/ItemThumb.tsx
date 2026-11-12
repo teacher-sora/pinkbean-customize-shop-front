@@ -281,12 +281,13 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       }
       // 내 모델: 후보 아이템과 "같은 슬롯"은 배경(내 착용)에서 빼야 그 부위가 후보로 대체된 장착샷이 된다.
       //   (특정 부위 탭은 목록 쪽(list/thumbCtx)이 이미 제외하지만 '전체' 탭·검색은 카드마다 슬롯이 달라 여기서 처리.)
-      const bgF = item.slot === 'skin' ? bg : item.slot === 'android' ? [] : bg.filter((ci) => ci.slot !== item.slot)
+      const bgF = item.slot === 'skin' ? bg : item.slot === 'android' && (item.android ?? selfMeta?.android) ? [] : bg.filter((ci) => ci.slot !== item.slot)
       // 무기 이펙트를 끄면 무기(후보든 내 착용이든)의 이펙트 레이어도 뺀다 — 미리보기와 같은 규칙.
       const wOn = !pvEff || pvEff.wEffect
       const { placed: p, anchors } = assemble([...bgF, ...self].map((ci) => ({ ...ci, layers: dropWeaponEffects(ci.slot, ci.layers, wOn) })), zmap, smap)
-      // 펫 카드의 주인공은 펫이다 — 캐릭터는 발 자리(앵커)만 잡고 그리지 않는다(사용자 지시: 마네킹 옆에서 잘리지 않게, 안드로이드 카드처럼 그것만)
-      const alone = item.slot === 'pet'
+      // 펫 카드의 주인공은 펫이다 — 캐릭터는 발 자리(앵커)만 잡고 그리지 않는다(사용자 지시: 마네킹 옆에서 잘리지 않게, 안드로이드 카드처럼 그것만).
+      // 변신 모습 로이드(외형 없이 Morph 이펙트로 서는 것)도 같다
+      const alone = item.slot === 'pet' || (item.slot === 'android' && !(item.android ?? selfMeta?.android))
       const shown = alone ? [] : item.slot !== 'skin' && bgF.some((ci) => ci.noDraw) ? dropBase(p) : p // 피부를 가린 내 캐릭터 — 고르는 후보 피부는 그대로 보인다
       setPlaced(shown)
       // 이펙트(망토 오라 등) = 배경(내 착용)의 것 + 이 아이템 자신의 것. 둘 다 같은 앵커로 배치한다.
