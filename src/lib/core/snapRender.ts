@@ -7,11 +7,13 @@ import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor } from '.
 import { effectDraws, loadImage, type EffectDraw } from './render'
 import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from './particle'
 import { collectWornEffects } from './thumbEffects'
-import { CHAT_SLOTS, RIDING_FILE, animaLayers, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW, viewTone } from '@/lib/shopData'
+import { androidDx, androidPlaced, androidView, loadAndroidParts } from './android'
+import { CHAT_SLOTS, RIDING_FILE, animaLayers, chairLift, chairSeat, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW, viewTone } from '@/lib/shopData'
 import { PV_SNAP_DEFAULT, type Snapshot } from '@/components/shop/ShopContext'
 
 // center = 라이딩일 때의 가로 정렬 기준(미리보기·부위 카드와 같은 규칙). 'x' = 캐릭터 navel, 'mount' = 메카 bbox.
-export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[]; particles?: ParticleDraw[]; center?: 'x' | 'mount' }
+// lift = 의자에 앉았을 때 의자가 딛는 바닥이 발보다 아래인 만큼(월드 px, shopData.chairLift). 그리는 쪽이 그 절반만큼 올려 캐릭터와 바닥의 가운데를 칸 가운데에 둔다(미리보기와 같은 규칙)
+export type SnapComposite = { placed: PlacedLayer[]; overrides: Map<string, HTMLCanvasElement>; effects: EffectDraw[]; particles?: ParticleDraw[]; center?: 'x' | 'mount'; lift?: number }
 
 // 받기만(합성 전 미리): 몸 · 머리 · 착용 아이템의 meta 와 카드 정지 자세(서기 0번)의 그림 파일. 조립 · 염색 · 합성은 하지 않아 화면을 붙잡지 않는다 —
 // 코디 룩북 칩에 머무는 동안 부른다(누르면 합성만 남는다). 염색 그림 · 이펙트 · 탈것은 합성 때 받는다(드물거나 무겁다)
@@ -71,10 +73,12 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   //   카드의 액션은 정지 서기('basic')다. 연출 고르기 미리보기(view)만 스냅샷의 액션을 쓴다(일어서는 액션도 있다).
   const uiAction = view ? (spv.action || 'basic') : 'basic'
   // 뒷쪽은 탑승해도 앉히지 않는다(줄타기 뒷모습) — 뒤에서도 앉는 탈것(ridingBackSit)만 예외. 미리보기와 같은 규칙
-  const seated = !!rideId && (!back || !!rideItem?.ridingBackSit) && ridingSeatedSet(rideItem).has(uiAction)
+  // 의자는 어느 동작 · 시선에서나 앉는다(shopData.chairSeat)
+  const chair = chairSeat(snap.equipped, snap.hidden)
+  const seated = chair || (!!rideId && (!back || !!rideItem?.ridingBackSit) && ridingSeatedSet(rideItem).has(uiAction))
   const charTV = seated ? { ...TV, action: 'sit' } : TV
   const rideTV = TV.action === 'proneStab' ? { ...TV, action: 'prone' } : TV // 탈것 프레임 키 매핑(엎드리기)
-  const shown = equipMetas.filter(({ slot }) => !(rideId && slot === 'shield') && !(seated && slot === 'weapon'))
+  const shown = equipMetas.filter(({ slot }) => !((rideId || chair) && slot === 'shield') && !(seated && slot === 'weapon'))
   // 정지 프레임(0번)이 하필 뒷모습인 액션이 있다 — 두손 스윙(마무리) 0번. 미리보기와 같은 규칙으로 판단한다
   // (안 하면 긴 헤어가 backBody 를 덮어 카드가 '머리만' 나온다 — assemble.isBackFrame 주석 참고).
   // 멈춘 프레임(연출 고르기의 프레임 칸 · 코디 프로필 — view 일 때만): 그 액션의 fi 번째 자세. 없으면 대표 프레임(지금까지와 같다)
@@ -101,8 +105,14 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const refNav = fi != null || (view && !seated) ? bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel : undefined
   const curNav = refNav ? asm.placed.find((p) => p.slot === 'body' && p.name === 'body')?.map?.navel : undefined
   const placed = refNav && curNav && (curNav.x !== refNav.x || curNav.y !== refNav.y) ? asm.placed.map((p) => ({ ...p, x: p.x + curNav.x - refNav.x, y: p.y + curNav.y - refNav.y })) : asm.placed
+  // 의자: 의자가 딛는 바닥이 발보다 아래인 만큼(shopData.chairLift) — 안드로이드는 그 바닥에 서고, 그리는 쪽은 그 절반만큼 올린다
+  const lift = chair ? chairLift(equipMetas.find(({ slot }) => slot === 'chair')?.meta) : 0
+  // 안드로이드: 캐릭터 옆(뒤쪽)에 두 번째 캐릭터로 — 미리보기와 같은 규칙(core/android). 부위를 못 받으면 안드로이드만 빠진다
+  const andLook = equipMetas.find(({ slot }) => slot === 'android')?.meta.android
+  const andParts = andLook ? await loadAndroidParts(andLook) : null
+  const andLayers = andParts ? androidPlaced(andParts, androidView(TV, seated), undefined, index.zmap, index.smap, androidDx(view && spv.gaze === 'right'), lift) : []
   // 그릴 그림을 지금 받기 시작한다(그리는 쪽 renderCharacter 가 같은 캐시를 쓴다) — 아래의 염색 · 이펙트를 기다리는 동안 함께 온다.
-  for (const p of placed) void loadImage(p.png, true).catch(() => {})
+  for (const p of [...andLayers, ...placed]) void loadImage(p.png, true).catch(() => {})
   // 염색: 착용 아이템(팔레트/HSB) + 컬러라인 피부 라인. (오래된 프리셋엔 dye 키가 없을 수 있어 방어)
   // 염색 비활성화(dyeOff) 슬롯은 수치가 있어도 렌더에서 뺀다.
   const off = snap.dyeOff || {}
@@ -124,7 +134,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기와 같은 규칙.
   const noFx = !!equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion?.hideEffect
   const worn = noFx ? [] : await collectWornEffects(shown.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
-  const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, charTV.action, { foot, brow }, 0))
+  const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, charTV.action, { foot, brow, flip: view && spv.gaze === 'right', ground: { x: foot.x, y: foot.y + lift } }, 0)) // 그리는 쪽(SnapThumb)이 view 의 오른쪽 시선을 반전한다
   // 파티클(제네시스 무기 등) — 다 퍼진 한 장(stillSim). 무기 이펙트를 끄거나 무기를 숨기는 링이면 없다(미리보기와 같은 규칙).
   const ringIll = equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion
   const pIdx = noFx || ringIll?.hideWeapon ? {} : await loadParticleIndex()
@@ -134,7 +144,7 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const particles = placeParticles(spots, pDescs, foot, (d) => stillSim(d))
   // 탑승 중엔 가로 정렬 기준이 다르다(포즈마다 폭이 달라진다) — 메탈아머는 메카(mount) bbox, 그 외는 캐릭터 navel.
   const center = rideId ? (rideItem?.ridingCenterMount ? 'mount' : 'x') : undefined
-  return { placed: snap.hidden?.skin ? dropBase(placed) : placed, overrides, effects, ...(particles.length ? { particles } : {}), ...(center ? { center } : {}) }
+  return { placed: [...andLayers, ...(snap.hidden?.skin ? dropBase(placed) : placed)], overrides, effects, ...(particles.length ? { particles } : {}), ...(center ? { center } : {}), ...(lift ? { lift } : {}) }
 }
 
 // ── 합성 결과 캐시 ─────────────────────────────────────────────────────────────

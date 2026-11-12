@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { watchSize } from '@/lib/sizeWatch'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import { footOf, type PlacedLayer } from '@/lib/core/assemble'
-import { type AnimaRace, type Index } from '@/lib/core/data'
+import { stagedUrl, type AnimaRace, type Index } from '@/lib/core/data'
 import { canvasBitmap, computeModelPlacement, fitCanvas, MODEL_REF, zoomStepScale } from '@/lib/core/modelPlacement'
 import type { ParticleDraw } from '@/lib/core/particle'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
@@ -41,7 +41,7 @@ const decoLists = new Map<string, Promise<Map<string, DecoEntry>>>()
 const loadDeco = (slot: 'title' | 'medal' | 'chatBalloon') => {
   let p = decoLists.get(slot)
   if (!p) {
-    p = fetch(CHAT_FILES[slot]).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; name?: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === slot && x.chatUi).map((x) => [x.id, { ui: x.chatUi!, name: x.name ?? '' }]))).catch(() => new Map())
+    p = stagedUrl(CHAT_FILES[slot]).then((u) => fetch(u)).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; name?: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === slot && x.chatUi).map((x) => [x.id, { ui: x.chatUi!, name: x.name ?? '' }]))).catch(() => new Map())
     decoLists.set(slot, p)
   }
   return p
@@ -83,6 +83,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   const [particles, setParticles] = useState<ParticleDraw[] | undefined>(undefined)
   // 라이딩 카드의 가로 정렬 기준(합성기가 정해 준다) — 부위 카드(ItemThumb)·미리보기와 같은 규칙.
   const [center, setCenter] = useState<'x' | 'mount' | undefined>(undefined)
+  const [seatDrop, setSeatDrop] = useState(0) // 의자에 앉은 코디 — 의자가 딛는 바닥이 발보다 아래인 만큼(snapRender.SnapComposite.lift)
   const [dims, setDims] = useState<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   // 형상변이 목록은 **이미 받아 뒀으면 그 값으로 시작**한다. 빈 배열로 한 번 그린 뒤 목록이 도착해 다시 그리면
   // 카드마다 합성이 두 번 돈다(광장 필터를 오갈 때 느려지는 원인).
@@ -142,7 +143,7 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
     let alive = true, got = false
     const done = (r: SnapComposite | null) => {
       got = true
-      if (alive && r) { setPlaced(r.placed); setOv(r.overrides); setEffects(r.effects); setParticles(r.particles); setCenter(r.center) }
+      if (alive && r) { setPlaced(r.placed); setOv(r.overrides); setEffects(r.effects); setParticles(r.particles); setCenter(r.center); setSeatDrop(r.lift ?? 0) }
     }
     // 이미 합성해 둔 코디면 줄(thumbQueue)을 서지 않고 그 자리에서 그린다 — 필터를 오가도 계산이 0 이고
     // 뼈대(스켈레톤)가 한 번 깜빡이지도 않는다.
@@ -186,15 +187,16 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
       ...(climb ? { centerDx: MODEL_REF.previewBackDx, centerDy: MODEL_REF.previewBackDy } : {}) })
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
+    const raise = Math.round(seatDrop / 2) // 의자: 캐릭터와 의자가 딛는 바닥의 가운데를 칸 가운데에(미리보기와 같은 규칙)
     if (floorRef.current && wrapRef.current) {
       const rect = wrapRef.current.getBoundingClientRect()
       const leftDev = Math.round((dims.w * dims.dpr - bw) / 2) - ((rect.left * dims.dpr) % 1), topDev = Math.round((dims.h * dims.dpr - bh) / 2) - ((rect.top * dims.dpr) % 1)
-      floorRef.current({ cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((p.anchor.y + (footOf(placed)?.y ?? 21)) * p.scale)) / dims.dpr, scale: p.scale })
+      floorRef.current({ cx: (leftDev + bw / 2) / dims.dpr, footY: (topDev + Math.round((p.anchor.y - raise + (footOf(placed)?.y ?? 21) + seatDrop) * p.scale)) / dims.dpr, scale: p.scale })
     }
     // view 면 그 코디의 시선도 따른다(오른쪽 = 좌우 반전 — 미리보기와 같은 규칙. 코디 비교의 정지 칸)
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip: view && snap.pv?.gaze === 'right', centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: raise ? { x: p.anchor.x, y: p.anchor.y - raise } : p.anchor, flip: view && snap.pv?.gaze === 'right', centerX: center === 'x', centerMount: center === 'mount', override: ov, effects, particles, chat, shouldCancel: () => cancelled }).then(() => { if (!cancelled) drawnRef.current?.() }).catch(() => {})
     return () => { cancelled = true }
-  }, [keepCanvas, placed, ov, effects, particles, center, dims, fraction, fitW, margin, chat, zoom, zoomMults, view, snap.pv?.gaze, snap.pv?.action, snap.equipped.riding, snap.hidden?.riding])
+  }, [keepCanvas, placed, ov, effects, particles, center, dims, fraction, fitW, margin, chat, zoom, zoomMults, view, snap.pv?.gaze, snap.pv?.action, snap.equipped.riding, snap.hidden?.riding, seatDrop])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 live 부터 있다). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
   // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 게임 크기 1배).

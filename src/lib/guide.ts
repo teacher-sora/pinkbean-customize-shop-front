@@ -12,6 +12,7 @@
 //    sheet · drawer 와 함께 쓰면 창이 다 열린 뒤 그 줄까지 창 안을 스크롤해 가리킨다(아래쪽 줄도 보이게 — 사용자 지시).
 
 import { backApi } from './backApi'
+import { DEV_SITE } from './catalog'
 import { safeBubble } from './safeText'
 
 // tab: 'preview' = 미리보기에 있는 기능. 미리보기는 코디 광장을 뺀 모든 탭에 있으므로 탭을 바꾸지 않는다(광장에서만 코디 탭으로)
@@ -145,6 +146,17 @@ export const GUIDE: GuideEntry[] = [
     pc: { how: '맨 아래의 [프리셋] 탭에서\n왼쪽 목록 맨 위, [순서 변경] 옆의 방향 버튼으로 고르세요.' } },
   { id: 'ring', title: '일루전링(변신, 거대한 몸)', words: '일루전 링, 변신, 변신 반지, 거대한 머리, 거대한 몸, 내 뒤에 나, 분신',
     how: '맨 아래의 [코디] 탭에서\n부위 줄의 [일루전링]을 고르세요.', go: { tab: 'codi' } },
+  // 의자는 운영 반영 요청이 와도 dev 에만 둔다(catalog.DEV_HOLD_CATS — 사용자가 의자를 운영에 내라고 따로 말할 때만 조건을 뺀다)
+  ...(DEV_SITE ? [
+    { id: 'chair', title: '의자에 앉기', words: '의자, 카드 의자, 의자 아이템, 앉기',
+      how: '맨 아래의 [코디] 탭에서\n부위 줄의 [의자]를 고르세요.', go: { tab: 'codi' as const } },
+  ] : []),
+  { id: 'soul', title: '소울 이펙트 달기', words: '소울, 소울 스킨, 소울 이펙트, 머리 위 문장, 소울 외형, 위대한 소울',
+    how: '맨 아래의 [코디] 탭에서\n부위 줄의 [소울]을 고르세요.', go: { tab: 'codi' } },
+  { id: 'pet', title: '펫 데려오기', words: '펫, 애완동물, 옆에 서는 펫, 펫 고르기',
+    how: '맨 아래의 [코디] 탭에서\n부위 줄의 [펫]을 고르세요.', go: { tab: 'codi' } },
+  { id: 'android', title: '안드로이드 데려오기', words: '안드로이드, 로이드, 옆에 서는 캐릭터, 동반 캐릭터, 블루 아카이브 로이드',
+    how: '맨 아래의 [코디] 탭에서\n부위 줄의 [안드로이드]를 고르세요.', go: { tab: 'codi' } },
   { id: 'chat', title: '채팅 보내기', words: '채팅, 말 걸기, 대사 띄우기, 말풍선 띄우기, 메시지',
     how: '위쪽의 캐릭터 화면 왼쪽 아래에 있는\n말풍선 버튼을 누르고, 말을 적어 보내세요.', go: { tab: 'preview', spot: 'chat', click: true },
     pc: { how: '오른쪽의 캐릭터 화면 아래 채팅 칸에\n말을 적고 Enter 를 누르세요.', go: { tab: 'preview', spot: 'chat' } } },

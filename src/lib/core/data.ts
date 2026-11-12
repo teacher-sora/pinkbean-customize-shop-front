@@ -1,6 +1,7 @@
 // Static data access. Everything is fetched from DATA_BASE — the Cloudflare R2/CDN bucket
 // (bucket contents live at the bucket root, e.g. <cdn>/index.json). NEXT_PUBLIC_DATA_BASE
 // overrides the base. Index is split per slot for virtualization.
+import { CATS, DEV_SITE } from '@/lib/catalog'
 import { LRU } from './lru'
 import type { ChatUi } from './chatUi'
 import type { ParticleDesc, ParticleSpot } from './particle'
@@ -8,6 +9,8 @@ export const DATA_BASE =
   process.env.NEXT_PUBLIC_DATA_BASE ?? 'https://cdn.pinkbean-customize.com'
 
 export type Vec = { x: number; y: number }
+// 안드로이드의 외형(parser android-build.py) — 피부 = 몸 id(2003), 헤어 · 성형 · 입는 장비 = 8자리 id. 그리기는 core/android
+export interface AndroidLook { gender: number; skin: number; hair: string; face: string; items: string[] }
 
 export interface Layer {
   name: string
@@ -58,7 +61,9 @@ export interface ItemMeta {
   illusion?: Illusion         // 일루전 링 · 내 뒤에 나(프레임의 표지 레이어와 같은 값 — 그리기 밖에서 이펙트 · 박자를 정할 때 쓴다)
   chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(core/chatUi)
   fixedEmotion?: string       // info.fixedEmotion: 착용 시 표정을 이 값으로 고정(표정 얼굴장식 25종)
-  stances?: string[]          // weapon only: available weapon-type stance codes (30s한손/40s두손/49건)
+  android?: AndroidLook       // 안드로이드(ListItem 과 같은 값 — 스냅샷은 meta 에서 읽는다)
+  bodyRelMove?: Vec           // 의자(ListItem 과 같은 값 — 스냅샷처럼 id 만 들고 있을 때 meta 에서 읽는다)
+  stances?: string[]         // weapon only: available weapon-type stance codes (30s한손/40s두손/49건)
   // frameKey → animation frames. (Legacy data may still be Layer[]; assemble.ts normalizes.)
   frames: Record<string, Frame[]>
 }
@@ -90,10 +95,12 @@ export interface ListItem {
   ridingSeated?: string[]     // 라이딩 아이템: 캐릭터가 앉는(sit) 액션(UI값). 메탈아머는 전부 앉음.
   ridingCenterMount?: boolean // 라이딩 아이템: 캐릭터가 아니라 마운트(메카)를 중앙정렬(메탈아머).
   ridingBackSit?: boolean     // 라이딩 아이템: 뒷쪽 시선에도 캐릭터 sit 강제(탱크: 뒤=줄타기 프레임+앉은 조종사).
+  android?: AndroidLook       // 안드로이드: 외형(core/android 가 두 번째 캐릭터로 조립한다)
+  bodyRelMove?: Vec           // 의자: 앉은 캐릭터를 의자가 딛는 바닥에서 옮긴 값(원본 info.bodyRelMove — 카드 의자 (0,-182)). 바닥 = 발 - 이 값
   metaUrl?: string            // 프론트 public 의 meta.json 경로(CDN 밖 — 라이딩 · 명찰과 말풍선)
   chatUi?: ChatUi             // 명찰 · 말풍선 반지의 UI 조각(core/chatUi)
   dupOf?: number              // 헤어 · 성형: 같은 그림의 원본 색 묶음(이 묶음은 복제다 — loadBeautyDups)
-  dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups)
+  dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups). 소울은 목록 파일에 직접 — 같은 생김새의 대표 id(parser soul-build.py)
   setGroup?: number           // 공식 세트 무리 번호(loadSets — lib/setOrder 가 목록에서 한자리에 모은다)
   setSub?: number             // 무리 안 순서(0 = 여자 전용, 1 = 남자 전용, 2 = 공용 — 남녀 세트에 함께 든 것)
 }
@@ -169,11 +176,31 @@ function boot<T>(rel: string): Promise<T> | null {
 }
 const pre = <T,>(rel: string, load: () => Promise<T>): Promise<T> => { const p = boot<T>(rel); return p ? p.catch(load) : load() }
 
+// dev 사이트가 운영보다 먼저 보는 목록(테스트 서버 신규 — 사용자 지시: 신규는 dev 에서 보고 운영 반영을 정한다. parser scripts/dev-stage.py 가 올린다).
+// CDN dev/manifest.json = { files: [CDN 경로…] } 에 적힌 파일은 dev/<경로>(병합된 전체 목록 — 순서가 운영 반영 뒤와 같다)를 대신 받는다.
+// 운영 빌드는 이 파일을 받지 않고 경로도 그대로다 — CDN 을 같이 읽어도 운영 화면은 바뀌지 않는다. 운영에 낼 때는 parser 가 dev/ 의 목록을 제자리에 올리고 manifest 를 비운다.
+const NO_STAGE = Promise.resolve(new Set<string>())
+let devStagePromise: Promise<Set<string>> | null = null
+function devStage(): Promise<Set<string>> {
+  if (!DEV_SITE) return NO_STAGE
+  if (!devStagePromise) {
+    devStagePromise = fetch(url('dev/manifest.json'), FRESH).then((r) => (r.ok ? r.json() : {}))
+      .then((j: { files?: string[] }) => new Set(j.files || []))
+      .catch(() => new Set<string>())
+  }
+  return devStagePromise
+}
+// 받을 경로 — dev 사이트에서 먼저 보는 목록이면 dev/<경로>, 아니면 그대로(운영은 늘 그대로).
+// front public 의 파일(/chatui/… — 명찰 · 말풍선 · 훈장 · 칭호 · 이모티콘)도 manifest 에 있으면 CDN 의 dev/chatui/… 로 받는다
+const stagedRel = async (rel: string) => ((await devStage()).has(rel) ? `dev/${rel.replace(/^\/+/, '')}` : rel)
+// 직접 fetch 하는 곳(명찰 계열)이 쓰는 주소
+export const stagedUrl = async (rel: string) => url(await stagedRel(rel))
+
 // 최근 패치 신규 아이템 id(파서 stringwz-merge 가 패치마다 catalog/new.json 을 교체). 없거나 실패하면 빈 집합.
 let newItemsPromise: Promise<Set<string>> | null = null
 export function loadNewItems(): Promise<Set<string>> {
   if (!newItemsPromise) {
-    newItemsPromise = pre<{ ids?: string[] }>('catalog/new.json', () => fetch(url('catalog/new.json'), FRESH).then((r) => (r.ok ? r.json() : { ids: [] })))
+    newItemsPromise = stagedRel('catalog/new.json').then((rel) => pre<{ ids?: string[] }>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : { ids: [] }))))
       .then((j: { ids?: string[] }) => new Set(j.ids || []))
       .catch(() => new Set<string>())
   }
@@ -259,7 +286,7 @@ type Labels = { master: Set<string> }
 let labelsPromise: Promise<Labels> | null = null
 export function loadLabels(): Promise<Labels> {
   if (!labelsPromise) {
-    labelsPromise = pre<{ master?: string[] }>('catalog/labels.json', () => fetch(url('catalog/labels.json'), FRESH).then((r) => (r.ok ? r.json() : {})))
+    labelsPromise = stagedRel('catalog/labels.json').then((rel) => pre<{ master?: string[] }>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : {}))))
       .catch(() => ({} as { master?: string[] }))
       .then((d) => ({ master: new Set(d.master ?? []) }))
   }
@@ -283,7 +310,7 @@ export function loadSlot(file: string): Promise<ListItem[]> {
   if (!p) {
     const labels = loadLabels() // 목록과 함께 받는다(기다리는 시간이 겹치게)
     const sets = loadSets()
-    p = pre<ListItem[]>(file, () => fetch(url(file), FRESH).then((r) => r.json())).then((items: ListItem[]) => {
+    p = stagedRel(file).then((rel) => pre<ListItem[]>(rel, () => fetch(url(rel), FRESH).then((r) => r.json()))).then((items: ListItem[]) => {
       for (const it of items) { const mu = (it as { metaUrl?: string }).metaUrl; if (mu) ridingMetaUrl.set(it.id, mu) }
       // 같은 동작 목록은 한 배열을 함께 쓴다 — JSON 은 아이템마다 같은 글자를 새로 만든다(무기 3,961개의 동작 목록은 365가지뿐인데
       // 문자열 20만 개가 힙에 남았다). 동작 목록은 읽기만 한다
@@ -344,6 +371,14 @@ export function loadMeta(id: string): Promise<ItemMeta> {
 export const CASHFX_FILE = 'cashfx/list.json'
 // 반지 부위(일루전 링)의 목록 — CDN rings/(parser scripts/ring-build.py). 카탈로그 index 밖이라 slotFile 이 고른다.
 export const RING_FILE = 'rings/list.json'
+// 의자 부위의 목록 — CDN chairs/(parser scripts/chair-build.py). 의자 그림도 이펙트(effects/<id>.json)라 이 목록의 id 를 이펙트 색인에 합친다.
+export const CHAIR_FILE = 'chairs/list.json'
+// 안드로이드 부위의 목록 — CDN androids/(parser scripts/android-build.py)
+export const ANDROID_FILE = 'androids/list.json'
+// 소울 부위의 목록 — CDN souls/(parser scripts/soul-build.py). 소울 이펙트도 이펙트(effects/<id>.json)라 이 목록의 id 를 이펙트 색인에 합친다
+export const SOUL_FILE = 'souls/list.json'
+// 펫 부위의 목록 — CDN pets/(parser scripts/pet-build.py). 펫 그림도 이펙트(effects/<id>.json, pos 5 = 펫 자리)라 이 목록의 id 를 이펙트 색인에 합친다
+export const PET_FILE = 'pets/list.json'
 let effectIndexPromise: Promise<Set<string>> | null = null
 // Set of item ids (non-padded, as stored in ItemEff) that have an extracted effect.
 export function loadEffectIndex(): Promise<Set<string>> {
@@ -351,7 +386,10 @@ export function loadEffectIndex(): Promise<Set<string>> {
     effectIndexPromise = Promise.all([
       pre<string[]>('effects/index.json', () => fetch(url('effects/index.json'), FRESH).then((r) => (r.ok ? r.json() : []))).catch(() => [] as string[]),
       loadSlot(CASHFX_FILE).catch(() => [] as ListItem[]),
-    ]).then(([ids, fx]) => new Set([...ids, ...fx.map((it) => String(parseInt(it.id, 10)))]))
+      // 의자 · 소울 · 펫 · 안드로이드(변신 모습 로이드의 Morph 그림) 부위가 없는 빌드(운영의 의자 — catalog.DEV_HOLD_CATS)는 받지 않는다
+      ...[['chair', CHAIR_FILE], ['soul', SOUL_FILE], ['pet', PET_FILE], ['android', ANDROID_FILE]].map(([cat, f]) => (CATS.some((c) => c.id === cat) ? loadSlot(f).catch(() => [] as ListItem[]) : Promise.resolve([] as ListItem[]))),
+    // 복제(dupId — 소울의 같은 생김새 아이템들)와 조립형 안드로이드(android 외형)는 이펙트 파일이 없다 — 복제는 대표로 읽힌다(ShopContext.toOriginal)
+    ]).then(([ids, ...lists]) => new Set([...(ids as string[]), ...(lists as ListItem[][]).flat().filter((it) => !it.dupId && !it.android).map((it) => String(parseInt(it.id, 10)))]))
   }
   return effectIndexPromise
 }

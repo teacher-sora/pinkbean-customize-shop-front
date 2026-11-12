@@ -2,6 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // X-Powered-By 헤더 제거(불필요한 정보 노출 방지)
+  // 배포 환경(Vercel 의 VERCEL_ENV — main = production, dev = preview, 로컬은 없음)을 화면 코드에 넘긴다 — lib/catalog DEV_SITE
+  env: { NEXT_PUBLIC_SITE_ENV: process.env.VERCEL_ENV || 'local' },
   // 코디 광장 참고 이미지(Supabase Storage 공개 버킷)를 next/image 로 줄여 보낸다 — 원본(최대 5MB)을 매번 내려받지 않게.
   images: {
     remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' }],

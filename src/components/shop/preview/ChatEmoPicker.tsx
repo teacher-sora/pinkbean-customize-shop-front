@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { warmEmo, type ChatEmo } from '@/lib/core/chatUi'
 import { imageSrc } from '@/lib/core/render'
 import { CHAT_EMO_FILE } from '@/lib/shopData'
+import { stagedUrl } from '@/lib/core/data'
 import { useInnerSlide } from '../surface/innerSlide'
 import { useWheelRail } from '../ui/useWheelRail'
 import { PopFoot } from './PopBox'
@@ -19,7 +20,7 @@ import styles from './preview.module.css'
 
 type EmoSet = { id: string; name: string; icon: string | null; items: ChatEmo[] }
 let emoSets: Promise<EmoSet[]> | null = null
-const loadEmoSets = () => (emoSets ??= fetch(CHAT_EMO_FILE).then((r) => (r.ok ? r.json() : Promise.reject(new Error('emo')))).catch((e) => { emoSets = null; throw e }))
+const loadEmoSets = () => (emoSets ??= stagedUrl(CHAT_EMO_FILE).then((u) => fetch(u)).then((r) => (r.ok ? r.json() : Promise.reject(new Error('emo')))).catch((e) => { emoSets = null; throw e }))
 let lastSet = 0 // 마지막으로 본 묶음(창 · 시트를 다시 열어도 그 묶음에서)
 // 보고 있는 묶음의 움직이는 그림을 한가할 때 하나씩 미리 받는다(보내는 순간 바로 움직이게). 묶음을 바꾸거나 창을 닫으면 다음 것부터 멈춘다.
 // 한 묶음이 최대 860KB(움직이는 그림 한 장 최대 430KB, 풀면 평균 0.35MB)라 망이 넉넉할 때만 — 데이터 절약 · 2G/3G 에서는 하지 않는다

@@ -14,6 +14,7 @@ import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, dropBase, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
+import { androidDx, androidKey, androidPlaced, androidView, loadAndroidParts, type AndroidParts } from '@/lib/core/android'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { effectDraws, effectGroups, effectGroupsFor, effectPeriods, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
@@ -25,7 +26,7 @@ import { heroBaseProbe, useHeroView } from '@/lib/heroView'
 import { bindImageMenu, type GifMenu } from '@/lib/canvasMenu'
 import { setStageFloor } from '@/lib/stageFloor'
 import { isStacked } from '@/lib/useBreakpoint'
-import { DEFAULT_TONE, MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, viewTone, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, ZOOM_WORLD_M, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, skinDyeFamily } from '@/lib/shopData'
+import { DEFAULT_TONE, MOVE_POSTURE_ACTIONS, PREVIEW_FRACTION, viewTone, chatDrawOf, PREVIEW_FRACTION_MOBILE, PREVIEW_MARGIN, ZOOM_WORLD, ZOOM_WORLD_M, animaLayers, buildView, fixedExpr, frameAtElapsed, frameAtElapsedAlt, frameCycleMs, resolveAction, ridingSeatedSet, chairSeat, chairLift, skinDyeFamily } from '@/lib/shopData'
 import { peekSavedZoom, useShop, type DotOffsets } from './ShopContext'
 import { useLiveRedraw } from './useLiveRedraw'
 import { useIsoLayoutEffect } from '@/lib/uiState'
@@ -51,6 +52,13 @@ const heroBaseH = () => (typeof document === 'undefined' ? 216 : heroBaseProbe()
 // 부유 아이템의 둥둥 뜨기 — 위로 최대 FLOAT_AMP 게임 픽셀, FLOAT_MS 한 바퀴(원본에 값이 없어 게임 화면으로 맞췄다).
 const FLOAT_AMP = 5
 const FLOAT_MS = 2400
+// 이펙트를 첫 프레임(repFrame)으로 고정한 사본 — 펫을 '기본'에서 멈출 때 쓴다. 묶음마다 대표 프레임 한 장만 남겨 애니메이션이 돌지 않는다(두 번째 층 extra 까지).
+function freezeEffect (em: EffectMeta): EffectMeta {
+  const one = (g: EffectMeta['groups'][string]) => ({ ...g, frames: [g.frames[g.repFrame] || g.frames[0]], repFrame: 0 })
+  const groups: EffectMeta['groups'] = {}
+  for (const [k, g] of Object.entries(em.groups)) groups[k] = one(g)
+  return { ...em, groups, extra: em.extra ? freezeEffect(em.extra) : undefined }
+}
 // 보이는 프레임을 칠한 뒤 전 프레임 염색을 시작하기까지 — 연달아 입는 동안은 전 프레임을 건너뛰어 새 아이템이 바로 입혀진다
 const FULL_DYE_WAIT_MS = 150
 
@@ -101,7 +109,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   } | null>(null)
   // 우클릭 "움짤 저장"용 — 지금 그리는 동작의 전 프레임과 움직이는 것들(이펙트 · 입자 · 부유). draw effect 가 그림을 그리기 시작할 때 갱신한다.
   const animRef = useRef<{
-    frames: { placed: PlacedLayer[]; foot: { x: number; y: number }; brow: { x: number; y: number }; navel: { x: number; y: number } }[]
+    frames: { placed: PlacedLayer[]; foot: { x: number; y: number }; brow: { x: number; y: number }; navel: { x: number; y: number }; core: { x: number; y: number }; flip?: boolean; ground?: { x: number; y: number } }[]
     delays: number[]; animated: boolean; pingpong: boolean; effList: EffectMeta[]; action: string
     spots: ParticleSpot[]; descs: Map<string, ParticleDesc>; floating: boolean; ringFloor?: number; chatRef: ChatRef | null
     // 미리보기 캔버스의 판(게임 1배 상자 · 기준점)과 칸 안 자리(디바이스 px) — 배경 움짤이 같은 자리에 얹는다
@@ -140,6 +148,18 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   const [floatItems, setFloatItems] = useState<Record<string, number>>({})
   useEffect(() => { loadParticleIndex().then(setParticleIndex); loadWeaponMotion().then(setWeaponMotion); loadFloatItems().then(setFloatItems) }, [])
   useEffect(() => { loadAnima().then(setAnimaRaces).catch(() => {}) }, [])
+  // 안드로이드의 부위(피부 · 헤어 · 성형 · 옷 meta) — 착용 meta 와 따로 받는다. CDN 에 없는 부위가 있어도 기다림이 멈추지 않게(core/android)
+  const andItem = equipped['android'] && !hidden['android'] ? equipped['android'] : null
+  const andLook = andItem ? andItem.android ?? metas.get(andItem.id)?.android : undefined
+  const [andParts, setAndParts] = useState<{ key: string; parts: AndroidParts | null } | null>(null)
+  useEffect(() => {
+    if (!andLook) return
+    const key = androidKey(andLook)
+    if (andParts?.key === key) return
+    let alive = true
+    loadAndroidParts(andLook).then((parts) => { if (alive) setAndParts({ key, parts }) })
+    return () => { alive = false }
+  }, [andLook, andParts])
   useEffect(() => {
     if (!index || !bodyId || !headId) return
     const need = new Set<string>([bodyId, headId])
@@ -189,6 +209,9 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     // ⚠️ 착용 아이템 메타가 하나라도 아직 안 왔으면 조립하지 않는다(null → 캔버스는 직전 그림 유지). 되돌리기/다시실행·
     //    프리셋 전환처럼 여러 부위가 한꺼번에 바뀔 때 "일부 부위가 빠진 중간 상태"가 한 프레임 그려지던 티어링의 원인.
     for (const it of Object.values(equipped)) if (it && !metas.has(it.id)) return null
+    // 안드로이드를 끼었으면 그 부위를 다 받을 때까지 기다린다(위와 같은 이유 — 안드로이드만 늦게 붙는 그림을 한 번 그리지 않게)
+    if (andLook && andParts?.key !== androidKey(andLook)) return null
+    const andP = andLook ? andParts!.parts : null
     const ridingItem = equipped['riding']
     const ridingMeta = ridingItem && !hidden['riding'] ? metas.get(ridingItem.id) : undefined
     const riding = !!ridingMeta
@@ -198,7 +221,9 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const seatedSet = ridingSeatedSet(ridingItem)
     // 뒷쪽 시선은 보통 sit 로 안 덮지만(캐릭터 등반 뒷모습), ridingBackSit(탱크)면 뒤에서도 sit 강제.
     const backOk = pv.gaze !== 'back' || !!ridingItem?.ridingBackSit
-    const seated = riding && backOk && seatedSet.has(pv.action) // 앉은 채(캐릭터 sit)
+    // 의자: 어느 동작 · 시선에서나 앉는다(shopData.chairSeat). 의자와 라이딩은 함께 끼지 않는다(자리 코드 Tm)
+    const chair = chairSeat(equipped, hidden)
+    const seated = chair || (riding && backOk && seatedSet.has(pv.action)) // 앉은 채(캐릭터 sit)
     const charV = seated ? { ...V, action: 'sit' } : V     // 앉는 액션이면 캐릭터는 sit 로 그린다
     // 재규어 액션 키 매핑: 엎드리기(캐릭터 proneStab) → 재규어 'prone'. 나머지는 V.action 그대로 매칭된다.
     const jagV = riding ? { ...V, action: V.action === 'proneStab' ? 'prone' : V.action } : V
@@ -206,13 +231,17 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     // 변신 링은 캐릭터 대신 반지 그림이 돈다 → 반지가 클럭(그림 수 · 박자가 몸과 다르다).
     const ringMeta = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
     const transform = ringMeta?.illusion?.kind === 'transform'
-    const delays = transform ? frameDelays(ringMeta!, charV) : frameDelays((seated ? ridingMeta : bodyMeta) ?? bodyMeta, seated ? jagV : charV)
+    const rideClock = seated && riding
+    const delays = transform ? frameDelays(ringMeta!, charV) : frameDelays((rideClock ? ridingMeta : bodyMeta) ?? bodyMeta, rideClock ? jagV : charV)
     const N = Math.max(1, delays.length)
     // stabOffset 기준 navel = stand1 고정(라이딩 포함). 액션 내 navel 드리프트는 "상체 상하 모션"이므로 죽이지
     // 않는다(발은 고정, 상체가 오르내림). 라이딩 가로 정렬은 렌더의 centerXOnly 가 담당(세로는 이 드리프트 유지).
     const refNav = bodyMeta.frames['stand1']?.[0]?.layers?.find((l) => l.name === 'body')?.map?.navel
     // 형상변이(정적 파츠) — 프레임 공통. 공용 헬퍼(리스트 카드와 동일 로직).
     const animaParts = animaLayers(pv.form, animaRaces)
+    // 의자는 의자가 딛는 줄(발 - bodyRelMove)이 바닥이다 — 그 아래로 안드로이드를 세우고(아래), 화면은 그 절반만큼 올린다(raise)
+    const lift = chair ? chairLift(equipped['chair']) : 0
+    const andV = andP ? androidView(V, seated) : null
     // '기본'(정지)에서도 머리에 붙는 아이템이 그 액션의 프레임을 따로 가지면(액션 헤어 · 움직이는 모자) 그것만 돈다 — 망토 · 무기
     // 이펙트가 정지 화면에서도 도는 것과 같다(사용자 지시). 캐릭터(몸 · 머리)와 몸에 붙는 옷 · 탈것은 0번 프레임에 그대로 둔다:
     // 옷은 몸과 함께 숨 쉬는 프레임이라 몸이 멈춘 채 돌리면 어긋나고, 재규어는 통짜 그림이라 돌리면 1px 씩 떨린다.
@@ -242,7 +271,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       ]
       for (const [slot, it] of Object.entries(equipped)) {
         if (!it || hidden[slot]) continue
-        if (riding && slot === 'shield') continue // 탑승 중 방패 숨김(직업 불일치)
+        if ((riding || chair) && slot === 'shield') continue // 탑승 중 · 의자에 앉으면 방패 숨김
         if (seated && slot === 'weapon') continue  // 앉은 채(기본/서기/걷기)에선 무기 미출력
         const m = metas.get(it.id); if (!m) continue
         const itemV = slot === 'riding' ? jagV : charV // 탈것은 자기(매핑된) 액션, 나머지는 캐릭터 포즈(sit/선택)를 따른다
@@ -273,14 +302,21 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       //   centerX/centerMount(캐릭터 navel/마운트 bbox 재중심)에서 stab 만큼 마운트가 어긋난다(카드는 stab 이
       //   없어 안 어긋남 → 미리보기만 왼쪽 치우침). 균일 적용하면 재중심에서 stab 이 상쇄돼 카드와 동일해진다.
       const shift = riding && seated ? { x: 0, y: 0 } : stab
-      const placed = shift.x || shift.y ? raw.map((p) => ({ ...p, x: p.x + shift.x, y: p.y + shift.y })) : raw
+      const placed0 = shift.x || shift.y ? raw.map((p) => ({ ...p, x: p.x + shift.x, y: p.y + shift.y })) : raw
+      // 안드로이드: 캐릭터 옆(뒤쪽)에 같은 바닥으로 — 캐릭터가 의자에 앉았으면 의자가 딛는 바닥에 선다. 캐릭터보다 먼저(뒤에) 그린다
+      const placed = andP && andV ? [...androidPlaced(andP, andV, ci, index.zmap, index.smap, androidDx(viewInfo.flip), lift), ...placed0] : placed0
       // 발 = 몸 그림의 origin(일루전이 몸을 옮겼으면 옮긴 자리 — 바닥 장면이 이 높이에 깔린다). 변신은 몸이 없어 맨몸의 발.
       const bnav = curBody?.map?.navel
       const bf = footOf(raw)
       const foot = bf ? { x: bf.x + stab.x, y: bf.y + stab.y } : { x: (bnav ? -bnav.x : 8) + stab.x, y: (bnav ? -bnav.y : 21) + stab.y }
       const brow = anchors.brow ? { x: anchors.brow.x + stab.x, y: anchors.brow.y + stab.y } : foot
-      return { placed: bare || hidden.skin ? dropBase(placed) : placed, foot, brow, navel: stab } // navel = 배꼽(월드 원점) + 같은 보정 — 허리에 붙는 이펙트(pos 4)
+      // navel = 배꼽(월드 원점) + 같은 보정 — 허리 · 몸통에 붙는 이펙트(pos 4 — 소울). flip · ground = 펫 자리(pos 5 — 늘 캐릭터 왼쪽, 의자에 앉으면 의자가 딛는 바닥)
+      return { placed: bare || hidden.skin ? dropBase(placed) : placed, foot, brow, navel: stab, core: stab, flip: viewInfo.flip, ground: { x: foot.x, y: foot.y + lift } }
     })
+    // core = 소울 자리(pos 7): 서기 0프레임의 배꼽 = 첫 프레임의 발 + stand1 배꼽. 모든 프레임이 같은 값을 본다 — 숨 쉬기 · 동작 · 탈것의 출렁임에 흔들리지 않는다
+    // (사용자 지시 — 칭호 · 명찰처럼 고정. 배꼽(navel)을 따르면 프레임마다 1~2px 씩 움직였다)
+    const core = frames[0] && refNav ? { x: frames[0].foot.x + refNav.x, y: frames[0].foot.y + refNav.y } : frames[0]?.navel
+    if (core) for (const f of frames) f.core = core
     // 핑퐁(왕복)은 "캐릭터가 클럭"일 때(전투대기 등 일어선 액션)만. 앉은 채(seated)는 재규어가 클럭이고 4족
     // 보행은 루프여야 뒷발이 되돌아가며 움찔하지 않는다. (전투대기가 중간에 툭 끊기던 건 라이딩 전체를 loop 로
     // 막았기 때문 — seated 아닐 때는 원래대로 왕복시킨다.)
@@ -288,13 +324,15 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const centerMount = riding && !!ridingItem?.ridingCenterMount
     // 바닥에 닿는 높이(navel 기준). 맨몸은 발, 탑승 중이면 탈것의 원점 — 배경 장면이 이 높이에 바닥을 깐다(lib/stageFloor).
     const mount = riding ? frames[0]?.placed.find((p) => p.slot === 'riding' && p.name.startsWith('mount')) : undefined
-    const ground = mount ? mount.y + mount.origin.y : frames[0]?.foot.y ?? 21
+    // 의자는 캐릭터와 의자가 딛는 바닥의 가운데가 화면 가운데에 오게 그 절반만큼 올린다(raise)
+    const ground = mount ? mount.y + mount.origin.y : (frames[0]?.foot.y ?? 21) + lift
+    const raise = Math.round(lift / 2)
     // 멈춘 프레임(pv.frame — 연출 설정 > 액션에서 고른 자세): 그 한 장만 남긴다. 복사 · 움짤 · 염색이 모두 이 목록을 보므로 함께 따른다.
     // 이펙트 · 입자는 계속 돈다(몸만 멈춘다 — 게임에서 멈춰 선 캐릭터의 망토 이펙트가 도는 것과 같다)
     const fz = !viewInfo.isStatic && pv.frame >= 0 && pv.frame < N ? pv.frame : -1
-    if (fz >= 0) return { frames: [frames[fz]], delays: [delays[fz]], N: 1, riding, centerMount, ground, animated: false, pingpong: false, frozen: fz }
-    return { frames, delays, N, riding, centerMount, ground, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action), frozen: -1 }
-  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, pv.frame, V, viewInfo.isStatic, weaponMotion, bare])
+    if (fz >= 0) return { frames: [frames[fz]], delays: [delays[fz]], N: 1, riding, chair, centerMount, ground, raise, animated: false, pingpong: false, frozen: fz }
+    return { frames, delays, N, riding, chair, centerMount, ground, raise, animated: (!viewInfo.isStatic || itemAnimated) && N > 1, pingpong: !seated && MOVE_POSTURE_ACTIONS.has(pv.action), frozen: -1 }
+  }, [ready, bodyMeta, headMeta, index, bodyId, headId, equipped, hidden, metas, andLook, andParts, animaRaces, dotPos, pv.form, pv.wEffect, pv.gaze, pv.action, pv.frame, V, viewInfo.isStatic, weaponMotion, bare])
   // 아이템만 볼 때의 가운데 — 합성이 바뀔 때마다 새로(첫 프레임의 bbox 로 한 번 정하고 애니메이션 내내 같은 자리)
   const bareBox = useMemo(() => (bare ? {} : undefined), [bare, spec, dims, pv.zoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -360,15 +398,17 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect).
     const ring = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
     if (ring?.illusion?.hideEffect) return out
+    // '기본'(정지) 상태에서는 펫을 첫 프레임으로 고정한다(사용자 지시 — 펫은 캐릭터가 멈추면 함께 멈춘다). 서기 · 걷기에서는 제 애니메이션을 돈다.
+    const basicPose = viewInfo.isStatic && pv.action === 'basic'
     for (const [slot, it] of Object.entries(equipped)) {
       if (!it || hidden[slot]) continue
       if (slot === 'cape' && !pv.cEffect) continue
       if (slot === 'weapon' && !pv.wEffect) continue
       if (slot === 'cap' && !pv.capEffect) continue
-      const em = effMetas.get(it.id); if (em) out.push(em)
+      const em = effMetas.get(it.id); if (em) out.push((slot === 'pet' || slot === 'android') && basicPose ? freezeEffect(em) : em) // 변신 모습 로이드도 펫처럼 '기본'에서 멈춘다
     }
     return out
-  }, [equipped, hidden, metas, effMetas, pv.cEffect, pv.wEffect, pv.capEffect])
+  }, [equipped, hidden, metas, effMetas, pv.cEffect, pv.wEffect, pv.capEffect, viewInfo.isStatic, pv.action])
 
   // 염색 발색 오버라이드: 착용한 헤어/성형(palette)을 선택 색상으로 리컬러한 레이어 캔버스 맵.
   // renderCharacter 가 png 키로 조회해 원본 대신 그린다. 색/뷰/착용/메타 변화 시에만 재계산(비동기).
@@ -394,7 +434,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const dyeRidingIt = equipped['riding']
     const dyeSeatedSet = ridingSeatedSet(dyeRidingIt)
     const dyeBackOk = pv.gaze !== 'back' || !!dyeRidingIt?.ridingBackSit
-    const dyeSeated = !!dyeRidingIt && !hidden['riding'] && dyeBackOk && dyeSeatedSet.has(pv.action)
+    const dyeSeated = chairSeat(equipped, hidden) || (!!dyeRidingIt && !hidden['riding'] && dyeBackOk && dyeSeatedSet.has(pv.action))
     const dyeV = dyeSeated ? { ...V, action: 'sit' } : V
     // 이 액션에 뒷모습 프레임이 섞여 있으면(두손/한손 스윙 마무리) 그 프레임의 '뒷' 스프라이트도 칠한다.
     const dyeBack = !!bodyMeta && hasBackFrame(bodyMeta, dyeV)
@@ -427,7 +467,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
           const frames = allFrames ? g.frames : g.frames.slice(0, 1)
           for (const fr of frames) pngs.push(fr.png)
         }
-        if (!allFrames && shownFrame) for (const d of effectDraws(em, V.action, { foot: shownFrame.foot, brow: shownFrame.brow, navel: shownFrame.navel }, shownAt)) pngs.push(d.png)
+        if (!allFrames && shownFrame) for (const d of effectDraws(em, V.action, shownFrame, shownAt)) pngs.push(d.png)
         const loaded = await Promise.all(pngs.map((p) => loadDyeImage(p).then((img) => [p, img] as const).catch(() => null)))
         let n = 0
         for (const e of loaded) {
@@ -551,7 +591,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     if (!canvas || !spec || !dims.w || !dims.h) return
     if (effPending || dyeStale) return // 입력이 다 모일 때까지 직전 그림 유지(중간 상태 미표시)
     let cancelled = false, raf = 0
-    const { frames, delays, animated, pingpong, riding, centerMount, ground } = spec
+    const { frames, delays, animated, pingpong, riding, chair, centerMount, ground, raise } = spec
     // 명찰 · 말풍선 · 칭호 · 훈장의 기준점 — 이 동작 0프레임으로 한 번 잰다(동작 내내 제자리, chatUi.chatRefOf)
     const chatAt = frames[0] ? chatRefOf(frames[0].placed, centerMount) : null
     const hasEff = effList.length > 0
@@ -562,9 +602,10 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     const back = pv.gaze === 'back'
     // 사다리/밧줄(등반) 포즈는 stand1 과 navel↔시각중심 오프셋이 달라 centerDx(stand1 튜닝)로는 오른쪽으로 쏠린다.
     // 뒷쪽 시선(rope 첫프레임)이 previewBack* 로 중앙에 오는 것과 동일하게, 비라이딩 사다리/밧줄도 previewBack* 사용.
-    const climbCenter = back || (!riding && (pv.action === 'ladder' || pv.action === 'rope'))
+    const climbCenter = !chair && (back || (!riding && (pv.action === 'ladder' || pv.action === 'rope'))) // 의자에 앉으면 어느 시선 · 동작이든 앉은 앞모습이다
     // snap:true — 정수 배율로 렌더해 도트(애교점 등)가 픽셀에 딱 맞고 선명하다(카드 썸네일·내보내기와 동일 규칙).
-    const pl = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: pv.zoom, mults: zoomMults }), centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true, drop: true })
+    const pl0 = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: PREVIEW_MARGIN, fraction, scale: zoomStepScale({ fraction, divH: dims.h, dpr: dims.dpr, level: pv.zoom, mults: zoomMults }), centerDx: climbCenter ? MODEL_REF.previewBackDx : MODEL_REF.centerDx, centerDy: climbCenter ? MODEL_REF.previewBackDy : MODEL_REF.centerDy, snap: true, drop: true })
+    const pl = raise ? { ...pl0, anchor: { x: pl0.anchor.x, y: pl0.anchor.y - raise } } : pl0 // 의자: 캐릭터와 의자 바닥의 가운데를 화면 가운데에
     // 캔버스를 화면 픽셀 격자에 정확히 맞춘다: CSS 크기 = 비트맵 ÷ dpr, 위치는 translate(-50%) 대신 디바이스 픽셀 단위로
     // 반올림한 left/top(+ wrap 자신의 소수 px 위치 보정). 소수 px 크기·위치면 재샘플링돼 세로줄이 찢겨 보였다.
     const bw = Math.round(pl.box.w * pl.scale), bh = Math.round(pl.box.h * pl.scale)
@@ -600,7 +641,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       if (cancelled) return
       const fi = animated ? (pingpong ? frameAtElapsedAlt : frameAtElapsed)(delays, elapsed) : 0
       const f = frames[Math.min(fi, frames.length - 1)]
-      const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f.foot, brow: f.brow, navel: f.navel }, elapsed)) : []
+      const effects = hasEff ? effList.flatMap((em) => effectDraws(em, V.action, f, elapsed)) : []
       if (!f.placed.every((p) => loaded.has(p.png)) || !effects.every((d) => loaded.has(d.png))) return // 아직 로드 중 → 직전 프레임 유지
       // 파티클은 시계만큼 흘리고 매 프레임(약 30fps) 다시 그린다 — 입자는 프레임 그림이 아니라 계속 움직인다.
       const particles = hasPart ? placeParticles(partSpots, partDescs, f.foot, simOf) : []
@@ -637,7 +678,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     copyRef.current = f0
       ? {
           placed: f0.placed,
-          effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, { foot: f0.foot, brow: f0.brow, navel: f0.navel }, 0)) : [],
+          effects: hasEff ? effList.flatMap((em) => effectDraws(em, V.action, f0, 0)) : [],
           particles: hasPart ? placeParticles(partSpots, partDescs, f0.foot, (d) => stillSim(d)) : [],
           chat: chatRef.current,
           flip: viewInfo.flip, centerXOnly: riding && !centerMount, centerMount, override: dyeOverrides,
@@ -648,7 +689,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       : null
     const essential = new Set<string>()
     fNow?.placed.forEach((p) => essential.add(p.png))
-    if (hasEff && fNow) effList.flatMap((em) => effectDraws(em, V.action, { foot: fNow.foot, brow: fNow.brow, navel: fNow.navel }, e0)).forEach((d) => essential.add(d.png))
+    if (hasEff && fNow) effList.flatMap((em) => effectDraws(em, V.action, fNow, e0)).forEach((d) => essential.add(d.png))
     // 변신(일루전 링): 동작의 모든 프레임으로 그림을 바닥에 맞출 만큼을 잰다(render.ringFloorOf — 반지 그림만 받는다, 변신이 아니면 바로 끝).
     // 첫 그림부터 맞춘 자리에 그리도록 기다린다 — 나중에 맞추면 한 번 툭 내려앉는다.
     let ringFloor: number | undefined
@@ -711,7 +752,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
         if (!p) return null
         const { a, snap, emo } = p
         const fiAt = (t: number) => a.animated ? Math.min((a.pingpong ? frameAtElapsedAlt : frameAtElapsed)(a.delays, t), a.frames.length - 1) : 0
-        const effAt = (t: number) => { const f = a.frames[fiAt(t)]; return a.effList.flatMap((em) => effectDraws(em, a.action, { foot: f.foot, brow: f.brow, navel: f.navel }, t)) }
+        const effAt = (t: number) => { const f = a.frames[fiAt(t)]; return a.effList.flatMap((em) => effectDraws(em, a.action, f, t)) }
         const liftAt = (t: number) => a.floating ? Math.round(-FLOAT_AMP * (1 - Math.cos((2 * Math.PI * t) / FLOAT_MS)) / 2) : 0
         const sims = new Map<string, ParticleSim>()
         const simOf = (d: ParticleDesc, i: number) => {

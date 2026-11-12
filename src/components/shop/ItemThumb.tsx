@@ -18,11 +18,12 @@ import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
 import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from '@/lib/core/particle'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
+import { androidInputs, androidView, loadAndroidParts } from '@/lib/core/android'
 import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
 import { chatPreview } from '@/lib/core/chatUi'
-import { CARD_FIT_W_M, CARD_FRACTION, CARD_LIFT_M, CARD_MARGIN, thumbView, type ChatState } from '@/lib/shopData'
+import { CARD_FIT_W_M, CARD_FRACTION, CARD_LIFT_M, CARD_MARGIN, chairLift, thumbView, type ChatState } from '@/lib/shopData'
 import type { ListMode } from './ShopContext'
 import { CARD_FRAC_HAIR, DyeSprite } from './render/DyeSprite'
 
@@ -227,6 +228,10 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
         const m = await loadMeta(item.id)
         selfMeta = m
         self = [{ itemId: m.id, slot: m.slot, vslot: m.vslot ?? null, layers: getFrameLayers(m, view), invisibleFace: m.invisibleFace, name: m.name, dotOffsets }]
+        // 안드로이드 카드의 주인공은 안드로이드다 — 그 외형(피부 · 헤어 · 성형 · 옷)을 캐릭터처럼 조립하고, 내 캐릭터는 그리지 않는다(아래 bgF)
+        const look = item.android ?? m.android
+        const parts = look ? await loadAndroidParts(look) : null
+        if (parts) self = androidInputs(parts, androidView(view, false))
       }
       if (!alive) return
       // 후보 아이템 자신도 "내가 고른 색"으로 물들여 보여준다 — 단, 헤어·성형만(내 모델에서만 dye 전달됨).
@@ -263,8 +268,9 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       //   · 방패는 탑승 중 숨김. 무기는 앉은 채(비-back)에선 숨김.
       //   · 앞/옆(비-back)=캐릭터 sit 재합성. 뒤 시선=보통 rope 뒷모습(캐릭터·마운트 줄타기)이지만,
       //     ridingBackSit(탱크)면 뒤에서도 sit(앉은 조종사) — 미리보기와 동일.
-      if (item.slot === 'riding') {
-        const back = gaze === 'back'
+      // 의자 카드 = 앉은 장착샷 — 어느 시선이든 앉고 무기 · 방패를 숨긴다(미리보기와 같은 규칙, shopData.chairSeat).
+      if (item.slot === 'riding' || item.slot === 'chair') {
+        const back = gaze === 'back' && item.slot === 'riding'
         const sitCard = !back || !!item.ridingBackSit
         bg = bg.filter((ci) => ci.slot !== 'shield' && !(ci.slot === 'weapon' && !back))
         if (sitCard) {
@@ -275,19 +281,22 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       }
       // 내 모델: 후보 아이템과 "같은 슬롯"은 배경(내 착용)에서 빼야 그 부위가 후보로 대체된 장착샷이 된다.
       //   (특정 부위 탭은 목록 쪽(list/thumbCtx)이 이미 제외하지만 '전체' 탭·검색은 카드마다 슬롯이 달라 여기서 처리.)
-      const bgF = item.slot === 'skin' ? bg : bg.filter((ci) => ci.slot !== item.slot)
+      const bgF = item.slot === 'skin' ? bg : item.slot === 'android' && (item.android ?? selfMeta?.android) ? [] : bg.filter((ci) => ci.slot !== item.slot)
       // 무기 이펙트를 끄면 무기(후보든 내 착용이든)의 이펙트 레이어도 뺀다 — 미리보기와 같은 규칙.
       const wOn = !pvEff || pvEff.wEffect
       const { placed: p, anchors } = assemble([...bgF, ...self].map((ci) => ({ ...ci, layers: dropWeaponEffects(ci.slot, ci.layers, wOn) })), zmap, smap)
-      const shown = item.slot !== 'skin' && bgF.some((ci) => ci.noDraw) ? dropBase(p) : p // 피부를 가린 내 캐릭터 — 고르는 후보 피부는 그대로 보인다
+      // 펫 카드의 주인공은 펫이다 — 캐릭터는 발 자리(앵커)만 잡고 그리지 않는다(사용자 지시: 마네킹 옆에서 잘리지 않게, 안드로이드 카드처럼 그것만).
+      // 변신 모습 로이드(외형 없이 Morph 이펙트로 서는 것)도 같다
+      const alone = item.slot === 'pet' || (item.slot === 'android' && !(item.android ?? selfMeta?.android))
+      const shown = alone ? [] : item.slot !== 'skin' && bgF.some((ci) => ci.noDraw) ? dropBase(p) : p // 피부를 가린 내 캐릭터 — 고르는 후보 피부는 그대로 보인다
       setPlaced(shown)
       // 이펙트(망토 오라 등) = 배경(내 착용)의 것 + 이 아이템 자신의 것. 둘 다 같은 앵커로 배치한다.
       const foot = footOf(p) ?? { x: 8, y: 21 }
-      const anch = { foot, brow: anchors.brow ?? foot }
+      const anch = { foot, brow: anchors.brow ?? foot, flip, alone } // flip = 펫 자리(pos 5)를 시선과 상관없이 캐릭터 왼쪽에(alone 이면 발 자리에)
       const draws: EffectDraw[] = []
       // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기 · 프리셋 카드와 같은 규칙.
       const noFx = !!ringIllusion([...bgF, ...self])?.hideEffect
-      if (!noFx) for (const { em } of ctxEffs || []) draws.push(...effectDraws(em, view.action, anch, 0))
+      if (!noFx && item.slot !== 'android' && !alone) for (const { em } of ctxEffs || []) draws.push(...effectDraws(em, view.action, anch, 0))
       // 이 아이템 "자신의" 이펙트(망토 오라 등)는 아이템 모습의 일부 → 모델·내 모델 모두 그린다(연출 토글은 적용).
       //   ('내 모델/프리셋만' 규칙은 배경=내 착용 아이템들의 이펙트(ctxEffs) 얘기고, 그건 모델엔 배경이 없어 자연히 없다.)
       if (!noFx && item.slot !== 'skin' && (!pvEff || effectEnabled(item.slot, pvEff))) {
@@ -300,7 +309,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       }
       // 이 아이템 자신의 파티클(제네시스 무기의 붉은 파장 등) — 다 퍼진 한 장. 무기 이펙트를 끄면 없다.
       let parts: ParticleDraw[] = []
-      if (!noFx && !ringIllusion([...bgF, ...self])?.hideWeapon && (!pvEff || effectEnabled(item.slot, pvEff))) {
+      if (!noFx && !alone && !ringIllusion([...bgF, ...self])?.hideWeapon && (!pvEff || effectEnabled(item.slot, pvEff))) {
         const pIdx = await loadParticleIndex()
         const spots = spotsFor(pIdx[item.id], view.action)
         if (spots.length) {
@@ -344,7 +353,10 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
     // 마네킹 중심을 셀 중앙에 고정(anchor 보정). flip=오른쪽 시선. 분수 scale=디바이스 해상도.
     const cm = item.slot === 'riding' && !!item.ridingCenterMount // 메탈아머는 메카(마운트) 중앙정렬
-    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor: p.anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, shouldCancel: () => cancelled }).catch(() => {})
+    // 의자: 캐릭터와 의자가 딛는 바닥의 가운데를 칸 가운데에(미리보기와 같은 규칙 — 그 높이의 절반만큼 올린다)
+    const raise = item.slot === 'chair' ? Math.round(chairLift(item) / 2) : 0
+    const anchor = raise ? { x: p.anchor.x, y: p.anchor.y - raise } : p.anchor
+    renderCharacter(canvas, placed, { scale: p.scale, box: p.box, anchor, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, override: ovr, effects: effs, particles: parts, shouldCancel: () => cancelled }).catch(() => {})
     // 우클릭 복사용 입력 — 화면과 같은 값(중심 오프셋·반전·라이딩 정렬)으로 다시 그린다(lib/canvasExport.modelShotBlob).
     shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
     return () => { cancelled = true }
@@ -382,6 +394,8 @@ export default function ItemThumb(props: {
   fraction?: number; fitW?: number
 }) {
   if (props.mode !== 'sprite' && props.item.chatUi && props.chat) return <ChatThumb item={props.item} chat={props.chat} />
+  // 소울: 마네킹 · 내 모델 보기는 몸 없이 이펙트의 대표 장 하나만(사용자 지시 — 머리 위 이펙트가 칸 위로 잘렸다). 아이템 보기는 소울 아이템 아이콘(icon)
+  if (props.mode !== 'sprite' && props.item.slot === 'soul' && props.item.thumb) return <Sprite item={{ ...props.item, icon: props.item.thumb }} />
   if (props.mode === 'sprite') return props.item.slot === 'hair' ? <HairSprite item={props.item} zmap={props.zmap} /> : <Sprite item={props.item} />
   return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} fraction={props.fraction} fitW={props.fitW} />
 }

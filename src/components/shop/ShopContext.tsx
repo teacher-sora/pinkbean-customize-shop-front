@@ -16,7 +16,7 @@ import { groupSets } from '@/lib/setOrder'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, type Cat, type Preset, type Pv } from '@/lib/catalog'
 import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
-import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, type Index, type ListItem, type Vec } from '@/lib/core/data'
+import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, stagedUrl, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
@@ -649,9 +649,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       setChatOn(r.ok)
       if (!r.ok) return
       prefetchGlyphs() // 글자 도트는 한가할 때 미리
-      fetch(CHAT_DEFAULT_BALLOON).then((x) => (x.ok ? x.json() : null)).then((u: ChatUi | null) => { if (u?.parts) setChatDefault(u) }).catch(() => {})
+      stagedUrl(CHAT_DEFAULT_BALLOON).then((u) => fetch(u)).then((x) => (x.ok ? x.json() : null)).then((u: ChatUi | null) => { if (u?.parts) setChatDefault(u) }).catch(() => {})
       // 테스트 서버에 새로 나온 명찰 · 말풍선(본 서버에 없는 것) — NEW 라벨 · '신규' 필터에 더한다
-      fetch(CHAT_NEW_FILE).then((x) => (x.ok ? x.json() : null)).then((j: { ids?: string[] } | null) => { if (j?.ids?.length) setNewIds((prev) => new Set([...prev, ...j.ids!])) }).catch(() => {})
+      stagedUrl(CHAT_NEW_FILE).then((u) => fetch(u)).then((x) => (x.ok ? x.json() : null)).then((j: { ids?: string[] } | null) => { if (j?.ids?.length) setNewIds((prev) => new Set([...prev, ...j.ids!])) }).catch(() => {})
     }).catch(() => {})
   }, [])
   const withChat = (extra: Cat[]) => { const i = CATS.findIndex((c) => c.id === 'ring') + 1; return [...CATS.slice(0, i), ...extra, ...CATS.slice(i)] }
