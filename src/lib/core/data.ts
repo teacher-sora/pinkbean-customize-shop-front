@@ -386,7 +386,7 @@ export function loadEffectIndex(): Promise<Set<string>> {
     effectIndexPromise = Promise.all([
       pre<string[]>('effects/index.json', () => fetch(url('effects/index.json'), FRESH).then((r) => (r.ok ? r.json() : []))).catch(() => [] as string[]),
       loadSlot(CASHFX_FILE).catch(() => [] as ListItem[]),
-      // 의자 · 소울 · 펫 · 안드로이드(변신 모습 로이드의 Morph 그림) 부위가 없는 빌드(운영 — catalog.DEV_ONLY_CATS)는 받지 않는다
+      // 의자 · 소울 · 펫 · 안드로이드(변신 모습 로이드의 Morph 그림) 부위가 없는 빌드(운영의 의자 — catalog.DEV_HOLD_CATS)는 받지 않는다
       ...[['chair', CHAIR_FILE], ['soul', SOUL_FILE], ['pet', PET_FILE], ['android', ANDROID_FILE]].map(([cat, f]) => (CATS.some((c) => c.id === cat) ? loadSlot(f).catch(() => [] as ListItem[]) : Promise.resolve([] as ListItem[]))),
     // 복제(dupId — 소울의 같은 생김새 아이템들)와 조립형 안드로이드(android 외형)는 이펙트 파일이 없다 — 복제는 대표로 읽힌다(ShopContext.toOriginal)
     ]).then(([ids, ...lists]) => new Set([...(ids as string[]), ...(lists as ListItem[][]).flat().filter((it) => !it.dupId && !it.android).map((it) => String(parseInt(it.id, 10)))]))
