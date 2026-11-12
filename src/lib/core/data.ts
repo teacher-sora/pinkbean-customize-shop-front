@@ -103,6 +103,7 @@ export interface ListItem {
   dupId?: string              // 그 밖의 부위: 같은 그림 · 같은 이름(띄어쓰기 무시)의 원본 id(이 아이템은 재출시 복제다 — loadItemDups). 소울은 목록 파일에 직접 — 같은 생김새의 대표 id(parser soul-build.py)
   setGroup?: number           // 공식 세트 무리 번호(loadSets — lib/setOrder 가 목록에서 한자리에 모은다)
   setSub?: number             // 무리 안 순서(0 = 여자 전용, 1 = 남자 전용, 2 = 공용 — 남녀 세트에 함께 든 것)
+  setName?: string            // 세트 이름(세트 표의 무리 이름, 없으면 게임 세트 번호의 이름) — 이름 검색이 함께 본다(사용자 지시: '와카모'로 찾으면 '진홍빛 재액'도)
 }
 
 export interface SlotSummary {
@@ -294,13 +295,15 @@ export function loadLabels(): Promise<Labels> {
 }
 // 공식 세트 표(parser scripts/sets-build.py → CDN catalog/sets.json) = { items: { id: [무리 번호, 무리 안 세트 순서] }, names: [무리 이름] }.
 // 공지 본문 · 선택권 설명 · 옛 캐시 패키지 · 사용자 확인 묶음으로 확인된 세트만 있다. dev 빌드는 dev 단계의 표를 먼저 본다(stagedRel). 없거나 실패하면 빈 표(세트 번호 · 남녀판만 묶인다)
-type SetTable = Record<string, [number, number]>
+// names = 무리 이름(items 의 무리 번호 자리), sid = 게임 세트 번호(setItemID) → 세트 이름(원본 Etc/SetItemInfo.img — '안개 제독 세트')
+type SetFile = { items?: Record<string, [number, number]>; names?: string[]; sid?: Record<string, string> }
+type SetTable = { items: Record<string, [number, number]>; names: string[]; sid: Record<string, string> }
 let setsPromise: Promise<SetTable> | null = null
 export function loadSets(): Promise<SetTable> {
   if (!setsPromise) {
-    setsPromise = stagedRel('catalog/sets.json').then((rel) => pre<{ items?: SetTable }>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : {}))))
-      .catch(() => ({} as { items?: SetTable }))
-      .then((d) => d.items ?? {})
+    setsPromise = stagedRel('catalog/sets.json').then((rel) => pre<SetFile>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : {}))))
+      .catch(() => ({} as SetFile))
+      .then((d) => ({ items: d.items ?? {}, names: d.names ?? [], sid: d.sid ?? {} }))
   }
   return setsPromise
 }
@@ -327,8 +330,13 @@ export function loadSlot(file: string): Promise<ListItem[]> {
       if (!master.size) return items
       return items.map((it) => (!it.label && master.has(it.id) ? { ...it, label: 'master' as const } : it))
     }).then(async (items) => {
-      const tb = await sets
-      return items.map((it) => { const s = tb[it.id]; return s ? { ...it, setGroup: s[0], setSub: s[1] } : it })
+      const { items: tb, names, sid } = await sets
+      return items.map((it) => {
+        const s = tb[it.id]
+        if (s) return { ...it, setGroup: s[0], setSub: s[1], setName: names[s[0]] }
+        const n = it.setItemID ? sid[it.setItemID] : undefined
+        return n ? { ...it, setName: n } : it
+      })
     }).then(async (items) => {
       const first = items[0]
       if (!first) return items
