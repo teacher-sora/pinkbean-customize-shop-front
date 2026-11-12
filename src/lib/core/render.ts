@@ -95,8 +95,8 @@ function frameAtElapsed(delays: number[], elapsed: number): number {
   return ds.length - 1
 }
 // 캐시 이펙트(이펙트 부위)는 pos 4 도 쓴다 — 허리(배꼽)에 붙는다(호영 꼬리). pos 3 은 발과 같다(땅 위 동반자).
-// pos 5 = 펫 자리(펫 부위 — parser pet-build.py): 캐릭터의 **늘 왼쪽**(시선과 상관없이 — 사용자 지시), 바닥에서 PET_DX 만큼. 안드로이드는 늘 오른쪽이다(core/android)
-export const PET_DX = -50
+// pos 5 = 펫 자리(펫 부위 — parser pet-build.py): 캐릭터의 **늘 왼쪽**(시선과 상관없이 — 사용자 지시), 바닥에서 PET_DX 만큼. 안드로이드(늘 오른쪽, core/android ANDROID_DX 60)와 대칭으로 벌린다
+export const PET_DX = -70
 function groupDraw(g: EffectGroup | undefined, anchors: EffectAnchors, elapsed: number): EffectDraw | null {
   if (!g || !g.frames.length) return null
   // animate: pick the frame for the current time (single frame → static rep frame).

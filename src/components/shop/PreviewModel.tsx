@@ -52,6 +52,13 @@ const heroBaseH = () => (typeof document === 'undefined' ? 216 : heroBaseProbe()
 // 부유 아이템의 둥둥 뜨기 — 위로 최대 FLOAT_AMP 게임 픽셀, FLOAT_MS 한 바퀴(원본에 값이 없어 게임 화면으로 맞췄다).
 const FLOAT_AMP = 5
 const FLOAT_MS = 2400
+// 이펙트를 첫 프레임(repFrame)으로 고정한 사본 — 펫을 '기본'에서 멈출 때 쓴다. 묶음마다 대표 프레임 한 장만 남겨 애니메이션이 돌지 않는다(두 번째 층 extra 까지).
+function freezeEffect (em: EffectMeta): EffectMeta {
+  const one = (g: EffectMeta['groups'][string]) => ({ ...g, frames: [g.frames[g.repFrame] || g.frames[0]], repFrame: 0 })
+  const groups: EffectMeta['groups'] = {}
+  for (const [k, g] of Object.entries(em.groups)) groups[k] = one(g)
+  return { ...em, groups, extra: em.extra ? freezeEffect(em.extra) : undefined }
+}
 // 보이는 프레임을 칠한 뒤 전 프레임 염색을 시작하기까지 — 연달아 입는 동안은 전 프레임을 건너뛰어 새 아이템이 바로 입혀진다
 const FULL_DYE_WAIT_MS = 150
 
@@ -387,15 +394,17 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect).
     const ring = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
     if (ring?.illusion?.hideEffect) return out
+    // '기본'(정지) 상태에서는 펫을 첫 프레임으로 고정한다(사용자 지시 — 펫은 캐릭터가 멈추면 함께 멈춘다). 서기 · 걷기에서는 제 애니메이션을 돈다.
+    const basicPose = viewInfo.isStatic && pv.action === 'basic'
     for (const [slot, it] of Object.entries(equipped)) {
       if (!it || hidden[slot]) continue
       if (slot === 'cape' && !pv.cEffect) continue
       if (slot === 'weapon' && !pv.wEffect) continue
       if (slot === 'cap' && !pv.capEffect) continue
-      const em = effMetas.get(it.id); if (em) out.push(em)
+      const em = effMetas.get(it.id); if (em) out.push(slot === 'pet' && basicPose ? freezeEffect(em) : em)
     }
     return out
-  }, [equipped, hidden, metas, effMetas, pv.cEffect, pv.wEffect, pv.capEffect])
+  }, [equipped, hidden, metas, effMetas, pv.cEffect, pv.wEffect, pv.capEffect, viewInfo.isStatic, pv.action])
 
   // 염색 발색 오버라이드: 착용한 헤어/성형(palette)을 선택 색상으로 리컬러한 레이어 캔버스 맵.
   // renderCharacter 가 png 키로 조회해 원본 대신 그린다. 색/뷰/착용/메타 변화 시에만 재계산(비동기).
