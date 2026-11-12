@@ -104,7 +104,7 @@ front ─→ 넥슨 Open API  닉네임으로 코디 불러오기
 - `main` 에서 브랜치를 떼어 `main` 에 먼저 넣고 `dev` 에 복사(cherry-pick)하지 않는다 — 같은 수정이 두 커밋 번호로 갈라져 `main` 에만 있는 커밋이 쌓였다(그래서 한 번 `main` 을 `dev` 에 받아 기록을 맞췄다).
 - 병합 뒤 `dev` 를 `main` 으로 앞당겨(`git merge --ff-only origin/main`) 두 브랜치가 같은 커밋이게 둔다. 확인: `git rev-list --count origin/dev..origin/main` 과 `git rev-list --count origin/main..origin/dev` 가 둘 다 0.
 - 그러니 `dev` 에는 언제 운영에 나가도 되는 것만 둔다(올릴 수 없는 작업은 `dev` 에 넣기 전에 따로 브랜치에서).
-- 예외: **사용자가 dev 에서 직접 보고 넘기겠다고 한 부위**는 `dev` 에 두되 운영 빌드에서 빠지게 한다 — `lib/catalog` 의 `DEV_ONLY_CATS`(지금 안드로이드 · 의자). 표지는 빌드 때 정해진다(`next.config` 가 Vercel 의 `VERCEL_ENV` 를 `NEXT_PUBLIC_SITE_ENV` 로 넘기고, `production` 만 운영 — `DEV_SITE`). 그 부위의 가이드 항목(`guide.ts`)도 같은 표지로 건다. 운영에 낼 때 `DEV_ONLY_CATS` 와 가이드의 조건에서 뺀다. 왜: 핫픽스마다 `dev` 를 곧바로 `main` 에 병합하므로 '덜 된 부위만 dev 에'를 브랜치로 지킬 수 없다.
+- 예외: **사용자가 dev 에서 직접 보고 넘기겠다고 한 부위**는 `dev` 에 두되 운영 빌드에서 빠지게 한다 — `lib/catalog` 의 `DEV_ONLY_CATS`(지금 안드로이드 · 소울 · 의자). 표지는 빌드 때 정해진다(`next.config` 가 Vercel 의 `VERCEL_ENV` 를 `NEXT_PUBLIC_SITE_ENV` 로 넘기고, `production` 만 운영 — `DEV_SITE`). 그 부위의 가이드 항목(`guide.ts`)도 같은 표지로 건다. 운영에 낼 때 `DEV_ONLY_CATS` 와 가이드의 조건에서 뺀다. 왜: 핫픽스마다 `dev` 를 곧바로 `main` 에 병합하므로 '덜 된 부위만 dev 에'를 브랜치로 지킬 수 없다.
 - front 는 `sh scripts/merge-dev-to-main.sh` 로만 병합한다(개발 전용 경로 `src/app/viewer` · `public/dev` 를 걷어 낸다). Vercel 은 `main` 의 병합 커밋만 배포한다. 자세한 순서는 `CONTRIBUTING.md`.
 
 ## 2. 화면과 합성
@@ -226,6 +226,7 @@ scripts/merge-dev-to-main.sh
 - **라이딩 규칙은 `shopData` 한 곳**(`slotFile`, `ridingSeatedSet`, `ridingActionSet`). 앉는 액션이면 캐릭터는 sit, 탈것은 자기 액션, 방패 숨김·앉으면 무기 숨김. 미리보기·부위 카드·스냅샷 합성이 모두 이 규칙을 쓴다. 왜: 한쪽만 알면 카드에서 선 채로 타거나, 프리셋을 다시 고를 때 라이딩이 사라진다.
   - 라이딩 아이템의 행동은 `public/riding/riding.json` 의 필드가 정한다: `ridingActions`(고를 수 있는 액션) · `ridingSeated`(캐릭터가 앉는 액션) · `ridingCenterMount`(메탈아머 — 캐릭터가 아니라 기체를 가운데에 맞춘다) · `ridingBackSit`(탱크 — 뒤를 볼 때도 앉는다). 탱크의 id 는 `01932016T` 다(탈것 하나에 휴먼과 탱크가 함께 있다).
   - 뒤를 보는 시선은 `rope` 프레임으로 그린다. 그래서 **라이딩에서 사다리·줄 액션을 막지 않는다.** 재규어의 서기·경계는 일부러 막았다(통짜 그림이라 발을 고정할 수 없어 1px 씩 떨린다 — 사용자 결정).
+- **소울 부위**(`CATS` 의 `soul`, 이펙트 오른쪽 — dev 사이트에서만). 무기에 부여한 소울이 늘 띄우는 이펙트(머리 위의 보스 문장 — 원본 `Effect/SoulEff.img/Repeat/<번호>`, 이마 기준 `pos 1`, 캐릭터 뒤 `z -2`)다. 블루 아카이브 소울 스킨이 이 외형을 바꾼다. 이펙트 부위와 같은 길이다 — CDN `souls/list.json`(목록) · `meta/<id>.json`(빈 frames) · `effects/<id>.json`(이펙트 색인에 목록 id 를 합친다), parser `Wcr2.exe --souls` → `scripts/soul-build.py`. 아이템과 이펙트 번호를 잇는 값은 아직 찾지 못했다(본 서버 소울 아이템에는 없다) — 지금 dev 의 목록은 번호마다 시험용 id(`9999xxxx`, 이름 '소울 이펙트 N')다.
 - **의자 부위**(`CATS` 의 `chair`, 이펙트와 라이딩 사이 — dev 사이트에서만, 블루 아카이브 의자만 넣는다 — 사용자 지시). 데이터는 CDN `chairs/list.json`(목록 — `shopData.slotFile`) · `meta/<id>.json`(빈 frames + `bodyRelMove`) · `effects/<id>.json`(의자 그림 — 이펙트 부위와 같은 `EffectMeta`, 이펙트 색인에 목록 id 를 합친다 `data.loadEffectIndex`)이다(parser `Wcr2.exe --chairs` → `scripts/chair-build.py`). 규칙은 `shopData` 의 `chairSeat` · `chairLift` 한 곳이고 미리보기 · 부위 카드 · 스냅샷 · 염색이 함께 쓴다:
   - 끼면 **어느 동작 · 시선에서나 앉고**(sit) 무기 · 방패를 숨긴다(라이딩의 앉은 자세와 같다). 의자 그림은 앞모습뿐이다.
   - 의자 그림은 **앉은 캐릭터의 발**에 붙는다(원본 effect 의 origin 이 발, z 음수 = 캐릭터 뒤). 원본 `bodyRelMove`(카드 의자 (0,-182))는 캐릭터와 의자를 함께 바닥에서 띄운 값이라, **바닥 = 발 - bodyRelMove**(배경 장면 · 그림자 · 안드로이드가 서는 줄). 카드 의자의 아랫변이 그 바닥에서 7px 위에 서 맞는다.
