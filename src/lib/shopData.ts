@@ -181,17 +181,31 @@ export const CARD_LIFT_M = { min: 0.5, max: 0.84 }
 export const MOBILE_GRID = { cols: 3, rows: 3 }
 // 목록의 '필터'(사용자 지시 — 라디오, 하나만 고른다. 'all' = 전부). 보기 설정 안 보기 · 성별 · 방향과 같은 버튼(Seg)이다.
 // 마라벨 = 장비의 마스터라벨 + 세트에 딸린 헤어 · 성형 · 얼굴장식(catalog/labels.json, 라이딩은 넣지 않는다). 콜라보는 뺐다(사용자 지시 — 원본 표시가 맞지 않다).
-// 일반 = 라벨이 없는 전부(콜라보 · 캐시 · 메소 · 피부 — 컬러라인 피부처럼 가르기 어려운 것이 있어 하나로 합쳤다). 부티크는 원본에 가를 표시가 없어 없다
-export const ITEM_KINDS: { v: string; l: string; t: string; test?: (it: ListItem) => boolean }[] = [
+// 부티크는 원본에 가를 표시가 없어 없다
+export const ITEM_KINDS: { v: string; l: string; t: string; label?: 'master' | 'special'; test?: (it: ListItem) => boolean }[] = [
   { v: 'all', l: '전체', t: '전부 보기' },
-  { v: 'master', l: '마라벨', t: '마스터라벨(세트의 헤어 · 성형 · 얼굴장식 포함)', test: (it) => it.label === 'master' },
-  { v: 'special', l: '스라벨', t: '스페셜라벨', test: (it) => it.label === 'special' },
+  { v: 'master', l: '마라벨', t: '마스터라벨(헤어, 성형 포함)', label: 'master' },
+  { v: 'special', l: '스라벨', t: '스페셜라벨', label: 'special' },
   // 캐시 · 일반은 원본의 캐시 표시(isCash)로 가른다(사용자 지시 — 모루용으로 메소 아이템만 보기)
   { v: 'cash', l: '캐시', t: '라벨이 없는 캐시 아이템', test: (it) => it.isCash && !it.label },
   { v: 'normal', l: '일반', t: '메소 아이템(캐시가 아닌 것)', test: (it) => !it.isCash },
 ]
-// 필터를 받지 않고 어느 칸에서나 늘 보이는 부위(사용자 지시): 헤어 · 성형 · 피부 · 일루전 링 · 명찰 / 말풍선 · 칭호 · 훈장 · 펫 · 안드로이드 · 이펙트 · 소울 · 의자 · 라이딩
-export const KIND_FREE_SLOTS = new Set(['hair', 'face', 'skin', 'ring', 'nameTag', 'chatBalloon', 'chatRing', 'title', 'medal', 'pet', 'android', 'effect', 'soul', 'chair', 'riding'])
+// 캐시 · 일반 필터를 받지 않고 어느 칸에서나 늘 보이는 부위(사용자 지시): 헤어 · 성형 · 피부 · 일루전 링 · 명찰 / 말풍선 · 칭호 · 훈장 · 펫 · 안드로이드 · 이펙트 · 소울 · 의자 · 라이딩
+const KIND_FREE_SLOTS = new Set(['hair', 'face', 'skin', 'ring', 'nameTag', 'chatBalloon', 'chatRing', 'title', 'medal', 'pet', 'android', 'effect', 'soul', 'chair', 'riding'])
+// 필터 걸기(목록 · AI 코디 검색 결과 공용 — 이름 검색 전의 그 칸 목록에 건다).
+//  · 마라벨 · 스라벨 = 그 라벨인 것만(부위를 가리지 않는다 — 명찰 · 안드로이드 · 소울도 라벨이 없으면 빠진다, 사용자 지시).
+//    그 칸에 그 라벨이 하나도 없으면 전부 보인다(빈 칸이 되지 않게, 사용자 지시). 이때도 다른 라벨은 뺀다
+//    — 스라벨 헤어는 없어서 헤어 칸의 스라벨은 전부가 되는데, 마라벨 헤어가 섞이면 안 된다(사용자 지적).
+//  · 캐시 · 일반 = 원본 캐시 표시로 가르되 위 부위는 늘 보인다(가르기 애매해 그대로 둔다, 사용자 지시)
+export function filterKind (list: ListItem[], kind: string): ListItem[] {
+  const k = ITEM_KINDS.find((x) => x.v === kind)
+  if (k?.label) {
+    const hit = list.filter((it) => it.label === k.label)
+    return hit.length ? hit : list.filter((it) => !it.label)
+  }
+  const test = k?.test
+  return test ? list.filter((it) => KIND_FREE_SLOTS.has(it.slot) || test(it)) : list
+}
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.

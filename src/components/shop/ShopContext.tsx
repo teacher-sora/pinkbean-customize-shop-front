@@ -33,7 +33,7 @@ import { plazaSnapshot } from '@/lib/plazaLook'
 import { safeBubbles } from '@/lib/safeText'
 import { presetFileName } from '@/lib/canvasExport'
 import { recordVisit } from '@/lib/visit'
-import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, ELF_TONE, EQUIP_SLOTS, viewTone, SLOT_TO_CAT, THUMB_VIEW, ITEM_KINDS, KIND_FREE_SLOTS, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
+import { CAT_TO_SLOT, CHAT_CATS, CHAT_DEFAULT_BALLOON, CHAT_FILES, CHAT_INFO_CATS, CHAT_NEW_FILE, CHAT_NAME_FALLBACK, CHAT_SHOW_MS, CHAT_TAB, type ChatMsg, DEFAULT_EQUIP, defaultPresetName, isDefaultPresetName, DEFAULT_TONE, DOT_MOVER_IDS, ELF_TONE, EQUIP_SLOTS, viewTone, SLOT_TO_CAT, THUMB_VIEW, filterKind, MOBILE_GRID, buildView, fixedExpr, foldList, slotFile } from '@/lib/shopData'
 import { animaOnce, composePeek, composeSnapshotCached, preloadSnapshot, presetCard, snapKey } from '@/lib/core/snapRender'
 import { warmItem, warmLook } from '@/lib/core/warm'
 import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
@@ -721,12 +721,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const want = gf === 'f' ? 1 : 0
     return list.filter((it) => it.gender === want || it.gender === 2 || it.gender == null)
   }, [])
-  // '필터' 라디오: 고른 것에 맞는 아이템만 남긴다('all' = 전부)
+  // '필터' 라디오: 고른 것에 맞는 아이템만 남긴다('all' = 전부, 규칙은 shopData.filterKind)
   const [kindFilter, setKindFilter] = useState('all')
-  const byKind = useCallback((list: ListItem[], kf: string) => {
-    const test = ITEM_KINDS.find((k) => k.v === kf)?.test
-    return test ? list.filter((it) => KIND_FREE_SLOTS.has(it.slot) || test(it)) : list
-  }, [])
+  const byKind = useCallback((list: ListItem[], kf: string) => filterKind(list, kf), [])
   const activeListFull = listForCat(activeCat)
   // 이름 검색: 공백 무시 + 한/영 자판 무관(lib/nameSearch). 입력은 즉시, 필터·리스트 갱신은 지연값으로(타이핑 끊김 방지).
   const deferredSearch = useDeferredValue(search)
