@@ -194,14 +194,13 @@ export const ITEM_KINDS: { v: string; l: string; t: string; label?: 'master' | '
 const KIND_FREE_SLOTS = new Set(['hair', 'face', 'skin', 'ring', 'nameTag', 'chatBalloon', 'chatRing', 'title', 'medal', 'pet', 'android', 'effect', 'soul', 'chair', 'riding'])
 // 필터 걸기(목록 · AI 코디 검색 결과 공용 — 이름 검색 전의 그 칸 목록에 건다).
 //  · 마라벨 · 스라벨 = 그 라벨인 것만(부위를 가리지 않는다 — 명찰 · 안드로이드 · 소울도 라벨이 없으면 빠진다, 사용자 지시).
-//    그 칸에 그 라벨이 하나도 없으면 전부 보인다(빈 칸이 되지 않게, 사용자 지시). 이때도 다른 라벨은 뺀다
-//    — 스라벨 헤어는 없어서 헤어 칸의 스라벨은 전부가 되는데, 마라벨 헤어가 섞이면 안 된다(사용자 지적).
+//    그 칸에 그 라벨이 하나도 없으면 필터를 걸지 않는다 — 다른 라벨까지 전부 보인다(사용자 지시 — 헤어 칸의 스라벨은 마라벨 헤어까지 전부).
 //  · 캐시 · 일반 = 원본 캐시 표시로 가르되 위 부위는 늘 보인다(가르기 애매해 그대로 둔다, 사용자 지시)
 export function filterKind (list: ListItem[], kind: string): ListItem[] {
   const k = ITEM_KINDS.find((x) => x.v === kind)
   if (k?.label) {
     const hit = list.filter((it) => it.label === k.label)
-    return hit.length ? hit : list.filter((it) => !it.label)
+    return hit.length ? hit : list
   }
   const test = k?.test
   return test ? list.filter((it) => KIND_FREE_SLOTS.has(it.slot) || test(it)) : list
