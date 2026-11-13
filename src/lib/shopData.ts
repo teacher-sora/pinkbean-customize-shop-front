@@ -184,7 +184,7 @@ export const MOBILE_GRID = { cols: 3, rows: 3 }
 // 일반 = 라벨이 없는 전부(콜라보 · 캐시 · 메소 · 피부 — 컬러라인 피부처럼 가르기 어려운 것이 있어 하나로 합쳤다). 부티크는 원본에 가를 표시가 없어 없다
 export const ITEM_KINDS: { v: string; l: string; t: string; test?: (it: ListItem) => boolean }[] = [
   { v: 'all', l: '전체', t: '전부 보기' },
-  { v: 'master', l: '마라벨', t: '마스터라벨(세트의 헤어 · 성형 · 얼굴장식 포함)', test: (it) => it.label === 'master' },
+  { v: 'master', l: '마라벨', t: '마스터라벨(헤어, 성형 포함)', test: (it) => it.label === 'master' },
   { v: 'special', l: '스라벨', t: '스페셜라벨', test: (it) => it.label === 'special' },
   // 캐시 · 일반은 원본의 캐시 표시(isCash)로 가른다(사용자 지시 — 모루용으로 메소 아이템만 보기)
   { v: 'cash', l: '캐시', t: '라벨이 없는 캐시 아이템', test: (it) => it.isCash && !it.label },
@@ -192,6 +192,10 @@ export const ITEM_KINDS: { v: string; l: string; t: string; test?: (it: ListItem
 ]
 // 필터를 받지 않고 어느 칸에서나 늘 보이는 부위(사용자 지시): 헤어 · 성형 · 피부 · 일루전 링 · 명찰 / 말풍선 · 칭호 · 훈장 · 펫 · 안드로이드 · 이펙트 · 소울 · 의자 · 라이딩
 export const KIND_FREE_SLOTS = new Set(['hair', 'face', 'skin', 'ring', 'nameTag', 'chatBalloon', 'chatRing', 'title', 'medal', 'pet', 'android', 'effect', 'soul', 'chair', 'riding'])
+// 다만 마라벨은 헤어 · 성형에도 건다(사용자 지시 — 마라벨 헤어만 모아 보기. 마라벨 헤어 · 성형은 catalog/labels.json 으로 label 이 'master').
+// 캐시 · 일반 · 스라벨에서는 지금처럼 늘 보인다
+const KIND_FREE_EXCEPT: Record<string, Set<string>> = { master: new Set(['hair', 'face']) }
+export const kindFree = (kind: string, slot: string) => KIND_FREE_SLOTS.has(slot) && !KIND_FREE_EXCEPT[kind]?.has(slot)
 export const CARD_MARGIN = 1.4        // 리스트 카드 캔버스 여백 배수
 
 // 리스트 셀 합성 썸네일용 고정 정지 뷰(모델/내모델 모드). 정적이라 셀마다 애니메이션 없음.
