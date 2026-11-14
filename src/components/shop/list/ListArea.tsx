@@ -8,7 +8,7 @@ import EmptyState from '../frame/EmptyState'
 import SearchBox, { searchInputClass } from '../frame/SearchBox'
 import PageChip from '../frame/PageChip'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { Collect, ListItem } from '@/lib/core/data'
+import type { ListItem } from '@/lib/core/data'
 import { ITEM_KINDS, MOBILE_GRID } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
@@ -109,15 +109,14 @@ export function usePagerX (vpRef: React.RefObject<HTMLDivElement | null>, on: bo
 // 묶음 = 하나 고르기(Seg). set = 거르는 중(목록 '필터'를 전체가 아닌 것으로 골랐다) — 버튼도 켜진 모양이라 닫혀 있어도 거르는 중인 걸 안다
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; set?: boolean }
-// extra = 묶음 줄 뒤에 붙는 칸(코디 목록의 '모아보기' — CollectRow). set 이면 접힌 버튼도 켜 둔 표시를 한다
-export function FilterM({ groups, mobile, guide, extra }: { mobile: boolean; groups: FilterGroup[]; guide?: string; extra?: { node: React.ReactNode; set: boolean } }) {
+export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement | null>(null)
   // 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다. 화면 전체 덮개를 두었더니 그보다 위에 붙은 헤더 · 미리보기를 누를 때는
   // 닫히지 않아(모바일 — 헤더 · 미리보기가 머리 묶음보다 위에 붙는다) 문서 전체의 누름을 먼저 받아 가로챈다
   useDismiss(open, (t) => !!root.current?.contains(t), () => setOpen(false), { event: 'click', swallow: true })
   const now = groups.map((g) => g.opts.find((o) => o.v === g.value)?.l ?? '').join(', ')
-  const set = groups.some((g) => g.set) || !!extra?.set
+  const set = groups.some((g) => g.set)
   return (
     <div ref={root} className={styles.filterM}>
       <button type="button" data-guide={guide} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`보기 설정: ${now}`} className={clsx('pb-ddbtn', styles.filterBtnM, !mobile && styles.filterBtnPc, (open || set) && styles.filterBtnOn, set && styles.filterBtnSet)}>
@@ -132,38 +131,8 @@ export function FilterM({ groups, mobile, guide, extra }: { mobile: boolean; gro
             <Seg variant="mobileFlex" title={g.title} opts={g.opts} value={g.value} onPick={g.onPick} />
           </Fragment>
         ))}
-        {extra?.node}
       </div>
     </div>
-  )
-}
-
-// '모아보기'(사용자 지시 — 필터 줄이 꽉 차 따로 둔다): 콜라보 · 부티크를 고르고, 아래 칩 칸에서 IP · 상자를 고른다(전체 = 그 종류 전부).
-// 칩 칸은 높이를 정해 두고(넘치면 안에서 스크롤) 끄기일 때도 같은 높이의 안내를 둔다 — 고를 때마다 창 높이가 바뀌지 않게.
-// 거르기는 ShopContext.byCollect(지금 목록에 하나도 없으면 거르지 않는다 — 필터의 라벨과 같다)
-const COLLECT_KINDS: SegOpt<'off' | Collect>[] = [
-  { v: 'off', l: '끄기', t: '모아보기 끄기' },
-  { v: 'collab', l: '콜라보', t: '외부 IP, 브랜드, 넥슨 게임과의 협업 아이템' },
-  { v: 'boutique', l: '부티크', t: '부티크 티켓으로 바꾸는 아이템' },
-]
-function CollectRow() {
-  const s = useShop()
-  const { kind, name } = s.collect
-  const names = kind ? s.collectGroups[kind] : []
-  return (
-    <>
-      <span className={styles.filterLabel}>모아보기</span>
-      <Seg variant="mobileFlex" title="콜라보, 부티크 모아보기" opts={COLLECT_KINDS} value={kind ?? 'off'} onPick={(v) => s.setCollect({ kind: v === 'off' ? null : v, name: null })} />
-      <div className={clsx(styles.collectBox, 'pb-scroll-thin')}>
-        {kind ? [null, ...names].map((n) => {
-          const on = name === n
-          return (
-            <button key={n ?? ''} type="button" aria-pressed={on} onClick={() => s.setCollect({ kind, name: n })} title={n ?? `${kind === 'collab' ? '콜라보' : '부티크'} 전체`}
-              className={clsx(on ? 'pb-solid' : 'pb-soft', styles.collectChip, on && styles.collectChipOn)}>{n ?? '전체'}</button>
-          )
-        }) : <span className={styles.collectHint}>콜라보나 부티크를 고르세요</span>}
-      </div>
-    </>
   )
 }
 
@@ -339,7 +308,6 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
     { label: '필터', title: '아이템 거르기', opts: ITEM_KINDS, value: s.kindFilter, onPick: s.setKindFilter, set: s.kindFilter !== 'all' },
   ]
-  const collectExtra = { node: <CollectRow />, set: s.collect.kind !== null }
   const runAi = (q?: string) => { const t = (q ?? s.aiQ).trim(); if (!t) return; if (q !== undefined) s.setAiQ(q); s.runSearch(t) }
 
   const pageChip = (
@@ -361,14 +329,14 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
   const controls = mobile ? (
     // 한 줄: 보기와 성별(접어 둔 버튼) · 쪽 번호 · 검색. 높이는 프리셋 · 코디 정보의 머리와 같다(48)
     <div className={styles.controlsM}>
-      <FilterM mobile guide="listdir" groups={filterGroups} extra={collectExtra} />
+      <FilterM mobile guide="listdir" groups={filterGroups} />
       {pageChip}
       <SearchBox mobile>{searchInput}</SearchBox>
     </div>
   ) : (
     <div className={styles.header}>
       {/* 보기 · 성별 · 방향 · 필터는 어느 폭이든 '보기 설정' 하나에 접어 둔다(사용자 지시) */}
-      <FilterM mobile={false} guide="listdir" groups={filterGroups} extra={collectExtra} />
+      <FilterM mobile={false} guide="listdir" groups={filterGroups} />
       <div className={styles.groupB}>
         {pageChip}
         <SearchBox mobile={false} narrow={narrow}>{searchInput}</SearchBox>

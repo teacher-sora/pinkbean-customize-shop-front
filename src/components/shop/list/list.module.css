@@ -20,15 +20,10 @@
 .filterText { white-space: nowrap; }
 .filterCaret { flex: 0 0 auto; color: light-dark(#b7ada2, #858893); transition: transform .22s ease; }
 .filterCaretOn { transform: rotate(180deg); }
-.filterPop { composes: pop from '../ui/pop.module.css'; position: absolute; left: 0; top: calc(100% + 5px); z-index: 30; width: min(300px, calc(100vw - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
+.filterPop { composes: pop from '../ui/pop.module.css'; position: absolute; left: 0; top: calc(100% + 5px); z-index: 30; width: min(340px, calc(100vw - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
 .filterPopOn { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
 .filterLabel { font-size: calc(11rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); }
 .filterLabel:not(:first-child) { margin-top: 4px; }
-/* '모아보기' 칩 칸 — 높이를 정해 둔다(고를 때 창 높이가 바뀌지 않게, 넘치면 안에서 스크롤). 칩은 AI 검색 예시 칩(.chip)과 같은 꼴, 고른 칩은 채운 핑크 */
-.collectBox { height: 94px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; overflow-y: auto; scrollbar-gutter: stable; }
-.collectChip { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 20px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(11.5rem / 16); font-weight: 500; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; }
-.collectChipOn { composes: segOn from '../ui/ui.module.css'; border-color: transparent; }
-.collectHint { margin: auto; font-size: calc(11.5rem / 16); color: light-dark(#c3b9ad, #7e828d); }
 .hrM { composes: hrM from '../frame/panel.module.css'; }
 
 /* ── 뷰포트 · 페이지 ── */
@@ -100,9 +95,9 @@
 .newBadgeM { width: 17px; padding: 0; justify-content: center; }
 .labelBadge { position: absolute; bottom: 4px; left: 4px; height: 17px; image-rendering: pixelated; z-index: 2; }
 .labelBadgeCash { height: 14px; }
-/* 콜라보 · 부티크 표시 — 등급 배지 자리(왼쪽 아래). 게임에 그림이 없어 분홍 알약(코디 룩북 칩과 같은 꼴)에 낱말로 둔다. 캐시 동전보다 먼저다(사용자 지시) */
-.kindTag { composes: pinkTag from '../ui/marks.module.css'; position: absolute; left: 4px; bottom: 4px; z-index: 2; height: 18px; padding: 0 6px; white-space: nowrap; }
-.kindTagM { left: 3px; bottom: 3px; padding: 0 5px; font-size: calc(10rem / 16); }
+/* 콜라보 · 부티크 표시 — 등급 배지 자리 · 크기(왼쪽 아래 16px). 그림은 ui/Icons 의 IconBadgeCollab · IconBadgeBoutique(분홍 원 = currentColor). 캐시 동전보다 먼저다(사용자 지시) */
+.kindBadge { position: absolute; bottom: 4px; left: 4px; z-index: 2; width: 16px; height: 16px; display: flex; color: light-dark(#ec86ac, #d15785); }
+.kindBadge > svg { width: 100%; height: 100%; }
 /* 코디 룩북 칩 — 썸네일 오른쪽 아래(왼쪽 아래는 등급 배지). 광장 카드의 날짜 칩과 같은 꼴. 늘 보인다(숨은 기능이 되지 않게 — 사용자 지시) */
 .combo { composes: pinkTag from '../ui/marks.module.css'; position: absolute; right: 4px; bottom: 4px; z-index: 3; padding: 0 7px; font-family: inherit; white-space: nowrap; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
 /* 모바일 = 옷걸이(하단 '코디' 탭과 같은 아이콘) + 수 — 글자 '코디'를 빼 칩이 좁다(4열 카드에서 왼쪽 아래 등급 배지와 겹쳤다, 320 폭까지) */
@@ -140,6 +135,6 @@
 /* 막대 단추의 아이콘은 300 이하에서만 보인다(그 폭에선 '북마크' 글자가 칸에 들어가지 않는다 — 폴드 1 · 2 바깥 화면 280) */
 .actIcon { display: none; }
 .actIcon > svg { width: 12px; height: 12px; }
-@media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge { height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
+@media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge { height: 14px; } .kindBadge { width: 14px; height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
 /* 보기 설정 창의 '구분' 토글 줄(여러 개를 함께 켠다) · 켜 둔 토글이 있으면 접힌 버튼 글자도 분홍 */
 .filterBtnSet .filterText { color: light-dark(#c05a94, #cb9ab6); }

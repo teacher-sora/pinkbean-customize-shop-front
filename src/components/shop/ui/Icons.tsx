@@ -52,6 +52,14 @@ export const IconSearch = ({ size = 14, className, bold }: P & { bold?: boolean 
 export const IconStar = ({ size = 9, className }: P) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.6l2.5 5.1 5.6.8-4 3.9.95 5.6L12 16.3l-5.05 2.7.95-5.6-4-3.9 5.6-.8z" /></svg>
 )
+// 카드 왼쪽 아래 등급 표시 — 콜라보 · 부티크(게임에 그림이 없어 그린다. 마라벨 · 스라벨 리본 · 캐시 동전과 같은 자리 · 같은 크기).
+// 분홍 원(currentColor — 다크 모드 색은 CSS 가 준다) 안에 흰 글리프: 콜라보 = ×(A × B 협업), 부티크 = 선물 상자(부티크 기프트)
+export const IconBadgeCollab = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="currentColor" /><path d="M5.4 5.4l5.2 5.2M10.6 5.4l-5.2 5.2" stroke="#fff" strokeWidth="2" strokeLinecap="round" /></svg>
+)
+export const IconBadgeBoutique = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="currentColor" /><path d="M4 6.2h8v2.1H4zM4.8 8.3h6.4v3.9H4.8z" fill="#fff" /><path d="M8 6.2v6" stroke="currentColor" strokeWidth="1.2" /><path d="M8 6.1C6.9 4.4 5.2 4.6 5.6 5.6c.3.6 1.4.6 2.4.5M8 6.1c1.1-1.7 2.8-1.5 2.4-.5-.3.6-1.4.6-2.4.5" fill="none" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" /></svg>
+)
 export const IconUndo = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
 )
