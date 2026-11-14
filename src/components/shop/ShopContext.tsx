@@ -11,7 +11,7 @@
 import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
-import { rankSort, nameMatcher } from '@/lib/nameSearch'
+import { rankSort, nameMatcher, labelQuery } from '@/lib/nameSearch'
 import { groupSets } from '@/lib/setOrder'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, PV_WEAPONS, type Cat, type Preset, type Pv } from '@/lib/catalog'
@@ -733,7 +733,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const match = nameMatcher(deferredSearch)
     if (!match) return list
     // 세트 이름도 본다 — 이름에 없어도 그 세트면 걸린다('와카모' → 진홍빛 재액, '안개제독' → 푸른 물결). 세트로만 걸린 것은 이름으로 걸린 것 뒤(rank 3)
-    return rankSort(list.filter((it) => match(it.name || it.id) || (!!it.setName && match(it.setName))), match, (it) => it.name || it.id)
+    const named = rankSort(list.filter((it) => match(it.name || it.id) || (!!it.setName && match(it.setName))), match, (it) => it.name || it.id)
+    // 라벨 기수 검색(lib/nameSearch labelQuery): '마라벨1기' 는 그 기수 아이템을 맨 앞에(목록 순서 그대로라 세트가 한자리에 모인다),
+    // 숫자 없는 '마라' · '스라벨' 은 그 라벨 아이템 전부를 맨 뒤에(사용자 지시 — 아주 후순위)
+    const lq = labelQuery(deferredSearch)
+    if (!lq) return named
+    const hit = list.filter((it) => it.label === lq.label && (lq.gen == null || it.labelGen === lq.gen))
+    if (!hit.length) return named
+    if (lq.gen == null) { const has = new Set(named); return [...named, ...hit.filter((it) => !has.has(it))] }
+    const has = new Set(hit)
+    return [...hit, ...named.filter((it) => !has.has(it))]
   }, [activeListFull, deferredSearch, byGender, genderFilter, byKind, kindFilter])
 
   // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
