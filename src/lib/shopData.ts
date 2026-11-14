@@ -183,15 +183,17 @@ export const MOBILE_GRID = { cols: 3, rows: 3 }
 // 마라벨 = 장비의 마스터라벨 + 세트에 딸린 헤어 · 성형 · 얼굴장식(catalog/labels.json, 라이딩은 넣지 않는다).
 // 콜라보 · 부티크도 같은 줄이다(사용자 지시 — 따로 둔 '모아보기'가 불편했다): 콜라보 = 원본의 collabo 표시, 부티크 = 티켓 교환형 상자의 교환 목록(core/data 의 kind).
 // 마라벨 · 스라벨 · 콜라보 · 부티크는 한 아이템에 하나만 붙는다(라벨 → 콜라보 → 부티크 순). pick = 그것만 남기는 엄격한 칸
+// 보기 설정 창에서 두 줄로 놓인다(ITEM_KIND_ROWS — 위 = 전체 · 캐시 · 일반, 아래 = 카드 왼쪽 아래 표시가 붙는 넷. 일곱 칸 한 줄은 붐볐다, 사용자 지적)
+export const ITEM_KIND_ROWS = [3, 4]
 export const ITEM_KINDS: { v: string; l: string; t: string; pick?: (it: ListItem) => boolean; test?: (it: ListItem) => boolean }[] = [
   { v: 'all', l: '전체', t: '전부 보기' },
+  // 캐시 · 일반은 원본의 캐시 표시(isCash)로 가른다(사용자 지시 — 모루용으로 메소 아이템만 보기)
+  { v: 'cash', l: '캐시', t: '라벨, 콜라보, 부티크가 아닌 캐시 아이템', test: (it) => it.isCash && !it.label && !it.kind },
+  { v: 'normal', l: '일반', t: '메소 아이템(캐시가 아닌 것)', test: (it) => !it.isCash },
   { v: 'master', l: '마라벨', t: '마스터라벨(헤어, 성형 포함)', pick: (it) => it.label === 'master' },
   { v: 'special', l: '스라벨', t: '스페셜라벨', pick: (it) => it.label === 'special' },
   { v: 'collab', l: '콜라보', t: '콜라보 아이템', pick: (it) => it.kind === 'collab' },
   { v: 'boutique', l: '부티크', t: '부티크 티켓으로 바꾸는 아이템', pick: (it) => it.kind === 'boutique' },
-  // 캐시 · 일반은 원본의 캐시 표시(isCash)로 가른다(사용자 지시 — 모루용으로 메소 아이템만 보기)
-  { v: 'cash', l: '캐시', t: '라벨, 콜라보, 부티크가 아닌 캐시 아이템', test: (it) => it.isCash && !it.label && !it.kind },
-  { v: 'normal', l: '일반', t: '메소 아이템(캐시가 아닌 것)', test: (it) => !it.isCash },
 ]
 // 캐시 · 일반 필터를 받지 않고 어느 칸에서나 늘 보이는 부위(사용자 지시): 헤어 · 성형 · 피부 · 일루전 링 · 명찰 / 말풍선 · 칭호 · 훈장 · 펫 · 안드로이드 · 이펙트 · 소울 · 의자 · 라이딩
 const KIND_FREE_SLOTS = new Set(['hair', 'face', 'skin', 'ring', 'nameTag', 'chatBalloon', 'chatRing', 'title', 'medal', 'pet', 'android', 'effect', 'soul', 'chair', 'riding'])

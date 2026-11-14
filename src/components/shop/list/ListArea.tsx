@@ -8,11 +8,11 @@ import EmptyState from '../frame/EmptyState'
 import SearchBox, { searchInputClass } from '../frame/SearchBox'
 import PageChip from '../frame/PageChip'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { ListItem } from '@/lib/core/data'
-import { ITEM_KINDS, MOBILE_GRID } from '@/lib/shopData'
+import { badgeUrl, type ListItem } from '@/lib/core/data'
+import { ITEM_KINDS, ITEM_KIND_ROWS, MOBILE_GRID } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
-import { IconCaretDown, IconSearch, IconDirX, IconDirY } from '../ui/Icons'
+import { IconCaretDown, IconSearch, IconDirX, IconDirY, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
@@ -108,7 +108,7 @@ export function usePagerX (vpRef: React.RefObject<HTMLDivElement | null>, on: bo
 // 같은 부품을 코디 룩북 머리도 쓴다(combo/ComboPanel — 사용자 지시: 같은 역할은 부품 하나)
 // 묶음 = 하나 고르기(Seg). set = 거르는 중(목록 '필터'를 전체가 아닌 것으로 골랐다) — 버튼도 켜진 모양이라 닫혀 있어도 거르는 중인 걸 안다
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; set?: boolean }
+export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; set?: boolean; rows?: number[] }
 export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement | null>(null)
@@ -128,7 +128,7 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
         {groups.map((g) => (
           <Fragment key={g.label}>
             <span className={styles.filterLabel}>{g.label}</span>
-            <Seg variant="mobileFlex" title={g.title} opts={g.opts} value={g.value} onPick={g.onPick} />
+            <Seg variant="mobileFlex" title={g.title} opts={g.opts} value={g.value} onPick={g.onPick} rows={g.rows} />
           </Fragment>
         ))}
       </div>
@@ -245,6 +245,16 @@ export function usePagerY(vpRef: React.RefObject<HTMLDivElement | null>, on: boo
   }, [on, idx, key, pageCount, geo])
 }
 
+// 필터 칸 앞 표시 = 카드 왼쪽 아래 표시와 같은 그림(마라벨 · 스라벨 · 캐시 = WZ 배지, 콜라보 · 부티크 = ui/Icons) — 카드에서 본 표시로 바로 고른다
+const KIND_MARK: Record<string, React.ReactNode> = {
+  master: <img src={badgeUrl('master')} alt="" draggable={false} />,
+  special: <img src={badgeUrl('special')} alt="" draggable={false} />,
+  cash: <img src={badgeUrl('cash')} alt="" data-mark="cash" draggable={false} />,
+  collab: <IconBadgeCollab />,
+  boutique: <IconBadgeBoutique />,
+}
+const KIND_OPTS: SegOpt<string>[] = ITEM_KINDS.map((k) => ({ v: k.v, l: k.l, t: k.t, mark: KIND_MARK[k.v] }))
+
 export default function ListArea({ mobile }: { mobile: boolean }) {
   const { primary } = useShop()
   return primary === 'search' ? <SearchList mobile={mobile} /> : <CodiList mobile={mobile} />
@@ -306,7 +316,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     { label: '보기', title: '아이템을 무엇에 입혀서 볼지', opts: viewOpts, value: thumbs.mode, onPick: s.setListMode },
     { label: '성별', title: '성별', opts: GENDERS, value: s.genderFilter, onPick: s.setGenderFilter },
     { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
-    { label: '필터', title: '아이템 거르기', opts: ITEM_KINDS, value: s.kindFilter, onPick: s.setKindFilter, set: s.kindFilter !== 'all' },
+    { label: '필터', title: '아이템 거르기', opts: KIND_OPTS, rows: ITEM_KIND_ROWS, value: s.kindFilter, onPick: s.setKindFilter, set: s.kindFilter !== 'all' },
   ]
   const runAi = (q?: string) => { const t = (q ?? s.aiQ).trim(); if (!t) return; if (q !== undefined) s.setAiQ(q); s.runSearch(t) }
 

@@ -67,7 +67,7 @@
 
 | 무엇 | 이름 |
 |---|---|
-| 알약·나뉜 탭 | `Seg` — `pc` / `mobileFlex` / `mobileFit`. 옵션에 `icon` 을 주면 아이콘 칸(모바일 헤더의 미리보기 크기 셋) |
+| 알약·나뉜 탭 | `Seg` — `pc` / `mobileFlex` / `mobileFit`. 옵션에 `icon` 을 주면 아이콘 칸(모바일 헤더의 미리보기 크기 셋), `mark` 를 주면 글자 앞 작은 표시(목록 필터). `rows` = 한 트랙을 여러 줄로(목록 필터 [3, 4]) |
 | 접어 둔 보기 · 성별 | `list/ListArea.tsx` 의 `FilterM` — '보기 설정' 버튼 + 바로 아래 펼침 칸(모바일 · 좁은 폭) |
 | 스위치 | `Switch` |
 | 색 고르기 | `FamilyDots`(색상 계열), `Swatch` |

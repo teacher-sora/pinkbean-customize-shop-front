@@ -53,12 +53,12 @@ export const IconStar = ({ size = 9, className }: P) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.6l2.5 5.1 5.6.8-4 3.9.95 5.6L12 16.3l-5.05 2.7.95-5.6-4-3.9 5.6-.8z" /></svg>
 )
 // 카드 왼쪽 아래 등급 표시 — 콜라보 · 부티크(게임에 그림이 없어 그린다. 마라벨 · 스라벨 리본 · 캐시 동전과 같은 자리 · 같은 크기).
-// 분홍 원(currentColor — 다크 모드 색은 CSS 가 준다) 안에 흰 글리프: 콜라보 = 겹친 두 고리(협업 — ×는 지우기 단추로 읽혔다), 부티크 = 선물 상자(부티크 기프트)
+// 분홍 원(currentColor — 다크 모드 색은 CSS 가 준다) 안에 흰 글리프(--pb-mark-fg — 고른 필터 칸에서는 색을 뒤집는다): 콜라보 = 겹친 두 고리(협업 — ×는 지우기 단추로 읽혔다), 부티크 = 선물 상자(부티크 기프트)
 export const IconBadgeCollab = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="currentColor" /><circle cx="6.1" cy="8" r="2.7" fill="none" stroke="#fff" strokeWidth="1.5" /><circle cx="9.9" cy="8" r="2.7" fill="none" stroke="#fff" strokeWidth="1.5" /></svg>
+  <svg className={className} viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="currentColor" /><circle cx="6.1" cy="8" r="2.7" fill="none" stroke="var(--pb-mark-fg, #fff)" strokeWidth="1.5" /><circle cx="9.9" cy="8" r="2.7" fill="none" stroke="var(--pb-mark-fg, #fff)" strokeWidth="1.5" /></svg>
 )
 export const IconBadgeBoutique = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="currentColor" /><path d="M4 6.2h8v2.1H4zM4.8 8.3h6.4v3.9H4.8z" fill="#fff" /><path d="M8 6.2v6" stroke="currentColor" strokeWidth="1.2" /><path d="M8 6.1C6.9 4.4 5.2 4.6 5.6 5.6c.3.6 1.4.6 2.4.5M8 6.1c1.1-1.7 2.8-1.5 2.4-.5-.3.6-1.4.6-2.4.5" fill="none" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" /></svg>
+  <svg className={className} viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="currentColor" /><path d="M4 6.2h8v2.1H4zM4.8 8.3h6.4v3.9H4.8z" fill="var(--pb-mark-fg, #fff)" /><path d="M8 6.2v6" stroke="currentColor" strokeWidth="1.2" /><path d="M8 6.1C6.9 4.4 5.2 4.6 5.6 5.6c.3.6 1.4.6 2.4.5M8 6.1c1.1-1.7 2.8-1.5 2.4-.5-.3.6-1.4.6-2.4.5" fill="none" stroke="var(--pb-mark-fg, #fff)" strokeWidth="1.1" strokeLinecap="round" /></svg>
 )
 export const IconUndo = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>

@@ -20,7 +20,7 @@
 .filterText { white-space: nowrap; }
 .filterCaret { flex: 0 0 auto; color: light-dark(#b7ada2, #858893); transition: transform .22s ease; }
 .filterCaretOn { transform: rotate(180deg); }
-.filterPop { composes: pop from '../ui/pop.module.css'; position: absolute; left: 0; top: calc(100% + 5px); z-index: 30; width: min(340px, calc(100vw - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
+.filterPop { composes: pop from '../ui/pop.module.css'; position: absolute; left: 0; top: calc(100% + 5px); z-index: 30; width: min(300px, calc(100vw - 24px)); padding: 10px; display: flex; flex-direction: column; gap: 6px; opacity: 0; transform: translateY(-4px); pointer-events: none; visibility: hidden; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1), visibility 0s linear .22s; }
 .filterPopOn { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .22s ease, transform .22s cubic-bezier(.45,0,.55,1); }
 .filterLabel { font-size: calc(11rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); }
 .filterLabel:not(:first-child) { margin-top: 4px; }

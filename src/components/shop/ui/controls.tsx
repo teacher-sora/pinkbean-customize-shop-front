@@ -8,26 +8,34 @@ import { DYE_FAMILIES } from '@/lib/catalog'
 import styles from './ui.module.css'
 
 /* ── 세그먼트 ── */
-// icon 을 주면 글자 대신 아이콘을 그린다(글자 l 은 aria-label 로 남는다)
-export type SegOpt<T extends string> = { v: T; l: string; t?: string; disabled?: boolean; disabledTitle?: string; icon?: React.ReactNode }
-export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', title }: {
-  opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: 'pc' | 'mobileFlex' | 'mobileFit'; title?: string
+// icon 을 주면 글자 대신 아이콘을 그린다(글자 l 은 aria-label 로 남는다). mark = 글자 앞에 붙는 작은 표시(목록 필터 — 카드 왼쪽 아래 표시와 같은 그림)
+// rows = 한 트랙을 여러 줄로 나눌 칸 수([3, 4] — 칸이 많아 한 줄이면 글자 폭밖에 남지 않을 때). 줄마다 칸이 폭을 나눠 갖는다
+export type SegOpt<T extends string> = { v: T; l: string; t?: string; disabled?: boolean; disabledTitle?: string; icon?: React.ReactNode; mark?: React.ReactNode }
+export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', title, rows }: {
+  opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: 'pc' | 'mobileFlex' | 'mobileFit'; title?: string; rows?: number[]
 }) {
   const track = variant === 'pc' ? styles.segTrack : variant === 'mobileFlex' ? styles.segTrackM : styles.segTrackMFit
   const btn = variant === 'mobileFlex' ? styles.segFlex : styles.seg
-  return (
-    <div title={title} className={track}>
-      {opts.map((o) => {
-        const on = !o.disabled && value === o.v
-        return (
-          <button key={o.v} type="button" disabled={o.disabled} title={o.disabled ? o.disabledTitle : o.t ?? (o.icon ? o.l : undefined)}
-            aria-label={o.icon ? o.l : undefined} aria-pressed={on}
-            onClick={() => { if (!o.disabled) onPick(o.v) }}
-            className={clsx(on ? 'pb-solid' : 'pb-soft', btn, o.icon && styles.segIcon, on && styles.segOn, o.disabled && styles.segDisabled)}>{o.icon ?? o.l}</button>
-        )
-      })}
-    </div>
-  )
+  const cell = (o: SegOpt<T>) => {
+    const on = !o.disabled && value === o.v
+    return (
+      <button key={o.v} type="button" disabled={o.disabled} title={o.disabled ? o.disabledTitle : o.t ?? (o.icon ? o.l : undefined)}
+        aria-label={o.icon ? o.l : undefined} aria-pressed={on}
+        onClick={() => { if (!o.disabled) onPick(o.v) }}
+        className={clsx(on ? 'pb-solid' : 'pb-soft', btn, o.icon && styles.segIcon, o.mark && styles.segMarked, on && styles.segOn, o.disabled && styles.segDisabled)}>
+        {o.icon ?? (o.mark ? <><span className={styles.segMark}>{o.mark}</span>{o.l}</> : o.l)}
+      </button>
+    )
+  }
+  if (rows) {
+    let at = 0
+    return (
+      <div title={title} className={clsx(track, styles.segRows)}>
+        {rows.map((n, i) => { const part = opts.slice(at, at + n); at += n; return <div key={i} className={styles.segRow}>{part.map(cell)}</div> })}
+      </div>
+    )
+  }
+  return <div title={title} className={track}>{opts.map(cell)}</div>
 }
 
 /* ── 스위치 ── */
