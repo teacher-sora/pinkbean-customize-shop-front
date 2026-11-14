@@ -26,7 +26,7 @@
 .filterLabel:not(:first-child) { margin-top: 4px; }
 /* '모아보기' 칩 칸 — 높이를 정해 둔다(고를 때 창 높이가 바뀌지 않게, 넘치면 안에서 스크롤). 칩은 AI 검색 예시 칩(.chip)과 같은 꼴, 고른 칩은 채운 핑크 */
 .collectBox { height: 94px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; overflow-y: auto; scrollbar-gutter: stable; }
-.collectChip { composes: chip; height: 26px; padding: 0 10px; font-size: calc(11.5rem / 16); }
+.collectChip { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 20px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(11.5rem / 16); font-weight: 500; color: light-dark(#8a8075, #9fa2aa); letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; }
 .collectChipOn { composes: segOn from '../ui/ui.module.css'; border-color: transparent; }
 .collectHint { margin: auto; font-size: calc(11.5rem / 16); color: light-dark(#c3b9ad, #7e828d); }
 .hrM { composes: hrM from '../frame/panel.module.css'; }
