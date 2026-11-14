@@ -104,6 +104,7 @@ export interface ListItem {
   setGroup?: number           // 공식 세트 무리 번호(loadSets — lib/setOrder 가 목록에서 한자리에 모은다)
   setSub?: number             // 무리 안 순서(0 = 여자 전용, 1 = 남자 전용, 2 = 공용 — 남녀 세트에 함께 든 것)
   setName?: string            // 세트 이름(세트 표의 무리 이름, 없으면 게임 세트 번호의 이름) — 이름 검색이 함께 본다(사용자 지시: '와카모'로 찾으면 '진홍빛 재액'도)
+  labelGen?: number           // 마라벨 · 스라벨의 기수(loadLabels 의 gen) — 이름 검색 '마라벨1기' · '스라벨161' 이 본다(lib/nameSearch labelQuery)
 }
 
 export interface SlotSummary {
@@ -279,17 +280,19 @@ export function loadItemDups(): Promise<ItemDups> {
   }
   return itemDupsPromise
 }
-// 목록 '필터'의 분류 표(parser scripts/labels-build.cjs → CDN catalog/labels.json) = { collabo: id[], master: id[] }. 여기서는 master 만 쓴다
+// 목록 '필터'의 분류 표(parser scripts/labels-build.cjs → CDN catalog/labels.json) = { collabo: id[], master: id[], gen: { id: 기수 } }. 여기서는 master · gen 만 쓴다
 // (collabo = 원본 info.collabo 등 — 맞지 않아 필터에서 뺐다, 사용자 지시). master = 마스터라벨 세트의 헤어 · 성형 · 얼굴장식 —
 // 원본에 표시가 없어 기수별 이름표로 찾은 것이다(장비의 마스터라벨은 목록의 label 에 이미 있다). 합치면 배지도 마스터라벨이 된다.
+// gen = 마라벨 · 스라벨 아이템의 기수(마라벨은 기수별 세트, 스라벨은 parser label-gens.json 의 기수 표로 찾은 것).
 // 목록(slots/)에 싣지 않고 따로 두는 것은 목록을 meta 로 다시 만들 때(relist) 지워지지 않게 하려는 것이다. 없거나 실패하면 빈 표.
-type Labels = { master: Set<string> }
+type LabelFile = { master?: string[]; gen?: Record<string, number> }
+type Labels = { master: Set<string>; gen: Record<string, number> }
 let labelsPromise: Promise<Labels> | null = null
 export function loadLabels(): Promise<Labels> {
   if (!labelsPromise) {
-    labelsPromise = stagedRel('catalog/labels.json').then((rel) => pre<{ master?: string[] }>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : {}))))
-      .catch(() => ({} as { master?: string[] }))
-      .then((d) => ({ master: new Set(d.master ?? []) }))
+    labelsPromise = stagedRel('catalog/labels.json').then((rel) => pre<LabelFile>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : {}))))
+      .catch(() => ({} as LabelFile))
+      .then((d) => ({ master: new Set(d.master ?? []), gen: d.gen ?? {} }))
   }
   return labelsPromise
 }
@@ -326,9 +329,12 @@ export function loadSlot(file: string): Promise<ListItem[]> {
       }
       return items.map((it) => fixIcon(fixSlotCodes(it)))
     }).then(async (items) => {
-      const { master } = await labels
-      if (!master.size) return items
-      return items.map((it) => (!it.label && master.has(it.id) ? { ...it, label: 'master' as const } : it))
+      const { master, gen } = await labels
+      return items.map((it) => {
+        const label = it.label ?? (master.has(it.id) ? 'master' as const : undefined)
+        const g = label ? gen[it.id] : undefined
+        return label === it.label && !g ? it : { ...it, label, ...(g ? { labelGen: g } : {}) }
+      })
     }).then(async (items) => {
       const { items: tb, names, sid } = await sets
       return items.map((it) => {
