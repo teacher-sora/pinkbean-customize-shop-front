@@ -27,8 +27,10 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const dyeable = isSkinItem ? isDyeableSkin(item.name) : item.dyeMode !== 'none'
   const isDot = DOT_MOVER_IDS.has(item.id)
   const looks = useLookCount(item.id) // 이 아이템이 든 실제 유저 코디 수(코디 룩북 표본 — lib/looks). 0 이면 칩이 없다
+  // 왼쪽 아래 표시: 마라벨 · 스라벨 → 콜라보 · 부티크 → 캐시 동전(사용자 지시 — 넷은 서로 겹치지 않고, 캐시는 모두와 겹친다)
+  const kindTag = !item.label && item.kind ? item.kind : null
   const badgeKind: 'master' | 'special' | 'cash' | null =
-    item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
+    item.label ? item.label : (!kindTag && item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
 
   const equip = () => { if (s.consumeSwipeClick()) return; s.equipFromCat(cat, item) }
   // 누르는 순간(클릭보다 먼저) 착용에 필요한 메타·스프라이트를 받기 시작 → 착용 반영 대기 단축.
@@ -65,6 +67,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
             <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
               className={clsx(styles.labelBadge, badgeKind === 'cash' && styles.labelBadgeCash)} />
           )}
+          {kindTag && <span title={item.kindName} className={clsx(styles.kindTag, mobile && styles.kindTagM)}>{kindTag === 'collab' ? '콜라보' : '부티크'}</span>}
           {looks > 0 && !COMBO_SKIP.has(item.slot) && (
             <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 룩북 ${looks.toLocaleString()}벌`}
               className={clsx(styles.combo, mobile && styles.comboM)}>{mobile ? <><IconTab id="codi" size={11} />{countLabel(looks)}</> : `코디 ${countLabel(looks)}`}</button>

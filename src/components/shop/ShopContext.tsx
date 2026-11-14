@@ -16,7 +16,7 @@ import { groupSets } from '@/lib/setOrder'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, PV_WEAPONS, type Cat, type Preset, type Pv } from '@/lib/catalog'
 import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
-import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadSlot, stagedUrl, type Index, type ListItem, type Vec } from '@/lib/core/data'
+import { loadAnima, loadEffectIndex, loadIndex, loadLabels, loadMeta, loadNewItems, loadSlot, stagedUrl, type Collect, type CollectGroups, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { conflictSlots } from '@/lib/core/slots'
@@ -250,6 +250,9 @@ export const withView = (v: PvSnap | undefined, cur: Pv): PvSnap => ({ ...PV_SNA
 // 불러오기 후보. 다이얼로그 구조 = [코디 탭(제로/엔버만 2개)] + [그 코디의 프리셋 카드들].
 export type PresetOption = { key: string; label: string; active: boolean; snap: Snapshot }
 export type LookOption = { key: string; label: string; presets: PresetOption[] }
+// '모아보기'에서 고른 것: kind 가 없으면 끔, name 이 없으면 그 종류 전체
+export type CollectPick = { kind: Collect | null; name: string | null }
+const COLLECT_OFF: CollectPick = { kind: null, name: null }
 export interface ShopCtx {
   // 데이터
   index: Index | null
@@ -267,6 +270,7 @@ export interface ShopCtx {
   search: string; setSearch: (v: string) => void
   genderFilter: GenderFilter; setGenderFilter: Dispatch<GenderFilter> // 코디·AI 코디 검색 공용
   kindFilter: string; setKindFilter: (v: string) => void // '필터' 라디오(shopData.ITEM_KINDS, 'all' = 전부) — 코디 · AI 코디 검색 공용
+  collect: CollectPick; setCollect: (v: CollectPick) => void; collectGroups: CollectGroups // '모아보기'(콜라보 · 부티크, 그 안의 IP · 상자) — 코디 · AI 코디 검색 공용
   // primary/screen
   primary: string; setPrimary: (tab: string) => void
   goHome: () => void // 로고 — 첫 진입 화면(코디 탭 · 전체 · 1페이지)으로
@@ -724,11 +728,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // '필터' 라디오: 고른 것에 맞는 아이템만 남긴다('all' = 전부, 규칙은 shopData.filterKind)
   const [kindFilter, setKindFilter] = useState('all')
   const byKind = useCallback((list: ListItem[], kf: string) => filterKind(list, kf), [])
+  // '모아보기'(사용자 지시): 콜라보 · 부티크만, 이름(IP · 상자)을 고르면 그것만. 필터의 라벨처럼 지금 목록에 하나도 없으면 거르지 않는다
+  const [collect, setCollect] = useState<CollectPick>(COLLECT_OFF)
+  const [collectGroups, setCollectGroups] = useState<CollectGroups>({ collab: [], boutique: [] })
+  useEffect(() => { loadLabels().then((l) => setCollectGroups(l.groups)).catch(() => {}) }, [])
+  const byCollect = useCallback((list: ListItem[], c: CollectPick) => {
+    if (!c.kind) return list
+    const hit = list.filter((it) => it.kind === c.kind && (c.name == null || it.kindName === c.name))
+    return hit.length ? hit : list
+  }, [])
   const activeListFull = listForCat(activeCat)
   // 이름 검색: 공백 무시 + 한/영 자판 무관(lib/nameSearch). 입력은 즉시, 필터·리스트 갱신은 지연값으로(타이핑 끊김 방지).
   const deferredSearch = useDeferredValue(search)
   const activeList = useMemo(() => {
-    const list = byKind(byGender(activeListFull, genderFilter), kindFilter)
+    const list = byCollect(byKind(byGender(activeListFull, genderFilter), kindFilter), collect)
     if (isEgg(deferredSearch)) return list.filter((it) => isEggItem(it.id))   // 이스터에그(lib/easterEgg)
     const match = nameMatcher(deferredSearch)
     if (!match) return list
@@ -743,7 +756,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (lq.gen == null) { const has = new Set(named); return [...named, ...hit.filter((it) => !has.has(it))] }
     const has = new Set(hit)
     return [...hit, ...named.filter((it) => !has.has(it))]
-  }, [activeListFull, deferredSearch, byGender, genderFilter, byKind, kindFilter])
+  }, [activeListFull, deferredSearch, byGender, genderFilter, byKind, kindFilter, byCollect, collect])
 
   // AI 코디 검색 결과 — 백엔드가 준 id 를 슬롯 "원본(비폴딩)" 리스트에서 정확히 해석해 실제 ListItem 으로 보관.
   // 원본 해석이라 스프라이트/라벨/염색이 정확하고, 코디탭과 동일하게 ItemThumb 로 렌더된다.
@@ -934,8 +947,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     else if (activeCat === 'new') out = out.filter((it) => newIds.has(it.id))
     else if (activeCat === CHAT_TAB) out = out.filter((it) => it.slot === 'nameTag' || it.slot === 'chatBalloon') // 명찰/말풍선 탭은 두 부위를 함께 보인다
     else if (activeCat !== 'all') out = out.filter((it) => it.slot === CAT_TO_SLOT[activeCat])
-    return byKind(byGender(out, genderFilter), kindFilter)
-  }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter, byKind, kindFilter])
+    return byCollect(byKind(byGender(out, genderFilter), kindFilter), collect)
+  }, [searchResults, activeCat, favorites, newIds, byGender, genderFilter, byKind, kindFilter, byCollect, collect])
   // 정렬은 **화면에 들어올 때 한 번만** 확정한다 — 좋아요를 누를 때마다 카드가 자리를 바꾸면 보던 곳을 잃는다.
   // 같은 (분류·검색어·정렬·목록 세대) 안에서는 처음 잡은 순서를 그대로 쓰고, 그 사이 새로 생긴 글(내 등록)만 맨 앞에 붙는다.
   const plazaOrder = useRef<{ key: string; ids: string[] }>({ key: '', ids: [] })
@@ -1652,7 +1665,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setPrimary('codi')
     setActiveCat('all')
     setSearch('')
-    setGenderFilter('all'); setKindFilter('all')
+    setGenderFilter('all'); setKindFilter('all'); setCollect(COLLECT_OFF)
     setAiQ(''); setSearchQuery(null); setSearchResults([])
     setPlazaFilter('all'); setPlazaQState('')
     setPageByCat({}) // 부위별로 따로 기억하던 페이지까지 전부 1페이지로
@@ -2254,7 +2267,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const saveName = selIdx >= 0 ? presetFileName(presets[selIdx].name, selIdx) : CHAT_NAME_FALLBACK
   const value: ShopCtx = {
     index, cats, catBar, reorderCats, infoCats, chatOn, chatDefault, chatName, saveName, chatMsg, sendChat, catLoading, activeList, search, setSearch: setSearchQ,
-    genderFilter, setGenderFilter, kindFilter, setKindFilter,
+    genderFilter, setGenderFilter, kindFilter, setKindFilter, collect, setCollect, collectGroups,
     primary, setPrimary, goHome,
     aiQ, setAiQ, searchQuery, runSearch, searchResults: searchResultsView, searchLoading,
     undo, redo, canUndo, canRedo,
