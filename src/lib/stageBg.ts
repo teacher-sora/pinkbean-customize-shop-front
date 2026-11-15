@@ -3,6 +3,7 @@
 //  · 올린 그림은 긴 변 1000px 로 줄여 JPEG 로 담는다 — localStorage 는 5MB 남짓이고 프리셋과 나눠 쓴다(원본을 그대로 담으면 한두 장에 찬다).
 //  · 여덟 장까지. 담지 못하면(용량) 없던 일로 하고 알린다.
 import { useSyncExternalStore } from 'react'
+import { DEV_SITE } from './catalog'
 
 export interface StageBgImage { id: string; src: string }
 export interface StageBg { sel: string; images: StageBgImage[] }   // sel = 'room' | 'white' | 'black' | 'system'(시스템 테마 — 라이트 #f7f2ec · 다크 카드 색) | 캐시샵 배경(cs0~cs4) | 올린 그림의 id
@@ -10,15 +11,22 @@ export interface StageBg { sel: string; images: StageBgImage[] }   // sel = 'roo
 // 캐시샵 배경(public/stagebg). 게임 캐시샵(리마스터) 미리보기의 배경 다섯 장
 // (UI.wz UICashShop.img/avatarView/layer:preview_back0~4, 516×512 — 원본 그대로 무손실 WebP). 짝인 preview_cover 는 위아래 가장자리를
 // 게임 창 색으로 흐리는 테두리라 넣지 않는다. ground = 그림 위에서 캐릭터가 딛는 줄(세 장의 바닥이 모두 이 줄), top · bottom = 그림 밖을 채우는 색.
-export interface CashBg { id: string; label: string; src: string; top: string; bottom: string }
+// 맵 배경(mh0~mh3 메이플 홈 · cellas 셀라스 '별이 삼켜진 곳')도 같은 꼴로 이 목록에 있다 — parser scripts/stagebg-build.cjs 가 게임 맵을 잘라 만든다
+// (516×512, 바닥 줄 362 를 그 맵의 발판에 맞춘다. 별이 삼켜진 곳은 하늘 · 잠수정까지 담으려 0.6 배로 넓게). dev = dev 사이트에서만(사용자 지시 — 먼저 dev 에)
+export interface CashBg { id: string; label: string; src: string; top: string; bottom: string; dev?: boolean }
 export const CASH_BG_W = 516, CASH_BG_H = 512, CASH_BG_GROUND = 362
-export const CASH_BGS: CashBg[] = [
+export const CASH_BGS: CashBg[] = ([
   { id: 'cs0', label: '버섯 집', src: '/stagebg/cs0.webp', top: '#26b2ff', bottom: '#ccd7e6' },
   { id: 'cs1', label: '숲', src: '/stagebg/cs1.webp', top: '#2c8bb5', bottom: '#08233c' },
   { id: 'cs2', label: '선술집', src: '/stagebg/cs2.webp', top: '#a68d7f', bottom: '#100b07' },
   { id: 'cs3', label: '흰 사다리', src: '/stagebg/cs3.webp', top: '#ffffff', bottom: '#ffffff' },
   { id: 'cs4', label: '검은 사다리', src: '/stagebg/cs4.webp', top: '#292a2a', bottom: '#292a2a' },
-]
+  { id: 'mh0', label: '집 앞 공원', src: '/stagebg/mh0.webp', top: '#77ddff', bottom: '#444433', dev: true },
+  { id: 'mh1', label: '버섯집 현관', src: '/stagebg/mh1.webp', top: '#bbeeee', bottom: '#555544', dev: true },
+  { id: 'mh2', label: '메이플 대학교', src: '/stagebg/mh2.webp', top: '#aa6644', bottom: '#443333', dev: true },
+  { id: 'mh3', label: '유랑자의 거처', src: '/stagebg/mh3.webp', top: '#55ccee', bottom: '#aacc22', dev: true },
+  { id: 'cellas', label: '별이 삼켜진 곳', src: '/stagebg/cellas.webp', top: '#102e43', bottom: '#035767', dev: true },
+] as CashBg[]).filter((c) => DEV_SITE || !c.dev)
 // 파일이 있을 때만(dev) 고를 수 있다 — 한 번만 본다
 let cashOn: Promise<boolean> | null = null
 export const cashBgsOn = () => (cashOn ??= fetch(CASH_BGS[0].src, { method: 'HEAD' }).then((r) => r.ok).catch(() => false))
