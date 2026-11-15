@@ -736,11 +736,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 세트 이름도 본다 — 이름에 없어도 그 세트면 걸린다('와카모' → 진홍빛 재액, '안개제독' → 푸른 물결). 세트로만 걸린 것은 이름으로 걸린 것 뒤(rank 3)
     // 콜라보 IP · 부티크 상자 이름도 같다('블루 아카이브' · '넥슨 게임' · '펌킨 캔디 팟' — 사용자 지시, 따로 고르는 칸 대신 찾아본다)
     const named = rankSort(list.filter((it) => match(it.name || it.id) || (!!it.setName && match(it.setName)) || (!!it.kindName && match(it.kindName))), match, (it) => it.name || it.id)
-    // 라벨 기수 검색(lib/nameSearch labelQuery): '마라벨1기' 는 그 기수 아이템을 맨 앞에(목록 순서 그대로라 세트가 한자리에 모인다),
-    // 숫자 없는 '마라' · '스라벨' 은 그 라벨 아이템 전부를 맨 뒤에(사용자 지시 — 아주 후순위)
+    // 라벨 기수 검색(lib/nameSearch labelQuery): '마라벨1기' · '마 1' 은 그 기수 아이템을 맨 앞에(목록 순서 그대로라 세트가 한자리에 모인다),
+    // '1기' 는 마라벨 1기와 스라벨 1기 둘 다, 숫자 없는 '마라' · '스라벨' 은 그 라벨 아이템 전부를 맨 뒤에(사용자 지시 — 아주 후순위)
     const lq = labelQuery(deferredSearch)
     if (!lq) return named
-    const hit = list.filter((it) => it.label === lq.label && (lq.gen == null || it.labelGen === lq.gen))
+    const hit = list.filter((it) => !!it.label && (lq.label == null || it.label === lq.label) && (lq.gen == null || it.labelGen === lq.gen))
     if (!hit.length) return named
     if (lq.gen == null) { const has = new Set(named); return [...named, ...hit.filter((it) => !has.has(it))] }
     const has = new Set(hit)

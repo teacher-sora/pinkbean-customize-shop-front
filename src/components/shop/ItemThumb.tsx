@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { watchSize } from '@/lib/sizeWatch'
 import { useIsoLayoutEffect } from '@/lib/uiState'
-import { assemble, dropBase, dropWeaponEffects, footOf, getFrameLayers, ringIllusion, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
+import { assemble, dropBase, dropWeaponEffects, footOf, getFrameLayers, ILLUSION_FREE_SLOTS, ringIllusion, weaponPose, type AssembleInput, type PlacedLayer } from '@/lib/core/assemble'
 import { loadEffect, loadEffectIndex, loadMeta, loadParticle, loadParticleIndex, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
@@ -294,12 +294,13 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       const foot = footOf(p) ?? { x: 8, y: 21 }
       const anch = { foot, brow: anchors.brow ?? foot, flip, alone } // flip = 펫 자리(pos 5)를 시선과 상관없이 캐릭터 왼쪽에(alone 이면 발 자리에)
       const draws: EffectDraw[] = []
-      // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기 · 프리셋 카드와 같은 규칙.
+      // 거대한 몸 · 변신 링은 몸에 입은 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기 · 프리셋 카드와 같은 규칙. 캐릭터 밖에 서는 것은 그대로(ILLUSION_FREE_SLOTS)
       const noFx = !!ringIllusion([...bgF, ...self])?.hideEffect
-      if (!noFx && item.slot !== 'android' && !alone) for (const { em } of ctxEffs || []) draws.push(...effectDraws(em, view.action, anch, 0))
+      const fxOn = (slot: string) => !noFx || ILLUSION_FREE_SLOTS.has(slot)
+      if (item.slot !== 'android' && !alone) for (const { slot, em } of ctxEffs || []) if (fxOn(slot)) draws.push(...effectDraws(em, view.action, anch, 0))
       // 이 아이템 "자신의" 이펙트(망토 오라 등)는 아이템 모습의 일부 → 모델·내 모델 모두 그린다(연출 토글은 적용).
       //   ('내 모델/프리셋만' 규칙은 배경=내 착용 아이템들의 이펙트(ctxEffs) 얘기고, 그건 모델엔 배경이 없어 자연히 없다.)
-      if (!noFx && item.slot !== 'skin' && (!pvEff || effectEnabled(item.slot, pvEff))) {
+      if (fxOn(item.slot) && item.slot !== 'skin' && (!pvEff || effectEnabled(item.slot, pvEff))) {
         const bare = String(parseInt(item.id, 10))
         const eidx = await loadEffectIndex().catch(() => new Set<string>())
         if (alive && eidx.has(bare)) {
@@ -309,7 +310,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
       }
       // 이 아이템 자신의 파티클(제네시스 무기의 붉은 파장 등) — 다 퍼진 한 장. 무기 이펙트를 끄면 없다.
       let parts: ParticleDraw[] = []
-      if (!noFx && !alone && !ringIllusion([...bgF, ...self])?.hideWeapon && (!pvEff || effectEnabled(item.slot, pvEff))) {
+      if (!alone && (ILLUSION_FREE_SLOTS.has(item.slot) || (!noFx && !ringIllusion([...bgF, ...self])?.hideWeapon)) && (!pvEff || effectEnabled(item.slot, pvEff))) {
         const pIdx = await loadParticleIndex()
         const spots = spotsFor(pIdx[item.id], view.action)
         if (spots.length) {

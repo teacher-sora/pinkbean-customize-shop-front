@@ -1,6 +1,6 @@
 // 스냅샷(착용+톤+염색+점 위치+연출설정 일부) → 합성 결과(placed·염색 override·이펙트). 렌더 캔버스와 무관한 순수 조립.
 // SnapThumb(프리셋 카드·닉네임 코디 선택)과 공유 카드 이미지(shareImage)가 같은 그림이어야 해서 한 곳에 둔다.
-import { assemble, dropBase, dropWeaponEffects, frameDelays, getFrameLayers, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
+import { assemble, dropBase, dropWeaponEffects, frameDelays, getFrameLayers, ILLUSION_FREE_SLOTS, isBackFrame, weaponPose, type AssembleInput, type PlacedLayer } from './assemble'
 import { loadMeta, loadAnima, loadParticle, loadParticleIndex, loadSlot, type AnimaRace, type Index, type ItemMeta, type ListItem } from './data'
 import { LRU } from './lru'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor } from './dye'
@@ -131,14 +131,16 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const bnav = refNav && curNav ? refNav : curBody?.map?.navel // 배꼽을 되돌렸으면 발도 그만큼(= stand1 배꼽 기준)
   const foot = { x: bnav ? -bnav.x : 8, y: bnav ? -bnav.y : 21 }
   const brow = anchors.brow ? { x: anchors.brow.x, y: anchors.brow.y } : foot
-  // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기와 같은 규칙.
+  // 거대한 몸 · 변신 링은 몸에 입은 아이템의 이펙트를 그리지 않는다(원본 hideEffect) — 미리보기와 같은 규칙. 캐릭터 밖에 서는 것은 그대로(ILLUSION_FREE_SLOTS)
   const noFx = !!equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion?.hideEffect
-  const worn = noFx ? [] : await collectWornEffects(shown.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
+  const fxShown = noFx ? shown.filter(({ slot }) => ILLUSION_FREE_SLOTS.has(slot)) : shown
+  const worn = await collectWornEffects(fxShown.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
   const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, charTV.action, { foot, brow, flip: view && spv.gaze === 'right', ground: { x: foot.x, y: foot.y + lift } }, 0)) // 그리는 쪽(SnapThumb)이 view 의 오른쪽 시선을 반전한다
   // 파티클(제네시스 무기 등) — 다 퍼진 한 장(stillSim). 무기 이펙트를 끄거나 무기를 숨기는 링이면 없다(미리보기와 같은 규칙).
   const ringIll = equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion
-  const pIdx = noFx || ringIll?.hideWeapon ? {} : await loadParticleIndex()
-  const spots = shown.filter(({ slot, meta }) => pIdx[meta.id] && (slot !== 'weapon' || spv.wEffect)).flatMap(({ meta }) => spotsFor(pIdx[meta.id], charTV.action))
+  const pHide = noFx || !!ringIll?.hideWeapon
+  const pIdx = pHide && !shown.some(({ slot }) => ILLUSION_FREE_SLOTS.has(slot)) ? {} : await loadParticleIndex() // 다 가려지면 받지 않는다
+  const spots = shown.filter(({ slot, meta }) => pIdx[meta.id] && (!pHide || ILLUSION_FREE_SLOTS.has(slot)) && (slot !== 'weapon' || spv.wEffect)).flatMap(({ meta }) => spotsFor(pIdx[meta.id], charTV.action))
   const pDescs = new Map<string, ParticleDesc>()
   for (const d of await Promise.all([...new Set(spots.map((x) => x.name))].map((n) => loadParticle(n)))) if (d) pDescs.set(d.name, d)
   const particles = placeParticles(spots, pDescs, foot, (d) => stillSim(d))
