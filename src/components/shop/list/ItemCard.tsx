@@ -2,7 +2,7 @@
 
 import clsx from 'clsx'
 import { useRef } from 'react'
-import { badgeUrl, type ListItem } from '@/lib/core/data'
+import { labelBadgeImg, type ListItem } from '@/lib/core/data'
 import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
@@ -64,7 +64,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
             ear={mode === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={mode === 'mymodel'} stance={ctx.stance} ctxAction={ctx.action} dotOffsets={mode === 'mymodel' ? s.dotPos[item.id] : undefined} />
           {badgeKind && (
             // WZ 등급 배지(픽셀 아트)는 리샘플링 없이 원본 도트로 그린다(next/image 를 쓰지 않는다)
-            <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
+            <img {...labelBadgeImg(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
               className={clsx(styles.labelBadge, badgeKind === 'cash' && styles.labelBadgeCash)} />
           )}
           {/* 라벨 기수 — 배지 바로 옆에 흐린 글자 'N기'(사용자 지시: 연하게라도 '마라벨 N기'. 마라벨 · 스라벨은 배지가 말하고, 낱말까지 적으면

@@ -19,8 +19,10 @@
 .segMarked { display: flex; align-items: center; justify-content: center; gap: 4px; }
 .segMark { flex: 0 0 auto; display: flex; align-items: center; color: light-dark(#ec86ac, #d15785); }
 .segMark > svg { width: 14px; height: 14px; }
-.segMark > img { height: 15px; image-rendering: pixelated; }
+.segMark > img { height: 16px; } /* 배지 도트 — 카드 배지와 같은 규칙(list.module.css .labelBadge) */
 .segMark > img[data-mark='cash'] { height: 13px; }
+@media (resolution: 1dppx), (resolution: 2dppx), (resolution: 4dppx) { .segMark > img { image-rendering: pixelated; } }
+@media (resolution: 3dppx) { .segMark > img[data-mark='cash'] { image-rendering: pixelated; } }
 .segOn .segMark { color: light-dark(#fff, #ececef); --pb-mark-fg: light-dark(#ec86ac, #d15785); }
 
 /* ── 커스텀 드롭다운(OS select 금지) ── */

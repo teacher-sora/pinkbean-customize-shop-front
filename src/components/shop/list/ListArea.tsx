@@ -8,7 +8,7 @@ import EmptyState from '../frame/EmptyState'
 import SearchBox, { searchInputClass } from '../frame/SearchBox'
 import PageChip from '../frame/PageChip'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { badgeUrl, type ListItem } from '@/lib/core/data'
+import { labelBadgeImg, type ListItem } from '@/lib/core/data'
 import { ITEM_KINDS, ITEM_KIND_ROWS, MOBILE_GRID } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
@@ -247,9 +247,9 @@ export function usePagerY(vpRef: React.RefObject<HTMLDivElement | null>, on: boo
 
 // 필터 칸 앞 표시 = 카드 왼쪽 아래 표시와 같은 그림(마라벨 · 스라벨 · 캐시 = WZ 배지, 콜라보 · 부티크 = ui/Icons) — 카드에서 본 표시로 바로 고른다
 const KIND_MARK: Record<string, React.ReactNode> = {
-  master: <img src={badgeUrl('master')} alt="" draggable={false} />,
-  special: <img src={badgeUrl('special')} alt="" draggable={false} />,
-  cash: <img src={badgeUrl('cash')} alt="" data-mark="cash" draggable={false} />,
+  master: <img {...labelBadgeImg('master')} alt="" draggable={false} />,
+  special: <img {...labelBadgeImg('special')} alt="" draggable={false} />,
+  cash: <img {...labelBadgeImg('cash')} alt="" data-mark="cash" draggable={false} />,
   collab: <IconBadgeCollab />,
   boutique: <IconBadgeBoutique />,
 }
