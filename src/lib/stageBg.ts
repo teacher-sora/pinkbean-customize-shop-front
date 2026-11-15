@@ -19,7 +19,7 @@ export const CASH_BGS: CashBg[] = [
   { id: 'cs0', label: '버섯 집', src: '/stagebg/cs0.webp', top: '#26b2ff', bottom: '#ccd7e6' },
   { id: 'cs1', label: '숲', src: '/stagebg/cs1.webp', top: '#2c8bb5', bottom: '#08233c' },
   { id: 'cs2', label: '선술집', src: '/stagebg/cs2.webp', top: '#a68d7f', bottom: '#100b07' },
-  { id: 'home-mush', label: '홈 버섯집', src: '/stagebg/home-mush.webp', top: '#ccaa77', bottom: '#554433' },
+  { id: 'home-mush', label: '홈 버섯 집', src: '/stagebg/home-mush.webp', top: '#ccaa77', bottom: '#554433' },
   { id: 'home-wander-out', label: '홈 거처 앞', src: '/stagebg/home-wander-out.webp', top: '#66ddee', bottom: '#bbdd22' },
   { id: 'cs3', label: '흰 사다리', src: '/stagebg/cs3.webp', top: '#ffffff', bottom: '#ffffff' },
   { id: 'cs4', label: '검은 사다리', src: '/stagebg/cs4.webp', top: '#292a2a', bottom: '#292a2a' },
