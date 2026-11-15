@@ -484,3 +484,8 @@ export const spriteUrl = (pngRel: string) => url(pngRel)
 
 // WZ-extracted grade badge icon (master/special/cash); 404 → text fallback in UI.
 export const badgeUrl = (kind: string) => url(`badges/${kind}.png`)
+// 마라벨, 스라벨 배지 — 원본(31×34)을 반으로 줄여 도트로 그리면 카드 자리(소수 px)에 따라 남는 도트가 달라져 M, S 가 가끔 뭉개졌다(사용자 지적).
+// 그래서 빈 테두리를 잘라 30×32(2배)로 두고, 거기서 한 칸 걸러 고른 15×16(1배)을 따로 둔다(front public/badges). 화면에는 16px 높이로 그려
+// 배율 100% 는 1배를, 200% 는 2배를 1:1 로 쓴다(소수 배율은 매끄럽게 줄인다 — list.module.css .labelBadge). 캐시 배지(13×13)는 CDN 그대로
+export const labelBadgeImg = (kind: string): { src: string; srcSet?: string } =>
+  kind === 'master' || kind === 'special' ? { src: `/badges/${kind}.png`, srcSet: `/badges/${kind}.png 1x, /badges/${kind}@2x.png 2x` } : { src: badgeUrl(kind) }

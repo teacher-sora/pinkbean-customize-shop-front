@@ -93,11 +93,15 @@
 .newBadge { position: absolute; top: 5px; left: 5px; z-index: 4; display: inline-flex; align-items: center; height: 17px; padding: 0 6px; border-radius: 4px; font-size: calc(9.5rem / 16); font-weight: 700; letter-spacing: .02em; background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); pointer-events: none; }
 /* 모바일: 'N' 한 글자 — 정사각형 */
 .newBadgeM { width: 17px; padding: 0; justify-content: center; }
-.labelBadge { position: absolute; bottom: 4px; left: 4px; height: 17px; image-rendering: pixelated; z-index: 2; }
-.labelBadgeCash { height: 14px; }
+/* 배지(도트) — 높이는 그림의 정수 배(마라벨, 스라벨 16 = 1배 그림 16, 2배 그림 32 의 절반 / 캐시 13). 기기 픽셀이 그림 도트의 정수 배일 때만
+   도트 그대로(pixelated), 소수 배율(125% 등)은 매끄럽게 줄인다 — 도트로 소수 배를 그리면 자리마다 남는 도트가 달라 글자가 뭉개진다(lib/core/data labelBadgeImg) */
+.labelBadge { position: absolute; bottom: 4px; left: 4px; height: 16px; z-index: 2; }
+.labelBadgeCash { height: 13px; }
+@media (resolution: 1dppx), (resolution: 2dppx), (resolution: 4dppx) { .labelBadge { image-rendering: pixelated; } }
+@media (resolution: 3dppx) { .labelBadgeCash { image-rendering: pixelated; } }
 /* 라벨 기수 'N기'(마라벨 · 스라벨 배지 바로 오른쪽) — 흐린 글자(토큰 '흐림'), 배지와 같은 높이 줄. 마우스를 올리면 '마라벨 N기'(title).
    PC 꼴 카드의 그림 칸이 110px 이하면(태블릿) 오른쪽 아래 '코디' 칩과 겹쳐 배지 위, 칩 높이(아래 4 + 20)보다 위로 올린다(.thumb 이 폭 컨테이너) */
-.labelGen { position: absolute; bottom: 4px; left: 22px; z-index: 2; height: 17px; display: flex; align-items: center; white-space: nowrap; font-size: calc(10.5rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); font-variant-numeric: tabular-nums; }
+.labelGen { position: absolute; bottom: 4px; left: 22px; z-index: 2; height: 16px; display: flex; align-items: center; white-space: nowrap; font-size: calc(10.5rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); font-variant-numeric: tabular-nums; }
 .labelGenM { left: 21px; font-size: calc(10rem / 16); }
 @container (max-width: 110px) { .labelGen:not(.labelGenM) { left: 4px; bottom: 26px; height: 14px; } }
 /* 콜라보 · 부티크 표시 — 등급 배지 자리 · 크기(왼쪽 아래 16px). 그림은 ui/Icons 의 IconBadgeCollab · IconBadgeBoutique(분홍 원 = currentColor). 캐시 동전보다 먼저다(사용자 지시) */
@@ -140,6 +144,6 @@
 /* 막대 단추의 아이콘은 300 이하에서만 보인다(그 폭에선 '북마크' 글자가 칸에 들어가지 않는다 — 폴드 1 · 2 바깥 화면 280) */
 .actIcon { display: none; }
 .actIcon > svg { width: 12px; height: 12px; }
-@media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge { height: 14px; } .labelGen { left: 18px; height: 14px; } .kindBadge { width: 14px; height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
+@media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge:not(.labelBadgeCash) { height: 14px; image-rendering: auto; } .labelGen { left: 18px; height: 14px; } .kindBadge { width: 14px; height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
 /* 보기 설정 창의 '구분' 토글 줄(여러 개를 함께 켠다) · 켜 둔 토글이 있으면 접힌 버튼 글자도 분홍 */
 .filterBtnSet .filterText { color: light-dark(#c05a94, #cb9ab6); }
