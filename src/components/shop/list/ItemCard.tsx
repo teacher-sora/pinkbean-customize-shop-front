@@ -6,7 +6,7 @@ import { badgeUrl, type ListItem } from '@/lib/core/data'
 import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
-import { IconBookmark, IconDot, IconDrop, IconStar, IconTab } from '../ui/Icons'
+import { IconBookmark, IconDot, IconDrop, IconStar, IconTab, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
 import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
@@ -27,8 +27,10 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const dyeable = isSkinItem ? isDyeableSkin(item.name) : item.dyeMode !== 'none'
   const isDot = DOT_MOVER_IDS.has(item.id)
   const looks = useLookCount(item.id) // 이 아이템이 든 실제 유저 코디 수(코디 룩북 표본 — lib/looks). 0 이면 칩이 없다
+  // 왼쪽 아래 표시 하나: 마라벨 · 스라벨 → 콜라보 · 부티크 → 캐시 동전(사용자 지시 — 넷은 한 아이템에 하나만 붙고, 캐시는 모두와 겹친다)
+  const kindBadge = !item.label && item.kind ? item.kind : null
   const badgeKind: 'master' | 'special' | 'cash' | null =
-    item.label ? item.label : (item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
+    item.label ? item.label : (!kindBadge && item.isCash && !NO_CASH_BADGE.has(item.slot)) ? 'cash' : null
 
   const equip = () => { if (s.consumeSwipeClick()) return; s.equipFromCat(cat, item) }
   // 누르는 순간(클릭보다 먼저) 착용에 필요한 메타·스프라이트를 받기 시작 → 착용 반영 대기 단축.
@@ -64,6 +66,11 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
             // WZ 등급 배지(픽셀 아트)는 리샘플링 없이 원본 도트로 그린다(next/image 를 쓰지 않는다)
             <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
               className={clsx(styles.labelBadge, badgeKind === 'cash' && styles.labelBadgeCash)} />
+          )}
+          {kindBadge && (
+            <span role="img" aria-label={kindBadge === 'collab' ? '콜라보' : '부티크'} title={[kindBadge === 'collab' ? '콜라보' : '부티크', item.kindName].filter(Boolean).join(', ')} className={styles.kindBadge}>
+              {kindBadge === 'collab' ? <IconBadgeCollab /> : <IconBadgeBoutique />}
+            </span>
           )}
           {looks > 0 && !COMBO_SKIP.has(item.slot) && (
             <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 룩북 ${looks.toLocaleString()}벌`}

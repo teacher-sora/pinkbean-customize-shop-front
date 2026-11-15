@@ -12,6 +12,16 @@
 .segTrack > .segIcon { height: 28px; } /* 목록 머리(PC) — 칸 전체 34, 옆 성별 칸과 같은 높이 */
 .segFlex.segIcon { height: 26px; } /* 보기 설정 창 안 — 칸 전체 30, 같은 창의 다른 고르기와 같은 높이 */
 .segDisabled { opacity: .4; cursor: not-allowed; }
+/* 여러 줄 트랙(Seg rows) — 한 배경 안에 줄을 쌓는다. 줄 사이도 칸 사이와 같은 3px */
+.segRows { flex-direction: column; }
+.segRow { display: flex; gap: 3px; }
+/* 글자 앞 표시(Seg mark) — 카드 왼쪽 아래 표시와 같은 그림. 고른 칸에서는 분홍 원이 흰 원, 안의 글리프가 분홍이 된다(--pb-mark-fg — ui/Icons 의 IconBadge*) */
+.segMarked { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.segMark { flex: 0 0 auto; display: flex; align-items: center; color: light-dark(#ec86ac, #d15785); }
+.segMark > svg { width: 14px; height: 14px; }
+.segMark > img { height: 15px; image-rendering: pixelated; }
+.segMark > img[data-mark='cash'] { height: 13px; }
+.segOn .segMark { color: light-dark(#fff, #ececef); --pb-mark-fg: light-dark(#ec86ac, #d15785); }
 
 /* ── 커스텀 드롭다운(OS select 금지) ── */
 .ddRow { flex: 0 0 152px; height: 28px; padding: 0 8px 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid light-dark(#e7ded4, #4b4e57); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-size: calc(12rem / 16); color: light-dark(#8a8075, #9fa2aa); cursor: pointer; }

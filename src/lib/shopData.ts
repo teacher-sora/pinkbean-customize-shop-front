@@ -180,26 +180,31 @@ export const CARD_LIFT_M = { min: 0.5, max: 0.84 }
 // 화면 위에 붙여 둔다(preview.module.css .hero sticky) — 목록을 내려 보면서도 캐릭터가 바뀌는 것이 보인다(사용자 지시)
 export const MOBILE_GRID = { cols: 3, rows: 3 }
 // 목록의 '필터'(사용자 지시 — 라디오, 하나만 고른다. 'all' = 전부). 보기 설정 안 보기 · 성별 · 방향과 같은 버튼(Seg)이다.
-// 마라벨 = 장비의 마스터라벨 + 세트에 딸린 헤어 · 성형 · 얼굴장식(catalog/labels.json, 라이딩은 넣지 않는다). 콜라보는 뺐다(사용자 지시 — 원본 표시가 맞지 않다).
-// 부티크는 원본에 가를 표시가 없어 없다
-export const ITEM_KINDS: { v: string; l: string; t: string; label?: 'master' | 'special'; test?: (it: ListItem) => boolean }[] = [
+// 마라벨 = 장비의 마스터라벨 + 세트에 딸린 헤어 · 성형 · 얼굴장식(catalog/labels.json, 라이딩은 넣지 않는다).
+// 콜라보 · 부티크도 같은 줄이다(사용자 지시 — 따로 둔 '모아보기'가 불편했다): 콜라보 = 원본의 collabo 표시, 부티크 = 티켓 교환형 상자의 교환 목록(core/data 의 kind).
+// 마라벨 · 스라벨 · 콜라보 · 부티크는 한 아이템에 하나만 붙는다(라벨 → 콜라보 → 부티크 순). pick = 그것만 남기는 엄격한 칸
+// 보기 설정 창에서 두 줄로 놓인다(ITEM_KIND_ROWS — 위 = 전체 · 캐시 · 일반, 아래 = 카드 왼쪽 아래 표시가 붙는 넷. 일곱 칸 한 줄은 붐볐다, 사용자 지적)
+export const ITEM_KIND_ROWS = [3, 4]
+export const ITEM_KINDS: { v: string; l: string; t: string; pick?: (it: ListItem) => boolean; test?: (it: ListItem) => boolean }[] = [
   { v: 'all', l: '전체', t: '전부 보기' },
-  { v: 'master', l: '마라벨', t: '마스터라벨(헤어, 성형 포함)', label: 'master' },
-  { v: 'special', l: '스라벨', t: '스페셜라벨', label: 'special' },
   // 캐시 · 일반은 원본의 캐시 표시(isCash)로 가른다(사용자 지시 — 모루용으로 메소 아이템만 보기)
-  { v: 'cash', l: '캐시', t: '라벨이 없는 캐시 아이템', test: (it) => it.isCash && !it.label },
+  { v: 'cash', l: '캐시', t: '라벨, 콜라보, 부티크가 아닌 캐시 아이템', test: (it) => it.isCash && !it.label && !it.kind },
   { v: 'normal', l: '일반', t: '메소 아이템(캐시가 아닌 것)', test: (it) => !it.isCash },
+  { v: 'master', l: '마라벨', t: '마스터라벨(헤어, 성형 포함)', pick: (it) => it.label === 'master' },
+  { v: 'special', l: '스라벨', t: '스페셜라벨', pick: (it) => it.label === 'special' },
+  { v: 'collab', l: '콜라보', t: '콜라보 아이템', pick: (it) => it.kind === 'collab' },
+  { v: 'boutique', l: '부티크', t: '부티크 티켓으로 바꾸는 아이템', pick: (it) => it.kind === 'boutique' },
 ]
 // 캐시 · 일반 필터를 받지 않고 어느 칸에서나 늘 보이는 부위(사용자 지시): 헤어 · 성형 · 피부 · 일루전 링 · 명찰 / 말풍선 · 칭호 · 훈장 · 펫 · 안드로이드 · 이펙트 · 소울 · 의자 · 라이딩
 const KIND_FREE_SLOTS = new Set(['hair', 'face', 'skin', 'ring', 'nameTag', 'chatBalloon', 'chatRing', 'title', 'medal', 'pet', 'android', 'effect', 'soul', 'chair', 'riding'])
 // 필터 걸기(목록 · AI 코디 검색 결과 공용 — 이름 검색 전의 그 칸 목록에 건다).
-//  · 마라벨 · 스라벨 = 그 라벨인 것만(부위를 가리지 않는다 — 명찰 · 안드로이드 · 소울도 라벨이 없으면 빠진다, 사용자 지시).
-//    그 칸에 그 라벨이 하나도 없으면 필터를 걸지 않는다 — 다른 라벨까지 전부 보인다(사용자 지시 — 헤어 칸의 스라벨은 마라벨 헤어까지 전부).
+//  · 마라벨 · 스라벨 · 콜라보 · 부티크 = 그것만(부위를 가리지 않는다 — 명찰 · 안드로이드 · 소울도 해당이 없으면 빠진다, 사용자 지시).
+//    그 칸에 하나도 없으면 필터를 걸지 않는다 — 전부 보인다(사용자 지시 — 헤어 칸의 스라벨은 마라벨 헤어까지 전부).
 //  · 캐시 · 일반 = 원본 캐시 표시로 가르되 위 부위는 늘 보인다(가르기 애매해 그대로 둔다, 사용자 지시)
 export function filterKind (list: ListItem[], kind: string): ListItem[] {
   const k = ITEM_KINDS.find((x) => x.v === kind)
-  if (k?.label) {
-    const hit = list.filter((it) => it.label === k.label)
+  if (k?.pick) {
+    const hit = list.filter(k.pick)
     return hit.length ? hit : list
   }
   const test = k?.test

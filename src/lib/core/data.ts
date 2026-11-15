@@ -105,6 +105,8 @@ export interface ListItem {
   setSub?: number             // 무리 안 순서(0 = 여자 전용, 1 = 남자 전용, 2 = 공용 — 남녀 세트에 함께 든 것)
   setName?: string            // 세트 이름(세트 표의 무리 이름, 없으면 게임 세트 번호의 이름) — 이름 검색이 함께 본다(사용자 지시: '와카모'로 찾으면 '진홍빛 재액'도)
   labelGen?: number           // 마라벨 · 스라벨의 기수(loadLabels 의 gen) — 이름 검색 '마라벨1기' · '스라벨161' 이 본다(lib/nameSearch labelQuery)
+  kind?: 'collab' | 'boutique' // 콜라보(원본 collabo 표시) · 부티크(loadLabels) — 필터와 카드 왼쪽 아래 표시가 본다. 라벨이 있으면 붙지 않는다(라벨 → 콜라보 → 부티크)
+  kindName?: string           // 콜라보면 IP('블루 아카이브' — 이름표가 있을 때만), 부티크면 상자 이름('펌킨 캔디 팟') — 이름 검색이 함께 본다
 }
 
 export interface SlotSummary {
@@ -280,19 +282,29 @@ export function loadItemDups(): Promise<ItemDups> {
   }
   return itemDupsPromise
 }
-// 목록 '필터'의 분류 표(parser scripts/labels-build.cjs → CDN catalog/labels.json) = { collabo: id[], master: id[], gen: { id: 기수 } }. 여기서는 master · gen 만 쓴다
+// 목록 '필터'의 분류 표(parser scripts/labels-build.cjs · kinds-build.py → CDN catalog/labels.json)
+//   = { collabo: id[], master: id[], gen: { id: 기수 }, collab: { IP: id[] }, boutique: { 상자 이름: id[] } }
 // (collabo = 원본 info.collabo 등 — 맞지 않아 필터에서 뺐다, 사용자 지시). master = 마스터라벨 세트의 헤어 · 성형 · 얼굴장식 —
 // 원본에 표시가 없어 기수별 이름표로 찾은 것이다(장비의 마스터라벨은 목록의 label 에 이미 있다). 합치면 배지도 마스터라벨이 된다.
 // gen = 마라벨 · 스라벨 아이템의 기수(마라벨은 기수별 세트, 스라벨은 parser label-gens.json 의 기수 표로 찾은 것).
+// collabo = 원본 info 의 콜라보 표시(사용자 지시 — 그대로 쓴다), collab = 그 가운데 IP 이름표(이름 검색용), boutique = 티켓 교환형 상자의 교환 목록 전부.
 // 목록(slots/)에 싣지 않고 따로 두는 것은 목록을 meta 로 다시 만들 때(relist) 지워지지 않게 하려는 것이다. 없거나 실패하면 빈 표.
-type LabelFile = { master?: string[]; gen?: Record<string, number> }
-type Labels = { master: Set<string>; gen: Record<string, number> }
+type LabelFile = { master?: string[]; gen?: Record<string, number>; collabo?: string[]; collab?: Record<string, string[]>; boutique?: Record<string, string[]> }
+type Labels = { master: Set<string>; gen: Record<string, number>; kind: Map<string, ['collab' | 'boutique', string | undefined]> }
 let labelsPromise: Promise<Labels> | null = null
 export function loadLabels(): Promise<Labels> {
   if (!labelsPromise) {
     labelsPromise = stagedRel('catalog/labels.json').then((rel) => pre<LabelFile>(rel, () => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : {}))))
       .catch(() => ({} as LabelFile))
-      .then((d) => ({ master: new Set(d.master ?? []), gen: d.gen ?? {} }))
+      .then((d) => {
+        // 콜라보(표시)가 부티크보다 먼저다 — 둘 다인 아이템(냥냥 카페 등)은 콜라보
+        const kind = new Map<string, ['collab' | 'boutique', string | undefined]>()
+        const ip = new Map<string, string>()
+        for (const [name, ids] of Object.entries(d.collab ?? {})) for (const id of ids) ip.set(id, name)
+        for (const id of d.collabo ?? []) kind.set(id, ['collab', ip.get(id)])
+        for (const [name, ids] of Object.entries(d.boutique ?? {})) for (const id of ids) if (!kind.has(id)) kind.set(id, ['boutique', name])
+        return { master: new Set(d.master ?? []), gen: d.gen ?? {}, kind }
+      })
   }
   return labelsPromise
 }
@@ -329,11 +341,12 @@ export function loadSlot(file: string): Promise<ListItem[]> {
       }
       return items.map((it) => fixIcon(fixSlotCodes(it)))
     }).then(async (items) => {
-      const { master, gen } = await labels
+      const { master, gen, kind } = await labels
       return items.map((it) => {
         const label = it.label ?? (master.has(it.id) ? 'master' as const : undefined)
         const g = label ? gen[it.id] : undefined
-        return label === it.label && !g ? it : { ...it, label, ...(g ? { labelGen: g } : {}) }
+        const k = label ? undefined : kind.get(it.id)
+        return label === it.label && !g && !k ? it : { ...it, label, ...(g ? { labelGen: g } : {}), ...(k ? { kind: k[0], ...(k[1] ? { kindName: k[1] } : {}) } : {}) }
       })
     }).then(async (items) => {
       const { items: tb, names, sid } = await sets

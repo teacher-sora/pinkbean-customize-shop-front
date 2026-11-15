@@ -95,6 +95,9 @@
 .newBadgeM { width: 17px; padding: 0; justify-content: center; }
 .labelBadge { position: absolute; bottom: 4px; left: 4px; height: 17px; image-rendering: pixelated; z-index: 2; }
 .labelBadgeCash { height: 14px; }
+/* 콜라보 · 부티크 표시 — 등급 배지 자리 · 크기(왼쪽 아래 16px). 그림은 ui/Icons 의 IconBadgeCollab · IconBadgeBoutique(분홍 원 = currentColor). 캐시 동전보다 먼저다(사용자 지시) */
+.kindBadge { position: absolute; bottom: 4px; left: 4px; z-index: 2; width: 16px; height: 16px; display: flex; color: light-dark(#ec86ac, #d15785); }
+.kindBadge > svg { width: 100%; height: 100%; }
 /* 코디 룩북 칩 — 썸네일 오른쪽 아래(왼쪽 아래는 등급 배지). 광장 카드의 날짜 칩과 같은 꼴. 늘 보인다(숨은 기능이 되지 않게 — 사용자 지시) */
 .combo { composes: pinkTag from '../ui/marks.module.css'; position: absolute; right: 4px; bottom: 4px; z-index: 3; padding: 0 7px; font-family: inherit; white-space: nowrap; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
 /* 모바일 = 옷걸이(하단 '코디' 탭과 같은 아이콘) + 수 — 글자 '코디'를 빼 칩이 좁다(4열 카드에서 왼쪽 아래 등급 배지와 겹쳤다, 320 폭까지) */
@@ -132,6 +135,6 @@
 /* 막대 단추의 아이콘은 300 이하에서만 보인다(그 폭에선 '북마크' 글자가 칸에 들어가지 않는다 — 폴드 1 · 2 바깥 화면 280) */
 .actIcon { display: none; }
 .actIcon > svg { width: 12px; height: 12px; }
-@media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge { height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
+@media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge { height: 14px; } .kindBadge { width: 14px; height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
 /* 보기 설정 창의 '구분' 토글 줄(여러 개를 함께 켠다) · 켜 둔 토글이 있으면 접힌 버튼 글자도 분홍 */
 .filterBtnSet .filterText { color: light-dark(#c05a94, #cb9ab6); }
