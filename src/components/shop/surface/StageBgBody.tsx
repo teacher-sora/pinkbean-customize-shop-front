@@ -1,6 +1,6 @@
 'use client'
 
-// 미리보기 배경 고르기. 넓으면 다섯 칸, 좁아지면 네 칸 · 세 칸(모바일)씩 놓는다: 첫 칸은 늘 '커스텀 배경'(그림 올리기)이고, 그 뒤로 피팅룸 · 캐시샵 배경 다섯 · 흰색 · 검은색, 올린 그림은 올린 순서대로 맨 뒤에 붙는다.
+// 미리보기 배경 고르기. 넓으면 다섯 칸, 좁아지면 네 칸 · 세 칸(모바일)씩 놓는다: 첫 칸은 늘 '커스텀 배경'(그림 올리기)이고, 그 뒤로 피팅룸 · 그림 배경(캐시샵 · 맵, 흰 사다리 · 검은 사다리가 그 끝) · 흰색 · 검은색 · 시스템, 올린 그림은 올린 순서대로 맨 뒤에 붙는다.
 // 고르면 곧바로 미리보기에 깔린다(창은 닫지 않는다 — 여러 개를 대 볼 수 있게). 올린 그림은 이 브라우저에만 남는다(lib/stageBg).
 
 import clsx from 'clsx'
@@ -66,7 +66,7 @@ export default function StageBgBody() {
           </button>
           <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files?.[0]); e.target.value = '' }} />
         </div>
-        {/* 순서: 피팅룸 · 캐시샵 배경(dev) · 흰색 · 검은색 · 올린 그림(사용자 지시 — 색 둘은 고른 그림들 뒤, 올린 것은 맨 뒤) */}
+        {/* 순서: 피팅룸 · 그림 배경(캐시샵 · 맵 — 흰 사다리 · 검은 사다리가 맨 뒤, lib/stageBg) · 흰색 · 검은색 · 시스템 · 올린 그림(사용자 지시 — 단색과 사다리는 이어서, 올린 것은 맨 뒤) */}
         {FIXED.slice(0, 1).map((f) => tile(f.id, f.label, f.style, false))}
         {cash && CASH_BGS.map((c) => tile(c.id, c.label, { backgroundImage: `url("${c.src}")`, backgroundSize: 'cover', backgroundPosition: 'center 70%', backgroundColor: c.top }, false))}
         {FIXED.slice(1).map((f) => tile(f.id, f.label, f.style, false))}

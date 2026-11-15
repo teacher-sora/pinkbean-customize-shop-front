@@ -12,16 +12,17 @@ export interface StageBg { sel: string; images: StageBgImage[] }   // sel = 'roo
 // 게임 창 색으로 흐리는 테두리라 넣지 않는다. ground = 그림 위에서 캐릭터가 딛는 줄(세 장의 바닥이 모두 이 줄), top · bottom = 그림 밖을 채우는 색.
 // 맵 배경(home-* — 메이플 홈의 버섯집 1층 · 유랑자의 거처 앞 나무 데크)도 같은 꼴로 이 목록에 있다 — parser scripts/stagebg-build.cjs 가 게임 맵을 잘라 만든다
 // (516×512, 바닥 줄 362 를 그 자리의 발판 · 그림의 바닥 윗선에 맞춘다)
+// 순서 = 고르기 칸 순서: 그림 배경(캐시샵 셋 · 맵) → 흰 사다리 · 검은 사다리 — 사다리 둘은 바로 뒤의 흰색 · 검은색 · 시스템과 이어 놓는다(사용자 지시)
 export interface CashBg { id: string; label: string; src: string; top: string; bottom: string }
 export const CASH_BG_W = 516, CASH_BG_H = 512, CASH_BG_GROUND = 362
 export const CASH_BGS: CashBg[] = [
   { id: 'cs0', label: '버섯 집', src: '/stagebg/cs0.webp', top: '#26b2ff', bottom: '#ccd7e6' },
   { id: 'cs1', label: '숲', src: '/stagebg/cs1.webp', top: '#2c8bb5', bottom: '#08233c' },
   { id: 'cs2', label: '선술집', src: '/stagebg/cs2.webp', top: '#a68d7f', bottom: '#100b07' },
-  { id: 'cs3', label: '흰 사다리', src: '/stagebg/cs3.webp', top: '#ffffff', bottom: '#ffffff' },
-  { id: 'cs4', label: '검은 사다리', src: '/stagebg/cs4.webp', top: '#292a2a', bottom: '#292a2a' },
   { id: 'home-mush', label: '버섯집', src: '/stagebg/home-mush.webp', top: '#ccaa77', bottom: '#554433' },
   { id: 'home-wander-out', label: '거처 앞', src: '/stagebg/home-wander-out.webp', top: '#66ddee', bottom: '#bbdd22' },
+  { id: 'cs3', label: '흰 사다리', src: '/stagebg/cs3.webp', top: '#ffffff', bottom: '#ffffff' },
+  { id: 'cs4', label: '검은 사다리', src: '/stagebg/cs4.webp', top: '#292a2a', bottom: '#292a2a' },
 ]
 // 파일이 있을 때만(dev) 고를 수 있다 — 한 번만 본다
 let cashOn: Promise<boolean> | null = null
