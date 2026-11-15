@@ -162,23 +162,27 @@ export function nameMatcher(query: string): NameMatch | null {
 }
 
 // 라벨 기수 검색(사용자 지시): '마라벨1기' · '마라벨 1' · '마스터라벨1' · 'akfkqpf1'(영문 자판) → 마라벨 1기, '스라벨161기' · '스페셜라벨161' → 스라벨 161기.
+// 라벨 이름은 앞부분만 쳐도 된다: '마 5' · '마라 5' · '마스5' → 마라벨 5기, '스 5' · '스라5' → 스라벨 5기.
+// 라벨 없이 기수만 친 것('5기' · '5rl' · '5 rl')은 마라벨 5기와 스라벨 5기 둘 다(label null) — 숫자만('5')은 아이템 이름이 많이 걸려 기수로 보지 않는다.
 // 숫자 없이 라벨 이름의 앞부분만 친 것('마라' · '스라벨' · '마스터')은 gen 없이 — 그 라벨 아이템 전부를 이름 검색 결과의 맨 뒤에 붙인다.
 // 기수는 아이템의 labelGen(core/data loadLabels). 붙이는 순서는 ShopContext 의 목록 검색이 정한다.
-export type LabelQuery = { label: 'master' | 'special'; gen: number | null }
-const LABEL_WORDS: [string, LabelQuery['label']][] = [['마라벨', 'master'], ['마스터라벨', 'master'], ['스라벨', 'special'], ['스페셜라벨', 'special']]
+export type LabelQuery = { label: 'master' | 'special' | null; gen: number | null }
+const LABEL_WORDS: [string, 'master' | 'special'][] = [['마라벨', 'master'], ['마스터라벨', 'master'], ['스라벨', 'special'], ['스페셜라벨', 'special']]
+// 라벨 이름의 앞부분 — 조합 중인 마지막 글자도 느슨하게('마랍'은 아니고 '마ㄹ' · '스라' 처럼 — lastMatches)
+const labelOf = (p: string) => LABEL_WORDS.find(([x]) => p.length <= x.length && x.startsWith(p.slice(0, -1)) && lastMatches(p[p.length - 1], x[p.length - 1]))?.[1] ?? null
 export function labelQuery(query: string): LabelQuery | null {
   // 라벨 낱말에는 쌍자음이 없어 영문 자판 입력은 소문자로 읽는다(Caps Lock 으로 친 'AKFKQPF1' 도)
   const raw = query.replace(/\s+/g, '').toLowerCase()
   const ko = /[a-z]/.test(raw) ? en2ko(raw) : raw
-  const m = ko.match(/^(\D+?)(\d+)(?:기|ㄱ)?$/) // 'ㄱ' = '기' 를 치는 도중
+  const m = ko.match(/^(\D*?)(\d+)(기|ㄱ)?$/) // 'ㄱ' = '기' 를 치는 도중
   if (m) {
-    const w = LABEL_WORDS.find(([x]) => x === m[1])
-    return w ? { label: w[1], gen: +m[2] } : null
+    if (!m[1]) return m[3] ? { label: null, gen: +m[2] } : null
+    const label = labelOf(m[1])
+    return label ? { label, gen: +m[2] } : null
   }
   if (ko.length < 2) return null
-  // 조합 중인 마지막 글자도 느슨하게('마랍'은 아니고 '마ㄹ' · '스라' 처럼 — lastMatches)
-  const w = LABEL_WORDS.find(([x]) => ko.length <= x.length && x.startsWith(ko.slice(0, -1)) && lastMatches(ko[ko.length - 1], x[ko.length - 1]))
-  return w ? { label: w[1], gen: null } : null
+  const label = labelOf(ko)
+  return label ? { label, gen: null } : null
 }
 
 // 걸린 목록을 rank 무리 순으로(같은 무리 안의 순서는 그대로)

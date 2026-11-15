@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EffectDraw } from '@/lib/core/render'
 import type { PlacedLayer } from '@/lib/core/assemble'
-import { assemble, dropBase, dropWeaponEffects, footOf, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
+import { assemble, dropBase, dropWeaponEffects, footOf, ILLUSION_FREE_SLOTS, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { androidDx, androidKey, androidPlaced, androidView, loadAndroidParts, type AndroidParts } from '@/lib/core/android'
 import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
@@ -339,10 +339,11 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   // 그릴 파티클 자리 — 이펙트와 같은 규칙으로 끈다(부위 숨김 · 무기 이펙트 끔 · 이펙트를 숨기는 링).
   const partSpots = useMemo(() => {
     const ring = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
-    if (ring?.illusion?.hideEffect || ring?.illusion?.hideWeapon) return [] as ParticleSpot[]
+    const hide = !!(ring?.illusion?.hideEffect || ring?.illusion?.hideWeapon)
     const out: ParticleSpot[] = []
     for (const [slot, it] of Object.entries(equipped)) {
       if (!it || hidden[slot] || !particleIndex[it.id]) continue
+      if (hide && !ILLUSION_FREE_SLOTS.has(slot)) continue // 링은 몸에 입은 것의 입자만 가린다
       if (slot === 'weapon' && !pv.wEffect) continue
       out.push(...spotsFor(particleIndex[it.id], V.action))
     }
@@ -395,13 +396,14 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
 
   const effList = useMemo(() => {
     const out: EffectMeta[] = []
-    // 거대한 몸 · 변신 링은 착용 아이템의 이펙트를 그리지 않는다(원본 hideEffect).
+    // 거대한 몸 · 변신 링은 몸에 입은 아이템의 이펙트를 그리지 않는다(원본 hideEffect). 캐릭터 밖에 서는 것(펫 · 안드로이드 · 소울 · 칭호 · 훈장 …)은 그대로(assemble.ILLUSION_FREE_SLOTS)
     const ring = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
-    if (ring?.illusion?.hideEffect) return out
+    const hideFx = !!ring?.illusion?.hideEffect
     // '기본'(정지) 상태에서는 펫을 첫 프레임으로 고정한다(사용자 지시 — 펫은 캐릭터가 멈추면 함께 멈춘다). 서기 · 걷기에서는 제 애니메이션을 돈다.
     const basicPose = viewInfo.isStatic && pv.action === 'basic'
     for (const [slot, it] of Object.entries(equipped)) {
       if (!it || hidden[slot]) continue
+      if (hideFx && !ILLUSION_FREE_SLOTS.has(slot)) continue
       if (slot === 'cape' && !pv.cEffect) continue
       if (slot === 'weapon' && !pv.wEffect) continue
       if (slot === 'cap' && !pv.capEffect) continue

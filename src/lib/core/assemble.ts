@@ -371,9 +371,15 @@ const scaleAbout = (p: PlacedLayer, pv: Vec, s: number): PlacedLayer => ({ ...p,
 // 조립 입력에서 링의 일루전(내 뒤에 나 제외) — 이펙트를 그릴지(hideEffect) 정할 때 쓴다.
 export const ringIllusion = (items: { layers: Layer[] }[]): Illusion | null =>
   items.flatMap((i) => i.layers).find((l) => l.illusion && l.illusion.kind !== 'clone')?.illusion ?? null
+// 일루전 링이 가리지 않는 부위 — 캐릭터 몸(아바타)에 붙지 않고 캐릭터 밖에 따로 서는 것(사용자 지시: 링은 캐릭터 본체에 달리는 것만 가리고 대신 보여 준다).
+// 변신은 이 부위의 레이어를 남기고, 원본 hideEffect(거대한 몸) · 변신은 이 부위의 이펙트를 남긴다.
+// 원본 근거: 변신 링 info 에는 가리는 값이 없고(illusionGrade · 오프셋뿐), 거대한 몸만 hideEffect · illusionequip(무기) 를 단다 — 몸에 입는 장비의 것이다.
+// 이펙트 부위(캐시 이펙트 · 내 뒤에 나)는 캐릭터에 붙는 꾸밈이라 여기 넣지 않는다(내 뒤에 나가 링에 가려지는 것은 사용자 확인 — 게임과 같다).
+export const ILLUSION_FREE_SLOTS = new Set(['ring', 'riding', 'chair', 'pet', 'android', 'soul', 'nameTag', 'chatBalloon', 'title', 'medal'])
 // 발(몸 그림의 origin)의 월드 좌표. 복제(slot 'clone')가 아닌 진짜 몸에서 잰다. 일루전으로 키운 몸은 origin 도 배율만큼 멀다.
+// 변신이면 몸이 없다 — 변신 그림(root 레이어)은 몸 원점에 origin 을 맞춰 놓였으니(assemble) 그 origin 이 발이다. 명찰 · 칭호 · 훈장 · 펫 · 소울이 이 점에 선다.
 export const footOf = (placed: PlacedLayer[]): Vec | null => {
-  const b = placed.find((p) => p.slot === 'body' && p.name === 'body')
+  const b = placed.find((p) => p.slot === 'body' && p.name === 'body') ?? placed.find((p) => p.slot === 'ring' && p.root)
   const k = b?.scale ?? 1
   return b ? { x: b.x + b.origin.x * k, y: b.y + b.origin.y * k } : null
 }
@@ -406,7 +412,7 @@ function applyIllusion(placed: PlacedLayer[], anchors: Record<string, Vec>, mark
 function applyRing(placed: PlacedLayer[], anchors: Record<string, Vec>, ring: Layer, foot: Vec): PlacedLayer[] {
   const spec = ring.illusion!
   const s = spec.scale ?? 1
-  if (spec.kind === 'transform') return placed.filter((p) => p.slot === 'ring' || p.slot === 'riding')
+  if (spec.kind === 'transform') return placed.filter((p) => ILLUSION_FREE_SLOTS.has(p.slot))
   // 무기 · 방패 숨기기(원본 illusionequip — 거대한 몸). 프레임의 표지 레이어에는 hideWeapon 이 없어(parser ring-build 는 meta.illusion 에만 단다)
   // 표지만 보면 거대한 몸에서 무기가 남았다 — 그 값이 붙는 종류(거대한 몸)로 가린다. 변신은 위에서 반지 그림만 남긴다.
   const noWeapon = spec.hideWeapon || spec.kind === 'bigBody' ? placed.filter((p) => p.slot !== 'weapon' && p.slot !== 'shield') : placed
