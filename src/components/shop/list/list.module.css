@@ -95,10 +95,11 @@
 .newBadgeM { width: 17px; padding: 0; justify-content: center; }
 .labelBadge { position: absolute; bottom: 4px; left: 4px; height: 17px; image-rendering: pixelated; z-index: 2; }
 .labelBadgeCash { height: 14px; }
-/* 라벨 기수(마라벨 · 스라벨 배지 바로 오른쪽) — 흐린 글자(토큰 '흐림'), 배지와 같은 높이 줄. 오른쪽 아래 '코디' 칩과 겹치면 낱말을 빼고 'N기'만(컨테이너 폭) */
-.labelGen { position: absolute; bottom: 4px; left: 22px; z-index: 2; height: 17px; display: flex; align-items: center; white-space: nowrap; font-size: calc(10.5rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); font-variant-numeric: tabular-nums; pointer-events: none; }
+/* 라벨 기수 'N기'(마라벨 · 스라벨 배지 바로 오른쪽) — 흐린 글자(토큰 '흐림'), 배지와 같은 높이 줄. 마우스를 올리면 '마라벨 N기'(title).
+   PC 꼴 카드의 그림 칸이 110px 이하면(태블릿) 오른쪽 아래 '코디' 칩과 겹쳐 배지 바로 위로 올린다(.thumb 이 폭 컨테이너) */
+.labelGen { position: absolute; bottom: 4px; left: 22px; z-index: 2; height: 17px; display: flex; align-items: center; white-space: nowrap; font-size: calc(10.5rem / 16); font-weight: 600; color: light-dark(#a89e93, #8e919a); font-variant-numeric: tabular-nums; }
 .labelGenM { left: 21px; font-size: calc(10rem / 16); }
-@container (max-width: 150px) { .labelGenWord { display: none; } }
+@container (max-width: 110px) { .labelGen:not(.labelGenM) { left: 4px; bottom: 22px; height: 14px; } }
 /* 콜라보 · 부티크 표시 — 등급 배지 자리 · 크기(왼쪽 아래 16px). 그림은 ui/Icons 의 IconBadgeCollab · IconBadgeBoutique(분홍 원 = currentColor). 캐시 동전보다 먼저다(사용자 지시) */
 .kindBadge { position: absolute; bottom: 4px; left: 4px; z-index: 2; width: 16px; height: 16px; display: flex; color: light-dark(#ec86ac, #d15785); }
 .kindBadge > svg { width: 100%; height: 100%; }

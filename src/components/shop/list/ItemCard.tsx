@@ -67,11 +67,10 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
             <img src={badgeUrl(badgeKind)} alt={badgeKind} draggable={false} onError={(e) => { e.currentTarget.style.display = 'none' }}
               className={clsx(styles.labelBadge, badgeKind === 'cash' && styles.labelBadgeCash)} />
           )}
-          {/* 라벨 기수 — 배지 바로 옆에 흐린 글자로(사용자 지시: 연하게라도 '마라벨 N기'). 휴대폰 카드는 좁아 'N기'만(배지가 라벨을 말한다) */}
+          {/* 라벨 기수 — 배지 바로 옆에 흐린 글자 'N기'(사용자 지시: 연하게라도 '마라벨 N기'. 마라벨 · 스라벨은 배지가 말하고, 낱말까지 적으면
+              오른쪽 아래 '코디' 칩과 겹쳤다 — '스라벨 161기' 63px). 마우스를 올리면 '마라벨 N기' */}
           {item.label && item.labelGen != null && (
-            <span title={`${item.label === 'master' ? '마라벨' : '스라벨'} ${item.labelGen}기`} className={clsx(styles.labelGen, mobile && styles.labelGenM)}>
-              {!mobile && <span className={styles.labelGenWord}>{item.label === 'master' ? '마라벨 ' : '스라벨 '}</span>}{item.labelGen}기
-            </span>
+            <span title={`${item.label === 'master' ? '마라벨' : '스라벨'} ${item.labelGen}기`} className={clsx(styles.labelGen, mobile && styles.labelGenM)}>{item.labelGen}기</span>
           )}
           {kindBadge && (
             <span role="img" aria-label={kindBadge === 'collab' ? '콜라보' : '부티크'} title={[kindBadge === 'collab' ? '콜라보' : '부티크', item.kindName].filter(Boolean).join(', ')} className={styles.kindBadge}>
