@@ -11,8 +11,8 @@ export interface StageBg { sel: string; images: StageBgImage[] }   // sel = 'roo
 // 캐시샵 배경(public/stagebg). 게임 캐시샵(리마스터) 미리보기의 배경 다섯 장
 // (UI.wz UICashShop.img/avatarView/layer:preview_back0~4, 516×512 — 원본 그대로 무손실 WebP). 짝인 preview_cover 는 위아래 가장자리를
 // 게임 창 색으로 흐리는 테두리라 넣지 않는다. ground = 그림 위에서 캐릭터가 딛는 줄(세 장의 바닥이 모두 이 줄), top · bottom = 그림 밖을 채우는 색.
-// 맵 배경(mh1~mh3 메이플 홈의 집 안 · cellas 셀라스 '별이 삼켜진 곳')도 같은 꼴로 이 목록에 있다 — parser scripts/stagebg-build.cjs 가 게임 맵을 잘라 만든다
-// (516×512, 바닥 줄 362 를 그 맵의 발판에 맞춘다. 별이 삼켜진 곳은 가운데 하늘까지 담으려 0.6 배로 넓게). dev = dev 사이트에서만(사용자 지시 — 먼저 dev 에)
+// 맵 배경(home-* — 메이플 홈의 버섯집 안 · 유랑자의 거처 안 · 유랑자의 거처 앞)도 같은 꼴로 이 목록에 있다 — parser scripts/stagebg-build.cjs 가 게임 맵을 잘라 만든다
+// (516×512, 바닥 줄 362 를 그 자리의 발판 · 그림의 바닥 윗선에 맞춘다). dev = dev 사이트에서만(사용자 지시 — 먼저 dev 에)
 export interface CashBg { id: string; label: string; src: string; top: string; bottom: string; dev?: boolean }
 export const CASH_BG_W = 516, CASH_BG_H = 512, CASH_BG_GROUND = 362
 export const CASH_BGS: CashBg[] = ([
@@ -21,10 +21,9 @@ export const CASH_BGS: CashBg[] = ([
   { id: 'cs2', label: '선술집', src: '/stagebg/cs2.webp', top: '#a68d7f', bottom: '#100b07' },
   { id: 'cs3', label: '흰 사다리', src: '/stagebg/cs3.webp', top: '#ffffff', bottom: '#ffffff' },
   { id: 'cs4', label: '검은 사다리', src: '/stagebg/cs4.webp', top: '#292a2a', bottom: '#292a2a' },
-  { id: 'mh1', label: '버섯집', src: '/stagebg/mh1.webp', top: '#ccaa77', bottom: '#554444', dev: true },
-  { id: 'mh2', label: '메이플 대학교', src: '/stagebg/mh2.webp', top: '#99bbcc', bottom: '#443333', dev: true },
-  { id: 'mh3', label: '유랑자의 거처', src: '/stagebg/mh3.webp', top: '#99aabb', bottom: '#99bb11', dev: true },
-  { id: 'cellas', label: '별이 삼켜진 곳', src: '/stagebg/cellas.webp', top: '#103444', bottom: '#034d5d', dev: true },
+  { id: 'home-mush', label: '버섯집', src: '/stagebg/home-mush.webp', top: '#ccaa77', bottom: '#554433', dev: true },
+  { id: 'home-wander', label: '유랑자의 거처', src: '/stagebg/home-wander.webp', top: '#99aabb', bottom: '#99bb11', dev: true },
+  { id: 'home-wander-out', label: '거처 앞', src: '/stagebg/home-wander-out.webp', top: '#66ddee', bottom: '#bbdd22', dev: true },
 ] as CashBg[]).filter((c) => DEV_SITE || !c.dev)
 // 파일이 있을 때만(dev) 고를 수 있다 — 한 번만 본다
 let cashOn: Promise<boolean> | null = null
