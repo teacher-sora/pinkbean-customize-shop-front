@@ -6,7 +6,7 @@
 // 캐릭터가 딛는 줄에, 그림 가운데를 캐릭터 가운데에 맞춘다 — 게임처럼 캐릭터가 땅 위에 선다. 그림 밖은 위 · 아래 끝 색으로 채운다.
 // 바닥을 알리지 않는 칸(still)은 칸에 맞춰 채우기만 한다.
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import { CASH_BGS, CASH_BG_GROUND, CASH_BG_H, CASH_BG_W, getStageBg, stageSelOf, useStageBg, type CashBg } from '@/lib/stageBg'
 import { MODEL_DROP, MODEL_REF, zoomStepScale } from '@/lib/core/modelPlacement'
@@ -72,16 +72,37 @@ export function CardStageBg({ sel, fraction, zoom, zoomMults, floor }: { sel?: s
   )
 }
 
+// 그림의 왼쪽 위를 화면의 기기 픽셀 줄에 맞춰 놓는다 — 발 자리(칸 + 캐릭터 가운데)를 기기 픽셀로 반올림하고, 이 칸이 기기 픽셀 사이에 걸친 만큼도 뺀다.
+// 왜: 캐릭터 가운데(stageFloor cx = 그림 폭 ÷ 2)는 캐릭터 그림 폭이 홀수면 기기 픽셀 반 칸에 걸친다. 그 자리에 그대로 놓으면 도트를 키울 때 줄마다
+// 두께가 한 칸씩 달라져 대각선(버섯집 계단 난간)이 깨져 보였고, 새로고침마다 그림 폭의 홀짝에 따라 깨졌다 멀쩡했다 했다(사용자 지적). 피팅룸 장면(SceneCanvas)과 같은 반올림이다.
+type CashPos = { x: number; y: number; w: number; h: number }
 function CashStage({ bg, still }: { bg: CashBg; still?: boolean }) {
-  const [floor, setFloor] = useState(getStageFloor)
-  useEffect(() => (still ? undefined : onStageFloor(() => setFloor(getStageFloor()))), [still])
+  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<CashPos | null>(null)
+  useIsoLayoutEffect(() => {
+    const host = ref.current
+    if (still || !host) return
+    const place = () => {
+      const f = getStageFloor(), dpr = window.devicePixelRatio || 1
+      if (!f) { setPos(null); return }
+      const hr = host.getBoundingClientRect(), wr = f.wrap.isConnected ? f.wrap.getBoundingClientRect() : hr
+      const fx = Math.round((wr.left + f.cx) * dpr), fy = Math.round((wr.top + f.footY) * dpr) // 발 자리(화면의 기기 픽셀)
+      const next = { x: (fx - (CASH_BG_W / 2) * f.scale) / dpr - hr.left, y: (fy - CASH_BG_GROUND * f.scale) / dpr - hr.top, w: (CASH_BG_W * f.scale) / dpr, h: (CASH_BG_H * f.scale) / dpr }
+      setPos((p) => (p && p.x === next.x && p.y === next.y && p.w === next.w && p.h === next.h ? p : next))
+    }
+    place()
+    const off = onStageFloor(place)
+    const ro = new ResizeObserver(place)
+    ro.observe(host)
+    return () => { off(); ro.disconnect() }
+  }, [still])
   const fill = `linear-gradient(to bottom, ${bg.top} 50%, ${bg.bottom} 50%)`
-  if (still || !floor) return <div aria-hidden className={styles.stageBg} style={{ backgroundImage: `url("${bg.src}"), ${fill}`, backgroundSize: 'cover, 100% 100%', backgroundPosition: 'center 70%, 0 0' }} />
-  const k = floor.scale / (window.devicePixelRatio || 1) // 게임 1칸 = CSS 몇 px
-  const x = floor.cx - (CASH_BG_W / 2) * k, y = floor.footY - CASH_BG_GROUND * k
+  const placed = !still && pos
   return (
-    <div aria-hidden className={styles.stageBgCash}
-      style={{ backgroundImage: `url("${bg.src}"), ${fill}`, backgroundSize: `${CASH_BG_W * k}px ${CASH_BG_H * k}px, 100% 100%`, backgroundPosition: `${x}px ${y}px, 0 0` }} />
+    <div ref={ref} aria-hidden className={placed ? styles.stageBgCash : styles.stageBg}
+      style={placed
+        ? { backgroundImage: `url("${bg.src}"), ${fill}`, backgroundSize: `${pos.w}px ${pos.h}px, 100% 100%`, backgroundPosition: `${pos.x}px ${pos.y}px, 0 0` }
+        : { backgroundImage: `url("${bg.src}"), ${fill}`, backgroundSize: 'cover, 100% 100%', backgroundPosition: 'center 70%, 0 0' }} />
   )
 }
 
