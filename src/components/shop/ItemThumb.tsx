@@ -19,7 +19,7 @@ import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib
 import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from '@/lib/core/particle'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { androidInputs, androidView, loadAndroidParts } from '@/lib/core/android'
-import { modelShotBlob, type ModelShot } from '@/lib/canvasExport'
+import { modelShotBlob, scaledPng, type ModelShot } from '@/lib/canvasExport'
 import { bindImageMenu } from '@/lib/canvasMenu'
 import { effectEnabled, type WornEff } from '@/lib/core/thumbEffects'
 import { chatPreview } from '@/lib/core/chatUi'
@@ -161,7 +161,7 @@ function ChatThumb({ item, chat }: { item: ListItem; chat: ChatState }) {
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return
-    return bindImageMenu(el, () => (bmp ? new Promise<Blob | null>((ok) => bmp.toBlob(ok, 'image/png')) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
+    return bindImageMenu(el, (k) => (bmp ? scaledPng(bmp, k) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
   }, [bmp, item.name, item.id])
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
@@ -367,7 +367,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return
-    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
+    return bindImageMenu(el, (k) => (shotRef.current ? modelShotBlob(shotRef.current, k) : Promise.resolve(null)), `pinkbean-${item.name || item.id}`)
   }, [item.name, item.id])
 
   return (
