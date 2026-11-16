@@ -199,13 +199,13 @@ export default function SnapThumb({ snap, fraction = CARD_FRACTION, margin = CAR
   }, [keepCanvas, placed, ov, effects, particles, center, dims, fraction, fitW, margin, chat, zoom, zoomMults, view, snap.pv?.gaze, snap.pv?.action, snap.equipped.riding, snap.hidden?.riding, seatDrop])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 live 부터 있다). 복사 이미지는 화면 픽셀이 아니라 **지금 그린 입력**으로
-  // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 게임 크기 1배).
+  // 다시 그린다 — 모든 복사가 같은 규칙(lib/canvasExport.modelShotBlob: 그림에 맞춘 상자 · 메뉴에서 고른 배율, 기본 1배).
   const shotRef = useRef<ModelShot | null>(null)
   shotRef.current = placed ? { placed, override: ov, effects, particles, chat, centerX: center === 'x', centerMount: center === 'mount' } : null
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return
-    return bindImageMenu(el, () => (shotRef.current ? modelShotBlob(shotRef.current) : Promise.resolve(null)), fileName || 'pinkbean-cody', undefined, { hold: holdMenu }) // 프리셋 카드는 프리셋 이름(presetFileName)
+    return bindImageMenu(el, (k) => (shotRef.current ? modelShotBlob(shotRef.current, k) : Promise.resolve(null)), fileName || 'pinkbean-cody', undefined, { hold: holdMenu }) // 프리셋 카드는 프리셋 이름(presetFileName)
   }, [fileName, holdMenu, keepCanvas])
 
   return (

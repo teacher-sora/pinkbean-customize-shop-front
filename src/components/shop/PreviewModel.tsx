@@ -717,7 +717,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
 
   // 우클릭 → 복사/저장 메뉴(화면 미리보기는 그대로 둔다). 브라우저 기본 "이미지 복사"는 캔버스 비트맵
   // (세로로 길고 모델 작음)을 그대로 복사하므로 가로채, 정사각형·흰 배경 이미지를 만든다.
-  // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 그림에 맞춘 상자 · 게임 크기 1배).
+  // 카드·광장·염색 미리보기와 **같은 함수**다(lib/canvasExport.modelShotBlob — 그림에 맞춘 상자 · 메뉴에서 고른 배율, 기본 1배).
   const saveNameRef = useRef(shop.saveName)
   saveNameRef.current = shop.saveName
   const currentShot = useCallback(async (): Promise<ModelShot | null> => {
@@ -726,7 +726,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     if (!snap) return null
     return { placed: snap.placed, override: snap.override, effects: snap.effects, particles: snap.particles, chat: snap.chat, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy, chatRef: snap.chatRef ?? undefined }
   }, [])
-  const makeBlob = useCallback(async (): Promise<Blob | null> => { const shot = await currentShot(); return shot ? modelShotBlob(shot) : null }, [currentShot])
+  const makeBlob = useCallback(async (scale: number): Promise<Blob | null> => { const shot = await currentShot(); return shot ? modelShotBlob(shot, scale) : null }, [currentShot])
   // 코디 프로필(lib/profileCard)이 쓰도록 지금 그림 재료를 등록한다 — 화면의 미리보기만(염색 창 등 src 가 있는 미리보기는 빼고)
   useEffect(() => { if (src) return; setPreviewShot(currentShot); return () => setPreviewShot(null) }, [src, currentShot])
 
@@ -747,7 +747,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
       return { a, snap, emo, periods, flowing: a.spots.length > 0 }
     }
     return {
-      getBlob: async (transparent) => {
+      getBlob: async (transparent, scale) => {
         // 불러오는 중에 눌렀으면 첫 그림이 준비될 때까지 기다린다(메뉴는 늘 움짤을 보인다 — 사용자 지시). 움직이는 것이 없으면 한 장짜리
         for (let i = 0; i < 300 && !periodsOf(); i++) await new Promise((r) => setTimeout(r, 100))
         const p = periodsOf()
@@ -779,7 +779,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
             if (particles.length) { const dt = partT < 0 ? 0 : (t - partT) / 1000; partT = t; for (const sim of new Set(particles.map((x) => x.sim))) sim.step(dt) }
             return { placed: f.placed, override: snap.override, effects: effAt(t), particles, chat: snap.chat, chatT: emo ? t : undefined, chatClock: t, chatWait: true, flip: snap.flip, centerXOnly: snap.centerXOnly, centerMount: snap.centerMount, centerDx: snap.cDx, centerDy: snap.cDy, lift: liftAt(t), ringFloor: a.ringFloor, chatRef: a.chatRef ?? undefined }
           },
-        }, transparent)
+        }, transparent, scale)
       },
     }
   }, [])

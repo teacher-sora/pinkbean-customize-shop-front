@@ -6,8 +6,9 @@
 //    1) 화면 픽셀을 가공하지 않고 합성 입력(placed)으로 **다시 그린다** — 카드가 작아도 결과가 같다.
 //       가운데 기준은 화면과 같다(마네킹 중심 / 라이딩은 navel·메카).
 //    2) 그림이 닿는 데(불투명 픽셀의 상자)까지만 자르고 사방에 조금만 남긴다(SHOT_PAD) → 이펙트가 한쪽에 커도 빈 곳이 없다.
-//    3) **게임 크기(1배) 그대로** 내보낸다 — 게임 픽셀 하나가 이미지 픽셀 하나다. 포토샵 등에서 1px 로 쓰려는 것이다
-//       (사용자 지시. 2배 · 4배는 도트 하나가 2px · 4px 로 들어갔다). 키우는 것은 받는 쪽에서 한다.
+//    3) 기본은 **게임 크기(1배)** — 게임 픽셀 하나가 이미지 픽셀 하나다(포토샵 등에서 1px 로 쓰려는 것, 사용자 지시).
+//       메뉴 맨 위 배율 줄에서 2 ~ 4배를 고르면 도트를 그대로(번지지 않게) 그 배수로 키워 낸다(사용자 지시 — 원하는 크기로).
+//       고른 배율은 이 브라우저에 기억한다(SAVE_SCALE_KEY) — 다음부터 [이미지 저장] 한 번이면 그 크기다.
 //    4) **배경은 투명**이다. ⚠️ 투명을 모르는 곳에 붙여 넣으면(그림판·일부 메신저) 바탕이 검게 나올 수 있다.
 // renderCharacter 가 CORS 로 이미지를 로드해 그리므로 taint 되지 않는다 → getImageData / toBlob 이 동작한다.
 import type { PlacedLayer } from './core/assemble'
@@ -79,16 +80,29 @@ export async function drawShot (shot: ModelShot, place?: { box: { w: number; h: 
   return { c: off, x0, y0, x1, y1 }
 }
 
-export async function modelShotBlob (shot: ModelShot): Promise<Blob | null> {
+// 저장 배율(메뉴 맨 위 배율 줄). 정수 배만 — 도트 하나가 정확히 k × k px 가 된다
+export const SAVE_SCALES = [1, 2, 3, 4] as const
+const SAVE_SCALE_KEY = 'pb_save_scale_v1'
+export function getSaveScale (): number {
+  try { const v = Number(localStorage.getItem(SAVE_SCALE_KEY)); return (SAVE_SCALES as readonly number[]).includes(v) ? v : 1 } catch { return 1 }
+}
+export function setSaveScale (k: number): void { try { localStorage.setItem(SAVE_SCALE_KEY, String(k)) } catch { /* 저장소를 못 쓰면 이번만 */ } }
+
+// 판 c 의 (sx, sy, w, h) 칸을 k 배로 키워 PNG 로 — 도트 그대로(번짐 없이). 바탕은 칠하지 않는다(투명)
+export function scaledPng (c: HTMLCanvasElement, k = 1, sx = 0, sy = 0, w = c.width, h = c.height): Promise<Blob | null> {
+  const out = document.createElement('canvas')
+  out.width = w * k; out.height = h * k
+  const ctx = out.getContext('2d')!
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(c, sx, sy, w, h, 0, 0, w * k, h * k)
+  return new Promise((res) => out.toBlob((b) => res(b), 'image/png'))
+}
+
+export async function modelShotBlob (shot: ModelShot, scale = 1): Promise<Blob | null> {
   const d = await drawShot(shot)
   if (!d) return null
   const bw = d.x1 - d.x0 + 1 + SHOT_PAD * 2, bh = d.y1 - d.y0 + 1 + SHOT_PAD * 2
-  const out = document.createElement('canvas')
-  out.width = bw; out.height = bh
-  const ctx = out.getContext('2d')!
-  // 늘리지 않고 그대로 옮긴다(1:1). 바탕은 칠하지 않는다 — 투명
-  ctx.drawImage(d.c, d.x0 - SHOT_PAD, d.y0 - SHOT_PAD, bw, bh, 0, 0, bw, bh)
-  return await new Promise((res) => out.toBlob((b) => res(b), 'image/png'))
+  return scaledPng(d.c, scale, d.x0 - SHOT_PAD, d.y0 - SHOT_PAD, bw, bh)
 }
 
 // 지금 미리보기의 그림 재료(우클릭 저장과 같은 것). 미리보기(PreviewModel, 화면에 하나)가 등록하고 코디 프로필(lib/profileCard)이 쓴다.
