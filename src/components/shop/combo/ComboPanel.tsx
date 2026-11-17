@@ -8,7 +8,7 @@
 // (쪽 크기 = 그 자리의 격자, 쪽 수 = 그 아이템의 코디 수), 머리에서 넘기는 방향(가로 · 세로)을 고른다. 쪽은 back POST /looks 로 받고
 // 지금 쪽 ±1 만 카드로 그린다. 순서는 꾸민 코디(캐시 아이템) · 랭킹 상위가 먼저다(parser looks/build.ts).
 // 카드를 누르면 패널 안에서 상세로 넘어간다(부위만 골라 입기 · 프리셋에 저장).
-// 표본에 없는 아이템도 찾고 열 수 있다(사용자 지시) — 코디 대신 아이템 · 기본 마네킹 · 내 캐릭터에 입힌 모습 세 칸과 염색 예시를 보인다(TryOn).
+// 표본에 없는 아이템도 찾고 열 수 있다(사용자 지시) — 보통 목록 자리에 아이템 · 기본 마네킹 · 내 캐릭터 카드 세 장, 염색 줄은 예시 색(TryCards · SampleRow).
 // 검색엔진에서 아이템 이름으로 들어오는 주소(/lookbook/<id>)도 이 패널(광장의 코디 룩북)로 열린다(ShopContext).
 
 import clsx from 'clsx'
@@ -341,7 +341,11 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   const pages: number[] = []
   for (let p = Math.max(0, cur - 1); p <= Math.min(pageCount - 1, cur + 1); p++) pages.push(p)
   const gridStyle = { gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, gridTemplateRows: `repeat(${rows},minmax(0,1fr))` }
+  // 표본에 없는 아이템 — 보통 목록과 같은 격자에 입혀 본 카드 세 장, 염색 줄은 예시 색(사용자 지시 — 평범한 검색 결과와 똑같이, 표본이 없어 채워 두는 것).
+  // 첫 묶음이 '0벌'로 온 뒤에만(받는 동안은 스켈레톤)
+  const noSample = !!first && first.ready && first.total === 0 && dye == null && !failed
   const cards = (p: number) => {
+    if (noSample) return p === 0 ? <TryCards item={item} mobile={mobile} /> : null
     const d = pageRows(p)
     return d ? d.map((r) => <LookCard key={r.i} row={r} mobile={mobile} prio={p === cur ? 0 : 1} onOpen={onOpen} />)
       : Array.from({ length: Math.min(per, Math.max(0, (total ?? per) - p * per)) }, (_, i) => <div key={i} className={clsx('pb-skel', list.skel, mobile && list.skelM)} />)
@@ -349,13 +353,14 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
 
   // 머리와 내용은 구분선으로 가르고, 자주 쓴 염색은 내용 쪽의 한 묶음이다(사용자 지시 — 머리에 바로 붙어 보이면 안 된다).
   // 염색 줄 · 출처 줄은 넘기는 방향과 상관없이 목록 칸 밖에 그대로 있다 — 세로에서도 칸 안에서는 프리셋 목록만 스크롤한다(사용자 지시, PC 와 같다)
-  const dyeRow = (dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>
+  const dyeRow = noSample ? <SampleRow item={item} mobile={mobile} />
+    : (dyes.length > 0 || dyeSkel) && <><DyeRow item={item} dyes={dyes} mobile={mobile} /><div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} /></>
   const credit = <Credit mobile={mobile} hint={dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'} />
   const viewport = (
     <div ref={setVp} data-pb-list={dirY ? 'y' : 'x'} className={clsx(list.viewport, dirY && list.viewportY, mobile && 'pb-norail', mobile && (dirY ? list.viewportMY : list.viewportM))}>
       {failed || (first && !first.ready) ? (
         <EmptyState size={mobile ? 'm' : 'pc'} title="코디를 불러오지 못했어요" hint="잠시 뒤에 다시 열어 주세요." />
-      ) : first && first.total === 0 ? (
+      ) : first && first.total === 0 && !noSample ? (
         <EmptyState size={mobile ? 'm' : 'pc'} title={dye == null ? '이 아이템을 입은 코디가 없어요' : '이 염색을 쓴 코디가 없어요'} hint={dye == null ? '표본에 아직 없는 아이템이에요.' : '고른 염색 칩을 다시 누르면 전체 코디로 돌아가요.'} />
       ) : (
         <div ref={mobile ? undefined : s.bindTrack} data-pb-pages className={list.track}
@@ -375,8 +380,6 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
     </div>
   )
 
-  // 표본에 없는 아이템 — 코디 대신 입혀 본 모습 세 칸과 염색 예시(사용자 지시). 첫 묶음이 '0벌'로 온 뒤에만(받는 동안은 위 스켈레톤)
-  if (first && first.ready && first.total === 0 && dye == null && !failed) return <TryOn item={item} mobile={mobile} />
   return (
     <>
       {dyeRow}
@@ -386,22 +389,17 @@ function ComboList({ item, mobile, host, onOpen }: { item: ListItem; mobile: boo
   )
 }
 
-// ── 표본에 없는 아이템: 입혀 본 모습 ─────────────────────────────────
-// 세 칸 = 아이템(목록 '아이템' 보기와 같은 그림) · 기본 마네킹(기본 피부에 이 아이템만) · 내 캐릭터(지금 코디에 이 아이템을 입힌 것 — 겹치는 부위는 벗긴다,
-// 장착과 같은 규칙 core/slots conflictSlots). 둘은 프리셋 카드와 같은 정지 그림(SnapThumb — 지금 연출 cardPv)이라 움직이는 미리보기 셋을 띄우지 않는다.
-// 피부는 '아이템' 그림이 없어 두 칸이다. 염색 예시 = 헤어 · 성형은 여덟 색, 그 밖은 색조 여섯 단계 — 누르면 그 값으로 염색 창이 열린다(입기는 창의 [적용])
+// ── 표본에 없는 아이템: 입혀 본 카드 · 예시 염색 ─────────────────────────
+// 카드 세 장 = 아이템(목록 '아이템' 보기와 같은 그림) · 기본 마네킹(기본 피부에 이 아이템만) · 내 캐릭터(지금 코디에 이 아이템을 입힌 것 — 겹치는 부위는 벗긴다,
+// 장착과 같은 규칙 core/slots conflictSlots). 보통 코디 카드와 같은 카드 · 같은 격자 자리다(이름표 없이). 둘은 프리셋 카드와 같은 정지 그림(SnapThumb — 지금 연출 cardPv).
+// 피부는 '아이템' 그림이 없어 두 장이다. 염색 줄 = 헤어 · 성형은 여덟 색, 그 밖은 색조 여섯 단계 — 자주 쓴 염색과 같은 칩(색 이름만), 누르면 그 값으로 염색 창이 열린다
 const SAMPLE_HUES = [30, 90, 150, 210, 270, 330]
 const NOT_IN_TRY = new Set(['chair', 'android', 'pet']) // 캐릭터 옆에 서는 것 — 목록 '내 캐릭터' 카드처럼 얹지 않는다(thumbCtx NOT_IN_CARD)
-type Sample = { label: string; d: LookDye }
-function TryOn({ item, mobile }: { item: ListItem; mobile: boolean }) {
+function TryCards({ item, mobile }: { item: ListItem; mobile: boolean }) {
   const s = useShop()
   const skin = item.slot === 'skin'
   const te = skin ? s.index?.base.tones.find((t) => t.body === item.id) : undefined
   const key = skin ? 'skin' : item.slot
-  const dyeable = skin ? isDyeableSkin(te?.name) : item.dyeMode !== 'none'
-  const samples: Sample[] = !dyeable ? []
-    : !skin && s.isMixSlot(item.slot) ? paletteFor(item.slot).map((c, i) => ({ label: c.name, d: { kind: 'palette', v: { baseColor: i, mixColor: null, ratio: 0 }, n: 0 } }))
-      : SAMPLE_HUES.map((h) => ({ label: `색조 ${h}`, d: { kind: 'hsb', v: { h, s: 0, b: 0 }, n: 0 } }))
   const cardPv = s.cardPv
   const manq = useMemo<Snapshot>(() => ({
     equipped: skin ? {} : { [item.slot]: item.id }, tone: te?.tone ?? DEFAULT_TONE, dyePalette: {}, dyeHsb: {}, hidden: {},
@@ -418,51 +416,46 @@ function TryOn({ item, mobile }: { item: ListItem; mobile: boolean }) {
     return { equipped: Object.fromEntries(Object.entries(eq).map(([sl, it]) => [sl, it.id])), tone: te?.tone ?? s.shownTone, dyePalette: pal, dyeHsb: hsb, hidden, dotPos: s.dotPos, pv: cardPv }
   }, [item, skin, key, te?.tone, s.equipped, s.hidden, s.renderPalette, s.renderHsb, s.shownTone, s.dotPos, cardPv])
   const fraction = mobile ? FRACTION_M : FRACTION, fitW = mobile ? CARD_FIT_W_M : FIT_W
-  const tiles: { label: string; el: React.ReactNode }[] = [
-    ...(skin ? [] : [{ label: '아이템', el: <ItemThumb item={item} mode="sprite" gaze="" ctxItems={[]} ctxKey="" zmap={s.index?.zmap || []} smap={s.index?.smap || {}} /> }]),
-    { label: '마네킹', el: <SnapThumb snap={manq} view keep fraction={fraction} fitW={fitW} priority={0} /> },
-    { label: '내 캐릭터', el: <SnapThumb snap={mine} view keep fraction={fraction} fitW={fitW} priority={0} /> },
+  const els: React.ReactNode[] = [
+    ...(skin ? [] : [<ItemThumb key="item" item={item} mode="sprite" gaze="" ctxItems={[]} ctxKey="" zmap={s.index?.zmap || []} smap={s.index?.smap || {}} />]),
+    <SnapThumb key="manq" snap={manq} view keep fraction={fraction} fitW={fitW} priority={0} />,
+    <SnapThumb key="mine" snap={mine} view keep fraction={fraction} fitW={fitW} priority={0} />,
   ]
-  const vpRef = useRef<HTMLDivElement | null>(null)
-  useMobileRows(vpRef, mobile, MOBILE_GRID.cols, mobileRatio(MOBILE_GRID.cols), MOBILE_GRID.rows, true, mobileFoot(MOBILE_GRID.cols)) // 목록과 같은 높이(밀림 없이)
+  return <>{els.map((el, i) => (
+    <div key={i} className="pb-presetwrap"><div className={clsx('pb-preset', styles.card)}><div className={styles.thumb}>{el}</div></div></div>
+  ))}</>
+}
+function SampleRow({ item, mobile }: { item: ListItem; mobile: boolean }) {
+  const s = useShop()
+  const skin = item.slot === 'skin'
+  const te = skin ? s.index?.base.tones.find((t) => t.body === item.id) : undefined
+  const key = skin ? 'skin' : item.slot
+  const dyeable = skin ? isDyeableSkin(te?.name) : item.dyeMode !== 'none'
+  const samples: { label: string; d: LookDye }[] = !dyeable ? []
+    : !skin && s.isMixSlot(item.slot) ? paletteFor(item.slot).map((c, i) => ({ label: c.name, d: { kind: 'palette', v: { baseColor: i, mixColor: null, ratio: 0 }, n: 0 } }))
+      : SAMPLE_HUES.map((h) => ({ label: `색조 ${h}`, d: { kind: 'hsb', v: { h, s: 0, b: 0 }, n: 0 } }))
   const n = mobile || s.listNarrow ? 3 : 5
   const rail = useWheelRail<HTMLDivElement>()
   const openDye = (d: LookDye) => s.openDye(item, d.kind === 'palette' ? { pal: d.v } : { hsb: d.v })
+  if (!samples.length) return null
   return (
     <>
-      {samples.length > 0 && <>
-        {/* 염색 예시 — 자주 쓴 염색 줄과 같은 묶음 · 같은 칩(순위 · 사람 수 자리에 '예시' · 색 이름) */}
-        <div ref={rail} className={clsx('pb-norail', 'pb-fade', styles.dyes, mobile && styles.dyesM)} style={{ '--dye-n': n } as React.CSSProperties}>
-          {samples.map(({ label, d }, i) => (
-            <div key={i} role="button" tabIndex={0} onClick={() => openDye(d)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDye(d) } }}
-              title="이 염색으로 염색 창 열기(적용하면 입어요)" className={clsx(surf.partChip, ui.dyeChip, styles.dyeChip, mobile && styles.dyeChipM)}>
-              <span className={clsx('pb-chipthumb', surf.partThumb, mobile && styles.dyeThumbM)}>
-                <span className={surf.partSprite}>
-                  <LookSprite slot={item.slot} item={skin ? null : item} tone={te?.tone ?? s.tone} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} />
-                </span>
+      <div ref={rail} className={clsx('pb-norail', 'pb-fade', styles.dyes, mobile && styles.dyesM)} style={{ '--dye-n': n } as React.CSSProperties}>
+        {samples.map(({ label, d }, i) => (
+          <div key={i} role="button" tabIndex={0} onClick={() => openDye(d)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDye(d) } }}
+            title="이 염색으로 염색 창 열기(적용하면 입어요)" className={clsx(surf.partChip, ui.dyeChip, styles.dyeChip, mobile && styles.dyeChipM)}>
+            <span className={clsx('pb-chipthumb', surf.partThumb, mobile && styles.dyeThumbM)}>
+              <span className={surf.partSprite}>
+                <LookSprite slot={item.slot} item={skin ? null : item} tone={te?.tone ?? s.tone} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} />
               </span>
-              <span className={clsx(surf.partText, mobile && styles.dyeTextM)}>
-                <span className={surf.partSlot}>예시</span>
-                <span className={surf.partName}>{label}</span>
-              </span>
-              <ChipAct icon={<IconDrop size={15} />} label="이 염색으로 염색 창 열기" title="이 염색으로 염색 창 열기(적용하면 입어요)" onClick={() => openDye(d)} />
-              <DyeBand state="dyed" slot={key} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} skinFamily={skin ? skinDyeFamily(te?.name) ?? undefined : undefined} />
-            </div>
-          ))}
-        </div>
-        <div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} />
-      </>}
-      <div ref={vpRef} className={clsx(list.viewport, mobile && list.viewportM, styles.tryWrap)}>
-        <div className={clsx(styles.tryGrid, mobile && styles.tryGridM)} style={{ gridTemplateColumns: `repeat(${tiles.length},minmax(0,1fr))` }}>
-          {tiles.map((t) => (
-            <div key={t.label} className={styles.tryCard}>
-              <div className={styles.thumb}>{t.el}</div>
-              <span className={clsx(styles.tryName, mobile && styles.tryNameM)}>{t.label}</span>
-            </div>
-          ))}
-        </div>
+            </span>
+            <span className={clsx(surf.partText, mobile && styles.dyeTextM)}><span className={surf.partName}>{label}</span></span>
+            <ChipAct icon={<IconDrop size={15} />} label="이 염색으로 염색 창 열기" title="이 염색으로 염색 창 열기(적용하면 입어요)" onClick={() => openDye(d)} />
+            <DyeBand state="dyed" slot={key} palette={d.kind === 'palette' ? d.v : undefined} hsb={d.kind === 'hsb' ? d.v : undefined} skinFamily={skin ? skinDyeFamily(te?.name) ?? undefined : undefined} />
+          </div>
+        ))}
       </div>
-      <Credit mobile={mobile} hint="표본에 없는 아이템이라 입혀 본 모습을 보여 줘요" />
+      <div className={clsx(styles.dyesSep, mobile && styles.dyesSepM)} />
     </>
   )
 }
