@@ -6,18 +6,14 @@ import localFont from 'next/font/local'
 import './fonts.css'
 import './globals.css'
 import NoFocusZoom from './NoFocusZoom'
-import { SITE_URL } from '@/lib/siteUrl'
+import { DEFAULT_OG, SITE_NAME, SITE_URL } from '@/lib/siteUrl'
 
-const SITE_NAME = '핑크빈 커마샵'
 // 제목은 이름만 둔다. 다른 주소의 제목은 '핑크빈 커마샵 - <그 화면>' 으로 이름이 늘 앞에 온다.
 // 찾는 말(메이플 코디, 메이플 커마)은 제목에 늘어놓지 않고 설명과 본문 요약(ShopHome), 구조화 데이터에 넣는다.
 const TITLE = SITE_NAME
 // 사이트/OG 설명. 네이버 검색 노출용으로 80자 이내. 찾는 말(메이플 코디, 메이플 커마)을 문장 안에 그대로 넣는다.
 const DESC =
   '메이플 코디와 메이플 커마를 웹에서 무료로 미리 해봐요. 헤어, 성형, 염색 시뮬레이터와 AI 코디 검색, 코디 광장까지 한 번에.'
-// og:image — 넓은 임베드 이미지(Vercel Blob CDN). 카톡/디스코드/트위터/구글 미리보기에 사용.
-const OG_IMAGE = 'https://qg2tk4czk48x6wl4.public.blob.vercel-storage.com/pinkbean_embed.png'
-const OG_W = 1536, OG_H = 1024
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -55,13 +51,13 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     description: DESC,
     locale: 'ko_KR',
-    images: [{ url: OG_IMAGE, width: OG_W, height: OG_H, alt: `${SITE_NAME} 미리보기`, type: 'image/png' }],
+    images: [DEFAULT_OG],
   },
   twitter: {
     card: 'summary_large_image',
     title: SITE_NAME,
     description: DESC,
-    images: [OG_IMAGE],
+    images: [DEFAULT_OG.url],
   },
   robots: {
     index: true,
@@ -120,7 +116,7 @@ const JSON_LD = {
       alternateName: 'Pinkbean Customize',
       url: SITE_URL,
       logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png`, width: 90, height: 90 },
-      image: OG_IMAGE,
+      image: DEFAULT_OG.url,
     },
     {
       '@type': 'WebApplication',
@@ -136,7 +132,7 @@ const JSON_LD = {
       isAccessibleForFree: true,
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW' },
       featureList: ['메이플 코디 미리보기', '헤어, 성형 미리보기', '믹스 염색과 캐시 아이템 염색', '프리셋 저장과 공유', '코디 광장', 'AI 코디 검색', '닉네임으로 코디 불러오기', '핑크빈 코디 평가'],
-      screenshot: OG_IMAGE,
+      screenshot: DEFAULT_OG.url,
       publisher: { '@id': `${SITE_URL}/#org` },
     },
   ],

@@ -20,3 +20,7 @@ const normalize = (u: string) => {
 }
 
 export const SITE_URL = normalize(RAW)
+
+export const SITE_NAME = '핑크빈 커마샵'
+// 기본 og:image — 넓은 임베드 이미지(Vercel Blob CDN). 카톡/디스코드/트위터/구글 미리보기에 쓴다(레이아웃 · 아이템 코디 룩북 페이지)
+export const DEFAULT_OG = { url: 'https://qg2tk4czk48x6wl4.public.blob.vercel-storage.com/pinkbean_embed.png', width: 1536, height: 1024, alt: `${SITE_NAME} 미리보기`, type: 'image/png' }

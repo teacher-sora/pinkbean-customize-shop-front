@@ -34,6 +34,7 @@
 .finderName { flex: 1 1 0; min-width: 0; font-size: calc(12.5rem / 16); color: light-dark(#3d372f, #cacbd0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .finderN { flex: 0 0 auto; font-size: calc(11rem / 16); font-weight: 700; color: light-dark(#d76d9a, #d293ae); font-variant-numeric: tabular-nums; }
 .finderNone { padding: 10px 8px; font-size: calc(12rem / 16); color: light-dark(#b7ada2, #858893); }
+.finderNone0 { font-weight: 600; color: light-dark(#a89e93, #8e919a); } /* 표본에 없는 아이템 — '입혀 보기'(흐림) */
 .emptyWrap { display: flex; }
 
 /* 자주 쓴 염색 — 머리 구분선 아래, 내용 쪽의 한 묶음(옅은 바탕 + 1px 테두리 — 머리에 붙어 보이지 않게, 사용자 지시).
@@ -62,6 +63,15 @@
 /* 코디 카드(목록 칸 안 — 쪽 넘김 · 격자는 목록의 것). 그림만 둔다 — 똑같은 코디는 거의 없어 '입은 사람 수'는 늘 1명이었다(사용자 지시로 뺐다) */
 .card { height: 100%; }
 .thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; background: light-dark(#f7f2ec, #3b3d45); border-radius: 7px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+
+/* 표본에 없는 아이템: 입혀 본 모습 세 칸(아이템 · 마네킹 · 내 캐릭터) — 목록 칸 자리를 같은 여백으로 나눠 갖는다. 누르는 칸이 아니라 뜨지 않는다(카드만 뜬다) */
+.tryWrap { display: flex; }
+.tryGrid { flex: 1 1 auto; min-width: 0; padding: 8px; display: grid; grid-template-rows: minmax(0, 1fr); gap: 8px; }
+.tryGridM { padding: 8px 12px; }
+.tryCard { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; background: light-dark(#fff, #303238); overflow: hidden; }
+.tryCard > .thumb { border-radius: 0; }
+.tryName { flex: 0 0 28px; display: flex; align-items: center; justify-content: center; font-size: calc(12.5rem / 16); font-weight: 600; color: light-dark(#5c534b, #b9bbc1); border-top: 1px solid light-dark(#f2ebe3, #40434b); }
+.tryNameM { flex-basis: 26px; font-size: calc(12rem / 16); }
 
 /* 출처 · 기준 날짜(넥슨 Open API 이용약관 제6조 ④ — lib/nexonLook NEXON_CREDIT) */
 .credit { gap: 12px; }

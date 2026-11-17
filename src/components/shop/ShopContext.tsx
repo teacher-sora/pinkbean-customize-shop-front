@@ -10,7 +10,7 @@
 
 import { createContext, useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useSelectedLayoutSegment } from 'next/navigation'
-import { TAB_PATH, TAB_TITLE, tabOfPath } from '@/lib/tabRoute'
+import { LOOKBOOK_PATH, TAB_PATH, TAB_TITLE, lookbookIdOf, tabOfPath } from '@/lib/tabRoute'
 import { rankSort, nameMatcher, labelQuery } from '@/lib/nameSearch'
 import { groupSets } from '@/lib/setOrder'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
@@ -769,6 +769,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (Array.isArray(u.searchResults)) setSearchResults(u.searchResults)
     if (u.plazaFilter && PLAZA_FILTERS.some((f: { id: string }) => f.id === u.plazaFilter)) setPlazaFilter(u.plazaFilter as PlazaFilter)
     if (typeof u.plazaQ === 'string') setPlazaQState(u.plazaQ)
+    if (lookbookIdOf(window.location.pathname)) setPlazaFilter('combo') // 아이템 코디 룩북 주소(/lookbook/<id>)는 광장의 코디 룩북으로 연다
     // 광장 정렬 · 목록을 넘기는 방향은 **영구**다(취향에 가까운 값). 나머지는 전부 새로고침까지만.
     const pref = readUiPref()
     if (pref.plazaSort === 'popular' || pref.plazaSort === 'recent') setPlazaSort(pref.plazaSort)
@@ -1318,6 +1319,27 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const lists = await Promise.all(EQUIP_SLOTS.filter((sl) => slotFile(sl, indexRef.current)).map((sl) => loadSlotFolded(sl)))
     return rankSort([...lists.flat(), ...skinList].filter((it) => match(it.name || '')), match, (it) => it.name || '')
   }
+  // 아이템 코디 룩북 주소(/lookbook/<id> — 검색엔진에서 아이템 이름으로 들어온다, 사용자 지시): 광장의 코디 룩북에 그 아이템을 골라 연다.
+  // 그 아이템의 meta 로 부위를 알아 그 부위 목록 하나만 받는다(15MB 인 전체 목록을 받지 않는다). 코디 첫 묶음은 그동안 함께 받는다
+  const lookbookOpened = useRef(false)
+  useEffect(() => {
+    if (lookbookOpened.current || !index) return
+    const id = lookbookIdOf(window.location.pathname)
+    if (!id) return
+    lookbookOpened.current = true
+    void lookChunk(id, 0, 'a').catch(() => {})
+    loadMeta(id).then((m) => loadSlotFolded(m.slot)).then((l) => { const it = l.find((x) => x.id === id); if (it) pickCombo(it) }).catch(() => {})
+  }, [index])
+  // 광장의 코디 룩북에서 고른 아이템은 주소도 그 아이템의 코디 룩북이 된다(새로고침 · 링크 공유가 그 아이템으로 열린다). 다른 분류로 가면 /plaza 로 돌아간다.
+  // 기록을 쌓지 않고 바꾼다(replaceState). 고르기 전(들어온 직후 아이템을 찾는 동안)에는 주소를 그대로 둔다
+  useEffect(() => {
+    if (primary !== 'share') return
+    const now = window.location.pathname
+    const want = plazaFilter === 'combo' ? (comboItem ? `${LOOKBOOK_PATH}${comboItem.id}` : null) : now.startsWith(LOOKBOOK_PATH) ? TAB_PATH.share : null
+    if (!want || want === now) return
+    try { window.history.replaceState(null, '', want + window.location.search) } catch {}
+    document.title = want === TAB_PATH.share ? `핑크빈 커마샵 - ${TAB_TITLE.share}` : `핑크빈 커마샵 - ${comboItem!.name || comboItem!.id} 코디 룩북`
+  }, [primary, plazaFilter, comboItem])
   const clearBookmarks = () => {
     if (!bookmarks.length) return
     setBookmarks([]); saveBookmarks([])
