@@ -4,8 +4,13 @@
 export const TAB_PATH: Record<string, string> = { codi: '/', search: '/search', info: '/info', preset: '/preset', share: '/plaza' }
 export const TAB_TITLE: Record<string, string> = { search: 'AI 코디 검색', info: '코디 정보 / 염색', preset: '프리셋', share: '코디 광장' }
 
+// 아이템 코디 룩북 주소(/lookbook/<아이템 id> — 검색엔진에서 들어온다, app/(shop)/lookbook). 탭은 코디 광장이고, 광장의 '코디 룩북'에 그 아이템을 골라 연다(ShopContext)
+export const LOOKBOOK_PATH = '/lookbook/'
+export const lookbookIdOf = (path: string): string | null => /^\/lookbook\/(\d{8})\/?$/.exec(path)?.[1] ?? null
+
 export function tabOfPath(path: string): string {
   const p = path.replace(/\/+$/, '') || '/'
+  if (p === '/lookbook' || p.startsWith(LOOKBOOK_PATH)) return 'share'
   for (const [tab, v] of Object.entries(TAB_PATH)) if (v === p) return tab
   return 'codi'
 }
