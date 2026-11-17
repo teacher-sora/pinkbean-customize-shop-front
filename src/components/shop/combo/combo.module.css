@@ -64,15 +64,6 @@
 .card { height: 100%; }
 .thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; background: light-dark(#f7f2ec, #3b3d45); border-radius: 7px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 
-/* 표본에 없는 아이템: 입혀 본 모습 세 칸(아이템 · 마네킹 · 내 캐릭터) — 목록 칸 자리를 같은 여백으로 나눠 갖는다. 누르는 칸이 아니라 뜨지 않는다(카드만 뜬다) */
-.tryWrap { display: flex; }
-.tryGrid { flex: 1 1 auto; min-width: 0; padding: 8px; display: grid; grid-template-rows: minmax(0, 1fr); gap: 8px; }
-.tryGridM { padding: 8px 12px; }
-.tryCard { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid light-dark(#eee6dc, #454850); border-radius: 8px; background: light-dark(#fff, #303238); overflow: hidden; }
-.tryCard > .thumb { border-radius: 0; }
-.tryName { flex: 0 0 28px; display: flex; align-items: center; justify-content: center; font-size: calc(12.5rem / 16); font-weight: 600; color: light-dark(#5c534b, #b9bbc1); border-top: 1px solid light-dark(#f2ebe3, #40434b); }
-.tryNameM { flex-basis: 26px; font-size: calc(12rem / 16); }
-
 /* 출처 · 기준 날짜(넥슨 Open API 이용약관 제6조 ④ — lib/nexonLook NEXON_CREDIT) */
 .credit { gap: 12px; }
 .creditM { flex: 0 0 auto; height: 26px; display: flex; align-items: center; justify-content: center; }
