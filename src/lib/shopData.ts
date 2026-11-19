@@ -36,6 +36,32 @@ export function foldList(l: ListItem[]): ListItem[] {
 // 크기만 다른 짝(일루전 링의 'X (L)' — 같은 그림을 크게)은 나란히 둔다 — 큰 것이 먼저(왼쪽), 일반 크기 'X' 가 바로 뒤(사용자 지시 — 명찰 · 말풍선 세트처럼).
 // 짝은 둘 가운데 먼저(최신순) 나오는 자리에 선다. 이름이 정확히 같은 일반 크기가 없으면 그대로 둔다.
 const BIG = /\s*\(L\)$/
+// 목록 정렬(보기 설정의 '정렬' — 사용자 지시). 코디 탭 목록만(AI 코디 검색은 검색 순서 그대로).
+//  · 기본순 = 목록 그대로(라벨 우선 · 같은 세트끼리 — 파서 · groupSets 의 순서)
+//  · 인기순 = 코디 룩북 표본에서 그 아이템을 입은 코디가 많은 순(lib/looks 색인 — 카드의 '코디 N' 칩과 같은 수). 같으면 목록 순서
+//  · 최신순 = 이번 패치 신규(NEW, catalog/new.json) → 지난 시즌 신규(최근 시즌부터, catalog/released.json) → 나머지는 id 큰 순.
+//    ★ 앞으로의 규칙(사용자 지시): 신규 아이템의 id 는 출시 순서가 아니다(옛 번호대를 다시 쓴다) — id 만으로는 최신을 알 수 없어 신규가 먼저다.
+//      시즌이 바뀌어 NEW 라벨이 떼어져도 그 시즌의 신규는 다른 아이템보다 앞이다(파서가 시즌마다 released.json 에 쌓는다 — parser ARCHITECTURE).
+//    여러 부위를 한 목록으로 볼 때(전체 · 즐겨찾기 · 신규) id 는 같은 부위 안에서만 비교한다 — 부위마다 번호대가 달라 섞으면 무기가 늘 먼저 온다. 부위 순서는 목록 그대로
+export type ListSort = 'base' | 'popular' | 'recent'
+export function sortItems (list: ListItem[], mode: ListSort, o: { counts?: Record<string, number>; released?: Map<string, number>; newIds?: Set<string> }): ListItem[] {
+  if (mode === 'base' || list.length < 2) return list
+  const at = new Map(list.map((it, i) => [it.id, i]))
+  if (mode === 'popular') {
+    const c = o.counts ?? {}
+    return [...list].sort((a, b) => (c[b.id] ?? 0) - (c[a.id] ?? 0) || at.get(a.id)! - at.get(b.id)!)
+  }
+  const season = (it: ListItem) => (o.newIds?.has(it.id) ? Infinity : o.released?.get(it.id) ?? 0)
+  const slotAt = new Map<string, number>()
+  for (const it of list) if (!slotAt.has(it.slot)) slotAt.set(it.slot, slotAt.size)
+  const num = (it: ListItem) => parseInt(it.id, 10) || 0
+  return [...list].sort((a, b) => {
+    const sa = season(a), sb = season(b)
+    if (sa !== sb) return sa < sb ? 1 : -1
+    return slotAt.get(a.slot)! - slotAt.get(b.slot)! || num(b) - num(a)
+  })
+}
+
 function pairSizes(l: ListItem[]): ListItem[] {
   const base = new Map<string, ListItem>()
   for (const it of l) if (it.name && !BIG.test(it.name)) base.set(it.name, it)

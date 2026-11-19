@@ -110,7 +110,7 @@ function ItemTag({ item, mobile, thumbOnly }: { item: ListItem | null; mobile: b
   )
 }
 
-// 광장의 코디 룩북: 이름으로 아이템을 찾는다(모든 부위 + 피부). 코디가 많은 순으로 8개 — 표본에 없는 아이템도 그 뒤에 나온다(사용자 지시 — 입혀 본 모습을 본다)
+// 광장의 코디 룩북: 이름으로 아이템을 찾는다(모든 부위 + 피부). 코디가 많은 순으로 8개 — 표본에 없는 아이템도 그 뒤에 수 없이 나온다(사용자 지시 — 입혀 본 모습을 본다)
 // 칸은 목록 머리의 검색 칸과 같은 부품 · 같은 폭이다(frame/SearchBox — 사용자 지시: 같은 자리 · 같은 크기)
 function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) {
   const s = useShop()
@@ -154,7 +154,7 @@ function ItemFinder({ mobile, now }: { mobile: boolean; now: ListItem | null }) 
               onPointerLeave={() => window.clearTimeout(hover.current)} onPointerDown={(e) => { if (e.pointerType !== 'mouse') s.warmCombo(it.id) }}>
               <span className={clsx('pb-chipthumb', styles.finderThumb)}><LookSprite slot={it.slot} item={it.slot === 'skin' ? null : it} tone={s.index?.base.tones.find((t) => t.body === it.id)?.tone ?? s.tone} /></span>
               <span className={styles.finderName}>{it.name || it.id}</span>
-              <span className={clsx(styles.finderN, !n && styles.finderNone0)}>{n ? `코디 ${countLabel(n)}` : '입혀 보기'}</span>
+              {n > 0 && <span className={styles.finderN}>코디 {countLabel(n)}</span>}{/* 표본에 없는 아이템은 수 없이(사용자 지시) */}
             </button>
           )) : <span className={styles.finderNone}>찾는 아이템이 없어요</span>}
         </div>
