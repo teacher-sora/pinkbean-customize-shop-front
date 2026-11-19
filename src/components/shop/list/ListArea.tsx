@@ -9,7 +9,7 @@ import SearchBox, { searchInputClass } from '../frame/SearchBox'
 import PageChip from '../frame/PageChip'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { labelBadgeImg, type ListItem } from '@/lib/core/data'
-import { ITEM_KINDS, ITEM_KIND_ROWS, MOBILE_GRID } from '@/lib/shopData'
+import { ITEM_KINDS, ITEM_KIND_ROWS, MOBILE_GRID, type ListSort } from '@/lib/shopData'
 import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
 import { Seg, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconSearch, IconDirX, IconDirY, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
@@ -32,6 +32,12 @@ export const GENDERS: SegOpt<GenderFilter>[] = [
   { v: 'm', l: '남', t: '남자 캐릭터가 입을 수 있는 것' },
 ]
 // 넘기는 방향 — 기본 가로. 세로여도 PC · 절반 · 태블릿은 한 쪽씩 넘기고, 모바일은 목록 안에서 세로로 스크롤한다(넘기는 방향만 바뀐다).
+// 정렬(코디 탭 목록 — shopData.sortItems). 기본순 = 목록 그대로, 인기순 = 실제 유저 코디가 많은 순, 최신순 = 신규 → 지난 시즌 신규 → id 큰 순
+const SORTS: SegOpt<ListSort>[] = [
+  { v: 'base', l: '기본순', t: '라벨, 세트 순서 그대로' },
+  { v: 'popular', l: '인기순', t: '실제 유저 코디에 많이 쓰인 순서' },
+  { v: 'recent', l: '최신순', t: '새로 나온 아이템부터' },
+]
 export const DIRS: SegOpt<ListDir>[] = [
   { v: 'x', l: '가로로 넘기기', t: '가로로 넘겨 보기', icon: <IconDirX /> },
   { v: 'y', l: '세로로 넘기기', t: '세로로 넘겨 보기', icon: <IconDirY /> },
@@ -316,6 +322,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     { label: '보기', title: '아이템을 무엇에 입혀서 볼지', opts: viewOpts, value: thumbs.mode, onPick: s.setListMode },
     { label: '성별', title: '성별', opts: GENDERS, value: s.genderFilter, onPick: s.setGenderFilter },
     { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
+    ...(isAi ? [] : [{ label: '정렬', title: '목록 순서', opts: SORTS, value: s.listSort, onPick: s.setListSort }]), // AI 코디 검색은 검색 순서 그대로
     { label: '필터', title: '아이템 거르기', opts: KIND_OPTS, rows: ITEM_KIND_ROWS, value: s.kindFilter, onPick: s.setKindFilter, set: s.kindFilter !== 'all' },
   ]
   const runAi = (q?: string) => { const t = (q ?? s.aiQ).trim(); if (!t) return; if (q !== undefined) s.setAiQ(q); s.runSearch(t) }

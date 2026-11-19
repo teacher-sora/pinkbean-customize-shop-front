@@ -210,6 +210,18 @@ export function loadNewItems(): Promise<Set<string>> {
   }
   return newItemsPromise
 }
+// 지난 시즌들의 신규 — 파서가 catalog/new.json 이 바뀔 때마다 catalog/released.json 의 seasons 끝에 그 시즌의 신규를 쌓는다(오래된 시즌이 앞, parser scripts/released-update.cjs).
+// 목록의 '최신순' 정렬이 쓴다(shopData.sortItems): id → 시즌 번호(1 = 가장 오래된 시즌). 없거나 실패하면 빈 표(그때는 이번 신규 뒤로 id 큰 순)
+let releasedPromise: Promise<Map<string, number>> | null = null
+export function loadReleased(): Promise<Map<string, number>> {
+  if (!releasedPromise) {
+    releasedPromise = stagedRel('catalog/released.json').then((rel) => fetch(url(rel), FRESH).then((r) => (r.ok ? r.json() : { seasons: [] })))
+      .then((j: { seasons?: { ids?: string[] }[] }) => { const m = new Map<string, number>(); (j.seasons || []).forEach((se, i) => { for (const id of se.ids || []) m.set(id, i + 1) }); return m })
+      .catch(() => new Map<string, number>())
+  }
+  return releasedPromise
+}
+
 
 export async function loadIndex(): Promise<Index> {
   return pre<Index>('index.json', async () => {
