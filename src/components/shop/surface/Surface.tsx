@@ -36,6 +36,7 @@ import DotSurfaceBody from './DotSurfaceBody'
 import DyeSurfaceBody from './DyeSurfaceBody'
 import styles from './surface.module.css'
 import { NEXON_CREDIT } from '@/lib/nexonLook'
+import { viewW } from '@/lib/viewport'
 
 // 코디 프로필(공유 카드) 창은 누를 때만 받는다 — 카드 그리기 · 디자인이 첫 화면 코드에 들어가지 않게
 const ProfileCardBody = dynamic(() => import('./ProfileCardBody'), { ssr: false, loading: () => <div className={styles.partBody} /> })
@@ -51,7 +52,7 @@ export default function Surface() {
 function useFrameWidth(bp: string) {
   const [vw, setVw] = useState(0)
   useEffect(() => {
-    const m = () => setVw(window.innerWidth)
+    const m = () => setVw(viewW())
     m()
     window.addEventListener('resize', m)
     return () => window.removeEventListener('resize', m)

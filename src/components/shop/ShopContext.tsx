@@ -40,6 +40,7 @@ import { loadLookPixels, pickBySprite } from '@/lib/lookMatch'
 import { enqueueThumb } from '@/lib/thumbQueue'
 import { confirmTwice } from '@/lib/confirmTwice'
 import { setStageBg, stageSelOf, useStageBg } from '@/lib/stageBg'
+import { viewH, viewW } from '@/lib/viewport'
 import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, dropUiHistory, readUiPref, readUiSession, useIsoLayoutEffect, writeUiPref, writeUiSession } from '@/lib/uiState'
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
@@ -1109,7 +1110,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (e.pointerType === 'mouse' || e.button !== 0) return
     if (bpRef.current === 'mobile') return // 모바일은 네이티브 가로 스크롤(ListArea)이 담당
     const y = listDirRef.current === 'y'
-    const w = (y ? vpElRef.current?.clientHeight : vpElRef.current?.clientWidth) || (y ? window.innerHeight : window.innerWidth)
+    const w = (y ? vpElRef.current?.clientHeight : vpElRef.current?.clientWidth) || (y ? viewH() : viewW())
     swipe.current = { on: true, id: e.pointerId, x0: e.clientX, y0: e.clientY, mode: null, lx: y ? e.clientY : e.clientX, lt: e.timeStamp, vx: 0, w }
   }, [])
   const bindTrack = useCallback((el: HTMLDivElement | null) => { trackRef.current = el }, [])

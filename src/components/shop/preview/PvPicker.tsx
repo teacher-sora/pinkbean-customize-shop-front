@@ -26,6 +26,7 @@ import { ActionFrameGrid, actionInfo, useActionInfo, warmActionFrames } from './
 import { PopBox, PopFoot, PopScroll, popNear, usePop } from './PopBox'
 import ui from '../ui/ui.module.css'
 import styles from './preview.module.css'
+import { viewH, viewW } from '@/lib/viewport'
 
 type Group = { group: string; items: Opt[] }
 
@@ -146,7 +147,7 @@ export default function PvPicker({ field, options, groups, value, onChange, vari
     if (open) { pop.close(); return }
     const b = btnRef.current?.getBoundingClientRect(); if (!b) return
     const stage = document.querySelector('[data-pv-stage]')?.getBoundingClientRect()
-    pop.open(popNear(b, stage ?? { left: 0, width: window.innerWidth, top: 0, bottom: window.innerHeight }))
+    pop.open(popNear(b, stage ?? { left: 0, width: viewW(), top: 0, bottom: viewH() }))
   }
 
   const isField = variant === 'field' || variant === 'fieldM'

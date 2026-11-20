@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useState } from 'react'
+import { viewW } from './viewport'
 
 // SSR 에선 useLayoutEffect 가 경고 → 클라이언트에서만 layout effect 사용(페인트 전 보정용).
 const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
-// 레이아웃 모드: 화면 폭 + 입력 기기로 분기한다.
+// 레이아웃 모드: 화면 폭 + 입력 기기로 분기한다. 폭은 lib/viewport 로 읽는다 — 핀치 확대는 화면 크기 변경이 아니다(사용자 지시).
 //   모바일 ≤ 520px · PC ≥ 1200px · 그 사이 = 절반(마우스, 창을 절반만 쓸 때) / 태블릿(터치 기기)
 //   태블릿은 터치 기기 전용이다 — 마우스 기기의 1920 모니터 절반 창(≈960px)은 '절반'이다.
 // ⚠️ hover/터치 UI 는 폭이 아니라 기기 입력((hover:hover) and (pointer:fine))으로 CSS 가 분기한다.
@@ -29,17 +30,20 @@ export function useBreakpoint(): Breakpoint {
   // SSR=pc(하이드레이션 mismatch 없음). 클라이언트에서 페인트 전 실제 폭으로 보정 + 모바일 사파리 지연 대비 rAF/load 재보정.
   const [bp, setBp] = useState<Breakpoint>('pc')
   useIsoLayoutEffect(() => {
-    const calc = () => setBp(bpOf(window.innerWidth || document.documentElement.clientWidth, isTouchDevice()))
+    const calc = () => setBp(bpOf(viewW(), isTouchDevice()))
+    const vv = window.visualViewport // 확대를 풀 때도 다시 잰다(확대 중에 바뀐 값이 남지 않게)
     calc()
     const raf = requestAnimationFrame(calc)
     window.addEventListener('resize', calc)
     window.addEventListener('orientationchange', calc)
     window.addEventListener('load', calc)
+    vv?.addEventListener('resize', calc)
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', calc)
       window.removeEventListener('orientationchange', calc)
       window.removeEventListener('load', calc)
+      vv?.removeEventListener('resize', calc)
     }
   }, [])
   return bp

@@ -23,6 +23,7 @@ import { ActionFrameGrid, actionInfo, useActionInfo, warmActionFrames } from './
 import { PV_ACTIONS_FLAT } from '@/lib/catalog'
 import preset from '../preset/preset.module.css'
 import styles from './preview.module.css'
+import { viewH } from '@/lib/viewport'
 
 const BOOKMARK_FRAC = 0.9
 
@@ -209,7 +210,7 @@ export function PvSheetBody() {
   }, [view, group])
   // ⚠️ 고르기 높이는 **열기 전에 이미 정해져 있어야** 한다. 열고 나서 효과에서 고치면 높이가 두 번 커밋되고
   //    두 번째 FLIP 이 첫 번째 움직임을 끊어 먹어 '툭' 뛰어 보인다.
-  const pickOf = () => Math.round(Math.min(460, (typeof window === 'undefined' ? 700 : window.innerHeight) * 0.62))
+  const pickOf = () => Math.round(Math.min(460, (typeof window === 'undefined' ? 700 : viewH()) * 0.62))
   const [pickH, setPickH] = useState(pickOf)
   useEffect(() => {
     const m = () => setPickH(pickOf())

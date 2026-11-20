@@ -14,6 +14,7 @@ import { PopBox, popNear, usePop } from '../preview/PopBox'
 import { usePresetDrag } from '../preset/usePresetDrag'
 import { IconCaretDown, IconLock, IconReorder, IconReset } from '../ui/Icons'
 import styles from './nav.module.css'
+import { viewH, viewW } from '@/lib/viewport'
 
 export const CAT_FIXED = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }]
 const CAT_W_PC = 760
@@ -75,14 +76,14 @@ export function CatExpand({ mobile, on, onPick }: { mobile: boolean; on: string;
   const toggle = () => {
     if (open) { pop.close(); return }
     const b = btnRef.current?.getBoundingClientRect(); if (!b) return
-    const screen = { left: 0, width: window.innerWidth, top: 0, bottom: window.innerHeight }
+    const screen = { left: 0, width: viewW(), top: 0, bottom: viewH() }
     const main = mobile ? null : document.querySelector('main[data-pb-body]')?.getBoundingClientRect()
     const p = popNear(b, main ?? screen)
     // 높이는 내용을 따른다. PC 는 창 아래 끝을 목록 아래 끝에, 오른쪽 끝을 부위 줄 끝에, 모바일은 좌우 끝을 카드 끝에 맞춘다
-    if (mobile) { pop.open({ ...p, left: CAT_SIDE_M, w: window.innerWidth - CAT_SIDE_M * 2, fit: true }); return }
+    if (mobile) { pop.open({ ...p, left: CAT_SIDE_M, w: viewW() - CAT_SIDE_M * 2, fit: true }); return }
     const right = btnRef.current?.parentElement?.getBoundingClientRect().right ?? b.right // 창 오른쪽 끝 = 부위 줄 오른쪽 끝
     const w = Math.min(right - p.left, CAT_W_PC)
-    pop.open({ ...p, w, left: right - w, bottom: main ? Math.round(window.innerHeight - main.bottom) : p.bottom, fit: true })
+    pop.open({ ...p, w, left: right - w, bottom: main ? Math.round(viewH() - main.bottom) : p.bottom, fit: true })
   }
   return (
     <>
