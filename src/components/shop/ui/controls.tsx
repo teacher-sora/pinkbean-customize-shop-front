@@ -14,19 +14,8 @@ export type SegOpt<T extends string> = { v: T; l: string; t?: string; disabled?:
 export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', title, rows }: {
   opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: 'pc' | 'mobileFlex' | 'mobileFit'; title?: string; rows?: number[]
 }) {
-  const track = variant === 'pc' ? styles.segTrack : variant === 'mobileFlex' ? styles.segTrackM : styles.segTrackMFit
-  const btn = variant === 'mobileFlex' ? styles.segFlex : styles.seg
-  const cell = (o: SegOpt<T>) => {
-    const on = !o.disabled && value === o.v
-    return (
-      <button key={o.v} type="button" disabled={o.disabled} title={o.disabled ? o.disabledTitle : o.t ?? (o.icon ? o.l : undefined)}
-        aria-label={o.icon ? o.l : undefined} aria-pressed={on}
-        onClick={() => { if (!o.disabled) onPick(o.v) }}
-        className={clsx(on ? 'pb-solid' : 'pb-soft', btn, o.icon && styles.segIcon, o.mark && styles.segMarked, on && styles.segOn, o.disabled && styles.segDisabled)}>
-        {o.icon ?? (o.mark ? <><span className={styles.segMark}>{o.mark}</span>{o.l}</> : o.l)}
-      </button>
-    )
-  }
+  const track = segTrack(variant)
+  const cell = (o: SegOpt<T>) => segCell(o, value, onPick, variant)
   if (rows) {
     let at = 0
     return (
@@ -36,6 +25,30 @@ export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', tit
     )
   }
   return <div title={title} className={track}>{opts.map(cell)}</div>
+}
+type SegVariant = 'pc' | 'mobileFlex' | 'mobileFit'
+const segTrack = (variant: SegVariant) => (variant === 'pc' ? styles.segTrack : variant === 'mobileFlex' ? styles.segTrackM : styles.segTrackMFit)
+function segCell<T extends string>(o: SegOpt<T>, value: T, onPick: (v: T) => void, variant: SegVariant) {
+    const btn = variant === 'mobileFlex' ? styles.segFlex : styles.seg
+    const on = !o.disabled && value === o.v
+    return (
+      <button key={o.v} type="button" disabled={o.disabled} title={o.disabled ? o.disabledTitle : o.t ?? (o.icon ? o.l : undefined)}
+        aria-label={o.icon ? o.l : undefined} aria-pressed={on}
+        onClick={() => { if (!o.disabled) onPick(o.v) }}
+        className={clsx(on ? 'pb-solid' : 'pb-soft', btn, o.icon && styles.segIcon, o.mark && styles.segMarked, on && styles.segOn, o.disabled && styles.segDisabled)}>
+        {o.icon ?? (o.mark ? <><span className={styles.segMark}>{o.mark}</span>{o.l}</> : o.l)}
+      </button>
+    )
+}
+// 한 트랙 안에 값이 다른 줄을 쌓는다 — 보기 설정의 '보기'(위 = 아이템 · 마네킹 · 내 캐릭터, 아래 = 배율). 생김새는 rows 를 준 Seg(필터 두 줄)와 같다
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type SegLine = { opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; title?: string }
+export function SegStack({ lines, variant = 'pc' }: { lines: SegLine[]; variant?: SegVariant }) {
+  return (
+    <div className={clsx(segTrack(variant), styles.segRows)}>
+      {lines.map((l, i) => <div key={i} title={l.title} className={styles.segRow}>{l.opts.map((o) => segCell(o, l.value, l.onPick, variant))}</div>)}
+    </div>
+  )
 }
 
 /* ── 스위치 ── */

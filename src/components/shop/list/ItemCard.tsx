@@ -58,7 +58,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
         <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
           className={clsx('pb-ribbon', styles.pinMark, mobile && styles.pinMarkM, pinned && styles.pinMarkOn)} />
         <div className={styles.thumb}>
-          <ItemThumb item={item} mode={mode} fraction={mobile ? CARD_FRACTION_M : undefined} fitW={mobile ? CARD_FIT_W_M : undefined} chat={item.chatUi ? CHAT_CARD : undefined} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
+          <ItemThumb item={item} mode={mode} fraction={mobile ? CARD_FRACTION_M : undefined} fitW={mobile ? CARD_FIT_W_M : undefined} zoomStep={+s.listZoom - 1} chat={item.chatUi ? CHAT_CARD : undefined} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
             zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
             ctxExpr={ctx.expr} faceMeta={ctx.faceMeta} dye={mode === 'mymodel' ? { palette: s.renderPalette, hsb: s.renderHsb } : undefined}
             ear={mode === 'mymodel' ? s.pv.ear : undefined} weapon={s.pv.weapon} isMy={mode === 'mymodel'} stance={ctx.stance} ctxAction={ctx.action} dotOffsets={mode === 'mymodel' ? s.dotPos[item.id] : undefined} />

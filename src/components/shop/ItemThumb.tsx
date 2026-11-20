@@ -187,8 +187,9 @@ interface ModelProps {
   fraction?: number                         // 마네킹 높이 비율(없으면 CARD_FRACTION — 모바일 목록은 CARD_FRACTION_M)
   fitW?: number                             // 마네킹 높이 ≤ 칸 폭 × fitW(모바일 목록 CARD_FIT_W_M — SnapThumb 의 fitW 와 같다)
   ctxAction?: string                        // 배경이 내 무기 때문에 다른 자세로 구워졌으면 그 액션(thumbCtx.action) — 후보도 같은 자세로
+  zoomStep?: number                         // 목록 보기 설정의 배율(2배 = 1, 3배 = 2) — 정수 배율에 그만큼 더한다. 합성은 그대로라 기억한 그림을 다시 쓴다
 }
-function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets, fraction = CARD_FRACTION, fitW }: ModelProps) {
+function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets, fraction = CARD_FRACTION, fitW, zoomStep = 0 }: ModelProps) {
   // 합성 입력 전부(아래 합성 effect 의 의존과 같다) — 같으면 기억해 둔 그림을 쓴다
   const mkey = [item.id, ctxKey, skinHeadId, gaze, item.fixedEmotion || ctxExpr, ear, weapon, stance, ctxAction, oid(ctxEffs), pvEff ? `${+pvEff.wEffect}${+pvEff.cEffect}${+(pvEff.mlFx !== false)}` : "", oid(faceMeta), oid(override), oid(dotOffsets)].join('|')
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(() => modelDone.get(mkey)?.placed ?? null)
@@ -349,7 +350,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     // snap: 배율을 정수로 스냅해 카드 도트가 항상 완전히 선명(모든 카드 동일, 화면 크기별로만 살짝 다름).
     const fr = fitW ? Math.min(fraction, (fitW * dims.w) / dims.h) : fraction
     const lift = fitW === CARD_FIT_W_M ? { ...CARD_LIFT_M, maxW: fitW * dims.w } : undefined // 모바일 카드(한 단계 올리기 — shopData.CARD_LIFT_M)
-    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: fr, snap: true, lift, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy, drop: true })
+    const p = computeModelPlacement({ divW: dims.w, divH: dims.h, dpr: dims.dpr, margin: CARD_MARGIN, fraction: fr, snap: true, lift, step: zoomStep, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy, drop: true })
     // 캔버스를 화면 픽셀 격자에 맞춰 가운데(미리보기와 같은 규칙 — translate(-50%) 는 소수 px 라 도트가 뭉갠다).
     const { bw, bh } = canvasBitmap(p)
     fitCanvas(canvas, wrapRef.current, bw, bh, dims.w, dims.h, dims.dpr)
@@ -362,7 +363,7 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
     // 우클릭 복사용 입력 — 화면과 같은 값(중심 오프셋·반전·라이딩 정렬)으로 다시 그린다(lib/canvasExport.modelShotBlob).
     shotRef.current = { placed, override: ovr ?? undefined, effects: effs, particles: parts, flip, centerX: item.slot === 'riding' && !cm, centerMount: cm, centerDx: back ? MODEL_REF.backDx : MODEL_REF.centerDx, centerDy: back ? MODEL_REF.backDy : MODEL_REF.centerDy }
     return () => { cancelled = true }
-  }, [placed, effs, parts, flip, dims, gaze, ovr, fraction, fitW])
+  }, [placed, effs, parts, flip, dims, gaze, ovr, fraction, fitW, zoomStep])
 
   // 우클릭/롱프레스 이미지 메뉴 바인딩(캔버스는 항상 존재). item 바뀌면 파일명 갱신 위해 재바인딩.
   useEffect(() => {
@@ -393,11 +394,11 @@ export default function ItemThumb(props: {
   ear?: string; weapon?: string; isMy?: boolean; stance?: boolean; ctxAction?: string
   dotOffsets?: Record<string, { x: number; y: number }>
   chat?: ChatState
-  fraction?: number; fitW?: number
+  fraction?: number; fitW?: number; zoomStep?: number
 }) {
   if (props.mode !== 'sprite' && props.item.chatUi && props.chat) return <ChatThumb item={props.item} chat={props.chat} />
   // 소울: 마네킹 · 내 모델 보기는 몸 없이 이펙트의 대표 장 하나만(사용자 지시 — 머리 위 이펙트가 칸 위로 잘렸다). 아이템 보기는 소울 아이템 아이콘(icon)
   if (props.mode !== 'sprite' && props.item.slot === 'soul' && props.item.thumb) return <Sprite item={{ ...props.item, icon: props.item.thumb }} />
   if (props.mode === 'sprite') return props.item.slot === 'hair' ? <HairSprite item={props.item} zmap={props.zmap} /> : <Sprite item={props.item} />
-  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} fraction={props.fraction} fitW={props.fitW} />
+  return <ModelThumb item={props.item} gaze={props.gaze} ctxItems={props.ctxItems} ctxKey={props.ctxKey} override={props.override} ctxEffs={props.ctxEffs} pvEff={props.pvEff} zmap={props.zmap} smap={props.smap} skinHeadId={props.skinHeadId} ctxExpr={props.ctxExpr} faceMeta={props.faceMeta} dye={props.dye} ear={props.ear} weapon={props.weapon} isMy={props.isMy} stance={props.stance} ctxAction={props.ctxAction} dotOffsets={props.dotOffsets} fraction={props.fraction} fitW={props.fitW} zoomStep={props.zoomStep} />
 }
