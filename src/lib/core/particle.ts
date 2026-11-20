@@ -5,6 +5,7 @@
 //  - 입자마다 시작 · 끝 색 · 크기 · 회전을 (값 ± 폭)에서 뽑고 수명 동안 고르게 바꾼다. 알파는 중간점(MiddlePoint 0/1, %)을 지나며 바뀐다.
 //  - 중력 모드: 방향(angle ± angleVar, 위가 90도) · 속력으로 날아가고 중력 · 지름 방향 가속을 받는다. 접선 가속은 게임에서도 쓰지 않는다(원본 주석).
 //  - 그리기: 그림을 색으로 곱해(틴트) 알파를 곱하고, 크기는 '그림 대각선/√2 = size' 가 되게 키운다.
+//    additive(원본 blendFuncDst = ONE)면 더해 그린다 — 마라벨 무기의 반짝임 · 별은 회색 색을 더해 빛난다(덮어 그리면 어둡다).
 // 원본의 posX/posY(-200, 60)는 만드는 도구의 자리값이라 쓰지 않는다 — 무기 노드의 자리(발 + origin)에 붙인다(게임 화면으로 맞췄다).
 
 export interface ParticleDesc {
@@ -20,6 +21,7 @@ export interface ParticleDesc {
   gravity?: { x: number; y: number; speed: number; speedVar: number; radialAccel: number; radialAccelVar: number; rotationIsDir: boolean }
   life: number; lifeVar: number
   opacityModifyRGB: boolean
+  additive?: boolean // 원본 blendFuncDst = 2(ONE) — 더하기 합성
   tex: { png: string; origin: { x: number; y: number }; w: number; h: number }
 }
 // 아이템에 붙은 파티클 하나 — 무기 노드의 이름 · z(음수 = 캐릭터 뒤) · 자리(발 기준 origin).
@@ -178,13 +180,21 @@ export function drawParticles(ctx: CanvasRenderingContext2D, sim: ParticleSim, i
   const rad = Math.hypot(img.width, img.height) / Math.SQRT2
   ctx.save()
   ctx.imageSmoothingEnabled = true
+  if (d.additive) ctx.globalCompositeOperation = 'lighter'
   const base = ctx.getTransform() // 좌우 뒤집기(flip) 등 바깥 변환을 그대로 두고 그 위에 입자마다 옮긴다
   for (const p of sim.ps) {
     const t = Math.min(1, p.t / p.life)
     let r = lerp(p.c0[0], p.c1[0], t), g = lerp(p.c0[1], p.c1[1], t), b = lerp(p.c0[2], p.c1[2], t)
-    const a = alphaAt(d, p, t) / 255
+    let a = alphaAt(d, p, t) / 255
     if (a <= 0.004) continue
     if (d.opacityModifyRGB && !r && !g && !b) r = g = b = a
+    if (d.additive) {
+      // 캔버스가 투명이라 배경과는 더해지지 않는다 — 색을 가장 밝은 채널로 나눠 밝히고 그만큼 알파를 낮춘다(회색 50% → 흰색 알파 50%).
+      // 'lighter' 라 캐릭터 위에서는 게임처럼 (그 아래 + 색 × 알파)로 더해지고, 투명한 곳은 배경 위에 그만큼의 빛으로 얹힌다
+      const m = Math.max(r, g, b)
+      if (m <= 0.004) continue
+      r /= m; g /= m; b /= m; a = Math.min(1, a * m)
+    }
     const size = lerp(p.s0, p.s1, t)
     if (size <= 0) continue
     const k = (size / rad) * scale
