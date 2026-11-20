@@ -5,7 +5,7 @@ import { loadMeta, loadAnima, loadParticle, loadParticleIndex, loadSlot, type An
 import { LRU } from './lru'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsbFor } from './dye'
 import { effectDraws, loadImage, type EffectDraw } from './render'
-import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from './particle'
+import { placeParticles, shownSpots, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from './particle'
 import { collectWornEffects } from './thumbEffects'
 import { androidDx, androidPlaced, androidView, loadAndroidParts } from './android'
 import { CHAT_SLOTS, RIDING_FILE, animaLayers, chairLift, chairSeat, resolveAction, ridingSeatedSet, skinDyeFamily, thumbView, THUMB_VIEW, viewTone } from '@/lib/shopData'
@@ -136,11 +136,11 @@ export async function composeSnapshot(snap: Snapshot, index: Index, animaRaces: 
   const fxShown = noFx ? shown.filter(({ slot }) => ILLUSION_FREE_SLOTS.has(slot)) : shown
   const worn = await collectWornEffects(fxShown.map(({ slot, meta }) => ({ slot, id: meta.id, dyeable: meta.dyeMode !== 'none' })), spv, snapHsb, overrides).catch(() => [])
   const effects: EffectDraw[] = worn.flatMap(({ em }) => effectDraws(em, charTV.action, { foot, brow, flip: view && spv.gaze === 'right', ground: { x: foot.x, y: foot.y + lift } }, 0)) // 그리는 쪽(SnapThumb)이 view 의 오른쪽 시선을 반전한다
-  // 파티클(제네시스 무기 등) — 다 퍼진 한 장(stillSim). 무기 이펙트를 끄거나 무기를 숨기는 링이면 없다(미리보기와 같은 규칙).
+  // 파티클(제네시스 무기 · 마라벨 무기 등) — 다 퍼진 한 장(stillSim). 무기 이펙트 · 마라벨 효과를 끄거나 무기를 숨기는 링이면 없다(미리보기와 같은 규칙).
   const ringIll = equipMetas.find(({ slot }) => slot === 'ring')?.meta.illusion
   const pHide = noFx || !!ringIll?.hideWeapon
   const pIdx = pHide && !shown.some(({ slot }) => ILLUSION_FREE_SLOTS.has(slot)) ? {} : await loadParticleIndex() // 다 가려지면 받지 않는다
-  const spots = shown.filter(({ slot, meta }) => pIdx[meta.id] && (!pHide || ILLUSION_FREE_SLOTS.has(slot)) && (slot !== 'weapon' || spv.wEffect)).flatMap(({ meta }) => spotsFor(pIdx[meta.id], charTV.action))
+  const spots = shown.filter(({ slot, meta }) => pIdx[meta.id] && (!pHide || ILLUSION_FREE_SLOTS.has(slot))).flatMap(({ slot, meta }) => shownSpots(spotsFor(pIdx[meta.id], charTV.action), slot, spv))
   const pDescs = new Map<string, ParticleDesc>()
   for (const d of await Promise.all([...new Set(spots.map((x) => x.name))].map((n) => loadParticle(n)))) if (d) pDescs.set(d.name, d)
   const particles = placeParticles(spots, pDescs, foot, (d) => stillSim(d))

@@ -15,7 +15,7 @@ import type { PlacedLayer } from '@/lib/core/assemble'
 import { assemble, dropBase, dropWeaponEffects, footOf, ILLUSION_FREE_SLOTS, weaponActionKey, frameDelays, getFrameLayers, hasBackFrame, isBackFrame, weaponPose, type AssembleInput } from '@/lib/core/assemble'
 import { loadAnima, loadEffect, loadEffectIndex, loadFloatItems, loadMeta, loadParticle, loadParticleIndex, loadWeaponMotion, type AnimaRace, type WeaponMotion, type EffectMeta, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { androidDx, androidKey, androidPlaced, androidView, loadAndroidParts, type AndroidParts } from '@/lib/core/android'
-import { ParticleSim, placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
+import { ParticleSim, placeParticles, shownSpots, spotsFor, stillSim, type ParticleDesc, type ParticleDraw, type ParticleSpot } from '@/lib/core/particle'
 import { applyHsb, loadDyeImage, buildOverrides, skinHsb as skinHsb2, type HsbParams, type PaletteParams } from '@/lib/core/dye'
 import { effectDraws, effectGroups, effectGroupsFor, effectPeriods, loadImage, renderCharacter, ringFloorOf } from '@/lib/core/render'
 import { PV_ACTIONS_FLAT, PV_EXPRS, PV_WEAPONS, type Pv } from '@/lib/catalog'
@@ -336,7 +336,7 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
   // 아이템만 볼 때의 가운데 — 합성이 바뀔 때마다 새로(첫 프레임의 bbox 로 한 번 정하고 애니메이션 내내 같은 자리)
   const bareBox = useMemo(() => (bare ? {} : undefined), [bare, spec, dims, pv.zoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 그릴 파티클 자리 — 이펙트와 같은 규칙으로 끈다(부위 숨김 · 무기 이펙트 끔 · 이펙트를 숨기는 링).
+  // 그릴 파티클 자리 — 이펙트와 같은 규칙으로 끈다(부위 숨김 · 무기 이펙트 끔 · 마라벨 효과 끔 · 이펙트를 숨기는 링).
   const partSpots = useMemo(() => {
     const ring = equipped['ring'] && !hidden['ring'] ? metas.get(equipped['ring'].id) : undefined
     const hide = !!(ring?.illusion?.hideEffect || ring?.illusion?.hideWeapon)
@@ -344,11 +344,10 @@ export default function PreviewModel({ src, cmp }: { src?: PreviewSource; cmp?: 
     for (const [slot, it] of Object.entries(equipped)) {
       if (!it || hidden[slot] || !particleIndex[it.id]) continue
       if (hide && !ILLUSION_FREE_SLOTS.has(slot)) continue // 링은 몸에 입은 것의 입자만 가린다
-      if (slot === 'weapon' && !pv.wEffect) continue
-      out.push(...spotsFor(particleIndex[it.id], V.action))
+      out.push(...shownSpots(spotsFor(particleIndex[it.id], V.action), slot, { wEffect: pv.wEffect, mlFx: pv.mlFx }))
     }
     return out
-  }, [equipped, hidden, metas, particleIndex, pv.wEffect, V.action])
+  }, [equipped, hidden, metas, particleIndex, pv.wEffect, pv.mlFx, V.action])
   useEffect(() => {
     const miss = [...new Set(partSpots.map((x) => x.name))].filter((n) => !partDescs.has(n))
     if (!miss.length) return

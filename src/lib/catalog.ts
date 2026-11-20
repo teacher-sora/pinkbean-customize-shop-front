@@ -9,7 +9,7 @@ export type Preset = { id: string; name: string }
 export type Pv = {
   action: string; weapon: string; expr: string; ear: string; form: string; gaze: string
   frame: number // 액션을 멈출 프레임(그 액션의 몇 번째 자세, 0부터). -1 = 재생(사용자 건의 — 서기의 세 번째 자세로 멈추기 등)
-  wEffect: boolean; cEffect: boolean; capEffect: boolean; floatFx: boolean; baseTag: boolean; fps: number; zoom: number
+  wEffect: boolean; cEffect: boolean; capEffect: boolean; mlFx: boolean; floatFx: boolean; baseTag: boolean; fps: number; zoom: number
 }
 
 // dev 사이트(dev 브랜치 배포 · 로컬)인가 — 빌드 때 정해진다(next.config 의 NEXT_PUBLIC_SITE_ENV = Vercel 의 VERCEL_ENV). 운영 빌드만 'production'.

@@ -16,7 +16,7 @@ import { assemble, dropBase, dropWeaponEffects, footOf, getFrameLayers, ILLUSION
 import { loadEffect, loadEffectIndex, loadMeta, loadParticle, loadParticleIndex, spriteUrl, type ItemMeta, type ListItem } from '@/lib/core/data'
 import { buildOverrides, type DyeState } from '@/lib/core/dye'
 import { MODEL_REF, canvasBitmap, computeModelPlacement, fitCanvas } from '@/lib/core/modelPlacement'
-import { placeParticles, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from '@/lib/core/particle'
+import { placeParticles, shownSpots, spotsFor, stillSim, type ParticleDesc, type ParticleDraw } from '@/lib/core/particle'
 import { effectDraws, renderCharacter, type EffectDraw } from '@/lib/core/render'
 import { androidInputs, androidView, loadAndroidParts } from '@/lib/core/android'
 import { modelShotBlob, scaledPng, type ModelShot } from '@/lib/canvasExport'
@@ -176,7 +176,7 @@ interface ModelProps {
   zmap: string[]; smap: Record<string, string>; skinHeadId?: string
   override?: Map<string, HTMLCanvasElement> // 내 모델: 배경(내 착용) 염색 오버라이드(이펙트 염색 포함)
   ctxEffs?: WornEff[]                       // 내 모델: 배경(내 착용)의 이펙트 — 망토 오라 등
-  pvEff?: { wEffect: boolean; cEffect: boolean } // 연출 토글(꺼진 이펙트는 카드에서도 안 보인다)
+  pvEff?: { wEffect: boolean; cEffect: boolean; mlFx?: boolean } // 연출 토글(꺼진 이펙트는 카드에서도 안 보인다)
   ctxExpr?: string                          // 배경(ctxItems)에 이미 구워진 표정
   faceMeta?: ItemMeta | null                // 배경의 성형 메타 — 표정 얼굴장식 카드가 얼굴을 다시 그릴 때 필요
   dye?: DyeState                            // 내 모델: 얼굴을 다시 그리면 그 표정으로 염색도 다시 구워야 한다
@@ -190,7 +190,7 @@ interface ModelProps {
 }
 function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, override, ctxEffs, pvEff, ctxExpr, faceMeta, dye, ear, weapon, stance, ctxAction, dotOffsets, fraction = CARD_FRACTION, fitW }: ModelProps) {
   // 합성 입력 전부(아래 합성 effect 의 의존과 같다) — 같으면 기억해 둔 그림을 쓴다
-  const mkey = [item.id, ctxKey, skinHeadId, gaze, item.fixedEmotion || ctxExpr, ear, weapon, stance, ctxAction, oid(ctxEffs), pvEff ? `${+pvEff.wEffect}${+pvEff.cEffect}` : "", oid(faceMeta), oid(override), oid(dotOffsets)].join('|')
+  const mkey = [item.id, ctxKey, skinHeadId, gaze, item.fixedEmotion || ctxExpr, ear, weapon, stance, ctxAction, oid(ctxEffs), pvEff ? `${+pvEff.wEffect}${+pvEff.cEffect}${+(pvEff.mlFx !== false)}` : "", oid(faceMeta), oid(override), oid(dotOffsets)].join('|')
   const [placed, setPlaced] = useState<PlacedLayer[] | null>(() => modelDone.get(mkey)?.placed ?? null)
   const [effs, setEffs] = useState<EffectDraw[]>(() => modelDone.get(mkey)?.effs ?? [])
   const [parts, setParts] = useState<ParticleDraw[]>(() => modelDone.get(mkey)?.parts ?? [])
@@ -308,11 +308,12 @@ function ModelThumb({ item, gaze, ctxItems, ctxKey, zmap, smap, skinHeadId, over
           if (em) draws.push(...effectDraws(em, view.action, anch, 0))
         }
       }
-      // 이 아이템 자신의 파티클(제네시스 무기의 붉은 파장 등) — 다 퍼진 한 장. 무기 이펙트를 끄면 없다.
+      // 이 아이템 자신의 파티클(제네시스 무기의 붉은 파장, 마라벨 무기의 안개 등) — 다 퍼진 한 장. 무기 이펙트 · 마라벨 효과를 끄면 없다.
       let parts: ParticleDraw[] = []
-      if (!alone && (ILLUSION_FREE_SLOTS.has(item.slot) || (!noFx && !ringIllusion([...bgF, ...self])?.hideWeapon)) && (!pvEff || effectEnabled(item.slot, pvEff))) {
+      if (!alone && (ILLUSION_FREE_SLOTS.has(item.slot) || (!noFx && !ringIllusion([...bgF, ...self])?.hideWeapon))) {
         const pIdx = await loadParticleIndex()
-        const spots = spotsFor(pIdx[item.id], view.action)
+        const all = spotsFor(pIdx[item.id], view.action)
+        const spots = pvEff ? shownSpots(all, item.slot, pvEff) : all
         if (spots.length) {
           const descs = new Map<string, ParticleDesc>()
           for (const d of await Promise.all([...new Set(spots.map((x) => x.name))].map((n) => loadParticle(n)))) if (d) descs.set(d.name, d)
@@ -385,7 +386,7 @@ export default function ItemThumb(props: {
   zmap: string[]; smap: Record<string, string>; skinHeadId?: string
   override?: Map<string, HTMLCanvasElement>
   ctxEffs?: WornEff[]
-  pvEff?: { wEffect: boolean; cEffect: boolean }
+  pvEff?: { wEffect: boolean; cEffect: boolean; mlFx?: boolean }
   ctxExpr?: string
   faceMeta?: ItemMeta | null
   dye?: DyeState

@@ -58,9 +58,9 @@ export const isMultiCat = (cat: string) => cat === 'all' || cat === 'new' || cat
 //  · 코디에 속하는 연출(PV_LOOK_DEFAULT) = 형상변이·귀·무기모션·이펙트 3종. 저장되고 **카드에도 그대로 그려진다**.
 //  · 보기 설정(PV_VIEW_DEFAULT) = 시선·액션·표정·배율. **정보로만** 담아 프리셋을 쓸 때 화면에 되살리고, 카드에는 적용하지 않는다.
 // 보기 설정은 광장에 올릴 때 빠진다(lib/plazaLook.plazaSnapshot) → 없을 수 있고, 없으면 지금 보던 값을 유지한다.
-export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; floatFx?: boolean; baseTag?: boolean // floatFx = 부유 아이템의 둥둥 뜨기(없으면 켜짐), baseTag = 명찰 반지가 없을 때 기본 명찰(없으면 꺼짐)
+export type PvSnap = { form: string; ear: string; weapon: string; wEffect: boolean; cEffect: boolean; capEffect: boolean; mlFx?: boolean; floatFx?: boolean; baseTag?: boolean // mlFx = 마라벨 무기의 안개 · 반짝임 파티클(없으면 켜짐), floatFx = 부유 아이템의 둥둥 뜨기(없으면 켜짐), baseTag = 명찰 반지가 없을 때 기본 명찰(없으면 꺼짐)
   gaze?: string; action?: string; frame?: number; expr?: string; zoom?: number }
-export const PV_LOOK_DEFAULT = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, floatFx: true, baseTag: false }
+export const PV_LOOK_DEFAULT = { form: 'none', ear: 'humanEar', weapon: 'basic', wEffect: true, cEffect: true, capEffect: true, mlFx: true, floatFx: true, baseTag: false }
 export const PV_VIEW_DEFAULT = { gaze: 'left', action: 'basic', frame: -1, expr: 'default', zoom: 2 }
 export const PV_SNAP_DEFAULT: PvSnap = { ...PV_LOOK_DEFAULT, ...PV_VIEW_DEFAULT }
 // 점(애교점) 위치 오프셋: 레이어이름(accessoryEye/accessoryEye2) → 월드 오프셋. 사소한 변경점/쩜 전용.
@@ -143,13 +143,13 @@ const histKey = (snap: Snapshot, sel: string | null, names?: Record<string, stri
 // 시선·액션·표정·fps 는 스냅샷에 담기지 않지만, 초기화는 **이것까지 전부** 되돌린다.
 const PV_DEFAULT: Pv = {
   action: 'basic', frame: -1, weapon: 'basic', expr: 'default', ear: 'humanEar', form: 'none',
-  gaze: 'left', wEffect: true, cEffect: true, capEffect: true, floatFx: true, baseTag: false, fps: 12, zoom: 2,
+  gaze: 'left', wEffect: true, cEffect: true, capEffect: true, mlFx: true, floatFx: true, baseTag: false, fps: 12, zoom: 2,
 }
 const defaultSnapshot = (): Snapshot => ({
   equipped: Object.fromEntries(Object.entries(DEFAULT_EQUIP).map(([slot, it]) => [slot, it.id])),
   tone: DEFAULT_TONE, dyePalette: {}, dyeHsb: {}, hidden: {}, dotPos: {},
   // 연출 설정도 프리셋마다 따로 각인된다 → 기본 프리셋은 '기본 연출'을 명시해 둔다(빈 값이면 카드마다 해석이 갈린다).
-  pv: { form: PV_DEFAULT.form, ear: PV_DEFAULT.ear, weapon: PV_DEFAULT.weapon, wEffect: PV_DEFAULT.wEffect, cEffect: PV_DEFAULT.cEffect, capEffect: PV_DEFAULT.capEffect, floatFx: PV_DEFAULT.floatFx, baseTag: PV_DEFAULT.baseTag, zoom: PV_DEFAULT.zoom },
+  pv: { form: PV_DEFAULT.form, ear: PV_DEFAULT.ear, weapon: PV_DEFAULT.weapon, wEffect: PV_DEFAULT.wEffect, cEffect: PV_DEFAULT.cEffect, capEffect: PV_DEFAULT.capEffect, mlFx: PV_DEFAULT.mlFx, floatFx: PV_DEFAULT.floatFx, baseTag: PV_DEFAULT.baseTag, zoom: PV_DEFAULT.zoom },
 })
 // 키 순서와 무관한 비교용 직렬화(프리셋이 기본값 그대로인지 판별 — "프리셋 n / 20" 카운트).
 const canon = (v: unknown): string => {
@@ -1201,8 +1201,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const pvRef = useRef(pv); pvRef.current = pv
   // 목록 '내 캐릭터' 카드와 같은 연출(thumbView — 시선 · 표정 · 귀 · 무기 모션 자세 + 형상 변이 · 이펙트, 액션은 서기). 남의 코디를 지금 연출로 보여 주는
   // 카드(코디 룩북)가 스냅샷에 이 값을 얹어 SnapThumb view 로 그린다 — composeSnapshot 의 view 모드가 액션 'basic' · 프레임 없음이면 thumbView 와 같은 규칙이다
-  const cardPv = useMemo<PvSnap>(() => ({ form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, floatFx: pv.floatFx, baseTag: pv.baseTag,
-    gaze: pv.gaze, action: 'basic', frame: -1, expr: pv.expr, zoom: pv.zoom }), [pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.floatFx, pv.baseTag, pv.gaze, pv.expr, pv.zoom])
+  const cardPv = useMemo<PvSnap>(() => ({ form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, mlFx: pv.mlFx, floatFx: pv.floatFx, baseTag: pv.baseTag,
+    gaze: pv.gaze, action: 'basic', frame: -1, expr: pv.expr, zoom: pv.zoom }), [pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.mlFx, pv.floatFx, pv.baseTag, pv.gaze, pv.expr, pv.zoom])
   const renderPaletteRef = useRef(renderPalette); renderPaletteRef.current = renderPalette
   const warmForPreview = useCallback((item: ListItem) => {
     if (item.slot === 'skin') return
@@ -1828,7 +1828,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     for (const [s, it] of Object.entries(equipped)) if (it) eq[s] = it.id
     return { equipped: eq, tone, dyePalette: { ...dyePalette }, dyeHsb: { ...dyeHsb }, hidden: { ...hidden }, dotPos: { ...dotPos },
       ...(Object.keys(dyeOff).length ? { dyeOff: { ...dyeOff } } : {}),
-      pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, floatFx: pv.floatFx, baseTag: pv.baseTag,
+      pv: { form: pv.form, ear: pv.ear, weapon: pv.weapon, wEffect: pv.wEffect, cEffect: pv.cEffect, capEffect: pv.capEffect, mlFx: pv.mlFx, floatFx: pv.floatFx, baseTag: pv.baseTag,
         // 보기 설정은 **정보로만** 담는다 — 프리셋을 쓸 때 화면을 되살리는 데만 쓰이고 카드에는 그려지지 않는다.
         gaze: pv.gaze, action: pv.action, frame: pv.frame, expr: pv.expr, zoom: pv.zoom }, bg: bgSel }
   }
@@ -1838,7 +1838,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const pvFromSnap = (prev: Pv, v?: PvSnap): Pv => {
     const s = v ?? PV_LOOK_DEFAULT
     return { ...prev,
-      form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, floatFx: s.floatFx ?? true, baseTag: s.baseTag ?? false,
+      form: s.form, ear: s.ear, weapon: s.weapon, wEffect: s.wEffect, cEffect: s.cEffect, capEffect: s.capEffect ?? true, mlFx: s.mlFx ?? true, floatFx: s.floatFx ?? true, baseTag: s.baseTag ?? false,
       gaze: v?.gaze ?? prev.gaze, action: v?.action ?? prev.action, frame: v?.frame ?? (v?.action != null ? -1 : prev.frame), expr: v?.expr ?? prev.expr, zoom: v?.zoom ?? prev.zoom }
   }
   const applyPvSnap = (v?: PvSnap) => setPvState((prev) => pvFromSnap(prev, v))
@@ -2170,7 +2170,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 저장 대상 pv 변경도 자동저장 트리거에 포함해야 새로고침 후 유지된다 — 코디 연출(형상변이·귀·무기모션·이펙트)과
     // 보기 설정(시선·액션·표정·배율) 모두. (fps 만 담지 않는다.)
   }, [equipped, tone, dyePalette, dyeHsb, dyeOff, hidden, dotPos, selectedPreset, presets,
-      pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.floatFx, pv.baseTag, pv.zoom, pv.gaze, pv.action, pv.expr, bgSel])
+      pv.form, pv.ear, pv.weapon, pv.wEffect, pv.cEffect, pv.capEffect, pv.mlFx, pv.floatFx, pv.baseTag, pv.zoom, pv.gaze, pv.action, pv.expr, bgSel])
 
   // 연출설정(pv) 전체를 새로고침 후에도 유지 — 프리셋 스냅샷엔 서브셋만 담기므로 전체 pv 를 별도 키에 영속.
   useEffect(() => {
