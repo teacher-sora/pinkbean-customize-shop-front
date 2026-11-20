@@ -10,8 +10,8 @@ import PageChip from '../frame/PageChip'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { labelBadgeImg, type ListItem } from '@/lib/core/data'
 import { ITEM_KINDS, ITEM_KIND_ROWS, MOBILE_GRID, type ListSort } from '@/lib/shopData'
-import { useShop, type GenderFilter, type ListMode, type ListDir } from '../ShopContext'
-import { Seg, type SegOpt } from '../ui/controls'
+import { useShop, type GenderFilter, type ListMode, type ListDir, type ListZoom } from '../ShopContext'
+import { Seg, SegStack, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconSearch, IconDirX, IconDirY, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
@@ -25,6 +25,12 @@ const VIEW_MODES: SegOpt<ListMode>[] = [
   { v: 'sprite', l: '아이템', t: '아이템 그림만 보기' },
   { v: 'model', l: '마네킹', t: '마네킹에 입힌 모습' },
   { v: 'mymodel', l: '내 캐릭터', t: '내 캐릭터에 입힌 모습' },
+]
+// 카드 캐릭터 배율 — 1배 = 지금까지의 크기, 2 · 3배 = 정수 배율 한 단계씩 크게(ShopContext ListZoom). '아이템' 보기는 그림을 칸에 맞춰 키워 두어 쓰지 않는다
+const ZOOMS: SegOpt<ListZoom>[] = [
+  { v: '1', l: '1배', t: '기본 크기' },
+  { v: '2', l: '2배', t: '한 단계 크게' },
+  { v: '3', l: '3배', t: '두 단계 크게' },
 ]
 export const GENDERS: SegOpt<GenderFilter>[] = [
   { v: 'all', l: '전체', t: '모든 아이템' },
@@ -113,8 +119,9 @@ export function usePagerX (vpRef: React.RefObject<HTMLDivElement | null>, on: bo
 // 버튼에는 무엇을 정하는 곳인지 적는다('연출 설정'처럼 — 지금 값만 적으면 무엇을 하는 버튼인지 알 수 없다는 지적). 펼친 칸은 바깥을 누르거나 Esc 로 닫는다 — 값을 골라도 닫지 않는다(이어서 고를 수 있게).
 // 같은 부품을 코디 룩북 머리도 쓴다(combo/ComboPanel — 사용자 지시: 같은 역할은 부품 하나)
 // 묶음 = 하나 고르기(Seg). set = 거르는 중(목록 '필터'를 전체가 아닌 것으로 골랐다) — 버튼도 켜진 모양이라 닫혀 있어도 거르는 중인 걸 안다
+// sub = 같은 묶음의 둘째 줄(값이 다르다 — '보기' 아래의 배율). 필터 두 줄과 같은 생김새로 한 트랙에 쌓는다(SegStack)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; set?: boolean; rows?: number[] }
+export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; set?: boolean; rows?: number[]; sub?: { title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void } }
 export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement | null>(null)
@@ -134,7 +141,9 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
         {groups.map((g) => (
           <Fragment key={g.label}>
             <span className={styles.filterLabel}>{g.label}</span>
-            <Seg variant="mobileFlex" title={g.title} opts={g.opts} value={g.value} onPick={g.onPick} rows={g.rows} />
+            {g.sub
+              ? <SegStack variant="mobileFlex" lines={[{ opts: g.opts, value: g.value, onPick: g.onPick, title: g.title }, g.sub]} />
+              : <Seg variant="mobileFlex" title={g.title} opts={g.opts} value={g.value} onPick={g.onPick} rows={g.rows} />}
           </Fragment>
         ))}
       </div>
@@ -319,7 +328,8 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
     ? { ...m, disabled: true, disabledTitle: '피부는 아이템 보기를 지원하지 않아요' }
     : m))
   const filterGroups: FilterGroup[] = [
-    { label: '보기', title: '아이템을 무엇에 입혀서 볼지', opts: viewOpts, value: thumbs.mode, onPick: s.setListMode },
+    { label: '보기', title: '아이템을 무엇에 입혀서 볼지', opts: viewOpts, value: thumbs.mode, onPick: s.setListMode,
+      sub: { title: '카드 캐릭터 크기', opts: thumbs.mode === 'sprite' ? ZOOMS.map((z) => ({ ...z, disabled: true, disabledTitle: '마네킹, 내 캐릭터 보기에서 쓸 수 있어요' })) : ZOOMS, value: s.listZoom, onPick: s.setListZoom } },
     { label: '성별', title: '성별', opts: GENDERS, value: s.genderFilter, onPick: s.setGenderFilter },
     { label: '방향', title: '넘기는 방향', opts: DIRS, value: s.listDir, onPick: s.setListDir },
     ...(isAi ? [] : [{ label: '정렬', title: '목록 순서', opts: SORTS, value: s.listSort, onPick: s.setListSort }]), // AI 코디 검색은 검색 순서 그대로

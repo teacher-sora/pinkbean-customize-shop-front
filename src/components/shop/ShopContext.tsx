@@ -45,6 +45,9 @@ import { RESTORE_ATTR, SEARCH_KEEP, type PresetOver, dropUiHistory, readUiPref, 
 
 type Dispatch<T> = React.Dispatch<React.SetStateAction<T>>
 export type ListMode = 'sprite' | 'model' | 'mymodel' // 보기 방식: 아이템 / 마네킹 / 내 캐릭터
+// 목록 카드의 캐릭터 배율(마네킹 · 내 캐릭터) — 1배 = 지금까지의 크기(기본), 2 · 3배 = 정수 배율을 한 단계씩 올린다(modelPlacement step).
+// 1배가 가장 작은 정수 배율인 화면(PC 100%)이 있어 더 줄이지 않고 키우기만 한다(사용자 지시)
+export type ListZoom = '1' | '2' | '3'
 export type ListDir = 'x' | 'y' // 목록 넘기는 방향: 가로 / 세로
 // 성별 필터: 전체 / 여캐가 입을 수 있는 것 / 남캐가 입을 수 있는 것 (공용은 항상 포함)
 export type GenderFilter = 'all' | 'f' | 'm'
@@ -281,6 +284,7 @@ export interface ShopCtx {
   warmForPreview: (item: ListItem) => void // 착용 전 워밍(현재 연출 기준 메타·첫 프레임·이펙트·발색)
   bookmarks: ListItem[]; isBookmarked: (id: string) => boolean; toggleBookmark: (item: ListItem) => void; clearBookmarks: () => void
   listMode: ListMode; setListMode: Dispatch<ListMode>
+  listZoom: ListZoom; setListZoom: Dispatch<ListZoom>
   bgSel: string // 지금 프리셋의 미리보기 배경(snapshot().bg 와 같은 값)
   listDir: ListDir; setListDir: Dispatch<ListDir> // 목록을 넘기는 방향(가로 · 세로) — 기본 가로
   listSort: ListSort; setListSort: (v: ListSort) => void // 코디 탭 목록의 정렬(기본순 · 인기순 · 최신순 — shopData.sortItems). 늘 유지
@@ -473,6 +477,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true }
   }, [])
   const [listMode, setListMode] = useState<ListMode>('model') // 기본=마네킹(코디는 모델이 기본)
+  const [listZoom, setListZoom] = useState<ListZoom>('1')
   // 목록 넘기는 방향. 가로 = 지금까지의 넘기기, 세로 = 같은 넘기기를 위아래로(PC · 절반 · 태블릿은 한 쪽씩, 모바일은 목록 안 세로 스크롤 — ListArea).
   const [listDir, setListDir] = useState<ListDir>('x')
   const [listSort, setListSortState] = useState<ListSort>('base')
@@ -783,6 +788,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const pref = readUiPref()
     if (pref.plazaSort === 'popular' || pref.plazaSort === 'recent') setPlazaSort(pref.plazaSort)
     if (pref.listMode === 'sprite' || pref.listMode === 'model' || pref.listMode === 'mymodel') setListMode(pref.listMode)
+    if (pref.listZoom === '2' || pref.listZoom === '3') setListZoom(pref.listZoom) // 배율도 보기처럼 영구
     if (pref.listSort === 'popular' || pref.listSort === 'recent') setListSortState(pref.listSort) // 정렬도 영구(방향처럼)
     if (pref.listDir === 'x' || pref.listDir === 'y') { listDirRef.current = pref.listDir; setListDir(pref.listDir) } // 넘기는 방향도 영구(사용자 지시 — 늘 같은 방향)
     if (pref.presetDir === 'x' || pref.presetDir === 'y') setPresetDir(pref.presetDir)
@@ -798,7 +804,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       aiQ, searchQuery, searchResults: searchResults.slice(0, SEARCH_KEEP),
     })
   }, [uiReady, activeCat, search, pageByCat, plazaFilter, plazaQ, aiQ, searchQuery, searchResults])
-  useEffect(() => { if (uiReady) writeUiPref({ plazaSort, listDir, listMode, listSort, ...(presetDir ? { presetDir } : {}) }) }, [uiReady, plazaSort, listDir, listMode, listSort, presetDir])
+  useEffect(() => { if (uiReady) writeUiPref({ plazaSort, listDir, listMode, listZoom, listSort, ...(presetDir ? { presetDir } : {}) }) }, [uiReady, plazaSort, listDir, listMode, listZoom, listSort, presetDir])
   const [rateResult, setRateResult] = useState<{ lines: RateLine[]; nonce: number } | null>(null) // 코디 평가(핑크빈이 하는 말)
   // 평가는 **눌러 받은 그 한 번만** 나온다(광장처럼 미리보기가 없는 탭에
   // 갔다 와도 지난 평가가 다시 나오지 않는다). PinkbeanRate 는 미리보기와 함께 언마운트됐다가 다시 붙으면서
@@ -2296,7 +2302,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     comboItem, comboOpen, openCombo, closeCombo, comboShown, comboDetail, setComboDetail, pickCombo, warmCombo, searchItems, comboTotal, comboTotalKnown: !!comboItem && comboCount.id === comboKey, setComboTotal, holdPager, warmWear, comboGender, setComboGender, comboDye, setComboDye,
     activeCat, setActiveCat, favorites, toggleFavorite, newIds,
     bookmarks, isBookmarked, toggleBookmark, clearBookmarks,
-    warmForPreview, cardPv, listMode, setListMode, bgSel, listDir, setListDir, listSort, setListSort, presetDir, setPresetDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
+    warmForPreview, cardPv, listMode, setListMode, listZoom, setListZoom, bgSel, listDir, setListDir, listSort, setListSort, presetDir, setPresetDir, bindVp, bindTrack, snapFrom, consumeSwipeClick,
     curIdx, pageCount, snapping, setIdx, step,
     bp, listNarrow: isNarrow(bp) || (bp === 'pc' && cmpOn && !cmpWide), cols, rows, itemsPerPage,
     plazaPosts, plazaList, plazaLoading: plazaConfigured() && !plazaLoaded, plazaReady: plazaConfigured(),

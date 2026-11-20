@@ -40,6 +40,7 @@ export function computeModelPlacement(a: {
   // snap 뒤 한 단계 올리기(모바일 카드 — shopData.CARD_LIFT_M): 마네킹이 칸 높이의 min 보다 작고, 한 단계 위가 칸 높이의 max · 폭 상한 maxW(px) 안이면 +1.
   // 정수 배율은 기기 배율 2 에서 32 → 64px 로 뛰어, 작은 화면(SE 2 · 3 그림 칸 77px)에서 반올림이 32px 쪽으로 떨어져 마네킹이 칸의 절반도 안 됐다
   lift?: { min: number; max: number; maxW: number }
+  step?: number       // snap · lift 로 정한 정수 배율에 더할 단계(목록 카드 배율 2 · 3배 = +1 · +2 — 늘 정수라 도트가 그대로다)
 }): ModelPlacement {
   const zoom = a.zoomMult ?? 1
   const cx = a.centerDx ?? MODEL_REF.centerDx
@@ -58,6 +59,7 @@ export function computeModelPlacement(a: {
     const h = (sc: number) => (sc * MODEL_REF.bodyRefH) / a.dpr
     if (h(scale) < a.lift.min * a.divH && h(scale + 1) <= Math.min(a.lift.max * a.divH, a.lift.maxW)) scale += 1
   }
+  if (a.step) scale += a.step
   if (a.scale) scale = a.scale
   // box*scale = 캔버스 디바이스 해상도(1:1 표시로 선명).
   const box = { w: canvasDevW / scale, h: canvasDevH / scale }
