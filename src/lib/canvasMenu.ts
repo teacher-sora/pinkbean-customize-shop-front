@@ -1,6 +1,7 @@
 // 우클릭 시 뜨는 가벼운 커스텀 메뉴(브라우저 기본 메뉴 대체). 바닐라 DOM — 컴포넌트/컨텍스트 결합 없음.
 // 렌더 루프와 무관하고, 열릴 때만 DOM 노드 하나를 만든다 → 성능 영향 없음.
 import { SAVE_SCALES, copyImage, getSaveScale, saveImage, setSaveScale } from './canvasExport'
+import { viewH, viewW } from './viewport'
 
 export interface CanvasMenuItem {
   label: string
@@ -113,8 +114,8 @@ export function openCanvasMenu (x: number, y: number, items: CanvasMenuItem[], o
   } else {
     // 뷰포트 밖으로 나가지 않게 위치 보정.
     const r = el.getBoundingClientRect()
-    const px = Math.min(x, window.innerWidth - r.width - 8)
-    const py = Math.min(y, window.innerHeight - r.height - 8)
+    const px = Math.min(x, viewW() - r.width - 8)
+    const py = Math.min(y, viewH() - r.height - 8)
     el.style.left = Math.max(8, px) + 'px'
     el.style.top = Math.max(8, py) + 'px'
     el.style.opacity = '1'

@@ -7,6 +7,7 @@
 // IntersectionObserver 가 없는 환경이면 마운트 뒤 true(예전처럼 모두 그린다).
 import { useState } from 'react'
 import { useIsoLayoutEffect } from '@/lib/uiState'
+import { viewH, viewW } from '@/lib/viewport'
 
 const MARGIN = '200px'
 type Shared = { io: IntersectionObserver; cbs: Map<Element, (on: boolean) => void> }
@@ -39,7 +40,7 @@ function nearNow (el: Element, root: Element | null, margin: string): boolean {
   if (!r.width || !r.height) return false
   const px = margin.split(/\s+/).map((v) => parseFloat(v) || 0)
   const [t, rt = t, b = t, l = rt] = px
-  const box = root ? root.getBoundingClientRect() : { top: 0, left: 0, bottom: innerHeight, right: innerWidth }
+  const box = root ? root.getBoundingClientRect() : { top: 0, left: 0, bottom: viewH(), right: viewW() }
   return r.bottom > box.top - t && r.top < box.bottom + b && r.right > box.left - l && r.left < box.right + rt
 }
 

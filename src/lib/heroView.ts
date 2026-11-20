@@ -7,6 +7,7 @@
 //  · 평소 보기는 저장하지 않는다(새로 열면 기본). 비교 중의 보기만 따로 기억한다(처음은 '크게' — readCmpView). 모바일이 아니게 되면(폭이 넓어지면) 속성을 뗀다(AppHeader).
 import { useSyncExternalStore } from 'react'
 import { mobileFit } from './mobileFit'
+import { viewW } from './viewport'
 
 export type HeroView = 'base' | 'wide' | 'full'
 export const RELAYOUT_EVENT = 'pb-relayout' // 칸이 크기는 그대로 자리만 옮겨 갔을 때(보기 바꾸기)
@@ -79,7 +80,7 @@ export const svhProbe = () => probe('height:100vh;height:100svh')
 export const heroBaseProbe = () => probe('height:var(--pb-hero-base)')
 // 지금 화면의 맞춤을 다시 구해 넣는다(lib/mobileFit — 첫 값은 머리 스크립트). 3번째 줄이 보이는 몫을 돌려준다
 export function applyMobileFit() {
-  const f = mobileFit(window.innerWidth, svhProbe().offsetHeight, window.devicePixelRatio || 1), root = document.documentElement
+  const f = mobileFit(viewW(), svhProbe().offsetHeight, window.devicePixelRatio || 1), root = document.documentElement
   if (root.style.getPropertyValue('--pb-hero-base') !== f.hero + 'px') { root.style.setProperty('--pb-hero-base', f.hero + 'px'); root.style.setProperty('--pb-boot-row', f.row + 'px') }
   return f.peek
 }

@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 import type { Opt } from '@/lib/catalog'
 import styles from './ui.module.css'
 import { useDismiss } from './useDismiss'
+import { viewH } from '@/lib/viewport'
 
 type Pos = { left: number; width: number; maxH: number; top: number | null; bottom: number | null }
 
@@ -33,10 +34,10 @@ export default function Dropdown({ options, value, onChange, variant, title, ari
     if (open) { setPos(null); return }
     const el = btnRef.current; if (!el) return
     const r = el.getBoundingClientRect(), GAP = 5, CAP = 220
-    const below = window.innerHeight - r.bottom - GAP, above = r.top - GAP
+    const below = viewH() - r.bottom - GAP, above = r.top - GAP
     const up = below < Math.min(CAP, above)
     const maxH = Math.min(CAP, (up ? above : below) - 8)
-    setPos({ left: Math.round(r.left), width: Math.max(120, Math.round(r.width)), maxH: Math.max(90, Math.round(maxH)), top: up ? null : Math.round(r.bottom + GAP), bottom: up ? Math.round(window.innerHeight - r.top + GAP) : null })
+    setPos({ left: Math.round(r.left), width: Math.max(120, Math.round(r.width)), maxH: Math.max(90, Math.round(maxH)), top: up ? null : Math.round(r.bottom + GAP), bottom: up ? Math.round(viewH() - r.top + GAP) : null })
   }
 
   useDismiss(open, (t) => !!(btnRef.current?.contains(t) || menuRef.current?.contains(t)), () => setPos(null))

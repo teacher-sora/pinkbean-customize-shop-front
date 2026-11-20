@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useDismiss } from '../ui/useDismiss'
 import styles from './preview.module.css'
+import { viewH } from '@/lib/viewport'
 
 export const POP_H = 330  // 3열 × 2줄 남짓 + 아래 줄
 export const POP_INSET = 10 // 영역 안쪽 여백 — 이만큼은 늘 영역 테두리와 떨어진다
@@ -32,7 +33,7 @@ export function popNear (btn: Box, area: Box): PopPos {
   const below = btn.bottom + POP_GAP, down = bottom - below
   const upEdge = Math.min(btn.top - POP_GAP, bottom), up = upEdge - top
   if (down >= Math.min(POP_H, POP_MIN) && down >= up) return { left, w, dir: 'down', top: Math.round(below), h: Math.round(Math.min(POP_H, down)) }
-  return { left, w, dir: 'up', bottom: Math.round(window.innerHeight - upEdge), h: Math.max(150, Math.round(Math.min(POP_H, up))) }
+  return { left, w, dir: 'up', bottom: Math.round(viewH() - upEdge), h: Math.max(150, Math.round(Math.min(POP_H, up))) }
 }
 
 // 열기 · 닫기(퇴장 전환을 기다렸다 떼어낸다). pos = 열린 자리(null = 닫힘)
