@@ -34,6 +34,13 @@ export function spotsFor(acts: Record<string, ParticleSpot[]> | undefined, actio
   const k = keys.find((x) => x === action || x.endsWith(`/${action}`)) ?? keys.find((x) => x.split('/').pop() === 'stand1') ?? keys[0]
   return k ? acts[k] : []
 }
+// 마라벨 무기 특유의 효과(여명의 빛 · 무한성단 · 피의 서약의 안개, 미궁의 연무의 다이아 · 반짝임 …) — 원본 파티클 이름이 'ML' 로 시작한다
+// (ML9th_… · ML12th_diamond_… · MLBlood_…). 연출 설정 > 이펙트의 '마라벨 효과'(pv.mlFx)가 켜고 끈다 — 무기 이펙트와 따로(사용자 지시).
+// 그 밖의 파티클(제네시스 · 데스티니 무기의 파장)은 지금처럼 무기 이펙트를 따른다.
+export const isMasterFx = (name: string) => name.startsWith('ML')
+// 연출 토글에 맞는 파티클 자리만. mlFx 가 없는 옛 스냅샷은 켜짐
+export const shownSpots = (spots: ParticleSpot[], slot: string, pv: { wEffect: boolean; mlFx?: boolean }): ParticleSpot[] =>
+  spots.filter((x) => (isMasterFx(x.name) ? pv.mlFx !== false : slot !== 'weapon' || pv.wEffect))
 // 붙는 자리 = 발 + origin(원본 노드의 origin — 제네시스는 (0,-40), 발에서 40px 위의 가슴께. 게임 화면으로 맞췄다).
 export function placeParticles(spots: ParticleSpot[], descs: Map<string, ParticleDesc>, foot: { x: number; y: number }, simOf: (d: ParticleDesc, i: number) => ParticleSim): ParticleDraw[] {
   const out: ParticleDraw[] = []

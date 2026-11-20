@@ -96,8 +96,9 @@ export function PvGroups({ group, onGroup, mobile }: { group: PvGroup; onGroup: 
     { key: 'ear', label: '귀', options: PV_EARS },
     { key: 'gaze', label: '시선', options: PV_GAZES },
   ]
-  const switches: { key: 'wEffect' | 'cEffect' | 'capEffect' | 'floatFx'; label: string }[] = [
+  const switches: { key: 'wEffect' | 'cEffect' | 'capEffect' | 'mlFx' | 'floatFx'; label: string }[] = [
     { key: 'wEffect', label: '무기 이펙트' }, { key: 'cEffect', label: '망토 이펙트' }, { key: 'capEffect', label: '모자 이펙트' },
+    { key: 'mlFx', label: '마라벨 효과' }, // 마라벨 무기의 안개 · 반짝임 · 다이아(파티클 'ML…') — 무기 이펙트와 따로 끈다
     { key: 'floatFx', label: '부유 효과' }, // 부유 아이템(별빛 걸음 등)을 끼었을 때 캐릭터가 둥둥 뜨는 것
   ]
   const groups: { key: PvGroup; label: string; summary: string }[] = [
