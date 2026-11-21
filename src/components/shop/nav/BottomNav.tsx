@@ -23,18 +23,30 @@ export const TABS = [
 ]
 const READY = new Set(['codi', 'search', 'info', 'preset', 'share'])
 
+// 고른 칩이 줄 밖에 있으면 보이도록 줄을 당겨 온다(다른 곳 — 펼친 창 · 같은 부위 다시 누르기 — 에서 바뀌어도). 처음 붙을 때는 바로, 그 뒤로는 부드럽게
+// (사용자 지시 — 같은 부위를 다시 눌러 전체로 돌아가면 줄이 맨 앞까지 자연스럽게 흘러가야 한다). 모바일 부위 줄 · 광장 분류 · PC 하단 줄이 같이 쓴다
+function useRevealOn(railRef: React.RefObject<HTMLElement | null>, on: string | undefined) {
+  const first = useRef(true)
+  useEffect(() => {
+    const el = railRef.current
+    const cur = el?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    const smooth = !first.current
+    first.current = false
+    if (!el || !cur) return
+    const l = cur.offsetLeft - 8, r = cur.offsetLeft + cur.offsetWidth + 8
+    const behavior: ScrollBehavior = smooth ? 'smooth' : 'auto'
+    if (l < el.scrollLeft) el.scrollTo({ left: l, behavior })
+    else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth, behavior })
+  }, [on, railRef])
+}
+// 고른 부위를 다시 누르면 전체로 돌아간다(사용자 지시 — 한벌옷을 보다가 한벌옷을 누르면 전체). 줄 · 펼친 창 어디서든 같다
+const nextCat = (id: string, cur: string) => (id === cur && id !== 'all' ? 'all' : id)
+
 // 모바일 목록 머리의 분류 탭(밑줄 탭). 미리보기 위 둥근 버튼들과 다른 모양이라 '이 목록에서 무엇을 볼지'로 읽힌다.
 // 고른 것이 바뀌면(다른 곳에서 바뀌어도) 고른 탭이 보이도록 가로로 당겨 온다. 코디 탭의 부위(CatTabsM)와 광장 분류(PlazaTabsM)가 같은 부품이다
 function TabsM({ label, items, on, pick, end }: { label: string; items: { id: string; label: string }[]; on: string; pick: (id: string) => void; end?: React.ReactNode }) {
   const railRef = useWheelRail()
-  useEffect(() => {
-    const el = railRef.current
-    const cur = el?.querySelector<HTMLElement>('[aria-pressed="true"]')
-    if (!el || !cur) return
-    const l = cur.offsetLeft - 8, r = cur.offsetLeft + cur.offsetWidth + 8
-    if (l < el.scrollLeft) el.scrollTo({ left: l })
-    else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth })
-  }, [on, railRef])
+  useRevealOn(railRef, on)
   const rail = (
     <nav ref={railRef} className={clsx('pb-norail', 'pb-fade', styles.catTabsM)} aria-label={label}>
       {items.map((p) => {
@@ -48,10 +60,11 @@ function TabsM({ label, items, on, pick, end }: { label: string; items: { id: st
   )
   return end ? <div className={styles.catRowM}>{rail}{end}</div> : rail
 }
-// 부위. jump = 코디 정보 / 염색 · 프리셋 탭에서 쓸 때 — 부위를 누르면 그 부위의 아이템을 보려는 것이라 코디 탭으로 넘어간다(하단 줄에 있던 때와 같다)
+// 부위. jump = 코디 정보 / 염색 · 프리셋 탭에서 쓸 때 — 부위를 누르면 그 부위의 아이템을 보려는 것이라 코디 탭으로 넘어간다(하단 줄에 있던 때와 같다).
+// 그때는 같은 부위를 눌러도 전체로 돌리지 않는다 — 목록이 안 보이는 탭에서 누른 것은 그 부위를 보러 가는 것이다
 export function CatTabsM({ jump }: { jump?: boolean } = {}) {
   const s = useShop()
-  const pick = (id: string) => { s.setActiveCat(id); if (jump) s.setPrimary('codi') }
+  const pick = (id: string) => { if (jump) { s.setActiveCat(id); s.setPrimary('codi') } else s.setActiveCat(nextCat(id, s.activeCat)) }
   return <TabsM label="부위" items={[...CAT_FIXED, ...s.catBar]} on={s.activeCat} pick={pick} end={<CatExpand mobile on={s.activeCat} onPick={pick} />} />
 }
 // 코디 광장 분류(자유 코디 ~ 코디 룩북) — 모바일은 코디 탭의 부위처럼 미리보기와 목록 머리 사이에 둔다(사용자 지시, PinkbeanShop)
@@ -80,18 +93,13 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
     ? PLAZA_FILTERS.map((f) => ({ id: f.id as string, label: f.label, on: s.plazaFilter === f.id, pick: () => s.setPlazaFilter(f.id) }))
     : [...CAT_FIXED, ...s.catBar].map((p) => ({ id: p.id, label: p.label, on: s.activeCat === p.id, pick: () => pickPart(p.id) }))
   // 고른 칩이 보이도록 줄을 당겨 온다 — 펼친 창에서 줄 밖의 부위를 고를 수 있다
-  const onChip = chips.find((c) => c.on)?.id
-  useEffect(() => {
-    const el = railRef.current, cur = el?.querySelector<HTMLElement>('[aria-pressed="true"]')
-    if (!el || !cur) return
-    const l = cur.offsetLeft - 8, r = cur.offsetLeft + cur.offsetWidth + 8
-    if (l < el.scrollLeft) el.scrollTo({ left: l })
-    else if (r > el.scrollLeft + el.clientWidth) el.scrollTo({ left: r - el.clientWidth })
-  }, [onChip, railRef])
+  useRevealOn(railRef, chips.find((c) => c.on)?.id)
   // 코디 정보 / 염색 · 프리셋에서 부위를 바꾸면 그 부위의 아이템을 보려는 것이다 — 코디 탭으로 넘어가 바로 보인다(사용자 지시).
+  // 목록이 보이는 탭(코디 · AI 코디 검색)에서 고른 부위를 다시 누르면 전체로(nextCat)
   const pickPart = (id: string) => {
-    s.setActiveCat(id)
-    if (s.primary === 'info' || s.primary === 'preset') s.setPrimary('codi')
+    const jump = s.primary === 'info' || s.primary === 'preset'
+    s.setActiveCat(jump ? id : nextCat(id, s.activeCat))
+    if (jump) s.setPrimary('codi')
   }
   const pickTab = (t: { id: string; label: string }) => {
     if (READY.has(t.id)) { s.setPrimary(t.id); return }
