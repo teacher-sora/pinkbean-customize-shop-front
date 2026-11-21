@@ -49,8 +49,9 @@ export const IconChevronRight = () => (
 export const IconSearch = ({ size = 14, className, bold }: P & { bold?: boolean }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 2} strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15l4.5 4.5" /></svg>
 )
+const STAR_PATH = 'M12 3.6l2.5 5.1 5.6.8-4 3.9.95 5.6L12 16.3l-5.05 2.7.95-5.6-4-3.9 5.6-.8z'
 export const IconStar = ({ size = 9, className }: P) => (
-  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.6l2.5 5.1 5.6.8-4 3.9.95 5.6L12 16.3l-5.05 2.7.95-5.6-4-3.9 5.6-.8z" /></svg>
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d={STAR_PATH} /></svg>
 )
 // 카드 왼쪽 아래 등급 표시 — 콜라보 · 부티크(게임에 그림이 없어 그린다. 마라벨 · 스라벨 리본 · 캐시 동전과 같은 자리 · 같은 크기).
 // 분홍 원(currentColor — 다크 모드 색은 CSS 가 준다) 안에 흰 글리프(--pb-mark-fg — 고른 필터 칸에서는 색을 뒤집는다): 콜라보 = 겹친 두 고리(협업 — ×는 지우기 단추로 읽혔다), 부티크 = 선물 상자(부티크 기프트)
@@ -195,6 +196,42 @@ export const IconHelpTab = ({ tab, size = 16 }: P & { tab: string }) => (
 export const IconSmile = ({ size = 16 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><circle cx="12" cy="12" r="8.5" /><path d="M8.6 14.2a4.2 4.2 0 0 0 6.8 0" /><path d="M9.2 9.8h.01M14.8 9.8h.01" /></svg>
 )
+const BUBBLE_PATH = 'M4.5 6.5A2 2 0 0 1 6.5 4.5h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5a2 2 0 0 1-2-2z'
 export const IconBubble = ({ size = 13 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M4.5 6.5A2 2 0 0 1 6.5 4.5h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5a2 2 0 0 1-2-2z" /></svg>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d={BUBBLE_PATH} /></svg>
 )
+// 카테고리 펼친 창의 부위 아이콘(사용자 지시 — 글자만으로는 감이 잘 안 온다. 펼친 창에서만 — 부위 줄은 빼곡해 자리가 없다).
+// 같은 24 격자 · 1.8 굵기. 서로 헷갈리지 않게 그렸다(귀고리는 드롭 한 쌍 — 하나면 일루전링과 같은 '고리 + 위 장식'으로 보였다). 지금은 dev 에서만(CatPicker)
+const CAT_PATHS: Record<string, JSX.Element> = {
+  all: <><path d="M12 3.8 3.6 8.3 12 12.8l8.4-4.5z" /><path d="M3.6 12.2 12 16.7l8.4-4.5" /><path d="M3.6 16 12 20.5l8.4-4.5" /></>, // 전체 — 쌓인 층
+  new: <><path d="M10.5 3.6c.6 3.9 2.3 5.6 6.2 6.2-3.9.6-5.6 2.3-6.2 6.2-.6-3.9-2.3-5.6-6.2-6.2 3.9-.6 5.6-2.3 6.2-6.2z" /><path d="M18 14.6c.3 1.9 1.1 2.7 3 3-1.9.3-2.7 1.1-3 3-.3-1.9-1.1-2.7-3-3 1.9-.3 2.7-1.1 3-3z" /></>, // 신규 — 반짝임
+  fav: <path d={STAR_PATH} />, // 즐겨찾기 — 별(카드의 즐겨찾기와 같은 경로)
+  hair: <><path d="M5.2 20.4V11a6.8 6.8 0 0 1 13.6 0v9.4" /><path d="M8.3 10.2v3.4a3.7 3.7 0 0 0 7.4 0v-3.4" /><path d="M8.3 10.2c2.6.2 5-1 6.3-3.2.3 1.3.6 2.4 1.1 3.2" /></>, // 헤어 — 긴 머리와 앞머리
+  plastic: <><path d="M2.8 13.2c2.6-3.9 5.6-5.8 9.2-5.8s6.6 1.9 9.2 5.8c-2.6 3.9-5.6 5.8-9.2 5.8s-6.6-1.9-9.2-5.8z" /><circle cx="12" cy="13.2" r="2.7" /><path d="M12 3.6v2.1M6.9 4.9l1.1 1.8M17.1 4.9 16 6.7" /></>, // 성형 — 속눈썹 눈
+  skin: <><path d="M8.2 13.4V6.6a1.45 1.45 0 0 1 2.9 0v5.2" /><path d="M11.1 11.6V5a1.45 1.45 0 0 1 2.9 0v6.6" /><path d="M14 11.8V7a1.45 1.45 0 0 1 2.9 0v6.9a6.4 6.4 0 0 1-6.4 6.4h-.4a5.6 5.6 0 0 1-4.6-2.4l-2.6-3.6a1.45 1.45 0 0 1 2.3-1.8l2 2" /></>, // 피부 — 손바닥
+  cap: <><path d="M7.2 14.2V10a4.8 4.8 0 0 1 9.6 0v4.2" /><path d="M3 16.3c0-1.3 4-2.3 9-2.3s9 1 9 2.3-4 2.3-9 2.3-9-1-9-2.3z" /><path d="M7.4 11.6h9.2" /></>, // 모자 — 챙 모자
+  faceacc: <><circle cx="12" cy="12" r="8.6" /><path d="M12 14.2c-1.3-1.5-3.2-1.8-4.7-1-.8.4-1.6.2-2-.3.3 1.7 1.9 2.8 3.8 2.6 1.4-.1 2.4-.7 2.9-1.3.5.6 1.5 1.2 2.9 1.3 1.9.2 3.5-.9 3.8-2.6-.4.5-1.2.7-2 .3-1.5-.8-3.4-.5-4.7 1z" /><path d="M9 9.3h.01M15 9.3h.01" /></>, // 얼굴장식 — 수염 얼굴
+  eyeacc: <><circle cx="7" cy="13.2" r="3.3" /><circle cx="17" cy="13.2" r="3.3" /><path d="M10.3 12.6c1.1-.7 2.3-.7 3.4 0" /><path d="M3.7 12.4 2.5 9.4M20.3 12.4l1.2-3" /></>, // 눈장식 — 안경
+  earring: <><circle cx="7.6" cy="4.6" r="1.2" /><path d="M7.6 5.8v2.6" /><path d="M7.6 8.4c-1.9 2.3-2.7 3.8-2.7 5a2.7 2.7 0 0 0 5.4 0c0-1.2-.8-2.7-2.7-5z" /><circle cx="16.4" cy="7.6" r="1.2" /><path d="M16.4 8.8v2.6" /><path d="M16.4 11.4c-1.9 2.3-2.7 3.8-2.7 5a2.7 2.7 0 0 0 5.4 0c0-1.2-.8-2.7-2.7-5z" /></>, // 귀고리 — 드롭 한 쌍
+  overall: <><path d="M9.4 3.6 8.9 8 4.8 20.4h14.4L15.1 8l-.5-4.4" /><path d="M8.9 8h6.2" /><path d="M9.4 3.6c.8 1 1.6 1.4 2.6 1.4s1.8-.4 2.6-1.4" /></>, // 한벌옷 — 원피스
+  top: <path d="M8.6 4 3.8 6.6l1.6 4.2 2.2-1.1V20h8.8V9.7l2.2 1.1 1.6-4.2L15.4 4c-.5 1.5-1.8 2.5-3.4 2.5S9.1 5.5 8.6 4z" />, // 상의 — 티셔츠
+  bottom: <><path d="M6.4 3.8h11.2l1 16.6H14L12 10.4l-2 10H5.4z" /><path d="M6.3 7h11.4" /></>, // 하의 — 바지
+  shoes: <><path d="M3.6 17.4V7.6h5.2l.9 3.2c2.6.3 5.2 1 7.7 2.2 1.6.8 2.6 1.8 2.6 3.2v1.2z" /><path d="M3.6 20.4h16.4" /><path d="M9.7 10.8 8.4 12.4M11.6 11.3l-1.2 1.6" /></>, // 신발 — 신발
+  gloves: <><path d="M8.3 20.4v-3.6L5.2 12a1.6 1.6 0 0 1 2.6-1.8l1.4 1.6V7.1a3.4 3.4 0 0 1 6.8 0v8.3l-.9 1.4v3.6" /><path d="M8.3 16.8h6.8" /></>, // 장갑 — 벙어리장갑
+  cape: <><path d="M8 3.8h8l1.2 3.4 3.4 12.8c-2.6-1-5.3-1.4-8.6-1.4S6 19 3.4 20L6.8 7.2z" /><path d="M8 3.8c1 1.6 2.4 2.4 4 2.4s3-.8 4-2.4" /><path d="M12 6.2v12.2" /></>, // 망토 — 망토
+  weapon: <><path d="M20.4 3.6v4.6l-9.6 9.6-4.6-4.6 9.6-9.6z" /><path d="M4.6 12l7.4 7.4" /><path d="M7.4 16.6l-3.8 3.8" /></>, // 무기 — 검
+  shield: <><path d="M12 3.5 4.9 6.1v5.6c0 4.3 2.9 7.6 7.1 9 4.2-1.4 7.1-4.7 7.1-9V6.1z" /><path d="M12 7.4v9.8M8 11.4h8" /></>, // 방패 — 방패
+  pet: <><circle cx="6.4" cy="10.6" r="1.7" /><circle cx="9.8" cy="6.4" r="1.7" /><circle cx="14.2" cy="6.4" r="1.7" /><circle cx="17.6" cy="10.6" r="1.7" /><path d="M12 12.4c-2.6 0-5.1 2.6-5.1 4.9 0 1.6 1.3 2.5 2.7 2.5.9 0 1.5-.4 2.4-.4s1.5.4 2.4.4c1.4 0 2.7-.9 2.7-2.5 0-2.3-2.5-4.9-5.1-4.9z" /></>, // 펫 — 발자국
+  android: <><rect x="5" y="8.2" width="14" height="11.2" rx="3" /><path d="M12 8.2V5.4" /><circle cx="12" cy="4.2" r="1.2" /><path d="M9.4 13.4h.01M14.6 13.4h.01" /><path d="M3.2 12.2v3.2M20.8 12.2v3.2" /><path d="M10 16.4h4" /></>, // 안드로이드 — 로봇 얼굴
+  ring: <><circle cx="12" cy="14.8" r="5.6" /><path d="M9.4 7.2 12 4l2.6 3.2L12 9.4z" /></>, // 일루전링 — 보석 반지
+  chatring: <><path d={BUBBLE_PATH} /><path d="M8.4 9h7.2M8.4 12.2h4.4" /></>, // 명찰 / 말풍선 — 글줄 말풍선(IconBubble 과 같은 테두리)
+  title: <><path d="M5.6 7.2h12.8v7.4H5.6z" /><path d="M5.6 9.4H2.4l1.6 2.6-1.6 2.6h3.2M18.4 9.4h3.2L20 12l1.6 2.6h-3.2" /></>, // 칭호 — 리본 띠
+  medal: <><path d="M7.6 3.6h3.2l1.9 5.2M16.4 3.6h-3.2l-1.6 4.4" /><circle cx="12" cy="15" r="5.2" /><path d="M12 12.4l.85 1.7 1.85.25-1.35 1.3.3 1.85L12 16.6l-1.65.9.3-1.85-1.35-1.3 1.85-.25z" /></>, // 훈장 — 끈 달린 별 메달
+  effect: <><path d="M4 20 13.6 10.4" /><path d="M16.6 3.6l.8 2.4 2.4.8-2.4.8-.8 2.4-.8-2.4-2.4-.8 2.4-.8z" /><path d="M20.2 12.6h.01M11.4 4.6h.01M19.6 17.2h.01" /></>, // 이펙트 — 요술봉
+  soul: <path d="M12 3.4c.4 3 4.6 4.9 4.6 9.7a4.6 4.6 0 0 1-9.2 0c0-2 1-3.5 2-4.4.2 1.6 1 2.6 2 2.9-.6-2.7-.3-5.6.6-8.2z" />, // 소울 — 불꽃
+  riding: <><path d="M3.6 16.2v-3.8l2.2-4.6h12.4l2.2 4.6v3.8z" /><circle cx="7.6" cy="16.8" r="2" /><circle cx="16.4" cy="16.8" r="2" /><path d="M4.6 12.4h14.8" /></>, // 라이딩 — 탈것
+  chair: <><path d="M8 3.6h8v8H8z" /><path d="M6.4 11.6h11.2" /><path d="M8 11.6v8.8M16 11.6v8.8" /></>, // 의자 — 의자
+}
+export const IconCat = ({ id, size = 15 }: P & { id: string }) => CAT_PATHS[id] ? (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flex: '0 0 auto' }} aria-hidden="true">{CAT_PATHS[id]}</svg>
+) : null
