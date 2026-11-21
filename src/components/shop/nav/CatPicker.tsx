@@ -54,14 +54,14 @@ function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: strin
           {CAT_FIXED.map((c) => (
             <button key={c.id} type="button" disabled={sorting} onClick={() => pick(c.id)} title={sorting ? '이 칸은 순서를 바꿀 수 없어요' : c.label}
               className={clsx(styles.catCell, ico, on === c.id && styles.catCellOn, sorting && styles.catCellLock)}>
-              {sorting ? <IconLock size={11} /> : CAT_ICONS && <IconCat id={c.id} size={mobile ? 17 : 15} />}<span className={styles.catCellName}>{c.label}</span>
+              {sorting ? <IconLock size={11} /> : CAT_ICONS && <IconCat id={c.id} size={mobile ? 18 : 16} />}<span className={styles.catCellName}>{c.label}</span>
             </button>
           ))}
           {s.catBar.map((c) => (
             <div key={c.id} role="button" tabIndex={0} data-preset-id={c.id} title={c.label} onClick={() => pick(c.id)} onPointerDown={(e) => dnd.onPointerDown(e, c.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(c.id) } }}
               className={clsx(styles.catCell, ico, on === c.id && styles.catCellOn, sorting && styles.catCellMove)}>
-              {CAT_ICONS && <IconCat id={c.id} size={mobile ? 17 : 15} />}<span className={styles.catCellName}>{c.label}</span>
+              {CAT_ICONS && <IconCat id={c.id} size={mobile ? 18 : 16} />}<span className={styles.catCellName}>{c.label}</span>
             </div>
           ))}
         </div>
