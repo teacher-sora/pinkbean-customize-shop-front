@@ -12,16 +12,13 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { useShop } from '../ShopContext'
 import { PopBox, popNear, usePop } from '../preview/PopBox'
 import { usePresetDrag } from '../preset/usePresetDrag'
-import { IconCaretDown, IconCat, IconLock, IconReorder, IconReset } from '../ui/Icons'
-import { DEV_SITE } from '@/lib/catalog'
+import { IconCaretDown, IconLock, IconReorder, IconReset } from '../ui/Icons'
 import styles from './nav.module.css'
 import { viewH, viewW } from '@/lib/viewport'
 
 export const CAT_FIXED = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }]
 const CAT_W_PC = 760
 const CAT_SIDE_M = 12 // 모바일 카드의 좌우 끝 = 목록 칸 여백 5(.viewportM) + 쪽 여백 7(.pageM). 창의 좌우 끝을 카드에 맞춘다
-// 칸마다 부위 아이콘(ui/Icons IconCat) — dev 에서 시험 중(사용자 지시). PC 는 글자 왼쪽, 모바일은 칸이 좁아 글자 위(칸 높이 50)
-const CAT_ICONS = DEV_SITE
 
 function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: string; onPick: (id: string) => void; close: () => void }) {
   const s = useShop()
@@ -29,7 +26,6 @@ function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: strin
   const gridRef = useRef<HTMLDivElement>(null), boxRef = useRef<HTMLDivElement>(null)
   const dnd = usePresetDrag(sorting, s.catBar.map((c) => c.id), gridRef, boxRef, s.reorderCats, styles.catDragging, 'cat')
   const pick = (id: string) => { if (sorting || dnd.swallowClick()) return; onPick(id); close() }
-  const ico = CAT_ICONS && clsx(styles.catCellIco, mobile && styles.catCellIcoM)
   return (
     <>
       <div className={styles.catHead}>
@@ -50,18 +46,18 @@ function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: strin
         </div>
       </div>
       <div ref={boxRef} className={clsx('pb-scroll', 'pb-fade', styles.catBody)}>
-        <div ref={gridRef} className={clsx(styles.catGrid, mobile && styles.catGridM, CAT_ICONS && mobile && styles.catGridIcoM)}>
+        <div ref={gridRef} className={clsx(styles.catGrid, mobile && styles.catGridM)}>
           {CAT_FIXED.map((c) => (
             <button key={c.id} type="button" disabled={sorting} onClick={() => pick(c.id)} title={sorting ? '이 칸은 순서를 바꿀 수 없어요' : c.label}
-              className={clsx(styles.catCell, ico, on === c.id && styles.catCellOn, sorting && styles.catCellLock)}>
-              {sorting ? <IconLock size={11} /> : CAT_ICONS && <IconCat id={c.id} size={mobile ? 18 : 16} />}<span className={styles.catCellName}>{c.label}</span>
+              className={clsx(styles.catCell, on === c.id && styles.catCellOn, sorting && styles.catCellLock)}>
+              {sorting && <IconLock size={11} />}<span className={styles.catCellName}>{c.label}</span>
             </button>
           ))}
           {s.catBar.map((c) => (
             <div key={c.id} role="button" tabIndex={0} data-preset-id={c.id} title={c.label} onClick={() => pick(c.id)} onPointerDown={(e) => dnd.onPointerDown(e, c.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(c.id) } }}
-              className={clsx(styles.catCell, ico, on === c.id && styles.catCellOn, sorting && styles.catCellMove)}>
-              {CAT_ICONS && <IconCat id={c.id} size={mobile ? 18 : 16} />}<span className={styles.catCellName}>{c.label}</span>
+              className={clsx(styles.catCell, on === c.id && styles.catCellOn, sorting && styles.catCellMove)}>
+              <span className={styles.catCellName}>{c.label}</span>
             </div>
           ))}
         </div>
