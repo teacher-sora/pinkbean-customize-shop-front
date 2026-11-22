@@ -20,6 +20,6 @@
 .sideM .decoM { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; row-gap: 8px; }
 
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.gridM { grid-template-columns: repeat(3, minmax(0, 1fr)); } /* 프리셋 탭 모바일과 같은 3열 */
+.gridM { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 모바일 2열 — 3열(115px)은 켠 칭호가 카드 위 · 옆으로 잘리고 '착용 중'과 겹쳤다. 한 벌의 프리셋은 많아야 넷 */
 /* 게임에서 지금 입고 있는 프리셋 */
 .badge { composes: pinkTag from '../ui/marks.module.css'; position: absolute; top: 7px; left: 7px; z-index: 1; padding: 0 8px; white-space: nowrap; pointer-events: none; }
