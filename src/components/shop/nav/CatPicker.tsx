@@ -18,10 +18,10 @@ import styles from './nav.module.css'
 import { viewH, viewW } from '@/lib/viewport'
 
 export const CAT_FIXED = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }]
-const CAT_W_PC = 760
 const CAT_SIDE_M = 12 // 모바일 카드의 좌우 끝 = 목록 칸 여백 5(.viewportM) + 쪽 여백 7(.pageM). 창의 좌우 끝을 카드에 맞춘다
-// 칸마다 부위 아이콘(ui/Icons IconCat — 메이플 메뉴 같은 꽉 찬 실루엣) — dev 에서 시험 중(사용자 지시). PC 는 글자 왼쪽, 모바일은 칸이 좁아 글자 위(칸 높이 50)
+// 칸마다 부위 아이콘(ui/Icons IconCat — 메이플 메뉴 같은 꽉 찬 실루엣) — dev 에서 시험 중(사용자 지시). PC 는 아이콘 · 글자를 왼쪽에 붙여 모든 칸의 아이콘이 같은 자리(사용자 지시 — 가운데 정렬은 글자 길이마다 아이콘 자리가 달랐다), 모바일은 칸이 좁아 글자 위(칸 높이 52)
 const CAT_ICONS = DEV_SITE
+const CAT_W_PC = CAT_ICONS ? 800 : 760 // 아이콘이 있으면 왼쪽에 아이콘 자리를 두느라 칸이 좁아 긴 이름(명찰 / 말풍선)이 잘렸다
 
 function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: string; onPick: (id: string) => void; close: () => void }) {
   const s = useShop()
