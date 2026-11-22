@@ -3,7 +3,7 @@
 /*
  * 핑크빈 커마샵 — 화면 조합 루트.
  * 상태/핸들러는 shop/ShopContext. 레이아웃 모드는 화면 폭(useBreakpoint): PC · 절반 · 태블릿 = 2분할, 모바일 = 세로 적층.
- * 시트·다이얼로그는 단일 서피스(shop/surface/Surface) 하나. 닉네임 불러오기의 코디 선택만 별도 다이얼로그(LookDialog)다.
+ * 시트·다이얼로그는 단일 서피스(shop/surface/Surface) 하나다.
  */
 
 import clsx from 'clsx'
@@ -19,7 +19,6 @@ import PreviewColumn, { MobileHero } from './shop/preview/PreviewColumn'
 import { useRidingGuards } from './shop/preview/pvControls'
 import { useScrollFades } from './shop/ui/useScrollFade'
 import Surface from './shop/surface/Surface'
-import LookDialog from './shop/LookDialog'
 import Toast from './shop/ui/Toast'
 import ConfirmBubble from './shop/ui/ConfirmBubble'
 import styles from './shop/frame/frame.module.css'
@@ -100,7 +99,6 @@ function Shell() {
       )}
       {!mobile && <BootMobile />}
       <Surface />
-      <LookDialog />
       <Toast />
       <ConfirmBubble />
     </>

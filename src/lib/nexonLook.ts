@@ -79,6 +79,10 @@ export function weaponMotionOf(itemData: NexonRaw | null, image?: string | null)
 function mergeItems(data: NexonRaw, prefix: string, presetNo: number): NexonItem[] {
   const bySlot: Record<string, RawCashItem> = {}
   for (const it of ((data[`${prefix}base`] as RawCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
+  // 월드 공유 마스터라벨을 켠 캐릭터는 기본 위 · 프리셋 아래에 그 칸들이 깔린다(룩북 판정 lib/lookChange 의 activeCash 와 같은 순서 —
+  // 넥슨 그림과 대조해 확인). 읽지 않던 때는 프리셋이 덮지 않는 칸이 불러올 때 빠졌다. 두 번째 벌(additional)에는 없다
+  if (prefix === 'cash_item_equipment_' && data.world_share_master_label_activate_flag === '1')
+    for (const it of ((data.world_share_master_label_base as RawCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
   if (presetNo) for (const it of ((data[`${prefix}preset_${presetNo}`] as RawCashItem[]) || [])) bySlot[it.cash_item_equipment_slot] = it
   return Object.values(bySlot)
     // 반투명 시리즈(반투명 모자/한벌옷/신발/망토/무기)는 자체 스프라이트가 없이 "그 부위의 일반 장비를 그대로

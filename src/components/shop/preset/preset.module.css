@@ -71,10 +71,6 @@
 .badgeM { width: 19px; padding: 0; justify-content: center; border-radius: 4px; top: auto; bottom: 45px; left: 5px; } /* 모바일 4열: 그림 칸 왼쪽 아래(이름 줄 39 + 6 위) — 위에 두면 좁은 카드에서 삭제 띠지와 붙었다 */
 .thumb { position: relative; flex: 1 1 auto; width: 100%; aspect-ratio: 3/4; background: light-dark(#f7f2ec, #3b3d45); border-radius: 7px 7px 0 0; display: flex; align-items: center; justify-content: center; overflow: hidden; isolation: isolate; }
 /* 프리셋의 미리보기 배경(preview/StageBg 의 CardStageBg) — 캐릭터 그림 뒤에 */
-/* 불러오기 창(LookDialog)의 장식 토글(간이) — 켜면 분홍 */
-.takeRow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.takePill { height: 24px; padding: 0 10px; border: 1px solid light-dark(#efe6dc, #4b4e57); border-radius: 999px; background: light-dark(#fff, #303238); color: light-dark(#a89e93, #8a8d95); font: inherit; font-size: calc(11.5rem / 16); font-weight: 500; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
-.takePillOn { border-color: light-dark(#f5c8da, #7a4a5e); background: light-dark(#fdf0f5, #4f323d); color: light-dark(#c05a94, #cb9ab6); }
 .thumbBg { position: absolute; inset: 0; z-index: -1; }
 .nameRow { position: relative; flex: 0 0 auto; padding: 8px; display: flex; align-items: center; gap: 4px; border-top: 1px solid light-dark(#f4efe8, #3e4048); }
 .nameWrap { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; }

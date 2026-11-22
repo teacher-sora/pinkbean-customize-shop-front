@@ -62,6 +62,11 @@
 .catCell { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 6px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(12.5rem / 16); font-weight: 500; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; user-select: none; -webkit-user-select: none; }
 .catCell { transition: background-color .22s ease, border-color .22s ease, color .22s ease; } /* 옮기는 칸은 button 이 아니라 전역 전환을 받지 못한다. transform 은 끌기가 쓰므로 넣지 않는다 */
 .catCellName { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 부위 아이콘(dev 시험 — CatPicker CAT_ICONS): PC 는 글자 왼쪽, 모바일은 칸이 좁아 글자 위 */
+.catCellIco { justify-content: flex-start; gap: 7px; padding-left: 10px; }
+.catCellIcoM { flex-direction: column; justify-content: center; gap: 3px; padding: 0 4px; }
+.catCellIcoM > .catCellName { max-width: 100%; }
+.catGridIcoM { grid-auto-rows: 52px; }
 .catCellOn { font-weight: 600; background: light-dark(#ec86ac, #d15785); border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
 .catCellLock { opacity: .5; filter: grayscale(1); cursor: not-allowed; }
 .catCellMove { cursor: grab; touch-action: none; border-style: dashed; }

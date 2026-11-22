@@ -97,10 +97,11 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 // combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
-export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave }
+// look = 'look'(닉네임으로 불러온 코디 고르기)의 닉네임과 코디 후보
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] } }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
@@ -251,7 +252,7 @@ const loadCmpSet = (owner: string): CmpSaved | null => {
 // 비교 칸의 보기 설정(시선 · 액션 · 프레임 · 표정)은 칸마다 따로 둔다 — 칸을 고르면 그 칸의 설정이 연출 설정 · 목록에 그대로 온다(사용자 지시:
 // 목록은 고른 칸에 맞춘다). 배율만 모든 칸이 지금 값을 함께 쓴다 — 같은 크기여야 견줄 수 있다
 export const withView = (v: PvSnap | undefined, cur: Pv): PvSnap => ({ ...PV_SNAP_DEFAULT, ...(v || {}), zoom: cur.zoom })
-// 불러오기 후보. 다이얼로그 구조 = [코디 탭(제로/엔버만 2개)] + [그 코디의 프리셋 카드들].
+// 불러오기 후보. 고르는 창(서피스 'look') = [코디 고르기(제로/엔버만 2벌)] + [그 코디의 프리셋 카드들].
 export type PresetOption = { key: string; label: string; active: boolean; snap: Snapshot }
 export type LookOption = { key: string; label: string; presets: PresetOption[] }
 export interface ShopCtx {
@@ -380,9 +381,8 @@ export interface ShopCtx {
   nickInput: string; setNickInput: Dispatch<string>
   importFetch: () => void
   importing: boolean
-  // 코디 선택(닉네임 불러오기) — 코디 × 치장 프리셋 고르기
-  lookPick: { nick: string; options: LookOption[] } | null
-  chooseLook: (lookKey: string, presetKey: string) => void; closeLookPick: () => void
+  // 코디 선택(닉네임 불러오기, 서피스 'look') — 코디 × 치장 프리셋 고르기
+  chooseLook: (lookKey: string, presetKey: string) => void
   shareCurrentLink: () => void
   applySharedToPreset: (snap: Snapshot, targetId: string, msg?: string) => void
   rateCodi: () => void
@@ -543,8 +543,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const putCmpSet = (owner: string, f: (c: CmpSet) => CmpSet) => setCmpSets((m) => ({ ...m, [owner]: f(m[owner] ?? { ids: [], last: null }) }))
   const [nickInput, setNickInput] = useState('')
   const [importing, setImporting] = useState(false) // 불러오기 진행 중(로딩 애니메이션)
-  // 코디가 2벌인 캐릭터(제로=알파/베타, 엔젤릭버스터=일반/드레스업) → 어느 걸 가져올지 고르는 다이얼로그.
-  const [lookPick, setLookPick] = useState<{ nick: string; options: LookOption[] } | null>(null)
   const [toast, setToast] = useState(false)
   const [toastText, setToastText] = useState('')
 
@@ -2011,15 +2009,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     try {
       const opts = await importByNick(val)
       if (!opts) return
-      setLookPick({ nick: val, options: opts })
+      openSurface({ kind: 'look', item: null, look: { nick: val, options: opts } })
     } finally { setImporting(false) }
   }
-  // 다이얼로그에서 코디 × 프리셋을 골랐다 → 그 한 벌을 적용.
+  // 고르는 창에서 코디 × 프리셋을 골랐다 → 그 한 벌을 적용하고 창을 닫는다.
   const chooseLook = async (lookKey: string, presetKey: string) => {
-    const lp = lookPick
+    const lp = surfaceRef.current?.kind === 'look' ? surfaceRef.current.look : undefined
     if (!lp) return
     const opt = lp.options.find((o) => o.key === lookKey)?.presets.find((p) => p.key === presetKey)
-    setLookPick(null)
+    closeSurface()
     if (!opt) return
     // 장식(칭호 · 명찰 · 훈장 · 말풍선)은 불러오기 창에서 켠 것만 넣는다 — 기본은 모두 꺼짐(사용자 지시)
     const take = readUiPref().nickTake ?? {}
@@ -2319,7 +2317,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pv, setPv,
     presets, presetData, selectedPreset, presetUsed, selectPreset, sharePreset, resetPreset, renamePreset, reorderPresets, commitPresetName, snapshot,
     nickInput, setNickInput, importFetch, importing, shareCurrentLink, applySharedToPreset, rateCodi, rating, rateBusy: rating || rateShow, endRate, rateResult, takeRate,
-    lookPick, chooseLook, closeLookPick: () => setLookPick(null),
+    chooseLook,
     toast, toastText, notify,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
