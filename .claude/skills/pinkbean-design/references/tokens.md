@@ -102,7 +102,7 @@
 | 카드 이동 | `transform .18s ease` |
 | 서피스·서랍·시트(열림·닫힘 같은 곡선) | `.26~.3s cubic-bezier(.45,0,.55,1)`, 불투명도 `.22s`, 뒤의 막 `.24s`. 모바일 시트는 300ms(`surface/sheetMotion.ts`) |
 | 목록의 쪽 넘김 | `.34s cubic-bezier(.22,.61,.36,1)` |
-| 창을 떼어 내는 시점 | 닫힘 전환이 끝난 뒤(320ms — `ui/useDialogFade.ts`) |
+| 창을 떼어 내는 시점 | 닫힘 전환이 끝난 뒤(320ms — `ShopContext` 의 `SURFACE_UNMOUNT_MS`) |
 | 토스트 | `.28s` |
 
 - 나타나는 전환이 보이도록, 붙인 뒤 **한 프레임 뒤에** 위치를 바꾼다.

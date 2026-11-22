@@ -33,10 +33,16 @@ export default function PlazaTakeBody({ snap, mobile, title }: { snap: Snapshot;
 
 function TakeCard({ name, cur, onPick }: { name: string; cur: Snapshot | undefined; onPick: () => void }) {
   const card = useMemo(() => (cur ? presetCard(cur) : undefined), [cur])
+  return <PickCard name={name} title={`'${name}'에 저장`} onPick={onPick}>{card && <SnapThumb snap={card} view />}</PickCard>
+}
+
+// 코디 한 벌을 골라 누르는 카드(그림 + 이름) — 이 창과 닉네임으로 불러온 코디 고르기(preset/LookPickBody)가 함께 쓴다.
+// children = 그림 칸 안(SnapThumb, 칸 위에 얹는 표시)
+export function PickCard({ name, title, onPick, children }: { name: string; title: string; onPick: () => void; children?: React.ReactNode }) {
   return (
     <div className="pb-presetwrap">
-      <div onClick={onPick} className="pb-preset" title={`'${name}'에 저장`}>
-        <div className={styles.takeCardThumb}>{card && <SnapThumb snap={card} view />}</div>
+      <div onClick={onPick} className="pb-preset" title={title}>
+        <div className={styles.takeCardThumb}>{children}</div>
         <div className={styles.takeCardFoot}><div className={styles.takeCardName}>{name}</div></div>
       </div>
     </div>

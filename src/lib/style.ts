@@ -1,5 +1,5 @@
 // 인라인 스타일 유틸.
-// 인라인으로 그리는 LookDialog 와, 색을 인라인으로 주는 몇 곳(FeedbackThread 의 답글 줄 · Icons 의 연필)만 이 css() 를 쓴다. 나머지는 CSS Module 이다.
+// 색을 인라인으로 주는 몇 곳(FeedbackThread 의 답글 줄 · Icons 의 연필)만 이 css() 를 쓴다. 나머지는 CSS Module 이다.
 
 function toCamel(prop: string): string {
   if (prop.startsWith('--')) return prop // CSS custom property: 그대로

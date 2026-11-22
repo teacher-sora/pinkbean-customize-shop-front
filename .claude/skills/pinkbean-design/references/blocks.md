@@ -26,6 +26,7 @@
 | 아이템 카드(즐겨찾기·북마크·염색 버튼) | `list/ItemCard.tsx` — 전역 `pb-cardwrap > pb-card` |
 | 코디(스냅샷) 카드(좋아요·수상 배지·지우기) | `plaza/PlazaCard.tsx` |
 | 프리셋 카드 격자(이름 바로 고치기) | `preset/PresetPanel.tsx` — 전역 `pb-presetwrap > pb-preset` |
+| 코디 한 벌을 골라 누르는 카드(그림 + 이름) | `plaza/PlazaTakeBody.tsx` 의 `PickCard` — 공유받은 코디 · 닉네임으로 불러온 코디(`preset/LookPickBody`)가 함께 쓴다. 그림은 children(`SnapThumb`) |
 | 빈 상태 | `frame/EmptyState.tsx` — `size` 로 자리를 고른다(`pc` 제목 15/600 + 안내 12.5, `m` · `plaza` · `plazaM` 14 + 12, `part` 13 + 11.5). 색 `#8a8075` / `#b7ada2`, 아이콘 없음 |
 | 패널 틀(면 · 머리 · 가로줄 · 아래 안내 줄) | `frame/panel.module.css` — 각 패널 모듈이 `composes` 로 받고 다른 값만 덧붙인다 |
 | 쪽 칩 `[N개 \| ‹ 번호 / 총수 ›]` | `frame/PageChip.tsx` — 목록 · 광장(`tight`) · 코디 룩북(`idle`) · 도움 및 건의함(`num`) |
@@ -39,7 +40,7 @@
 
 | 무엇 | 어디 |
 |---|---|
-| 창(PC) / 하단 시트(모바일) | `surface/Surface.tsx` — 종류 `pv` `bm` `dye` `dot` `part` `bg` `vs` `plaza` `ptake` `notice`. 발의 버튼은 `SurfaceFooter({ onApply, applyLabel, onBack })` |
+| 창(PC) / 하단 시트(모바일) | `surface/Surface.tsx` — 종류 `pv` `bm` `dye` `dot` `part` `bg` `vs` `plaza` `ptake` `look` `notice`. 발의 버튼은 `SurfaceFooter({ onApply, applyLabel, onBack })` |
 | 막 닫기 | `ui/useMaskClose.ts` — 누름과 뗌이 모두 막일 때만 닫고, 닫은 뒤 따라오는 click 은 버린다 |
 | 바깥 누름 · Esc 로 닫기(펼침 창 · 팝박스 · 말 입력칸) | `ui/useDismiss.ts` — `event: 'click'` + `swallow` 면 바깥 누름을 아래로 넘기지 않는다, `esc` 로 Esc 를 끄거나 그때그때 묻는다 |
 | 펼침 창의 겉(흰 면 · 분홍 테두리 · 반경 8 · 그림자) | `ui/pop.module.css` 의 `.pop` — `composes` |

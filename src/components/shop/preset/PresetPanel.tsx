@@ -1,6 +1,6 @@
 'use client'
 
-// 프리셋 100칸(사용자 지시 — 기기에만 저장되고 공유할 때만 서버에 오른다). 카드 그림은 스크롤 칸에서 보일 즈음에만 합성 · 그린다(SnapThumb 이 스스로 — ui/useSeen). 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(LookDialog) · 복사/삭제 띠지 · 인라인 이름.
+// 프리셋 100칸(사용자 지시 — 기기에만 저장되고 공유할 때만 서버에 오른다). 카드 그림은 스크롤 칸에서 보일 즈음에만 합성 · 그린다(SnapThumb 이 스스로 — ui/useSeen). 선택된 프리셋에 자동 저장 · 닉네임/공유 링크 불러오기(서피스 look · ptake) · 복사/삭제 띠지 · 인라인 이름.
 
 import clsx from 'clsx'
 import CountChip from '../frame/CountChip'

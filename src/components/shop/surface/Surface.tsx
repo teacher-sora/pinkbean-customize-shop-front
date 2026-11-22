@@ -13,6 +13,7 @@
  *  - 등장은 마운트 후 한 프레임 뒤, 닫힘은 대칭 곡선 후 320ms 뒤 언마운트(ShopContext).
  *  - PC 등장·퇴장은 translateY + opacity 만(scale 금지 — 내용까지 확대돼 미리보기 캔버스가 움찔한다).
  *  - 부위 염색 ↔ 염색/점 위치 전환은 패널을 유지한 채 **본문만** 가로 슬라이드(본문 래퍼만 kind·item 키로 리마운트).
+ *  - 닉네임으로 불러온 코디 고르기(look)도 이 틀이다.
  *  - 모든 종류에 공용 푸터(닫기)가 있다. 부위 염색을 거쳐 들어온 염색/점 위치만 '이전'.
  */
 
@@ -29,6 +30,7 @@ import ChatEmoPicker from '../preview/ChatEmoPicker'
 import PlazaDetailBody from '../plaza/PlazaDetailBody'
 import PlazaTakeBody from '../plaza/PlazaTakeBody'
 import NoticeBody from '../plaza/NoticeBody'
+import LookPickBody from '../preset/LookPickBody'
 import { plazaWhen } from '@/lib/plaza'
 import { IconClose } from '../ui/Icons'
 import { useMaskClose } from '../ui/useMaskClose'
@@ -185,8 +187,8 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
   const k = sf.kind
   const title = k === 'card' ? '코디 프로필' : k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'emo' ? '이모티콘'
-    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? (sf.combo ? '코디 룩북' : '공유받은 코디') : k === 'notice' ? '도움 및 건의함' : (sf.item?.name || sf.item?.id || '')
-  const sub = k === 'pv' ? '미리보기 연출' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' || k === 'card' ? '' : k === 'notice' ? NEXON_CREDIT // 출처 표기(lib/nexonLook) — 앱 어디서나 닿는 자리
+    : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? (sf.combo ? '코디 룩북' : '공유받은 코디') : k === 'notice' ? '도움 및 건의함' : k === 'look' ? (sf.look?.nick ?? '') : (sf.item?.name || sf.item?.id || '')
+  const sub = k === 'pv' ? '미리보기 연출' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' || k === 'card' ? '' : k === 'notice' || k === 'look' ? NEXON_CREDIT // 출처 표기(lib/nexonLook) — 넥슨 데이터를 보여 주는 창(닉네임으로 불러온 코디)과 앱 어디서나 닿는 자리
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
 
@@ -233,6 +235,8 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'plaza' && sf.post && <><PlazaDetailBody post={sf.post} mobile={mobile} /><SurfaceFooter /></>}
             {/* 공유받은 코디 — 광장 상세를 거쳐 왔으면(post 있음) '이전'으로 상세로 되돌아가고, 링크·코드로 받은 경우는 '닫기'. */}
             {k === 'ptake' && sf.take && <><PlazaTakeBody snap={sf.take} mobile={mobile} title={sf.combo ? '코디 룩북' : undefined} /><SurfaceFooter onBack={sf.post ? s.plazaTakeBack : undefined} /></>}
+            {/* 닉네임으로 불러온 코디 — 카드를 누르면 그 한 벌을 지금 프리셋에 넣고 닫는다 */}
+            {k === 'look' && sf.look && <><LookPickBody nick={sf.look.nick} options={sf.look.options} mobile={mobile} /><SurfaceFooter /></>}
             {k === 'notice' && <NoticeBody mobile={mobile} />}   {/* 푸터는 본문이 그린다(상세에서 '이전') */}
             {k === 'card' && <ProfileCardBody mobile={mobile} />}   {/* 푸터(닫기 · 저장)는 본문이 그린다 */}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} init={sf.dyeInit} />}

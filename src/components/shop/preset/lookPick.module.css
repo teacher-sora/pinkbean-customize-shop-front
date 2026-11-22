@@ -1,0 +1,25 @@
+/* 닉네임으로 불러온 코디 고르기(LookPickBody). 설정 줄은 코디 프로필 창의 줄을 그대로 받는다(composes).
+   PC · 절반 · 태블릿: 왼쪽 카드 칸 | 오른쪽 설정 칸(염색 창의 조절 칸과 같은 폭 300). 두 칸 모두 스크롤바 자리(pb-gutter — 마우스 화면은 8px)를 잡아 두고,
+   그 자리 + 칸의 여백이 옆 여백이다. 터치 기기는 자리를 잡지 않으므로 여백으로 채운다.
+   모바일: 본문 하나가 스크롤된다(칸을 겹쳐 스크롤하지 않는다) — 위 = 설정 줄, 아래 = 카드 */
+.body { flex: 1 1 auto; min-height: 0; display: flex; }
+.cards { flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 8px 0; border-right: 1px solid light-dark(#f0e9e1, #42454d); }
+.side { flex: 0 0 300px; min-width: 0; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 0 8px; display: flex; flex-direction: column; }
+@media (hover: none), (pointer: coarse) { .cards { padding: 8px; } .side { padding: 0 16px; } }
+
+.bodyM { flex: 1 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
+.sideM { flex: 0 0 auto; padding: 0 12px; display: flex; flex-direction: column; border-bottom: 1px solid light-dark(#f0e9e1, #42454d); }
+.cardsM { flex: 0 0 auto; padding: 12px; }
+
+.group { composes: group from '../surface/profileCard.module.css'; }
+.sideM .group { padding: 14px 0; } /* 코디 프로필의 모바일 묶음 여백 */
+.rule { composes: rule from '../surface/profileCard.module.css'; }
+.row { composes: row from '../surface/profileCard.module.css'; }
+.rowLabel { composes: rowLabel from '../surface/profileCard.module.css'; }
+/* 모바일: 장식 넷을 두 줄 두 칸으로 — 카드가 한 화면에 함께 들어오게 */
+.sideM .decoM { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; row-gap: 8px; }
+
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.gridM { grid-template-columns: repeat(3, minmax(0, 1fr)); } /* 프리셋 탭 모바일과 같은 3열 */
+/* 게임에서 지금 입고 있는 프리셋 */
+.badge { composes: pinkTag from '../ui/marks.module.css'; position: absolute; top: 7px; left: 7px; z-index: 1; padding: 0 8px; white-space: nowrap; pointer-events: none; }
