@@ -12,6 +12,7 @@ import { readUiPref, writeUiPref } from '@/lib/uiState'
 import { PickCard } from '../plaza/PlazaTakeBody'
 import SnapThumb from '../SnapThumb'
 import { CARD_FIT_W_M, PRESET_FRACTION, PRESET_FRACTION_M } from '@/lib/shopData'
+import karing from '@/assets/karing.webp'
 import { NICK_TAKE_SLOTS, useShop, type LookOption, type Snapshot } from '../ShopContext'
 import { Seg, Switch } from '../ui/controls'
 import styles from './lookPick.module.css'
@@ -54,6 +55,8 @@ export default function LookPickBody({ nick, options, mobile }: { nick: string; 
           )
         })}
       </div>
+      {/* PC 설정 칸 아래 빈 자리를 채우는 일러스트(카링 — 사용자가 준 그림을 잘랐다). 남은 높이만 차지해 칸이 스크롤되지 않는다. 모바일 · 터치 기기는 없다 */}
+      {!mobile && <div className={styles.art} style={{ backgroundImage: `url(${karing.src})` }} aria-hidden="true" />}
     </div>
   )
   const cards = (
