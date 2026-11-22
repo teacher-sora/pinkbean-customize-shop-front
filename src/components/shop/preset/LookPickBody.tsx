@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { readUiPref, writeUiPref } from '@/lib/uiState'
 import { PickCard } from '../plaza/PlazaTakeBody'
 import SnapThumb from '../SnapThumb'
+import { CARD_FIT_W_M, PRESET_FRACTION, PRESET_FRACTION_M } from '@/lib/shopData'
 import { NICK_TAKE_SLOTS, useShop, type LookOption, type Snapshot } from '../ShopContext'
 import { Seg, Switch } from '../ui/controls'
 import styles from './lookPick.module.css'
@@ -61,7 +62,8 @@ export default function LookPickBody({ nick, options, mobile }: { nick: string; 
         {look.presets.map((p) => (
           <PickCard key={`${look.key}:${p.key}`} name={p.label} title={`'${p.label}' 가져오기`} onPick={() => s.chooseLook(look.key, p.key)}>
             {/* 명찰은 닉네임으로(명찰 반지가 없으면 기본 명찰 — 사용자 지시) */}
-            <SnapThumb snap={takeSnap(p.snap)} tagName={nick} baseTag deco />
+            {/* 프리셋 탭 카드와 같은 캐릭터 비율 — 기본(0.45)이면 켠 칭호가 카드 위로 잘렸다 */}
+            <SnapThumb snap={takeSnap(p.snap)} tagName={nick} baseTag deco fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} fitW={mobile ? CARD_FIT_W_M : undefined} />
             {p.active && <span className={styles.badge}>착용 중</span>}
           </PickCard>
         ))}

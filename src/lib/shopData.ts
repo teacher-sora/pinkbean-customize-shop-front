@@ -195,6 +195,9 @@ export const CARD_FRACTION = 0.45     // 리스트 카드 마네킹 높이 비�
 export const CARD_FRACTION_M = 0.55
 // 모바일 카드의 캐릭터 높이 ≤ 그림 칸 폭 × 0.8 — 키 큰 화면(412 × 915)에서 그림 칸이 길어 캐릭터가 칸 폭보다 컸다(SnapThumb · ItemThumb fitW)
 export const CARD_FIT_W_M = 0.8
+// 프리셋 카드의 캐릭터 비율 — 위에 칭호 자리가 남는다(프리셋 탭 카드와 닉네임으로 불러온 코디 카드 — LookPickBody — 가 같은 값)
+export const PRESET_FRACTION = 0.38
+export const PRESET_FRACTION_M = 0.45 // 모바일 프리셋 카드는 한 단계 작게 — 전신이라 0.55 면 키 큰 화면(414 × 896)에서 97px 로 목록 카드보다 컸다(사용자 지적: 많이 줄인다)
 // 모바일 카드의 한 단계 올리기(modelPlacement lift): 마네킹이 그림 칸 높이의 50% 보다 작으면, 한 단계 위가 칸 높이의 84% · 폭 상한 안일 때 올린다.
 // 13 Pro(그림 칸 109px, 64px = 59%)처럼 이미 절반을 넘는 화면은 그대로다
 // 아이템 목록 카드(맨 마네킹 — ItemThumb)의 값이다. 프리셋 · 광장 · 코디 룩북 카드(SnapThumb)는 전신이라 같은 50% 문턱이면 한 단계 더 커져(390 × 745 프리셋 73px)

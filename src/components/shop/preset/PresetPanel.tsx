@@ -7,7 +7,7 @@ import CountChip from '../frame/CountChip'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Preset } from '@/lib/catalog'
-import { CARD_FIT_W_M, CHAT_NAME_FALLBACK, defaultPresetName } from '@/lib/shopData'
+import { CARD_FIT_W_M, CHAT_NAME_FALLBACK, defaultPresetName, PRESET_FRACTION, PRESET_FRACTION_M } from '@/lib/shopData'
 import { DIRS } from '../list/ListArea'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
@@ -19,8 +19,6 @@ import { usePresetDrag } from './usePresetDrag'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
-const PRESET_FRACTION = 0.38
-const PRESET_FRACTION_M = 0.45 // 모바일 프리셋 카드는 한 단계 작게 — 전신이라 0.55 면 키 큰 화면(414 × 896)에서 97px 로 목록 카드보다 컸다(사용자 지적: 많이 줄인다)
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
 import { IconCheck, IconLinkCopy, IconPencil, IconImport, IconReorder, IconTrashSolid } from '../ui/Icons'
