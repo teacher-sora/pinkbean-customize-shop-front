@@ -10,12 +10,13 @@ import styles from './ui.module.css'
 /* ── 세그먼트 ── */
 // icon 을 주면 글자 대신 아이콘을 그린다(글자 l 은 aria-label 로 남는다). mark = 글자 앞에 붙는 작은 표시(목록 필터 — 카드 왼쪽 아래 표시와 같은 그림)
 // rows = 한 트랙을 여러 줄로 나눌 칸 수([3, 4] — 칸이 많아 한 줄이면 글자 폭밖에 남지 않을 때). 줄마다 칸이 폭을 나눠 갖는다
+// 두 칸(둘 다 누를 수 있을 때)은 전환 버튼이다 — 어느 칸을 눌러도 지금의 반대쪽으로 바뀐다(북마크 / 비교처럼 — 사용자 지시)
 export type SegOpt<T extends string> = { v: T; l: string; t?: string; disabled?: boolean; disabledTitle?: string; icon?: React.ReactNode; mark?: React.ReactNode }
 export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', title, rows }: {
   opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: 'pc' | 'mobileFlex' | 'mobileFit'; title?: string; rows?: number[]
 }) {
   const track = segTrack(variant)
-  const cell = (o: SegOpt<T>) => segCell(o, value, onPick, variant)
+  const cell = (o: SegOpt<T>) => segCell(o, value, onPick, variant, flipOf(opts, value))
   if (rows) {
     let at = 0
     return (
@@ -28,13 +29,18 @@ export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', tit
 }
 type SegVariant = 'pc' | 'mobileFlex' | 'mobileFit'
 const segTrack = (variant: SegVariant) => (variant === 'pc' ? styles.segTrack : variant === 'mobileFlex' ? styles.segTrackM : styles.segTrackMFit)
-function segCell<T extends string>(o: SegOpt<T>, value: T, onPick: (v: T) => void, variant: SegVariant) {
+// 두 칸 전환이면 누를 때 갈 값(지금의 반대쪽), 아니면 undefined
+function flipOf<T extends string>(opts: SegOpt<T>[], value: T): T | undefined {
+  if (opts.length !== 2 || opts.some((o) => o.disabled) || !opts.some((o) => o.v === value)) return undefined
+  return opts[0].v === value ? opts[1].v : opts[0].v
+}
+function segCell<T extends string>(o: SegOpt<T>, value: T, onPick: (v: T) => void, variant: SegVariant, flip?: T) {
     const btn = variant === 'mobileFlex' ? styles.segFlex : styles.seg
     const on = !o.disabled && value === o.v
     return (
       <button key={o.v} type="button" disabled={o.disabled} title={o.disabled ? o.disabledTitle : o.t ?? (o.icon ? o.l : undefined)}
         aria-label={o.icon ? o.l : undefined} aria-pressed={on}
-        onClick={() => { if (!o.disabled) onPick(o.v) }}
+        onClick={() => { if (!o.disabled) onPick(flip ?? o.v) }}
         className={clsx(on ? 'pb-solid' : 'pb-soft', btn, o.icon && styles.segIcon, o.mark && styles.segMarked, on && styles.segOn, o.disabled && styles.segDisabled)}>
         {o.icon ?? (o.mark ? <><span className={styles.segMark}>{o.mark}</span>{o.l}</> : o.l)}
       </button>
@@ -46,7 +52,7 @@ export type SegLine = { opts: SegOpt<any>[]; value: string; onPick: (v: any) => 
 export function SegStack({ lines, variant = 'pc' }: { lines: SegLine[]; variant?: SegVariant }) {
   return (
     <div className={clsx(segTrack(variant), styles.segRows)}>
-      {lines.map((l, i) => <div key={i} title={l.title} className={styles.segRow}>{l.opts.map((o) => segCell(o, l.value, l.onPick, variant))}</div>)}
+      {lines.map((l, i) => <div key={i} title={l.title} className={styles.segRow}>{l.opts.map((o) => segCell(o, l.value, l.onPick, variant, flipOf(l.opts, l.value)))}</div>)}
     </div>
   )
 }
