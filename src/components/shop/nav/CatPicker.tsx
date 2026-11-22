@@ -10,7 +10,7 @@ import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { useShop } from '../ShopContext'
-import { PopBox, popNear, usePop } from '../preview/PopBox'
+import { POP_GAP, PopBox, popNear, usePop } from '../preview/PopBox'
 import { usePresetDrag } from '../preset/usePresetDrag'
 import { IconCaretDown, IconCat, IconLock, IconReorder, IconReset } from '../ui/Icons'
 import { DEV_SITE } from '@/lib/catalog'
@@ -19,7 +19,7 @@ import { viewH, viewW } from '@/lib/viewport'
 
 export const CAT_FIXED = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }]
 const CAT_SIDE_M = 12 // 모바일 카드의 좌우 끝 = 목록 칸 여백 5(.viewportM) + 쪽 여백 7(.pageM). 창의 좌우 끝을 카드에 맞춘다
-// 칸마다 부위 아이콘(ui/Icons IconCat — 메이플 메뉴 같은 꽉 찬 실루엣) — dev 에서 시험 중(사용자 지시). PC 는 아이콘 · 글자를 왼쪽에 붙여 모든 칸의 아이콘이 같은 자리(사용자 지시 — 가운데 정렬은 글자 길이마다 아이콘 자리가 달랐다), 모바일은 칸이 좁아 글자 위(칸 높이 52)
+// 칸마다 부위 아이콘(ui/Icons IconCat — 메이플 메뉴 같은 꽉 찬 실루엣) — dev 에서 시험 중(사용자 지시). PC 는 아이콘 · 글자를 왼쪽에 붙여 모든 칸의 아이콘이 같은 자리(사용자 지시 — 가운데 정렬은 글자 길이마다 아이콘 자리가 달랐다), 모바일은 칸이 좁아 글자 위(칸 높이 46)
 const CAT_ICONS = DEV_SITE
 // PC 창 폭을 칸 폭이 정수가 되게 깎는다(아이콘이 있을 때) — 칸 폭이 소수면 아이콘이 픽셀 사이에 걸려 번졌다. 칸 최소 폭 · 간격 · 테두리 + 안쪽 여백은 nav.module.css 의 catGrid · catPop 값
 const CAT_MIN = 96, CAT_GAP = 6, CAT_CHROME = 18
@@ -57,14 +57,14 @@ function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: strin
           {CAT_FIXED.map((c) => (
             <button key={c.id} type="button" disabled={sorting} onClick={() => pick(c.id)} title={sorting ? '이 칸은 순서를 바꿀 수 없어요' : c.label}
               className={clsx(styles.catCell, ico, on === c.id && styles.catCellOn, sorting && styles.catCellLock)}>
-              {sorting ? <IconLock size={11} /> : CAT_ICONS && <IconCat id={c.id} size={mobile ? 20 : 18} />}<span className={styles.catCellName}>{c.label}</span>
+              {sorting ? <IconLock size={11} /> : CAT_ICONS && <IconCat id={c.id} size={18} />}<span className={styles.catCellName}>{c.label}</span>
             </button>
           ))}
           {s.catBar.map((c) => (
             <div key={c.id} role="button" tabIndex={0} data-preset-id={c.id} title={c.label} onClick={() => pick(c.id)} onPointerDown={(e) => dnd.onPointerDown(e, c.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(c.id) } }}
               className={clsx(styles.catCell, ico, on === c.id && styles.catCellOn, sorting && styles.catCellMove)}>
-              {CAT_ICONS && <IconCat id={c.id} size={mobile ? 20 : 18} />}<span className={styles.catCellName}>{c.label}</span>
+              {CAT_ICONS && <IconCat id={c.id} size={18} />}<span className={styles.catCellName}>{c.label}</span>
             </div>
           ))}
         </div>
@@ -87,7 +87,12 @@ export function CatExpand({ mobile, on, onPick }: { mobile: boolean; on: string;
     const main = mobile ? null : document.querySelector('main[data-pb-body]')?.getBoundingClientRect()
     const p = popNear(b, main ?? screen)
     // 높이는 내용을 따른다. PC 는 창 아래 끝을 목록 아래 끝에, 오른쪽 끝을 부위 줄 끝에, 모바일은 좌우 끝을 카드 끝에 맞춘다
-    if (mobile) { pop.open({ ...p, left: CAT_SIDE_M, w: viewW() - CAT_SIDE_M * 2, fit: true }); return }
+    if (mobile) {
+      // 모바일 높이 상한 = 아래 탭 줄 윗변에서 위 틈(POP_GAP)만큼 떨어진 곳까지(사용자 지시 — 한눈에 다 보이게. 고정 330 은 넘치거나 작은 폰에서 탭 줄을 덮었다). 탭 줄이 숨었으면 화면 아래까지
+      const foot = Math.min(viewH(), document.querySelector('[data-pb-tabnav]')?.getBoundingClientRect().top ?? viewH())
+      const h = p.dir === 'down' && p.top != null ? Math.max(150, Math.floor(foot - POP_GAP - p.top)) : p.h
+      pop.open({ ...p, h, left: CAT_SIDE_M, w: viewW() - CAT_SIDE_M * 2, fit: true }); return
+    }
     const edge = btnRef.current?.parentElement?.getBoundingClientRect().right ?? b.right // 창 오른쪽 끝 = 부위 줄 오른쪽 끝
     const right = CAT_ICONS ? Math.round(edge) : edge, max = Math.min(right - p.left, CAT_W_PC)
     const w = CAT_ICONS ? snapW(max) : max
