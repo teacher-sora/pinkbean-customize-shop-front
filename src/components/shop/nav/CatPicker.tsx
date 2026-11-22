@@ -21,6 +21,9 @@ export const CAT_FIXED = [{ id: 'all', label: '전체' }, { id: 'new', label: '�
 const CAT_SIDE_M = 12 // 모바일 카드의 좌우 끝 = 목록 칸 여백 5(.viewportM) + 쪽 여백 7(.pageM). 창의 좌우 끝을 카드에 맞춘다
 // 칸마다 부위 아이콘(ui/Icons IconCat — 메이플 메뉴 같은 꽉 찬 실루엣) — dev 에서 시험 중(사용자 지시). PC 는 아이콘 · 글자를 왼쪽에 붙여 모든 칸의 아이콘이 같은 자리(사용자 지시 — 가운데 정렬은 글자 길이마다 아이콘 자리가 달랐다), 모바일은 칸이 좁아 글자 위(칸 높이 52)
 const CAT_ICONS = DEV_SITE
+// PC 창 폭을 칸 폭이 정수가 되게 깎는다(아이콘이 있을 때) — 칸 폭이 소수면 아이콘이 픽셀 사이에 걸려 번졌다. 칸 최소 폭 · 간격 · 테두리 + 안쪽 여백은 nav.module.css 의 catGrid · catPop 값
+const CAT_MIN = 96, CAT_GAP = 6, CAT_CHROME = 18
+const snapW = (max: number) => { const cols = Math.max(1, Math.floor((max - CAT_CHROME + CAT_GAP) / (CAT_MIN + CAT_GAP))); const cell = Math.floor((max - CAT_CHROME - CAT_GAP * (cols - 1)) / cols); return cell * cols + CAT_GAP * (cols - 1) + CAT_CHROME }
 const CAT_W_PC = CAT_ICONS ? 800 : 760 // 아이콘이 있으면 왼쪽에 아이콘 자리를 두느라 칸이 좁아 긴 이름(명찰 / 말풍선)이 잘렸다
 
 function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: string; onPick: (id: string) => void; close: () => void }) {
@@ -85,8 +88,9 @@ export function CatExpand({ mobile, on, onPick }: { mobile: boolean; on: string;
     const p = popNear(b, main ?? screen)
     // 높이는 내용을 따른다. PC 는 창 아래 끝을 목록 아래 끝에, 오른쪽 끝을 부위 줄 끝에, 모바일은 좌우 끝을 카드 끝에 맞춘다
     if (mobile) { pop.open({ ...p, left: CAT_SIDE_M, w: viewW() - CAT_SIDE_M * 2, fit: true }); return }
-    const right = btnRef.current?.parentElement?.getBoundingClientRect().right ?? b.right // 창 오른쪽 끝 = 부위 줄 오른쪽 끝
-    const w = Math.min(right - p.left, CAT_W_PC)
+    const edge = btnRef.current?.parentElement?.getBoundingClientRect().right ?? b.right // 창 오른쪽 끝 = 부위 줄 오른쪽 끝
+    const right = CAT_ICONS ? Math.round(edge) : edge, max = Math.min(right - p.left, CAT_W_PC)
+    const w = CAT_ICONS ? snapW(max) : max
     pop.open({ ...p, w, left: right - w, bottom: main ? Math.round(viewH() - main.bottom) : p.bottom, fit: true })
   }
   return (
