@@ -111,7 +111,7 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
     // 부위 · 광장 분류는 목록 머리 위(CatTabsM · PlazaTabsM)에 있다(사용자 지시) — 모바일 하단은 탭 바만
     return (
       <>
-        <nav ref={navRef} data-hero-below className={styles.tabNavM} aria-label="메뉴">
+        <nav ref={navRef} data-hero-below data-pb-tabnav className={styles.tabNavM} aria-label="메뉴">
           {TABS.map((t) => {
             const on = s.primary === t.id
             return (

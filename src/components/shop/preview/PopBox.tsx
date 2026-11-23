@@ -24,7 +24,7 @@ const OUT_MS = 180          // 닫힘 전환이 끝난 뒤 떼어낸다
 // fit = 높이를 내용에 맡긴다(h 는 상한) — 줄 수가 사용자마다 다른 창이 쓴다
 export type PopPos = { left: number; w: number; h: number; dir: 'up' | 'down'; top?: number; bottom?: number; fit?: boolean }
 type Box = { left: number; width: number; top: number; bottom: number }
-const POP_GAP = 6   // 버튼과 창 사이
+export const POP_GAP = 6   // 버튼과 창 사이
 const POP_MIN = 240 // 아래에 이만큼(또는 위보다 많이) 남으면 아래에 둔다
 // btn = 연 버튼(또는 칸), area = 창이 나가지 않을 영역. 아래가 넉넉하면 버튼 아래, 아니면 버튼 위(영역 아래 끝보다 아래로는 내려가지 않는다)
 export function popNear (btn: Box, area: Box): PopPos {
