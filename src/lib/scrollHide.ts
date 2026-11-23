@@ -19,6 +19,7 @@ let installed = 0, frozen = false, hidden = false, mo: MutationObserver | null =
 let armed = false, finger = false, viaTouch = false, stopT: ReturnType<typeof setTimeout> | undefined
 let lastEl: Element | null = null, lastPos = 0, lastT = 0, speed = Infinity // 이벤트 사이 속도의 평균(한 번 튀는 값에 나오지 않게)
 let ios = false
+let held = false // 펼친 창이 탭 줄 자리까지 써야 해 잠시 내려 둔 동안(holdNavHidden) — 스크롤 규칙이 다시 꺼내지 않는다
 const root = () => document.documentElement
 const navEl = () => document.querySelector<HTMLElement>('[data-mobile-col] > nav[data-hero-below]') // 늘 지금 것을 찾는다(탭을 바꿔 다시 붙어도)
 function measure() {
@@ -28,8 +29,8 @@ function measure() {
 }
 function set(h: boolean) {
   hidden = h
-  const nav = navEl()
-  if (nav && nav.hasAttribute('data-pb-navhide') !== h) nav.toggleAttribute('data-pb-navhide', h)
+  const nav = navEl(), v = h || (held && root().hasAttribute('data-pb-nav'))
+  if (nav && nav.hasAttribute('data-pb-navhide') !== v) nav.toggleAttribute('data-pb-navhide', v)
 }
 // 틀 밖(시트 · 다이얼로그 — 몸 밖에 붙는 것)의 손가락은 세지 않는다
 const inCol = (t: EventTarget | null) => t instanceof Element && !!t.closest('[data-mobile-col]')
@@ -87,5 +88,7 @@ export function installScrollLink(): () => void {
     root().removeAttribute('data-pb-nav')
   }
 }
+// 떠 있는 창이 탭 줄 자리까지 써야 할 때 탭 줄을 잠시 내려 둔다(nav/CatPicker — 카테고리 펼친 창이 아래 틈까지 들어가지 않을 만큼 길 때). 떼면 원래 상태로
+export function holdNavHidden(h: boolean) { if (held === h) return; held = h; if (installed) set(hidden) }
 // 창(시트 · 다이얼로그)이 떠 있는 동안은 움직임을 세지 않는다(시트를 끄는 손가락으로 탭이 바뀌지 않게)
 export function setScrollFrozen(f: boolean) { frozen = f; if (f) { armed = finger = false; clearTimeout(stopT); set(false) } }
