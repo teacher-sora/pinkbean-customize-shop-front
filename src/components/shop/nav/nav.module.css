@@ -66,7 +66,7 @@
 .catCellIco { justify-content: flex-start; gap: 7px; padding-left: 10px; }
 .catCellIcoM { flex-direction: column; justify-content: center; gap: 2px; padding: 0 4px; }
 .catCellIcoM > .catCellName { max-width: 100%; }
-.catGridIcoM { grid-auto-rows: 46px; } /* 4열 7줄이 390 × 844 의 높이 상한(442) 안에 다 들어오게 */
+.catGridIcoM { grid-auto-rows: 42px; } /* 4열 7줄이 390 × 844 의 높이 상한(442) 안에 넉넉히 들어오게 */
 .catCellOn { font-weight: 600; background: light-dark(#ec86ac, #d15785); border-color: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); }
 .catCellLock { opacity: .5; filter: grayscale(1); cursor: not-allowed; }
 .catCellMove { cursor: grab; touch-action: none; border-style: dashed; }
