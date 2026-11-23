@@ -7,14 +7,15 @@
 //  · 전체 · 신규 · 즐겨찾기는 늘 1, 2, 3번이다 — 순서 변경 중에는 흐려지고 자물쇠가 붙어 집을 수 없다.
 
 import clsx from 'clsx'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { useShop } from '../ShopContext'
-import { POP_GAP, PopBox, popNear, usePop } from '../preview/PopBox'
+import { POP_GAP, PopBox, popNear, usePop, type PopPos } from '../preview/PopBox'
 import { usePresetDrag } from '../preset/usePresetDrag'
 import { IconCaretDown, IconCat, IconLock, IconReorder, IconReset } from '../ui/Icons'
 import styles from './nav.module.css'
 import { viewH, viewW } from '@/lib/viewport'
+import { holdNavHidden } from '@/lib/scrollHide'
 
 export const CAT_FIXED = [{ id: 'all', label: '전체' }, { id: 'new', label: '신규' }, { id: 'fav', label: '즐겨찾기' }]
 const CAT_SIDE_M = 12 // 모바일 카드의 좌우 끝 = 목록 칸 여백 5(.viewportM) + 쪽 여백 7(.pageM). 창의 좌우 끝을 카드에 맞춘다
@@ -23,6 +24,12 @@ const CAT_SIDE_M = 12 // 모바일 카드의 좌우 끝 = 목록 칸 여백 5(.v
 const CAT_MIN = 96, CAT_GAP = 6, CAT_CHROME = 18
 const snapW = (max: number) => { const cols = Math.max(1, Math.floor((max - CAT_CHROME + CAT_GAP) / (CAT_MIN + CAT_GAP))); const cell = Math.floor((max - CAT_CHROME - CAT_GAP * (cols - 1)) / cols); return cell * cols + CAT_GAP * (cols - 1) + CAT_CHROME }
 const CAT_W_PC = 800 // 칸 왼쪽에 아이콘 자리를 두느라 760 은 긴 이름(명찰 / 말풍선)이 잘렸다
+// 모바일 아래 탭 줄이 제자리에 있을 때의 윗변(숨어 있어도 제자리 기준). 탭 줄이 떠 있지 않은 보기('캐릭터만')는 지금 자리
+const navRestTop = () => {
+  const nav = document.querySelector<HTMLElement>('[data-pb-tabnav]')
+  if (!nav) return viewH()
+  return document.documentElement.hasAttribute('data-pb-nav') ? viewH() - nav.offsetHeight : nav.getBoundingClientRect().top
+}
 
 function CatPickBody({ mobile, on, onPick, close }: { mobile: boolean; on: string; onPick: (id: string) => void; close: () => void }) {
   const s = useShop()
@@ -78,6 +85,39 @@ export function CatExpand({ mobile, on, onPick }: { mobile: boolean; on: string;
   const btnRef = useRef<HTMLButtonElement>(null)
   const open = pop.isOpen // 닫는 전환이 끝나기를 기다리지 않는다 — 화살표는 누른 즉시 돈다
   useEffect(() => { if (s.surface && open) pop.close() }, [s.surface]) // eslint-disable-line react-hooks/exhaustive-deps -- 다른 창이 뜨면 닫는다
+  // 모바일 자리(사용자 지시): 위 끝 = 부위 줄 아래 + 틈, 높이는 내용을 따르되 상한 = 화면 아래 - 틈(탭 줄 자리까지).
+  // 내용이 탭 줄 윗변 - 틈 안에 들어오면 탭 줄은 그대로, 넘치면 탭 줄을 잠시 내리고 그 자리까지 쓴다(그린 뒤 재서 정한다 — 아래 useLayoutEffect).
+  // 페이지 스크롤에 따라 부위 줄 자리가 달라 쓸 수 있는 높이도 달라진다 — 열 때 재고, 열린 동안 스크롤 · 화면 높이가 바뀌면 다시 잰다
+  const placeM = (): PopPos | null => {
+    const b = btnRef.current?.getBoundingClientRect(); if (!b) return null
+    const p = popNear(b, { left: 0, width: viewW(), top: 0, bottom: viewH() })
+    const side = { left: CAT_SIDE_M, w: viewW() - CAT_SIDE_M * 2, fit: true }
+    if (p.dir !== 'down' || p.top == null) return { ...p, ...side }
+    return { ...p, ...side, h: Math.max(150, Math.floor(viewH() - POP_GAP - p.top)) }
+  }
+  useLayoutEffect(() => {
+    const p = pop.pos
+    if (!mobile || !p || p.dir !== 'down' || p.top == null) return
+    const el = document.querySelector<HTMLElement>(`.${styles.catPop}`)
+    if (el) holdNavHidden(p.top + el.offsetHeight > navRestTop() - POP_GAP)
+  }, [mobile, pop.pos])
+  useEffect(() => { if (!pop.shown) holdNavHidden(false) }, [pop.shown]) // 닫히기 시작하면 탭 줄이 함께 돌아온다
+  useEffect(() => () => holdNavHidden(false), [])
+  const live = useRef({ pop, placeM }); live.current = { pop, placeM }
+  useEffect(() => {
+    if (!mobile || !pop.shown) return
+    let raf = 0
+    const re = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const { pop: cur, placeM: place } = live.current, q = place()
+        if (cur.isOpen && q && (q.top !== cur.pos?.top || q.h !== cur.pos?.h)) cur.open(q)
+      })
+    }
+    const vv = window.visualViewport
+    window.addEventListener('scroll', re, { passive: true }); window.addEventListener('resize', re); vv?.addEventListener('resize', re)
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', re); window.removeEventListener('resize', re); vv?.removeEventListener('resize', re) }
+  }, [mobile, pop.shown])
   const toggle = () => {
     if (open) { pop.close(); return }
     const b = btnRef.current?.getBoundingClientRect(); if (!b) return
@@ -85,12 +125,7 @@ export function CatExpand({ mobile, on, onPick }: { mobile: boolean; on: string;
     const main = mobile ? null : document.querySelector('main[data-pb-body]')?.getBoundingClientRect()
     const p = popNear(b, main ?? screen)
     // 높이는 내용을 따른다. PC 는 창 아래 끝을 목록 아래 끝에, 오른쪽 끝을 부위 줄 끝에, 모바일은 좌우 끝을 카드 끝에 맞춘다
-    if (mobile) {
-      // 모바일 높이 상한 = 아래 탭 줄 윗변에서 위 틈(POP_GAP)만큼 떨어진 곳까지(사용자 지시 — 한눈에 다 보이게. 고정 330 은 넘치거나 작은 폰에서 탭 줄을 덮었다). 탭 줄이 숨었으면 화면 아래까지
-      const foot = Math.min(viewH(), document.querySelector('[data-pb-tabnav]')?.getBoundingClientRect().top ?? viewH())
-      const h = p.dir === 'down' && p.top != null ? Math.max(150, Math.floor(foot - POP_GAP - p.top)) : p.h
-      pop.open({ ...p, h, left: CAT_SIDE_M, w: viewW() - CAT_SIDE_M * 2, fit: true }); return
-    }
+    if (mobile) { const q = placeM(); if (q) pop.open(q); return }
     const edge = btnRef.current?.parentElement?.getBoundingClientRect().right ?? b.right // 창 오른쪽 끝 = 부위 줄 오른쪽 끝
     const right = Math.round(edge), max = Math.min(right - p.left, CAT_W_PC)
     const w = snapW(max)
