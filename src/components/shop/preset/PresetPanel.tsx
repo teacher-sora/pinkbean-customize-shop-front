@@ -6,6 +6,7 @@ import clsx from 'clsx'
 import CountChip from '../frame/CountChip'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { watchSize } from '@/lib/sizeWatch'
 import type { Preset } from '@/lib/catalog'
 import { CARD_FIT_W_M, CHAT_NAME_FALLBACK, defaultPresetName, PRESET_FRACTION, PRESET_FRACTION_M } from '@/lib/shopData'
 import { DIRS } from '../list/ListArea'
@@ -40,13 +41,67 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   // 세로 = 열 수 고정. 끌어서 순서 바꾸기(usePresetDrag)는 칸 모양을 읽어 어느 쪽이든 그대로 된다. PC 가로는 마우스 휠을 가로로(useWheelRail)
   const dir = s.presetDir ?? (mobile ? 'x' : 'y')
   const across = dir === 'x'
-  const boxRef = useWheelRail<HTMLDivElement>(across && !mobile)
+  // PC 가로는 휠 한 번에 한 열씩(사용자 지시) — 열 간격은 그려진 두 열의 자리 차이
+  const boxRef = useWheelRail<HTMLDivElement>(across && !mobile, () => lineStride(gridRef.current, 2, true))
   useListMinHeight(boxRef, mobile) // 모바일: 코디 탭 목록처럼 붙은 미리보기 아래에 3줄이 다 들어가는 높이(ListArea useMobileRows)
   // 고른 프리셋 = 비교 중이면 비교의 주인 프리셋(사용자 지시 — 비교 중에도 프리셋 탭에서 지금 프리셋이 '선택됨'으로 보인다. 고른 비교 칸 = 그 프리셋)
   const selId = s.cmpOn ? s.cmpBack : s.selectedPreset
-  const centered = useRef(false)
+
+  // 순서 변경(헤더 칩 옆 버튼, 사용자 지시): 켠 동안만 카드를 끌어 순서를 바꾼다(usePresetDrag). 켠 동안은 카드를 눌러도 고르지 않고
+  // 길게 누르기 이미지 메뉴도 열지 않는다(끌기와 겹치지 않게). 끄면 원래대로. 순서는 놓을 때마다 저장된다. Esc 로도 끈다
+  const [sorting, setSorting] = useState(false)
+  const gridRef = useRef<HTMLDivElement>(null)
+
+  // PC 는 보이는 줄과 앞뒤 VBUF 줄만 카드로 만든다(가상 스크롤 — 세로는 행, 가로는 열). 왜: 100칸이 모두 있으면 스크롤할 때마다 브라우저가
+  // 칸 전체의 층을 다시 나눠(Layerize) CPU 4배 느리게에서 프레임 470개 중 190개가 50ms 를 넘었다. 비운 줄은 그리드의 안쪽 여백으로 자리만 잡는다.
+  // 순서 변경 중에는 모두 그린다 — 끌기가 모든 칸의 자리를 잰다(usePresetDrag). 휴대폰은 그대로다(한 화면 3 × 3).
+  const virt = !mobile && !sorting
+  const per = across ? 2 : narrow ? 3 : 5 // 한 줄의 카드 수(세로 = 열 수, 가로 = 2줄)
+  const lines = Math.ceil(s.presets.length / per)
+  const selLine = Math.max(0, Math.floor(s.presets.findIndex((p) => p.id === selId) / per))
+  const [stride, setStride] = useState(0) // 줄 간격(px) — 그려진 두 줄의 자리 차이로 잰다
+  const [range, setRange] = useState<[number, number]>(() => [Math.max(0, selLine - 3), selLine + 4]) // 그릴 줄 [a, b) — 처음은 고른 칸 둘레
+  const [, setResized] = useState(0)
   useLayoutEffect(() => {
-    if (centered.current || !selId) return
+    if (!virt) return
+    const st = lineStride(gridRef.current, per, across)
+    if (st > 0 && Math.abs(st - stride) > 0.01) setStride(st) // 소수점 흔들림으로 다시 그리지 않게
+  })
+  const scrollingRef = useRef(false)
+  useEffect(() => {
+    const box = boxRef.current
+    if (!box || mobile) return
+    let raf = 0, quiet = 0
+    const upd = () => {
+      raf = 0
+      if (!virt || !stride) return
+      const pos = (across ? box.scrollLeft : box.scrollTop) - BOX_PAD, size = across ? box.clientWidth : box.clientHeight
+      const a = Math.max(0, Math.floor(pos / stride) - VBUF), b = Math.min(lines, Math.floor((pos + size) / stride) + 1 + VBUF)
+      setRange((r) => (r[0] === a && r[1] === b ? r : [a, b]))
+    }
+    // 스크롤하는 동안은 카드가 마우스 밑을 지나가도 코디를 미리 받지 않는다(warmWear — 지나가는 카드마다 meta 를 받고 염색을 칠했다).
+    // 클래스로 hover 를 끄지 않는다 — 붙였다 뗄 때마다 카드 전체의 스타일을 다시 계산했다(느린 기기에서는 스크롤 중에 수백 번). hover 는 브라우저가 스크롤이 끝난 뒤 갱신한다
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(upd)
+      scrollingRef.current = true
+      clearTimeout(quiet); quiet = window.setTimeout(() => { scrollingRef.current = false }, 160)
+    }
+    box.addEventListener('scroll', onScroll, { passive: true })
+    const off = watchSize(box, () => setResized((n) => n + 1)) // 폭이 바뀌면 줄 간격을 다시 잰다
+    upd()
+    return () => { box.removeEventListener('scroll', onScroll); off(); cancelAnimationFrame(raf); clearTimeout(quiet); scrollingRef.current = false }
+  }, [mobile, virt, stride, across, per, lines])
+  const [va, vb] = virt ? (stride ? [range[0], Math.min(lines, range[1])] : [Math.min(range[0], lines), Math.min(lines, range[1])]) : [0, lines]
+  const padStyle: React.CSSProperties | undefined = virt && stride ? (across ? { paddingLeft: va * stride, paddingRight: (lines - vb) * stride } : { paddingTop: va * stride, paddingBottom: (lines - vb) * stride }) : undefined
+
+  // 고른 칸이 가운데에 오게(위 주석). 가상 스크롤이면 줄 간격을 잰 뒤에, 고른 칸이 그릴 줄 밖이면(저장된 선택이 첫 그리기 뒤에 온다) 그 둘레를 먼저 그린다
+  const centered = useRef(false), centerRaf = useRef(0)
+  useLayoutEffect(() => {
+    if (centered.current || !selId || (virt && !stride)) return
+    if (virt) {
+      const ln = Math.floor(s.presets.findIndex((p) => p.id === selId) / per)
+      if (ln >= 0 && (ln < va || ln >= vb)) { setRange([Math.max(0, ln - 3), Math.min(lines, ln + 4)]); return }
+    }
     centered.current = true
     const go = () => {
       const box = boxRef.current, el = box?.querySelector('.pb-preset-sel')?.closest('.pb-presetwrap')
@@ -55,9 +110,10 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       box.scrollTo({ left: box.scrollLeft + r.left - b.left - (b.width - r.width) / 2, top: box.scrollTop + r.top - b.top - (b.height - r.height) / 2 })
     }
     go()
-    let raf = requestAnimationFrame(() => { go(); raf = requestAnimationFrame(go) })
-    return () => cancelAnimationFrame(raf)
-  }, [selId])
+    // 두 프레임 다시 맞추기는 가운데로 옮긴 스크롤이 그릴 줄을 바꿔도(va · vb) 끊지 않는다 — 탭을 떠날 때만 멈춘다
+    centerRaf.current = requestAnimationFrame(() => { go(); centerRaf.current = requestAnimationFrame(go) })
+  }, [selId, stride, va, vb])
+  useEffect(() => () => cancelAnimationFrame(centerRaf.current), [])
 
   // 삭제는 2단계 확인: 3초 안에, 다른 상호작용 없이 연속으로 한 번 더 누르면 삭제(lib/confirmTwice).
   const remove = (p: Preset) => {
@@ -70,9 +126,6 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const chip = <CountChip mobile={mobile} label={mobile ? undefined : '프리셋'} n={s.presetUsed} total={s.presets.length} digits={3} title="선택된 프리셋에 자동 저장돼요" />
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') s.importFetch() }
 
-  // 순서 변경(헤더 칩 옆 버튼, 사용자 지시): 켠 동안만 카드를 끌어 순서를 바꾼다(usePresetDrag). 켠 동안은 카드를 눌러도 고르지 않고
-  // 길게 누르기 이미지 메뉴도 열지 않는다(끌기와 겹치지 않게). 끄면 원래대로. 순서는 놓을 때마다 저장된다. Esc 로도 끈다
-  const [sorting, setSorting] = useState(false)
   useEffect(() => {
     if (!sorting) return
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setSorting(false) }
@@ -80,7 +133,6 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     return () => window.removeEventListener('keydown', k)
   }, [sorting])
   const toggleSort = () => setSorting((v) => { if (!v) s.notify('카드를 끌어 순서를 바꿔요'); return !v })
-  const gridRef = useRef<HTMLDivElement>(null)
   const dnd = usePresetDrag(sorting, s.presets.map((p) => p.id), gridRef, boxRef, s.reorderPresets, styles.dragging, `${mobile ? 'm' : narrow ? 'n' : 'pc'}${dir}`)
   // 켜짐 = 채운 핑크 + '완료'. 두 문구를 한 칸에 겹쳐 폭이 바뀌지 않는다(불러오기 버튼과 같다)
   const sortBtn = (
@@ -99,14 +151,14 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const act = useRef<CardAct>(null!)
   act.current = {
     select: (id) => { if (!dnd.swallowClick()) s.selectPreset(id) },
-    warm: (snap, dye) => s.warmWear(snap, dye, 'preset'),
+    warm: (snap, dye) => { if (!scrollingRef.current) s.warmWear(snap, dye, 'preset') },
     down: dnd.onPointerDown, share: s.sharePreset, remove, rename: s.renamePreset, commit: s.commitPresetName,
   }
 
   const grid = (
-    <div ref={gridRef} className={mobile ? (across ? styles.gridHM : styles.gridVM) : across ? clsx(styles.gridH, narrow && styles.gridHNarrow) : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
-      {s.presets.map((p, i) => {
-        const on = selId === p.id
+    <div ref={gridRef} style={padStyle} className={mobile ? (across ? styles.gridHM : styles.gridVM) : across ? clsx(styles.gridH, narrow && styles.gridHNarrow) : clsx(styles.grid, narrow && styles.gridTight, narrow ? styles.cols3 : styles.cols5)}>
+      {s.presets.slice(va * per, vb * per).map((p, k) => {
+        const i = va * per + k, on = selId === p.id
         return <PresetCard key={p.id} p={p} i={i} on={on} snap={on ? liveSnap : s.presetData[p.id]} mobile={mobile} fill={mobile || across} sorting={sorting} act={act} />
       })}
     </div>
@@ -152,6 +204,16 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <div ref={boxRef} className={across ? clsx('pb-norail', 'pb-fade', styles.hscroll) : clsx('pb-scroll', styles.scroll)}>{grid}</div>
     </section>
   )
+}
+
+const BOX_PAD = 8, VBUF = 2 // 스크롤 칸 안쪽 여백(.scroll · .hscroll padding), 보이는 줄 앞뒤로 더 그릴 줄 수
+// 줄 간격 = 그려진 첫 카드와 다음 줄 첫 카드의 자리 차이(세로 = 행, 가로 = 열). 두 줄이 그려지지 않았으면 0
+// 소수점까지 잰다(getBoundingClientRect) — 정수(offsetTop)로 재면 줄마다 깎인 만큼 여백이 어긋나 줄이 바뀔 때 카드가 1px 씩 움찔했다
+function lineStride (g: HTMLElement | null, per: number, across: boolean): number {
+  const k = g?.children
+  if (!k || k.length <= per) return 0
+  const a = k[0].getBoundingClientRect(), b = k[per].getBoundingClientRect()
+  return across ? b.left - a.left : b.top - a.top
 }
 
 type CardAct = {
