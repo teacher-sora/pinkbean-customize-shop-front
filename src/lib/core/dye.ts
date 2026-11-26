@@ -79,6 +79,26 @@ function is16Image(a: Uint8ClampedArray): boolean {
   for (let i = 0; i < a.length; i += 4) if (a[i + 3] === 255 && (a[i] % 17 || a[i + 1] % 17 || a[i + 2] % 17)) return false
   return true
 }
+// HSB 는 원본의 **저장 형식**대로 칠한다 — 16단계(ARGB4444) 그림은 17 단위, 32비트 그림은 1 단위. 거의 모든 그림은 값으로 가려도
+// 형식과 같지만, 32비트로 저장됐는데 색이 모두 17의 배수인 그림은 값만 보면 16단계로 보인다. 그 그림이 든 아이템을 여기 적는다.
+// 근거: 사소한 변경쩜(1픽셀 (221,68,102))을 염색한 랭킹 캐릭터의 공홈 아바타 213칸 가운데 풀컬러 계산이 180칸, 16단계 계산이 2칸 맞았다.
+// 목록은 WZ 전수 대조(염색되는 캐시 아이템 · 헤어 · 성형 · 피부의 그림 1,440만 장)로 뽑았다. 이 아이템들의 그림은 모두 32비트다
+// (8,653장 가운데 16단계 1장 — 01704028 은 그 한 장 때문에 그림 단위로 적는다).
+// 헤어 · 성형의 섞기(blendPalette)는 여기에 넣지 않는다 — 32비트인 사이타마 헤어도 게임은 16단계로 섞었다(18칸 모두 16단계 계산과 같았다).
+const FULL_COLOR_ITEMS = new Set([
+  '01000170', '01007268', '01007272', '01022395', '01022396', // 모자 · 사소한 변경점 · 사소한 변경쩜
+  '01050918', '01050927', '01051927', '01051934', '01051948', '01051987', '01051998', '01054767', '01054887', // 한벌옷
+  '01070236', '01103945', '01103946', '01104156', // 신발 · 망토
+  '01702637', '01702690', '01702746', '01703027', '01703721', '01703761', '01703766', '01703780', '01703817', '01703823', '01703824', // 무기
+  '01703844', '01703846', '01703879', '01703881', '01703882', '01703893', '01703899', '01703910', '01703913', '01703918', '01703921',
+  '01703950', '01703952', '01703982', '01703996', '01703999', '01704014', '01704015', '01704016', '01704019',
+])
+const FULL_COLOR_SPRITES = new Set(['01704028/30_swingPF_3/effect'])
+// 착용 그림(sprites/<id>/<프레임>/<레이어>.png)만 본다. 아이콘(sprites/<id>/icon.png)은 이 아이템들도 16단계다(있는 19개 모두).
+function storedFullColor(key: string): boolean {
+  const m = /sprites\/(\d+)\/([^/?]+\/[^/?]+)\.png/.exec(key)
+  return !!m && (FULL_COLOR_ITEMS.has(m[1]) || FULL_COLOR_SPRITES.has(`${m[1]}/${m[2]}`))
+}
 
 // Recolor one sprite exactly like the game. UI passes h(0..359), s/b(-99..+99), t(0..6);
 // game space is saturation/brightness 1..199 (100 = neutral).
@@ -98,7 +118,7 @@ export function applyHsb(img: HTMLImageElement, p: HsbParams, key: string): HTML
   const ex = canvasReadExact() ? null : exactPixels(img)
   const data = ex ? new ImageData(ex, c.width, c.height) : ctx.getImageData(0, 0, c.width, c.height)
   const a = data.data
-  const fine = key.includes('effects/') || !is16Image(a)   // true = 1 단위(풀컬러 · 이펙트), false = 17 단위
+  const fine = key.includes('effects/') || storedFullColor(key) || !is16Image(a)   // true = 1 단위(풀컬러 · 이펙트), false = 17 단위
   warmDye()
   if (wasm && a.length <= wasm.cap) {
     const m = new Uint8Array(wasm.memory.buffer, wasm.a, a.length)
