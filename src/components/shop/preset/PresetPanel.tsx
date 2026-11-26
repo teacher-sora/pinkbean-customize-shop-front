@@ -79,16 +79,17 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       const a = Math.max(0, Math.floor(pos / stride) - VBUF), b = Math.min(lines, Math.floor((pos + size) / stride) + 1 + VBUF)
       setRange((r) => (r[0] === a && r[1] === b ? r : [a, b]))
     }
-    // 스크롤하는 동안은 카드가 마우스 밑을 지나가도 떠오르거나(hover) 코디를 미리 받지 않는다 — 지나가는 카드마다 들썩이며 잔상이 남았다
+    // 스크롤하는 동안은 카드가 마우스 밑을 지나가도 코디를 미리 받지 않는다(warmWear — 지나가는 카드마다 meta 를 받고 염색을 칠했다).
+    // 클래스로 hover 를 끄지 않는다 — 붙였다 뗄 때마다 카드 전체의 스타일을 다시 계산했다(느린 기기에서는 스크롤 중에 수백 번). hover 는 브라우저가 스크롤이 끝난 뒤 갱신한다
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(upd)
-      if (!scrollingRef.current) { scrollingRef.current = true; box.classList.add(styles.scrolling) }
-      clearTimeout(quiet); quiet = window.setTimeout(() => { scrollingRef.current = false; box.classList.remove(styles.scrolling) }, 160)
+      scrollingRef.current = true
+      clearTimeout(quiet); quiet = window.setTimeout(() => { scrollingRef.current = false }, 160)
     }
     box.addEventListener('scroll', onScroll, { passive: true })
     const off = watchSize(box, () => setResized((n) => n + 1)) // 폭이 바뀌면 줄 간격을 다시 잰다
     upd()
-    return () => { box.removeEventListener('scroll', onScroll); off(); cancelAnimationFrame(raf); clearTimeout(quiet); scrollingRef.current = false; box.classList.remove(styles.scrolling) }
+    return () => { box.removeEventListener('scroll', onScroll); off(); cancelAnimationFrame(raf); clearTimeout(quiet); scrollingRef.current = false }
   }, [mobile, virt, stride, across, per, lines])
   const [va, vb] = virt ? (stride ? [range[0], Math.min(lines, range[1])] : [Math.min(range[0], lines), Math.min(lines, range[1])]) : [0, lines]
   const padStyle: React.CSSProperties | undefined = virt && stride ? (across ? { paddingLeft: va * stride, paddingRight: (lines - vb) * stride } : { paddingTop: va * stride, paddingBottom: (lines - vb) * stride }) : undefined

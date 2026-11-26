@@ -30,8 +30,6 @@
 
 /* PC 스크롤 칸은 따로 합성한다(will-change: scroll-position) — 스크롤마다 칸 안을 다시 칠하지 않게. padding 은 PresetPanel 의 BOX_PAD 와 같다 */
 .scroll { flex: 1 1 auto; min-height: 0; overflow: hidden auto; padding: 8px; will-change: scroll-position; }
-/* 스크롤하는 동안(PresetPanel 이 붙였다 160ms 뒤 뗀다)은 카드가 마우스 밑을 지나가도 떠오르지 않는다 */
-.scrolling :global(.pb-presetwrap) { pointer-events: none; }
 /* 모바일: 코디 리스트와 같은 **자유** 가로 스크롤(스냅 없음, 스크롤바 숨김) — 뷰포트 좌우 7px 들임 + 안쪽 5px(가장자리 12px), 열 간격 10px.
    2줄 고정, 열 수는 폭에 따라 2(좁음) / 3(콘텐츠 폭 330px 이상). cqw = 스크롤 영역 콘텐츠 폭 → n열이 한 화면에 정확히 들어간다. */
 .hscrollM { flex: 1 1 auto; min-height: 0; margin: 0 7px; padding: 8px 5px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; container-type: inline-size; }
