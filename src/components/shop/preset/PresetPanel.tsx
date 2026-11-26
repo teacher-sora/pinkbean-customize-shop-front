@@ -94,10 +94,14 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   const [va, vb] = virt ? (stride ? [range[0], Math.min(lines, range[1])] : [Math.min(range[0], lines), Math.min(lines, range[1])]) : [0, lines]
   const padStyle: React.CSSProperties | undefined = virt && stride ? (across ? { paddingLeft: va * stride, paddingRight: (lines - vb) * stride } : { paddingTop: va * stride, paddingBottom: (lines - vb) * stride }) : undefined
 
-  // 고른 칸이 가운데에 오게(위 주석). 가상 스크롤이면 줄 간격을 잰 뒤에 — 처음 그리는 줄은 고른 칸 둘레라 그 칸이 늘 있다
-  const centered = useRef(false)
+  // 고른 칸이 가운데에 오게(위 주석). 가상 스크롤이면 줄 간격을 잰 뒤에, 고른 칸이 그릴 줄 밖이면(저장된 선택이 첫 그리기 뒤에 온다) 그 둘레를 먼저 그린다
+  const centered = useRef(false), centerRaf = useRef(0)
   useLayoutEffect(() => {
     if (centered.current || !selId || (virt && !stride)) return
+    if (virt) {
+      const ln = Math.floor(s.presets.findIndex((p) => p.id === selId) / per)
+      if (ln >= 0 && (ln < va || ln >= vb)) { setRange([Math.max(0, ln - 3), Math.min(lines, ln + 4)]); return }
+    }
     centered.current = true
     const go = () => {
       const box = boxRef.current, el = box?.querySelector('.pb-preset-sel')?.closest('.pb-presetwrap')
@@ -106,9 +110,10 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       box.scrollTo({ left: box.scrollLeft + r.left - b.left - (b.width - r.width) / 2, top: box.scrollTop + r.top - b.top - (b.height - r.height) / 2 })
     }
     go()
-    let raf = requestAnimationFrame(() => { go(); raf = requestAnimationFrame(go) })
-    return () => cancelAnimationFrame(raf)
-  }, [selId, stride])
+    // 두 프레임 다시 맞추기는 가운데로 옮긴 스크롤이 그릴 줄을 바꿔도(va · vb) 끊지 않는다 — 탭을 떠날 때만 멈춘다
+    centerRaf.current = requestAnimationFrame(() => { go(); centerRaf.current = requestAnimationFrame(go) })
+  }, [selId, stride, va, vb])
+  useEffect(() => () => cancelAnimationFrame(centerRaf.current), [])
 
   // 삭제는 2단계 확인: 3초 안에, 다른 상호작용 없이 연속으로 한 번 더 누르면 삭제(lib/confirmTwice).
   const remove = (p: Preset) => {
