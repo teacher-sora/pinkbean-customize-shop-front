@@ -65,7 +65,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   useLayoutEffect(() => {
     if (!virt) return
     const st = lineStride(gridRef.current, per, across)
-    if (st > 0 && st !== stride) setStride(st)
+    if (st > 0 && Math.abs(st - stride) > 0.01) setStride(st) // 소수점 흔들림으로 다시 그리지 않게
   })
   const scrollingRef = useRef(false)
   useEffect(() => {
@@ -203,11 +203,12 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
 
 const BOX_PAD = 8, VBUF = 2 // 스크롤 칸 안쪽 여백(.scroll · .hscroll padding), 보이는 줄 앞뒤로 더 그릴 줄 수
 // 줄 간격 = 그려진 첫 카드와 다음 줄 첫 카드의 자리 차이(세로 = 행, 가로 = 열). 두 줄이 그려지지 않았으면 0
+// 소수점까지 잰다(getBoundingClientRect) — 정수(offsetTop)로 재면 줄마다 깎인 만큼 여백이 어긋나 줄이 바뀔 때 카드가 1px 씩 움찔했다
 function lineStride (g: HTMLElement | null, per: number, across: boolean): number {
   const k = g?.children
   if (!k || k.length <= per) return 0
-  const a = k[0] as HTMLElement, b = k[per] as HTMLElement
-  return across ? b.offsetLeft - a.offsetLeft : b.offsetTop - a.offsetTop
+  const a = k[0].getBoundingClientRect(), b = k[per].getBoundingClientRect()
+  return across ? b.left - a.left : b.top - a.top
 }
 
 type CardAct = {
