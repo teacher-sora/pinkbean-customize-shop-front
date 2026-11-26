@@ -5,13 +5,19 @@
 // ⚠️ 줄은 CSS scroll-behavior:smooth 라 휠마다 scrollLeft += d 를 넣으면 진행 중인 스무스 스크롤이 중간 위치에서
 //    매번 다시 시작돼 거리가 깎이고 뻑뻑하게 끊긴다 → 목표 위치를 누적하고 rAF 로 직접 보간(scrollTo instant).
 // on: 줄이 나중에 붙는 경우(떠 있는 목록) 붙을 때 다시 건다.
+// stepOf: 휠 한 번에 한 칸(열)씩 넘긴다 — 칸 간격(px)을 돌려준다(PC 프리셋 가로, 사용자 지시). 목표는 늘 칸 경계(간격의 배수)에 선다.
+//   마우스 휠 한 칸(100px)은 한 열, 잘게 오는 터치패드 · 줄 단위 휠은 STEP_MIN 만큼 모이면 한 열이다.
 import { useEffect, useRef } from 'react'
 
-export function useWheelRail<T extends HTMLElement = HTMLElement>(on = true) {
+const STEP_MIN = 40
+
+export function useWheelRail<T extends HTMLElement = HTMLElement>(on = true, stepOf?: (el: T) => number) {
   const railRef = useRef<T | null>(null)
+  const stepRef = useRef(stepOf)
+  stepRef.current = stepOf
   useEffect(() => {
     const el = railRef.current; if (!on || !el) return
-    let target = el.scrollLeft, raf = 0
+    let target = el.scrollLeft, raf = 0, acc = 0
     // ⚠️ scrollLeft 는 정수로 반올림된다. 남은 거리의 20% 가 1px 이 안 되면(남은 거리 < 5px) 그 걸음이 반올림으로 사라져
     //    끝에서 2px 모자란 채 멈췄다 — 양끝 흐림이 끝까지 넘겨도 남았고, 프레임 루프도 멈추지 않았다. 그때는 목표에 바로 붙인다.
     const tick = () => {
@@ -29,7 +35,13 @@ export function useWheelRail<T extends HTMLElement = HTMLElement>(on = true) {
       if (e.deltaMode === 1) d *= 16; else if (e.deltaMode === 2) d *= el.clientWidth
       e.preventDefault()
       if (!raf) target = el.scrollLeft // 멈춰 있을 땐 실제 위치(터치 드래그 등으로 바뀌었을 수 있음)에서 시작
-      target = Math.max(0, Math.min(max, target + d))
+      const st = stepRef.current?.(el) ?? 0
+      if (st > 0) {
+        acc += d
+        if (Math.abs(acc) < STEP_MIN) return
+        const dir = Math.sign(acc); acc = 0
+        target = Math.max(0, Math.min(max, Math.round(target / st) * st + dir * st))
+      } else target = Math.max(0, Math.min(max, target + d))
       if (!raf) raf = requestAnimationFrame(tick)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
