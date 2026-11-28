@@ -6,9 +6,9 @@
 //  · 왼쪽(베이지 칸) = 보내기: 작은 QR(사이트 주소 ?move=코드 — 휴대폰 카메라로 찍으면 받는 창이 뜬다), 숫자 다섯 칸 + 복사 아이콘, 남은 시간 막대.
 //    번호는 화면이 먼저 뽑아 QR 이 열자마자 보인다(서버가 겹친다고 하면 받은 번호로 바꾼다 — lib/presetMove pickCode).
 //    5분이 지나면 말소 — 숫자가 흐려지고 복사 아이콘이 새 코드 아이콘으로 바뀐다
-//  · 오른쪽 = 아이디 칸 + [만들기], 이 기기에서 만든 아이디 목록(남은 높이를 채우는 스크롤 칸 — [저장] = 지금 프리셋으로 덮어쓰기,
-//    휴지통 = 지우기, 서버에서 곧바로 없어져 누구나 새로 쓸 수 있다), 맨 아래 받기 칸(코드나 아이디 → 서피스 'move' — MoveBody)
-//  모바일은 바텀 시트: 위 = 보내기(QR 왼쪽, 코드 오른쪽), 아래 = 아이디 · 받기(목록은 세 줄 높이의 스크롤 칸 — 시트 높이가 늘지 않는다)
+//  · 오른쪽 = 맨 위 받기 칸(코드나 아이디 → 서피스 'move' — MoveBody), 그 아래 내 아이디 상자(남은 높이를 채우는 스크롤 칸 — 첫 줄 = 새 아이디 + [만들기],
+//    그 아래 이 기기에서 만든 아이디들: [저장] = 지금 프리셋으로 덮어쓰기, 휴지통 = 지우기, 서버에서 곧바로 없어져 누구나 새로 쓸 수 있다)
+//  모바일은 바텀 시트: 위 = 보내기(QR 왼쪽, 코드 오른쪽), 아래 = 받기 · 내 아이디(상자는 만들기 줄 + 세 줄 높이의 스크롤 칸 — 시트 높이가 늘지 않는다)
 // 서버 · 규칙은 lib/presetMove · app/api/move.
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
@@ -122,15 +122,23 @@ export default function MoveIoBody({ mobile }: { mobile: boolean }) {
       </div>
     </div>
   )
-  // 아이디 · 받기 칸: 아이디 목록은 높이를 정한 스크롤 칸이다(늘어나도 창이 커지지 않는다 — 사용자 지시)
+  // 받기 · 내 아이디 칸(사용자 지시 — 처음 보는 사람도 바로 알게 단순하게): 맨 위 = 받기(코드나 아이디 → [받기], 왼쪽 보내기와 짝),
+  // 그 아래 = 내 아이디 상자 — 첫 줄이 새 아이디 만들기, 그 아래 이 기기에서 만든 아이디들([저장] · 휴지통). 만들기가 목록 상자 안에 있어 '내 목록에 더하기'로 읽힌다.
+  // 상자는 높이를 정한 스크롤 칸이다(늘어나도 창이 커지지 않는다 — 사용자 지시)
   const side = (
     <div className={clsx(styles.mvSide, mobile && styles.mvSideM)}>
       <div className={styles.mvRow}>
-        <input value={id} onChange={(e) => setId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(id.trim(), true) }} placeholder="아이디" maxLength={16} aria-label="아이디" className={styles.mvField} />
-        <button type="button" onClick={() => save(id.trim(), true)} disabled={busy} className={clsx('pb-solid', styles.mvGo)}>만들기</button>
+        <input value={key} onChange={(e) => setKey(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') take() }} placeholder="받을 코드, 아이디" maxLength={16} aria-label="받을 코드 또는 아이디" className={styles.mvField} />
+        <button type="button" onClick={take} disabled={busy} className={clsx('pb-solid', styles.mvGo)}>받기</button>
       </div>
+      <hr className={styles.mvRule} />
       <div className={clsx(styles.mvList, mobile && styles.mvListM)}>
         <div className={clsx('pb-scroll', styles.mvListIn)}>
+          {/* 내 아이디 상자의 맨 위 줄 = 새 아이디 만들기(목록과 함께 스크롤 칸 안 — 줄들과 좌우 끝이 같다. 위에 붙어 있다) */}
+          <div className={styles.mvAdd}>
+            <input value={id} onChange={(e) => setId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(id.trim(), true) }} placeholder="새 아이디" maxLength={16} aria-label="새 아이디" className={clsx(styles.mvField, styles.mvFieldIn)} />
+            <button type="button" onClick={() => save(id.trim(), true)} disabled={busy} className={styles.mvMake}>만들기</button>
+          </div>
         {ids.map((a) => (
           <div key={a.id} className={styles.mvId}>
             <span className={styles.mvIdName}>{a.id}</span>
@@ -139,11 +147,6 @@ export default function MoveIoBody({ mobile }: { mobile: boolean }) {
           </div>
         ))}
         </div>
-      </div>
-      <hr className={styles.mvRule} />
-      <div className={styles.mvRow}>
-        <input value={key} onChange={(e) => setKey(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') take() }} placeholder="코드, 아이디" maxLength={16} aria-label="받을 코드 또는 아이디" className={styles.mvField} />
-        <button type="button" onClick={take} disabled={busy} className={clsx('pb-solid', styles.mvGo)}>받기</button>
       </div>
     </div>
   )
