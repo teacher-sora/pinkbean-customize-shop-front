@@ -197,10 +197,10 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
 
   // 패널 폭(앱 영역 기준)·등장/닫힘 위치는 즉시 반영 값이라 인라인(드래그 중 오프셋은 위 터치 핸들러가 DOM 직접).
-  // PC 패널 크기는 **모든 종류가 같다**. 프리셋 옮기기 창만 폭 480 · 높이는 내용만큼(코드 하나 보이는 창이라 — 사용자 허락)
+  // PC 패널 크기는 **모든 종류가 같다**. 프리셋 옮기기 창만 600 × 400(코드와 아이디만 있는 창이라 — 사용자 허락)
   const panelStyle: React.CSSProperties = mobile
     ? { transform: `translateY(${hidden ? '100%' : '0px'})`, transition: EASE, ...(bmH ? { height: bmH } : {}) }
-    : k === 'moveio' ? { width: `min(480px, ${Math.max(320, frameW - 40)}px)`, height: 'auto', maxHeight: 'min(620px, 86svh)' }
+    : k === 'moveio' ? { width: `min(600px, ${Math.max(320, frameW - 40)}px)`, height: 'min(400px, 86svh)' }
     : { width: `min(900px, ${Math.max(320, frameW - 40)}px)`, height: 'min(620px, 86svh)' }
   // 본문 가로 슬라이드(부위 염색 전환) — 즉시 값이라 인라인.
   const slideStyle: React.CSSProperties = { transform: `translateX(${s.partSlide}px)`, opacity: s.partSlide ? 0 : 1 }
@@ -261,9 +261,10 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
 // 공용 푸터. 적용은 염색·점 위치만. 부위 염색을 거쳐 들어온 염색·점 위치는 '이전'(부위 고르기로 슬라이드 복귀), 그 외는 '닫기'(즉시 종료).
 // 모바일은 얇고 긴 34px(버튼 하나면 전체 폭, 닫기+적용이면 반씩).
+// applyLabel: 글자가 바뀌는 단추(옮긴 프리셋의 [추가 N])는 나올 수 있는 글자를 겹친 부품을 넘겨 폭을 고정한다.
 // onBack: 본문 안에서 화면만 바뀐 경우(염색표 보기 등) 그 화면이 직접 넘겨주는 '이전'. 서피스 종류를 바꾸지 않는다.
 // closeToo: '이전'이 닫기 자리를 차지하지 않고 닫기 왼쪽에 따로 선다(도움 및 건의함의 상세 — 바로 닫고 싶을 수도 있다).
-export function SurfaceFooter({ onApply, applyLabel = '적용', onBack, closeToo }: { onApply?: () => void; applyLabel?: string; onBack?: () => void; closeToo?: boolean }) {
+export function SurfaceFooter({ onApply, applyLabel = '적용', onBack, closeToo }: { onApply?: () => void; applyLabel?: React.ReactNode; onBack?: () => void; closeToo?: boolean }) {
   const s = useShop()
   const mobile = s.bp === 'mobile'
   const sf = s.surface

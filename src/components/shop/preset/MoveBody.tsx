@@ -56,7 +56,14 @@ export default function MoveBody({ items, mobile }: { items: MoveItem[]; mobile:
   return (
     <>
       {mobile ? <div className={clsx('pb-scroll', 'pb-fade', styles.bodyM)}>{side}{cards}</div> : <div className={styles.body}>{cards}{side}</div>}
-      <SurfaceFooter onApply={go} applyLabel={mode === 'all' ? '덮어쓰기' : `추가 ${pick.size}`} />
+      {/* 단추 글자([덮어쓰기] ↔ [추가 N])가 바뀌어도 폭이 그대로 — 가장 긴 글자('추가 000', 숫자는 고정 폭)까지 한 칸에 겹쳐 자리를 잡아 둔다 */}
+      <SurfaceFooter onApply={go} applyLabel={
+        <span className={styles.swap}>
+          <span style={mode === 'all' ? undefined : { visibility: 'hidden' }}>덮어쓰기</span>
+          <span style={mode === 'all' ? { visibility: 'hidden' } : undefined}>{`추가 ${pick.size}`}</span>
+          <span aria-hidden="true" style={{ visibility: 'hidden' }}>추가 000</span>
+        </span>
+      } />
     </>
   )
 }

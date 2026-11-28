@@ -2,24 +2,22 @@
 
 // 프리셋 옮기기(사용자 지시 — 한 기기의 프리셋 여러 개를 다른 기기로 한 번에. 설명 글 없이 코드만).
 // 프리셋 탭 머리의 [옮기기](MoveBtn — 불러오기 칸 바로 왼쪽, 함께 오른쪽 끝)가 서피스 'moveio' 를 연다: PC = 가운데 창, 모바일 = 바텀 시트.
-// 이 창만 폭 · 높이가 내용만큼이다(사용자 허락). 맨 위 [보내기 | 받기] — 두 쪽을 한 칸에 겹쳐 두어 바꿔도 창 높이가 그대로다(밀림 없음).
-//  · 보내기: 왼쪽 QR(사이트 주소 ?move=코드 — 휴대폰 카메라로 찍으면 받는 창이 뜬다), 오른쪽 5자리 코드 + 남은 시간 + [복사].
-//    5분이 지나면 말소 — 코드가 흐려지고 [복사] 자리가 [새 코드]. 아래 = 아이디 만들기 칸 + 이 기기에서 만든 아이디 목록
-//    ([저장] = 지금 프리셋으로 덮어쓰기, 휴지통 = 지우기 — 서버에서 곧바로 없어져 누구나 그 아이디를 새로 쓸 수 있다)
-//  · 받기: 코드나 아이디 → 옮겨 온 프리셋 고르기(서피스 'move' — MoveBody)
+// 짜임은 코디 프로필 창과 같다(탭 없이 한 화면 — 탭을 바꾸면 한쪽이 비어 보였다, 사용자 지적). PC 는 크기를 정한 창(600 × 400):
+//  · 왼쪽(베이지 칸) = 보내기: 작은 QR(사이트 주소 ?move=코드 — 휴대폰 카메라로 찍으면 받는 창이 뜬다), 숫자 다섯 칸 + 복사 아이콘, 남은 시간 막대.
+//    번호는 화면이 먼저 뽑아 QR 이 열자마자 보인다(서버가 겹친다고 하면 받은 번호로 바꾼다 — lib/presetMove pickCode).
+//    5분이 지나면 말소 — 숫자가 흐려지고 복사 아이콘이 새 코드 아이콘으로 바뀐다
+//  · 오른쪽 = 아이디 칸 + [만들기], 이 기기에서 만든 아이디 목록(남은 높이를 채우는 스크롤 칸 — [저장] = 지금 프리셋으로 덮어쓰기,
+//    휴지통 = 지우기, 서버에서 곧바로 없어져 누구나 새로 쓸 수 있다), 맨 아래 받기 칸(코드나 아이디 → 서피스 'move' — MoveBody)
+//  모바일은 바텀 시트: 위 = 보내기(QR 왼쪽, 코드 오른쪽), 아래 = 아이디 · 받기(목록은 세 줄 높이의 스크롤 칸 — 시트 높이가 늘지 않는다)
 // 서버 · 규칙은 lib/presetMove · app/api/move.
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { drawQr, makeQr } from '@/lib/qr'
-import { readIds, receive, removeId, sendByCode, sendById, MOVE_ID_RE, type MoveAcct } from '@/lib/presetMove'
+import { MOVE_ID_RE, MOVE_TTL, pickCode, readIds, receive, removeId, sendByCode, sendById, type MoveAcct } from '@/lib/presetMove'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { useShop } from '../ShopContext'
-import { Seg } from '../ui/controls'
-import { IconSwap, IconTrashSolid } from '../ui/Icons'
+import { IconLinkCopy, IconReset, IconSwap, IconTrashSolid } from '../ui/Icons'
 import styles from './preset.module.css'
-
-const TABS = [{ v: 'send' as const, l: '보내기' }, { v: 'recv' as const, l: '받기' }]
-const QR_MAX = 150 // QR 칸(.mvQr 164 − 테두리) 안에서 점 크기를 정수로 — 남는 자리가 흰 여백이다
 
 // 프리셋 탭 머리의 단추. 창이 열려 있는 동안은 켜진 색
 export function MoveBtn({ mobile }: { mobile: boolean }) {
@@ -33,53 +31,49 @@ export function MoveBtn({ mobile }: { mobile: boolean }) {
   )
 }
 
-function Qr({ text }: { text: string }) {
+function Qr({ text, max }: { text: string; max: number }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const c = ref.current, q = makeQr(text, 'M')
     if (!c || !q) return
-    const m = Math.max(1, Math.floor(QR_MAX / q.size)), css = q.size * m, dpr = Math.max(1, Math.round(window.devicePixelRatio || 1))
-    c.width = c.height = css * dpr; c.style.width = c.style.height = `${css}px`
+    const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1)), dev = Math.max(1, Math.floor(max * dpr / q.size)) // 점 하나 = 화면 픽셀 정수
+    c.width = c.height = q.size * dev; c.style.width = c.style.height = `${(q.size * dev) / dpr}px`
     const g = c.getContext('2d')!
-    g.setTransform(dpr, 0, 0, dpr, 0, 0)
-    g.fillStyle = '#ffffff'; g.fillRect(0, 0, css, css)
-    drawQr(g, q, 0, 0, m, '#2a2521') // 판은 늘 흰색 · 점은 짙은 색(뒤집힌 QR 을 못 읽는 카메라가 있다 — 코디 프로필 카드와 같다)
-  }, [text])
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height)
+    drawQr(g, q, 0, 0, dev, '#2a2521') // 판은 늘 흰색 · 점은 짙은 색(뒤집힌 QR 을 못 읽는 카메라가 있다 — 코디 프로필 카드와 같다)
+  }, [text, max])
   return <canvas ref={ref} aria-label="QR" />
 }
 
 export default function MoveIoBody({ mobile }: { mobile: boolean }) {
   const s = useShop()
-  // 옮길 프리셋이 없는 기기(새 기기)는 받기부터
-  const [tab, setTab] = useState<'send' | 'recv'>(() => (s.movePresets().length ? 'send' : 'recv'))
-  const [code, setCode] = useState<string | null>(null)
-  const [exp, setExp] = useState(0) // 코드가 말소되는 때(ms)
-  const [now, setNow] = useState(0)
+  const [can] = useState(() => s.movePresets().length > 0) // 옮길 프리셋이 있는 기기만 코드 표
+  const [code, setCode] = useState<string | null>(() => (can ? pickCode() : null))
+  const [exp, setExp] = useState(() => Date.now() + MOVE_TTL) // 코드가 말소되는 때(ms)
+  const [now, setNow] = useState(() => Date.now())
   const [making, setMaking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [ids, setIds] = useState<MoveAcct[]>(readIds)
   const [id, setId] = useState('')
   const [key, setKey] = useState('')
-  const made = useRef(false)
-  const make = async () => {
+  const make = async (want: string) => {
     const items = s.movePresets()
     if (!items.length) { s.notify('옮길 프리셋이 없어요'); return }
-    setMaking(true); setCode(null)
-    const c = await sendByCode(items)
+    setCode(want); setExp(Date.now() + MOVE_TTL); setNow(Date.now()); setMaking(true)
+    const c = await sendByCode(items, want)
     setMaking(false)
-    if (c) { setCode(c.code); setExp(Date.now() + c.ttl); setNow(Date.now()) } else s.notify('코드를 만들지 못했어요')
+    if (c) { setCode(c.code); setExp(Date.now() + c.ttl) } else { setExp(0); s.notify('코드를 만들지 못했어요') }
   }
-  // 보내기를 처음 볼 때 한 번 만든다(받기만 하는 기기는 만들지 않는다)
-  useEffect(() => { if (tab === 'send' && !made.current) { made.current = true; make() } }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
-  // 남은 시간 — 1초마다
+  const first = useRef(false)
+  useEffect(() => { if (code && !first.current) { first.current = true; make(code) } }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const left = Math.max(0, Math.ceil((exp - now) / 1000)), dead = !!code && left === 0
+  // 남은 시간 — 1초마다(말소되면 멈춘다)
   useEffect(() => {
-    if (!code) return
+    if (!code || dead) return
     const t = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(t)
-  }, [code])
-  const left = code ? Math.max(0, Math.ceil((exp - now) / 1000)) : 0, dead = !!code && left === 0, wait = !code || dead
+  }, [code, dead])
   const copy = () => { if (code) navigator.clipboard?.writeText(code).then(() => s.notify('코드를 복사했어요')).catch(() => {}) }
-  const url = code && !dead ? `${location.origin}/preset?move=${code}` : ''
 
   const save = async (v: string, fromField: boolean) => {
     if (!MOVE_ID_RE.test(v)) { s.notify('아이디는 2~16자, 숫자만은 안 돼요'); return }
@@ -108,51 +102,48 @@ export default function MoveIoBody({ mobile }: { mobile: boolean }) {
     s.openMove(items)
   }
 
-  return (
-    <div className={clsx('pb-scroll', styles.mvBody, mobile && styles.mvBodyM)}>
-      <div className={styles.mvTabs}><Seg variant={mobile ? 'mobileFit' : 'pc'} opts={TABS} value={tab} onPick={setTab} /></div>
-      <div className={styles.mvStack}>
-        <div className={clsx(styles.mvPane, tab !== 'send' && styles.mvOff)} aria-hidden={tab !== 'send' || undefined}>
-          <div className={styles.mvCodeRow}>
-            <div className={clsx(styles.mvQr, !url && styles.mvQrWait)}>{url && <Qr text={url} />}</div>
-            <div className={styles.mvCodeCol}>
-              <button type="button" onClick={copy} disabled={wait} title="코드 복사" className={clsx(styles.mvCode, wait && styles.mvCodeWait)}>{code ?? '00000'}</button>
-              <div className={styles.mvMeta}>
-                <span className={clsx(styles.mvTime, dead && styles.mvTimeDead)}>{code ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : ''}</span>
-                {/* [복사] ↔ [새 코드] — 두 글자를 한 칸에 겹쳐 폭이 바뀌지 않는다 */}
-                <button type="button" onClick={dead ? make : copy} disabled={making || !code} className={styles.mvAct}>
-                  <span className={styles.loadLabel}>
-                    <span style={dead ? { visibility: 'hidden' } : undefined}>복사</span>
-                    <span style={dead ? undefined : { visibility: 'hidden' }}>새 코드</span>
-                  </span>
-                </button>
-              </div>
-            </div>
+  // 보내기 칸: QR + 숫자 다섯 칸 + 복사(말소되면 새 코드) + 남은 시간. 옮길 프리셋이 없는 기기는 빈 칸만(자리는 그대로)
+  const send = (
+    <div className={clsx(styles.mvSend, mobile && styles.mvSendM)}>
+      <div className={styles.mvQr}>{code && !dead && <Qr text={`${location.origin}/preset?move=${code}`} max={mobile ? 78 : 104} />}</div>
+      <div className={styles.mvCodeCol}>
+        <div className={styles.mvCodeLine}>
+          <div className={clsx(styles.mvDigits, (dead || !code) && styles.mvDigitsDead)} aria-label={code ? `코드 ${code}` : undefined}>
+            {(code ?? '     ').split('').map((d, i) => <span key={i} className={styles.mvDigit}>{d}</span>)}
           </div>
-          <hr className={styles.mvRule} />
-          <div className={styles.mvRow}>
-            <input value={id} onChange={(e) => setId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(id.trim(), true) }} placeholder="아이디" maxLength={16} aria-label="아이디" className={styles.mvField} />
-            <button type="button" onClick={() => save(id.trim(), true)} disabled={busy} className={clsx('pb-solid', styles.mvGo)}>만들기</button>
-          </div>
-          {ids.length > 0 && (
-            <ul className={styles.mvIds}>
-              {ids.map((a) => (
-                <li key={a.id} className={styles.mvId}>
-                  <span className={styles.mvIdName}>{a.id}</span>
-                  <button type="button" onClick={() => save(a.id, false)} disabled={busy} title="지금 프리셋으로 덮어쓰기" className={styles.mvIdBtn}>저장</button>
-                  <button type="button" onClick={() => drop(a)} disabled={busy} {...{ [CONFIRM_ATTR]: `moveid:${a.id}` }} title="아이디 삭제" aria-label="삭제" className={clsx(styles.mvIdBtn, styles.mvIdDel)}><IconTrashSolid size={12} /></button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <button type="button" onClick={dead ? () => make(pickCode()) : copy} disabled={making || !code} title={dead ? '새 코드' : '코드 복사'} aria-label={dead ? '새 코드' : '코드 복사'} className={styles.mvIcon}>
+            {dead ? <IconReset /> : <IconLinkCopy size={15} />}
+          </button>
         </div>
-        <div className={clsx(styles.mvPane, styles.mvRecv, tab !== 'recv' && styles.mvOff)} aria-hidden={tab !== 'recv' || undefined}>
-          <div className={styles.mvRow}>
-            <input value={key} onChange={(e) => setKey(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') take() }} placeholder="코드, 아이디" maxLength={16} aria-label="코드 또는 아이디" className={styles.mvField} />
-            <button type="button" onClick={take} disabled={busy} className={clsx('pb-solid', styles.mvGo)}>받기</button>
-          </div>
+        <div className={styles.mvTimeLine} style={code ? undefined : { visibility: 'hidden' }}>
+          <span className={styles.mvTrack}><span className={styles.mvFill} style={{ transform: `scaleX(${left / (MOVE_TTL / 1000)})` }} /></span>
+          <span className={styles.mvTime}>{`${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}</span>
         </div>
       </div>
     </div>
   )
+  // 아이디 · 받기 칸: 아이디 목록은 높이를 정한 스크롤 칸이다(늘어나도 창이 커지지 않는다 — 사용자 지시)
+  const side = (
+    <div className={clsx(styles.mvSide, mobile && styles.mvSideM)}>
+      <div className={styles.mvRow}>
+        <input value={id} onChange={(e) => setId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(id.trim(), true) }} placeholder="아이디" maxLength={16} aria-label="아이디" className={styles.mvField} />
+        <button type="button" onClick={() => save(id.trim(), true)} disabled={busy} className={clsx('pb-solid', styles.mvGo)}>만들기</button>
+      </div>
+      <div className={clsx('pb-scroll', styles.mvList, mobile && styles.mvListM)}>
+        {ids.map((a) => (
+          <div key={a.id} className={styles.mvId}>
+            <span className={styles.mvIdName}>{a.id}</span>
+            <button type="button" onClick={() => save(a.id, false)} disabled={busy} className={styles.mvIdBtn}>저장</button>
+            <button type="button" onClick={() => drop(a)} disabled={busy} {...{ [CONFIRM_ATTR]: `moveid:${a.id}` }} title="아이디 삭제" aria-label="아이디 삭제" className={clsx(styles.mvIdBtn, styles.mvIdDel)}><IconTrashSolid size={12} /></button>
+          </div>
+        ))}
+      </div>
+      <hr className={styles.mvRule} />
+      <div className={styles.mvRow}>
+        <input value={key} onChange={(e) => setKey(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') take() }} placeholder="코드, 아이디" maxLength={16} aria-label="받을 코드 또는 아이디" className={styles.mvField} />
+        <button type="button" onClick={take} disabled={busy} className={clsx('pb-solid', styles.mvGo)}>받기</button>
+      </div>
+    </div>
+  )
+  return <div className={clsx(styles.mvBody, mobile && styles.mvBodyM)}>{send}{side}</div>
 }

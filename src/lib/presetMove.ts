@@ -23,12 +23,15 @@ const writeIds = (a: MoveAcct[]) => { try { localStorage.setItem(MOVE_ACCT_KEY, 
 const pack = async (items: MoveItem[]) => ({ v: 1, items: await Promise.all(items.map(async (it) => ({ n: it.name, c: await encodeShareCode(it.snap) }))) })
 const post = (body: unknown, method = 'POST') => fetch('/api/move', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
-// 보내기 — 5자리 코드와 살아 있는 시간(ms). 실패하면 null
-export async function sendByCode(items: MoveItem[]): Promise<{ code: string; ttl: number } | null> {
+export const MOVE_TTL = 5 * 60 * 1000 // 코드가 살아 있는 시간(서버 app/api/move 의 TTL 과 같다)
+// 화면이 먼저 뽑는 번호 — QR 을 서버를 기다리지 않고 바로 그린다. 서버가 살아 있는 번호와 겹친다고 하면 받은 번호로 바꾼다
+export const pickCode = () => String(10000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90000))
+// 보내기 — 5자리 코드와 살아 있는 시간(ms). want = 먼저 뽑아 둔 번호. 실패하면 null
+export async function sendByCode(items: MoveItem[], want?: string): Promise<{ code: string; ttl: number } | null> {
   try {
-    const r = await post({ bundle: await pack(items) })
+    const r = await post({ bundle: await pack(items), code: want })
     const j = await r.json().catch(() => null)
-    return r.ok && j?.code ? { code: String(j.code), ttl: Number(j.ttl) || 300000 } : null
+    return r.ok && j?.code ? { code: String(j.code), ttl: Number(j.ttl) || MOVE_TTL } : null
   } catch { return null }
 }
 // 아이디로 두기(새로 만들거나, 이 기기가 만든 아이디면 덮어쓴다) — 'ok' | 'taken'(다른 기기가 쓰는 아이디) | 'fail'

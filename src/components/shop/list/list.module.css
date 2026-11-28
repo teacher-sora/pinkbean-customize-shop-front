@@ -163,10 +163,12 @@
 @media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge:not(.labelBadgeCash) { height: 14px; image-rendering: auto; } .labelGen { left: 18px; height: 14px; } .kindBadge { width: 14px; height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
 /* 보기 설정 창의 '구분' 토글 줄(여러 개를 함께 켠다) · 켜 둔 토글이 있으면 접힌 버튼 글자도 분홍 */
 .filterBtnSet .filterText { color: light-dark(#c05a94, #cb9ab6); }
-/* 세트 띠지(list/SetPop) — 즐겨찾기 바로 옆(북마크 띠지 자리). 북마크가 나오면 한 칸 옆으로 비킨다(translateX — 북마크 자리는 그대로).
+/* 세트 띠지(list/SetPop, PC) — 즐겨찾기 바로 옆(북마크 띠지 자리). 북마크가 나오면 한 칸 옆으로 비킨다(translateX — 북마크 자리는 그대로).
    색은 프리셋 카드의 복사 띠지와 같다. 전역 띠지 hover(.pb-ribbon 의 transform)를 쓰지 않는다 — 비킨 자리가 풀린다 */
 .setMark { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 35px; z-index: 4; width: 23px; height: 29px; padding: 6px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#a9b7cf, #7c7f8b); color: light-dark(#fff, #ececef); cursor: pointer; transition: transform .24s cubic-bezier(.22,.61,.36,1), filter .24s ease; }
-.setMark.setMarkM { width: 20px; height: 26px; padding-top: 5px; right: 32px; }
 .setMarkAside { transform: translateX(-28px); }
-.setMark.setMarkM.setMarkAside { transform: translateX(-25px); }
 @media (hover: hover) and (pointer: fine) { .setMark:hover { filter: brightness(0.8) saturate(1.15); } }
+/* 모바일 세트 입구 = 카드 이름 줄(list/SetPop SetName). 이름 앞 작은 세트 표시(띠지와 같은 색). 위아래 3px 씩 누름 자리를 넓히되 음수 여백으로 보이는 자리는 그대로 */
+.cardM > .nameM.setNameM { margin: -3px 0; padding: 3px 5px; display: flex; align-items: center; justify-content: center; gap: 4px; border: none; background: transparent; font-family: inherit; cursor: pointer; }
+.setNameIco { flex: 0 0 auto; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: light-dark(#a9b7cf, #7c7f8b); color: light-dark(#fff, #ececef); }
+.setNameText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

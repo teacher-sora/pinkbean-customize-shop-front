@@ -8,7 +8,7 @@ import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, i
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 import { IconBookmark, IconDot, IconDrop, IconStar, IconTab, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
-import { SetMark } from './SetPop'
+import { SetMark, SetName } from './SetPop'
 import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
@@ -24,6 +24,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const sel = s.isEquippedInCat(cat, item.id)
   const fav = s.favorites.has(item.id)
   const pinned = s.isBookmarked(item.id)
+  const hasSet = item.setGroup != null || !!item.setItemID // 세트에 들 수 있는 아이템(구성 맵을 받기 전에도 자리를 잡는다)
   const isSkinItem = item.slot === 'skin'
   // 피부는 원칙적으로 염색 불가지만, "컬러라인" 커스텀 피부는 라인만 HSB 로 염색 가능.
   const dyeable = isSkinItem ? isDyeableSkin(item.name) : item.dyeMode !== 'none'
@@ -59,8 +60,8 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
         </button>
         <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
           className={clsx('pb-ribbon', styles.pinMark, mobile && styles.pinMarkM, pinned && styles.pinMarkOn)} />
-        {/* 세트 띠지(list/SetPop) — 즐겨찾기 바로 옆. PC 는 올리면, 모바일은 누르면 그 세트가 뜬다. 북마크 띠지가 나오면 한 칸 옆으로 비킨다. 지금 dev 에서만 */}
-        {DEV_SITE && (item.setGroup != null || !!item.setItemID) && <SetMark item={item} mobile={mobile} aside={pinned} />}
+        {/* 세트 띠지(list/SetPop) — PC 만, 즐겨찾기 바로 옆. 올리면 그 세트가 뜬다. 북마크 띠지가 나오면 한 칸 옆으로 비킨다. 지금 dev 에서만 */}
+        {DEV_SITE && !mobile && hasSet && <SetMark item={item} aside={pinned} />}
         <div className={styles.thumb}>
           <ItemThumb item={item} mode={mode} fraction={mobile ? CARD_FRACTION_M : undefined} fitW={mobile ? CARD_FIT_W_M : undefined} zoomStep={+s.listZoom - 1} chat={item.chatUi ? CHAT_CARD : undefined} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
             zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
@@ -86,7 +87,8 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
               className={clsx(styles.combo, mobile && styles.comboM)}>{mobile ? <><IconTab id="codi" size={11} />{countLabel(looks)}</> : `코디 ${countLabel(looks)}`}</button>
           )}
         </div>
-        <div className={mobile ? styles.nameM : styles.name}>{name}</div>
+        {/* 모바일 세트 입구 = 이름 줄(그림을 가리지 않는다 — 사용자 지시). 이름 앞 작은 세트 표시, 줄을 누르면 세트 시트 */}
+        {DEV_SITE && mobile && hasSet ? <SetName item={item} name={name} /> : <div className={mobile ? styles.nameM : styles.name}>{name}</div>}
         <div className={clsx(styles.bar, mobile ? styles.barM : styles.barHover)}>
           <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" className={clsx('pb-cardact', styles.act, mobile && styles.actM, pinned && styles.actPinned)}>{mobile && <span className={styles.actIcon}><IconBookmark filled={pinned} /></span>}<span className={styles.actText}>북마크</span></button>
           {dyeable && (
