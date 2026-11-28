@@ -130,7 +130,7 @@
 @media (pointer: coarse) { .mvListIn { padding: 0 4px 4px; } }
 /* 첫 줄 = 새 아이디 만들기. 스크롤 칸 안이라 아이디 줄들과 좌우 끝이 같고, 위에 붙어 목록을 내려도 남는다. 입력 칸 위아래 4. 칸 안의 입력 · 단추는 둥글기 4(상자 8 − 들임 4) */
 .mvAdd { position: sticky; top: 0; z-index: 1; flex: 0 0 auto; display: flex; gap: 4px; padding: 4px 0; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); background: light-dark(#fff, #303238); }
-.mvFieldIn { height: 32px; padding: 0 10px; border-radius: 4px; }
+.mvField.mvFieldIn { height: 32px; padding: 0 10px; border-radius: 4px; }
 .mvMake { flex: 0 0 auto; width: 64px; height: 32px; padding: 0; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 4px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: border-color .22s ease, color .22s ease; }
 .mvMake:disabled { opacity: .6; cursor: default; }
 .mvListM { flex: 0 0 auto; height: 155px; } /* 만들기 줄(32 + 4 × 2 + 선 1) + 세 줄(2 + 34 × 3 + 2 × 2) + 아래 4 + 테두리 */
