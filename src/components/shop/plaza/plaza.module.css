@@ -322,6 +322,8 @@
 .takeSub { font-size: calc(12rem / 16); color: light-dark(#a89e93, #8e919a); }
 .takeGrid { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 12px; }
 .takeGridM { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+/* 고르기 카드(PickCard — 공유받은 코디 · 닉네임 코디 · 옮긴 프리셋) — 누르는 카드라 손 모양 */
+.takeCard { cursor: pointer; }
 .takeCardThumb { position: relative; width: 100%; aspect-ratio: 3/4; overflow: hidden; background: light-dark(#f7f2ec, #3b3d45); border-radius: 8px 8px 0 0; }
 .takeCardFoot { padding: 8px 10px 9px; text-align: center; }
 .takeCardName { font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#2a2521, #d4d5d8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

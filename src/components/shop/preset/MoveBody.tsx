@@ -46,7 +46,7 @@ export default function MoveBody({ items, mobile }: { items: MoveItem[]; mobile:
     <div className={mobile ? styles.cardsM : clsx('pb-scroll', 'pb-gutter', 'pb-fade', styles.cards)}>
       <div className={clsx(styles.grid, mobile && styles.gridM)}>
         {items.map((it, i) => (
-          <PickCard key={i} name={it.name || `코디 ${i + 1}`} title={mode === 'all' ? '눌러서 골라 추가하기' : pick.has(i) ? '고르기 풀기' : '고르기'} onPick={() => tap(i)} sel={mode === 'all' || pick.has(i)}>
+          <PickCard key={i} name={it.name || `코디 ${i + 1}`} onPick={() => tap(i)} sel={mode === 'all' || pick.has(i)}>
             <SnapThumb snap={it.snap} fraction={mobile ? PRESET_FRACTION_M : PRESET_FRACTION} fitW={mobile ? CARD_FIT_W_M : undefined} />
           </PickCard>
         ))}
