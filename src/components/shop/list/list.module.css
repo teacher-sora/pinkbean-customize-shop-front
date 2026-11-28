@@ -82,12 +82,9 @@
 
 /* ── 아이템 카드 ── */
 .card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 8px 6px; border-radius: 8px; min-width: 0; min-height: 0; background: light-dark(#fff, #303238); }
-/* 모바일 카드 = 그림 칸이 카드 폭을 꽉 채운다(위쪽 모서리는 카드 안쪽 둥글기 7) — 4열 카드가 좁고 길어 보였고(사용자 지시), 그림 칸 왼쪽 아래 등급 배지와
-   오른쪽 아래 '코디 N' 칩이 겹쳤다(그림 칸 75 → 85px, 390 폭). 이름 줄 · [북마크 · 염색] 막대만 좌우 5 안쪽 */
-.cardM { gap: 3px; padding: 0 0 5px; }
+/* 모바일 카드 = 그림 칸이 카드 폭을 꽉 채우고(위쪽 모서리는 카드 안쪽 둥글기 7) 아래는 이름 줄(아이템 시트 단추 — 아래 .nameRowM)뿐이다 */
+.cardM { gap: 0; padding: 0; }
 .cardM > .thumb { border-radius: 7px 7px 0 0; }
-.cardM > .nameM { padding: 0 5px; }
-.cardM > .barM { width: auto; align-self: stretch; margin: -1px 5px 0; }
 .thumb { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; container-type: inline-size; border-radius: 6px; background: light-dark(#f7f2ec, #3b3d45); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 /* NEW 라벨(최근 패치 신규) */
 .newBadge { position: absolute; top: 5px; left: 5px; z-index: 4; display: inline-flex; align-items: center; height: 17px; padding: 0 6px; border-radius: 4px; font-size: calc(9.5rem / 16); font-weight: 700; letter-spacing: .02em; background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); pointer-events: none; }
@@ -109,8 +106,6 @@
 .kindBadge > svg { width: 100%; height: 100%; }
 /* 코디 룩북 칩 — 썸네일 오른쪽 아래(왼쪽 아래는 등급 배지). 광장 카드의 날짜 칩과 같은 꼴. 늘 보인다(숨은 기능이 되지 않게 — 사용자 지시) */
 .combo { composes: pinkTag from '../ui/marks.module.css'; position: absolute; right: 4px; bottom: 4px; z-index: 3; padding: 0 7px; font-family: inherit; white-space: nowrap; cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
-/* 모바일 = 옷걸이(하단 '코디' 탭과 같은 아이콘) + 수 — 글자 '코디'를 빼 칩이 좁다(4열 카드에서 왼쪽 아래 등급 배지와 겹쳤다, 320 폭까지) */
-.comboM { right: 3px; bottom: 3px; height: 18px; padding: 0 5px 0 4px; gap: 2px; font-size: calc(10rem / 16); }
 @media (hover: hover) and (pointer: fine) { .combo:hover { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); } }
 /* 이름 줄은 block + line-height 로 가운데 — flex 중앙정렬은 ellipsis 가 박스에 안 걸려 양끝이 잘린다. */
 .name { flex: 0 0 auto; width: 100%; min-width: 0; height: 18px; line-height: 18px; display: block; font-size: calc(12rem / 16); font-weight: 500; color: light-dark(#3d372f, #cacbd0); letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -154,13 +149,8 @@
 .setCellOn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); } /* 누른 카드의 아이템 — 북마크 칸의 '착용 중'과 같은 색 */
 .setSprite { flex: 0 0 auto; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
 .setName { min-width: 0; font-size: calc(12rem / 16); font-weight: 500; line-height: 1.3; color: light-dark(#3d372f, #cacbd0); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; }
-/* 좁은 휴대폰: 340 미만(아이폰 SE 1세대 320 · 폴드 바깥 화면 280)은 코디 칩의 옷걸이를 빼고 수만 — 그림 칸이 68px 아래라 왼쪽 아래 등급 배지와 겹쳤다.
-   300 이하는 카드 막대를 아이콘으로, 등급 배지 · '보기 설정' 글자를 줄인다(북마크가 잘리고 배지가 칩과 겹쳤다) */
-@media (max-width: 339px) { .comboM > svg { display: none; } .comboM { padding: 0 5px; } }
-/* 막대 단추의 아이콘은 300 이하에서만 보인다(그 폭에선 '북마크' 글자가 칸에 들어가지 않는다 — 폴드 1 · 2 바깥 화면 280) */
-.actIcon { display: none; }
-.actIcon > svg { width: 12px; height: 12px; }
-@media (max-width: 300px) { .actM .actIcon { display: flex; } .actM .actText { display: none; } .labelBadge:not(.labelBadgeCash) { height: 14px; image-rendering: auto; } .labelGen { left: 18px; height: 14px; } .kindBadge { width: 14px; height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
+/* 좁은 휴대폰(300 이하 — 폴드 1 · 2 바깥 화면 280): 등급 배지 · '보기 설정' 글자를 줄인다(배지가 겹쳤다) */
+@media (max-width: 300px) { .labelBadge:not(.labelBadgeCash) { height: 14px; image-rendering: auto; } .labelGen { left: 18px; height: 14px; } .kindBadge { width: 14px; height: 14px; } .filterBtnM { padding: 0 6px 0 8px; } .filterText { font-size: calc(11rem / 16); } }
 /* 보기 설정 창의 '구분' 토글 줄(여러 개를 함께 켠다) · 켜 둔 토글이 있으면 접힌 버튼 글자도 분홍 */
 .filterBtnSet .filterText { color: light-dark(#c05a94, #cb9ab6); }
 /* 세트 띠지(list/SetPop, PC) — 즐겨찾기 바로 옆(북마크 띠지 자리). 북마크가 나오면 한 칸 옆으로 비킨다(translateX — 북마크 자리는 그대로).
@@ -168,17 +158,16 @@
 .setMark { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 35px; z-index: 4; width: 23px; height: 29px; padding: 6px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#a9b7cf, #7c7f8b); color: light-dark(#fff, #ececef); cursor: pointer; transition: transform .24s cubic-bezier(.22,.61,.36,1), filter .24s ease; }
 .setMarkAside { transform: translateX(-28px); }
 @media (hover: hover) and (pointer: fine) { .setMark:hover { filter: brightness(0.8) saturate(1.15); } }
-/* 모바일 카드(dev — list/ItemSheet): 누르는 곳은 그림(입기)과 이름 줄(아이템 시트) 둘뿐이다(사용자 지시 — 작은 단추가 한 카드에 몰려 잘못 눌렸다).
+/* 모바일 카드(list/ItemSheet): 누르는 곳은 그림(입기) · 이름 줄(아이템 시트) · 즐겨찾기 띠지뿐이다(사용자 지시 — 작은 단추가 한 카드에 몰려 잘못 눌렸다).
    이름 줄은 줄 전체가 단추(높이 36 — 예전 막대 26 · 그림 위 칩 18 보다 크게). 세 칸 격자: 왼쪽 = 세트 표시(세트일 때만 보인다), 가운데 = 이름, 오른쪽 = 더 보기 점.
    양옆 칸 폭이 같아 이름은 표시가 있어도 카드 한가운데다(사용자 지적 — 표시만큼 오른쪽으로 밀려 보였다). 이름이 길면 가운데 칸이 줄며 말줄임.
    그림 칸 아래 = 이름 줄 36 + 테두리 — 예전 카드(이름 · 막대 60)보다 작아 같은 줄 높이에서 그림 칸이 커진다 */
-.cardM.cardD { gap: 0; padding: 0; }
-.cardD > .nameM.nameRowM { height: 36px; padding: 0 8px; display: grid; grid-template-columns: minmax(18px, 1fr) minmax(0, auto) minmax(18px, 1fr); align-items: center; border: none; border-top: 1px solid light-dark(#f4efe8, #3e4048); border-radius: 0 0 7px 7px; background: transparent; font-family: inherit; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
+.cardM > .nameM.nameRowM { height: 36px; padding: 0 8px; display: grid; grid-template-columns: minmax(18px, 1fr) minmax(0, auto) minmax(18px, 1fr); align-items: center; border: none; border-top: 1px solid light-dark(#f4efe8, #3e4048); border-radius: 0 0 7px 7px; background: transparent; font-family: inherit; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
 .nameRowSet { justify-self: start; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: light-dark(#a9b7cf, #7c7f8b); color: light-dark(#fff, #ececef); }
 .nameRowText { min-width: 0; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nameRowMore { justify-self: end; display: flex; color: light-dark(#c3b9ad, #7e828d); transition: color .2s ease; }
-.cardD > .nameRowM:active { background: light-dark(#faf7f3, #373940); }
-@media (hover: hover) and (pointer: fine) { .cardD > .nameRowM:hover { color: light-dark(#d76d9a, #d293ae); } .cardD > .nameRowM:hover .nameRowMore { color: light-dark(#d76d9a, #d293ae); } }
+.cardM > .nameRowM:active { background: light-dark(#faf7f3, #373940); }
+@media (hover: hover) and (pointer: fine) { .cardM > .nameRowM:hover { color: light-dark(#d76d9a, #d293ae); } .cardM > .nameRowM:hover .nameRowMore { color: light-dark(#d76d9a, #d293ae); } }
 /* 그림 위 북마크 띠지 = 켜져 있을 때만 보이는 표시(누르는 것은 아이템 시트). 즐겨찾기 띠지는 누르는 띠지 그대로 */
 .pinMark.markOnly { pointer-events: none; cursor: default; }
 /* 아이템 시트(서피스 'item') — 할 일을 한 줄에 하나씩, 높이 52 의 큰 단추. 칸의 면 · 테두리 · 켜짐 색은 세트 칸 · 북마크 칸과 같다 */
