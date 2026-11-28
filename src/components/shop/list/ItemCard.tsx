@@ -3,6 +3,7 @@
 import clsx from 'clsx'
 import { useRef } from 'react'
 import { labelBadgeImg, type ListItem } from '@/lib/core/data'
+import { DEV_SITE } from '@/lib/catalog'
 import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
@@ -40,7 +41,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   // 염색 버튼은 착용을 바꾸지 않는다. 사소한 변경점/쩜은 점 위치 전용 다이얼로그.
   const dye = (e: React.MouseEvent) => { e.stopPropagation(); if (isDot) s.openDot(item); else s.openDye(item) }
   // 세트 보기(list/SetPop) — 세트 표 무리나 게임 세트 번호가 있는 아이템만. 착용을 바꾸지 않는다
-  const hasSet = item.setGroup != null || !!item.setItemID
+  const hasSet = DEV_SITE && (item.setGroup != null || !!item.setItemID) // 구성원 표가 운영 CDN 에 오르기 전까지 dev 에서만
   const set = (e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); if (s.consumeSwipeClick()) return; openSet(item, e.currentTarget) }
   // 코디 룩북 — 목록 자리에 이 아이템을 입은 코디와 자주 쓴 염색을 펼친다(combo/ComboPanel). 숨은 기능이 되지 않게 늘 보인다(사용자 지시)
   const combo = (e: React.MouseEvent) => { e.stopPropagation(); if (s.consumeSwipeClick()) return; s.openCombo(item) }
