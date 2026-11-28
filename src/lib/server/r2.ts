@@ -10,7 +10,7 @@ const BUCKET = process.env.R2_BUCKET || 'pinkbean-customize-shop'
 export const sha256 = (d: string | Buffer) => createHash('sha256').update(d).digest('hex')
 const hmac = (k: Buffer | string, d: string) => createHmac('sha256', k).update(d).digest()
 
-export async function r2(method: 'GET' | 'HEAD' | 'PUT', key: string, body?: string | Buffer, contentType = 'text/plain; charset=utf-8'): Promise<Response> {
+export async function r2(method: 'GET' | 'HEAD' | 'PUT' | 'DELETE', key: string, body?: string | Buffer, contentType = 'text/plain; charset=utf-8'): Promise<Response> {
   const url = new URL(`${ENDPOINT}/${BUCKET}/${key}`)
   const now = new Date()
   const amzDate = now.toISOString().replace(/[-:]|\.\d{3}/g, '')

@@ -15,7 +15,7 @@ import { rankSort, nameMatcher, labelQuery } from '@/lib/nameSearch'
 import { groupSets } from '@/lib/setOrder'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, PV_WEAPONS, type Cat, type Preset, type Pv } from '@/lib/catalog'
-import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
+import { currentBp, isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadReleased, loadSlot, stagedUrl, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
@@ -25,6 +25,7 @@ import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
 import { loadLookCounts, lookChunk, withCardPv, type LookRow } from '@/lib/looks'
 import type { DyeSave } from '@/lib/dyeVault'
 import { flushPendingShare, prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
+import { receive, type MoveItem } from '@/lib/presetMove'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
 import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, loadPlazaPulse, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
@@ -97,13 +98,16 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look' | 'set' | 'move' | 'moveio'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 // combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
 // look = 'look'(닉네임으로 불러온 코디 고르기)의 닉네임과 코디 후보
-export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] } }
+// move = 'move'(다른 기기에서 옮겨 온 프리셋 고르기 — lib/presetMove)의 받은 프리셋들. 'moveio' = 프리셋 옮기기 창(보내기 · 받기 — preset/MoveIo)
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
-const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
+const SURFACE_UNMOUNT_MS = 320
+const LOOKBOOK_LISTS_DELAY = 2000 // 코디 룩북 주소로 들어왔을 때 미룬 전체 부위 목록을 받기 시작하는 때(아이템을 고른 뒤 ms)
+const LOOKBOOK_WARM = 18 // 코디 룩북 주소로 들어올 때 그림까지 미리 받을 첫 카드 수(PC 첫 화면 6 × 3, 모바일은 3 × 3). meta 는 페이지(app/(shop)/lookbook/[id] WARM)가 18벌 받는다 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
 // 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
 // 사파리는 await 후 writeText 가 사용자 제스처 밖이라 거부될 수 있어, ClipboardItem 에 Promise(Blob)를 넘겨
@@ -218,6 +222,7 @@ export const CMP_MIN = 2 // 비교는 늘 두 칸 이상(사용자 지시)
 const CMP_WIDE = 1420
 type CmpSet = { ids: string[]; last: string | null }
 type CmpSaved = CmpSet & { data: Record<string, Snapshot> }
+type PresetOverS = PresetOver<Snapshot, CmpSaved> // 덮어쓴 프리셋 한 칸의 전후(되돌리기 기록)
 const CMP_KEY = 'pb_compare_v2'
 const cmpSetKey = (owner: string) => `${CMP_KEY}:${owner}`
 const CMP_KEY_V1 = 'pb_compare_v1' // 예전(칸 묶음 하나, sessionStorage) — 처음 한 번 그때의 주인 프리셋 키로 옮기고 지운다
@@ -348,6 +353,9 @@ export interface ShopCtx {
   openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg' | 'emo') => void // emo = 채팅 이모티콘(모바일)
   openDye: (item: ListItem, init?: DyeSave) => void // init = 이 값으로 연다(코디 룩북의 자주 쓴 염색 — 적용은 창에서)
   openCard: () => void // 코디 프로필(공유 카드) 만들기 창
+  openSetSheet: (item: ListItem) => void // 모바일 세트 보기 시트(list/SetPop)
+  // 프리셋 옮기기(lib/presetMove · preset/MoveIo · MoveBody) — 옮기기 창 열기, 쓰고 있는 프리셋 묶기, 받은 묶음 고르기 창 열기, 넣기(전체 덮어쓰기 · 빈 칸에 추가)
+  openMoveIo: () => void; movePresets: () => MoveItem[]; openMove: (items: MoveItem[]) => void; takePresets: (items: MoveItem[], mode: 'all' | 'add') => void
   openDot: (item: ListItem) => void
   closeSurface: () => void
   // 부위 염색: 칩 선택 → 염색/점 위치로(가로 슬라이드), 이전 → 부위 고르기로. partSlide = 본문 translateX(px).
@@ -469,6 +477,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       code = new URLSearchParams(location.search).get('c')
       if (!code) { const h = location.hash.match(/(?:^#|&)c=([^&]+)/); if (h) code = decodeURIComponent(h[1]) }
     } catch { /* noop */ }
+    // 프리셋 옮기기 QR(?move=12345) — 받은 프리셋 고르기 창을 띄운다(lib/presetMove)
+    let move: string | null = null
+    try { move = new URLSearchParams(location.search).get('move') } catch { /* noop */ }
+    if (move) {
+      try { history.replaceState(history.state, '', location.pathname) } catch {}
+      let off = false
+      receive(move).then((items) => { if (off) return; if (items) openMove(items); else notify('코드를 찾지 못했어요') })
+      return () => { off = true }
+    }
     if (!code) return
     try { history.replaceState(history.state, '', location.pathname) } catch {} // URL 청소: 새로고침 재적용 방지. 상태는 그대로(Next 라우터의 기록 표지)
     let cancelled = false
@@ -563,7 +580,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 갈래마다 최근 50개라 비교 칸 넷을 다 써도 기록은 최대 250개(작은 스냅샷 객체)다. 뺀 칸의 기록은 함께 버린다(removeCmp).
   // cmpLast = 그 기록 때 그 프리셋에 이어진 비교 칸(비교 밖 기록만 — 프리셋 = 마지막 칸이라 프리셋을 되돌리면 이어진 칸도 그때로 돌아가야 한다.
   //   안 그러면 되돌린 코디가 다음에 비교를 켤 때 지금의 마지막 칸을 덮었다 — 사용자 지적). undefined = 그때 비교 칸이 없었다(건드리지 않는다)
-  type HistEntry = { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot, CmpSaved>; cmpLast?: string | null }
+  // over 는 한 칸(공유 코디 · 광장 가져오기 · 프리셋 삭제) 또는 여러 칸(프리셋 옮기기 — 한 번에 여러 칸을 덮어쓴다)
+  type HistEntry = { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOverS | PresetOverS[]; cmpLast?: string | null }
   type Hist = { stack: HistEntry[]; idx: number; last: string | null }
   const histsRef = useRef<Map<string, Hist>>(new Map())
   const histOf = (sel: string | null): Hist => {
@@ -573,7 +591,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return h
   }
   const overTail = useRef<{ h: Hist; at: number } | null>(null) // 방금 남긴 덮어쓰기 기록(pushHistory — 꼬리 합치기)
-  const histOver = useRef<PresetOver<Snapshot, CmpSaved> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
+  const histOver = useRef<PresetOverS | PresetOverS[] | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset · takePresets)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
   const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
   const saveT = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -585,6 +603,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const swipe = useRef({ on: false, id: -1, x0: 0, y0: 0, mode: null as 'x' | 'y' | null, lx: 0, lt: 0, vx: 0, w: 1 })
   const swipeClickUntil = useRef(0)
 
+  // 코디 룩북 주소로 들어온 동안(광장을 보는 동안) 여러 부위 탭의 전체 부위 목록(15MB)을 미룬다 — 그 화면에서는 안 보이고, 느린 회선에서 첫 카드의 그림과 다퉜다
+  // (실측 첫 카드 0.3 ~ 0.55초 늦음). 아이템을 고른 LOOKBOOK_LISTS_DELAY 뒤 한가할 때 풀고, 그 전에 다른 탭으로 가면 그때 받는다
+  const [lbHold, setLbHold] = useState(() => typeof window !== 'undefined' && !!lookbookIdOf(window.location.pathname))
+  // 카탈로그 색인이 오는 즉시(아래 초기화 — 프리셋 복원 · 착용 해석 — 를 기다리지 않고) 부를 일. 코디 룩북 주소의 아이템 고르기가 쓴다
+  const indexHook = useRef<((idx: Index) => void) | null>(null)
   // ── 초기 로드: index → 저장된 프리셋(없는 칸은 기본값) 복원 → 선택된 프리셋을 라이브 모델에 적용 ──
   useEffect(() => {
     let alive = true
@@ -594,10 +617,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     loadIndex().then(async (idx) => {
       if (!alive) return
       indexRef.current = idx // resolveEquipped/loadSlotFolded 는 상태가 아닌 이 ref 를 쓰므로 setIndex 전에 사용 가능
+      indexHook.current?.(idx)
       // 여러 부위를 한 목록으로 보는 탭(전체 등)이면 모든 부위 목록을 지금 함께 받기 시작한다 — 아래의 프리셋 복원이
       // 착용 부위 목록을 다 받을 때까지 기다렸다 나머지를 보내면 왕복 한 번이 더 든다. loadSlot 이 파일별로 캐시하므로
       // 뒤의 ensureSlot·resolveEquipped 는 같은 요청을 이어받는다.
-      if (isMultiCat(activeCatRef.current)) for (const c of CATS) { const f = c.id === 'skin' ? undefined : slotFile(CAT_TO_SLOT[c.id], idx); if (f) loadSlot(f).catch(() => {}) }
+      // 코디 룩북 주소로 들어오면 미룬다(lbHold)
+      if (isMultiCat(activeCatRef.current) && !lookbookIdOf(window.location.pathname)) for (const c of CATS) { const f = c.id === 'skin' ? undefined : slotFile(CAT_TO_SLOT[c.id], idx); if (f) loadSlot(f).catch(() => {}) }
       // localStorage 에서 프리셋 복원(저장된 칸은 그대로, 없는 칸만 코디 기본값). 첫 접속 시 d0 자동 선택.
       const store = loadPresetStore()
       const data: Record<string, Snapshot> = {}
@@ -678,9 +703,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // '전체'·'즐겨찾기' 는 모든 부위를 한 리스트로 보여주므로 전 슬롯을 로드한다(각 슬롯은 캐시돼 1회만 받음).
-    if (isMultiCat(activeCat)) { for (const c of cats) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]); return }
+    if (isMultiCat(activeCat)) { if (lbHold && primary === 'share') return; for (const c of cats) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]); return }
     if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat])
-  }, [activeCat, ensureSlot, cats])
+  }, [activeCat, ensureSlot, cats, lbHold, primary])
 
   // 채팅 칸에서 보낸 말 — 게임처럼 잠깐 떴다 사라진다.
   const [chatMsg, setChatMsg] = useState<ChatMsg | null>(null)
@@ -1337,14 +1362,27 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 아이템 코디 룩북 주소(/lookbook/<id> — 검색엔진에서 아이템 이름으로 들어온다, 사용자 지시): 광장의 코디 룩북에 그 아이템을 골라 연다.
   // 그 아이템의 meta 로 부위를 알아 그 부위 목록 하나만 받는다(15MB 인 전체 목록을 받지 않는다). 코디 첫 묶음은 그동안 함께 받는다
   // 들어온 주소의 id 는 처음에 잡아 둔다 — 아이템을 고르기 전까지는 아래의 주소 맞추기가 주소를 건드리지 않는다(먼저 돌아 /plaza 로 바꿔 id 를 잃었다)
+  // 빨리 뜨게(사용자 지시 — 들어오자마자 다 보이게): meta · 부위 목록 · 룩북 색인 · 첫 묶음은 페이지가 HTML 을 읽는 즉시 받기 시작했고(app/(shop)/lookbook/[id]),
+  // 아이템은 카탈로그 색인이 오는 즉시 고른다(indexHook — 앱 초기화를 기다리지 않는다). 첫 화면 카드 LOOKBOOK_WARM 벌의 meta · 그림도 그때 받기 시작한다
+  // (preloadSnapshot — 받기만, 합성은 카드가 한다. 결과는 같고 기다림만 준다)
   const lookbookPending = useRef<string | null>(typeof window === 'undefined' ? null : lookbookIdOf(window.location.pathname))
-  useEffect(() => { const id = lookbookPending.current; if (id) void lookChunk(id, 0, 'a').catch(() => {}) }, [])
   useEffect(() => {
     const id = lookbookPending.current
-    if (!id || !index) return
-    loadMeta(id).then((m) => loadSlotFolded(m.slot)).then((l) => { const it = l.find((x) => x.id === id); if (it) pickCombo(it) }).catch(() => {})
-      .finally(() => { lookbookPending.current = null })
-  }, [index])
+    if (!id) return
+    const first = lookChunk(id, 0, 'a')
+    first.catch(() => {})
+    indexHook.current = (idx) => {
+      indexHook.current = null
+      const warmN = currentBp() === 'mobile' ? MOBILE_GRID.cols * MOBILE_GRID.rows : LOOKBOOK_WARM // 모바일은 첫 화면 3 × 3 만 — 더 받으면 보이는 카드의 그림과 다툰다
+      first.then((pg) => { for (const r of pg.looks.slice(0, warmN)) void preloadSnapshot(r.s, idx, true).catch(() => {}) }).catch(() => {})
+      loadMeta(id).then((m) => loadSlotFolded(m.slot)).then((l) => { const it = l.find((x) => x.id === id); if (it) pickCombo(it) }).catch(() => {})
+        .finally(() => {
+          lookbookPending.current = null
+          // 미뤄 둔 전체 부위 목록(lbHold) — 첫 화면 카드가 그림을 받은 뒤 한가할 때 푼다
+          window.setTimeout(() => { const go = () => setLbHold(false); if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 3000 }); else go() }, LOOKBOOK_LISTS_DELAY)
+        })
+    }
+  }, [])
   // 광장의 코디 룩북에서 고른 아이템은 주소도 그 아이템의 코디 룩북이 된다(새로고침 · 링크 공유가 그 아이템으로 열린다). 다른 분류로 가면 /plaza 로 돌아간다.
   // 기록을 쌓지 않고 바꾼다(replaceState). 고르기 전(들어온 직후 아이템을 찾는 동안)에는 주소를 그대로 둔다
   useEffect(() => {
@@ -1724,6 +1762,50 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   const openDye = (item: ListItem, init?: DyeSave) => openSurface({ kind: 'dye', item, ...(init ? { dyeInit: init } : {}) })
   const openCard = () => openSurface({ kind: 'card', item: null })
+  const openSetSheet = (item: ListItem) => openSurface({ kind: 'set', item })
+  // 프리셋 옮기기 — 묶기: 기본 코디가 아닌 칸만, 지금 순서대로(고른 칸은 지금 코디)
+  const movePresets = (): MoveItem[] => presets.flatMap((p) => { const sn = p.id === selectedPreset ? snapshot() : presetData[p.id]; return sn && snapCoreKey(sn) !== DEFAULT_CORE_KEY ? [{ name: p.name, snap: sn }] : [] })
+  const openMoveIo = () => openSurface({ kind: 'moveio', item: null })
+  const openMove = (items: MoveItem[]) => openSurface({ kind: 'move', item: null, move: items })
+  // 넣기 — all: 받은 것으로 프리셋 전체를 덮어쓴다(지금 카드 순서대로 채우고 이름까지, 남는 칸은 기본 코디, 첫 칸을 고른다).
+  //        add: 고른 것을 빈 칸(기본 코디인 칸, 지금 고른 칸은 빼고)에 차례로 넣는다.
+  // 되돌리기 한 번에 바뀐 칸 모두가 원래대로 돌아온다(사용자 지시) — 바뀐 칸마다 전후 내용 · 이름을 기록 한 건의 over 에 함께 남긴다
+  const takePresets = (items: MoveItem[], mode: 'all' | 'add') => {
+    if (!items.length) return
+    const cur = (id: string) => (id === selectedPreset ? snapshot() : presetData[id] ?? defaultSnapshot())
+    const overs: PresetOverS[] = []
+    const names = namesOf(presets)
+    if (mode === 'all') {
+      const data: Record<string, Snapshot> = {}
+      presets.forEach((p, i) => {
+        const it = items[i], next = it ? withTakenView(it.snap) : defaultSnapshot(), nextName = it?.name || defaultPresetName(i)
+        if (it) data[p.id] = next
+        overs.push({ id: p.id, prev: cur(p.id), prevName: p.name, next, nextName })
+        names[p.id] = nextName
+      })
+      const first = presets[0].id
+      histOver.current = overs // 라이브가 바뀌므로 기록 effect 가 이 over 들을 집어간다
+      setPresetData(data)
+      setPresets((ps) => ps.map((p) => ({ ...p, name: names[p.id] })))
+      applySnapshot(data[first] ?? defaultSnapshot(), true, false, first)
+      notify(`프리셋 ${Math.min(items.length, presets.length)}개로 덮어썼어요`)
+    } else {
+      const free = presets.filter((p) => p.id !== selectedPreset && (!presetData[p.id] || snapCoreKey(presetData[p.id]) === DEFAULT_CORE_KEY))
+      const n = Math.min(free.length, items.length)
+      if (!n) { notify('빈 프리셋 칸이 없어요'); return }
+      const add: Record<string, Snapshot> = {}
+      for (let k = 0; k < n; k++) {
+        const p = free[k], next = withTakenView(items[k].snap), nextName = items[k].name || p.name
+        add[p.id] = next; names[p.id] = nextName
+        overs.push({ id: p.id, prev: cur(p.id), prevName: p.name, next, nextName })
+      }
+      setPresetData((d) => ({ ...d, ...add }))
+      setPresets((ps) => ps.map((p) => (add[p.id] ? { ...p, name: names[p.id] } : p)))
+      pushHistory(overs, names) // 라이브가 그대로라 기록 effect 가 돌지 않는다 — 그 자리에서 남긴다
+      notify(n < items.length ? `빈 칸이 모자라 ${n}개만 추가했어요` : `프리셋 ${n}개를 추가했어요`)
+    }
+    closeSurface()
+  }
   const openDot = (item: ListItem) => openSurface({ kind: 'dot', item })
   // 부위 염색 ↔ 염색/점 위치: 다이얼로그는 그대로 두고 본문만 가로 슬라이드(진입 = 왼쪽으로 빠지고 오른쪽에서 들어옴, 이전 = 반대).
   const slideTo = (dir: 1 | -1, next: Surface) => {
@@ -2086,7 +2168,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 비교 칸은 프리셋에 딸린 정보다 — 함께 지우고, 되돌리기로 함께 되살린다(사용자 지시). 그 프리셋의 비교 중이면 비교를 끝내고 프리셋으로 지운다
     const inCmp = cmpOn && cmpBack === id
     const sel = id === selectedPreset || inCmp
-    const over: PresetOver<Snapshot, CmpSaved> = {
+    const over: PresetOverS = {
       id,
       prev: sel ? snapshot() : (presetData[id] ?? defaultSnapshot()),
       prevName: presets.find((p) => p.id === id)?.name ?? '',
@@ -2189,7 +2271,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // (선택하지 않은 프리셋을 초기화)은 그 자리에서 직접 부른다.
   // 그런 기록은 코디·선택 프리셋이 직전과 같고 over 만 다르다 → undo 가 over 로 그 칸을 되살린다.
   // names: 방금 바꿔 아직 상태에 반영되지 않은 이름을 넘길 때(이름 확정 — commitPresetName). 없으면 지금 이름.
-  const pushHistory = (over?: PresetOver<Snapshot, CmpSaved> | null, namesNow?: Record<string, string>) => {
+  const pushHistory = (over?: PresetOverS | PresetOverS[] | null, namesNow?: Record<string, string>) => {
     if (!initedRef.current) return
     const snap = snapshot()
     const names = namesNow ?? namesOf(presets)
@@ -2242,7 +2324,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const canUndo = curHist.idx > 0
   const canRedo = curHist.idx < curHist.stack.length - 1
   // 덮어쓴 프리셋을 되살린다(내용 + 이름). 선택 프리셋이면 이어지는 applyHistory 의 자동저장이 같은 값을 쓴다.
-  const restoreOver = (o: PresetOver<Snapshot, CmpSaved>, back: boolean) => {
+  const restoreOver = (o: PresetOverS, back: boolean) => {
     const snap = back ? o.prev : o.next, name = back ? o.prevName : o.nextName
     if (o.prevCmp !== undefined || o.nextCmp !== undefined) putCmpSaved(o.id, (back ? o.prevCmp : o.nextCmp) ?? null)
     setPresetData((d) => ({ ...d, [o.id]: snap }))
@@ -2253,7 +2335,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (h.idx <= 0) { notify('되돌릴 변경이 없어요'); return }
     const from = h.stack[h.idx]
     h.idx -= 1
-    if (from.over) restoreOver(from.over, true)
+    for (const o of from.over ? [from.over].flat() : []) restoreOver(o, true)
     applyHistory(h.stack[h.idx])
   }
   const redo = () => {
@@ -2261,7 +2343,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (h.idx >= h.stack.length - 1) { notify('다시 실행할 변경이 없어요'); return }
     h.idx += 1
     const to = h.stack[h.idx]
-    if (to.over) restoreOver(to.over, false)
+    for (const o of to.over ? [to.over].flat() : []) restoreOver(o, false)
     applyHistory(to)
   }
 
@@ -2311,7 +2393,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, resetOutfit, resetDyes, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
-    surface, surfaceClosing, openSheet, openDye, openCard, openDot, closeSurface,
+    surface, surfaceClosing, openSheet, openDye, openCard, openSetSheet, openMoveIo, movePresets, openMove, takePresets, openDot, closeSurface,
     openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,
     dotPos, setDot, resetDot,
     pv, setPv,

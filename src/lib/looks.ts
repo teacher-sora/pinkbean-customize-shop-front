@@ -28,10 +28,26 @@ type LookIndex = { v: number; build: string; meta: LookMeta; items: Record<strin
 let index: LookIndex | null = null
 let indexP: Promise<LookIndex | null> | null = null
 const subs = new Set<() => void>()
+// 코디 룩북 주소(/lookbook/<id>)는 페이지가 HTML 을 읽는 즉시 색인과 그 아이템의 첫 조각을 받기 시작한다(app/(shop)/lookbook/[id] — 앱 코드가 오기 전부터).
+// 색인은 window.__pbBoot 의 약속을 한 번 가져다 쓰고(실패하면 평소대로 받는다), 조각은 실제 색인의 판 · 위치와 같을 때만 쓴다(takeBootLook)
+type BootWin = { __pbBoot?: Record<string, Promise<unknown>>; __pbLook?: { id: string; build: string; e: number[]; buf: Promise<ArrayBuffer> } }
+const bootWin = (): BootWin | undefined => (typeof window === 'undefined' ? undefined : (window as unknown as BootWin))
 function loadIndex(): Promise<LookIndex | null> {
-  if (!indexP) indexP = fetch(`${BASE}/index.json`).then((r) => (r.ok ? r.json() as Promise<LookIndex> : null)).catch(() => null)
-    .then((ix) => { index = ix; subs.forEach((f) => f()); return ix })
+  if (!indexP) {
+    const b = bootWin()?.__pbBoot, early = b?.['looks/v2/index.json'] as Promise<LookIndex> | undefined
+    if (early) delete b!['looks/v2/index.json']
+    const get = () => fetch(`${BASE}/index.json`).then((r) => (r.ok ? r.json() as Promise<LookIndex> : null))
+    indexP = (early ? early.catch(get) : get()).catch(() => null)
+      .then((ix) => { index = ix; subs.forEach((f) => f()); return ix })
+  }
   return indexP
+}
+// 페이지가 미리 받은 첫 조각(머리 + 첫 쪽) — 그 아이템이고 판 · 위치가 지금 색인과 같을 때만 넘긴다. 한 번 쓰면 지운다
+function takeBootLook(id: string, build: string, e: Entry): Promise<ArrayBuffer> | null {
+  const w = bootWin(), l = w?.__pbLook
+  if (!l || l.id !== id) return null
+  delete w!.__pbLook
+  return l.build === build && l.e.length === e.length && l.e.every((v, i) => v === e[i]) ? l.buf : null
 }
 const subscribe = (f: () => void) => { subs.add(f); void loadIndex(); return () => { subs.delete(f) } }
 // 그 아이템이 든 코디 수(표본에 없으면 0). 처음 부르면 색인을 받기 시작하고, 받으면 다시 그린다
@@ -79,8 +95,9 @@ function loadHead(id: string): Promise<HeadAt | null> {
     if (!ix || !e) return null
     const [, shard, off, hl, p0] = e
     const url = `${BASE}/${ix.build}/s${shard}.bin`
-    // 머리 + 전체의 첫 쪽을 한 번에(처음 열 때 요청 한 번)
-    const buf = await range(url, off, hl + p0)
+    // 머리 + 전체의 첫 쪽을 한 번에(처음 열 때 요청 한 번). 페이지가 미리 받아 둔 것이 있으면 그것(실패하면 다시 받는다)
+    const early = takeBootLook(id, ix.build, e)
+    const buf = early ? await early.then((a) => new Uint8Array(a), () => range(url, off, hl + p0)) : await range(url, off, hl + p0)
     const head = await gunzipJson<Head>(buf.subarray(0, hl))
     if (p0) pages.set(pageKey(id, 'a', 0), gunzipJson<LookRow[]>(buf.subarray(hl)))
     let pos = off + hl

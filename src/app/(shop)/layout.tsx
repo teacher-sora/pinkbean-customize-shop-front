@@ -11,6 +11,8 @@ import { DEFAULT_EQUIP, DEFAULT_TONE } from '@/lib/shopData'
 //    목록 화면만 쓰는 나머지 부위 목록은 **낮은 우선순위**로 요청한다. 한꺼번에 같은 순위로 보내면 느린 회선에서
 //    미리보기가 쓰는 목록까지 늦게 온다.
 //  · 나머지 부위 목록은 여러 부위를 한 목록으로 보는 탭(전체 · 신규 · 즐겨찾기 — 첫 화면의 기본)일 때만 받는다.
+//  · 코디 룩북 주소(/lookbook/<id>)는 그 아이템의 부위(window.__pbSlot — 그 페이지의 스크립트가 색인이 오기 전에 둔다)도 보통 우선순위로 받고,
+//    나머지 부위 목록은 받지 않는다(화면이 광장이다 — 앱이 룩북을 고른 뒤 한가할 때 받는다. 느린 회선에서 첫 카드와 다퉜다).
 //  · 저장소 키와 기본값은 ShopContext(pb_presets_v1) · lib/uiState(pb_ui_session_v1) · lib/shopData(기본 코디 · 기본 피부)의 것이다.
 //  · `no-cache` 는 로더와 같은 이유다(목록은 새로고침하면 반드시 최신). meta 는 로더처럼 브라우저 캐시를 그대로 쓴다.
 const DEF_EQUIP = Object.fromEntries(Object.entries(DEFAULT_EQUIP).map(([slot, it]) => [slot, it.id]))
@@ -24,8 +26,8 @@ var eq=${JSON.stringify(DEF_EQUIP)},tone=${DEF_TONE};
 try{var P=JSON.parse(localStorage.getItem('pb_presets_v1')),S=P&&P.data&&P.data[P.sel||'d0'];if(S&&S.equipped){eq=S.equipped;if(typeof S.tone==='number'&&!(S.hidden&&S.hidden.skin))tone=S.tone}}catch(e){}
 for(var k in eq)if(typeof eq[k]==='string'&&eq[k]&&k!=='riding')g('meta/'+eq[k]+'.json');
 g('index.json',F).then(function(x){
-var m=c==='all'||c==='new'||c==='fav';
-(x.slots||[]).forEach(function(s){if(!s.file||b[s.file])return;if(eq[s.slot])g(s.file,F);else if(m)g(s.file,L)});
+var m=(c==='all'||c==='new'||c==='fav')&&location.pathname.indexOf('/lookbook/')!==0;
+var hi=window.__pbSlot;(x.slots||[]).forEach(function(s){if(!s.file||b[s.file])return;if(eq[s.slot]||s.slot===hi)g(s.file,F);else if(m)g(s.file,L)});
 var t=(x.base&&x.base.tones)||[],e=null,d=null;for(var i=0;i<t.length;i++){if(t[i].tone===tone)e=t[i];if(t[i].tone===${DEF_TONE})d=t[i]}
 [e,d].forEach(function(y){if(y){if(!b['meta/'+y.body+'.json'])g('meta/'+y.body+'.json');if(!b['meta/'+y.head+'.json'])g('meta/'+y.head+'.json')}})
 }).catch(function(){})

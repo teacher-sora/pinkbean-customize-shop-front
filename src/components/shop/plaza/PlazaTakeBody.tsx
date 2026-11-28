@@ -37,11 +37,11 @@ function TakeCard({ name, cur, onPick }: { name: string; cur: Snapshot | undefin
 }
 
 // 코디 한 벌을 골라 누르는 카드(그림 + 이름) — 이 창과 닉네임으로 불러온 코디 고르기(preset/LookPickBody)가 함께 쓴다.
-// children = 그림 칸 안(SnapThumb, 칸 위에 얹는 표시)
-export function PickCard({ name, title, onPick, children }: { name: string; title: string; onPick: () => void; children?: React.ReactNode }) {
+// children = 그림 칸 안(SnapThumb, 칸 위에 얹는 표시). sel = 고른 카드(프리셋 카드의 고름과 같은 표시 — 옮겨 온 프리셋 고르기)
+export function PickCard({ name, title, onPick, sel, children }: { name: string; title?: string; onPick: () => void; sel?: boolean; children?: React.ReactNode }) {
   return (
-    <div className="pb-presetwrap">
-      <div onClick={onPick} className="pb-preset" title={title}>
+    <div className={clsx('pb-presetwrap', styles.takeCard)}>
+      <div onClick={onPick} className={sel ? 'pb-preset pb-preset-sel' : 'pb-preset'} title={title} aria-pressed={sel}>
         <div className={styles.takeCardThumb}>{children}</div>
         <div className={styles.takeCardFoot}><div className={styles.takeCardName}>{name}</div></div>
       </div>

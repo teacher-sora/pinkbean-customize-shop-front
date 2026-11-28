@@ -15,6 +15,7 @@ import { Seg, SegStack, type SegOpt } from '../ui/controls'
 import { IconCaretDown, IconSearch, IconDirX, IconDirY, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import ItemCard, { catOf } from './ItemCard'
+import { SetHoverHost } from './SetPop'
 import { useCodiThumbs, useSearchThumbs, type ThumbApi } from './thumbCtx'
 import { useDismiss } from '../ui/useDismiss'
 import ClearField from '../ui/ClearField'
@@ -448,6 +449,7 @@ function ListFrame({ mobile, thumbs, isAi, list, loading, emptyTitle, emptyHint 
       <div className={clsx('pb-hintbar', styles.hintBar)}>
         <span className={styles.hintText}>{dirY ? '스크롤, 스와이프, ↑ ↓ 로 페이지를 넘겨요' : '스크롤, 스와이프, ← → 로 페이지를 넘겨요'}</span>
       </div>
+      <SetHoverHost />
     </section>
   )
 }

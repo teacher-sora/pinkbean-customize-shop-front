@@ -31,6 +31,9 @@ import PlazaDetailBody from '../plaza/PlazaDetailBody'
 import PlazaTakeBody from '../plaza/PlazaTakeBody'
 import NoticeBody from '../plaza/NoticeBody'
 import LookPickBody from '../preset/LookPickBody'
+import MoveBody from '../preset/MoveBody'
+import MoveIoBody from '../preset/MoveIo'
+import { SetSheetBody, setEntryOf } from '../list/SetPop'
 import { plazaWhen } from '@/lib/plaza'
 import { IconClose } from '../ui/Icons'
 import { useMaskClose } from '../ui/useMaskClose'
@@ -73,7 +76,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const hidden = s.surfaceClosing || !entered
   // 모바일 시트 높이: 연출 설정 = 내용 높이(최대 85%), 북마크 = 명시값 376↔624(VS 확장 — 전환은 sheetMotion FLIP), 그 외 85%.
   // 어느 시트든 뷰포트가 줄면(내비게이션 바 등) max-height 85% 로 줄고 본문이 스크롤된다.
-  const tall = sf.kind !== 'pv' && sf.kind !== 'bm' && sf.kind !== 'bg' && sf.kind !== 'emo'   // 배경 · 이모티콘 고르기는 내용 높이만큼만 — 고르는 동안 미리보기가 보여야 한다
+  const tall = sf.kind !== 'pv' && sf.kind !== 'bm' && sf.kind !== 'bg' && sf.kind !== 'emo' && sf.kind !== 'set' && sf.kind !== 'moveio'   // 배경 · 이모티콘 고르기는 내용 높이만큼만 — 고르는 동안 미리보기가 보여야 한다(옮기기 창도 내용만큼)
   const bmH = sf.kind === 'bm' ? BM_SHEET_H : null
 
   // 등장 전환이 보이도록 마운트 후 한 프레임 뒤 위치를 바꾼다.
@@ -186,16 +189,18 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   })
 
   const k = sf.kind
-  const title = k === 'card' ? '코디 프로필' : k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'emo' ? '이모티콘'
+  const setE = k === 'set' && sf.item ? setEntryOf(sf.item) : null
+  const title = k === 'card' ? '코디 프로필' : k === 'moveio' ? '프리셋 옮기기' : k === 'move' ? '옮긴 프리셋' : k === 'set' ? (setE?.name ?? '세트') : k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'emo' ? '이모티콘'
     : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? (sf.combo ? '코디 룩북' : '공유받은 코디') : k === 'notice' ? '도움 및 건의함' : k === 'look' ? (sf.look?.nick ?? '') : (sf.item?.name || sf.item?.id || '')
-  const sub = k === 'pv' ? '미리보기 연출' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' || k === 'card' ? '' : k === 'notice' || k === 'look' ? NEXON_CREDIT // 출처 표기(lib/nexonLook) — 넥슨 데이터를 보여 주는 창(닉네임으로 불러온 코디)과 앱 어디서나 닿는 자리
+  const sub = k === 'set' ? (setE ? `${setE.members.length}개` : '') : k === 'move' ? `${sf.move?.length ?? 0}개` : k === 'pv' ? '미리보기 연출' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' || k === 'card' || k === 'moveio' ? '' : k === 'notice' || k === 'look' ? NEXON_CREDIT // 출처 표기(lib/nexonLook) — 넥슨 데이터를 보여 주는 창(닉네임으로 불러온 코디)과 앱 어디서나 닿는 자리
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
 
   // 패널 폭(앱 영역 기준)·등장/닫힘 위치는 즉시 반영 값이라 인라인(드래그 중 오프셋은 위 터치 핸들러가 DOM 직접).
-  // PC 패널 크기는 **모든 종류가 같다**.
+  // PC 패널 크기는 **모든 종류가 같다**. 프리셋 옮기기 창만 600 × 400(코드와 아이디만 있는 창이라 — 사용자 허락)
   const panelStyle: React.CSSProperties = mobile
     ? { transform: `translateY(${hidden ? '100%' : '0px'})`, transition: EASE, ...(bmH ? { height: bmH } : {}) }
+    : k === 'moveio' ? { width: `min(600px, ${Math.max(320, frameW - 40)}px)`, height: 'min(400px, 86svh)' }
     : { width: `min(900px, ${Math.max(320, frameW - 40)}px)`, height: 'min(620px, 86svh)' }
   // 본문 가로 슬라이드(부위 염색 전환) — 즉시 값이라 인라인.
   const slideStyle: React.CSSProperties = { transform: `translateX(${s.partSlide}px)`, opacity: s.partSlide ? 0 : 1 }
@@ -237,6 +242,12 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'ptake' && sf.take && <><PlazaTakeBody snap={sf.take} mobile={mobile} title={sf.combo ? '코디 룩북' : undefined} /><SurfaceFooter onBack={sf.post ? s.plazaTakeBack : undefined} /></>}
             {/* 닉네임으로 불러온 코디 — 카드를 누르면 그 한 벌을 지금 프리셋에 넣고 닫는다 */}
             {k === 'look' && sf.look && <><LookPickBody nick={sf.look.nick} options={sf.look.options} mobile={mobile} /><SurfaceFooter /></>}
+            {/* 옮겨 온 프리셋 고르기 — 발의 단추가 [덮어쓰기] 또는 [추가 N](본문이 그린다) */}
+            {k === 'move' && sf.move && <MoveBody items={sf.move} mobile={mobile} />}
+            {/* 프리셋 옮기기(보내기 · 받기) — 받기로 찾으면 위 '옮긴 프리셋'으로 바뀐다 */}
+            {k === 'moveio' && <><MoveIoBody mobile={mobile} /><SurfaceFooter /></>}
+            {/* 세트 보기(모바일) — 칸을 누르면 입고 벗는다. 내용 높이만큼이라 미리보기가 보인다 */}
+            {k === 'set' && sf.item && <><SetSheetBody item={sf.item} /><SurfaceFooter /></>}
             {k === 'notice' && <NoticeBody mobile={mobile} />}   {/* 푸터는 본문이 그린다(상세에서 '이전') */}
             {k === 'card' && <ProfileCardBody mobile={mobile} />}   {/* 푸터(닫기 · 저장)는 본문이 그린다 */}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} init={sf.dyeInit} />}
@@ -250,9 +261,10 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
 
 // 공용 푸터. 적용은 염색·점 위치만. 부위 염색을 거쳐 들어온 염색·점 위치는 '이전'(부위 고르기로 슬라이드 복귀), 그 외는 '닫기'(즉시 종료).
 // 모바일은 얇고 긴 34px(버튼 하나면 전체 폭, 닫기+적용이면 반씩).
+// applyLabel: 글자가 바뀌는 단추(옮긴 프리셋의 [추가 N])는 나올 수 있는 글자를 겹친 부품을 넘겨 폭을 고정한다.
 // onBack: 본문 안에서 화면만 바뀐 경우(염색표 보기 등) 그 화면이 직접 넘겨주는 '이전'. 서피스 종류를 바꾸지 않는다.
 // closeToo: '이전'이 닫기 자리를 차지하지 않고 닫기 왼쪽에 따로 선다(도움 및 건의함의 상세 — 바로 닫고 싶을 수도 있다).
-export function SurfaceFooter({ onApply, applyLabel = '적용', onBack, closeToo }: { onApply?: () => void; applyLabel?: string; onBack?: () => void; closeToo?: boolean }) {
+export function SurfaceFooter({ onApply, applyLabel = '적용', onBack, closeToo }: { onApply?: () => void; applyLabel?: React.ReactNode; onBack?: () => void; closeToo?: boolean }) {
   const s = useShop()
   const mobile = s.bp === 'mobile'
   const sf = s.surface
