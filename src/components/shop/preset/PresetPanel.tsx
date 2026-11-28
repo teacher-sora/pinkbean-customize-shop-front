@@ -8,6 +8,7 @@ import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { watchSize } from '@/lib/sizeWatch'
 import { DEV_SITE, type Preset } from '@/lib/catalog'
+import MovePop from './MovePop'
 import { CARD_FIT_W_M, CHAT_NAME_FALLBACK, defaultPresetName, PRESET_FRACTION, PRESET_FRACTION_M } from '@/lib/shopData'
 import { DIRS } from '../list/ListArea'
 import { Seg } from '../ui/controls'
@@ -22,7 +23,7 @@ import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 // 프리셋 카드 캐릭터 크기(리스트 카드 0.45 보다 조금 작게)
 import { isCustomSnapshot, useShop, type Snapshot } from '../ShopContext'
 import { CardStageBg, SYS_BG_CSS } from '../preview/StageBg'
-import { IconCheck, IconLinkCopy, IconPencil, IconCloud, IconImport, IconReorder, IconTrashSolid } from '../ui/Icons'
+import { IconCheck, IconLinkCopy, IconPencil, IconImport, IconReorder, IconTrashSolid } from '../ui/Icons'
 import styles from './preset.module.css'
 
 export default function PresetPanel({ mobile }: { mobile: boolean }) {
@@ -146,14 +147,6 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     </button>
   )
 
-  // 프리셋 동기화(로그인) — 프리셋 탭 머리(사용자 검토: 모바일 맨 위 머리는 차 있고, 로그인을 쓸 곳이 프리셋 중심이다). 지금은 dev 에서만 자리 · 디자인 시험(DEV_SITE).
-  // PC 는 구름 + '동기화', 모바일은 순서 단추와 같은 높이의 정사각 아이콘
-  const syncBtn = DEV_SITE && (
-    <button type="button" onClick={s.openSync} title="로그인하고 프리셋과 설정을 기기마다 이어 쓰기" aria-label="동기화" className={clsx(styles.sortBtn, mobile && styles.sortBtnM, mobile && styles.syncBtnM)}>
-      <IconCloud size={mobile ? 15 : 16} />{!mobile && '동기화'}
-    </button>
-  )
-
   // 카드는 메모된 부품(PresetCard)이다 — 다루는 함수는 늘 같은 ref 로 넘겨, 순서를 바꿔 놓을 때 · 다른 카드를 고를 때 바뀐 카드만 다시 그린다
   // (30장을 다 다시 그리면 놓는 순간 한 번 멈칫했다 — CPU 4배 느리게에서 최대 140ms)
   const act = useRef<CardAct>(null!)
@@ -181,7 +174,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           {chip}
           {sortBtn}
           {dirSeg}
-          {syncBtn}
+          {/* 프리셋 옮기기(preset/MovePop) — 불러오기 칸 왼쪽. 지금 dev 에서만 */}
+          {DEV_SITE && <MovePop mobile />}
           {/* 불러오기: 입력과 버튼을 한 칸에 묶는다(아래 PC 와 같은 모양) */}
           <div className={clsx(styles.importBox, styles.importBoxM)}>
             <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
@@ -198,8 +192,9 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   return (
     <section className={styles.panel}>
       <div className={styles.header}>
-        <div className={styles.groupA}>{chip}{sortBtn}{dirSeg}{syncBtn}</div>
+        <div className={styles.groupA}>{chip}{sortBtn}{dirSeg}</div>
         <div className={styles.groupB}>
+          {DEV_SITE && <MovePop mobile={false} />}
           {/* 불러오기: 입력 + 채운 아이콘 버튼을 한 테두리 안에(모바일과 같은 모양). 칸의 생김새는 다른 탭의 검색 칸과 같다 */}
           <div className={clsx(styles.importBox, narrow && styles.importBoxNarrow)}>
             <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />

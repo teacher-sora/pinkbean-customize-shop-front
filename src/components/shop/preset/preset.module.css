@@ -89,4 +89,18 @@
 .del.delM { width: 20px; height: 26px; padding-top: 4px; right: 33px; } /* 6 + 22 + 5 */
 /* 300 이하: 머리 줄이 화면 밖으로 밀려 [순서]를 아이콘만 */
 @media (max-width: 300px) { .sortBtnM .loadLabel { display: none; } }
-.syncBtnM { width: 32px; padding: 0; justify-content: center; } /* 모바일 동기화 — 아이콘만(머리 줄이 좁다) */
+.iconBtnM { width: 32px; padding: 0; justify-content: center; } /* 모바일 옮기기 — 아이콘만(머리 줄이 좁다) */
+/* 프리셋 옮기기 작은 창(MovePop — PopBox 안). 머리 · 칸 색은 카테고리 펼치기와 같다 */
+.movePop.movePop { box-shadow: 0 0 10px light-dark(rgba(42,37,33,.1), rgba(25, 22, 20, 0.16)), 0 10px 26px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.224)); }
+.moveHead { flex: 0 0 auto; padding: 8px; display: flex; justify-content: center; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
+.moveBody { flex: 0 1 auto; min-height: 0; padding: 14px 12px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; overflow: hidden auto; }
+.moveCode { padding: 0 8px; border: none; background: transparent; font-family: inherit; font-size: calc(34rem / 16); font-weight: 700; letter-spacing: .16em; font-variant-numeric: tabular-nums; line-height: 1.1; color: light-dark(#2a2521, #d4d5d8); cursor: pointer; }
+.moveCodeWait { color: light-dark(#ece5dd, #44474f); cursor: default; }
+.moveQrBox { width: 150px; height: 150px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fff; overflow: hidden; }
+.moveQr { display: block; }
+.moveQrWait { width: 100%; height: 100%; background: light-dark(#faf7f3, #373940); }
+.moveRow { width: 100%; display: flex; gap: 6px; }
+.moveField { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 10px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(13rem / 16); color: light-dark(#3d372f, #cacbd0); outline: none; transition: border-color .22s ease; }
+.moveField:focus { border-color: light-dark(#ec86ac, #d15785); }
+.moveGo { flex: 0 0 auto; height: 34px; padding: 0 14px; border-radius: 6px; font-family: inherit; font-size: calc(13rem / 16); font-weight: 600; }
+

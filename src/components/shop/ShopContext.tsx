@@ -25,6 +25,7 @@ import { lookToSnapshot, type LookDeps, type NexonLook } from '@/lib/nexonLook'
 import { loadLookCounts, lookChunk, withCardPv, type LookRow } from '@/lib/looks'
 import type { DyeSave } from '@/lib/dyeVault'
 import { flushPendingShare, prepareShare, resolveShareCode, uploadShare } from '@/lib/shareCode'
+import { receive, type MoveItem } from '@/lib/presetMove'
 import { backApi } from '@/lib/backApi'
 import { GUIDE_DRAWER_EVENT, GUIDE_SETTLE_MS, guideSpot, setPvIntent, type GuideGo } from '@/lib/guide'
 import { createPlazaPost, deletePlazaPost, loadLikeCounts, loadPlaza, loadPlazaHead, loadPlazaPulse, plazaConfigured, plazaPin, plazaView, togglePlazaLike,
@@ -97,11 +98,12 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look' | 'sync' | 'set'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look' | 'set' | 'move'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 // combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
 // look = 'look'(닉네임으로 불러온 코디 고르기)의 닉네임과 코디 후보
-export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] } }
+// move = 'move'(다른 기기에서 옮겨 온 프리셋 고르기 — lib/presetMove)의 받은 프리셋들
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
@@ -348,8 +350,9 @@ export interface ShopCtx {
   openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg' | 'emo') => void // emo = 채팅 이모티콘(모바일)
   openDye: (item: ListItem, init?: DyeSave) => void // init = 이 값으로 연다(코디 룩북의 자주 쓴 염색 — 적용은 창에서)
   openCard: () => void // 코디 프로필(공유 카드) 만들기 창
-  openSync: () => void // 프리셋 동기화(로그인) 창 — dev 에서 자리 · 디자인 시험 중
   openSetSheet: (item: ListItem) => void // 모바일 세트 보기 시트(list/SetPop)
+  // 프리셋 옮기기(lib/presetMove · preset/MovePop · MoveBody) — 쓰고 있는 프리셋 묶기, 받은 묶음 고르기 창 열기, 넣기(전체 덮어쓰기 · 빈 칸에 추가)
+  movePresets: () => MoveItem[]; openMove: (items: MoveItem[]) => void; takePresets: (items: MoveItem[], mode: 'all' | 'add') => void
   openDot: (item: ListItem) => void
   closeSurface: () => void
   // 부위 염색: 칩 선택 → 염색/점 위치로(가로 슬라이드), 이전 → 부위 고르기로. partSlide = 본문 translateX(px).
@@ -471,6 +474,15 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       code = new URLSearchParams(location.search).get('c')
       if (!code) { const h = location.hash.match(/(?:^#|&)c=([^&]+)/); if (h) code = decodeURIComponent(h[1]) }
     } catch { /* noop */ }
+    // 프리셋 옮기기 QR(?move=12345) — 받은 프리셋 고르기 창을 띄운다(lib/presetMove)
+    let move: string | null = null
+    try { move = new URLSearchParams(location.search).get('move') } catch { /* noop */ }
+    if (move) {
+      try { history.replaceState(history.state, '', location.pathname) } catch {}
+      let off = false
+      receive(move).then((items) => { if (off) return; if (items) openMove(items); else notify('코드를 찾지 못했어요') })
+      return () => { off = true }
+    }
     if (!code) return
     try { history.replaceState(history.state, '', location.pathname) } catch {} // URL 청소: 새로고침 재적용 방지. 상태는 그대로(Next 라우터의 기록 표지)
     let cancelled = false
@@ -1726,8 +1738,30 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   const openDye = (item: ListItem, init?: DyeSave) => openSurface({ kind: 'dye', item, ...(init ? { dyeInit: init } : {}) })
   const openCard = () => openSurface({ kind: 'card', item: null })
-  const openSync = () => openSurface({ kind: 'sync', item: null })
   const openSetSheet = (item: ListItem) => openSurface({ kind: 'set', item })
+  // 프리셋 옮기기 — 묶기: 기본 코디가 아닌 칸만, 지금 순서대로(고른 칸은 지금 코디)
+  const movePresets = (): MoveItem[] => presets.flatMap((p) => { const sn = p.id === selectedPreset ? snapshot() : presetData[p.id]; return sn && snapCoreKey(sn) !== DEFAULT_CORE_KEY ? [{ name: p.name, snap: sn }] : [] })
+  const openMove = (items: MoveItem[]) => openSurface({ kind: 'move', item: null, move: items })
+  // 넣기 — all: 받은 것으로 프리셋 전체를 덮어쓴다(순서 · 이름까지, 첫 칸을 고른다). add: 고른 것을 빈 칸(기본 코디인 칸, 지금 고른 칸은 빼고)에 차례로 넣는다
+  const takePresets = (items: MoveItem[], mode: 'all' | 'add') => {
+    if (!items.length) return
+    if (mode === 'all') {
+      const data: Record<string, Snapshot> = {}
+      items.slice(0, PRESET_IDS.length).forEach((it, i) => { data[PRESET_IDS[i]] = withTakenView(it.snap) })
+      setPresetData(data)
+      setPresets(PRESET_IDS.map((id, i) => ({ id, name: items[i]?.name || defaultPresetName(i) })))
+      applySnapshot(data[PRESET_IDS[0]], true, false, PRESET_IDS[0])
+      notify(`프리셋 ${Math.min(items.length, PRESET_IDS.length)}개로 덮어썼어요`)
+    } else {
+      const free = presets.filter((p) => p.id !== selectedPreset && (!presetData[p.id] || snapCoreKey(presetData[p.id]) === DEFAULT_CORE_KEY)).map((p) => p.id)
+      const n = Math.min(free.length, items.length)
+      if (!n) { notify('빈 프리셋 칸이 없어요'); return }
+      setPresetData((d) => { const nd = { ...d }; for (let k = 0; k < n; k++) nd[free[k]] = withTakenView(items[k].snap); return nd })
+      setPresets((ps) => ps.map((p) => { const k = free.indexOf(p.id); return k >= 0 && k < n && items[k].name ? { ...p, name: items[k].name } : p }))
+      notify(n < items.length ? `빈 칸이 모자라 ${n}개만 추가했어요` : `프리셋 ${n}개를 추가했어요`)
+    }
+    closeSurface()
+  }
   const openDot = (item: ListItem) => openSurface({ kind: 'dot', item })
   // 부위 염색 ↔ 염색/점 위치: 다이얼로그는 그대로 두고 본문만 가로 슬라이드(진입 = 왼쪽으로 빠지고 오른쪽에서 들어옴, 이전 = 반대).
   const slideTo = (dir: 1 | -1, next: Surface) => {
@@ -2315,7 +2349,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, resetOutfit, resetDyes, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
-    surface, surfaceClosing, openSheet, openDye, openCard, openSync, openSetSheet, openDot, closeSurface,
+    surface, surfaceClosing, openSheet, openDye, openCard, openSetSheet, movePresets, openMove, takePresets, openDot, closeSurface,
     openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,
     dotPos, setDot, resetDot,
     pv, setPv,
