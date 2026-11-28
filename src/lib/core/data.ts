@@ -334,6 +334,35 @@ export function loadSets(): Promise<SetTable> {
   }
   return setsPromise
 }
+// 세트 구성원 표(parser scripts/set-members-build.py → catalog/set-members.json) = { sets: [[세트 이름, [[id, 부위, 이름, 아이콘]…]]…] }.
+// 카드의 [세트] 가 열 때만 받는다(처음 화면에 필요 없다 — 압축 85KB). 세트는 lib/setOrder 와 같은 묶음(세트 표 무리 → 게임 세트 번호), 무리 안 순서도 같다.
+// 헤어 · 성형은 색 묶음마다 한 id 만 있어, 찾을 때 그 아이템의 8색 id 를 모두 본다(setOf).
+// dev 빌드는 front public/dev 의 시험본을 쓴다(운영 CDN 에 올리기 전 — 사용자 승인 뒤 catalog/ 로 옮긴다)
+export type SetMember = { id: string; slot: string; name: string; icon: string }
+export type SetEntry = { name: string; members: SetMember[] }
+type SetMembers = { sets: SetEntry[]; by: Map<string, number> }
+let setMembersPromise: Promise<SetMembers> | null = null
+export function loadSetMembers(): Promise<SetMembers> {
+  if (!setMembersPromise) {
+    const src = DEV_SITE ? '/dev/set-members.json' : url('catalog/set-members.json')
+    setMembersPromise = fetch(src, FRESH).then((r) => (r.ok ? r.json() : { sets: [] })).then((d: { sets?: [string, [string, string, string, string][]][] }) => {
+      const sets = (d.sets ?? []).map(([name, ms]) => ({ name, members: ms.map(([id, slot, nm, icon]) => ({ id, slot, name: nm, icon })) }))
+      const by = new Map<string, number>()
+      sets.forEach((s, i) => s.members.forEach((m) => by.set(m.id, i)))
+      return { sets, by }
+    }).catch(() => { setMembersPromise = null; return { sets: [], by: new Map() } }) // 실패는 기억하지 않는다
+  }
+  return setMembersPromise
+}
+// 이 아이템이 든 세트(없으면 null). 헤어는 끝자리, 성형은 백의 자리가 색이라 8색 id 를 모두 본다
+export function setOf(t: SetMembers, it: { id: string; slot: string }): SetEntry | null {
+  const hit = t.by.get(it.id)
+  if (hit != null) return t.sets[hit]
+  if (it.slot !== 'hair' && it.slot !== 'face') return null
+  const n = Number(it.id), step = it.slot === 'hair' ? 1 : 100, base = n - (Math.floor(n / step) % 10) * step
+  for (let c = 0; c < 8; c++) { const i = t.by.get(String(base + c * step).padStart(it.id.length, '0')); if (i != null) return t.sets[i] }
+  return null
+}
 const slotCache = new Map<string, Promise<ListItem[]>>()
 export function loadSlot(file: string): Promise<ListItem[]> {
   let p = slotCache.get(file)
