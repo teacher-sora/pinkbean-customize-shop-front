@@ -10,7 +10,8 @@ const BUCKET = process.env.R2_BUCKET || 'pinkbean-customize-shop'
 export const sha256 = (d: string | Buffer) => createHash('sha256').update(d).digest('hex')
 const hmac = (k: Buffer | string, d: string) => createHmac('sha256', k).update(d).digest()
 
-export async function r2(method: 'GET' | 'HEAD' | 'PUT' | 'DELETE', key: string, body?: string | Buffer, contentType = 'text/plain; charset=utf-8'): Promise<Response> {
+// meta = PUT 에 붙이는 사용자 메타데이터(x-amz-meta-<이름>) — HEAD 로 본문 없이 읽을 수 있다
+export async function r2(method: 'GET' | 'HEAD' | 'PUT' | 'DELETE', key: string, body?: string | Buffer, contentType = 'text/plain; charset=utf-8', meta?: Record<string, string>): Promise<Response> {
   const url = new URL(`${ENDPOINT}/${BUCKET}/${key}`)
   const now = new Date()
   const amzDate = now.toISOString().replace(/[-:]|\.\d{3}/g, '')
@@ -20,6 +21,7 @@ export async function r2(method: 'GET' | 'HEAD' | 'PUT' | 'DELETE', key: string,
   if (method === 'PUT') {
     headers['content-type'] = contentType
     headers['cache-control'] = 'public, max-age=31536000, immutable'
+    for (const [k, v] of Object.entries(meta ?? {})) headers[`x-amz-meta-${k.toLowerCase()}`] = v
   }
   const names = Object.keys(headers).sort()
   const canonical = [method, url.pathname, '', ...names.map((n) => `${n}:${headers[n]}`), '', names.join(';'), payloadHash].join('\n')

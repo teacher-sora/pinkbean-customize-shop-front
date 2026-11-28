@@ -5,7 +5,9 @@
 //  · POST { bundle, id, token? } → { id, token } : 아이디로 둔다(간단한 계정 — 겹치면 409). 처음 만든 기기가 받은 token 이 있어야 고쳐 쓴다
 //  · GET ?id=이름               → 묶음 : 아이디로 받기(누구나 — 아이디만 알면 받는다)
 //  · GET ?check=이름            → { taken } : 아이디가 이미 있는지
-//  · DELETE { id, token }       → { ok } : 만든 기기가 아이디를 지운다 — 곧바로 다른 사람이 그 아이디를 쓸 수 있다. 이미 없으면 지운 것으로 본다
+//  · DELETE { id, token }       → { ok } : 만든 기기가 아이디를 지운다 — 곧바로 다른 사람이 그 아이디를 쓸 수 있다. 이미 없으면 지운 것으로 본다.
+//    빨리(사용자 지시): 아이디 파일에는 열쇠 해시를 메타데이터(x-amz-meta-h)로도 적어 두고, 지울 때는 본문 없이 HEAD 로 그것만 읽는다(묶음 전체를 받지 않는다).
+//    메타데이터가 없는 예전 파일만 본문을 읽는다
 // 저장소 접근은 lib/server/r2.ts.
 import { inflateRawSync } from 'zlib'
 import { randomBytes } from 'crypto'
@@ -43,7 +45,7 @@ const read = async (key: string): Promise<{ t: number; h?: string; d: Bundle } |
   if (!r.ok) return 'err'
   try { return JSON.parse(await r.text()) } catch { return null }
 }
-const put = (key: string, v: unknown) => r2('PUT', key, JSON.stringify(v), 'application/json')
+const put = (key: string, v: unknown, meta?: Record<string, string>) => r2('PUT', key, JSON.stringify(v), 'application/json', meta)
 const idKey = (p: string, id: string) => `${p}/u/${id.toLowerCase()}`
 
 export async function GET(req: NextRequest) {
@@ -79,7 +81,8 @@ export async function POST(req: NextRequest) {
     const token = typeof body.token === 'string' ? body.token : ''
     if (got && got.h !== sha256(token)) return NextResponse.json({ error: 'taken' }, { status: 409 })
     const tk = got ? token : randomBytes(18).toString('base64url')
-    if (!(await put(key, { t: Date.now(), h: sha256(tk), d })).ok) return NextResponse.json({ error: 'storage error' }, { status: 502 })
+    const h = sha256(tk)
+    if (!(await put(key, { t: Date.now(), h, d }, { h })).ok) return NextResponse.json({ error: 'storage error' }, { status: 502 })
     return NextResponse.json({ id, token: tk })
   }
   // 5자리 코드 — 화면이 뽑은 번호부터, 살아 있는 번호와 겹치면 다시 뽑는다
@@ -102,10 +105,18 @@ export async function DELETE(req: NextRequest) {
   try { body = await req.json() } catch { /* noop */ }
   const id = String(body.id ?? ''), token = typeof body.token === 'string' ? body.token : ''
   if (!ID_RE.test(id)) return NextResponse.json({ error: 'bad id' }, { status: 400 })
-  const key = idKey(p, id), got = await read(key)
-  if (got === 'err') return NextResponse.json({ error: 'storage error' }, { status: 502 })
-  if (!got) return NextResponse.json({ ok: true })
-  if (got.h !== sha256(token)) return NextResponse.json({ error: 'not yours' }, { status: 403 })
+  const key = idKey(p, id)
+  const head = await r2('HEAD', key)
+  if (head.status === 404) return NextResponse.json({ ok: true })
+  if (!head.ok) return NextResponse.json({ error: 'storage error' }, { status: 502 })
+  let h = head.headers.get('x-amz-meta-h')
+  if (!h) { // 메타데이터가 없는 예전 파일
+    const got = await read(key)
+    if (got === 'err') return NextResponse.json({ error: 'storage error' }, { status: 502 })
+    if (!got) return NextResponse.json({ ok: true })
+    h = got.h ?? ''
+  }
+  if (h !== sha256(token)) return NextResponse.json({ error: 'not yours' }, { status: 403 })
   const r = await r2('DELETE', key)
   if (!r.ok && r.status !== 404) return NextResponse.json({ error: 'storage error' }, { status: 502 })
   return NextResponse.json({ ok: true })

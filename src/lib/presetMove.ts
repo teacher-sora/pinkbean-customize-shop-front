@@ -47,16 +47,19 @@ export async function sendById(id: string, items: MoveItem[]): Promise<'ok' | 't
   } catch { return 'fail' }
 }
 // 지우기 — 서버에서 곧바로 없어져 누구나 그 아이디를 새로 쓸 수 있다. 서버가 남의 것이라 하면(열쇠가 맞지 않음) 목록에서만 뺀다
+// 아이디 지우기 — 이 기기의 기록에서 **먼저** 지우고 서버에 보낸다(사용자 지시 — 응답을 기다리지 않고 바로, 연달아 지워도 막히지 않게).
+// 서버가 못 지웠으면(망 · 저장소 오류) 기록의 제자리에 되돌리고 false. 403(남의 것 — 열쇠가 다르다)은 이 기기의 기록만 지운 것으로 본다
 export async function removeId(id: string): Promise<boolean> {
-  const mine = readIds(), a = mine.find((x) => same(x.id, id))
-  if (a) {
-    try {
-      const r = await post({ id: a.id, token: a.token }, 'DELETE')
-      if (!r.ok && r.status !== 403) return false
-    } catch { return false }
-  }
+  const mine = readIds(), i = mine.findIndex((x) => same(x.id, id)), a = mine[i]
+  if (!a) return true
   writeIds(mine.filter((x) => x !== a))
-  return true
+  try {
+    const r = await post({ id: a.id, token: a.token }, 'DELETE')
+    if (r.ok || r.status === 403) return true
+  } catch { /* 아래에서 되돌린다 */ }
+  const now = readIds()
+  if (!now.some((x) => same(x.id, a.id))) { now.splice(Math.min(i, now.length), 0, a); writeIds(now) }
+  return false
 }
 // 받기 — 코드나 아이디로. 못 찾으면 null
 export async function receive(key: string): Promise<MoveItem[] | null> {
