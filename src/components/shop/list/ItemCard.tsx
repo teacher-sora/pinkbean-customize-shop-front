@@ -8,7 +8,7 @@ import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, i
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
 import { IconBookmark, IconDot, IconDrop, IconStar, IconTab, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
-import { SetChip } from './SetPop'
+import { SetMark } from './SetPop'
 import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
@@ -59,6 +59,8 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
         </button>
         <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
           className={clsx('pb-ribbon', styles.pinMark, mobile && styles.pinMarkM, pinned && styles.pinMarkOn)} />
+        {/* 세트 띠지(list/SetPop) — 즐겨찾기 바로 옆. PC 는 올리면, 모바일은 누르면 그 세트가 뜬다. 북마크 띠지가 나오면 한 칸 옆으로 비킨다. 지금 dev 에서만 */}
+        {DEV_SITE && (item.setGroup != null || !!item.setItemID) && <SetMark item={item} mobile={mobile} aside={pinned} />}
         <div className={styles.thumb}>
           <ItemThumb item={item} mode={mode} fraction={mobile ? CARD_FRACTION_M : undefined} fitW={mobile ? CARD_FIT_W_M : undefined} zoomStep={+s.listZoom - 1} chat={item.chatUi ? CHAT_CARD : undefined} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
             zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
@@ -79,8 +81,6 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
               {kindBadge === 'collab' ? <IconBadgeCollab /> : <IconBadgeBoutique />}
             </span>
           )}
-          {/* 세트 칩(list/SetPop) — 그림 칸 왼쪽 위. PC 는 올리면, 모바일은 누르면 그 세트가 뜬다. 지금 dev 에서만 */}
-          {DEV_SITE && (item.setGroup != null || !!item.setItemID) && <SetChip item={item} mobile={mobile} />}
           {looks > 0 && !COMBO_SKIP.has(item.slot) && (
             <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 룩북 ${looks.toLocaleString()}벌`}
               className={clsx(styles.combo, mobile && styles.comboM)}>{mobile ? <><IconTab id="codi" size={11} />{countLabel(looks)}</> : `코디 ${countLabel(looks)}`}</button>
