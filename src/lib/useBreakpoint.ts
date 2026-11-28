@@ -26,6 +26,8 @@ const isTouchDevice = () => {
   return !!window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches
 }
 
+// 지금 폭 구분(훅 밖에서 한 번 읽을 때 — 훅과 같은 계산)
+export const currentBp = (): Breakpoint => bpOf(viewW(), isTouchDevice())
 export function useBreakpoint(): Breakpoint {
   // SSR=pc(하이드레이션 mismatch 없음). 클라이언트에서 페인트 전 실제 폭으로 보정 + 모바일 사파리 지연 대비 rAF/load 재보정.
   const [bp, setBp] = useState<Breakpoint>('pc')

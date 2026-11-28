@@ -15,7 +15,7 @@ import { rankSort, nameMatcher, labelQuery } from '@/lib/nameSearch'
 import { groupSets } from '@/lib/setOrder'
 import { EGG_ITEMS, isEgg, isEggItem } from '@/lib/easterEgg'
 import { CATS, MIX_PALETTE, PV_WEAPONS, type Cat, type Preset, type Pv } from '@/lib/catalog'
-import { isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
+import { currentBp, isNarrow, useBreakpoint, useMinWidth, type Breakpoint } from '@/lib/useBreakpoint'
 import { loadAnima, loadEffectIndex, loadIndex, loadMeta, loadNewItems, loadReleased, loadSlot, stagedUrl, type Index, type ListItem, type Vec } from '@/lib/core/data'
 import type { ChatUi } from '@/lib/core/chatUi'
 import { colorOf, preloadPaletteVariant, variantId, warmDye, type HsbParams, type PaletteParams } from '@/lib/core/dye'
@@ -106,7 +106,7 @@ export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' 
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320
-const LOOKBOOK_WARM = 18 // 코디 룩북 주소로 들어올 때 미리 받을 첫 카드 수(PC 첫 화면 · 모바일 3 × 3 의 두 화면). 페이지(app/(shop)/lookbook/[id] WARM)와 같은 값 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
+const LOOKBOOK_WARM = 18 // 코디 룩북 주소로 들어올 때 그림까지 미리 받을 첫 카드 수(PC 첫 화면 6 × 3, 모바일은 3 × 3). meta 는 페이지(app/(shop)/lookbook/[id] WARM)가 18벌 받는다 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
 // 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
 // 사파리는 await 후 writeText 가 사용자 제스처 밖이라 거부될 수 있어, ClipboardItem 에 Promise(Blob)를 넘겨
@@ -1368,7 +1368,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     first.catch(() => {})
     indexHook.current = (idx) => {
       indexHook.current = null
-      first.then((pg) => { for (const r of pg.looks.slice(0, LOOKBOOK_WARM)) void preloadSnapshot(r.s, idx, true).catch(() => {}) }).catch(() => {})
+      const warmN = currentBp() === 'mobile' ? MOBILE_GRID.cols * MOBILE_GRID.rows : LOOKBOOK_WARM // 모바일은 첫 화면 3 × 3 만 — 더 받으면 보이는 카드의 그림과 다툰다
+      first.then((pg) => { for (const r of pg.looks.slice(0, warmN)) void preloadSnapshot(r.s, idx, true).catch(() => {}) }).catch(() => {})
       loadMeta(id).then((m) => loadSlotFolded(m.slot)).then((l) => { const it = l.find((x) => x.id === id); if (it) pickCombo(it) }).catch(() => {})
         .finally(() => { lookbookPending.current = null })
     }
