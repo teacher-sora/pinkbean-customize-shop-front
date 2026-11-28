@@ -5,6 +5,7 @@
 //  · POST { bundle, id, token? } → { id, token } : 아이디로 둔다(간단한 계정 — 겹치면 409). 처음 만든 기기가 받은 token 이 있어야 고쳐 쓴다
 //  · GET ?id=이름               → 묶음 : 아이디로 받기(누구나 — 아이디만 알면 받는다)
 //  · GET ?check=이름            → { taken } : 아이디가 이미 있는지
+//  · DELETE { id, token }       → { ok } : 만든 기기가 아이디를 지운다 — 곧바로 다른 사람이 그 아이디를 쓸 수 있다. 이미 없으면 지운 것으로 본다
 // 저장소 접근은 lib/server/r2.ts.
 import { inflateRawSync } from 'zlib'
 import { randomBytes } from 'crypto'
@@ -91,4 +92,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ code, ttl: TTL })
   }
   return NextResponse.json({ error: 'busy' }, { status: 503 })
+}
+
+export async function DELETE(req: NextRequest) {
+  if (!configured()) return NextResponse.json({ error: 'not configured' }, { status: 503 })
+  const p = prefix(req.nextUrl.hostname)
+  let body: { id?: unknown; token?: unknown } = {}
+  try { body = await req.json() } catch { /* noop */ }
+  const id = String(body.id ?? ''), token = typeof body.token === 'string' ? body.token : ''
+  if (!ID_RE.test(id)) return NextResponse.json({ error: 'bad id' }, { status: 400 })
+  const key = idKey(p, id), got = await read(key)
+  if (got === 'err') return NextResponse.json({ error: 'storage error' }, { status: 502 })
+  if (!got) return NextResponse.json({ ok: true })
+  if (got.h !== sha256(token)) return NextResponse.json({ error: 'not yours' }, { status: 403 })
+  const r = await r2('DELETE', key)
+  if (!r.ok && r.status !== 404) return NextResponse.json({ error: 'storage error' }, { status: 502 })
+  return NextResponse.json({ ok: true })
 }

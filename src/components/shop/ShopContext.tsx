@@ -98,11 +98,11 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look' | 'set' | 'move'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look' | 'set' | 'move' | 'moveio'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 // combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
 // look = 'look'(닉네임으로 불러온 코디 고르기)의 닉네임과 코디 후보
-// move = 'move'(다른 기기에서 옮겨 온 프리셋 고르기 — lib/presetMove)의 받은 프리셋들
+// move = 'move'(다른 기기에서 옮겨 온 프리셋 고르기 — lib/presetMove)의 받은 프리셋들. 'moveio' = 프리셋 옮기기 창(보내기 · 받기 — preset/MoveIo)
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
@@ -352,8 +352,8 @@ export interface ShopCtx {
   openDye: (item: ListItem, init?: DyeSave) => void // init = 이 값으로 연다(코디 룩북의 자주 쓴 염색 — 적용은 창에서)
   openCard: () => void // 코디 프로필(공유 카드) 만들기 창
   openSetSheet: (item: ListItem) => void // 모바일 세트 보기 시트(list/SetPop)
-  // 프리셋 옮기기(lib/presetMove · preset/MovePop · MoveBody) — 쓰고 있는 프리셋 묶기, 받은 묶음 고르기 창 열기, 넣기(전체 덮어쓰기 · 빈 칸에 추가)
-  movePresets: () => MoveItem[]; openMove: (items: MoveItem[]) => void; takePresets: (items: MoveItem[], mode: 'all' | 'add') => void
+  // 프리셋 옮기기(lib/presetMove · preset/MoveIo · MoveBody) — 옮기기 창 열기, 쓰고 있는 프리셋 묶기, 받은 묶음 고르기 창 열기, 넣기(전체 덮어쓰기 · 빈 칸에 추가)
+  openMoveIo: () => void; movePresets: () => MoveItem[]; openMove: (items: MoveItem[]) => void; takePresets: (items: MoveItem[], mode: 'all' | 'add') => void
   openDot: (item: ListItem) => void
   closeSurface: () => void
   // 부위 염색: 칩 선택 → 염색/점 위치로(가로 슬라이드), 이전 → 부위 고르기로. partSlide = 본문 translateX(px).
@@ -1743,6 +1743,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const openSetSheet = (item: ListItem) => openSurface({ kind: 'set', item })
   // 프리셋 옮기기 — 묶기: 기본 코디가 아닌 칸만, 지금 순서대로(고른 칸은 지금 코디)
   const movePresets = (): MoveItem[] => presets.flatMap((p) => { const sn = p.id === selectedPreset ? snapshot() : presetData[p.id]; return sn && snapCoreKey(sn) !== DEFAULT_CORE_KEY ? [{ name: p.name, snap: sn }] : [] })
+  const openMoveIo = () => openSurface({ kind: 'moveio', item: null })
   const openMove = (items: MoveItem[]) => openSurface({ kind: 'move', item: null, move: items })
   // 넣기 — all: 받은 것으로 프리셋 전체를 덮어쓴다(지금 카드 순서대로 채우고 이름까지, 남는 칸은 기본 코디, 첫 칸을 고른다).
   //        add: 고른 것을 빈 칸(기본 코디인 칸, 지금 고른 칸은 빼고)에 차례로 넣는다.
@@ -2370,7 +2371,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, resetOutfit, resetDyes, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
-    surface, surfaceClosing, openSheet, openDye, openCard, openSetSheet, movePresets, openMove, takePresets, openDot, closeSurface,
+    surface, surfaceClosing, openSheet, openDye, openCard, openSetSheet, openMoveIo, movePresets, openMove, takePresets, openDot, closeSurface,
     openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,
     dotPos, setDot, resetDot,
     pv, setPv,

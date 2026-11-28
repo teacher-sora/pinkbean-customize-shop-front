@@ -8,7 +8,7 @@ import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { watchSize } from '@/lib/sizeWatch'
 import { DEV_SITE, type Preset } from '@/lib/catalog'
-import MovePop from './MovePop'
+import { MoveBtn } from './MoveIo'
 import { CARD_FIT_W_M, CHAT_NAME_FALLBACK, defaultPresetName, PRESET_FRACTION, PRESET_FRACTION_M } from '@/lib/shopData'
 import { DIRS } from '../list/ListArea'
 import { Seg } from '../ui/controls'
@@ -174,8 +174,8 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
           {chip}
           {sortBtn}
           {dirSeg}
-          {/* 프리셋 옮기기(preset/MovePop) — 불러오기 칸 왼쪽. 지금 dev 에서만 */}
-          {DEV_SITE && <MovePop mobile />}
+          {/* 프리셋 옮기기(preset/MoveIo) — 불러오기 칸 바로 왼쪽. 지금 dev 에서만 */}
+          {DEV_SITE && <MoveBtn mobile />}
           {/* 불러오기: 입력과 버튼을 한 칸에 묶는다(아래 PC 와 같은 모양) */}
           <div className={clsx(styles.importBox, styles.importBoxM)}>
             <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
@@ -194,7 +194,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <div className={styles.header}>
         <div className={styles.groupA}>{chip}{sortBtn}{dirSeg}</div>
         <div className={styles.groupB}>
-          {DEV_SITE && <MovePop mobile={false} />}
+          {DEV_SITE && <MoveBtn mobile={false} />}
           {/* 불러오기: 입력 + 채운 아이콘 버튼을 한 테두리 안에(모바일과 같은 모양). 칸의 생김새는 다른 탭의 검색 칸과 같다 */}
           <div className={clsx(styles.importBox, narrow && styles.importBoxNarrow)}>
             <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />

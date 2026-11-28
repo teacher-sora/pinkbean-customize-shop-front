@@ -90,20 +90,46 @@
 /* 300 이하: 머리 줄이 화면 밖으로 밀려 [순서]를 아이콘만 */
 @media (max-width: 300px) { .sortBtnM .loadLabel { display: none; } }
 .iconBtnM { width: 32px; padding: 0; justify-content: center; } /* 모바일 옮기기 — 아이콘만(머리 줄이 좁다) */
-/* 프리셋 옮기기 작은 창(MovePop — PopBox 안). 머리 · 칸 색은 카테고리 펼치기와 같다 */
-.movePop.movePop { box-shadow: 0 0 10px light-dark(rgba(42,37,33,.1), rgba(25, 22, 20, 0.16)), 0 10px 26px light-dark(rgba(42,37,33,.14), rgba(25, 22, 20, 0.224)); }
-.moveHead { flex: 0 0 auto; padding: 8px; display: flex; justify-content: center; border-bottom: 1px solid light-dark(#f4efe8, #3e4048); }
-.moveBody { flex: 0 1 auto; min-height: 0; padding: 14px 12px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; overflow: hidden auto; }
-.moveCode { padding: 0 8px; border: none; background: transparent; font-family: inherit; font-size: calc(34rem / 16); font-weight: 700; letter-spacing: .16em; font-variant-numeric: tabular-nums; line-height: 1.1; color: light-dark(#2a2521, #d4d5d8); cursor: pointer; }
-.moveCodeWait { color: light-dark(#ece5dd, #44474f); cursor: default; }
-.moveTime { height: 22px; margin-top: -8px; display: flex; align-items: center; justify-content: center; font-size: calc(12rem / 16); font-weight: 600; font-variant-numeric: tabular-nums; color: light-dark(#8a8075, #9fa2aa); }
-.moveNew { height: 22px; padding: 0 10px; border: 1px solid light-dark(#ec86ac, #d15785); border-radius: 11px; background: light-dark(#fdf1f6, #4e323e); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#d76d9a, #d293ae); cursor: pointer; }
-.moveQrBox { width: 150px; height: 150px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fff; overflow: hidden; }
-.moveQr { display: block; }
-.moveQrWait { width: 100%; height: 100%; background: light-dark(#faf7f3, #373940); }
-.moveRow { width: 100%; display: flex; gap: 6px; }
-.moveField { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 10px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(13rem / 16); color: light-dark(#3d372f, #cacbd0); outline: none; transition: border-color .22s ease; }
-.moveField:focus { border-color: light-dark(#ec86ac, #d15785); }
-.moveGo { flex: 0 0 auto; height: 34px; padding: 0 14px; border: none; border-radius: 6px; background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); cursor: pointer; font-family: inherit; font-size: calc(13rem / 16); font-weight: 600; }
+/* [옮기기]는 불러오기 칸 바로 왼쪽에 붙어 함께 오른쪽 끝으로(사용자 지시) — 밀어내는 자리(margin-left: auto)를 이 단추가 갖는다 */
+.moveBtn { margin-left: auto; }
+.moveBtn + .importBox { margin-left: 0; }
 
-.moveGo:disabled { opacity: .6; cursor: default; }
+/* 프리셋 옮기기 창(preset/MoveIo — 서피스 'moveio', 내용만큼의 높이). 보내기 · 받기 두 쪽을 한 칸에 겹친다(.mvStack — 바꿔도 높이가 그대로) */
+.mvBody { flex: 0 1 auto; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.mvBodyM { padding: 14px 12px; }
+.mvTabs { display: flex; }
+.mvStack { display: grid; }
+.mvPane { grid-area: 1 / 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.mvOff { visibility: hidden; }
+.mvRecv { justify-content: center; }
+/* 왼쪽 QR, 오른쪽 코드 · 남은 시간 · [복사] */
+.mvCodeRow { display: flex; align-items: center; gap: 20px; }
+.mvQr { flex: 0 0 auto; width: 164px; height: 164px; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fff; }
+.mvQr canvas { display: block; }
+.mvQrWait { background: light-dark(#faf7f3, #373940); }
+.mvCodeCol { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.mvCode { padding: 0; border: none; background: transparent; font-family: inherit; font-size: calc(36rem / 16); font-weight: 700; letter-spacing: .14em; font-variant-numeric: tabular-nums; line-height: 1.1; color: light-dark(#2a2521, #d4d5d8); cursor: pointer; transition: color .22s ease; }
+.mvCodeWait { color: light-dark(#ece5dd, #44474f); cursor: default; }
+.mvMeta { display: flex; align-items: center; gap: 10px; }
+.mvTime { width: 36px; font-size: calc(13rem / 16); font-weight: 600; font-variant-numeric: tabular-nums; color: light-dark(#8a8075, #9fa2aa); transition: color .22s ease; }
+.mvTimeDead { color: light-dark(#d4cbc0, #5c5f68); }
+.mvAct { height: 28px; padding: 0 12px; border: 1px solid light-dark(#f8e0ea, #5a3947); border-radius: 6px; background: light-dark(#fdf1f6, #4e323e); font-family: inherit; font-size: calc(12.5rem / 16); font-weight: 600; color: light-dark(#d76d9a, #d293ae); cursor: pointer; transition: border-color .22s ease, color .22s ease; }
+.mvAct:disabled { opacity: .6; cursor: default; }
+.mvRule { flex: 0 0 auto; height: 1px; margin: 0; border: none; background: light-dark(#f0e9e1, #42454d); }
+.mvRow { width: 100%; display: flex; gap: 6px; }
+.mvField { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(13rem / 16); color: light-dark(#3d372f, #cacbd0); outline: none; transition: border-color .22s ease, background-color .22s ease; }
+.mvField:focus { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fff, #303238); }
+.mvGo { flex: 0 0 auto; height: 34px; padding: 0 14px; border: none; border-radius: 6px; background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); cursor: pointer; font-family: inherit; font-size: calc(13rem / 16); font-weight: 600; }
+.mvGo:disabled { opacity: .6; cursor: default; }
+/* 이 기기에서 만든 아이디 — 이름 · [저장] · 휴지통 */
+.mvIds { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.mvId { height: 34px; padding: 0 3px 0 12px; display: flex; align-items: center; gap: 2px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#faf7f3, #373940); }
+.mvIdName { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(13rem / 16); font-weight: 600; color: light-dark(#3d372f, #cacbd0); }
+.mvIdBtn { flex: 0 0 auto; height: 26px; padding: 0 10px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 4px; background: transparent; font-family: inherit; font-size: calc(12.5rem / 16); font-weight: 600; color: light-dark(#8a8075, #9fa2aa); cursor: pointer; transition: background-color .22s ease, color .22s ease; }
+.mvIdBtn:disabled { opacity: .6; cursor: default; }
+.mvIdDel { width: 28px; padding: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .mvAct:not(:disabled):hover { border-color: light-dark(#ec86ac, #d15785); }
+  .mvIdBtn:not(:disabled):hover { background: light-dark(#fff, #303238); color: light-dark(#d76d9a, #d293ae); }
+  .mvIdDel:not(:disabled):hover { color: light-dark(#e08a9b, #c35f73); }
+}
