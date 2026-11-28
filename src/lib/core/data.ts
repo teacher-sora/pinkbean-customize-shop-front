@@ -421,16 +421,23 @@ export function loadSlot(file: string): Promise<ListItem[]> {
 // 입고 있는 것 · 미리보기 · 카드가 쓰는 meta 는 그쪽이 참조를 쥐고 있어 그대로 남는다.
 const META_MAX = 160
 const metaCache = new LRU<Promise<ItemMeta>>(META_MAX)
+// 받는 중인 meta — 받는 동안 LRU 에서 밀려나도(카드가 한꺼번에 많이 부를 때) 같은 요청을 함께 쓴다.
+// 왜: 밀려난 뒤 다시 부르면 첫 요청이 아직 브라우저 캐시에 들기 전이라 같은 파일을 망으로 한 번 더 받았다(운영 PC, 한 화면에 9 ~ 13건 — 실측)
+const metaInflight = new Map<string, Promise<ItemMeta>>()
 export function loadMeta(id: string): Promise<ItemMeta> {
-  let p = metaCache.get(id)
+  let p = metaCache.get(id) ?? metaInflight.get(id)
   // ⚠️ 실패한 결과는 캐시에 남기지 않는다. 라이딩 meta 는 목록(riding.json)이 경로를 등록해 줘야 찾을 수 있는데,
   //    그 전에 한 번 부르면 CDN 404 로 실패한다 — 실패까지 캐시하면 목록이 온 뒤에도 영영 안 나온다.
   if (!p) {
     const rel = ridingMetaUrl.get(id) ?? `meta/${id}.json`
-    p = pre<ItemMeta>(rel, () => fetch(url(rel)).then((r) => r.json())).then(fixSlotCodes)
-    p.catch(() => { if (metaCache.peek(id) === p) metaCache.delete(id) })
-    metaCache.set(id, p)
+    const made = pre<ItemMeta>(rel, () => fetch(url(rel)).then((r) => r.json())).then(fixSlotCodes)
+    p = made
+    made.catch(() => { if (metaCache.peek(id) === made) metaCache.delete(id) })
+    metaInflight.set(id, made)
+    const done = () => { if (metaInflight.get(id) === made) metaInflight.delete(id) }
+    made.then(done, done)
   }
+  if (metaCache.peek(id) !== p) metaCache.set(id, p)
   return p
 }
 

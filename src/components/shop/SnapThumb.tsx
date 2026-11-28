@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { watchSize } from '@/lib/sizeWatch'
 import { useIsoLayoutEffect } from '@/lib/uiState'
 import { footOf, type PlacedLayer } from '@/lib/core/assemble'
-import { stagedUrl, type AnimaRace, type Index } from '@/lib/core/data'
+import { loadSlot, type AnimaRace, type Index } from '@/lib/core/data'
 import { canvasBitmap, computeModelPlacement, fitCanvas, MODEL_REF, zoomStepScale } from '@/lib/core/modelPlacement'
 import type { ParticleDraw } from '@/lib/core/particle'
 import { renderCharacter, type EffectDraw } from '@/lib/core/render'
@@ -33,7 +33,8 @@ import { useNear, useSeen } from './ui/useSeen'
 
 const RETRY_MS = 9000
 const FAR = '1600px' // 이보다 멀어진 칸은 캔버스를 놓는다(보일 즈음 그리기 200px 보다 넉넉히 — 오가며 떼고 붙이기를 되풀이하지 않게)
-// 명찰 조각 정보(id → chatUi). 명찰 · 말풍선 목록 파일을 처음 쓸 때 한 번만 받는다.
+// 명찰 조각 정보(id → chatUi). 명찰 · 말풍선 목록 파일은 목록 로더(lib/core/data loadSlot)가 받은 것을 함께 쓴다 —
+// 따로 받았더니 처음 열 때 목록과 거의 동시에 같은 파일(48KB)을 망으로 두 번 받았다(실측)
 let tagUis: Promise<Map<string, ChatUi>> | null = null
 // 칭호 · 훈장 · 말풍선(deco 일 때만 — 불러오기 창이 가져올 장식을 미리 보여 준다). 부위별 목록을 한 번만 받는다
 type DecoEntry = { ui: ChatUi; name: string }
@@ -41,12 +42,12 @@ const decoLists = new Map<string, Promise<Map<string, DecoEntry>>>()
 const loadDeco = (slot: 'title' | 'medal' | 'chatBalloon') => {
   let p = decoLists.get(slot)
   if (!p) {
-    p = stagedUrl(CHAT_FILES[slot]).then((u) => fetch(u)).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; name?: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === slot && x.chatUi).map((x) => [x.id, { ui: x.chatUi!, name: x.name ?? '' }]))).catch(() => new Map())
+    p = loadSlot(CHAT_FILES[slot]).then((l) => new Map(l.filter((x) => x.slot === slot && x.chatUi).map((x) => [x.id, { ui: x.chatUi!, name: x.name ?? '' }]))).catch(() => new Map())
     decoLists.set(slot, p)
   }
   return p
 }
-const loadTagUis = () => (tagUis ??= fetch(CHAT_FILES.nameTag).then((r) => (r.ok ? r.json() : [])).then((l: { id: string; slot: string; chatUi?: ChatUi }[]) => new Map(l.filter((x) => x.slot === 'nameTag' && x.chatUi).map((x) => [x.id, x.chatUi!]))).catch(() => new Map()))
+const loadTagUis = () => (tagUis ??= loadSlot(CHAT_FILES.nameTag).then((l) => new Map(l.filter((x) => x.slot === 'nameTag' && x.chatUi).map((x) => [x.id, x.chatUi!]))).catch(() => new Map()))
 // 미리 합성(줄을 서지 않고 바로) — 광장 카드에 마우스를 올리거나 누르는 순간 상세의 그림을 먼저 만든다(사용자 지시: 상세가 더 빨리 뜨게).
 // 같은 코디를 그리는 쪽(카드 · 상세)은 캐시 · 진행 중 합성을 함께 쓴다(snapRender)
 // 끝나면 풀리는 약속을 돌려준다(코디 비교는 떠나는 칸의 정지 그림을 먼저 만들어 두고 칸을 옮긴다 — 옮긴 순간 그 칸에 뼈대가 비치지 않게)

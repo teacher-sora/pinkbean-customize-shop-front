@@ -1507,7 +1507,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     type Ric = (cb: () => void, o?: { timeout: number }) => number
     const ric: Ric | undefined = (window as unknown as { requestIdleCallback?: Ric }).requestIdleCallback
     let t = 0
-    const run = () => { void refreshPlaza() }
+    // 방금 받았으면 건너뛴다(탭 진입과 같은 규칙) — 광장 탭으로 바로 들어오면(룩북 주소) 탭 진입이 먼저 받아, 미리 받기가 같은 목록(45KB)을 한 번 더 받았다(실측)
+    const run = () => { if (loadedOnce.current && Date.now() - lastPlazaLoad.current < 20000) return; void refreshPlaza() }
     if (ric) { t = ric(run, { timeout: 4000 }) } else { t = window.setTimeout(run, 1500) }
     return () => { if (ric) (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(t); else window.clearTimeout(t) }
   }, [refreshPlaza])
@@ -1630,6 +1631,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     likeWatch.current = Array.from(ids)
   }
   const watching = primary === 'share' || surface?.kind === 'plaza'
+  const plazaPostsRef = useRef(plazaPosts); plazaPostsRef.current = plazaPosts // 맥박이 지금 목록과 같은지 본다(아래)
   useEffect(() => {
     if (!watching || !plazaConfigured()) return
     let alive = true
@@ -1670,6 +1672,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (pulse === seen) return
       seen = pulse // 처음 본 맥박에도 한 번 맞춘다(목록을 받은 뒤 그 사이에 올라온 글) — 대개 캐시 응답이다
       const [total, top] = pulse.split('|')
+      // 맥박이 지금 목록과 같으면(최신 글이 있고 글 수가 같다) 첫 쪽을 받지 않는다 — 목록을 받은 직후의 첫 맥박이 같은 목록(45KB)을 또 받았다(실측)
+      const cur = plazaPostsRef.current
+      if (top && String(cur.length) === total && cur.some((p) => p.id === top)) return
       let head = await loadPlazaHead()
       if (head && ((top && !head.posts.some((p) => p.id === top)) || String(head.total) !== total)) head = await loadPlazaHead(true)
       if (!alive || !head) return
