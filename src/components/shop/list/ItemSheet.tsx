@@ -3,15 +3,16 @@
 // 모바일 아이템 카드의 이름 줄과, 그 줄을 누르면 뜨는 아이템 시트(서피스 'item').
 // 왜(사용자 지시): 카드 하나에 즐겨찾기 · 북마크 · 염색 · 코디 룩북 · 세트가 작은 단추로 몰려 손가락으로 정확히 누르기 어려웠다.
 // 그래서 모바일 카드에서 누르는 곳은 둘뿐이다. 그림을 누르면 입고, 아래 이름 줄 전체(높이 36)를 누르면 이 시트가 뜬다.
-// 시트에는 할 일을 한 줄에 하나씩 큰 단추(높이 52)로 둔다: 염색 · 북마크 · 즐겨찾기 · 코디 룩북 · 세트.
-// 북마크 · 즐겨찾기는 켜고 꺼도 시트가 그대로라 상태가 바로 보이고, 염색 · 세트는 그 창으로 바뀌며, 코디 룩북은 시트를 닫고 목록 자리에 펼친다.
+// 시트에는 할 일을 한 줄에 하나씩 큰 단추(높이 52)로 둔다: 염색 · 북마크 · 코디 룩북 · 세트. 즐겨찾기는 카드 오른쪽 위 띠지 그대로다(사용자 지시).
+// 북마크는 켜고 꺼도 시트가 그대로라 상태가 바로 보인다. 염색 · 세트는 다른 시트처럼 본문이 가로로 미끄러지며 바뀌고 높이도 부드럽게 바뀌며,
+// 푸터가 '이전'이 되어 이 시트로 돌아온다(부위 염색 → 염색과 같은 전환 — ShopContext openItemPart · itemBack). 코디 룩북은 시트를 닫고 목록 자리에 펼친다.
 // 시트는 내용 높이만큼이라 위의 미리보기가 보인다. PC 카드는 그대로다(마우스는 작은 단추도 정확히 누른다). 지금 dev 에서만
 import clsx from 'clsx'
 import type { ListItem } from '@/lib/core/data'
 import { DOT_MOVER_IDS, isDyeableSkin } from '@/lib/shopData'
 import { COMBO_SKIP, useLookCount } from '@/lib/looks'
 import { useShop } from '../ShopContext'
-import { IconBookmark, IconCat, IconCheck, IconChevronRight, IconDot, IconDrop, IconMore, IconStar, IconTab } from '../ui/Icons'
+import { IconBookmark, IconCat, IconCheck, IconChevronRight, IconDot, IconDrop, IconMore, IconTab } from '../ui/Icons'
 import { setEntryOf, useSetTable } from './SetPop'
 import styles from './list.module.css'
 
@@ -36,12 +37,11 @@ export function ItemSheetBody({ item }: { item: ListItem }) {
   const looks = useLookCount(item.id)
   const set = setEntryOf(item)
   const pinned = s.isBookmarked(item.id)
-  const fav = s.favorites.has(item.id)
   const dyeable = item.slot === 'skin' ? isDyeableSkin(item.name) : item.dyeMode !== 'none'
   const isDot = DOT_MOVER_IDS.has(item.id)
-  const row = (key: string, icon: React.ReactNode, label: string, onClick: () => void, opt: { on?: boolean; val?: string; go?: boolean; fav?: boolean } = {}) => (
+  const row = (key: string, icon: React.ReactNode, label: string, onClick: () => void, opt: { on?: boolean; val?: string; go?: boolean } = {}) => (
     <button key={key} type="button" onClick={onClick} aria-pressed={opt.go ? undefined : !!opt.on}
-      className={clsx(styles.itemRow, opt.on && styles.itemRowOn, opt.on && opt.fav && styles.itemRowFav)}>
+      className={clsx(styles.itemRow, opt.on && styles.itemRowOn)}>
       <span className={styles.itemRowIco}>{icon}</span>
       <span className={styles.itemRowLabel}>{label}</span>
       {opt.val && <span className={styles.itemRowVal}>{opt.val}</span>}
@@ -50,11 +50,10 @@ export function ItemSheetBody({ item }: { item: ListItem }) {
   )
   return (
     <div className={clsx('pb-scroll', styles.itemSheet)}>
-      {dyeable && row('dye', isDot ? <IconDot size={18} /> : <IconDrop size={18} />, isDot ? '점 위치' : '염색', () => (isDot ? s.openDot(item) : s.openDye(item)), { go: true })}
+      {dyeable && row('dye', isDot ? <IconDot size={18} /> : <IconDrop size={18} />, isDot ? '점 위치' : '염색', () => s.openItemPart(isDot ? 'dot' : 'dye', item), { go: true })}
       {row('bm', <IconBookmark filled={pinned} />, '북마크', () => s.toggleBookmark(item), { on: pinned })}
-      {row('fav', <IconStar size={18} />, '즐겨찾기', () => s.toggleFavorite(item.id), { on: fav, fav: true })}
       {looks > 0 && !COMBO_SKIP.has(item.slot) && row('combo', <IconTab id="codi" size={18} />, '코디 룩북', () => { s.closeSurface(); s.openCombo(item) }, { go: true, val: `${looks.toLocaleString()}벌` })}
-      {set && row('set', <IconCat id="all" size={15} />, '세트', () => s.openSetSheet(item), { go: true, val: `${set.members.length}개` })}
+      {set && row('set', <IconCat id="all" size={15} />, '세트', () => s.openItemPart('set', item), { go: true, val: `${set.members.length}개` })}
     </div>
   )
 }

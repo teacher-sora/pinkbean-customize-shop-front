@@ -33,8 +33,8 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const looks = useLookCount(item.id) // 이 아이템이 든 실제 유저 코디 수(코디 룩북 표본 — lib/looks). 0 이면 칩이 없다
   const comboOn = looks > 0 && !COMBO_SKIP.has(item.slot)
   // 모바일 카드에서 누르는 곳은 둘뿐이다(사용자 지시 — 기능이 늘며 작은 단추가 한 카드에 몰려 손가락으로 정확히 누르기 어려웠다):
-  // 그림 = 입기, 아래 이름 줄 전체 = 아이템 시트(list/ItemSheet — 염색 · 북마크 · 즐겨찾기 · 코디 룩북 · 세트가 한 줄에 하나씩 큰 단추).
-  // 그림 위 띠지는 켜져 있을 때만 보이는 표시다(누르지 않는다). 지금 dev 에서만 — 운영은 옛 카드
+  // 그림 = 입기, 아래 이름 줄 전체 = 아이템 시트(list/ItemSheet — 염색 · 북마크 · 코디 룩북 · 세트가 한 줄에 하나씩 큰 단추).
+  // 즐겨찾기는 오른쪽 위 띠지 그대로(사용자 지시), 북마크 띠지는 켜져 있을 때만 보이는 표시다(누르지 않는다). 지금 dev 에서만 — 운영은 옛 카드
   const sheet = DEV_SITE && mobile
   // 왼쪽 아래 표시 하나: 마라벨 · 스라벨 → 콜라보 · 부티크 → 캐시 동전(사용자 지시 — 넷은 한 아이템에 하나만 붙고, 캐시는 모두와 겹친다)
   const kindBadge = !item.label && item.kind ? item.kind : null
@@ -60,21 +60,14 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
     <div onClick={equip} onPointerDown={warm} className="pb-cardwrap" title={name}>
       <div className={clsx('pb-card', styles.card, mobile && styles.cardM, sheet && styles.cardD, sel && 'pb-card-sel')}>
         {s.newIds.has(item.id) && <span className={clsx(styles.newBadge, mobile && styles.newBadgeM)} aria-label="신규">{mobile ? 'N' : 'NEW'}</span>}
-        {sheet ? (
-          <>
-            {fav && <span aria-label="즐겨찾기" className={clsx(styles.fav, styles.favM, styles.favOn, styles.markOnly)}><IconStar size={10} className={styles.favGlyph} /></span>}
-            <span aria-hidden={!pinned || undefined} className={clsx(styles.pinMark, styles.pinMarkM, pinned && styles.pinMarkOn, styles.markOnly)} />
-          </>
-        ) : (
-          <>
-            <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={fav ? '즐겨찾기 해제' : '즐겨찾기에 모아두기'} aria-label="즐겨찾기" aria-pressed={fav}
-              className={clsx('pb-ribbon', styles.fav, mobile && styles.favM, fav && styles.favOn)}>
-              <IconStar size={mobile ? 10 : 9} className={styles.favGlyph} />
-            </button>
-            <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
-              className={clsx('pb-ribbon', styles.pinMark, mobile && styles.pinMarkM, pinned && styles.pinMarkOn)} />
-          </>
-        )}
+        <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={fav ? '즐겨찾기 해제' : '즐겨찾기에 모아두기'} aria-label="즐겨찾기" aria-pressed={fav}
+          className={clsx('pb-ribbon', styles.fav, mobile && styles.favM, fav && styles.favOn)}>
+          <IconStar size={mobile ? 10 : 9} className={styles.favGlyph} />
+        </button>
+        {sheet
+          ? <span aria-hidden={!pinned || undefined} className={clsx(styles.pinMark, styles.pinMarkM, pinned && styles.pinMarkOn, styles.markOnly)} />
+          : <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
+              className={clsx('pb-ribbon', styles.pinMark, mobile && styles.pinMarkM, pinned && styles.pinMarkOn)} />}
         {/* 세트 띠지(list/SetPop) — PC 만, 즐겨찾기 바로 옆. 올리면 그 세트가 뜬다. 북마크 띠지가 나오면 한 칸 옆으로 비킨다. 지금 dev 에서만 */}
         {DEV_SITE && !mobile && hasSet && <SetMark item={item} aside={pinned} />}
         <div className={styles.thumb}>

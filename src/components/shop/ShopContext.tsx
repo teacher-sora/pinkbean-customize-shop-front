@@ -94,7 +94,7 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 
 // 단일 서피스(시트·다이얼로그): 연출 설정 · 북마크 · 염색 · 점 위치가 모두 이 하나를 쓴다.
 // part = 부위 염색(착용 부위 고르기 → 같은 다이얼로그 안에서 염색/점 위치로 슬라이드), vs = 북마크 코디 비교(PC).
-// fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다.
+// fromPart = 부위 염색을 거쳐 들어온 dye/dot — 푸터가 '이전'(부위 고르기로 복귀)이 된다. fromItem = 아이템 시트(모바일 카드 이름 줄)를 거쳐 들어온 dye/dot/set — 같은 '이전'(아이템 시트로 복귀).
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
@@ -103,7 +103,7 @@ export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' 
 // combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
 // look = 'look'(닉네임으로 불러온 코디 고르기)의 닉네임과 코디 후보
 // move = 'move'(다른 기기에서 옮겨 온 프리셋 고르기 — lib/presetMove)의 받은 프리셋들. 'moveio' = 프리셋 이동 창(보내기 · 받기 — preset/MoveIo)
-export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
+export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; fromItem?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320
 const LOOKBOOK_LISTS_DELAY = 2000 // 코디 룩북 주소로 들어왔을 때 미룬 전체 부위 목록을 받기 시작하는 때(아이템을 고른 뒤 ms)
@@ -354,7 +354,9 @@ export interface ShopCtx {
   openDye: (item: ListItem, init?: DyeSave) => void // init = 이 값으로 연다(코디 룩북의 자주 쓴 염색 — 적용은 창에서)
   openCard: () => void // 코디 프로필(공유 카드) 만들기 창
   openSetSheet: (item: ListItem) => void // 모바일 세트 보기 시트(list/SetPop)
-  openItemSheet: (item: ListItem) => void // 모바일 아이템 시트(list/ItemSheet — 카드 이름 줄을 누르면: 염색 · 북마크 · 즐겨찾기 · 코디 룩북 · 세트)
+  openItemSheet: (item: ListItem) => void // 모바일 아이템 시트(list/ItemSheet — 카드 이름 줄을 누르면: 염색 · 북마크 · 코디 룩북 · 세트)
+  // 아이템 시트 → 염색 · 점 위치 · 세트(본문 가로 슬라이드, 푸터 '이전'), 이전 → 아이템 시트로. 부위 염색 ↔ 염색과 같은 전환이다
+  openItemPart: (kind: 'dye' | 'dot' | 'set', item: ListItem) => void; itemBack: () => void
   // 프리셋 이동(lib/presetMove · preset/MoveIo · MoveBody) — 이동 창 열기, 쓰고 있는 프리셋 묶기, 받은 묶음 고르기 창 열기, 넣기(전체 덮어쓰기 · 빈 칸에 추가)
   openMoveIo: () => void; movePresets: () => MoveItem[]; openMove: (items: MoveItem[]) => void; takePresets: (items: MoveItem[], mode: 'all' | 'add') => void
   openDot: (item: ListItem) => void
@@ -1820,6 +1822,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   const openPartItem = (item: ListItem) => slideTo(1, { kind: DOT_MOVER_IDS.has(item.id) ? 'dot' : 'dye', item, fromPart: true })
   const partBack = () => slideTo(-1, { kind: 'part', item: null })
+  const openItemPart = (kind: 'dye' | 'dot' | 'set', item: ListItem) => slideTo(1, { kind, item, fromItem: true })
+  const itemBack = () => { const it = surfaceRef.current?.item; if (it) slideTo(-1, { kind: 'item', item: it }); else closeSurface() }
   // 코디 비교(사용자 지시) — 칸은 프리셋 목록에 없는 프리셋이고, 프리셋마다 따로다(CMP_KEY 주석). 칸 고르기 · 더하기 · 빼기. 고른 칸 = 주인 프리셋.
   // 그 프리셋에서 처음 열면 지금 코디로 두 칸(A = 지금 코디, B = 그 복사본 — 하나만 바꿔 대 보기 쉽게). 다시 열면 그 프리셋의 칸 그대로, 마지막에 고른 칸으로.
   const newCmpId = () => 'cmp' + Date.now().toString(36) + (cmpSeq.current++)
@@ -2395,7 +2399,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, resetOutfit, resetDyes, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
-    surface, surfaceClosing, openSheet, openDye, openCard, openSetSheet, openItemSheet, openMoveIo, movePresets, openMove, takePresets, openDot, closeSurface,
+    surface, surfaceClosing, openSheet, openDye, openCard, openSetSheet, openItemSheet, openItemPart, itemBack, openMoveIo, movePresets, openMove, takePresets, openDot, closeSurface,
     openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,
     dotPos, setDot, resetDot,
     pv, setPv,

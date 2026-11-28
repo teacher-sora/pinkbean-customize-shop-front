@@ -20,10 +20,11 @@
 import { lockBody } from '@/lib/bodyLock'
 import clsx from 'clsx'
 import dynamic from 'next/dynamic'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useShop, type Surface as SurfaceState } from '../ShopContext'
 import { BookmarkSheetBody, PvSheetBody } from '../preview/PreviewParts'
 import { BM_SHEET_H, SHEET_EASE } from './sheetMotion'
+import { glideTo, place, release } from './glide'
 import PartPickBody from './PartPickBody'
 import StageBgBody from './StageBgBody'
 import ChatEmoPicker from '../preview/ChatEmoPicker'
@@ -77,6 +78,49 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const hidden = s.surfaceClosing || !entered
   // 모바일 시트 높이: 연출 설정 = 내용 높이(최대 85%), 북마크 = 명시값 376↔624(VS 확장 — 전환은 sheetMotion FLIP), 그 외 85%.
   // 어느 시트든 뷰포트가 줄면(내비게이션 바 등) max-height 85% 로 줄고 본문이 스크롤된다.
+  // 모바일: 시트 종류가 바뀌면(아이템 시트 ↔ 염색 · 세트, 받기 → 받은 프리셋 등) 높이도 부드럽게 바뀐다(사용자 지시).
+  // 연출 설정 시트와 같은 FLIP — 높이 전환이 아니라, 높이는 한 번에 바꾸고 보이는 움직임은 패널 · 푸터의 translateY 로만(pinkbean-design).
+  //  · 늘 때 = 새 높이로 바뀐 뒤 직전 자리로 되돌려 놓고 0 으로 미끄러진다. 푸터는 반대로 붙들어 늘 화면 아래에 보인다.
+  //  · 줄 때 = 직전 높이를 붙든 채 먼저 내려가고(먼저 줄이면 아래가 비어 보인다), 다 내려간 자리에서 높이를 푼다.
+  const lastH = useRef(0)
+  const flipT = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const settle = (panel: HTMLElement, foot: HTMLElement | null) => {
+    flipT.current = null
+    if (foot) release([foot])
+    panel.style.transition = 'none'
+    panel.style.height = ''
+    panel.style.transform = 'translateY(0px)'
+    panel.getBoundingClientRect()
+    panel.style.transition = SHEET_EASE
+    lastH.current = panel.offsetHeight
+  }
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    if (!mobile || !panel) return
+    const h = panel.offsetHeight, from = lastH.current
+    lastH.current = h
+    if (!from || from === h) return
+    const foot = panel.querySelector<HTMLElement>('[data-sheet-foot]')
+    if (flipT.current) clearTimeout(flipT.current)
+    const d = h - from
+    if (d > 0) {
+      place(foot ? [[panel, d], [foot, -d]] : [[panel, d]])
+      const ms = glideTo(foot ? [[panel, 0], [foot, 0]] : [[panel, 0]])
+      flipT.current = setTimeout(() => settle(panel, foot), ms + 20)
+    } else {
+      panel.style.height = `${from}px`
+      const ms = glideTo([[panel, -d]])
+      flipT.current = setTimeout(() => settle(panel, foot), ms)
+    }
+  }, [sf.kind, sf.item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // 종류가 그대로인 채 내용으로 높이가 바뀌면(세트 표를 받은 뒤 줄이 생기는 등) 다음 비교의 출발점만 고친다
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!mobile || !panel || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => { if (!flipT.current) lastH.current = panel.offsetHeight })
+    ro.observe(panel)
+    return () => { ro.disconnect(); if (flipT.current) clearTimeout(flipT.current) }
+  }, [mobile])
   const tall = sf.kind !== 'pv' && sf.kind !== 'bm' && sf.kind !== 'bg' && sf.kind !== 'emo' && sf.kind !== 'set' && sf.kind !== 'moveio' && sf.kind !== 'item'   // 배경 · 이모티콘 고르기는 내용 높이만큼만 — 고르는 동안 미리보기가 보여야 한다(이동 창 · 아이템 시트도 내용만큼)
   const bmH = sf.kind === 'bm' ? BM_SHEET_H : null
 
@@ -272,8 +316,8 @@ export function SurfaceFooter({ onApply, applyLabel = '적용', onBack, closeToo
   const mobile = s.bp === 'mobile'
   const sf = s.surface
   // '이전' = 부위 염색을 거쳐 들어온 염색·점 위치, 그리고 광장 상세를 거쳐 들어온 프리셋 칸 고르기.
-  const back = !!onBack || (!!sf?.fromPart && (sf.kind === 'dye' || sf.kind === 'dot'))
-  const goBack = onBack ?? s.partBack
+  const back = !!onBack || (!!sf?.fromPart && (sf.kind === 'dye' || sf.kind === 'dot')) || !!sf?.fromItem
+  const goBack = onBack ?? (sf?.fromItem ? s.itemBack : s.partBack)
   return (
     <div data-sheet-foot className={mobile ? styles.footM : styles.foot}>
       {closeToo && back && <button type="button" onClick={goBack} className={clsx(mobile ? 'pb-soft' : 'pb-ghost', mobile ? styles.btnCloseM : styles.btnClose)}>이전</button>}

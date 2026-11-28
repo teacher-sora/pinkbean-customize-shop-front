@@ -179,8 +179,8 @@
 .nameRowMore { justify-self: end; display: flex; color: light-dark(#c3b9ad, #7e828d); transition: color .2s ease; }
 .cardD > .nameRowM:active { background: light-dark(#faf7f3, #373940); }
 @media (hover: hover) and (pointer: fine) { .cardD > .nameRowM:hover { color: light-dark(#d76d9a, #d293ae); } .cardD > .nameRowM:hover .nameRowMore { color: light-dark(#d76d9a, #d293ae); } }
-/* 그림 위 즐겨찾기 · 북마크 띠지 = 켜져 있을 때만 보이는 표시(누르는 것은 아이템 시트) */
-.fav.markOnly, .pinMark.markOnly { pointer-events: none; cursor: default; }
+/* 그림 위 북마크 띠지 = 켜져 있을 때만 보이는 표시(누르는 것은 아이템 시트). 즐겨찾기 띠지는 누르는 띠지 그대로 */
+.pinMark.markOnly { pointer-events: none; cursor: default; }
 /* 아이템 시트(서피스 'item') — 할 일을 한 줄에 하나씩, 높이 52 의 큰 단추. 칸의 면 · 테두리 · 켜짐 색은 세트 칸 · 북마크 칸과 같다 */
 .itemSheet { flex: 0 1 auto; min-height: 0; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden auto; overscroll-behavior: contain; }
 .itemRow { flex: 0 0 auto; height: 52px; padding: 0 14px 0 16px; display: flex; align-items: center; gap: 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(14rem / 16); font-weight: 600; color: light-dark(#3d372f, #cacbd0); text-align: left; cursor: pointer; transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
@@ -191,5 +191,4 @@
 .itemRowEnd { flex: 0 0 auto; width: 16px; display: flex; align-items: center; justify-content: center; color: light-dark(#c3b9ad, #7e828d); }
 .itemRowOn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); color: light-dark(#d76d9a, #d293ae); }
 .itemRowOn .itemRowIco, .itemRowOn .itemRowEnd { color: light-dark(#d76d9a, #d293ae); }
-.itemRowFav .itemRowIco { color: light-dark(#f5b91f, #bd9120); } /* 즐겨찾기 별은 띠지와 같은 금색 */
 @media (hover: hover) and (pointer: fine) { .itemRow:not(.itemRowOn):hover { border-color: light-dark(#f5c6d8, #6d4152); } }
