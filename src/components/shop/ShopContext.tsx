@@ -106,7 +106,7 @@ export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' 
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320
-const LOOKBOOK_WARM = 18 // 코디 룩북 주소로 들어올 때 미리 받을 첫 카드 수(PC 첫 화면 · 모바일 3 × 3 의 두 화면) // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
+const LOOKBOOK_WARM = 18 // 코디 룩북 주소로 들어올 때 미리 받을 첫 카드 수(PC 첫 화면 · 모바일 3 × 3 의 두 화면). 페이지(app/(shop)/lookbook/[id] WARM)와 같은 값 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
 // 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
 // 사파리는 await 후 writeText 가 사용자 제스처 밖이라 거부될 수 있어, ClipboardItem 에 Promise(Blob)를 넘겨

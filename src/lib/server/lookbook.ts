@@ -3,8 +3,9 @@
 //  · 코디 수 = 코디 룩북 색인 looks/v2/index.json(약 160KB, 한 시간 캐시) — 화면의 '코디 N' 칩과 같은 값
 //  · 페이지 목록(사이트맵) = 장비 부위 목록 14개를 앱과 같은 규칙으로 접은 대표(shopData.foldList — 헤어 · 성형은 색 변형 묶음당 하나)
 //    가운데 캐시 아이템이거나 표본에 있는 것. 목록 파일은 합쳐 15MB 라 사이트맵을 만들 때(하루 한 번)만 받는다.
+import { gunzipSync } from 'zlib'
 import { DATA_BASE, type ListItem } from '@/lib/core/data'
-import { foldList } from '@/lib/shopData'
+import { CHAT_SLOTS, foldList } from '@/lib/shopData'
 
 const CDN = DATA_BASE.replace(/\/+$/, '')
 const DAY = 86400
@@ -43,4 +44,22 @@ export async function lookbookIds(): Promise<string[]> {
     Promise.all(LOOKBOOK_SLOTS.map((s) => cdnJson<ListItem[]>(`slots/${s}.json`, DAY).then((l) => l ?? []))),
   ])
   return lists.flatMap((l) => foldList(l).filter((it) => it.isCash || (counts[it.id] ?? 0) > 0).map((it) => it.id))
+}
+
+// 첫 화면 카드(첫 조각의 앞 n 벌)가 입은 아이템 id — 페이지가 HTML 을 읽는 즉시 그 meta 를 받기 시작하게(사용자 지시 — 들어오자마자 다 보이게).
+// 카드 합성이 받는 것과 같은 규칙(lib/core/snapRender: 숨긴 부위 · 명찰 · 말풍선 · 칭호 · 훈장 · 탈것 빼고). 조각은 판이 이름에 든 불변 파일이라 하루 캐시한다.
+// 실패하면 빈 목록(미리 받기만 없을 뿐 화면은 그대로다)
+export async function lookbookWarmIds(build: string | null, e: number[] | null, n: number): Promise<string[]> {
+  if (!build || !e || !e[0] || !e[4]) return []
+  try {
+    const from = e[2] + e[3], to = from + e[4] - 1
+    const r = await fetch(`${CDN}/looks/v2/${build}/s${e[1]}.bin`, { headers: { Range: `bytes=${from}-${to}` }, next: { revalidate: DAY } })
+    if (!r.ok) return []
+    let b = Buffer.from(await r.arrayBuffer())
+    if (r.status !== 206) b = b.subarray(from, to + 1)
+    const rows = JSON.parse(gunzipSync(b).toString('utf8')) as { s: { equipped?: Record<string, string>; hidden?: Record<string, boolean> } }[]
+    const ids = new Set<string>()
+    for (const { s } of rows.slice(0, n)) for (const [slot, id] of Object.entries(s.equipped ?? {})) if (id && !s.hidden?.[slot] && !CHAT_SLOTS.has(slot) && slot !== 'riding') ids.add(id)
+    return [...ids]
+  } catch { return [] }
 }

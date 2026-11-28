@@ -5,12 +5,13 @@
 // 빨리 뜨게(사용자 지시 — 검색에서 들어오자마자 다 보이게): HTML 을 읽는 즉시 이 아이템의 meta · 룩북 색인 · 첫 조각(머리 + 첫 60벌 —
 // 서버가 아는 위치로 범위 요청)을 받기 시작한다(레이아웃 BOOT 와 같은 window.__pbBoot, 조각은 window.__pbLook). 앱은 받은 것을 한 번씩 가져다 쓰고
 // (lib/core/data · lib/looks), 조각은 실제 색인의 판 · 위치와 같을 때만 쓴다(페이지가 하루 묵어 판이 바뀌었으면 버리고 평소대로 받는다 — 결과가 늘 같다).
+// 첫 화면 카드(첫 조각의 앞 18벌)가 입은 아이템의 meta 도 낮은 우선순위로 받는다(서버가 조각을 풀어 id 를 적는다 — 앱 코드 · 그림이 먼저).
 // 그 부위 목록은 레이아웃 BOOT 가 보통 우선순위로 받는다(window.__pbSlot — 이 스크립트는 레이아웃 것보다 뒤라 직접 받으면 낮은 순위 요청에 밀린다).
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { CATS } from '@/lib/catalog'
 import { SLOT_TO_CAT } from '@/lib/shopData'
-import { lookbookIndex, lookbookItem, type LookbookItem } from '@/lib/server/lookbook'
+import { lookbookIndex, lookbookItem, lookbookWarmIds, type LookbookItem } from '@/lib/server/lookbook'
 import { DEFAULT_OG, SITE_NAME, SITE_URL } from '@/lib/siteUrl'
 import { DATA_BASE } from '@/lib/core/data'
 
@@ -30,6 +31,8 @@ async function load(id: string) {
   const { counts, build, entries } = await lookbookIndex()
   return { it, n: counts[id] ?? 0, build, entry: entries[id] ?? null }
 }
+// 첫 화면 카드 수 — 앱의 미리 받기(ShopContext LOOKBOOK_WARM)와 같다
+const WARM = 18
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const d = await load(params.id)
@@ -51,6 +54,7 @@ export default async function Page({ params }: Props) {
   const d = await load(params.id)
   if (!d) notFound()
   const { it, n, build, entry } = d
+  const warm = await lookbookWarmIds(build, entry, WARM)
   const url = `${SITE_URL}/lookbook/${it.id}`
   const g = gender(it)
   const jsonLd = {
@@ -69,6 +73,7 @@ export default async function Page({ params }: Props) {
 var B=${JSON.stringify(DATA_BASE.replace(/\/+$/, ''))},b=window.__pbBoot||(window.__pbBoot={}),id=${JSON.stringify(it.id)},sl=${JSON.stringify(it.slot)};
 function g(u,o){if(b[u])return;var p=b[u]=fetch(B+'/'+u,o).then(function(r){if(!r.ok)throw 0;return r.json()});p.catch(function(){})}
 g('meta/'+id+'.json');g('looks/v2/index.json');
+${JSON.stringify(warm)}.forEach(function(w){g('meta/'+w+'.json',{priority:'low'})});
 window.__pbSlot=sl;
 var v=${JSON.stringify(build)},e=${JSON.stringify(entry)};
 if(v&&e&&e[0]>0){var f=e[2],n=e[3]+e[4],p=fetch(B+'/looks/v2/'+v+'/s'+e[1]+'.bin',{headers:{Range:'bytes='+f+'-'+(f+n-1)}}).then(function(r){if(!r.ok)throw 0;return r.arrayBuffer().then(function(a){return r.status===206?a:a.slice(f,f+n)})});p.catch(function(){});window.__pbLook={id:id,build:v,e:e,buf:p}}
