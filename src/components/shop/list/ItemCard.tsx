@@ -60,7 +60,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
         {s.newIds.has(item.id) && <span className={clsx(styles.newBadge, mobile && styles.newBadgeM)} aria-label="신규">{mobile ? 'N' : 'NEW'}</span>}
         <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={fav ? '즐겨찾기 해제' : '즐겨찾기에 모아두기'} aria-label="즐겨찾기" aria-pressed={fav}
           className={clsx('pb-ribbon', styles.fav, mobile && styles.favM, fav && styles.favOn)}>
-          <IconStar size={mobile ? 10 : 9} className={styles.favGlyph} />
+          <IconStar size={mobile ? 13 : 14} className={styles.favGlyph} />
         </button>
         {mobile
           ? <span aria-hidden={!pinned || undefined} className={clsx(styles.pinMark, styles.pinMarkM, pinned && styles.pinMarkOn, styles.markOnly)} />

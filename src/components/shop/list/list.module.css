@@ -113,12 +113,12 @@
 
 /* 즐겨찾기 · 북마크 띠지(우상단, 카드 경계에 살짝 걸침) */
 /* 띠지 규격(코디·프리셋 공통): PC 큰 25×32 · 작은 23×29 / 모바일 큰 22×29 · 작은 20×26 · 사이 간격 5px */
-.fav { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 5px; z-index: 4; width: 25px; height: 32px; padding: 6px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#e2d9cf, #4f525b); cursor: pointer; }
+.fav { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 5px; z-index: 4; width: 25px; height: 32px; padding: 5px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#e2d9cf, #4f525b); cursor: pointer; }
 .favOn { background: light-dark(#f5b91f, #bd9120); }
 .favGlyph { display: block; color: light-dark(#fff, #ececef); }
 .pinMark { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 35px; z-index: 4; width: 23px; height: 29px; padding: 0; border: none; cursor: pointer; background: light-dark(#ec86ac, #d15785); pointer-events: none; opacity: 0; transform: translateY(-2px); }
 .pinMarkOn { pointer-events: auto; opacity: 1; transform: translateY(0); }
-.fav.favM { width: 22px; height: 29px; padding-top: 5px; }
+.fav.favM { width: 22px; height: 29px; padding-top: 4px; } /* 별은 PC 14 · 모바일 13(띠지 아래 파인 곳 위에 든다 — 9 · 10 은 너무 작았다, 사용자 지시) */
 .pinMark.pinMarkM { width: 20px; height: 26px; right: 32px; } /* 5 + 22 + 5 */
 
 /* 카드 액션 바: 기본 = 터치 기기(상시 노출, 이름 아래) */
