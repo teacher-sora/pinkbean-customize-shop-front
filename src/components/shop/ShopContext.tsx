@@ -603,7 +603,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const swipe = useRef({ on: false, id: -1, x0: 0, y0: 0, mode: null as 'x' | 'y' | null, lx: 0, lt: 0, vx: 0, w: 1 })
   const swipeClickUntil = useRef(0)
 
-  const preloadAllLists = (idx: Index) => { for (const c of CATS) { const f = c.id === 'skin' ? undefined : slotFile(CAT_TO_SLOT[c.id], idx); if (f) loadSlot(f).catch(() => {}) } }
+  // 코디 룩북 주소로 들어온 동안(광장을 보는 동안) 여러 부위 탭의 전체 부위 목록(15MB)을 미룬다 — 그 화면에서는 안 보이고, 느린 회선에서 첫 카드의 그림과 다퉜다
+  // (실측 첫 카드 0.3 ~ 0.55초 늦음). 아이템을 고른 LOOKBOOK_LISTS_DELAY 뒤 한가할 때 풀고, 그 전에 다른 탭으로 가면 그때 받는다
+  const [lbHold, setLbHold] = useState(() => typeof window !== 'undefined' && !!lookbookIdOf(window.location.pathname))
   // 카탈로그 색인이 오는 즉시(아래 초기화 — 프리셋 복원 · 착용 해석 — 를 기다리지 않고) 부를 일. 코디 룩북 주소의 아이템 고르기가 쓴다
   const indexHook = useRef<((idx: Index) => void) | null>(null)
   // ── 초기 로드: index → 저장된 프리셋(없는 칸은 기본값) 복원 → 선택된 프리셋을 라이브 모델에 적용 ──
@@ -619,8 +621,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // 여러 부위를 한 목록으로 보는 탭(전체 등)이면 모든 부위 목록을 지금 함께 받기 시작한다 — 아래의 프리셋 복원이
       // 착용 부위 목록을 다 받을 때까지 기다렸다 나머지를 보내면 왕복 한 번이 더 든다. loadSlot 이 파일별로 캐시하므로
       // 뒤의 ensureSlot·resolveEquipped 는 같은 요청을 이어받는다.
-      // 코디 룩북 주소로 들어오면 미룬다 — 화면이 광장이라 지금은 안 보이고, 느린 회선에서 첫 카드의 그림과 다퉜다(실측 첫 카드 0.3 ~ 0.55초 늦음). 아래 룩북 고르기가 끝난 뒤 받는다
-      if (isMultiCat(activeCatRef.current) && !lookbookIdOf(window.location.pathname)) preloadAllLists(idx)
+      // 코디 룩북 주소로 들어오면 미룬다(lbHold)
+      if (isMultiCat(activeCatRef.current) && !lookbookIdOf(window.location.pathname)) for (const c of CATS) { const f = c.id === 'skin' ? undefined : slotFile(CAT_TO_SLOT[c.id], idx); if (f) loadSlot(f).catch(() => {}) }
       // localStorage 에서 프리셋 복원(저장된 칸은 그대로, 없는 칸만 코디 기본값). 첫 접속 시 d0 자동 선택.
       const store = loadPresetStore()
       const data: Record<string, Snapshot> = {}
@@ -701,9 +703,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // '전체'·'즐겨찾기' 는 모든 부위를 한 리스트로 보여주므로 전 슬롯을 로드한다(각 슬롯은 캐시돼 1회만 받음).
-    if (isMultiCat(activeCat)) { for (const c of cats) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]); return }
+    if (isMultiCat(activeCat)) { if (lbHold && primary === 'share') return; for (const c of cats) if (c.id !== 'skin') ensureSlot(CAT_TO_SLOT[c.id]); return }
     if (activeCat !== 'skin') ensureSlot(CAT_TO_SLOT[activeCat])
-  }, [activeCat, ensureSlot, cats])
+  }, [activeCat, ensureSlot, cats, lbHold, primary])
 
   // 채팅 칸에서 보낸 말 — 게임처럼 잠깐 떴다 사라진다.
   const [chatMsg, setChatMsg] = useState<ChatMsg | null>(null)
@@ -1376,8 +1378,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       loadMeta(id).then((m) => loadSlotFolded(m.slot)).then((l) => { const it = l.find((x) => x.id === id); if (it) pickCombo(it) }).catch(() => {})
         .finally(() => {
           lookbookPending.current = null
-          // 미뤄 둔 전체 목록(위 초기화) — 첫 화면 카드가 그림을 받은 뒤 한가할 때
-          if (isMultiCat(activeCatRef.current)) window.setTimeout(() => { const go = () => preloadAllLists(idx); if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 3000 }); else go() }, LOOKBOOK_LISTS_DELAY)
+          // 미뤄 둔 전체 부위 목록(lbHold) — 첫 화면 카드가 그림을 받은 뒤 한가할 때 푼다
+          window.setTimeout(() => { const go = () => setLbHold(false); if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 3000 }); else go() }, LOOKBOOK_LISTS_DELAY)
         })
     }
   }, [])
