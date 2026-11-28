@@ -336,6 +336,7 @@ export interface ShopCtx {
   tone: number; shownTone: number // tone = 고른 피부, shownTone = 조립할 피부(가렸으면 기본 피부 — viewTone, 마네킹은 그리지 않는다)
   equipFromCat: (cat: string, item: ListItem) => void // 슬롯 라디오 토글(재클릭 해제)
   equipItem: (item: ListItem) => void                 // 토글 없이 착용(염색 적용 시)
+  wearFromSet: (item: ListItem) => void               // 세트 칸에서 입고 벗기 — 벗으면 입기 전에 끼던 것으로 돌아간다(list/SetPop)
   isEquippedInCat: (cat: string, itemId: string) => boolean
   unequipSlot: (slot: string, label?: string) => void
   resetOutfit: () => void; resetDyes: () => void // 코디 정보 머리의 [염색 초기화] · [모두 벗기]
@@ -1294,6 +1295,36 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const equipItem = (item: ListItem) => {
     const cat = SLOT_TO_CAT[item.slot]
     if (!cat || isEquippedInCat(cat, item.id)) return
+    equipFromCat(cat, item)
+  }
+  // 세트 칸에서 입고 벗기(사용자 지시 — 세트에서 눌러 본 것은 다시 눌러 벗으면 원래 끼던 것으로 돌아간다. 목록 카드는 그대로 벗기만 한다).
+  // 입을 때 그 부위와, 겹쳐서 함께 벗겨지는 부위(한벌옷 ↔ 상의 · 하의 등 conflictSlots)에 끼던 아이템을 기억해 두고, 세트 칸에서 같은 아이템을 다시 누르면
+  // 그것들로 되돌린다(염색 값은 부위마다 그대로라 함께 돌아온다). 기억은 프리셋마다 따로다(다른 프리셋에서 끼던 것이 섞이지 않게).
+  // 되돌릴 때도 지금 입은 것과 겹치는 부위는 벗긴다(그사이 다른 세트 아이템을 입었을 수 있다). 피부 · 명찰/말풍선은 기억 없이 목록과 같다
+  const setWorn = useRef(new Map<string, Record<string, ListItem | null>>())
+  const wearFromSet = (item: ListItem) => {
+    const slot = item.slot, cat = SLOT_TO_CAT[slot]
+    if (!cat || cat === 'skin' || cat === CHAT_TAB) { if (cat) equipFromCat(cat, item); return }
+    const key = `${selectedPreset ?? ''}:${item.id}`
+    const memo = setWorn.current
+    if (equipped[slot]?.id === item.id) {
+      const before = memo.get(key)
+      memo.delete(key)
+      if (!before) { equipFromCat(cat, item); return }
+      setEquipped((prev) => {
+        let next: Record<string, ListItem | null> = { ...prev, [slot]: null }
+        for (const [k, it] of Object.entries(before)) {
+          if (!it) { next[k] = null; continue }
+          for (const c of conflictSlots(next, k, it)) next[c] = null
+          next = { ...next, [k]: it }
+        }
+        return next as typeof prev
+      })
+      return
+    }
+    const before: Record<string, ListItem | null> = {}
+    for (const k of [slot, ...conflictSlots(equipped, slot, item)]) before[k] = equipped[k] ?? null
+    memo.set(key, before)
     equipFromCat(cat, item)
   }
   // 한 부위만 벗는다(코디 정보 칩의 휴지통 — 두 번 눌러야 한다). 염색 값은 그대로 둔다(같은 부위를 다시 입으면 쓰인다 — 목록에서 벗는 것과 같다).
@@ -2397,7 +2428,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openPlazaPost, openNotice, guideGo, plazaTakeDirect, takeCombo: (snap: Snapshot) => openSurface({ kind: 'ptake', item: null, take: snap, combo: true }), wearFromSnap, isWornFromSnap, plazaTakeBack, resolveSnapItems: resolveEquipped,
     plazaLike, plazaRemove, plazaCopyLink, plazaSubmit, plazaSubmitting,
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
-    equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, resetOutfit, resetDyes, hidden, setHidden,
+    equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, wearFromSet, isEquippedInCat, unequipSlot, resetOutfit, resetDyes, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
     surface, surfaceClosing, openSheet, openDye, openCard, openSetSheet, openItemSheet, openItemPart, itemBack, openMoveIo, movePresets, openMove, takePresets, openDot, closeSurface,
     openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,

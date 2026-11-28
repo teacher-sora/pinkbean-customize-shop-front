@@ -8,12 +8,11 @@
 //  · 모바일: 띠지 대신 카드 이름 줄 → 아이템 시트(list/ItemSheet)의 [세트]가 입구다(띠지가 좁은 카드에서 캐릭터를 가렸다 — 사용자 지적).
 //    세트면 이름 앞에 작은 세트 표시. 누르면 아래 시트(서피스 'set' — 내용 높이만큼이라 입히는 동안 미리보기가 보인다).
 //  · 짜임: 부위마다 한 줄, 같은 부위의 아이템은 옆 칸(여 → 남 → 공용 — 구성 맵의 순서, 한 줄에 셋까지). 설명 글 · 말풍선 글은 두지 않는다(사용자 지시).
-//  · 칸 = 그림(북마크 칸과 같은 BookmarkSprite) + 이름. 입고 있는 아이템은 분홍(북마크 칸의 '착용 중'과 같은 색). 누르면 카드를 누른 것과 같이 입고 벗는다(equipFromCat).
+//  · 칸 = 그림(북마크 칸과 같은 BookmarkSprite) + 이름. 입고 있는 아이템은 분홍(북마크 칸의 '착용 중'과 같은 색). 누르면 입고, 다시 누르면 벗으면서 입기 전에 끼던 것으로 돌아간다(ShopContext wearFromSet — 사용자 지시. 목록 카드는 벗기만 한다).
 //  · 구성 맵은 목록이 뜬 뒤 한가할 때 한 번 받는다(lib/core/data loadSetMembers — 압축 62KB).
 import clsx from 'clsx'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { loadSetMembers, setOf, type ListItem, type SetEntry, type SetMember, type SetMembers } from '@/lib/core/data'
-import { SLOT_TO_CAT } from '@/lib/shopData'
 import { viewH, viewW } from '@/lib/viewport'
 import { useShop, type Snapshot } from '../ShopContext'
 import { PopBox, usePop } from '../preview/PopBox'
@@ -50,7 +49,7 @@ export function SetList({ entry, mobile }: { entry: SetEntry; mobile: boolean })
   const wear = async (m: SetMember) => {
     const eq = await s.resolveSnapItems({ equipped: { [m.slot]: m.id } } as unknown as Snapshot)
     const it = eq[m.slot]
-    if (it) s.equipFromCat(SLOT_TO_CAT[m.slot], it); else s.notify('이 아이템을 찾지 못했어요')
+    if (it) s.wearFromSet(it); else s.notify('이 아이템을 찾지 못했어요') // 다시 눌러 벗으면 입기 전에 끼던 것으로(ShopContext wearFromSet)
   }
   return (
     <div className={clsx(styles.setRows, mobile && styles.setRowsM)}>
