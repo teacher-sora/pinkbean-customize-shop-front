@@ -97,7 +97,7 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look' | 'sync'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 // combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
 // look = 'look'(닉네임으로 불러온 코디 고르기)의 닉네임과 코디 후보
@@ -348,6 +348,7 @@ export interface ShopCtx {
   openSheet: (kind: 'pv' | 'bm' | 'part' | 'bg' | 'emo') => void // emo = 채팅 이모티콘(모바일)
   openDye: (item: ListItem, init?: DyeSave) => void // init = 이 값으로 연다(코디 룩북의 자주 쓴 염색 — 적용은 창에서)
   openCard: () => void // 코디 프로필(공유 카드) 만들기 창
+  openSync: () => void // 프리셋 동기화(로그인) 창 — dev 에서 자리 · 디자인 시험 중
   openDot: (item: ListItem) => void
   closeSurface: () => void
   // 부위 염색: 칩 선택 → 염색/점 위치로(가로 슬라이드), 이전 → 부위 고르기로. partSlide = 본문 translateX(px).
@@ -1724,6 +1725,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }
   const openDye = (item: ListItem, init?: DyeSave) => openSurface({ kind: 'dye', item, ...(init ? { dyeInit: init } : {}) })
   const openCard = () => openSurface({ kind: 'card', item: null })
+  const openSync = () => openSurface({ kind: 'sync', item: null })
   const openDot = (item: ListItem) => openSurface({ kind: 'dot', item })
   // 부위 염색 ↔ 염색/점 위치: 다이얼로그는 그대로 두고 본문만 가로 슬라이드(진입 = 왼쪽으로 빠지고 오른쪽에서 들어옴, 이전 = 반대).
   const slideTo = (dir: 1 | -1, next: Surface) => {
@@ -2311,7 +2313,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, resetOutfit, resetDyes, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
-    surface, surfaceClosing, openSheet, openDye, openCard, openDot, closeSurface,
+    surface, surfaceClosing, openSheet, openDye, openCard, openSync, openDot, closeSurface,
     openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,
     dotPos, setDot, resetDot,
     pv, setPv,

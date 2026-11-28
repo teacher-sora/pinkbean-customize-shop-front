@@ -12,6 +12,10 @@ export const IconShareImage = ({ size = 15 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V11" /><path d="M4.8 16.5l4.2-4 3 2.6 2.4-2.4 5 4.6" /><path d="M16 4.5h4v4M20 4.5l-5.5 5.5" /></svg>
 )
 // 순서 변경: 위아래로 엇갈린 두 화살표(자리 바꾸기)
+// 동기화: 구름 + 올리는 화살표(프리셋 탭 머리의 [동기화])
+export const IconCloud = ({ size = 15 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 18.5h10.2a4.3 4.3 0 0 0 .5-8.57A6 6 0 0 0 6.2 9.4 4.6 4.6 0 0 0 7 18.5z" /><path d="M12 16v-5M9.8 13.2 12 11l2.2 2.2" /></svg>
+)
 export const IconReorder = ({ size = 15 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 19.5V4.5M4.5 8 8 4.5 11.5 8" /><path d="M16 4.5v15M12.5 16l3.5 3.5 3.5-3.5" /></svg>
 )
