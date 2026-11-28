@@ -2,12 +2,17 @@
 // 본문(앱)은 (shop)/layout.tsx 가 그리고, 앱은 이 주소를 보고 코디 광장의 '코디 룩북'에 이 아이템을 골라 연다(ShopContext — lib/tabRoute 가 광장으로 읽는다).
 // 이 페이지는 검색엔진이 읽을 것만 낸다: 아이템 이름으로 된 제목 · 설명, 정본 주소, 구조화 데이터, 화면 내용을 글로 옮긴 요약(sr-only — ShopHome 의 요약과 같은 방식).
 // 아이템 정보는 CDN meta 한 장 · 코디 수는 룩북 색인(lib/server/lookbook). 하루마다 다시 만든다(ISR).
+// 빨리 뜨게(사용자 지시 — 검색에서 들어오자마자 다 보이게): HTML 을 읽는 즉시 이 아이템의 meta · 룩북 색인 · 첫 조각(머리 + 첫 60벌 —
+// 서버가 아는 위치로 범위 요청)을 받기 시작한다(레이아웃 BOOT 와 같은 window.__pbBoot, 조각은 window.__pbLook). 앱은 받은 것을 한 번씩 가져다 쓰고
+// (lib/core/data · lib/looks), 조각은 실제 색인의 판 · 위치와 같을 때만 쓴다(페이지가 하루 묵어 판이 바뀌었으면 버리고 평소대로 받는다 — 결과가 늘 같다).
+// 그 부위 목록은 레이아웃 BOOT 가 보통 우선순위로 받는다(window.__pbSlot — 이 스크립트는 레이아웃 것보다 뒤라 직접 받으면 낮은 순위 요청에 밀린다).
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { CATS } from '@/lib/catalog'
 import { SLOT_TO_CAT } from '@/lib/shopData'
 import { lookbookIndex, lookbookItem, type LookbookItem } from '@/lib/server/lookbook'
 import { DEFAULT_OG, SITE_NAME, SITE_URL } from '@/lib/siteUrl'
+import { DATA_BASE } from '@/lib/core/data'
 
 export const revalidate = 86400
 
@@ -22,8 +27,8 @@ const describe = (it: LookbookItem, n: number) => n > 0
 async function load(id: string) {
   const it = await lookbookItem(id)
   if (!it) return null
-  const { counts } = await lookbookIndex()
-  return { it, n: counts[id] ?? 0 }
+  const { counts, build, entries } = await lookbookIndex()
+  return { it, n: counts[id] ?? 0, build, entry: entries[id] ?? null }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -45,7 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Page({ params }: Props) {
   const d = await load(params.id)
   if (!d) notFound()
-  const { it, n } = d
+  const { it, n, build, entry } = d
   const url = `${SITE_URL}/lookbook/${it.id}`
   const g = gender(it)
   const jsonLd = {
@@ -59,8 +64,18 @@ export default async function Page({ params }: Props) {
       ] },
     ],
   }
+  // 미리 받기(위 머리말). 값은 모두 JSON 으로 넣는다. 어느 하나가 실패해도 앱이 평소대로 받는다
+  const boot = `(function(){try{
+var B=${JSON.stringify(DATA_BASE.replace(/\/+$/, ''))},b=window.__pbBoot||(window.__pbBoot={}),id=${JSON.stringify(it.id)},sl=${JSON.stringify(it.slot)};
+function g(u,o){if(b[u])return;var p=b[u]=fetch(B+'/'+u,o).then(function(r){if(!r.ok)throw 0;return r.json()});p.catch(function(){})}
+g('meta/'+id+'.json');g('looks/v2/index.json');
+window.__pbSlot=sl;
+var v=${JSON.stringify(build)},e=${JSON.stringify(entry)};
+if(v&&e&&e[0]>0){var f=e[2],n=e[3]+e[4],p=fetch(B+'/looks/v2/'+v+'/s'+e[1]+'.bin',{headers:{Range:'bytes='+f+'-'+(f+n-1)}}).then(function(r){if(!r.ok)throw 0;return r.arrayBuffer().then(function(a){return r.status===206?a:a.slice(f,f+n)})});p.catch(function(){});window.__pbLook={id:id,build:v,e:e,buf:p}}
+}catch(e){}})()`.replace(/\n/g, '')
   return (
     <>
+      <script dangerouslySetInnerHTML={{ __html: boot }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* 화면(앱이 연 이 아이템의 코디 룩북)을 글로 옮긴 요약 — 검색엔진 · 스크린리더용(ShopHome 의 sr-only 요약과 같다) */}
       <section className="sr-only">

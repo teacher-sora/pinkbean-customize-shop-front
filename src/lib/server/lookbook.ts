@@ -27,10 +27,12 @@ export async function lookbookItem(id: string): Promise<LookbookItem | null> {
   return m && m.name && LOOKBOOK_SLOTS.includes(m.slot) ? { id, name: m.name, slot: m.slot, gender: m.gender, isCash: m.isCash } : null
 }
 
-type LookIndex = { meta?: { looks: number; built: string }; items: Record<string, number[]> }
-export async function lookbookIndex(): Promise<{ counts: Record<string, number>; built: string | null }> {
+type LookIndex = { build?: string; meta?: { looks: number; built: string }; items: Record<string, number[]> }
+// entries = 아이템마다 [코디 수, 큰 파일 번호, 시작 바이트, 머리 길이, 첫 쪽 길이](lib/looks 의 색인과 같다), build = 지금 판 — 페이지가 첫 조각을 미리 받게 한다
+export async function lookbookIndex(): Promise<{ counts: Record<string, number>; built: string | null; build: string | null; entries: Record<string, number[]> }> {
   const ix = await cdnJson<LookIndex>('looks/v2/index.json', 3600)
-  return { counts: Object.fromEntries(Object.entries(ix?.items ?? {}).map(([id, e]) => [id, e[0]])), built: ix?.meta?.built ?? null }
+  const entries = ix?.items ?? {}
+  return { counts: Object.fromEntries(Object.entries(entries).map(([id, e]) => [id, e[0]])), built: ix?.meta?.built ?? null, build: ix?.build ?? null, entries }
 }
 
 // 사이트맵에 올릴 아이템 id(부위 순서, 부위 안은 목록 순서)

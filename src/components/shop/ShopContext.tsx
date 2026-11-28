@@ -105,7 +105,8 @@ export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' 
 // move = 'move'(다른 기기에서 옮겨 온 프리셋 고르기 — lib/presetMove)의 받은 프리셋들. 'moveio' = 프리셋 옮기기 창(보내기 · 받기 — preset/MoveIo)
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
-const SURFACE_UNMOUNT_MS = 320 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
+const SURFACE_UNMOUNT_MS = 320
+const LOOKBOOK_WARM = 18 // 코디 룩북 주소로 들어올 때 미리 받을 첫 카드 수(PC 첫 화면 · 모바일 3 × 3 의 두 화면) // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
 // 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
 // 사파리는 await 후 writeText 가 사용자 제스처 밖이라 거부될 수 있어, ClipboardItem 에 Promise(Blob)를 넘겨
@@ -601,6 +602,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const swipe = useRef({ on: false, id: -1, x0: 0, y0: 0, mode: null as 'x' | 'y' | null, lx: 0, lt: 0, vx: 0, w: 1 })
   const swipeClickUntil = useRef(0)
 
+  // 카탈로그 색인이 오는 즉시(아래 초기화 — 프리셋 복원 · 착용 해석 — 를 기다리지 않고) 부를 일. 코디 룩북 주소의 아이템 고르기가 쓴다
+  const indexHook = useRef<((idx: Index) => void) | null>(null)
   // ── 초기 로드: index → 저장된 프리셋(없는 칸은 기본값) 복원 → 선택된 프리셋을 라이브 모델에 적용 ──
   useEffect(() => {
     let alive = true
@@ -610,6 +613,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     loadIndex().then(async (idx) => {
       if (!alive) return
       indexRef.current = idx // resolveEquipped/loadSlotFolded 는 상태가 아닌 이 ref 를 쓰므로 setIndex 전에 사용 가능
+      indexHook.current?.(idx)
       // 여러 부위를 한 목록으로 보는 탭(전체 등)이면 모든 부위 목록을 지금 함께 받기 시작한다 — 아래의 프리셋 복원이
       // 착용 부위 목록을 다 받을 때까지 기다렸다 나머지를 보내면 왕복 한 번이 더 든다. loadSlot 이 파일별로 캐시하므로
       // 뒤의 ensureSlot·resolveEquipped 는 같은 요청을 이어받는다.
@@ -1353,14 +1357,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 아이템 코디 룩북 주소(/lookbook/<id> — 검색엔진에서 아이템 이름으로 들어온다, 사용자 지시): 광장의 코디 룩북에 그 아이템을 골라 연다.
   // 그 아이템의 meta 로 부위를 알아 그 부위 목록 하나만 받는다(15MB 인 전체 목록을 받지 않는다). 코디 첫 묶음은 그동안 함께 받는다
   // 들어온 주소의 id 는 처음에 잡아 둔다 — 아이템을 고르기 전까지는 아래의 주소 맞추기가 주소를 건드리지 않는다(먼저 돌아 /plaza 로 바꿔 id 를 잃었다)
+  // 빨리 뜨게(사용자 지시 — 들어오자마자 다 보이게): meta · 부위 목록 · 룩북 색인 · 첫 묶음은 페이지가 HTML 을 읽는 즉시 받기 시작했고(app/(shop)/lookbook/[id]),
+  // 아이템은 카탈로그 색인이 오는 즉시 고른다(indexHook — 앱 초기화를 기다리지 않는다). 첫 화면 카드 LOOKBOOK_WARM 벌의 meta · 그림도 그때 받기 시작한다
+  // (preloadSnapshot — 받기만, 합성은 카드가 한다. 결과는 같고 기다림만 준다)
   const lookbookPending = useRef<string | null>(typeof window === 'undefined' ? null : lookbookIdOf(window.location.pathname))
-  useEffect(() => { const id = lookbookPending.current; if (id) void lookChunk(id, 0, 'a').catch(() => {}) }, [])
   useEffect(() => {
     const id = lookbookPending.current
-    if (!id || !index) return
-    loadMeta(id).then((m) => loadSlotFolded(m.slot)).then((l) => { const it = l.find((x) => x.id === id); if (it) pickCombo(it) }).catch(() => {})
-      .finally(() => { lookbookPending.current = null })
-  }, [index])
+    if (!id) return
+    const first = lookChunk(id, 0, 'a')
+    first.catch(() => {})
+    indexHook.current = (idx) => {
+      indexHook.current = null
+      first.then((pg) => { for (const r of pg.looks.slice(0, LOOKBOOK_WARM)) void preloadSnapshot(r.s, idx, true).catch(() => {}) }).catch(() => {})
+      loadMeta(id).then((m) => loadSlotFolded(m.slot)).then((l) => { const it = l.find((x) => x.id === id); if (it) pickCombo(it) }).catch(() => {})
+        .finally(() => { lookbookPending.current = null })
+    }
+  }, [])
   // 광장의 코디 룩북에서 고른 아이템은 주소도 그 아이템의 코디 룩북이 된다(새로고침 · 링크 공유가 그 아이템으로 열린다). 다른 분류로 가면 /plaza 로 돌아간다.
   // 기록을 쌓지 않고 바꾼다(replaceState). 고르기 전(들어온 직후 아이템을 찾는 동안)에는 주소를 그대로 둔다
   useEffect(() => {
