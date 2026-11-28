@@ -3,12 +3,12 @@
 import clsx from 'clsx'
 import { useRef } from 'react'
 import { labelBadgeImg, type ListItem } from '@/lib/core/data'
-import { DEV_SITE } from '@/lib/catalog'
 import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
-import { IconBookmark, IconDot, IconDrop, IconStar, IconTab, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
-import { SetMark, SetName } from './SetPop'
+import { IconStar, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
+import { SetMark } from './SetPop'
+import { ItemNameRow } from './ItemSheet'
 import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
@@ -30,6 +30,10 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const dyeable = isSkinItem ? isDyeableSkin(item.name) : item.dyeMode !== 'none'
   const isDot = DOT_MOVER_IDS.has(item.id)
   const looks = useLookCount(item.id) // 이 아이템이 든 실제 유저 코디 수(코디 룩북 표본 — lib/looks). 0 이면 칩이 없다
+  const comboOn = looks > 0 && !COMBO_SKIP.has(item.slot)
+  // 모바일 카드에서 누르는 곳은 그림 · 이름 줄 · 즐겨찾기 띠지뿐이다(사용자 지시 — 기능이 늘며 작은 단추가 한 카드에 몰려 손가락으로 정확히 누르기 어려웠다):
+  // 그림 = 입기, 아래 이름 줄 전체 = 아이템 시트(list/ItemSheet — 염색 · 북마크 · 코디 룩북 · 세트가 한 줄에 하나씩 큰 단추).
+  // 북마크 띠지는 켜져 있을 때만 보이는 표시다(누르지 않는다). PC · 절반 · 태블릿 카드는 [북마크 · 염색] 막대 · '코디 N' 칩 · 세트 띠지 그대로
   // 왼쪽 아래 표시 하나: 마라벨 · 스라벨 → 콜라보 · 부티크 → 캐시 동전(사용자 지시 — 넷은 한 아이템에 하나만 붙고, 캐시는 모두와 겹친다)
   const kindBadge = !item.label && item.kind ? item.kind : null
   const badgeKind: 'master' | 'special' | 'cash' | null =
@@ -58,10 +62,12 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
           className={clsx('pb-ribbon', styles.fav, mobile && styles.favM, fav && styles.favOn)}>
           <IconStar size={mobile ? 10 : 9} className={styles.favGlyph} />
         </button>
-        <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
-          className={clsx('pb-ribbon', styles.pinMark, mobile && styles.pinMarkM, pinned && styles.pinMarkOn)} />
-        {/* 세트 띠지(list/SetPop) — PC 만, 즐겨찾기 바로 옆. 올리면 그 세트가 뜬다. 북마크 띠지가 나오면 한 칸 옆으로 비킨다. 지금 dev 에서만 */}
-        {DEV_SITE && !mobile && hasSet && <SetMark item={item} aside={pinned} />}
+        {mobile
+          ? <span aria-hidden={!pinned || undefined} className={clsx(styles.pinMark, styles.pinMarkM, pinned && styles.pinMarkOn, styles.markOnly)} />
+          : <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" tabIndex={pinned ? 0 : -1}
+              className={clsx('pb-ribbon', styles.pinMark, pinned && styles.pinMarkOn)} />}
+        {/* 세트 띠지(list/SetPop) — PC 만, 즐겨찾기 바로 옆. 올리면 그 세트가 뜬다. 북마크 띠지가 나오면 한 칸 옆으로 비킨다 */}
+        {!mobile && hasSet && <SetMark item={item} aside={pinned} />}
         <div className={styles.thumb}>
           <ItemThumb item={item} mode={mode} fraction={mobile ? CARD_FRACTION_M : undefined} fitW={mobile ? CARD_FIT_W_M : undefined} zoomStep={+s.listZoom - 1} chat={item.chatUi ? CHAT_CARD : undefined} gaze={s.pv.gaze} ctxItems={ctx.items} ctxKey={ctx.key} override={ctx.override} ctxEffs={ctx.effs} pvEff={s.pv}
             zmap={s.index?.zmap || []} smap={s.index?.smap || {}} skinHeadId={isSkinItem ? item.headId : undefined}
@@ -82,19 +88,21 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
               {kindBadge === 'collab' ? <IconBadgeCollab /> : <IconBadgeBoutique />}
             </span>
           )}
-          {looks > 0 && !COMBO_SKIP.has(item.slot) && (
+          {comboOn && !mobile && (
             <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 룩북 ${looks.toLocaleString()}벌`}
-              className={clsx(styles.combo, mobile && styles.comboM)}>{mobile ? <><IconTab id="codi" size={11} />{countLabel(looks)}</> : `코디 ${countLabel(looks)}`}</button>
+              className={styles.combo}>{`코디 ${countLabel(looks)}`}</button>
           )}
         </div>
-        {/* 모바일 세트 입구 = 이름 줄(그림을 가리지 않는다 — 사용자 지시). 이름 앞 작은 세트 표시, 줄을 누르면 세트 시트 */}
-        {DEV_SITE && mobile && hasSet ? <SetName item={item} name={name} /> : <div className={mobile ? styles.nameM : styles.name}>{name}</div>}
-        <div className={clsx(styles.bar, mobile ? styles.barM : styles.barHover)}>
-          <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" className={clsx('pb-cardact', styles.act, mobile && styles.actM, pinned && styles.actPinned)}>{mobile && <span className={styles.actIcon}><IconBookmark filled={pinned} /></span>}<span className={styles.actText}>북마크</span></button>
+        {/* 모바일 = 이름 줄 전체가 아이템 시트 단추(list/ItemSheet) — 세트면 이름 앞에 작은 표시 */}
+        {mobile ? <ItemNameRow item={item} name={name} /> : <div className={styles.name}>{name}</div>}
+        {!mobile && (
+        <div className={clsx(styles.bar, styles.barHover)}>
+          <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" className={clsx('pb-cardact', styles.act, pinned && styles.actPinned)}>북마크</button>
           {dyeable && (
-            <button type="button" onClick={dye} title={`${name} 색 바꾸기`} aria-label={isDot ? '점 위치' : '염색'} className={clsx('pb-cardact', styles.act, styles.actDye, mobile && styles.actM)}>{mobile && <span className={styles.actIcon}>{isDot ? <IconDot size={12} /> : <IconDrop size={12} />}</span>}<span className={styles.actText}>{isDot ? '점 위치' : '염색'}</span></button>
+            <button type="button" onClick={dye} title={`${name} 색 바꾸기`} aria-label={isDot ? '점 위치' : '염색'} className={clsx('pb-cardact', styles.act, styles.actDye)}>{isDot ? '점 위치' : '염색'}</button>
           )}
         </div>
+        )}
       </div>
     </div>
   )

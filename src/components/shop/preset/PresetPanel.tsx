@@ -7,10 +7,10 @@ import CountChip from '../frame/CountChip'
 import { CatTabsM, StickyBarM } from '../nav/BottomNav'
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { watchSize } from '@/lib/sizeWatch'
-import { DEV_SITE, type Preset } from '@/lib/catalog'
+import { type Preset } from '@/lib/catalog'
 import { MoveBtn } from './MoveIo'
 import { CARD_FIT_W_M, CHAT_NAME_FALLBACK, defaultPresetName, PRESET_FRACTION, PRESET_FRACTION_M } from '@/lib/shopData'
-import { DIRS } from '../list/ListArea'
+import { DIRS, FilterM } from '../list/ListArea'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
 import { useListMinHeight } from '../list/ListArea'
@@ -122,7 +122,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
     if (confirmTwice(`preset:${p.id}`, '한 번 더 누르면 삭제해요')) s.resetPreset(p.id)
   }
 
-  const dirSeg = <Seg variant={mobile ? 'mobileFit' : 'pc'} title="넘기는 방향" opts={DIRS} value={dir} onPick={s.setPresetDir} />
+  const dirSeg = <Seg variant="pc" title="넘기는 방향" opts={DIRS} value={dir} onPick={s.setPresetDir} />
   // 모바일은 머리에 방향이 더 들어가 글자를 뺀다 — 바로 위 탭 이름이 '프리셋'이다. 칸 수는 **실제 프리셋 목록**에서 센다 — 숫자를 박아 두면 칸 수를 바꿀 때 어긋난다
   const chip = <CountChip mobile={mobile} label={mobile ? undefined : '프리셋'} n={s.presetUsed} total={s.presets.length} digits={3} title="선택된 프리셋에 자동 저장돼요" />
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') s.importFetch() }
@@ -138,10 +138,10 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   // 켜짐 = 채운 핑크 + '완료'. 두 문구를 한 칸에 겹쳐 폭이 바뀌지 않는다(불러오기 버튼과 같다)
   const sortBtn = (
     <button type="button" data-guide="sort" onClick={toggleSort} aria-pressed={sorting} title={sorting ? '순서 변경 끝내기' : '카드를 끌어 순서 바꾸기'}
-      className={clsx(styles.sortBtn, mobile && styles.sortBtnM, sorting && styles.sortOn)}>
-      <IconReorder size={mobile ? 14 : 15} />
+      className={clsx(styles.sortBtn, sorting && styles.sortOn)}>
+      <IconReorder size={15} />
       <span className={styles.loadLabel}>
-        <span aria-hidden={sorting || undefined} style={sorting ? { visibility: 'hidden' } : undefined}>{mobile ? '순서' : '순서 변경'}</span>
+        <span aria-hidden={sorting || undefined} style={sorting ? { visibility: 'hidden' } : undefined}>순서 변경</span>
         <span aria-hidden={!sorting || undefined} style={sorting ? undefined : { visibility: 'hidden' }}>완료</span>
       </span>
     </button>
@@ -166,16 +166,25 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
   )
 
   if (mobile) {
+    // 머리 줄은 코디 탭처럼 넷만(사용자 지시 — 기능이 늘며 빼곡해졌다): [보기 설정] · 칸 수 · [이동] · 불러오기 칸.
+    // 한번 정해 두는 방향과 가끔 쓰는 순서 변경은 [보기 설정](코디 탭과 같은 부품 list/FilterM)에 접고, 숨기면 찾기 어려운 프리셋 이동은 아이콘으로 밖에 둔다.
+    // 순서를 바꾸는 동안은 [보기 설정] 자리에 채운 [완료](두 단추를 한 칸에 겹쳐 폭이 바뀌지 않는다).
+    const viewM = (
+      <div className={styles.viewSwap}>
+        <div aria-hidden={sorting || undefined} style={sorting ? { visibility: 'hidden' } : undefined}>
+          <FilterM mobile guide="sort" groups={[{ label: '방향', title: '넘기는 방향', opts: DIRS, value: dir, onPick: s.setPresetDir }]}
+            extra={(close) => <button type="button" onClick={() => { close(); toggleSort() }} className={clsx(styles.sortBtn, styles.sortBtnM, styles.sortWide)}><IconReorder size={14} />순서 변경</button>} />
+        </div>
+        <button type="button" onClick={toggleSort} aria-hidden={!sorting || undefined} tabIndex={sorting ? 0 : -1} style={sorting ? undefined : { visibility: 'hidden' }}
+          className={clsx(styles.sortBtn, styles.sortBtnM, styles.sortOn, styles.doneM)}><IconCheck size={12} />완료</button>
+      </div>
+    )
     return (
       <>
         <StickyBarM>
         <CatTabsM jump />
         <div className={styles.headerM}>
-          {chip}
-          {sortBtn}
-          {dirSeg}
-          {/* 프리셋 옮기기(preset/MoveIo) — 불러오기 칸 바로 왼쪽. 지금 dev 에서만 */}
-          {DEV_SITE && <MoveBtn mobile />}
+          {viewM}{chip}<MoveBtn mobile />
           {/* 불러오기: 입력과 버튼을 한 칸에 묶는다(아래 PC 와 같은 모양) */}
           <div className={clsx(styles.importBox, styles.importBoxM)}>
             <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />
@@ -194,7 +203,7 @@ export default function PresetPanel({ mobile }: { mobile: boolean }) {
       <div className={styles.header}>
         <div className={styles.groupA}>{chip}{sortBtn}{dirSeg}</div>
         <div className={styles.groupB}>
-          {DEV_SITE && <MoveBtn mobile={false} />}
+          <MoveBtn mobile={false} />
           {/* 불러오기: 입력 + 채운 아이콘 버튼을 한 테두리 안에(모바일과 같은 모양). 칸의 생김새는 다른 탭의 검색 칸과 같다 */}
           <div className={clsx(styles.importBox, narrow && styles.importBoxNarrow)}>
             <input data-guide="nick" value={s.nickInput} onChange={(e) => s.setNickInput(e.target.value)} onKeyDown={onKey} placeholder="닉네임, 공유 링크 입력" aria-label="닉네임 또는 공유 링크" className={styles.importField} />

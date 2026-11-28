@@ -28,7 +28,7 @@ import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
 import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, usePagerX, usePagerY, type FilterGroup } from '../list/ListArea'
-import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
+import { CatTabsM, PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
@@ -72,8 +72,9 @@ export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'c
   // 머리는 패널이 **한 번만** 그린다 — 목록 · 빈 화면 · 상세는 그 아래 내용만 바꾼다. 그래서 목록 ↔ 상세를 오가도 아이템 칩(그림 캔버스)이 같은 자리에
   // 그대로 남아 다시 그려지지 않는다(사용자 지적 — 상세로 넘어갈 때 칩 그림이 움찔했다. 화면마다 머리를 따로 그리면 칩이 새로 붙는다)
   const head = <><ComboHead item={item} mobile={mobile} host={host} detail={item ? detail : null} onBack={() => setDetail(null)} /><div className={mobile ? list.hrM : list.hr} /></>
-  // 모바일 머리([←] · 아이템 · 보기 설정 · 쪽 — 광장은 분류 줄까지)는 다른 탭의 머리처럼 붙은 미리보기 아래에 붙고, 내리는 동안 숨는다(StickyBarM)
-  const headM = <StickyBarM>{host === 'plaza' && <PlazaTabsM />}{head}</StickyBarM>
+  // 모바일 머리(부위 줄 · 광장은 분류 줄, [←] · 보기 설정 · 아이템 · 쪽)는 다른 탭의 머리처럼 붙은 미리보기 아래에 붙고, 내리는 동안 숨는다(StickyBarM)
+  // 코디 탭은 부위 줄도 그대로 둔다(목록 머리와 같다 — 열고 닫아도 부위 줄이 그 자리. 지금 부위를 다시 누르면 한 단계 뒤로, 다른 부위는 닫고 그 부위로 — nav/BottomNav)
+  const headM = <StickyBarM>{host === 'plaza' ? <PlazaTabsM /> : <CatTabsM />}{head}</StickyBarM>
   // 열고 닫기 · 상세 오가기 · 탭 오가기 모두 움직임 없이 바로 바뀐다(사용자 지시 — 탭을 바꾸듯)
   if (mobile) return <>{headM}{body}</>
   return <section className={list.panel}>{head}{body}</section>
@@ -82,13 +83,14 @@ export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'c
 // 머리 왼쪽: 코디 탭은 [←] + 아이템 칩. 좁은 폭(절반 · 태블릿) · 모바일은 칩이 그림만이다(사용자 지시 — 이름이 눌려 안 보였다.
 // 목록의 '아이템' 보기와 같은 그림이고, 이름은 title · 광장은 찾기 칸의 안내 글로도 보인다). 넓은 PC 만 이름까지
 // onBack = 상세에서 코디 목록으로(상세는 광장에서도 [←] 이 있다). [←] 이 생기고 없어져도 칩은 같은 자리(두 번째 칸)라 다시 그려지지 않는다
-function HeadItem({ item, mobile, host, onBack }: { item: ListItem | null; mobile: boolean; host: 'codi' | 'plaza'; onBack?: () => void }) {
+// noBack = [←] 을 따로 그린다(모바일 목록 — [←] 이 [보기 설정] 왼쪽, 사용자 지시)
+function HeadItem({ item, mobile, host, onBack, noBack }: { item: ListItem | null; mobile: boolean; host: 'codi' | 'plaza'; onBack?: () => void; noBack?: boolean }) {
   const s = useShop()
   return (
     <div className={styles.headItem}>
       {onBack ? (
         <button type="button" onClick={onBack} title="코디 목록으로 (Esc)" aria-label="코디 목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
-      ) : host === 'codi' ? (
+      ) : host === 'codi' && !noBack ? (
         <button type="button" onClick={s.closeCombo} title="목록으로 (Esc)" aria-label="목록으로" className={clsx('pb-soft', styles.back, mobile && styles.backM)}><IconChevronLeft /></button>
       ) : null}
       <ItemTag item={item} mobile={mobile} thumbOnly={mobile || s.listNarrow} />
@@ -227,10 +229,11 @@ function ComboHead({ item, mobile, host, detail, onBack }: { item: ListItem | nu
   if (mobile) {
     return (
       <div className={list.controlsM}>
-        {/* 목록: [보기 설정] 오른쪽에 아이템 칩(사용자 지시 — 코디 탭 목록처럼 보기 설정이 맨 앞). 상세: [←] · 아이템 칩이 왼쪽, 두 버튼이 오른쪽 */}
+        {/* 목록: [←](코디 탭) · [보기 설정] · 아이템 칩(사용자 지시 — PC 처럼 [←] 이 맨 앞, 칩은 보기 설정 오른쪽). 상세: [←] · 아이템 칩이 왼쪽, 두 버튼이 오른쪽 */}
         {detail ? <><HeadItem item={item} mobile host={host} onBack={back} /><DetailActs row={detail} mobile /></> : <>
+          {host === 'codi' && <button type="button" onClick={s.closeCombo} title="목록으로 (Esc)" aria-label="목록으로" className={clsx('pb-soft', styles.back, styles.backM)}><IconChevronLeft /></button>}
           <FilterM mobile groups={filterGroups} />
-          <HeadItem item={item} mobile host={host} onBack={back} />
+          <HeadItem item={item} mobile host={host} noBack />
           {pageChip}
           {finder}
         </>}

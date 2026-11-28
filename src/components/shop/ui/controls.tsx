@@ -13,7 +13,7 @@ import styles from './ui.module.css'
 // 두 칸(둘 다 누를 수 있을 때)은 전환 버튼이다 — 어느 칸을 눌러도 지금의 반대쪽으로 바뀐다(북마크 / 비교처럼 — 사용자 지시)
 export type SegOpt<T extends string> = { v: T; l: string; t?: string; disabled?: boolean; disabledTitle?: string; icon?: React.ReactNode; mark?: React.ReactNode }
 export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', title, rows }: {
-  opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: 'pc' | 'mobileFlex' | 'mobileFit'; title?: string; rows?: number[]
+  opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: SegVariant; title?: string; rows?: number[]
 }) {
   const track = segTrack(variant)
   const cell = (o: SegOpt<T>) => segCell(o, value, onPick, variant, flipOf(opts, value))
