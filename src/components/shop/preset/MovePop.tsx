@@ -2,7 +2,8 @@
 
 // 프리셋 옮기기 단추 + 작은 창(사용자 지시 — 한 기기의 프리셋 여러 개를 다른 기기로 한 번에. 설명 글 없이 코드만, 이 창만 크기가 달라도 된다).
 // 프리셋 탭 머리의 불러오기 칸 왼쪽. 창은 카테고리 펼치기와 같은 팝박스(preview/PopBox), 맨 위 [보내기 | 받기].
-//  · 보내기: 열면 바로 5자리 코드 + QR(사이트 주소 ?move=코드 — 휴대폰 카메라로 찍으면 받는 창이 뜬다). 코드를 누르면 복사. 아래 줄 = 아이디로 두기(겹치면 알린다)
+//  · 보내기: 열면 바로 5자리 코드 + 남은 시간(5분 — 지나면 말소, 코드가 흐려지고 [새 코드]) + QR(사이트 주소 ?move=코드 — 휴대폰 카메라로 찍으면 받는 창이 뜬다).
+//    코드를 누르면 복사. 아래 줄 = 아이디로 두기(겹치면 알린다)
 //  · 받기: 코드나 아이디를 넣고 [확인] → 옮겨 온 프리셋 고르기 창(서피스 'move')
 // 서버 · 규칙은 lib/presetMove · app/api/move.
 import clsx from 'clsx'
@@ -41,6 +42,8 @@ export default function MovePop({ mobile }: { mobile: boolean }) {
   const btn = useRef<HTMLButtonElement>(null)
   const [tab, setTab] = useState<'send' | 'recv'>('send')
   const [code, setCode] = useState<string | null>(null)
+  const [exp, setExp] = useState(0) // 코드가 말소되는 때(ms)
+  const [now, setNow] = useState(0)
   const [busy, setBusy] = useState(false)
   const [id, setId] = useState('')
   const [key, setKey] = useState('')
@@ -50,7 +53,7 @@ export default function MovePop({ mobile }: { mobile: boolean }) {
     setBusy(true); setCode(null)
     const c = await sendByCode(items)
     setBusy(false)
-    if (c) setCode(c); else s.notify('코드를 만들지 못했어요')
+    if (c) { setCode(c.code); setExp(Date.now() + c.ttl); setNow(Date.now()) } else s.notify('코드를 만들지 못했어요')
   }
   const toggle = () => {
     if (pop.isOpen) { pop.close(); return }
@@ -81,8 +84,15 @@ export default function MovePop({ mobile }: { mobile: boolean }) {
     pop.close(); setKey('')
     s.openMove(items)
   }
+  // 남은 시간 — 창이 열려 있는 동안 1초마다
+  useEffect(() => {
+    if (!pop.isOpen || !code) return
+    const t = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [pop.isOpen, code])
+  const left = code ? Math.max(0, Math.ceil((exp - now) / 1000)) : 0, dead = !!code && left === 0
   const copy = () => { if (code) navigator.clipboard?.writeText(code).then(() => s.notify('코드를 복사했어요')).catch(() => {}) }
-  const url = code ? `${location.origin}/preset?move=${code}` : ''
+  const url = code && !dead ? `${location.origin}/preset?move=${code}` : ''
   return (
     <>
       <button ref={btn} type="button" onClick={toggle} aria-expanded={pop.isOpen} title="프리셋 여러 개를 다른 기기로 옮기기" aria-label="옮기기"
@@ -93,8 +103,10 @@ export default function MovePop({ mobile }: { mobile: boolean }) {
         <div className={styles.moveHead}><Seg variant={mobile ? 'mobileFit' : 'pc'} opts={TABS} value={tab} onPick={pickTab} /></div>
         {tab === 'send' ? (
           <div className={styles.moveBody}>
-            <button type="button" onClick={copy} disabled={!code} title="코드 복사" className={clsx(styles.moveCode, !code && styles.moveCodeWait)}>{code ?? '00000'}</button>
-            <div className={styles.moveQrBox}>{code ? <Qr text={url} /> : <span className={styles.moveQrWait} />}</div>
+            <button type="button" onClick={copy} disabled={!code || dead} title="코드 복사" className={clsx(styles.moveCode, (!code || dead) && styles.moveCodeWait)}>{code ?? '00000'}</button>
+            {/* 남은 시간 · 말소되면 [새 코드] — 같은 자리(높이 고정)라 밀리지 않는다 */}
+            <div className={styles.moveTime}>{dead ? <button type="button" onClick={make} disabled={busy} className={styles.moveNew}>새 코드</button> : code ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : ''}</div>
+            <div className={styles.moveQrBox}>{url ? <Qr text={url} /> : <span className={styles.moveQrWait} />}</div>
             <div className={styles.moveRow}>
               <input value={id} onChange={(e) => setId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveId() }} placeholder="아이디" maxLength={16} aria-label="아이디" className={styles.moveField} />
               <button type="button" onClick={saveId} disabled={busy} className={clsx('pb-solid', styles.moveGo)}>저장</button>

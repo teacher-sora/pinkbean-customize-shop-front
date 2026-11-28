@@ -1,6 +1,6 @@
 // 프리셋 옮기기(사용자 지시 — 한 기기의 프리셋 여러 개를 다른 기기로 한 번에). Cloudflare R2(CDN 버킷) `move/`(dev 는 `move-dev/`)에 둔다.
 //  · 묶음 = { v: 1, items: [{ n: 프리셋 이름, c: 긴 공유 코드(PB2…) }] } — 코디마다 공유 링크와 같은 코드라 받는 쪽은 그대로 풀어 쓴다(lib/shareCode).
-//  · POST { bundle }            → { code } : 5자리 숫자 코드(24시간). 같은 번호가 아직 살아 있으면 다른 번호(중복 검사)
+//  · POST { bundle }            → { code, ttl } : 5자리 숫자 코드(5분 — 지나면 버린다. 그래서 다섯 자리로도 겹치지 않는다). 같은 번호가 아직 살아 있으면 다른 번호
 //  · GET ?code=12345            → 묶음 : 지났거나 없으면 404
 //  · POST { bundle, id, token? } → { id, token } : 아이디로 둔다(간단한 계정 — 겹치면 409). 처음 만든 기기가 받은 token 이 있어야 고쳐 쓴다
 //  · GET ?id=이름               → 묶음 : 아이디로 받기(누구나 — 아이디만 알면 받는다)
@@ -13,7 +13,7 @@ import { r2, r2Configured as configured, sha256 } from '@/lib/server/r2'
 
 export const runtime = 'nodejs'
 
-const TTL = 24 * 3600 * 1000 // 코드가 살아 있는 시간
+const TTL = 5 * 60 * 1000 // 코드가 살아 있는 시간(사용자 지시 — 5분 뒤 말소, 보내기 창에 남은 시간이 보인다)
 const MAX_ITEMS = 100, MAX_CODE = 8000, MAX_NAME = 40
 const CODE_RE = /^\d{5}$/
 // 아이디: 2~16자, 한글 · 영문 · 숫자 · _ · -, 숫자만은 안 된다(5자리 코드와 갈리게)
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     if (got === 'err') return NextResponse.json({ error: 'storage error' }, { status: 502 })
     if (got && Date.now() - got.t <= TTL) continue
     if (!(await put(key, { t: Date.now(), d })).ok) return NextResponse.json({ error: 'storage error' }, { status: 502 })
-    return NextResponse.json({ code })
+    return NextResponse.json({ code, ttl: TTL })
   }
   return NextResponse.json({ error: 'busy' }, { status: 503 })
 }

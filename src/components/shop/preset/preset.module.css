@@ -96,6 +96,8 @@
 .moveBody { flex: 0 1 auto; min-height: 0; padding: 14px 12px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; overflow: hidden auto; }
 .moveCode { padding: 0 8px; border: none; background: transparent; font-family: inherit; font-size: calc(34rem / 16); font-weight: 700; letter-spacing: .16em; font-variant-numeric: tabular-nums; line-height: 1.1; color: light-dark(#2a2521, #d4d5d8); cursor: pointer; }
 .moveCodeWait { color: light-dark(#ece5dd, #44474f); cursor: default; }
+.moveTime { height: 22px; margin-top: -8px; display: flex; align-items: center; justify-content: center; font-size: calc(12rem / 16); font-weight: 600; font-variant-numeric: tabular-nums; color: light-dark(#8a8075, #9fa2aa); }
+.moveNew { height: 22px; padding: 0 10px; border: 1px solid light-dark(#ec86ac, #d15785); border-radius: 11px; background: light-dark(#fdf1f6, #4e323e); font-family: inherit; font-size: calc(12rem / 16); font-weight: 600; color: light-dark(#d76d9a, #d293ae); cursor: pointer; }
 .moveQrBox { width: 150px; height: 150px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: #fff; overflow: hidden; }
 .moveQr { display: block; }
 .moveQrWait { width: 100%; height: 100%; background: light-dark(#faf7f3, #373940); }

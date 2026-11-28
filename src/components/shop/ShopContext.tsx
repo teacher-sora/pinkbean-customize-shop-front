@@ -220,6 +220,7 @@ export const CMP_MIN = 2 // 비교는 늘 두 칸 이상(사용자 지시)
 const CMP_WIDE = 1420
 type CmpSet = { ids: string[]; last: string | null }
 type CmpSaved = CmpSet & { data: Record<string, Snapshot> }
+type PresetOverS = PresetOver<Snapshot, CmpSaved> // 덮어쓴 프리셋 한 칸의 전후(되돌리기 기록)
 const CMP_KEY = 'pb_compare_v2'
 const cmpSetKey = (owner: string) => `${CMP_KEY}:${owner}`
 const CMP_KEY_V1 = 'pb_compare_v1' // 예전(칸 묶음 하나, sessionStorage) — 처음 한 번 그때의 주인 프리셋 키로 옮기고 지운다
@@ -577,7 +578,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 갈래마다 최근 50개라 비교 칸 넷을 다 써도 기록은 최대 250개(작은 스냅샷 객체)다. 뺀 칸의 기록은 함께 버린다(removeCmp).
   // cmpLast = 그 기록 때 그 프리셋에 이어진 비교 칸(비교 밖 기록만 — 프리셋 = 마지막 칸이라 프리셋을 되돌리면 이어진 칸도 그때로 돌아가야 한다.
   //   안 그러면 되돌린 코디가 다음에 비교를 켤 때 지금의 마지막 칸을 덮었다 — 사용자 지적). undefined = 그때 비교 칸이 없었다(건드리지 않는다)
-  type HistEntry = { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOver<Snapshot, CmpSaved>; cmpLast?: string | null }
+  // over 는 한 칸(공유 코디 · 광장 가져오기 · 프리셋 삭제) 또는 여러 칸(프리셋 옮기기 — 한 번에 여러 칸을 덮어쓴다)
+  type HistEntry = { snap: Snapshot; sel: string | null; names?: Record<string, string>; over?: PresetOverS | PresetOverS[]; cmpLast?: string | null }
   type Hist = { stack: HistEntry[]; idx: number; last: string | null }
   const histsRef = useRef<Map<string, Hist>>(new Map())
   const histOf = (sel: string | null): Hist => {
@@ -587,7 +589,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     return h
   }
   const overTail = useRef<{ h: Hist; at: number } | null>(null) // 방금 남긴 덮어쓰기 기록(pushHistory — 꼬리 합치기)
-  const histOver = useRef<PresetOver<Snapshot, CmpSaved> | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset)
+  const histOver = useRef<PresetOverS | PresetOverS[] | null>(null) // 다음 기록에 붙일 덮어쓰기(applySharedToPreset · takePresets)
   const histExpect = useRef<string | null>(null)    // undo/redo 로 적용 중인 상태키(그 변경은 기록 안 함)
   const [histVer, setHistVer] = useState(0)         // canUndo/canRedo 재계산 트리거
   const saveT = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1742,22 +1744,41 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // 프리셋 옮기기 — 묶기: 기본 코디가 아닌 칸만, 지금 순서대로(고른 칸은 지금 코디)
   const movePresets = (): MoveItem[] => presets.flatMap((p) => { const sn = p.id === selectedPreset ? snapshot() : presetData[p.id]; return sn && snapCoreKey(sn) !== DEFAULT_CORE_KEY ? [{ name: p.name, snap: sn }] : [] })
   const openMove = (items: MoveItem[]) => openSurface({ kind: 'move', item: null, move: items })
-  // 넣기 — all: 받은 것으로 프리셋 전체를 덮어쓴다(순서 · 이름까지, 첫 칸을 고른다). add: 고른 것을 빈 칸(기본 코디인 칸, 지금 고른 칸은 빼고)에 차례로 넣는다
+  // 넣기 — all: 받은 것으로 프리셋 전체를 덮어쓴다(지금 카드 순서대로 채우고 이름까지, 남는 칸은 기본 코디, 첫 칸을 고른다).
+  //        add: 고른 것을 빈 칸(기본 코디인 칸, 지금 고른 칸은 빼고)에 차례로 넣는다.
+  // 되돌리기 한 번에 바뀐 칸 모두가 원래대로 돌아온다(사용자 지시) — 바뀐 칸마다 전후 내용 · 이름을 기록 한 건의 over 에 함께 남긴다
   const takePresets = (items: MoveItem[], mode: 'all' | 'add') => {
     if (!items.length) return
+    const cur = (id: string) => (id === selectedPreset ? snapshot() : presetData[id] ?? defaultSnapshot())
+    const overs: PresetOverS[] = []
+    const names = namesOf(presets)
     if (mode === 'all') {
       const data: Record<string, Snapshot> = {}
-      items.slice(0, PRESET_IDS.length).forEach((it, i) => { data[PRESET_IDS[i]] = withTakenView(it.snap) })
+      presets.forEach((p, i) => {
+        const it = items[i], next = it ? withTakenView(it.snap) : defaultSnapshot(), nextName = it?.name || defaultPresetName(i)
+        if (it) data[p.id] = next
+        overs.push({ id: p.id, prev: cur(p.id), prevName: p.name, next, nextName })
+        names[p.id] = nextName
+      })
+      const first = presets[0].id
+      histOver.current = overs // 라이브가 바뀌므로 기록 effect 가 이 over 들을 집어간다
       setPresetData(data)
-      setPresets(PRESET_IDS.map((id, i) => ({ id, name: items[i]?.name || defaultPresetName(i) })))
-      applySnapshot(data[PRESET_IDS[0]], true, false, PRESET_IDS[0])
-      notify(`프리셋 ${Math.min(items.length, PRESET_IDS.length)}개로 덮어썼어요`)
+      setPresets((ps) => ps.map((p) => ({ ...p, name: names[p.id] })))
+      applySnapshot(data[first] ?? defaultSnapshot(), true, false, first)
+      notify(`프리셋 ${Math.min(items.length, presets.length)}개로 덮어썼어요`)
     } else {
-      const free = presets.filter((p) => p.id !== selectedPreset && (!presetData[p.id] || snapCoreKey(presetData[p.id]) === DEFAULT_CORE_KEY)).map((p) => p.id)
+      const free = presets.filter((p) => p.id !== selectedPreset && (!presetData[p.id] || snapCoreKey(presetData[p.id]) === DEFAULT_CORE_KEY))
       const n = Math.min(free.length, items.length)
       if (!n) { notify('빈 프리셋 칸이 없어요'); return }
-      setPresetData((d) => { const nd = { ...d }; for (let k = 0; k < n; k++) nd[free[k]] = withTakenView(items[k].snap); return nd })
-      setPresets((ps) => ps.map((p) => { const k = free.indexOf(p.id); return k >= 0 && k < n && items[k].name ? { ...p, name: items[k].name } : p }))
+      const add: Record<string, Snapshot> = {}
+      for (let k = 0; k < n; k++) {
+        const p = free[k], next = withTakenView(items[k].snap), nextName = items[k].name || p.name
+        add[p.id] = next; names[p.id] = nextName
+        overs.push({ id: p.id, prev: cur(p.id), prevName: p.name, next, nextName })
+      }
+      setPresetData((d) => ({ ...d, ...add }))
+      setPresets((ps) => ps.map((p) => (add[p.id] ? { ...p, name: names[p.id] } : p)))
+      pushHistory(overs, names) // 라이브가 그대로라 기록 effect 가 돌지 않는다 — 그 자리에서 남긴다
       notify(n < items.length ? `빈 칸이 모자라 ${n}개만 추가했어요` : `프리셋 ${n}개를 추가했어요`)
     }
     closeSurface()
@@ -2124,7 +2145,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // 비교 칸은 프리셋에 딸린 정보다 — 함께 지우고, 되돌리기로 함께 되살린다(사용자 지시). 그 프리셋의 비교 중이면 비교를 끝내고 프리셋으로 지운다
     const inCmp = cmpOn && cmpBack === id
     const sel = id === selectedPreset || inCmp
-    const over: PresetOver<Snapshot, CmpSaved> = {
+    const over: PresetOverS = {
       id,
       prev: sel ? snapshot() : (presetData[id] ?? defaultSnapshot()),
       prevName: presets.find((p) => p.id === id)?.name ?? '',
@@ -2227,7 +2248,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   // (선택하지 않은 프리셋을 초기화)은 그 자리에서 직접 부른다.
   // 그런 기록은 코디·선택 프리셋이 직전과 같고 over 만 다르다 → undo 가 over 로 그 칸을 되살린다.
   // names: 방금 바꿔 아직 상태에 반영되지 않은 이름을 넘길 때(이름 확정 — commitPresetName). 없으면 지금 이름.
-  const pushHistory = (over?: PresetOver<Snapshot, CmpSaved> | null, namesNow?: Record<string, string>) => {
+  const pushHistory = (over?: PresetOverS | PresetOverS[] | null, namesNow?: Record<string, string>) => {
     if (!initedRef.current) return
     const snap = snapshot()
     const names = namesNow ?? namesOf(presets)
@@ -2280,7 +2301,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const canUndo = curHist.idx > 0
   const canRedo = curHist.idx < curHist.stack.length - 1
   // 덮어쓴 프리셋을 되살린다(내용 + 이름). 선택 프리셋이면 이어지는 applyHistory 의 자동저장이 같은 값을 쓴다.
-  const restoreOver = (o: PresetOver<Snapshot, CmpSaved>, back: boolean) => {
+  const restoreOver = (o: PresetOverS, back: boolean) => {
     const snap = back ? o.prev : o.next, name = back ? o.prevName : o.nextName
     if (o.prevCmp !== undefined || o.nextCmp !== undefined) putCmpSaved(o.id, (back ? o.prevCmp : o.nextCmp) ?? null)
     setPresetData((d) => ({ ...d, [o.id]: snap }))
@@ -2291,7 +2312,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (h.idx <= 0) { notify('되돌릴 변경이 없어요'); return }
     const from = h.stack[h.idx]
     h.idx -= 1
-    if (from.over) restoreOver(from.over, true)
+    for (const o of from.over ? [from.over].flat() : []) restoreOver(o, true)
     applyHistory(h.stack[h.idx])
   }
   const redo = () => {
@@ -2299,7 +2320,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     if (h.idx >= h.stack.length - 1) { notify('다시 실행할 변경이 없어요'); return }
     h.idx += 1
     const to = h.stack[h.idx]
-    if (to.over) restoreOver(to.over, false)
+    for (const o of to.over ? [to.over].flat() : []) restoreOver(o, false)
     applyHistory(to)
   }
 
