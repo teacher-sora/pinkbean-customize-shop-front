@@ -168,21 +168,28 @@
 .setMark { composes: ribbon from '../ui/marks.module.css'; position: absolute; top: -3px; right: 35px; z-index: 4; width: 23px; height: 29px; padding: 6px 0 0; display: flex; align-items: flex-start; justify-content: center; border: none; background: light-dark(#a9b7cf, #7c7f8b); color: light-dark(#fff, #ececef); cursor: pointer; transition: transform .24s cubic-bezier(.22,.61,.36,1), filter .24s ease; }
 .setMarkAside { transform: translateX(-28px); }
 @media (hover: hover) and (pointer: fine) { .setMark:hover { filter: brightness(0.8) saturate(1.15); } }
-/* 모바일 세트 입구 = 카드 이름 줄(list/SetPop SetName). 이름 앞 작은 세트 표시(띠지와 같은 색).
-   글자는 세트 표시가 없는 카드처럼 카드 한가운데 — 세 칸 격자(왼쪽 = 표시 자리 18 이상, 가운데 = 이름, 오른쪽 = 왼쪽과 같은 폭)라 표시만큼 옆으로 밀리지 않는다(사용자 지적).
-   이름이 길면 가운데 칸이 줄며 말줄임 */
-.cardM > .nameM.setNameM { display: grid; grid-template-columns: minmax(18px, 1fr) minmax(0, auto) minmax(0, 1fr); align-items: center; border: none; background: transparent; font-family: inherit; cursor: pointer; }
-.setNameIco { justify-self: end; margin-right: 4px; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: light-dark(#a9b7cf, #7c7f8b); color: light-dark(#fff, #ececef); }
-.setNameText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color .2s ease; }
-@media (hover: hover) and (pointer: fine) { .setNameM:hover .setNameText { color: light-dark(#d76d9a, #d293ae); } }
-/* 모바일 새 카드(ItemCard dock — 지금 dev 에서만): 그림 칸 | 이름 줄 24(위아래 여백 — 그림과 막대 사이가 빡빡했다) | 칸 막대 34.
-   칸 막대는 카드 폭을 꽉 채우고(바깥 들임 없음) 칸마다 세로선 — [북마크 | 염색 | 코디 N]. 칸 높이 33 · 폭 약 39(390 폭) — 예전 막대 26 · 그림 위 칩 18 보다 크게 누른다.
-   그림 칸 아래 높이(이름 24 + 막대 34 + 테두리 2 = 60)는 예전 카드와 같아 줄 높이 계산(ListArea CARD_FOOT_M · lib/mobileFit FOOT)이 그대로다 */
+/* 모바일 카드(dev — list/ItemSheet): 누르는 곳은 그림(입기)과 이름 줄(아이템 시트) 둘뿐이다(사용자 지시 — 작은 단추가 한 카드에 몰려 잘못 눌렸다).
+   이름 줄은 줄 전체가 단추(높이 36 — 예전 막대 26 · 그림 위 칩 18 보다 크게). 세 칸 격자: 왼쪽 = 세트 표시(세트일 때만 보인다), 가운데 = 이름, 오른쪽 = 더 보기 점.
+   양옆 칸 폭이 같아 이름은 표시가 있어도 카드 한가운데다(사용자 지적 — 표시만큼 오른쪽으로 밀려 보였다). 이름이 길면 가운데 칸이 줄며 말줄임.
+   그림 칸 아래 = 이름 줄 36 + 테두리 — 예전 카드(이름 · 막대 60)보다 작아 같은 줄 높이에서 그림 칸이 커진다 */
 .cardM.cardD { gap: 0; padding: 0; }
-.cardD > .nameM { height: 24px; line-height: 24px; padding: 0 5px; }
-.dock { flex: 0 0 auto; align-self: stretch; height: 34px; display: flex; border-top: 1px solid light-dark(#f4efe8, #3e4048); border-radius: 0 0 7px 7px; overflow: hidden; }
-.dockAct { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0; border: none; background: transparent; color: light-dark(#8a8075, #9fa2aa); font-family: inherit; font-size: calc(10.5rem / 16); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; white-space: nowrap; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
-.dockAct + .dockAct { border-left: 1px solid light-dark(#f4efe8, #3e4048); }
-.dockAct > svg { flex: 0 0 auto; }
-.dockCombo { color: light-dark(#d76d9a, #d293ae); } /* 코디 수 = 그림 위 칩이던 분홍 글자 그대로 */
-@media (max-width: 339px) { .dockCombo > svg { display: none; } } /* 좁은 휴대폰은 수만(예전 칩과 같은 규칙) */
+.cardD > .nameM.nameRowM { height: 36px; padding: 0 8px; display: grid; grid-template-columns: minmax(18px, 1fr) minmax(0, auto) minmax(18px, 1fr); align-items: center; border: none; border-top: 1px solid light-dark(#f4efe8, #3e4048); border-radius: 0 0 7px 7px; background: transparent; font-family: inherit; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
+.nameRowSet { justify-self: start; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: light-dark(#a9b7cf, #7c7f8b); color: light-dark(#fff, #ececef); }
+.nameRowText { min-width: 0; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nameRowMore { justify-self: end; display: flex; color: light-dark(#c3b9ad, #7e828d); transition: color .2s ease; }
+.cardD > .nameRowM:active { background: light-dark(#faf7f3, #373940); }
+@media (hover: hover) and (pointer: fine) { .cardD > .nameRowM:hover { color: light-dark(#d76d9a, #d293ae); } .cardD > .nameRowM:hover .nameRowMore { color: light-dark(#d76d9a, #d293ae); } }
+/* 그림 위 즐겨찾기 · 북마크 띠지 = 켜져 있을 때만 보이는 표시(누르는 것은 아이템 시트) */
+.fav.markOnly, .pinMark.markOnly { pointer-events: none; cursor: default; }
+/* 아이템 시트(서피스 'item') — 할 일을 한 줄에 하나씩, 높이 52 의 큰 단추. 칸의 면 · 테두리 · 켜짐 색은 세트 칸 · 북마크 칸과 같다 */
+.itemSheet { flex: 0 1 auto; min-height: 0; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden auto; overscroll-behavior: contain; }
+.itemRow { flex: 0 0 auto; height: 52px; padding: 0 14px 0 16px; display: flex; align-items: center; gap: 12px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 8px; background: light-dark(#faf7f3, #373940); font-family: inherit; font-size: calc(14rem / 16); font-weight: 600; color: light-dark(#3d372f, #cacbd0); text-align: left; cursor: pointer; transition: background-color .22s ease, border-color .22s ease, color .22s ease; }
+.itemRowIco { flex: 0 0 auto; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: light-dark(#8a8075, #9fa2aa); transition: color .22s ease; }
+.itemRowIco > svg { width: 18px; height: 18px; }
+.itemRowLabel { flex: 1 1 auto; min-width: 0; }
+.itemRowVal { flex: 0 0 auto; font-size: calc(13rem / 16); font-weight: 600; font-variant-numeric: tabular-nums; color: light-dark(#d76d9a, #d293ae); }
+.itemRowEnd { flex: 0 0 auto; width: 16px; display: flex; align-items: center; justify-content: center; color: light-dark(#c3b9ad, #7e828d); }
+.itemRowOn { border-color: light-dark(#ec86ac, #d15785); background: light-dark(#fdf1f6, #4e323e); color: light-dark(#d76d9a, #d293ae); }
+.itemRowOn .itemRowIco, .itemRowOn .itemRowEnd { color: light-dark(#d76d9a, #d293ae); }
+.itemRowFav .itemRowIco { color: light-dark(#f5b91f, #bd9120); } /* 즐겨찾기 별은 띠지와 같은 금색 */
+@media (hover: hover) and (pointer: fine) { .itemRow:not(.itemRowOn):hover { border-color: light-dark(#f5c6d8, #6d4152); } }

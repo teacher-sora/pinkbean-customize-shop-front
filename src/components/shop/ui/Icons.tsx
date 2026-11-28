@@ -15,6 +15,10 @@ export const IconShareImage = ({ size = 15 }: P) => (
 export const IconDeviceMove = ({ size = 15 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3" width="9.5" height="18" rx="2.2" /><path d="M7 17.5h2.5" /><path d="M15.5 12H21M18.5 9.2 21.3 12l-2.8 2.8" /></svg>
 )
+// 더 보기: 가로 점 셋(모바일 카드 이름 줄 — 누르면 아이템 시트)
+export const IconMore = ({ size = 14 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="18.5" cy="12" r="1.9" /></svg>
+)
 // 순서 변경: 위아래로 엇갈린 두 화살표(자리 바꾸기)
 export const IconReorder = ({ size = 15 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 19.5V4.5M4.5 8 8 4.5 11.5 8" /><path d="M16 4.5v15M12.5 16l3.5 3.5 3.5-3.5" /></svg>

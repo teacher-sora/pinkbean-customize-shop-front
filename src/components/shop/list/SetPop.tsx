@@ -5,8 +5,8 @@
 //    왜 띠지: 그림 칸 왼쪽 위 칩은 신규 표시와 겹치고 휴대폰에서 누르기 어려웠다(사용자 지적). 북마크 띠지가 나오면 한 칸 옆으로 비킨다(북마크 자리는 그대로).
 //  · PC: 띠지에 마우스를 올리면 카드 옆에 창이 뜬다(누를 필요가 없다 — 사용자 지시). 마우스가 그 카드나 창 위에 있는 동안 열려 있고, 둘 다 벗어나면 닫힌다.
 //        카드 어디서나 뜨면 빠르게 훑을 때 방해라, 여는 곳은 띠지 하나다. 창 크기가 바뀌거나 목록이 움직이면 닫는다.
-//  · 모바일: 띠지 대신 카드 이름 줄이 입구다(띠지가 좁은 카드에서 캐릭터를 가렸다 — 사용자 지적). 이름 앞 작은 세트 표시, 줄을 누르면 아래 시트
-//    (서피스 'set' — 내용 높이만큼이라 입히는 동안 미리보기가 보인다).
+//  · 모바일: 띠지 대신 카드 이름 줄 → 아이템 시트(list/ItemSheet)의 [세트]가 입구다(띠지가 좁은 카드에서 캐릭터를 가렸다 — 사용자 지적).
+//    세트면 이름 앞에 작은 세트 표시. 누르면 아래 시트(서피스 'set' — 내용 높이만큼이라 입히는 동안 미리보기가 보인다).
 //  · 짜임: 부위마다 한 줄, 같은 부위의 아이템은 옆 칸(여 → 남 → 공용 — 구성 맵의 순서, 한 줄에 셋까지). 설명 글 · 말풍선 글은 두지 않는다(사용자 지시).
 //  · 칸 = 그림(북마크 칸과 같은 BookmarkSprite) + 이름. 입고 있는 아이템은 분홍(북마크 칸의 '착용 중'과 같은 색). 누르면 카드를 누른 것과 같이 입고 벗는다(equipFromCat).
 //  · 구성 맵은 목록이 뜬 뒤 한가할 때 한 번 받는다(lib/core/data loadSetMembers — 압축 62KB).
@@ -85,21 +85,6 @@ export function SetMark({ item, aside }: { item: ListItem; aside: boolean }) {
     <button ref={ref} type="button" onClick={click} onPointerEnter={enter} onPointerLeave={leave} aria-label={`세트 ${entry.members.length}개`}
       className={clsx(styles.setMark, aside && styles.setMarkAside)}>
       <IconCat id="all" size={11} />
-    </button>
-  )
-}
-
-// ── 모바일 카드의 이름 줄 ── 이름 앞 작은 세트 표시(띠지와 같은 색), 줄 전체가 누르는 자리다. 위아래 틈까지 누름 자리로 넓힌다(보이는 크기는 그대로).
-// 구성 맵을 받기 전에도 표시 자리를 잡아 두고, 받은 뒤 세트가 아니면(남녀 짝 등) 자리만 남긴 채 숨긴다 — 이름이 옆으로 밀리지 않게
-export function SetName({ item, name }: { item: ListItem; name: string }) {
-  const s = useShop()
-  const t = useSetTable()
-  const entry = setEntryOf(item)
-  const click = (e: React.MouseEvent) => { if (!entry) return; e.stopPropagation(); if (s.consumeSwipeClick()) return; s.openSetSheet(item) }
-  return (
-    <button type="button" onClick={click} aria-label={entry ? `${name}, 세트 ${entry.members.length}개` : name} className={clsx(styles.nameM, styles.setNameM)}>
-      <span className={styles.setNameIco} style={entry || !t ? undefined : { visibility: 'hidden' }}><IconCat id="all" size={9} /></span>
-      <span className={styles.setNameText}>{name}</span>
     </button>
   )
 }

@@ -98,7 +98,7 @@ const withTakenView = (s: Snapshot): Snapshot => ({ ...s, pv: { ...PV_SNAP_DEFAU
 // plaza = 코디 광장 글 상세. ptake = 그 상세에서 '가져오기'로 넘어간 프리셋 칸 고르기 —
 //   다이얼로그를 **그대로 둔 채** 본문만 가로로 슬라이드하고 패널 크기만 바뀐다(상세를 닫고
 //   새 다이얼로그를 띄우면 화면이 한 번 끊긴다).
-export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look' | 'set' | 'move' | 'moveio'
+export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' | 'ptake' | 'notice' | 'emo' | 'card' | 'look' | 'set' | 'move' | 'moveio' | 'item'
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 // combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
 // look = 'look'(닉네임으로 불러온 코디 고르기)의 닉네임과 코디 후보
@@ -354,6 +354,7 @@ export interface ShopCtx {
   openDye: (item: ListItem, init?: DyeSave) => void // init = 이 값으로 연다(코디 룩북의 자주 쓴 염색 — 적용은 창에서)
   openCard: () => void // 코디 프로필(공유 카드) 만들기 창
   openSetSheet: (item: ListItem) => void // 모바일 세트 보기 시트(list/SetPop)
+  openItemSheet: (item: ListItem) => void // 모바일 아이템 시트(list/ItemSheet — 카드 이름 줄을 누르면: 염색 · 북마크 · 즐겨찾기 · 코디 룩북 · 세트)
   // 프리셋 이동(lib/presetMove · preset/MoveIo · MoveBody) — 이동 창 열기, 쓰고 있는 프리셋 묶기, 받은 묶음 고르기 창 열기, 넣기(전체 덮어쓰기 · 빈 칸에 추가)
   openMoveIo: () => void; movePresets: () => MoveItem[]; openMove: (items: MoveItem[]) => void; takePresets: (items: MoveItem[], mode: 'all' | 'add') => void
   openDot: (item: ListItem) => void
@@ -1763,6 +1764,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const openDye = (item: ListItem, init?: DyeSave) => openSurface({ kind: 'dye', item, ...(init ? { dyeInit: init } : {}) })
   const openCard = () => openSurface({ kind: 'card', item: null })
   const openSetSheet = (item: ListItem) => openSurface({ kind: 'set', item })
+  const openItemSheet = (item: ListItem) => openSurface({ kind: 'item', item })
   // 프리셋 옮기기 — 묶기: 기본 코디가 아닌 칸만, 지금 순서대로(고른 칸은 지금 코디)
   const movePresets = (): MoveItem[] => presets.flatMap((p) => { const sn = p.id === selectedPreset ? snapshot() : presetData[p.id]; return sn && snapCoreKey(sn) !== DEFAULT_CORE_KEY ? [{ name: p.name, snap: sn }] : [] })
   const openMoveIo = () => openSurface({ kind: 'moveio', item: null })
@@ -2393,7 +2395,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     pageEditing, pageInput, onPageFocus, onPageChange, onPageKey, commitPage,
     equipped, tone, shownTone: viewTone(tone, hidden), equipFromCat, equipItem, isEquippedInCat, unequipSlot, resetOutfit, resetDyes, hidden, setHidden,
     dyeTarget, setDyeTarget, dyePalette, setDyePalette, dyeHsb, setDyeHsb, dyeOff, toggleDyeOff, renderPalette, renderHsb, isMixSlot,
-    surface, surfaceClosing, openSheet, openDye, openCard, openSetSheet, openMoveIo, movePresets, openMove, takePresets, openDot, closeSurface,
+    surface, surfaceClosing, openSheet, openDye, openCard, openSetSheet, openItemSheet, openMoveIo, movePresets, openMove, takePresets, openDot, closeSurface,
     openPartItem, partBack, partSlide, cmpOn, cmpIds, cmpBack, toggleCompare, pickCmp, addCmp, removeCmp,
     dotPos, setDot, resetDot,
     pv, setPv,

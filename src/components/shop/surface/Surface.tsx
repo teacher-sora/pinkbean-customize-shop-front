@@ -34,6 +34,7 @@ import LookPickBody from '../preset/LookPickBody'
 import MoveBody from '../preset/MoveBody'
 import MoveIoBody from '../preset/MoveIo'
 import { SetSheetBody, setEntryOf } from '../list/SetPop'
+import { ItemSheetBody } from '../list/ItemSheet'
 import { plazaWhen } from '@/lib/plaza'
 import { IconClose } from '../ui/Icons'
 import { useMaskClose } from '../ui/useMaskClose'
@@ -76,7 +77,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const hidden = s.surfaceClosing || !entered
   // 모바일 시트 높이: 연출 설정 = 내용 높이(최대 85%), 북마크 = 명시값 376↔624(VS 확장 — 전환은 sheetMotion FLIP), 그 외 85%.
   // 어느 시트든 뷰포트가 줄면(내비게이션 바 등) max-height 85% 로 줄고 본문이 스크롤된다.
-  const tall = sf.kind !== 'pv' && sf.kind !== 'bm' && sf.kind !== 'bg' && sf.kind !== 'emo' && sf.kind !== 'set' && sf.kind !== 'moveio'   // 배경 · 이모티콘 고르기는 내용 높이만큼만 — 고르는 동안 미리보기가 보여야 한다(옮기기 창도 내용만큼)
+  const tall = sf.kind !== 'pv' && sf.kind !== 'bm' && sf.kind !== 'bg' && sf.kind !== 'emo' && sf.kind !== 'set' && sf.kind !== 'moveio' && sf.kind !== 'item'   // 배경 · 이모티콘 고르기는 내용 높이만큼만 — 고르는 동안 미리보기가 보여야 한다(이동 창 · 아이템 시트도 내용만큼)
   const bmH = sf.kind === 'bm' ? BM_SHEET_H : null
 
   // 등장 전환이 보이도록 마운트 후 한 프레임 뒤 위치를 바꾼다.
@@ -192,7 +193,7 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   const setE = k === 'set' && sf.item ? setEntryOf(sf.item) : null
   const title = k === 'card' ? '코디 프로필' : k === 'moveio' ? '프리셋 이동' : k === 'move' ? '받은 프리셋' : k === 'set' ? (setE?.name ?? '세트') : k === 'pv' ? '연출 설정' : k === 'bm' ? '북마크' : k === 'part' ? '부위 염색' : k === 'bg' ? '미리보기 배경' : k === 'emo' ? '이모티콘'
     : k === 'plaza' ? (sf.post?.name || '코디') : k === 'ptake' ? (sf.combo ? '코디 룩북' : '공유받은 코디') : k === 'notice' ? '도움 및 건의함' : k === 'look' ? (sf.look?.nick ?? '') : (sf.item?.name || sf.item?.id || '')
-  const sub = k === 'set' ? (setE ? `${setE.members.length}개` : '') : k === 'move' ? `${sf.move?.length ?? 0}개` : k === 'pv' ? '미리보기 연출' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' || k === 'card' || k === 'moveio' ? '' : k === 'notice' || k === 'look' ? NEXON_CREDIT // 출처 표기(lib/nexonLook) — 넥슨 데이터를 보여 주는 창(닉네임으로 불러온 코디)과 앱 어디서나 닿는 자리
+  const sub = k === 'set' ? (setE ? `${setE.members.length}개` : '') : k === 'move' ? `${sf.move?.length ?? 0}개` : k === 'pv' ? '미리보기 연출' : k === 'bm' || k === 'part' || k === 'bg' || k === 'emo' || k === 'card' || k === 'moveio' || k === 'item' ? '' : k === 'notice' || k === 'look' ? NEXON_CREDIT // 출처 표기(lib/nexonLook) — 넥슨 데이터를 보여 주는 창(닉네임으로 불러온 코디)과 앱 어디서나 닿는 자리
     : k === 'plaza' ? (sf.post ? plazaWhen(sf.post.createdAt) : '') : k === 'ptake' ? '어느 프리셋에 저장할까요?'
         : k === 'dot' ? '점 위치 / 염색' : (sf.item && s.isMixSlot(sf.item.slot) ? '염색 / 발색' : '염색')
 
@@ -248,6 +249,8 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
             {k === 'moveio' && <><MoveIoBody mobile={mobile} /><SurfaceFooter /></>}
             {/* 세트 보기(모바일) — 칸을 누르면 입고 벗는다. 내용 높이만큼이라 미리보기가 보인다 */}
             {k === 'set' && sf.item && <><SetSheetBody item={sf.item} /><SurfaceFooter /></>}
+            {/* 아이템 시트(모바일 카드 이름 줄) — 할 일을 한 줄에 하나씩 큰 단추로 */}
+            {k === 'item' && sf.item && <><ItemSheetBody item={sf.item} /><SurfaceFooter /></>}
             {k === 'notice' && <NoticeBody mobile={mobile} />}   {/* 푸터는 본문이 그린다(상세에서 '이전') */}
             {k === 'card' && <ProfileCardBody mobile={mobile} />}   {/* 푸터(닫기 · 저장)는 본문이 그린다 */}
             {k === 'dye' && sf.item && <DyeSurfaceBody item={sf.item} mobile={mobile} init={sf.dyeInit} />}
