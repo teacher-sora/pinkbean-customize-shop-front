@@ -81,12 +81,12 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
   // 모바일: 시트 종류가 바뀌면(아이템 시트 ↔ 염색 · 세트, 받기 → 받은 프리셋 등) 높이도 부드럽게 바뀐다(사용자 지시).
   // 연출 설정 시트와 같은 FLIP — 높이 전환이 아니라, 높이는 한 번에 바꾸고 보이는 움직임은 패널 · 푸터의 translateY 로만(pinkbean-design).
   //  · 늘 때 = 새 높이로 바뀐 뒤 직전 자리로 되돌려 놓고 0 으로 미끄러진다. 푸터는 반대로 붙들어 늘 화면 아래에 보인다.
-  //  · 줄 때 = 직전 높이를 붙든 채 먼저 내려가고(먼저 줄이면 아래가 비어 보인다), 다 내려간 자리에서 높이를 푼다.
+  //  · 줄 때 = 직전 높이를 붙든 채 먼저 내려가고(먼저 줄이면 아래가 비어 보인다), 다 내려간 자리에서 높이를 푼다. 푸터는 그동안 화면 아래에 붙들어 둔다.
   const lastH = useRef(0)
   const flipT = useRef<ReturnType<typeof setTimeout> | null>(null)
   const settle = (panel: HTMLElement, foot: HTMLElement | null) => {
     flipT.current = null
-    if (foot) release([foot])
+    if (foot) { release([foot]); foot.style.marginTop = '' }
     panel.style.transition = 'none'
     panel.style.height = ''
     panel.style.transform = 'translateY(0px)'
@@ -108,8 +108,10 @@ function SurfaceView({ sf }: { sf: SurfaceState }) {
       const ms = glideTo(foot ? [[panel, 0], [foot, 0]] : [[panel, 0]])
       flipT.current = setTimeout(() => settle(panel, foot), ms + 20)
     } else {
+      // 붙든 높이 안에서 푸터는 맨 아래에 두고(margin-top auto) 패널과 반대로 움직여 늘 화면 아래에 보이게 한다
       panel.style.height = `${from}px`
-      const ms = glideTo([[panel, -d]])
+      if (foot) foot.style.marginTop = 'auto'
+      const ms = glideTo(foot ? [[panel, -d], [foot, d]] : [[panel, -d]])
       flipT.current = setTimeout(() => settle(panel, foot), ms)
     }
   }, [sf.kind, sf.item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
