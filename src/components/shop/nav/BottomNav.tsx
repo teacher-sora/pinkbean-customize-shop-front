@@ -41,11 +41,17 @@ function useRevealOn(railRef: React.RefObject<HTMLElement | null>, on: string | 
 }
 // 고른 부위를 다시 누르면 전체로 돌아간다(사용자 지시 — 한벌옷을 보다가 한벌옷을 누르면 전체). 줄 · 펼친 창 어디서든 같다
 const nextCat = (id: string, cur: string) => (id === cur && id !== 'all' ? 'all' : id)
-// 코디 룩북이 열린 코디 탭에서 지금 부위나 [코디] 탭을 다시 누르면 한 단계 뒤로(사용자 지시 — Esc · [←] 과 같다: 상세 → 룩북 목록, 룩북 목록 → 아이템 목록)
+// 코디 룩북이 열린 코디 탭(AI 코디 검색도 같다)에서 지금 부위나 지금 탭을 다시 누르면 한 단계 뒤로(사용자 지시 — Esc · [←] 과 같다: 상세 → 룩북 목록, 룩북 목록 → 아이템 목록)
 const comboBack = (s: ReturnType<typeof useShop>) => {
-  if (!s.comboShown || s.primary !== 'codi') return false
+  if (!s.comboShown || s.primary === 'share') return false // 광장의 코디 룩북은 분류다(닫는 것이 없다)
   if (s.comboDetail) s.setComboDetail(null); else s.closeCombo()
   return true
+}
+// 부위를 누를 때: 룩북이 열려 있으면 지금 부위 = 한 단계 뒤로, 다른 부위 = 룩북을 닫고 그 부위 목록으로. 아니면 지금 부위를 다시 누르면 전체로(nextCat)
+const pickCat = (s: ReturnType<typeof useShop>, id: string) => {
+  if (id === s.activeCat && comboBack(s)) return
+  if (s.comboShown && s.primary !== 'share') { s.closeCombo(); s.setActiveCat(id); return }
+  s.setActiveCat(nextCat(id, s.activeCat))
 }
 
 // 모바일 목록 머리의 분류 탭(밑줄 탭). 미리보기 위 둥근 버튼들과 다른 모양이라 '이 목록에서 무엇을 볼지'로 읽힌다.
@@ -70,7 +76,7 @@ function TabsM({ label, items, on, pick, end }: { label: string; items: { id: st
 // 그때는 같은 부위를 눌러도 전체로 돌리지 않는다 — 목록이 안 보이는 탭에서 누른 것은 그 부위를 보러 가는 것이다
 export function CatTabsM({ jump }: { jump?: boolean } = {}) {
   const s = useShop()
-  const pick = (id: string) => { if (jump) { s.setActiveCat(id); s.setPrimary('codi') } else if (!(id === s.activeCat && comboBack(s))) s.setActiveCat(nextCat(id, s.activeCat)) }
+  const pick = (id: string) => { if (jump) { s.setActiveCat(id); s.setPrimary('codi') } else pickCat(s, id) }
   return <TabsM label="부위" items={[...CAT_FIXED, ...s.catBar]} on={s.activeCat} pick={pick} end={<CatExpand mobile on={s.activeCat} onPick={pick} />} />
 }
 // 코디 광장 분류(자유 코디 ~ 코디 룩북) — 모바일은 코디 탭의 부위처럼 미리보기와 목록 머리 사이에 둔다(사용자 지시, PinkbeanShop)
@@ -104,12 +110,12 @@ export default function BottomNav({ mobile }: { mobile: boolean }) {
   // 목록이 보이는 탭(코디 · AI 코디 검색)에서 고른 부위를 다시 누르면 전체로(nextCat)
   const pickPart = (id: string) => {
     const jump = s.primary === 'info' || s.primary === 'preset'
-    if (!jump && id === s.activeCat && comboBack(s)) return
-    s.setActiveCat(jump ? id : nextCat(id, s.activeCat))
-    if (jump) s.setPrimary('codi')
+    if (!jump) { pickCat(s, id); return }
+    s.setActiveCat(id)
+    s.setPrimary('codi')
   }
   const pickTab = (t: { id: string; label: string }) => {
-    if (t.id === 'codi' && s.primary === 'codi' && comboBack(s)) return
+    if (t.id === s.primary && comboBack(s)) return
     if (READY.has(t.id)) { s.setPrimary(t.id); return }
     if (t.id === 'notice') { s.openNotice(); return } // 도움 및 건의함는 탭 화면 없이 서피스로 연다(간이)
     s.notify(`${t.label}은 아직 준비 중이에요!`)

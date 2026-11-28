@@ -28,7 +28,7 @@ import { enqueueThumb } from '@/lib/thumbQueue'
 import { NICK_TAKE_SLOTS, useShop, type Snapshot } from '../ShopContext'
 import { DyeBand, LookSprite } from '../info/SlotSprite'
 import { CARD_FOOT_M, CARD_RATIO_M, DIRS, FilterM, GENDERS, useMobileRows, usePagerX, usePagerY, type FilterGroup } from '../list/ListArea'
-import { PlazaTabsM, StickyBarM } from '../nav/BottomNav'
+import { CatTabsM, PlazaTabsM, StickyBarM } from '../nav/BottomNav'
 import { WornItems } from '../plaza/PlazaDetailBody'
 import { Seg } from '../ui/controls'
 import { useWheelRail } from '../ui/useWheelRail'
@@ -72,8 +72,9 @@ export default function ComboPanel({ mobile, host }: { mobile: boolean; host: 'c
   // 머리는 패널이 **한 번만** 그린다 — 목록 · 빈 화면 · 상세는 그 아래 내용만 바꾼다. 그래서 목록 ↔ 상세를 오가도 아이템 칩(그림 캔버스)이 같은 자리에
   // 그대로 남아 다시 그려지지 않는다(사용자 지적 — 상세로 넘어갈 때 칩 그림이 움찔했다. 화면마다 머리를 따로 그리면 칩이 새로 붙는다)
   const head = <><ComboHead item={item} mobile={mobile} host={host} detail={item ? detail : null} onBack={() => setDetail(null)} /><div className={mobile ? list.hrM : list.hr} /></>
-  // 모바일 머리([←] · 아이템 · 보기 설정 · 쪽 — 광장은 분류 줄까지)는 다른 탭의 머리처럼 붙은 미리보기 아래에 붙고, 내리는 동안 숨는다(StickyBarM)
-  const headM = <StickyBarM>{host === 'plaza' && <PlazaTabsM />}{head}</StickyBarM>
+  // 모바일 머리(부위 줄 · 광장은 분류 줄, [←] · 보기 설정 · 아이템 · 쪽)는 다른 탭의 머리처럼 붙은 미리보기 아래에 붙고, 내리는 동안 숨는다(StickyBarM)
+  // 코디 탭은 부위 줄도 그대로 둔다(목록 머리와 같다 — 열고 닫아도 부위 줄이 그 자리. 지금 부위를 다시 누르면 한 단계 뒤로, 다른 부위는 닫고 그 부위로 — nav/BottomNav)
+  const headM = <StickyBarM>{host === 'plaza' ? <PlazaTabsM /> : <CatTabsM />}{head}</StickyBarM>
   // 열고 닫기 · 상세 오가기 · 탭 오가기 모두 움직임 없이 바로 바뀐다(사용자 지시 — 탭을 바꾸듯)
   if (mobile) return <>{headM}{body}</>
   return <section className={list.panel}>{head}{body}</section>
