@@ -334,19 +334,20 @@ export function loadSets(): Promise<SetTable> {
   }
   return setsPromise
 }
-// 세트 구성원 표(parser scripts/set-members-build.py → catalog/set-members.json) = { sets: [[세트 이름, [[id, 부위, 이름, 아이콘]…]]…] }.
-// 카드의 [세트] 가 열 때만 받는다(처음 화면에 필요 없다 — 압축 85KB). 세트는 lib/setOrder 와 같은 묶음(세트 표 무리 → 게임 세트 번호), 무리 안 순서도 같다.
-// 헤어 · 성형은 색 묶음마다 한 id 만 있어, 찾을 때 그 아이템의 8색 id 를 모두 본다(setOf).
-// dev 빌드는 front public/dev 의 시험본을 쓴다(운영 CDN 에 올리기 전 — 사용자 승인 뒤 catalog/ 로 옮긴다)
+// 세트 구성 맵(parser scripts/set-members-build.py → CDN catalog/set-members.json, 압축 62KB)
+//   = { v: 2, slots: [부위…], sets: [[세트 이름, [[id, 부위 번호, 이름(, 아이콘 — 기본 꼴 sprites/<id>/icon.png 이면 없다)]…]]…] }.
+// 세트는 lib/setOrder 와 같은 묶음(세트 표 무리 → 게임 세트 번호), 무리 안 순서도 같다. 헤어 · 성형은 색 묶음마다 한 id 만 있어 찾을 때 8색 id 를 모두 본다(setOf).
+// 목록이 뜬 뒤 한가할 때 미리 받는다(list/SetPop useSetTable) — 카드의 세트 칩이 그 뒤에 붙고, 열 때 기다리지 않는다
 export type SetMember = { id: string; slot: string; name: string; icon: string }
 export type SetEntry = { name: string; members: SetMember[] }
-type SetMembers = { sets: SetEntry[]; by: Map<string, number> }
+export type SetMembers = { sets: SetEntry[]; by: Map<string, number> }
 let setMembersPromise: Promise<SetMembers> | null = null
 export function loadSetMembers(): Promise<SetMembers> {
   if (!setMembersPromise) {
-    const src = DEV_SITE ? '/dev/set-members.json' : url('catalog/set-members.json')
-    setMembersPromise = fetch(src, FRESH).then((r) => (r.ok ? r.json() : { sets: [] })).then((d: { sets?: [string, [string, string, string, string][]][] }) => {
-      const sets = (d.sets ?? []).map(([name, ms]) => ({ name, members: ms.map(([id, slot, nm, icon]) => ({ id, slot, name: nm, icon })) }))
+    type Raw = { slots?: string[]; sets?: [string, [string, number, string, string?][]][] }
+    setMembersPromise = fetch(url('catalog/set-members.json'), FRESH).then((r) => (r.ok ? r.json() : {})).then((d: Raw) => {
+      const sl = d.slots ?? []
+      const sets = (d.sets ?? []).map(([name, ms]) => ({ name, members: ms.map(([id, k, nm, icon]) => ({ id, slot: sl[k] ?? '', name: nm, icon: icon ?? '' })) }))
       const by = new Map<string, number>()
       sets.forEach((s, i) => s.members.forEach((m) => by.set(m.id, i)))
       return { sets, by }

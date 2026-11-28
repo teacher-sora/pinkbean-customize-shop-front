@@ -7,8 +7,8 @@ import { DEV_SITE } from '@/lib/catalog'
 import { CARD_FIT_W_M, CARD_FRACTION_M, CHAT_CARD, DOT_MOVER_IDS, SLOT_TO_CAT, isDyeableSkin } from '@/lib/shopData'
 import ItemThumb from '../ItemThumb'
 import { isMultiCat, useShop, type ListMode } from '../ShopContext'
-import { IconBookmark, IconCat, IconDot, IconDrop, IconStar, IconTab, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
-import { openSet } from './SetPop'
+import { IconBookmark, IconDot, IconDrop, IconStar, IconTab, IconBadgeCollab, IconBadgeBoutique } from '../ui/Icons'
+import { SetChip } from './SetPop'
 import { COMBO_SKIP, countLabel, useLookCount } from '@/lib/looks'
 import type { ThumbCtx } from './thumbCtx'
 import styles from './list.module.css'
@@ -40,9 +40,6 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const pin = (e: React.MouseEvent) => { e.stopPropagation(); s.toggleBookmark(item) }
   // 염색 버튼은 착용을 바꾸지 않는다. 사소한 변경점/쩜은 점 위치 전용 다이얼로그.
   const dye = (e: React.MouseEvent) => { e.stopPropagation(); if (isDot) s.openDot(item); else s.openDye(item) }
-  // 세트 보기(list/SetPop) — 세트 표 무리나 게임 세트 번호가 있는 아이템만. 착용을 바꾸지 않는다
-  const hasSet = DEV_SITE && (item.setGroup != null || !!item.setItemID) // 구성원 표가 운영 CDN 에 오르기 전까지 dev 에서만
-  const set = (e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); if (s.consumeSwipeClick()) return; openSet(item, e.currentTarget) }
   // 코디 룩북 — 목록 자리에 이 아이템을 입은 코디와 자주 쓴 염색을 펼친다(combo/ComboPanel). 숨은 기능이 되지 않게 늘 보인다(사용자 지시)
   const combo = (e: React.MouseEvent) => { e.stopPropagation(); if (s.consumeSwipeClick()) return; s.openCombo(item) }
   // 미리 받기(칩에 120ms 머물면 — 지나가기만 하면 받지 않는다 · ShopContext warmCombo). 터치는 머무름이 없어 손가락이 닿는 순간(떼기 전) 시작한다
@@ -82,6 +79,8 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
               {kindBadge === 'collab' ? <IconBadgeCollab /> : <IconBadgeBoutique />}
             </span>
           )}
+          {/* 세트 칩(list/SetPop) — 그림 칸 왼쪽 위. PC 는 올리면, 모바일은 누르면 그 세트가 뜬다. 지금 dev 에서만 */}
+          {DEV_SITE && (item.setGroup != null || !!item.setItemID) && <SetChip item={item} mobile={mobile} />}
           {looks > 0 && !COMBO_SKIP.has(item.slot) && (
             <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 룩북 ${looks.toLocaleString()}벌`}
               className={clsx(styles.combo, mobile && styles.comboM)}>{mobile ? <><IconTab id="codi" size={11} />{countLabel(looks)}</> : `코디 ${countLabel(looks)}`}</button>
@@ -92,9 +91,6 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
           <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" className={clsx('pb-cardact', styles.act, mobile && styles.actM, pinned && styles.actPinned)}>{mobile && <span className={styles.actIcon}><IconBookmark filled={pinned} /></span>}<span className={styles.actText}>북마크</span></button>
           {dyeable && (
             <button type="button" onClick={dye} title={`${name} 색 바꾸기`} aria-label={isDot ? '점 위치' : '염색'} className={clsx('pb-cardact', styles.act, styles.actDye, mobile && styles.actM)}>{mobile && <span className={styles.actIcon}>{isDot ? <IconDot size={12} /> : <IconDrop size={12} />}</span>}<span className={styles.actText}>{isDot ? '점 위치' : '염색'}</span></button>
-          )}
-          {hasSet && (
-            <button type="button" onClick={set} title={`${name} 세트 보기`} aria-label="세트" className={clsx('pb-cardact', styles.act, styles.actDye, mobile && styles.actM)}>{mobile && <span className={styles.actIcon}><IconCat id="all" size={12} /></span>}<span className={styles.actText}>세트</span></button>
           )}
         </div>
       </div>
