@@ -11,6 +11,7 @@
 .segIcon { width: 30px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; }
 .segTrack > .segIcon { height: 28px; } /* 목록 머리(PC) — 칸 전체 34, 옆 성별 칸과 같은 높이 */
 .segFlex.segIcon { height: 26px; } /* 보기 설정 창 안 — 칸 전체 30, 같은 창의 다른 고르기와 같은 높이 */
+.segTrackBar > .segIcon { height: 28px; } /* 모바일 머리 줄 — 칸 전체 32, 옆 단추 · 입력 칸과 같은 높이 */
 .segDisabled { opacity: .4; cursor: not-allowed; }
 /* 여러 줄 트랙(Seg rows) — 한 배경 안에 줄을 쌓는다. 줄 사이도 칸 사이와 같은 3px */
 .segRows { flex-direction: column; }

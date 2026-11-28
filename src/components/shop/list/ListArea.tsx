@@ -123,7 +123,8 @@ export function usePagerX (vpRef: React.RefObject<HTMLDivElement | null>, on: bo
 // sub = 같은 묶음의 둘째 줄(값이 다르다 — '보기' 아래의 배율). 필터 두 줄과 같은 생김새로 한 트랙에 쌓는다(SegStack)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FilterGroup = { label: string; title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void; set?: boolean; rows?: number[]; sub?: { title: string; opts: SegOpt<any>[]; value: string; onPick: (v: any) => void } }
-export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: FilterGroup[]; guide?: string }) {
+// extra = 묶음 아래에 붙는 단추 줄(프리셋 탭 — 순서 변경). 누르면 칸을 닫고 할 일을 한다(close 를 받는다)
+export function FilterM({ groups, mobile, guide, extra }: { mobile: boolean; groups: FilterGroup[]; guide?: string; extra?: (close: () => void) => React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement | null>(null)
   // 바깥을 누르면 닫기만 한다 — 그 누름이 아래 카드로 넘어가 아이템이 입혀지면 안 된다. 화면 전체 덮개를 두었더니 그보다 위에 붙은 헤더 · 미리보기를 누를 때는
@@ -147,6 +148,7 @@ export function FilterM({ groups, mobile, guide }: { mobile: boolean; groups: Fi
               : <Seg variant="mobileFlex" title={g.title} opts={g.opts} value={g.value} onPick={g.onPick} rows={g.rows} />}
           </Fragment>
         ))}
+        {extra?.(() => setOpen(false))}
       </div>
     </div>
   )

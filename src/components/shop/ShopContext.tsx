@@ -102,7 +102,7 @@ export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' 
 // take = 'ptake'(공유받은 코디)가 저장할 스냅샷. post 가 함께 있으면 광장 상세를 거쳐 온 것이라 '이전'으로 돌아간다.
 // combo = 코디 룩북에서 연 저장(창 제목이 '코디 룩북'이다)
 // look = 'look'(닉네임으로 불러온 코디 고르기)의 닉네임과 코디 후보
-// move = 'move'(다른 기기에서 옮겨 온 프리셋 고르기 — lib/presetMove)의 받은 프리셋들. 'moveio' = 프리셋 옮기기 창(보내기 · 받기 — preset/MoveIo)
+// move = 'move'(다른 기기에서 옮겨 온 프리셋 고르기 — lib/presetMove)의 받은 프리셋들. 'moveio' = 프리셋 이동 창(보내기 · 받기 — preset/MoveIo)
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320
@@ -354,7 +354,7 @@ export interface ShopCtx {
   openDye: (item: ListItem, init?: DyeSave) => void // init = 이 값으로 연다(코디 룩북의 자주 쓴 염색 — 적용은 창에서)
   openCard: () => void // 코디 프로필(공유 카드) 만들기 창
   openSetSheet: (item: ListItem) => void // 모바일 세트 보기 시트(list/SetPop)
-  // 프리셋 옮기기(lib/presetMove · preset/MoveIo · MoveBody) — 옮기기 창 열기, 쓰고 있는 프리셋 묶기, 받은 묶음 고르기 창 열기, 넣기(전체 덮어쓰기 · 빈 칸에 추가)
+  // 프리셋 이동(lib/presetMove · preset/MoveIo · MoveBody) — 이동 창 열기, 쓰고 있는 프리셋 묶기, 받은 묶음 고르기 창 열기, 넣기(전체 덮어쓰기 · 빈 칸에 추가)
   openMoveIo: () => void; movePresets: () => MoveItem[]; openMove: (items: MoveItem[]) => void; takePresets: (items: MoveItem[], mode: 'all' | 'add') => void
   openDot: (item: ListItem) => void
   closeSurface: () => void
@@ -477,7 +477,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       code = new URLSearchParams(location.search).get('c')
       if (!code) { const h = location.hash.match(/(?:^#|&)c=([^&]+)/); if (h) code = decodeURIComponent(h[1]) }
     } catch { /* noop */ }
-    // 프리셋 옮기기 QR(?move=12345) — 받은 프리셋 고르기 창을 띄운다(lib/presetMove)
+    // 프리셋 이동 QR(?move=12345) — 받은 프리셋 고르기 창을 띄운다(lib/presetMove)
     let move: string | null = null
     try { move = new URLSearchParams(location.search).get('move') } catch { /* noop */ }
     if (move) {

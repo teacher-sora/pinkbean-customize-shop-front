@@ -1,7 +1,7 @@
 'use client'
 
-// 프리셋 옮기기(사용자 지시 — 한 기기의 프리셋 여러 개를 다른 기기로 한 번에. 설명 글 없이 코드만).
-// 프리셋 탭 머리의 [옮기기](MoveBtn — 불러오기 칸 바로 왼쪽, 함께 오른쪽 끝)가 서피스 'moveio' 를 연다: PC = 가운데 창, 모바일 = 바텀 시트.
+// 프리셋 이동(사용자 지시 — 한 기기의 프리셋 여러 개를 다른 기기로 한 번에. 설명 글 없이 코드만).
+// 프리셋 탭 머리의 [이동](MoveBtn — 불러오기 칸 바로 왼쪽, 함께 오른쪽 끝. 모바일은 아이콘만)이 서피스 'moveio' 를 연다: PC = 가운데 창, 모바일 = 바텀 시트.
 // 짜임은 코디 프로필 창과 같다(탭 없이 한 화면 — 탭을 바꾸면 한쪽이 비어 보였다, 사용자 지적). PC 는 크기를 정한 창(600 × 400):
 //  · 왼쪽(베이지 칸) = 보내기: 작은 QR(사이트 주소 ?move=코드 — 휴대폰 카메라로 찍으면 받는 창이 뜬다), 숫자 다섯 칸 + 복사 아이콘, 남은 시간 막대.
 //    번호는 화면이 먼저 뽑아 QR 이 열자마자 보인다(서버가 겹친다고 하면 받은 번호로 바꾼다 — lib/presetMove pickCode).
@@ -16,7 +16,7 @@ import { drawQr, makeQr } from '@/lib/qr'
 import { MOVE_ID_RE, MOVE_TTL, pickCode, readIds, receive, removeId, sendByCode, sendById, type MoveAcct } from '@/lib/presetMove'
 import { CONFIRM_ATTR, confirmTwice } from '@/lib/confirmTwice'
 import { useShop } from '../ShopContext'
-import { IconLinkCopy, IconReset, IconSwap, IconTrashSolid } from '../ui/Icons'
+import { IconDeviceMove, IconLinkCopy, IconReset, IconTrashSolid } from '../ui/Icons'
 import styles from './preset.module.css'
 
 // 프리셋 탭 머리의 단추. 창이 열려 있는 동안은 켜진 색
@@ -24,9 +24,9 @@ export function MoveBtn({ mobile }: { mobile: boolean }) {
   const s = useShop()
   const on = s.surface?.kind === 'moveio' && !s.surfaceClosing
   return (
-    <button type="button" onClick={s.openMoveIo} aria-haspopup="dialog" title="프리셋 옮기기" aria-label="옮기기"
+    <button type="button" onClick={s.openMoveIo} aria-haspopup="dialog" aria-label="프리셋 이동"
       className={clsx(styles.sortBtn, mobile && styles.sortBtnM, mobile && styles.iconBtnM, styles.moveBtn, on && styles.sortOn)}>
-      <IconSwap size={mobile ? 15 : 16} />{!mobile && '옮기기'}
+      <IconDeviceMove size={16} />{!mobile && '이동'}
     </button>
   )
 }

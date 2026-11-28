@@ -26,6 +26,6 @@
 .gridM { grid-template-columns: repeat(3, minmax(0, 1fr)); } /* 모바일 3열 — 프리셋 탭 · 목록 카드와 같은 열 수(2열은 카드가 너무 컸다 — 사용자 지적) */
 /* 게임에서 지금 입고 있는 프리셋 — 그림 칸 왼쪽 아래(위는 켠 칭호 자리라 겹쳤다) */
 .badge { composes: pinkTag from '../ui/marks.module.css'; position: absolute; bottom: 7px; left: 7px; z-index: 1; padding: 0 8px; white-space: nowrap; pointer-events: none; }
-/* 바뀌는 단추 글자를 한 칸에 겹친다(옮긴 프리셋의 [덮어쓰기] ↔ [추가 N] — 폭이 바뀌지 않게). 숫자는 고정 폭 */
+/* 바뀌는 단추 글자를 한 칸에 겹친다(받은 프리셋의 [덮어쓰기] ↔ [추가 N] — 폭이 바뀌지 않게). 숫자는 고정 폭 */
 .swap { display: inline-grid; font-variant-numeric: tabular-nums; }
 .swap > span { grid-area: 1 / 1; text-align: center; white-space: nowrap; }

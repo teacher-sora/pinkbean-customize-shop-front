@@ -13,7 +13,7 @@ import styles from './ui.module.css'
 // 두 칸(둘 다 누를 수 있을 때)은 전환 버튼이다 — 어느 칸을 눌러도 지금의 반대쪽으로 바뀐다(북마크 / 비교처럼 — 사용자 지시)
 export type SegOpt<T extends string> = { v: T; l: string; t?: string; disabled?: boolean; disabledTitle?: string; icon?: React.ReactNode; mark?: React.ReactNode }
 export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', title, rows }: {
-  opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: 'pc' | 'mobileFlex' | 'mobileFit'; title?: string; rows?: number[]
+  opts: SegOpt<T>[]; value: T; onPick: (v: T) => void; variant?: SegVariant; title?: string; rows?: number[]
 }) {
   const track = segTrack(variant)
   const cell = (o: SegOpt<T>) => segCell(o, value, onPick, variant, flipOf(opts, value))
@@ -27,8 +27,9 @@ export function Seg<T extends string>({ opts, value, onPick, variant = 'pc', tit
   }
   return <div title={title} className={track}>{opts.map(cell)}</div>
 }
-type SegVariant = 'pc' | 'mobileFlex' | 'mobileFit'
-const segTrack = (variant: SegVariant) => (variant === 'pc' ? styles.segTrack : variant === 'mobileFlex' ? styles.segTrackM : styles.segTrackMFit)
+// mobileBar = mobileFit 과 같고 아이콘 칸만 높다 — 모바일 머리 줄(높이 32)에서 옆 단추 · 입력 칸과 같은 높이(아이콘 칸이 24 면 트랙이 28 로 낮았다)
+type SegVariant = 'pc' | 'mobileFlex' | 'mobileFit' | 'mobileBar'
+const segTrack = (variant: SegVariant) => (variant === 'pc' ? styles.segTrack : variant === 'mobileFlex' ? styles.segTrackM : variant === 'mobileBar' ? clsx(styles.segTrackMFit, styles.segTrackBar) : styles.segTrackMFit)
 // 두 칸 전환이면 누를 때 갈 값(지금의 반대쪽), 아니면 undefined
 function flipOf<T extends string>(opts: SegOpt<T>[], value: T): T | undefined {
   if (opts.length !== 2 || opts.some((o) => o.disabled) || !opts.some((o) => o.v === value)) return undefined

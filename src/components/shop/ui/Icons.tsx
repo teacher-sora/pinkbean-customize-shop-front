@@ -11,11 +11,11 @@ export const IconRate = ({ size = 15 }: P) => (
 export const IconShareImage = ({ size = 15 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V11" /><path d="M4.8 16.5l4.2-4 3 2.6 2.4-2.4 5 4.6" /><path d="M16 4.5h4v4M20 4.5l-5.5 5.5" /></svg>
 )
-// 순서 변경: 위아래로 엇갈린 두 화살표(자리 바꾸기)
-// 옮기기: 오가는 두 화살표(프리셋 탭 머리의 [옮기기])
-export const IconSwap = ({ size = 15 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 8.5h14M15 5l3.5 3.5L15 12" /><path d="M19.5 15.5h-14M9 12l-3.5 3.5L9 19" /></svg>
+// 프리셋 이동: 휴대폰과 밖으로 나가는 화살표(프리셋 탭 머리의 [이동] — 순서 변경의 엇갈린 화살표와 다른 꼴)
+export const IconDeviceMove = ({ size = 15 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3" width="9.5" height="18" rx="2.2" /><path d="M7 17.5h2.5" /><path d="M15.5 12H21M18.5 9.2 21.3 12l-2.8 2.8" /></svg>
 )
+// 순서 변경: 위아래로 엇갈린 두 화살표(자리 바꾸기)
 export const IconReorder = ({ size = 15 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 19.5V4.5M4.5 8 8 4.5 11.5 8" /><path d="M16 4.5v15M12.5 16l3.5 3.5 3.5-3.5" /></svg>
 )

@@ -30,6 +30,10 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
   const dyeable = isSkinItem ? isDyeableSkin(item.name) : item.dyeMode !== 'none'
   const isDot = DOT_MOVER_IDS.has(item.id)
   const looks = useLookCount(item.id) // 이 아이템이 든 실제 유저 코디 수(코디 룩북 표본 — lib/looks). 0 이면 칩이 없다
+  const comboOn = looks > 0 && !COMBO_SKIP.has(item.slot)
+  // 모바일 카드 아래 = 카드 폭을 꽉 채운 칸 막대 [북마크 | 염색 | 코디 N](사용자 지시 — 기능이 늘며 그림 위 칩 · 작은 막대가 빼곡해 누르기 어려웠다).
+  // 그림 위에는 표시만 남기고(신규 · 등급 · 즐겨찾기 띠지), 누르는 것은 아래 칸 막대와 이름 줄(세트)로 모은다. 지금 dev 에서만 — 운영은 옛 카드
+  const dock = DEV_SITE && mobile
   // 왼쪽 아래 표시 하나: 마라벨 · 스라벨 → 콜라보 · 부티크 → 캐시 동전(사용자 지시 — 넷은 한 아이템에 하나만 붙고, 캐시는 모두와 겹친다)
   const kindBadge = !item.label && item.kind ? item.kind : null
   const badgeKind: 'master' | 'special' | 'cash' | null =
@@ -52,7 +56,7 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
 
   return (
     <div onClick={equip} onPointerDown={warm} className="pb-cardwrap" title={name}>
-      <div className={clsx('pb-card', styles.card, mobile && styles.cardM, sel && 'pb-card-sel')}>
+      <div className={clsx('pb-card', styles.card, mobile && styles.cardM, dock && styles.cardD, sel && 'pb-card-sel')}>
         {s.newIds.has(item.id) && <span className={clsx(styles.newBadge, mobile && styles.newBadgeM)} aria-label="신규">{mobile ? 'N' : 'NEW'}</span>}
         <button type="button" onClick={(e) => { e.stopPropagation(); s.toggleFavorite(item.id) }} title={fav ? '즐겨찾기 해제' : '즐겨찾기에 모아두기'} aria-label="즐겨찾기" aria-pressed={fav}
           className={clsx('pb-ribbon', styles.fav, mobile && styles.favM, fav && styles.favOn)}>
@@ -82,19 +86,31 @@ export default function ItemCard({ item, cat, mode, ctx, mobile }: {
               {kindBadge === 'collab' ? <IconBadgeCollab /> : <IconBadgeBoutique />}
             </span>
           )}
-          {looks > 0 && !COMBO_SKIP.has(item.slot) && (
+          {comboOn && !dock && (
             <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" title={`이 아이템을 입은 코디 ${looks.toLocaleString()}벌 보기`} aria-label={`코디 룩북 ${looks.toLocaleString()}벌`}
               className={clsx(styles.combo, mobile && styles.comboM)}>{mobile ? <><IconTab id="codi" size={11} />{countLabel(looks)}</> : `코디 ${countLabel(looks)}`}</button>
           )}
         </div>
         {/* 모바일 세트 입구 = 이름 줄(그림을 가리지 않는다 — 사용자 지시). 이름 앞 작은 세트 표시, 줄을 누르면 세트 시트 */}
         {DEV_SITE && mobile && hasSet ? <SetName item={item} name={name} /> : <div className={mobile ? styles.nameM : styles.name}>{name}</div>}
+        {dock ? (
+          <div className={styles.dock}>
+            <button type="button" onClick={pin} aria-label="북마크" aria-pressed={pinned} className={clsx('pb-cardact', styles.dockAct, pinned && styles.actPinned)}><IconBookmark filled={pinned} /></button>
+            {dyeable && <button type="button" onClick={dye} aria-label={isDot ? '점 위치' : '염색'} className={clsx('pb-cardact', styles.dockAct)}>{isDot ? <IconDot size={15} /> : <IconDrop size={16} />}</button>}
+            {comboOn && (
+              <button type="button" onClick={combo} onPointerEnter={comboEnter} onPointerLeave={comboLeave} onPointerDown={comboDown} data-guide="combo" aria-label={`코디 룩북 ${looks.toLocaleString()}벌`} className={clsx('pb-cardact', styles.dockAct, styles.dockCombo)}>
+                <IconTab id="codi" size={13} />{countLabel(looks)}
+              </button>
+            )}
+          </div>
+        ) : (
         <div className={clsx(styles.bar, mobile ? styles.barM : styles.barHover)}>
           <button type="button" onClick={pin} title={pinned ? '북마크 해제' : '북마크에 담기'} aria-label="북마크" className={clsx('pb-cardact', styles.act, mobile && styles.actM, pinned && styles.actPinned)}>{mobile && <span className={styles.actIcon}><IconBookmark filled={pinned} /></span>}<span className={styles.actText}>북마크</span></button>
           {dyeable && (
             <button type="button" onClick={dye} title={`${name} 색 바꾸기`} aria-label={isDot ? '점 위치' : '염색'} className={clsx('pb-cardact', styles.act, styles.actDye, mobile && styles.actM)}>{mobile && <span className={styles.actIcon}>{isDot ? <IconDot size={12} /> : <IconDrop size={12} />}</span>}<span className={styles.actText}>{isDot ? '점 위치' : '염색'}</span></button>
           )}
         </div>
+        )}
       </div>
     </div>
   )
