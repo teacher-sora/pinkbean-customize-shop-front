@@ -129,7 +129,8 @@ export default function MoveIoBody({ mobile }: { mobile: boolean }) {
         <input value={id} onChange={(e) => setId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(id.trim(), true) }} placeholder="아이디" maxLength={16} aria-label="아이디" className={styles.mvField} />
         <button type="button" onClick={() => save(id.trim(), true)} disabled={busy} className={clsx('pb-solid', styles.mvGo)}>만들기</button>
       </div>
-      <div className={clsx('pb-scroll', styles.mvList, mobile && styles.mvListM)}>
+      <div className={clsx(styles.mvList, mobile && styles.mvListM)}>
+        <div className={clsx('pb-scroll', styles.mvListIn)}>
         {ids.map((a) => (
           <div key={a.id} className={styles.mvId}>
             <span className={styles.mvIdName}>{a.id}</span>
@@ -137,6 +138,7 @@ export default function MoveIoBody({ mobile }: { mobile: boolean }) {
             <button type="button" onClick={() => drop(a)} disabled={busy} {...{ [CONFIRM_ATTR]: `moveid:${a.id}` }} title="아이디 삭제" aria-label="아이디 삭제" className={clsx(styles.mvIdBtn, styles.mvIdDel)}><IconTrashSolid size={12} /></button>
           </div>
         ))}
+        </div>
       </div>
       <hr className={styles.mvRule} />
       <div className={styles.mvRow}>
