@@ -85,13 +85,12 @@ export default function MoveIoBody({ mobile }: { mobile: boolean }) {
     if (r === 'ok') { setIds(readIds()); if (fromField) setId('') }
     s.notify(r === 'ok' ? '지금 프리셋을 저장했어요' : r === 'taken' ? '이미 있는 아이디예요' : '저장하지 못했어요')
   }
-  const drop = async (a: MoveAcct) => {
+  // 지우기는 화면에서 먼저(사용자 지시 — 서버 응답을 기다리지 않는다, 다른 단추도 막지 않아 연달아 지울 수 있다). 서버가 못 지웠으면 제자리에 다시 나타난다
+  const drop = (a: MoveAcct) => {
     if (!confirmTwice(`moveid:${a.id}`, '한 번 더 누르면 삭제해요')) return
-    setBusy(true)
-    const ok = await removeId(a.id)
-    setBusy(false)
-    setIds(readIds())
-    s.notify(ok ? '아이디를 지웠어요' : '지우지 못했어요')
+    setIds((l) => l.filter((x) => x.id !== a.id))
+    s.notify('아이디를 지웠어요')
+    void removeId(a.id).then((ok) => { if (!ok) { setIds(readIds()); s.notify('지우지 못했어요') } })
   }
   const take = async () => {
     const v = key.trim(); if (!v) return
@@ -143,7 +142,7 @@ export default function MoveIoBody({ mobile }: { mobile: boolean }) {
           <div key={a.id} className={styles.mvId}>
             <span className={styles.mvIdName}>{a.id}</span>
             <button type="button" onClick={() => save(a.id, false)} disabled={busy} className={styles.mvIdBtn}>저장</button>
-            <button type="button" onClick={() => drop(a)} disabled={busy} {...{ [CONFIRM_ATTR]: `moveid:${a.id}` }} title="아이디 삭제" aria-label="아이디 삭제" className={clsx(styles.mvIdBtn, styles.mvIdDel)}><IconTrashSolid size={12} /></button>
+            <button type="button" onClick={() => drop(a)} {...{ [CONFIRM_ATTR]: `moveid:${a.id}` }} title="아이디 삭제" aria-label="아이디 삭제" className={clsx(styles.mvIdBtn, styles.mvIdDel)}><IconTrashSolid size={12} /></button>
           </div>
         ))}
         </div>
