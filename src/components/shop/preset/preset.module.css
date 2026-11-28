@@ -104,5 +104,6 @@
 .moveRow { width: 100%; display: flex; gap: 6px; }
 .moveField { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 10px; border: 1px solid light-dark(#f0e9e1, #42454d); border-radius: 6px; background: light-dark(#fff, #303238); font-family: inherit; font-size: calc(13rem / 16); color: light-dark(#3d372f, #cacbd0); outline: none; transition: border-color .22s ease; }
 .moveField:focus { border-color: light-dark(#ec86ac, #d15785); }
-.moveGo { flex: 0 0 auto; height: 34px; padding: 0 14px; border-radius: 6px; font-family: inherit; font-size: calc(13rem / 16); font-weight: 600; }
+.moveGo { flex: 0 0 auto; height: 34px; padding: 0 14px; border: none; border-radius: 6px; background: light-dark(#ec86ac, #d15785); color: light-dark(#fff, #ececef); cursor: pointer; font-family: inherit; font-size: calc(13rem / 16); font-weight: 600; }
 
+.moveGo:disabled { opacity: .6; cursor: default; }
