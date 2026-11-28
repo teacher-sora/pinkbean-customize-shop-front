@@ -106,6 +106,7 @@ export type SurfaceKind = 'pv' | 'bm' | 'dye' | 'dot' | 'part' | 'bg' | 'plaza' 
 export type Surface = { kind: SurfaceKind; item: ListItem | null; fromPart?: boolean; post?: PlazaPost; fromDetail?: boolean; take?: Snapshot; combo?: boolean; dyeInit?: DyeSave; look?: { nick: string; options: LookOption[] }; move?: MoveItem[] }
 const PART_SLIDE_SWAP_MS = 90, PART_SLIDE_IN_MS = 110 // 내용 가로 슬라이드: 빠짐 → 90ms 교체 → 110ms 들어옴
 const SURFACE_UNMOUNT_MS = 320
+const LOOKBOOK_LISTS_DELAY = 2000 // 코디 룩북 주소로 들어왔을 때 미룬 전체 부위 목록을 받기 시작하는 때(아이템을 고른 뒤 ms)
 const LOOKBOOK_WARM = 18 // 코디 룩북 주소로 들어올 때 그림까지 미리 받을 첫 카드 수(PC 첫 화면 6 × 3, 모바일은 3 × 3). meta 는 페이지(app/(shop)/lookbook/[id] WARM)가 18벌 받는다 // 닫힘 트랜지션(.3s)보다 길게 — 닫힘이 중간에 잘리지 않게
 
 // 비동기로 만든 텍스트(공유 코드 압축이 async)를 클립보드에 안전하게 복사한다.
@@ -602,6 +603,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const swipe = useRef({ on: false, id: -1, x0: 0, y0: 0, mode: null as 'x' | 'y' | null, lx: 0, lt: 0, vx: 0, w: 1 })
   const swipeClickUntil = useRef(0)
 
+  const preloadAllLists = (idx: Index) => { for (const c of CATS) { const f = c.id === 'skin' ? undefined : slotFile(CAT_TO_SLOT[c.id], idx); if (f) loadSlot(f).catch(() => {}) } }
   // 카탈로그 색인이 오는 즉시(아래 초기화 — 프리셋 복원 · 착용 해석 — 를 기다리지 않고) 부를 일. 코디 룩북 주소의 아이템 고르기가 쓴다
   const indexHook = useRef<((idx: Index) => void) | null>(null)
   // ── 초기 로드: index → 저장된 프리셋(없는 칸은 기본값) 복원 → 선택된 프리셋을 라이브 모델에 적용 ──
@@ -617,7 +619,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // 여러 부위를 한 목록으로 보는 탭(전체 등)이면 모든 부위 목록을 지금 함께 받기 시작한다 — 아래의 프리셋 복원이
       // 착용 부위 목록을 다 받을 때까지 기다렸다 나머지를 보내면 왕복 한 번이 더 든다. loadSlot 이 파일별로 캐시하므로
       // 뒤의 ensureSlot·resolveEquipped 는 같은 요청을 이어받는다.
-      if (isMultiCat(activeCatRef.current)) for (const c of CATS) { const f = c.id === 'skin' ? undefined : slotFile(CAT_TO_SLOT[c.id], idx); if (f) loadSlot(f).catch(() => {}) }
+      // 코디 룩북 주소로 들어오면 미룬다 — 화면이 광장이라 지금은 안 보이고, 느린 회선에서 첫 카드의 그림과 다퉜다(실측 첫 카드 0.3 ~ 0.55초 늦음). 아래 룩북 고르기가 끝난 뒤 받는다
+      if (isMultiCat(activeCatRef.current) && !lookbookIdOf(window.location.pathname)) preloadAllLists(idx)
       // localStorage 에서 프리셋 복원(저장된 칸은 그대로, 없는 칸만 코디 기본값). 첫 접속 시 d0 자동 선택.
       const store = loadPresetStore()
       const data: Record<string, Snapshot> = {}
@@ -1371,7 +1374,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const warmN = currentBp() === 'mobile' ? MOBILE_GRID.cols * MOBILE_GRID.rows : LOOKBOOK_WARM // 모바일은 첫 화면 3 × 3 만 — 더 받으면 보이는 카드의 그림과 다툰다
       first.then((pg) => { for (const r of pg.looks.slice(0, warmN)) void preloadSnapshot(r.s, idx, true).catch(() => {}) }).catch(() => {})
       loadMeta(id).then((m) => loadSlotFolded(m.slot)).then((l) => { const it = l.find((x) => x.id === id); if (it) pickCombo(it) }).catch(() => {})
-        .finally(() => { lookbookPending.current = null })
+        .finally(() => {
+          lookbookPending.current = null
+          // 미뤄 둔 전체 목록(위 초기화) — 첫 화면 카드가 그림을 받은 뒤 한가할 때
+          if (isMultiCat(activeCatRef.current)) window.setTimeout(() => { const go = () => preloadAllLists(idx); if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 3000 }); else go() }, LOOKBOOK_LISTS_DELAY)
+        })
     }
   }, [])
   // 광장의 코디 룩북에서 고른 아이템은 주소도 그 아이템의 코디 룩북이 된다(새로고침 · 링크 공유가 그 아이템으로 열린다). 다른 분류로 가면 /plaza 로 돌아간다.
