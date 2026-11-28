@@ -201,10 +201,10 @@ export function drawCardBase (g: CanvasRenderingContext2D, S: number, t: CardThe
 
 // ── 불러오기 티켓 ──────────────────────────────────────────
 // 절취선(둥근 점 줄 + 양끝 둘레에 반원 홈) 아래, 왼쪽 = 글(무엇을 하는 칸인지 · 어떻게 쓰는지 · 짧은 코드 · 주소), 오른쪽 = QR 칸.
-// QR 은 카드의 한 장식으로 그린다: 칸은 둥근 흰 판(어두운 디자인은 그 디자인의 밝은 글자색), 데이터는 둥근 점, 눈 셋은 둥근 고리 + 둥근 알맹이,
+// QR 은 카드의 한 장식으로 그린다: 칸은 둥근 흰 판(어두운 디자인은 그 디자인의 밝은 글자색), 데이터는 이웃끼리 이어진 덩어리(끝 · 꺾인 모서리 둥글게), 눈 셋은 둥근 고리 + 둥근 알맹이,
 // 가운데에 사이트 로고. 읽기 쉬움이 먼저다 — 점은 늘 밝은 판 위의 짙은 색(어두운 디자인에서 뒤집지 않는다 — 뒤집힌 QR 을 못 읽는 카메라가 있다),
 // 오류 복원 Q(25%)라 로고가 가린 가운데 칸(약 7%)도 읽힌다. 실측: 저장한 카드 일곱 디자인 모두 WeChat 해독기(휴대폰 스캐너 계열)로 원본 · 1/2 · 1/4 · 흐린 JPEG 에서 읽힘
-// (OpenCV 기본 해독기는 점 모양 QR 을 못 읽는다 — ARCHITECTURE 2-6 코디 프로필).
+// (OpenCV 기본 해독기는 둥근 모양 QR 을 못 읽을 수 있다 — ARCHITECTURE 2-6 코디 프로필).
 const isDarkTheme = (t: CardTheme) => { const h = t.bg[0].replace('#', ''); const v = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16); return ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 < 128 }
 function drawTicket (g: CanvasRenderingContext2D, t: CardTheme, q: CardQr, y: number) {
   // 절취선 — 둘레선 안쪽 끝에서 끝까지, 양끝은 둘레선을 물어뜯은 반원 홈
@@ -247,11 +247,30 @@ function drawTicket (g: CanvasRenderingContext2D, t: CardTheme, q: CardQr, y: nu
   const lc = n / 2, lr = logo ? 4.6 : 0
   const inLogo = (x: number, y: number) => Math.abs(x + 0.5 - lc) < lr && Math.abs(y + 0.5 - lc) < lr
   const eye = (x: number, y: number) => (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7)
+  // 데이터: 이웃한 칸은 이어진 한 덩어리(선분), 바깥 모서리는 둥글게(끝이 뭉툭하게), 안쪽으로 꺾인 모서리에도 같은 반지름의 살을 채운다(사용자 지시 —
+  // 칸마다 따로 그린 둥근 점은 낱알로 흩어져 보였다). 한 경로에 모아 한 번에 칠한다 — 칸마다 칠하면 맞닿은 변에 안티에일리어싱 틈이 비친다
+  const on = (x: number, y: number) => x >= 0 && y >= 0 && x < n && y < n && q.qr.dark[y][x] && !eye(x, y) && !inLogo(x, y)
+  const r = m * 0.36
   g.fillStyle = ink
+  g.beginPath()
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-    if (!q.qr.dark[y][x] || eye(x, y) || inLogo(x, y)) continue
-    g.beginPath(); g.arc(ox + (x + 0.5) * m, oy + (y + 0.5) * m, m * 0.43, 0, Math.PI * 2); g.fill()
+    const X = ox + x * m, Y = oy + y * m
+    if (on(x, y)) {
+      const L = on(x - 1, y), R = on(x + 1, y), U = on(x, y - 1), D = on(x, y + 1)
+      const tl = !L && !U ? r : 0, tr = !R && !U ? r : 0, br = !R && !D ? r : 0, bl = !L && !D ? r : 0
+      g.moveTo(X + tl, Y); g.arcTo(X + m, Y, X + m, Y + m, tr); g.arcTo(X + m, Y + m, X, Y + m, br)
+      g.arcTo(X, Y + m, X, Y, bl); g.arcTo(X, Y, X + m, Y, tl); g.closePath()
+      continue
+    }
+    // 빈 칸의 네 모서리: 그 모서리를 둘러싼 나머지 세 칸이 모두 차 있으면 안쪽 꺾임 — 모서리에 살(반지름 r)을 채운다
+    for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+      if (!on(x + dx, y) || !on(x, y + dy) || !on(x + dx, y + dy)) continue
+      const px = X + (dx > 0 ? m : 0), py = Y + (dy > 0 ? m : 0)
+      // 모서리 P 에서 빈 칸 안쪽으로 r 만큼 간 두 점을, P 를 깎는 원호로 잇는다 — P · 두 점 · 원호 사이가 살
+      g.moveTo(px - dx * r, py); g.arcTo(px, py, px, py - dy * r, r); g.lineTo(px, py); g.closePath()
+    }
   }
+  g.fill()
   // 눈: 둥근 고리(7칸, 굵기 1칸) + 둥근 알맹이(3칸)
   for (const [ex, ey] of [[0, 0], [n - 7, 0], [0, n - 7]]) {
     const x0 = ox + ex * m, y0 = oy + ey * m
